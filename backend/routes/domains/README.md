@@ -1,14 +1,19 @@
 # Domain route fragments
 
-**Only `finance.php` is loaded in production.**
+`bootstrap/app.php` registers `routes/api.php` only. That file `require`s fragments from this directory at positions that preserve route order (static paths before wildcards).
 
-`bootstrap/app.php` registers `routes/api.php` only. That file `require`s `domains/finance.php` (line ~325) for finance routes that must register before wildcard `{id}` routes.
+## Loaded files
 
-All other `*.php` files in this directory are **archived drafts** from an incomplete route split. They are **not** loaded and must not be edited as if they were live. New routes belong in `routes/api.php` (or wire a fragment here and add an explicit `require` in `api.php`).
+| File | Loaded from | Contents |
+|------|-------------|----------|
+| `orders.php` | Inside `auth:sanctum` + `staff.token` group | POS order lifecycle, payments on ticket, receipts, refunds |
+| `payments.php` | Top-level `api.php` | BML webhook + online pay, partial pay, Stripe |
+| `admin_customers.php` | Top-level `api.php` | Admin CRM, credit, deposit routes |
+| `finance.php` | Inside `auth:sanctum` + `staff.token` group | Invoices, expenses, finance reports, purchases, inventory |
 
-When modularizing routes incrementally:
+When modularizing further:
 
 1. Extract a section from `api.php` into a new file here.
-2. Add `require __DIR__ . '/domains/your-file.php';` in `api.php` at the correct position (static paths before wildcards).
+2. Add `require __DIR__ . '/domains/your-file.php';` in `api.php` at the correct position.
 3. Delete the old inline block from `api.php`.
-4. Run `StaffRouteMiddlewareTest` and route list smoke checks.
+4. Run `RouteSurfaceRegressionTest` and `StaffRouteMiddlewareTest`.

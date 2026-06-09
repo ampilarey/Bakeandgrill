@@ -55,6 +55,10 @@
             "@php artisan config:clear --ansi",
             "@php artisan test --testsuite=Contract"
         ],
+        "test:readiness": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --filter='GiftCardStockTest|RouteSurfaceRegressionTest|StaffRouteMiddlewareTest|ReturnUrlSafetyTest|OverpaymentBlockedTest|PrintJobIdempotencyTest|KdsFinancialDataMinimizationTest|DepositActivityReportTest|CreditRefundActorTest|CustomerCreditTest::test_duplicate|InventoryDeductionTest::test_restore|WebhookIdempotencyTest|EnsureActiveDeviceTest|OfflinePosSyncTest|CustomerTokenStaffRoutesTest'"
+        ],
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",

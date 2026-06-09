@@ -1,7 +1,7 @@
 # Bake & Grill — Production Readiness (living doc)
 
-**Last updated:** 2026-05-22  
-**Source:** Local codebase audit (ChatGPT prompt assessment waves 1–4). Re-verify from disk before each deploy — do not trust stale docs alone.
+**Last updated:** 2026-06-09  
+**Source:** Local codebase — waves 1–4 plus Production Blockers Finish pass. See [`PRODUCTION_BLOCKERS_FINISH_REPORT.md`](PRODUCTION_BLOCKERS_FINISH_REPORT.md).
 
 ---
 
@@ -48,7 +48,13 @@ Config: [`backend/config/pos.php`](../backend/config/pos.php). Tests: [`EnsureAc
 ### Wave 4 — Modularization
 
 - Extracted [`OrderVisibilityService.php`](../backend/app/Domains/Orders/Services/OrderVisibilityService.php) from `OrderController`
-- Deleted unused draft route files under [`routes/domains/`](../backend/routes/domains/) (only `finance.php` + README remain)
+
+### Wave 5 — Production blockers finish (2026-06-09)
+
+- **Gift cards:** HMAC `code_hash` at rest, `orders.gift_card_id`, masked API responses, `GiftCardRedemptionService` on `OrderPaid`
+- **Routes:** `orders.php`, `payments.php`, `admin_customers.php` + existing `finance.php`
+- **Security/tests:** `RouteSurfaceRegressionTest`, expanded `GiftCardStockTest`, overpayment, credit idempotency, inventory restore
+- **Docs:** [`backend/README.md`](../backend/README.md) updated; `composer test:readiness` script
 
 ---
 
@@ -56,11 +62,10 @@ Config: [`backend/config/pos.php`](../backend/config/pos.php). Tests: [`EnsureAc
 
 | Priority | Item | Notes |
 |----------|------|-------|
-| Medium | Gift card code storage | Plaintext in DB; throttle only — consider hashing for balance lookup |
-| Medium | Dual-purpose `auth:sanctum` routes | `/orders/{id}/pay/bml`, promos, delivery — customer OR staff; controller-enforced |
-| Low | `OrderController` size | Still ~1,640 lines; continue incremental extraction |
-| Low | `backend/README.md` | Still says "Opening Soon" — update for café OS |
-| Ops | Test deploy smoke | Run on `test.bakeandgrill.mv` after pull |
+| High | `StockReservationService` missing | Order creation 500 in many tests — fix import/class |
+| Medium | Dual-purpose `auth:sanctum` routes | `/orders/{id}/pay/bml`, promos, delivery — controller-enforced |
+| Low | `OrderController` size | Still large; continue incremental extraction |
+| Ops | Test deploy smoke | Run on `test.bakeandgrill.mv` after pull + migrations |
 
 ---
 
@@ -68,7 +73,9 @@ Config: [`backend/config/pos.php`](../backend/config/pos.php). Tests: [`EnsureAc
 
 ```bash
 cd backend
-php artisan test --filter='CustomerTokenStaffRoutesTest|StaffRouteMiddlewareTest|EnsureActiveDeviceTest|OfflinePosSyncTest|DepositActivityReportTest|WebhookIdempotencyTest|ReturnUrlSafetyTest'
+composer test:readiness
+# or
+php artisan test --filter='GiftCardStockTest|RouteSurfaceRegressionTest|OfflinePosSyncTest|WebhookIdempotencyTest'
 ```
 
 ---

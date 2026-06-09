@@ -1,93 +1,67 @@
-# Bake & Grill - Opening Soon (Laravel)
+# Bake & Grill — Café OS Backend
 
-> **Laravel-based "Opening Soon" page for bakeandgrill.mv - Ready for future POS system expansion**
+Laravel 11 API + Blade public site for **Bake & Grill** (Maldives). Powers POS, KDS, online ordering, admin dashboard, payments (BML Connect, Stripe), credit/deposit accounts, inventory, and CMS site settings.
 
-## 🎯 What This Is
+## Stack
 
-This is a **Laravel project** that contains your "Opening Soon" page. Instead of just uploading static HTML files, this gives you a proper Laravel foundation that you can expand later with the full Bake & Grill POS system.
+| Layer | Tech |
+|-------|------|
+| Framework | Laravel 11, PHP 8.2 |
+| Auth | Sanctum (staff PIN + customer OTP) |
+| DB | MySQL (prod/test), SQLite (PHPUnit) |
+| Queue | Redis (`queue:work redis`) |
+| Realtime | SSE streams for POS/KDS |
 
-## ✨ Features
+## Apps in monorepo
 
-- ✅ **"Opening Soon"** page with countdown timer
-- ✅ **Dhivehi text**: "އަސްލު ދިވެހި ރަހަ"  
-- ✅ **Custom logo** with baking theme
-- ✅ **Responsive design** for all devices
-- ✅ **Professional styling** with orange gradient
-- ✅ **Laravel foundation** ready for expansion
+| Path | Role |
+|------|------|
+| `apps/admin-dashboard/` | React admin UI → built to `public/admin/` |
+| `apps/pos-web/` | React POS → `public/pos/` |
+| `apps/online-order-web/` | Customer ordering app |
+| `apps/shared/` | Shared TypeScript types |
 
-## 🚀 Quick Start
+## Local development
 
-### Local Development
 ```bash
-cd /Users/vigani/Website/bakeandgrill-laravel
-
-# Install dependencies (if not already done)
+cd backend
 composer install
-
-# Start local server
+cp .env.example .env   # configure DB, Redis, BML keys
+php artisan key:generate
+php artisan migrate
 php artisan serve
 ```
 
-Visit: `http://localhost:8000`
+## Tests
 
-### Production Deployment
-See `DEPLOYMENT_GUIDE.md` for complete deployment instructions to bakeandgrill.mv.
-
-## 📁 Project Structure
-
-```
-bakeandgrill-laravel/
-├── app/Http/Controllers/
-│   └── OpeningSoonController.php    # Handles opening soon page
-├── public/
-│   └── logo.svg                     # Your logo (accessible at /logo.svg)
-├── resources/views/
-│   └── opening-soon.blade.php      # Main page template
-├── routes/web.php                   # Routes (main route: /)
-└── .env                            # Environment configuration
+```bash
+cd backend
+php artisan test                    # full suite
+composer test:readiness             # production-readiness filter
+UPDATE_SNAPSHOTS=true php artisan test --filter=ContractTest
 ```
 
-## ⚙️ Configuration
+## Deploy (test server default)
 
-### Routes
-- `GET /` → Shows opening soon page
+See repo root `.cursor/rules/deploy-commands.mdc`. Test path: `test.bakeandgrill.mv`.
 
-### Environment
-- `APP_URL=https://bakeandgrill.mv`
-- `APP_NAME="Bake & Grill"`
-- `APP_ENV=production` (for live site)
-
-## 🔧 Customization
-
-### Update Opening Date
-Edit `resources/views/opening-soon.blade.php`:
-```javascript
-const openingDate = new Date('2025-03-01T00:00:00').getTime();
+```bash
+# Quick pull (UI / small PHP, no new migrations)
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main \
+  && cd backend && php artisan config:cache && php artisan route:cache \
+  && php artisan view:clear && php artisan queue:restart
 ```
 
-### Contact Information
-Update contact details in the same file:
-- Phone: `+960 700-0000`
-- Email: `contact@bakeandgrill.mv`
-- Location: `Malé, Republic of Maldives`
+## Key routes layout
 
-## 🔮 Future Expansion
+- `routes/api.php` — main API (loads domain fragments)
+- `routes/domains/orders.php` — staff order lifecycle, refunds, receipts
+- `routes/domains/payments.php` — BML, Stripe, partial/zero-balance pay
+- `routes/domains/admin_customers.php` — CRM, credit, deposit
+- `routes/domains/finance.php` — invoices, expenses, reports, purchases
 
-This Laravel setup makes it super easy to add the full POS system later:
+## Documentation
 
-1. **No additional setup** - Laravel is already configured
-2. **Just add controllers** for POS features
-3. **Run migrations** for database structure
-4. **Add routes** for new functionality
-5. **Use same asset management** for images, CSS, JS
-
-## 📋 Next Steps
-
-1. **Deploy to bakeandgrill.mv** (see DEPLOYMENT_GUIDE.md)
-2. **Customize** opening date and contact info if needed
-3. **Test** on live domain
-4. **Later**: Add full POS system features
-
----
-
-**Ready for deployment and future expansion!** 🎉
+- `docs/PRODUCTION_READINESS.md` — readiness checklist
+- `docs/MODULARIZATION_AUDIT.md` — hybrid modular monolith status
+- `docs/PRODUCTION_BLOCKERS_FINISH_REPORT.md` — latest blocker pass report

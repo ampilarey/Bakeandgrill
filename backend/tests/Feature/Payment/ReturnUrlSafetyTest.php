@@ -67,4 +67,21 @@ class ReturnUrlSafetyTest extends TestCase
 
         $this->assertSame('pending', $this->payment->fresh()->status);
     }
+
+    public function test_confirmed_return_query_without_webhook_does_not_finalize_payment(): void
+    {
+        $this->get('/payments/bml/return?' . http_build_query([
+            'orderId' => $this->order->id,
+            'state' => 'CONFIRMED',
+            'transactionId' => $this->payment->transaction_id,
+        ]));
+
+        $this->assertNotContains(
+            $this->order->fresh()->status,
+            ['paid', 'completed'],
+            'Return URL with CONFIRMED params must not finalize without verified BML status.',
+        );
+
+        $this->assertSame('pending', $this->payment->fresh()->status);
+    }
 }

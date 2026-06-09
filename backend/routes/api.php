@@ -217,62 +217,7 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/devices/self-register', [DeviceController::class, 'selfRegister'])->middleware('throttle:10,1');
     Route::get('/devices/self-status', [DeviceController::class, 'selfStatus']);
 
-    // Orders
-    Route::get('/orders', [OrderController::class, 'index']);
-    Route::post('/orders', [OrderController::class, 'store'])
-        ->middleware(['permission:pos.ring_sales', 'device.active']);
-    Route::post('/orders/sync', [OrderController::class, 'sync'])
-        ->middleware(['permission:pos.ring_sales', 'device.active']);
-    Route::get('/orders/{id}', [OrderController::class, 'show']);
-    Route::post('/orders/{id}/hold', [OrderController::class, 'hold'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
-    Route::post('/orders/{id}/resume', [OrderController::class, 'resume'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
-    // Phone-call pickup workflow: send a held ticket to the kitchen
-    // without taking payment yet (POS "Save & Fire"), then later SMS
-    // the customer a BML Connect pay link for the remaining balance.
-    Route::post('/orders/{id}/fire-to-kitchen', [OrderController::class, 'fireToKitchen'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
-    Route::post('/orders/{id}/send-pay-link', [OrderController::class, 'sendPayLink'])
-        ->middleware(['permission:orders.send_payment_link', 'throttle:10,1']);
-    // Cashier-callable lifecycle bumps — POS equivalents of KDS
-    // bump/complete. Lets a cashier-only setup (no KDS terminal) move
-    // pickup orders through ready → completed and trigger the
-    // customer-facing SMS chain without the kitchen needing extra
-    // hardware.
-    Route::post('/orders/{id}/start-cooking', [OrderController::class, 'startCooking'])
-        ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
-    Route::post('/orders/{id}/mark-ready', [OrderController::class, 'markReady'])
-        ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
-    Route::post('/orders/{id}/mark-picked-up', [OrderController::class, 'markPickedUp'])
-        ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
-    // Void a non-terminal ticket from the POS Active Orders panel —
-    // returns deducted POS stock, releases promo/loyalty/gift-card
-    // holds, frees the dine-in table, audit-logs the cashier + reason.
-    // Refuses paid/completed/refunded states (those go via refund).
-    // Tighter throttle than mark-ready because voids are destructive.
-    // Permission gate (orders.void) is ALSO enforced inside the controller
-    // so the policy + DB-override path stays the single source of truth.
-    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel'])
-        ->middleware(['permission:orders.void', 'device.active', 'throttle:10,1']);
-    // Active-ticket editing — POS "Save changes" lets a cashier swap
-    // out the line items on a parked / cooking / ready ticket and
-    // reprint the kitchen chit in one round-trip.
-    Route::patch('/orders/{id}/items', [OrderController::class, 'updateItems'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:30,1']);
-    // Open-ticket consolidation — merge two tickets into one or split
-    // selected items off into a sibling ticket. Same editable-state
-    // guards as updateItems.
-    Route::post('/orders/{id}/merge', [OrderController::class, 'merge'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
-    Route::post('/orders/{id}/split', [OrderController::class, 'split'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
-    Route::post('/orders/{id}/payments', [OrderController::class, 'addPayments'])
-        ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
-    Route::post('/orders/{id}/send-bill', [OrderController::class, 'sendBill'])
-        ->middleware(['permission:orders.send_sms_bill', 'throttle:10,1']);
-    Route::patch('/orders/{id}/customer', [OrderController::class, 'updateCustomer'])
-        ->middleware(['permission:pos.ring_sales', 'throttle:30,1']);
+    require __DIR__ . '/domains/orders.php';
 
     // KDS — list endpoint stays unauthenticated by device (any approved
     // staff token can pull the kitchen queue read-only). Mutations
@@ -531,19 +476,6 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     Route::post('/tables/merge', [TableController::class, 'merge'])->middleware('permission:orders.manage');
     Route::post('/tables/{id}/split', [TableController::class, 'split'])->middleware('permission:orders.manage');
 
-    // Receipts (staff)
-    Route::get('/orders/{orderId}/receipt-link', [ReceiptController::class, 'linkForOrder']);
-    Route::post('/receipts/{orderId}/send', [ReceiptController::class, 'send']);
-
-    // Refunds — list/show/create all require refund.process (owner/manager
-    // or explicit orders.refund grant). Gate::authorize in controller matches.
-    Route::get('/refunds', [RefundController::class, 'index'])
-        ->middleware('permission:orders.refund');
-    Route::get('/refunds/{id}', [RefundController::class, 'show'])
-        ->middleware('permission:orders.refund');
-    Route::post('/orders/{orderId}/refunds', [RefundController::class, 'store'])
-        ->middleware(['permission:orders.refund', 'throttle:10,1']);
-
     // SMS promotions — preview/list for marketing staff; send is manager-only
     Route::get('/sms/promotions', [SmsPromotionController::class, 'index'])
         ->middleware('permission:integrations.sms');
@@ -640,18 +572,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->gr
     Route::patch('/items/{id}/toggle-availability', [ItemController::class, 'toggleAvailability']);
 });
 
-// ─── BML Payment Gateway ─────────────────────────────────────────────────────
-
-// Webhook — no auth, signature verified inside PaymentService::handleBmlWebhook
-Route::post('/payments/bml/webhook', [BmlWebhookController::class, 'handle'])
-    ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
-    ->middleware('throttle:60,1');
-
-// Initiate BML payment (customer only)
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/orders/{orderId}/pay/bml', [PaymentController::class, 'initiateOnline']);
-    Route::post('/orders/{orderId}/complete-zero-balance', [PaymentController::class, 'completeZeroBalance']);
-});
+require __DIR__ . '/domains/payments.php';
 
 // ─── Promotions ──────────────────────────────────────────────────────────────
 
@@ -720,11 +641,6 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:orders.manage'])->
     Route::patch('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'update']);
     Route::delete('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'destroy']);
     Route::post('/delivery/orders/{order}/assign-driver', [App\Http\Controllers\Api\DeliveryDriverController::class, 'assignDriver']);
-});
-
-// ─── Partial Online Payment ───────────────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/payments/online/initiate-partial', [PaymentController::class, 'initiatePartial']);
 });
 
 // ─── SSE Real-Time Streams ───────────────────────────────────────────────────
@@ -829,7 +745,7 @@ Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController:
 
 // Public: gift card balance check
 Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
-    ->middleware('throttle:30,1');
+    ->middleware('throttle:10,1');
 
 // Customer: referral management + gift card on orders
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
@@ -958,70 +874,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
     Route::patch('/{id}/moderate', [App\Http\Controllers\Api\ReviewController::class, 'moderate']);
 });
 
-// Admin: customer management
-Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage'])->prefix('admin/customers')->group(function () {
-    Route::middleware('permission:customers.analytics')->group(function () {
-        Route::get('/metrics', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'metrics']);
-    });
-
-    Route::get('/segments', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'listSegments']);
-    Route::get('/segments/{segment}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'segmentCustomers']);
-    Route::get('/data-quality', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'dataQuality']);
-    Route::get('/corporate-inquiries', [App\Http\Controllers\Api\CorporateInquiryController::class, 'adminIndex']);
-
-    Route::get('/', [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
-    Route::get('/{id}/growth-summary', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'growthSummary']);
-    Route::get('/{id}/activity', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'activity']);
-    Route::post('/{id}/tags', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'attachTag']);
-    Route::delete('/{id}/tags/{tag}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'detachTag']);
-    Route::post('/{id}/follow-up-note', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'followUpNote']);
-
-    Route::middleware('permission:integrations.sms')->group(function () {
-        Route::post('/{id}/send-sms', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'sendSms']);
-    });
-
-    Route::get('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'show']);
-    Route::patch('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'update']);
-    Route::patch('/{id}/phone', [App\Http\Controllers\Api\AdminCustomerController::class, 'changePhone']);
-    Route::post('/{id}/merge', [App\Http\Controllers\Api\AdminCustomerController::class, 'merge']);
-    Route::delete('/{id}', [App\Http\Controllers\Api\AdminCustomerController::class, 'destroy']);
-
-    Route::middleware('permission:customers.credit.manage')->group(function () {
-        Route::get('/{id}/credit', [App\Http\Controllers\Api\CustomerCreditController::class, 'show']);
-        Route::patch('/{id}/credit', [App\Http\Controllers\Api\CustomerCreditController::class, 'update']);
-        Route::get('/{id}/credit/invoices', [App\Http\Controllers\Api\CustomerCreditController::class, 'invoices']);
-        Route::get('/{id}/credit/ledger', [App\Http\Controllers\Api\CustomerCreditController::class, 'ledger']);
-    });
-
-    Route::middleware('permission:customers.credit.repay')->group(function () {
-        Route::post('/{id}/credit/repayments', [App\Http\Controllers\Api\CustomerCreditController::class, 'repay']);
-    });
-
-    Route::middleware('permission:customers.deposit.view')->group(function () {
-        Route::get('/{id}/deposit', [App\Http\Controllers\Api\CustomerDepositController::class, 'show']);
-        Route::get('/{id}/deposit/ledger', [App\Http\Controllers\Api\CustomerDepositController::class, 'ledger']);
-    });
-
-    Route::middleware('permission:customers.deposit.freeze')->group(function () {
-        Route::patch('/{id}/deposit', [App\Http\Controllers\Api\CustomerDepositController::class, 'update']);
-    });
-
-    Route::middleware('permission:customers.deposit.receive')->group(function () {
-        Route::post('/{id}/deposit/top-up', [App\Http\Controllers\Api\CustomerDepositController::class, 'topUp']);
-    });
-
-    Route::middleware('permission:customers.deposit.adjust')->group(function () {
-        Route::post('/{id}/deposit/adjust', [App\Http\Controllers\Api\CustomerDepositController::class, 'adjust']);
-    });
-
-    Route::middleware('permission:customers.deposit.refund')->group(function () {
-        Route::post('/{id}/deposit/refund', [App\Http\Controllers\Api\CustomerDepositController::class, 'refund']);
-    });
-
-    Route::middleware('permission:customers.deposit.transfer_credit')->group(function () {
-        Route::post('/{id}/deposit/transfer-to-credit', [App\Http\Controllers\Api\CustomerDepositController::class, 'transferToCredit']);
-    });
-});
+require __DIR__ . '/domains/admin_customers.php';
 
 // ─── Reservations ────────────────────────────────────────────────────────────
 // Public: check slot availability
@@ -1076,14 +929,6 @@ Route::get('/display/{token}', [App\Http\Controllers\Api\CustomerDisplayControll
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:pos.ring_sales', 'device.active', 'throttle:20,1'])->group(function () {
     Route::post('/offline/sync', [App\Http\Controllers\Api\OfflineSyncController::class, 'sync']);
 });
-
-// ─── Stripe Payment Gateway ─────────────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/stripe/intent', [App\Http\Controllers\Api\StripeController::class, 'createIntent']);
-});
-// Stripe webhook — public, no auth, uses raw body
-Route::post('/stripe/webhook', [App\Http\Controllers\Api\StripeController::class, 'webhook'])
-    ->middleware('throttle:100,1');
 
 // ─── Xero OAuth ─────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.xero'])->group(function () {

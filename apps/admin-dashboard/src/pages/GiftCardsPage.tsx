@@ -32,7 +32,7 @@ export default function GiftCardsPage() {
   const [copied, setCopied] = useState(false);
 
   const [balanceCode, setBalanceCode] = useState('');
-  const [balanceResult, setBalanceResult] = useState<{ code: string; current_balance: number; expires_at: string | null } | null>(null);
+  const [balanceResult, setBalanceResult] = useState<{ masked_code: string; current_balance: number; expires_at: string | null } | null>(null);
   const [balanceError, setBalanceError] = useState('');
   const [checkingBalance, setCheckingBalance] = useState(false);
 
@@ -157,7 +157,7 @@ export default function GiftCardsPage() {
               <tr><td colSpan={7}><EmptyState message="No gift cards yet." /></td></tr>
             ) : cards.map(card => (
               <tr key={card.id}>
-                <td style={TD}><code style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em', color: '#1C1408' }}>{card.code}</code></td>
+                <td style={TD}><code style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em', color: '#1C1408' }}>{card.masked_code}</code></td>
                 <td style={TD}>{card.issued_to?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
                 <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
                 <td style={{ ...TD, fontWeight: 700, color: card.current_balance > 0 ? '#166534' : '#9C8E7E' }}>MVR {Number(card.current_balance).toFixed(2)}</td>
@@ -167,7 +167,7 @@ export default function GiftCardsPage() {
                 <td style={TD}>
                   <Btn small variant="secondary" onClick={() => setPrintCard({
                     type: 'gift_card',
-                    code: card.code,
+                    code: card.masked_code,
                     title: 'Gift Card',
                     subtitle: `MVR ${Number(card.initial_balance).toFixed(2)}`,
                     expiry: card.expires_at ?? null,
@@ -190,9 +190,9 @@ export default function GiftCardsPage() {
               <Gift size={40} style={{ color: '#D4813A', marginBottom: 16 }} />
               <p style={{ fontWeight: 700, color: '#1C1408', marginBottom: 8 }}>Gift card issued!</p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
-                <p style={{ fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.1em', color: '#D4813A', fontWeight: 700, margin: 0 }}>{issuedCard.code}</p>
+                <p style={{ fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.1em', color: '#D4813A', fontWeight: 700, margin: 0 }}>{issuedCard.code ?? issuedCard.masked_code}</p>
                 <button
-                  onClick={() => handleCopyCode(issuedCard.code)}
+                  onClick={() => handleCopyCode(issuedCard.code ?? issuedCard.masked_code)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#22c55e' : '#9C8E7E', padding: 4 }}
                   title="Copy code"
                 >

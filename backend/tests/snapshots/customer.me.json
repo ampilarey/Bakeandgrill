@@ -10,5 +10,10 @@
         "preferred_language": "en",
         "last_order_at": null
     },
-    "credit": null
+    "credit": null,
+    "deposit": {
+        "balance_mvr": 0,
+        "status": "active",
+        "can_use": false
+    }
 }

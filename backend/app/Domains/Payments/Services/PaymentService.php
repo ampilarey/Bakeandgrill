@@ -437,7 +437,7 @@ class PaymentService
 
             PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($locked, $order));
 
-            $this->redeemGiftCardForOrder($order);
+            app(GiftCardRedemptionService::class)->redeemForOrder($order);
 
             // Always mirror partial/full financial state for pay-link flows.
             $this->paymentState->syncPaymentStatus($order->fresh());
@@ -537,58 +537,6 @@ class PaymentService
     }
 
     /**
-     * Deduct gift card balance for an order. Must run inside an outer DB transaction.
-     */
-    private function redeemGiftCardForOrder(Order $order): void
-    {
-        if (empty($order->gift_card_code) || (int) ($order->gift_card_discount_laar ?? 0) <= 0) {
-            return;
-        }
-
-        // Idempotency guard: if a redeem transaction already exists for this order, skip.
-        $alreadyRedeemed = \App\Models\GiftCardTransaction::where('order_id', $order->id)
-            ->where('type', 'redeem')
-            ->exists();
-        if ($alreadyRedeemed) {
-            return;
-        }
-
-        $giftCard = \App\Models\GiftCard::where('code', $order->gift_card_code)
-            ->where('status', 'active')
-            ->lockForUpdate()
-            ->first();
-
-        if (!$giftCard) {
-            return;
-        }
-
-        $deductLaar = min(
-            \App\Domains\Orders\Support\EffectiveDiscount::giftCardRedeemLaar($order),
-            $giftCard->balanceLaar(),
-        );
-        if ($deductLaar <= 0) {
-            return;
-        }
-
-        $newBalanceLaar = max(0, $giftCard->balanceLaar() - $deductLaar);
-        $newBalanceMvr = round($newBalanceLaar / 100, 2);
-        $deductMvr = round($deductLaar / 100, 2);
-
-        $giftCard->update([
-            'current_balance' => $newBalanceMvr,
-            'status' => $newBalanceLaar <= 0 ? 'depleted' : 'active',
-        ]);
-
-        \App\Models\GiftCardTransaction::create([
-            'gift_card_id' => $giftCard->id,
-            'amount' => -$deductMvr,
-            'type' => 'redeem',
-            'balance_after' => $newBalanceMvr,
-            'order_id' => $order->id,
-        ]);
-    }
-
-    /**
      * Finalize an online customer order when nothing is owed (gift card / discounts cover 100%).
      * Skips BML; fires the same OrderPaid path as a confirmed card payment.
      *
@@ -612,7 +560,7 @@ class PaymentService
                 throw new \InvalidArgumentException('Order already finalized.');
             }
 
-            $this->redeemGiftCardForOrder($locked);
+            app(GiftCardRedemptionService::class)->redeemForOrder($locked);
 
             $online = in_array($locked->type, ['online_pickup', 'delivery'], true);
             $newStatus = ($online && in_array($locked->status, ['pending', 'payment_pending'], true))

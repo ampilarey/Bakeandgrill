@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Stock;
 
+use App\Domains\Inventory\Services\InventoryDeductionService;
 use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Models\InventoryItem;
@@ -171,5 +172,25 @@ class InventoryDeductionTest extends TestCase
         $this->assertDatabaseHas('stock_movements', [
             'inventory_item_id' => $inventoryItem->id,
         ]);
+    }
+
+    public function test_restore_for_order_reverses_recipe_deduction(): void
+    {
+        $inventoryItem = $this->makeInventoryItem(100);
+        $menuItem = $this->makeItemWithRecipe($inventoryItem, 0.5);
+        $order = $this->makeInventoryOrder($menuItem, qty: 2);
+
+        $this->fireOrderPaid($order);
+        $inventoryItem->refresh();
+        $this->assertEqualsWithDelta(99.0, (float) $inventoryItem->current_stock, 0.001);
+
+        app(InventoryDeductionService::class)->restoreForOrder($order->fresh(), null, 1.0, 99);
+
+        $inventoryItem->refresh();
+        $this->assertEqualsWithDelta(100.0, (float) $inventoryItem->current_stock, 0.001);
+
+        $orderItemId = $order->items()->first()->id;
+        $restoreKey = 'refund:order:' . $order->id . ':item:' . $orderItemId . ':inv:' . $inventoryItem->id;
+        $this->assertTrue(StockMovement::where('idempotency_key', $restoreKey)->exists());
     }
 }

@@ -712,4 +712,30 @@ class CustomerCreditTest extends TestCase
 
         return (int) $response->json('order.id');
     }
+
+    public function test_duplicate_credit_charge_is_idempotent_for_same_payment(): void
+    {
+        $this->approveCustomer(50000);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $orderId = $this->createOrder($this->customer->id);
+
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$orderId}/payments", [
+                'payments' => [['method' => 'house_account', 'amount' => 50]],
+                'print_receipt' => false,
+            ])
+            ->assertOk();
+
+        $payment = \App\Models\Payment::where('order_id', $orderId)->firstOrFail();
+        $service = app(\App\Domains\Credit\Services\CreditLedgerService::class);
+
+        $first = $service->recordCharge($this->customer->fresh(), \App\Models\Order::findOrFail($orderId), $payment, $this->staff);
+        $second = $service->recordCharge($this->customer->fresh(), \App\Models\Order::findOrFail($orderId), $payment, $this->staff);
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame(1, \App\Models\CustomerCreditLedger::where('payment_id', $payment->id)->where('type', 'charge')->count());
+    }
 }

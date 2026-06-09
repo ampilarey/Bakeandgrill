@@ -42,7 +42,7 @@ class ReverseCreditOnRefundListener implements ShouldQueue
             return;
         }
 
-        $this->credit->reverseChargeForRefund($order, $amountLaar, $actor);
+        $this->credit->reverseChargeForRefund($order, $amountLaar, $actor, $refund);
     }
 
     private function resolveRefundActor(Refund $refund, Order $order): ?User

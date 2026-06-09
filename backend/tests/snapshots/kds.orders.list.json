@@ -13,6 +13,8 @@
             "updated_at": "__VOLATILE__",
             "kitchen_done_at": null,
             "kitchen_done_by": null,
+            "kitchen_handover_status": null,
+            "pos_received_at": null,
             "items": [
                 {
                     "id": "__VOLATILE__",
@@ -20,6 +22,8 @@
                     "item_name": "Classic Burger",
                     "variant_name": null,
                     "quantity": 1,
+                    "kitchen_produced_qty": null,
+                    "kitchen_received_qty": null,
                     "notes": null,
                     "status": "pending",
                     "menu_group_id": 1,

@@ -45,8 +45,11 @@ class StripeService
             ]);
 
         if ($response->failed()) {
-            Log::error('Stripe createPaymentIntent failed', ['body' => $response->body()]);
-            throw new \RuntimeException('Stripe payment creation failed: ' . ($response->json('error.message') ?? $response->body()));
+            Log::error('Stripe createPaymentIntent failed', [
+                'status' => $response->status(),
+                'error' => $response->json('error.message'),
+            ]);
+            throw new \RuntimeException('Stripe payment creation failed: ' . ($response->json('error.message') ?? 'gateway error'));
         }
 
         return [

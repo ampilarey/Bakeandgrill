@@ -129,14 +129,17 @@ class BmlConnectService
         $transactionId = $body['id'] ?? $body['transactionId'] ?? $body['transaction_id'] ?? '';
 
         if (!$paymentUrl) {
-            Log::error('BML: No payment URL in response', ['local_id' => $localId, 'body' => $body]);
+            Log::error('BML: No payment URL in response', [
+                'local_id' => $localId,
+                'response_keys' => array_keys($body),
+            ]);
             throw new \RuntimeException('BML did not return a payment URL.');
         }
 
         Log::info('BML: Payment session created', [
             'local_id' => $localId,
             'transaction_id' => $transactionId,
-            'payment_url' => $paymentUrl,
+            'payment_url_host' => parse_url((string) $paymentUrl, PHP_URL_HOST),
         ]);
 
         return [

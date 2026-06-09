@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Stock;
 
+use App\Domains\Payments\Services\GiftCardCodeService;
+use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Models\Customer;
 use App\Models\GiftCard;
+use App\Models\GiftCardTransaction;
 use App\Models\Order;
+use App\Models\PermissionCatalogSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Gift card lifecycle tests.
- *
- * Covers: issue, balance check, apply to order (discount applied),
- * redemption reduces card balance, card marked used when exhausted,
- * expired card rejected, invalid code rejected.
+ * Gift card lifecycle tests — hashed storage, balance, apply, redeem, throttle.
  */
 class GiftCardStockTest extends TestCase
 {
@@ -33,12 +34,15 @@ class GiftCardStockTest extends TestCase
 
     public function test_admin_can_issue_gift_card(): void
     {
-        $this->postJson('/api/admin/gift-cards', [
+        $response = $this->postJson('/api/admin/gift-cards', [
             'amount' => 50.00,
         ], $this->adminHeaders)
             ->assertStatus(201)
             ->assertJsonPath('gift_card.status', 'active')
             ->assertJsonPath('gift_card.initial_balance', 50);
+
+        $this->assertNotEmpty($response->json('gift_card.code'));
+        $this->assertNotEmpty($response->json('gift_card.masked_code'));
     }
 
     public function test_issue_requires_positive_amount(): void
@@ -68,7 +72,7 @@ class GiftCardStockTest extends TestCase
     {
         $customer = $this->makeCustomer();
 
-        $response = $this->postJson('/api/admin/gift-cards', [
+        $this->postJson('/api/admin/gift-cards', [
             'amount' => 100,
             'customer_id' => $customer->id,
         ], $this->adminHeaders)->assertStatus(201);
@@ -78,21 +82,39 @@ class GiftCardStockTest extends TestCase
         ]);
     }
 
+    public function test_list_does_not_expose_full_code(): void
+    {
+        $this->makeGiftCard();
+
+        $response = $this->getJson('/api/admin/gift-cards', $this->adminHeaders)->assertOk();
+        $first = $response->json('data.0');
+
+        $this->assertArrayHasKey('masked_code', $first);
+        $this->assertArrayNotHasKey('code', $first);
+    }
+
+    public function test_card_not_stored_as_plaintext(): void
+    {
+        ['card' => $card, 'code' => $plain] = $this->makeGiftCard();
+
+        $this->assertFalse(
+            DB::table('gift_cards')->where('code_hash', $plain)->exists(),
+        );
+        $this->assertSame(app(GiftCardCodeService::class)->hash($plain), $card->fresh()->code_hash);
+    }
+
     // ── Public: balance check ─────────────────────────────────────────────────
 
     public function test_balance_check_returns_current_balance(): void
     {
-        $card = GiftCard::create([
-            'code' => 'TEST-BLNC-1234',
-            'initial_balance' => 75,
-            'current_balance' => 75,
-            'status' => 'active',
-        ]);
+        ['code' => $code] = $this->makeGiftCard(['current_balance' => 75, 'initial_balance' => 75]);
 
-        $response = $this->getJson('/api/gift-cards/TEST-BLNC-1234/balance')
+        $response = $this->getJson('/api/gift-cards/' . urlencode($code) . '/balance')
             ->assertStatus(200);
 
         $this->assertEquals(75, $response->json('current_balance'));
+        $this->assertArrayHasKey('masked_code', $response->json());
+        $this->assertArrayNotHasKey('code', $response->json());
     }
 
     public function test_balance_check_returns_404_for_unknown_code(): void
@@ -103,68 +125,79 @@ class GiftCardStockTest extends TestCase
 
     public function test_balance_check_returns_404_for_depleted_card(): void
     {
-        GiftCard::create([
-            'code' => 'DEPL-ETED-1234',
+        ['code' => $code] = $this->makeGiftCard([
             'initial_balance' => 50,
             'current_balance' => 0,
             'status' => 'depleted',
         ]);
 
-        $this->getJson('/api/gift-cards/DEPL-ETED-1234/balance')
+        $this->getJson('/api/gift-cards/' . urlencode($code) . '/balance')
             ->assertStatus(404);
     }
 
     public function test_balance_check_returns_404_for_expired_card(): void
     {
-        GiftCard::create([
-            'code' => 'EXPR-IRED-1234',
+        ['code' => $code] = $this->makeGiftCard([
             'initial_balance' => 50,
             'current_balance' => 50,
             'status' => 'active',
             'expires_at' => now()->subDay(),
         ]);
 
-        $this->getJson('/api/gift-cards/EXPR-IRED-1234/balance')
+        $this->getJson('/api/gift-cards/' . urlencode($code) . '/balance')
             ->assertStatus(404);
+    }
+
+    public function test_balance_check_throttles_after_limit(): void
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $this->getJson('/api/gift-cards/FAKE-CODE-1234/balance');
+        }
+
+        $this->getJson('/api/gift-cards/FAKE-CODE-1234/balance')
+            ->assertStatus(429);
     }
 
     // ── Customer: apply gift card to order ────────────────────────────────────
 
     public function test_customer_can_apply_gift_card_to_pending_order(): void
     {
-        $card = GiftCard::create([
-            'code' => 'GIFT-CARD-1234',
+        ['card' => $card, 'code' => $code] = $this->makeGiftCard([
             'initial_balance' => 20,
             'current_balance' => 20,
-            'status' => 'active',
         ]);
 
         $customer = $this->makeCustomer();
-        $item = $this->makeItem();
-        $order = Order::create([
+        $item = $this->makeItem(false, 10, ['base_price' => 30.00]);
+        $order = $this->makeOrder($customer, [
             'order_number' => 'BG-TEST-0001',
             'tracking_token' => 'abc123',
             'type' => 'online_pickup',
             'status' => 'pending',
-            'customer_id' => $customer->id,
             'subtotal' => 30.00,
             'subtotal_laar' => 3000,
             'tax_amount' => 0,
             'discount_amount' => 0,
             'total' => 30.00,
             'total_laar' => 3000,
-            'delivery_fee' => 0,
-            'delivery_fee_laar' => 0,
+        ]);
+        $order->items()->create([
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 1,
+            'unit_price' => 30.00,
+            'total_price' => 30.00,
         ]);
 
         $token = $this->customerHeaders($customer);
 
-        $this->postJson("/api/orders/{$order->id}/apply-gift-card", [
-            'code' => 'GIFT-CARD-1234',
+        $response = $this->postJson("/api/orders/{$order->id}/apply-gift-card", [
+            'code' => $code,
         ], $token)->assertStatus(200);
 
         $order->refresh();
-        $this->assertEquals('GIFT-CARD-1234', $order->gift_card_code);
+        $this->assertEquals($card->id, $order->gift_card_id);
+        $this->assertGreaterThan(0, (int) $response->json('discount_laar'));
         $this->assertGreaterThan(0, (int) $order->gift_card_discount_laar);
     }
 
@@ -196,11 +229,9 @@ class GiftCardStockTest extends TestCase
 
     public function test_customer_cannot_apply_gift_card_to_another_customers_order(): void
     {
-        $card = GiftCard::create([
-            'code' => 'IDOR-TEST-CARD',
+        ['code' => $code] = $this->makeGiftCard([
             'initial_balance' => 50,
             'current_balance' => 50,
-            'status' => 'active',
         ]);
 
         $customerA = $this->makeCustomer(['phone' => '+9607800001']);
@@ -225,20 +256,96 @@ class GiftCardStockTest extends TestCase
         $tokenB = $this->customerHeaders($customerB);
 
         $this->postJson("/api/orders/{$order->id}/apply-gift-card", [
-            'code' => 'IDOR-TEST-CARD',
+            'code' => $code,
         ], $tokenB)->assertStatus(404);
+    }
+
+    // ── Redemption ────────────────────────────────────────────────────────────
+
+    public function test_payment_redemption_depletes_gift_card_balance(): void
+    {
+        ['card' => $card, 'code' => $code] = $this->makeGiftCard([
+            'initial_balance' => 20,
+            'current_balance' => 20,
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BG-REDEEM-01',
+            'tracking_token' => 'redeem01',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'subtotal' => 25.00,
+            'subtotal_laar' => 2500,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 25.00,
+            'total_laar' => 2500,
+            'gift_card_id' => $card->id,
+            'gift_card_discount_laar' => 2000,
+        ]);
+
+        DB::transaction(function () use ($order): void {
+            app(GiftCardRedemptionService::class)->redeemForOrder($order->fresh());
+        });
+
+        $card->refresh();
+        $this->assertEquals(0.0, (float) $card->current_balance);
+        $this->assertEquals('depleted', $card->status);
+        $this->assertDatabaseHas('gift_card_transactions', [
+            'gift_card_id' => $card->id,
+            'order_id' => $order->id,
+            'type' => 'redeem',
+        ]);
+    }
+
+    public function test_duplicate_redeem_does_not_double_debit(): void
+    {
+        ['card' => $card] = $this->makeGiftCard([
+            'initial_balance' => 15,
+            'current_balance' => 15,
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BG-REDEEM-02',
+            'tracking_token' => 'redeem02',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'subtotal' => 20.00,
+            'subtotal_laar' => 2000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 20.00,
+            'total_laar' => 2000,
+            'gift_card_id' => $card->id,
+            'gift_card_discount_laar' => 1500,
+        ]);
+
+        $service = app(GiftCardRedemptionService::class);
+        DB::transaction(fn () => $service->redeemForOrder($order->fresh()));
+        DB::transaction(fn () => $service->redeemForOrder($order->fresh()));
+
+        $this->assertEquals(1, GiftCardTransaction::where('order_id', $order->id)->where('type', 'redeem')->count());
+    }
+
+    public function test_negative_balance_is_prevented_on_set_balance_laar(): void
+    {
+        ['card' => $card] = $this->makeGiftCard([
+            'initial_balance' => 10,
+            'current_balance' => 10,
+        ]);
+
+        $card->setBalanceLaar(-500);
+        $card->save();
+
+        $this->assertEquals(0, $card->balanceLaar());
+        $this->assertEquals('depleted', $card->fresh()->status);
     }
 
     // ── Admin: list ───────────────────────────────────────────────────────────
 
     public function test_admin_can_list_gift_cards(): void
     {
-        GiftCard::create([
-            'code' => 'LIST-TEST-1234',
-            'initial_balance' => 10,
-            'current_balance' => 10,
-            'status' => 'active',
-        ]);
+        $this->makeGiftCard();
 
         $this->getJson('/api/admin/gift-cards', $this->adminHeaders)
             ->assertStatus(200)

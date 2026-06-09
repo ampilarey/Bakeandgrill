@@ -10,34 +10,33 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GiftCard extends Model
 {
-    protected $fillable = ['code', 'initial_balance', 'current_balance', 'issued_to_customer_id', 'purchased_by_customer_id', 'status', 'expires_at'];
+    protected $fillable = [
+        'code_hash',
+        'code_last4',
+        'initial_balance',
+        'current_balance',
+        'issued_to_customer_id',
+        'purchased_by_customer_id',
+        'status',
+        'expires_at',
+    ];
 
-    protected $casts = ['initial_balance' => 'decimal:2', 'current_balance' => 'decimal:2', 'expires_at' => 'date'];
+    protected $casts = [
+        'initial_balance' => 'decimal:2',
+        'current_balance' => 'decimal:2',
+        'expires_at' => 'date',
+    ];
+
+    protected $hidden = ['code_hash'];
 
     /**
-     * Hide the raw code from default JSON serialisation to prevent accidental
-     * exposure in API responses that don't explicitly need it. The admin
-     * GiftCardController uses a manual format() array that includes the code
-     * directly, so admin endpoints are unaffected.
-     */
-    protected $hidden = ['code'];
-
-    /**
-     * Returns the last 4 characters of each code segment for safe display.
-     * e.g. "ABCD-EFGH-WXYZ" → "****-****-WXYZ"
+     * Masked display code, e.g. "****-****-WXYZ".
      */
     public function getMaskedCodeAttribute(): string
     {
-        if (empty($this->attributes['code'])) {
-            return '****-****-****';
-        }
+        $last4 = (string) ($this->attributes['code_last4'] ?? '');
 
-        $segments = explode('-', $this->attributes['code']);
-
-        return implode('-', array_map(
-            fn (string $seg) => str_repeat('*', max(0, strlen($seg) - 4)) . substr($seg, -4),
-            $segments,
-        ));
+        return $last4 !== '' ? '****-****-' . $last4 : '****-****-****';
     }
 
     public function issuedTo(): BelongsTo

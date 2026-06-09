@@ -250,6 +250,13 @@ final class CreditLedgerService
         User $actor,
         ?Request $request = null,
     ): CustomerCreditLedger {
+        $existing = CustomerCreditLedger::where('payment_id', $payment->id)
+            ->where('type', 'charge')
+            ->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
         return DB::transaction(function () use ($customer, $order, $payment, $actor, $request) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $amountLaar = (int) $payment->amount_laar;
@@ -417,8 +424,12 @@ final class CreditLedgerService
             ->all();
     }
 
-    public function reverseChargeForRefund(Order $order, int $refundAmountLaar, User $actor): void
+    public function reverseChargeForRefund(Order $order, int $refundAmountLaar, User $actor, ?\App\Models\Refund $refund = null): void
     {
+        if ($refund !== null && CustomerCreditLedger::where('refund_id', $refund->id)->where('type', 'refund_reversal')->exists()) {
+            return;
+        }
+
         $creditPaidLaar = (int) $order->payments()
             ->where('method', 'house_account')
             ->whereIn('status', ['paid', 'completed', 'confirmed'])
@@ -438,7 +449,7 @@ final class CreditLedgerService
             return;
         }
 
-        DB::transaction(function () use ($order, $reversalLaar, $actor) {
+        DB::transaction(function () use ($order, $reversalLaar, $actor, $refund) {
             $customer = Customer::lockForUpdate()->findOrFail((int) $order->customer_id);
             $newBalance = max(0, (int) $customer->credit_balance_laar - $reversalLaar);
             $customer->update(['credit_balance_laar' => $newBalance]);
@@ -463,6 +474,7 @@ final class CreditLedgerService
                 'balance_after_laar' => $newBalance,
                 'order_id' => $order->id,
                 'invoice_id' => $invoice?->id,
+                'refund_id' => $refund?->id,
                 'recorded_by' => $actor->id,
                 'notes' => 'Credit reversal for refund on order ' . ($order->order_number ?? $order->id),
             ]);

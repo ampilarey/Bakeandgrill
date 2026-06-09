@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Helpers;
 
+use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Device;
+use App\Models\GiftCard;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Role;
@@ -102,6 +104,26 @@ trait ModelHelpers
     protected function makePaidOrder(Customer|User|null $owner = null, array $attrs = []): Order
     {
         return $this->makeOrder($owner, array_merge(['status' => 'paid', 'paid_at' => now()], $attrs));
+    }
+
+    /**
+     * @param  array<string, mixed>  $attrs
+     * @return array{card: GiftCard, code: string}
+     */
+    protected function makeGiftCard(array $attrs = [], ?string $plainCode = null): array
+    {
+        $service = app(GiftCardCodeService::class);
+        $plain = $plainCode ?? $service->generate()['plain'];
+
+        $card = GiftCard::create(array_merge([
+            'code_hash' => $service->hash($plain),
+            'code_last4' => $service->last4($plain),
+            'initial_balance' => 50,
+            'current_balance' => 50,
+            'status' => 'active',
+        ], $attrs));
+
+        return ['card' => $card, 'code' => $plain];
     }
 
     // ── Auth headers ──────────────────────────────────────────────────────────

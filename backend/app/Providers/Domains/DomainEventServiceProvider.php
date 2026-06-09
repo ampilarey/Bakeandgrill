@@ -28,6 +28,7 @@ use App\Domains\Orders\Events\OrderCancelled;
 use App\Domains\Orders\Events\OrderCompleted;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Payments\Listeners\RedeemGiftCardOnOrderPaidListener;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Domains\Orders\Listeners\ReleasePreparedStockOnCancelListener;
@@ -66,6 +67,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         ],
 
         OrderPaid::class => [
+            RedeemGiftCardOnOrderPaidListener::class,
             DeductInventoryListener::class,
             DeductPreparedStockListener::class,
             DispatchReceiptPrintListener::class,

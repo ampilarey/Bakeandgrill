@@ -343,10 +343,11 @@ export async function updateLoyaltyTiers(tiers: LoyaltyTierRow[]): Promise<{ tie
 
 export interface GiftCard {
   id: number;
-  code: string;
+  code?: string;
+  masked_code: string;
   initial_balance: number;
   current_balance: number;
-  status: 'active' | 'redeemed' | 'expired' | 'cancelled';
+  status: 'active' | 'depleted' | 'expired';
   expires_at: string | null;
   issued_to: { id: number; name: string } | null;
   created_at?: string;
@@ -363,7 +364,7 @@ export async function issueGiftCard(data: { amount: number; customer_id?: number
   return req('/admin/gift-cards', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function checkGiftCardBalance(code: string): Promise<{ code: string; current_balance: number; expires_at: string | null }> {
+export async function checkGiftCardBalance(code: string): Promise<{ masked_code: string; current_balance: number; expires_at: string | null }> {
   return req(`/gift-cards/${encodeURIComponent(code)}/balance`);
 }
 

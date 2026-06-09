@@ -46,7 +46,8 @@
                     "combo_discount_pct": null,
                     "store_id": null,
                     "menu_group_id": 1,
-                    "has_variants": false
+                    "has_variants": false,
+                    "tax_code": "standard_8"
                 }
             ]
         }

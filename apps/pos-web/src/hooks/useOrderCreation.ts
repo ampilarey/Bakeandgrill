@@ -985,7 +985,7 @@ export function useOrderCreation(params: Params) {
       params.setDiscountAmount(manualDiscount > 0 ? manualDiscount.toFixed(2) : "");
     }
     if (params.setAppliedGiftCard) {
-      const gcCode = response.order.gift_card_code ?? null;
+      const gcCode = response.order.gift_card_code ?? response.order.gift_card_masked ?? null;
       const gcDiscountLaar = response.order.gift_card_discount_laar ?? 0;
       params.setAppliedGiftCard(gcCode && gcDiscountLaar > 0
         ? { code: gcCode, discount: gcDiscountLaar / 100, cardBalance: 0 }

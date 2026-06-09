@@ -9,6 +9,7 @@ use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Models\Customer;
+use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Models\GiftCard;
 use App\Models\Order;
 use App\Models\OrderPromotion;
@@ -123,10 +124,7 @@ class OfflineOrderRewardsService
         DB::transaction(function () use ($order, $code): void {
             $order = Order::lockForUpdate()->findOrFail($order->id);
 
-            $card = GiftCard::where('code', strtoupper($code))
-                ->where('status', 'active')
-                ->lockForUpdate()
-                ->first();
+            $card = app(GiftCardCodeService::class)->findActiveByCodeForUpdate($code);
 
             if (!$card) {
                 throw new \RuntimeException('Invalid or unavailable gift card.');
@@ -142,7 +140,7 @@ class OfflineOrderRewardsService
             );
 
             $order->update([
-                'gift_card_code' => $card->code,
+                'gift_card_id' => $card->id,
                 'gift_card_discount_laar' => $discountLaar,
             ]);
 

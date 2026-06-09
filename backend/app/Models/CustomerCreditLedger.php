@@ -24,6 +24,7 @@ class CustomerCreditLedger extends Model
         'order_id',
         'invoice_id',
         'payment_id',
+        'refund_id',
         'shift_id',
         'method',
         'recorded_by',

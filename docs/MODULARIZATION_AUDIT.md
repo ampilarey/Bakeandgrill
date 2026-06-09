@@ -2,7 +2,7 @@
 
 **Generated from live codebase inspection.** Do not treat older docs in `docs/` as source of truth.
 
-**Date:** 2026-05-22  
+**Date:** 2026-06-09 (route fragments updated)  
 **Backend:** Laravel 12, PHP 8.2, `backend/`
 
 ---
@@ -16,7 +16,7 @@
 | HTTP controllers | `app/Http/Controllers/` | **121** (120 concrete) | No |
 | Legacy services | `app/Services/` | **33** | Partial overlap |
 | Gate policies | `app/Policies/` | **8** ability classes | No |
-| API routes | `routes/api.php` + `api_finance.php` | **~160** HTTP endpoints | Monolithic files |
+| API routes | `routes/api.php` + 4× `routes/domains/*.php` | **~160** HTTP endpoints | Hybrid — orders, payments, admin customers, finance extracted |
 | Domain service providers | `bootstrap/providers.php` | **6** registered | Partial |
 | PHPUnit tests | `backend/tests/` | **~810** methods | Good breadth, gaps below |
 

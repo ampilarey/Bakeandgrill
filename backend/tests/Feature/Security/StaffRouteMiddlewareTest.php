@@ -23,6 +23,8 @@ class StaffRouteMiddlewareTest extends TestCase
         'api/shifts',
         'api/devices',
         'api/admin/',
+        'api/reports',
+        'api/invoices',
     ];
 
     public function test_staff_route_prefixes_require_staff_token_middleware(): void

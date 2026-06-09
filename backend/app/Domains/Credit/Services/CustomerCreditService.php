@@ -169,8 +169,8 @@ class CustomerCreditService
         return $this->ledger->openCreditInvoices($customer);
     }
 
-    public function reverseChargeForRefund(Order $order, int $refundAmountLaar, User $actor): void
+    public function reverseChargeForRefund(Order $order, int $refundAmountLaar, User $actor, ?\App\Models\Refund $refund = null): void
     {
-        $this->ledger->reverseChargeForRefund($order, $refundAmountLaar, $actor);
+        $this->ledger->reverseChargeForRefund($order, $refundAmountLaar, $actor, $refund);
     }
 }

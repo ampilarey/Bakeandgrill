@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
+use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;
@@ -13,18 +14,19 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class GiftCardController extends Controller
 {
+    public function __construct(
+        private readonly GiftCardCodeService $giftCardCodes,
+    ) {}
+
     // ── Public: check balance ─────────────────────────────────────────────────
 
     public function balance(string $code): JsonResponse
     {
-        $card = GiftCard::where('code', strtoupper($code))->first();
+        $card = $this->giftCardCodes->findByCode($code);
 
-        // Return a generic 404 for both not-found and non-active cards to prevent
-        // enumeration attacks that could reveal card status from error messages.
         if (!$card || $card->status !== 'active') {
             return response()->json(['error' => 'Invalid or unavailable gift card.'], 404);
         }
@@ -36,7 +38,7 @@ class GiftCardController extends Controller
         }
 
         return response()->json([
-            'code' => $card->code,
+            'masked_code' => $card->masked_code,
             'current_balance' => (float) $card->current_balance,
             'expires_at' => $card->expires_at?->toDateString(),
         ]);
@@ -46,7 +48,7 @@ class GiftCardController extends Controller
 
     public function applyToOrder(Request $request, int $orderId, OrderTotalsCalculator $calc): JsonResponse
     {
-        $validated = $request->validate(['code' => ['required', 'string', 'max:20']]);
+        $validated = $request->validate(['code' => ['required', 'string', 'max:32']]);
 
         $order = Order::where('id', $orderId)
             ->where('customer_id', $request->user()->id)
@@ -54,10 +56,7 @@ class GiftCardController extends Controller
             ->firstOrFail();
 
         return DB::transaction(function () use ($validated, $order, $calc): JsonResponse {
-            $card = GiftCard::where('code', strtoupper($validated['code']))
-                ->where('status', 'active')
-                ->lockForUpdate()
-                ->first();
+            $card = $this->giftCardCodes->findActiveByCodeForUpdate($validated['code']);
 
             if (!$card) {
                 return response()->json(['message' => 'Invalid or unavailable gift card.'], 422);
@@ -75,7 +74,7 @@ class GiftCardController extends Controller
             );
 
             $order->update([
-                'gift_card_code' => $card->code,
+                'gift_card_id' => $card->id,
                 'gift_card_discount_laar' => $discountLaar,
             ]);
 
@@ -85,6 +84,7 @@ class GiftCardController extends Controller
                 'discount_laar' => $discountLaar,
                 'discount_mvr' => number_format($discountLaar / 100, 2),
                 'card_balance' => (float) $card->current_balance,
+                'masked_code' => $card->masked_code,
             ]);
         });
     }
@@ -98,29 +98,13 @@ class GiftCardController extends Controller
             ->whereIn('status', ['payment_pending', 'pending'])
             ->firstOrFail();
 
-        $order->update(['gift_card_code' => null, 'gift_card_discount_laar' => 0]);
+        $order->update(['gift_card_id' => null, 'gift_card_discount_laar' => 0]);
         $calc->recalculateAndPersist($order->fresh());
 
         return response()->json(['message' => 'Gift card removed.']);
     }
 
     // ── Staff POS: apply / remove gift card on a staff-rung order ─────────────
-    //
-    // Mirror of `applyToOrder` / `removeFromOrder` for the cashier flow.
-    // The customer-facing methods above are gated by `customer.token` and
-    // resolve the customer from the auth context — wrong for a POS register
-    // where the cashier is the actor and the order's `customer_id` (set when
-    // the cashier attached the customer to the ticket) identifies the
-    // subject. We keep the customer-facing methods untouched and add
-    // staff twins that:
-    //   - Require staff Sanctum token with `promotions.discounts` permission
-    //     (same one already required to apply a manual promo at POS).
-    //   - Use the SAME PaymentService::redeemGiftCardForOrder() debit logic
-    //     so balances and transaction records match across channels.
-    //   - Accept POS-rung orders (created via OrderController@store, which
-    //     starts in `pending`) as well as the `payment_pending` state used
-    //     by online orders, so a cashier can also redeem a card on a held
-    //     ticket they're about to charge.
 
     public function staffApplyToOrder(Request $request, int $orderId, OrderTotalsCalculator $calc): JsonResponse
     {
@@ -131,17 +115,14 @@ class GiftCardController extends Controller
             return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
         }
 
-        $validated = $request->validate(['code' => ['required', 'string', 'max:20']]);
+        $validated = $request->validate(['code' => ['required', 'string', 'max:32']]);
 
         $order = Order::query()
             ->whereIn('status', ['payment_pending', 'pending'])
             ->findOrFail($orderId);
 
         return DB::transaction(function () use ($validated, $order, $calc): JsonResponse {
-            $card = GiftCard::where('code', strtoupper($validated['code']))
-                ->where('status', 'active')
-                ->lockForUpdate()
-                ->first();
+            $card = $this->giftCardCodes->findActiveByCodeForUpdate($validated['code']);
 
             if (!$card) {
                 return response()->json(['message' => 'Invalid or unavailable gift card.'], 422);
@@ -158,7 +139,7 @@ class GiftCardController extends Controller
             );
 
             $order->update([
-                'gift_card_code' => $card->code,
+                'gift_card_id' => $card->id,
                 'gift_card_discount_laar' => $discountLaar,
             ]);
 
@@ -168,12 +149,14 @@ class GiftCardController extends Controller
                 'discount_laar' => $discountLaar,
                 'discount_mvr' => number_format($discountLaar / 100, 2),
                 'card_balance' => (float) $card->current_balance,
+                'masked_code' => $card->masked_code,
                 'order' => [
                     'id' => (int) $order->id,
                     'total' => (float) $order->total,
                     'subtotal' => (float) $order->subtotal,
                     'tax_amount' => (float) $order->tax_amount,
                     'gift_card_discount_laar' => (int) $order->gift_card_discount_laar,
+                    'gift_card_masked' => $card->masked_code,
                 ],
             ]);
         });
@@ -192,7 +175,7 @@ class GiftCardController extends Controller
             ->whereIn('status', ['payment_pending', 'pending'])
             ->findOrFail($orderId);
 
-        $order->update(['gift_card_code' => null, 'gift_card_discount_laar' => 0]);
+        $order->update(['gift_card_id' => null, 'gift_card_discount_laar' => 0]);
         $calc->recalculateAndPersist($order->fresh());
 
         return response()->json(['message' => 'Gift card removed.']);
@@ -208,20 +191,15 @@ class GiftCardController extends Controller
             'expires_at' => ['nullable', 'date'],
         ]);
 
-        $code = null;
-        for ($attempt = 0; $attempt < 5; $attempt++) {
-            $candidate = strtoupper(Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4));
-            if (!GiftCard::where('code', $candidate)->exists()) {
-                $code = $candidate;
-                break;
-            }
-        }
-        if ($code === null) {
+        try {
+            $generated = $this->giftCardCodes->generate();
+        } catch (\RuntimeException) {
             return response()->json(['message' => 'Could not generate a unique gift card code. Please try again.'], 500);
         }
 
         $card = GiftCard::create([
-            'code' => $code,
+            'code_hash' => $generated['hash'],
+            'code_last4' => $generated['last4'],
             'initial_balance' => $validated['amount'],
             'current_balance' => $validated['amount'],
             'issued_to_customer_id' => $validated['customer_id'] ?? null,
@@ -237,7 +215,9 @@ class GiftCardController extends Controller
             'balance_after' => $validated['amount'],
         ]);
 
-        return response()->json(['gift_card' => $this->format($card)], 201);
+        return response()->json([
+            'gift_card' => array_merge($this->format($card), ['code' => $generated['plain']]),
+        ], 201);
     }
 
     // ── Admin: list gift cards ────────────────────────────────────────────────
@@ -264,7 +244,7 @@ class GiftCardController extends Controller
     {
         return [
             'id' => $c->id,
-            'code' => $c->code,
+            'masked_code' => $c->masked_code,
             'initial_balance' => (float) $c->initial_balance,
             'current_balance' => (float) $c->current_balance,
             'status' => $c->status,
