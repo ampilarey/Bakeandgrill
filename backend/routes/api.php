@@ -744,6 +744,8 @@ Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController:
     ->middleware('throttle:30,1');
 
 // Public: gift card balance check
+Route::post('/gift-cards/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balancePost'])
+    ->middleware('throttle:10,1');
 Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
     ->middleware('throttle:10,1');
 

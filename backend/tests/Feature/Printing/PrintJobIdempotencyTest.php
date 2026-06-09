@@ -43,4 +43,33 @@ class PrintJobIdempotencyTest extends TestCase
         $key = 'kitchen:' . $order->id . ':' . $printer->id;
         $this->assertSame(1, PrintJob::where('idempotency_key', $key)->count());
     }
+
+    public function test_duplicate_enqueue_kitchen_uses_single_print_job(): void
+    {
+        $printer = Printer::create([
+            'name' => 'Kitchen 2',
+            'type' => 'kitchen',
+            'ip_address' => '192.168.1.51',
+            'port' => 9100,
+            'is_active' => true,
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'PRINT-ENQ-1',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'subtotal' => 10,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 10,
+            'total_laar' => 1000,
+        ]);
+
+        $service = app(PrintJobService::class);
+        $service->enqueueKitchen($order, 'resume_reprint');
+        $service->enqueueKitchen($order->fresh(), 'resume_reprint');
+
+        $key = 'kitchen:' . $order->id . ':' . $printer->id . ':resume_reprint';
+        $this->assertSame(1, PrintJob::where('idempotency_key', $key)->count());
+    }
 }

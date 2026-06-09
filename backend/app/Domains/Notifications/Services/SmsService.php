@@ -43,7 +43,7 @@ class SmsService
             $optedOut = $this->isOptedOut($normalized, $sms->customerId);
             if ($optedOut) {
                 return SmsLog::create([
-                    'message' => $sms->message,
+                    'message' => $this->messageForLog($sms),
                     'to' => $normalized,
                     'type' => $sms->type,
                     'status' => 'suppressed',
@@ -85,7 +85,7 @@ class SmsService
         } else {
             try {
                 $log = SmsLog::create([
-                    'message' => $sms->message,
+                    'message' => $this->messageForLog($sms),
                     'to' => $normalized,
                     'type' => $sms->type,
                     'status' => 'queued',
@@ -149,7 +149,7 @@ class SmsService
         array $estimate,
     ): SmsLog {
         $log->update([
-            'message' => $sms->message,
+            'message' => $this->messageForLog($sms),
             'to' => $normalized,
             'type' => $sms->type,
             'status' => 'queued',
@@ -166,6 +166,16 @@ class SmsService
         ]);
 
         return $log->fresh();
+    }
+
+    /** OTP bodies must not be stored verbatim in sms_logs. */
+    private function messageForLog(SmsMessage $sms): string
+    {
+        if ($sms->type === 'otp') {
+            return '[otp redacted]';
+        }
+
+        return $sms->message;
     }
 
     private function isDuplicateIdempotencyKey(QueryException $e): bool

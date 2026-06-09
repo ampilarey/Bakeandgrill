@@ -27,6 +27,7 @@ class DeliveryZonesReportTest extends TestCase
             'status' => 'completed',
             'delivery_island' => 'Male',
             'delivery_fee' => 20,
+            'delivery_fee_laar' => 2000,
             'total' => 120,
             'created_at' => now(),
         ]);
@@ -35,6 +36,7 @@ class DeliveryZonesReportTest extends TestCase
             'status' => 'completed',
             'delivery_island' => 'Male',
             'delivery_fee' => 20,
+            'delivery_fee_laar' => 2000,
             'total' => 80,
             'created_at' => now(),
         ]);
@@ -43,6 +45,7 @@ class DeliveryZonesReportTest extends TestCase
             'status' => 'completed',
             'delivery_island' => 'Hulhumale',
             'delivery_fee' => 30,
+            'delivery_fee_laar' => 3000,
             'total' => 150,
             'created_at' => now(),
         ]);

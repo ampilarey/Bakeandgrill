@@ -45,12 +45,14 @@ class Wave10ReportsTest extends TestCase
             'customer_id' => $customer->id,
             'status' => 'completed',
             'total' => 50.00,
+            'total_laar' => 5000,
             'created_at' => now()->subDays(10),
         ]);
         Order::factory()->create([
             'customer_id' => $customer->id,
             'status' => 'completed',
             'total' => 999.00,
+            'total_laar' => 99900,
             'created_at' => now()->subDays(60),
         ]);
 

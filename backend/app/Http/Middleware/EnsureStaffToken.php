@@ -42,6 +42,10 @@ class EnsureStaffToken
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
 
+        if (!$user->is_active) {
+            return response()->json(['message' => 'Forbidden — account disabled.'], 403);
+        }
+
         return $next($request);
     }
 }

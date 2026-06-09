@@ -23,7 +23,22 @@ class GiftCardController extends Controller
 
     // ── Public: check balance ─────────────────────────────────────────────────
 
+    /** @deprecated Prefer POST /gift-cards/balance (code in body avoids URL logging). */
     public function balance(string $code): JsonResponse
+    {
+        return $this->balanceResponse($code);
+    }
+
+    public function balancePost(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:32'],
+        ]);
+
+        return $this->balanceResponse($validated['code']);
+    }
+
+    private function balanceResponse(string $code): JsonResponse
     {
         $card = $this->giftCardCodes->findByCode($code);
 

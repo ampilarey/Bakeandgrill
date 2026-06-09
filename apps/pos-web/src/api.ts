@@ -790,6 +790,8 @@ export async function getOrder(orderId: number): Promise<{
      *  Surface both so resume can re-paint the rewards row without an
      *  extra round-trip to validate the code. */
     gift_card_code?: string | null;
+    /** Masked gift card code returned after hashing migration (no plaintext). */
+    gift_card_masked?: string | null;
     gift_card_discount_laar?: number | null;
     /** Loyalty laari held against the ticket — non-null when the
      *  cashier redeemed points before holding. Used to repaint the

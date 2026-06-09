@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Printer;
 use App\Models\PrintJob;
 use App\Models\Receipt;
+use App\Services\PrintProxyService;
 use Illuminate\Support\Str;
 
 class PrintJobService

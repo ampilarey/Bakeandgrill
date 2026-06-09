@@ -110,4 +110,60 @@ class CustomerTokenStaffRoutesTest extends TestCase
     {
         $this->getJson('/api/shifts/current', $this->customerHeader())->assertForbidden();
     }
+
+    #[Test]
+    public function customer_token_is_rejected_on_invoices_list(): void
+    {
+        $this->getJson('/api/invoices', $this->customerHeader())->assertForbidden();
+    }
+
+    #[Test]
+    public function customer_token_is_rejected_on_sales_summary_report(): void
+    {
+        $this->getJson('/api/reports/sales-summary', $this->customerHeader())->assertForbidden();
+    }
+
+    #[Test]
+    public function customer_token_is_rejected_on_admin_customers(): void
+    {
+        $this->getJson('/api/admin/customers', $this->customerHeader())->assertForbidden();
+    }
+
+    #[Test]
+    public function customer_token_is_rejected_on_refunds_list(): void
+    {
+        $this->getJson('/api/refunds', $this->customerHeader())->assertForbidden();
+    }
+
+    #[Test]
+    public function customer_token_is_rejected_on_pos_gift_card_apply(): void
+    {
+        $this->postJson('/api/pos/orders/1/gift-card', ['code' => 'TEST-CODE'], $this->customerHeader())
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function customer_token_is_rejected_on_admin_reservations(): void
+    {
+        $this->getJson('/api/admin/reservations', $this->customerHeader())->assertForbidden();
+    }
+
+    #[Test]
+    public function disabled_staff_token_is_rejected_on_auth_me(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'is_active' => true]);
+        $user = User::create([
+            'name' => 'Disabled Staff',
+            'email' => 'disabled-staff@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => false,
+        ]);
+
+        $token = $user->createToken('disabled', ['staff'])->plainTextToken;
+
+        $this->getJson('/api/auth/me', ['Authorization' => "Bearer {$token}"])
+            ->assertForbidden();
+    }
 }

@@ -78,6 +78,22 @@ class SmsLoggingTest extends TestCase
         $this->assertEquals('otp', $log->reference_type);
     }
 
+    public function test_otp_message_is_redacted_in_sms_logs(): void
+    {
+        $log = $this->smsService->send(new SmsMessage(
+            to: '+9607654399',
+            message: '123456',
+            type: 'otp',
+        ));
+
+        $this->assertSame('[otp redacted]', $log->message);
+        $this->assertDatabaseHas('sms_logs', [
+            'id' => $log->id,
+            'message' => '[otp redacted]',
+            'type' => 'otp',
+        ]);
+    }
+
     public function test_sms_idempotency_prevents_duplicate_send(): void
     {
         $key = 'test-idempotent-' . uniqid();

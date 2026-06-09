@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Stock;
 
+use App\Domains\Inventory\Listeners\RestoreInventoryOnRefundListener;
 use App\Domains\Inventory\Services\InventoryDeductionService;
 use App\Domains\Orders\DTOs\OrderPaidData;
+use App\Domains\Orders\DTOs\OrderRefundedData;
 use App\Domains\Orders\Events\OrderPaid;
+use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -185,6 +188,35 @@ class InventoryDeductionTest extends TestCase
         $this->assertEqualsWithDelta(99.0, (float) $inventoryItem->current_stock, 0.001);
 
         app(InventoryDeductionService::class)->restoreForOrder($order->fresh(), null, 1.0, 99);
+
+        $inventoryItem->refresh();
+        $this->assertEqualsWithDelta(100.0, (float) $inventoryItem->current_stock, 0.001);
+
+        $orderItemId = $order->items()->first()->id;
+        $restoreKey = 'refund:order:' . $order->id . ':item:' . $orderItemId . ':inv:' . $inventoryItem->id;
+        $this->assertTrue(StockMovement::where('idempotency_key', $restoreKey)->exists());
+    }
+
+    public function test_order_refunded_listener_restores_inventory(): void
+    {
+        $inventoryItem = $this->makeInventoryItem(100);
+        $menuItem = $this->makeItemWithRecipe($inventoryItem, 0.5);
+        $order = $this->makeInventoryOrder($menuItem, qty: 2);
+
+        $this->fireOrderPaid($order);
+        $inventoryItem->refresh();
+        $this->assertEqualsWithDelta(99.0, (float) $inventoryItem->current_stock, 0.001);
+
+        app(RestoreInventoryOnRefundListener::class)->handle(new OrderRefunded(
+            new OrderRefundedData(
+                refundId: 99,
+                orderId: $order->id,
+                orderNumber: $order->order_number,
+                amount: (float) $order->total,
+                reason: 'Test refund',
+                refundRatio: 1.0,
+            ),
+        ));
 
         $inventoryItem->refresh();
         $this->assertEqualsWithDelta(100.0, (float) $inventoryItem->current_stock, 0.001);

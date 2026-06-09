@@ -17,8 +17,20 @@ use Throwable;
  */
 final class DeferAfterResponse
 {
+    /** @var list<array{0: callable, 1: string}> */
+    private static array $testingCallbacks = [];
+
     public static function run(callable $callback, string $context = 'deferred'): void
     {
+        // PHPUnit keeps one PHP process for the whole suite; native defer() would not
+        // run until shutdown. Queue callbacks so contract tests can flush explicitly
+        // without running deferred work during the HTTP request (redis regression).
+        if (App::environment('testing')) {
+            self::$testingCallbacks[] = [$callback, $context];
+
+            return;
+        }
+
         $wrapped = static function () use ($callback, $context): void {
             self::flushResponse();
             self::invoke($callback, $context);
@@ -31,6 +43,14 @@ final class DeferAfterResponse
         }
 
         App::terminating($wrapped);
+    }
+
+    /** Run deferred callbacks queued during feature/contract tests. */
+    public static function flushTestingCallbacks(): void
+    {
+        while ($pending = array_shift(self::$testingCallbacks)) {
+            self::invoke($pending[0], $pending[1]);
+        }
     }
 
     private static function flushResponse(): void

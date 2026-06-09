@@ -83,6 +83,7 @@ class PosResumeAndChargeTest extends TestCase
             ])
             ->assertCreated();
         $orderId = $createRes->json('order.id');
+        $orderTotal = (float) $createRes->json('order.total');
         $this->assertNotNull($orderId);
 
         $this->postJson("/api/orders/{$orderId}/hold", ['ticket_name' => 'Aisha'])
@@ -96,7 +97,7 @@ class PosResumeAndChargeTest extends TestCase
         // 3. Charge the SAME order id (this is exactly what the new
         //    resumed-order branch in handleCharge does)
         $this->postJson("/api/orders/{$orderId}/payments", [
-            'payments' => [['method' => 'cash', 'amount' => 50.00]],
+            'payments' => [['method' => 'cash', 'amount' => $orderTotal]],
             'print_receipt' => false,
         ])->assertOk();
 
@@ -153,14 +154,15 @@ class PosResumeAndChargeTest extends TestCase
         config(['queue.default' => 'sync']);
         $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
 
-        $orderId = $this->withHeader('X-Device-Identifier', 'RES-POS')
+        $createRes = $this->withHeader('X-Device-Identifier', 'RES-POS')
             ->postJson('/api/orders', [
                 'type' => 'takeaway',
                 'print' => false,
                 'items' => [['item_id' => $this->item->id, 'quantity' => 2]],
             ])
-            ->assertCreated()
-            ->json('order.id');
+            ->assertCreated();
+        $orderId = $createRes->json('order.id');
+        $orderTotal = (float) $createRes->json('order.total');
 
         config([
             'queue.default' => 'redis',
@@ -171,7 +173,7 @@ class PosResumeAndChargeTest extends TestCase
         $this->app->forgetInstance(\Illuminate\Redis\RedisManager::class);
 
         $this->postJson("/api/orders/{$orderId}/payments", [
-            'payments' => [['method' => 'cash', 'amount' => 50.00]],
+            'payments' => [['method' => 'cash', 'amount' => $orderTotal]],
             'print_receipt' => false,
         ])->assertOk();
 
@@ -194,18 +196,19 @@ class PosResumeAndChargeTest extends TestCase
             'phone' => '+9607890123',
         ]);
 
-        $orderId = $this->withHeader('X-Device-Identifier', 'RES-POS')
+        $createRes = $this->withHeader('X-Device-Identifier', 'RES-POS')
             ->postJson('/api/orders', [
                 'type' => 'takeaway',
                 'print' => false,
                 'customer_id' => $customer->id,
                 'items' => [['item_id' => $this->item->id, 'quantity' => 2]],
             ])
-            ->assertCreated()
-            ->json('order.id');
+            ->assertCreated();
+        $orderId = $createRes->json('order.id');
+        $orderTotal = (float) $createRes->json('order.total');
 
         $this->postJson("/api/orders/{$orderId}/payments", [
-            'payments' => [['method' => 'cash', 'amount' => 50.00]],
+            'payments' => [['method' => 'cash', 'amount' => $orderTotal]],
             'print_receipt' => false,
         ])->assertOk();
 

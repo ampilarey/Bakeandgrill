@@ -98,9 +98,9 @@ class CustomerOrderSecurityTest extends TestCase
         $response->assertStatus(201);
         $order = $response->json('order');
 
-        // Verify server computed correct total: (50 + 10) * 2 = 120
-        $this->assertEquals(120.00, $order['total']);
+        // Verify server computed correct totals: (50 + 10) * 2 = 120 subtotal + 8% GST
         $this->assertEquals(120.00, $order['subtotal']);
+        $this->assertEquals(129.60, $order['total']);
     }
 
     #[Test]

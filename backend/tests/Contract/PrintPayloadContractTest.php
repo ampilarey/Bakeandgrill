@@ -83,6 +83,11 @@ class PrintPayloadContractTest extends ContractTestCase
         ]);
 
         $this->preparePosApi($this->staff, $this->device);
+
+        config([
+            'services.print_proxy.url' => 'http://127.0.0.1:3000',
+            'services.print_proxy.key' => 'test-print-proxy-key',
+        ]);
     }
 
     public function test_kitchen_print_job_payload_shape(): void
@@ -98,7 +103,7 @@ class PrintPayloadContractTest extends ContractTestCase
             'device_identifier' => $this->device->identifier,
             'print' => true,
             'items' => [['item_id' => $this->item->id, 'quantity' => 2]],
-        ]);
+        ])->assertCreated();
 
         Http::assertSent(function ($request) {
             $payload = $request->data();
@@ -164,7 +169,7 @@ class PrintPayloadContractTest extends ContractTestCase
         $this->postJson("/api/orders/{$orderId}/payments", [
             'payments' => [['method' => 'cash', 'amount' => $total]],
             'print_receipt' => true,
-        ]);
+        ])->assertOk();
 
         Http::assertSent(function ($request) {
             $payload = $request->data();

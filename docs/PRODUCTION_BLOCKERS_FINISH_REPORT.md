@@ -7,7 +7,7 @@
 
 ## 1. Executive summary
 
-This pass completed the **Production Blockers Finish** plan: gift-card hashing at rest, route modularization (3 new domain fragments), payment/credit hardening, expanded security and ops tests, and documentation updates. The **readiness test filter passes (68 tests)**. The **full PHPUnit suite still has pre-existing failures** (missing `StockReservationService`, some order-total/partial-payment flakes, 2 print contract tests) unrelated to this pass.
+This pass completed the **Production Blockers Finish** plan: gift-card hashing at rest, route modularization (3 new domain fragments), payment/credit hardening, expanded security and ops tests, and documentation updates. The **readiness test filter passes (68 tests at time of writing)**. A follow-up **Full Production Audit pass** (2026-06-09) fixed import blockers, print contract flakes, and brought the **full suite to 1,018 passing tests** — see [`FULL_PRODUCTION_AUDIT_REPORT.md`](FULL_PRODUCTION_AUDIT_REPORT.md).
 
 **Verdict:** Conditional **yes for test-server café ops** after deploy + smoke; **not** a blanket prod sign-off until test smoke and gift-card migration run on `test.bakeandgrill.mv`.
 
@@ -67,7 +67,7 @@ This pass completed the **Production Blockers Finish** plan: gift-card hashing a
 
 | Item | Notes |
 |------|-------|
-| `StockReservationService` missing class | Pre-existing — breaks many order-creation tests |
+| `StockReservationService` import | **Fixed** in Full Production Audit pass — see `FULL_PRODUCTION_AUDIT_REPORT.md` |
 | Full `api.php` split | Future incremental work |
 | OTP plaintext in `sms_logs` DB | Partial redaction in admin UI only |
 | Blade legal copy CMS | Not in scope |
@@ -139,7 +139,7 @@ UPDATE_SNAPSHOTS=true php artisan test --filter=ContractTest    # snapshots refr
 
 | Command | Result | Reason |
 |---------|--------|--------|
-| `php artisan test` (full) | **Fail** | Pre-existing: `StockReservationService` class missing; partial-payment order status; 2 print HTTP contract tests |
+| `php artisan test` (full) | **Pass** (1,018) | Fixed in Full Production Audit pass (imports, defer test harness, GST test data) |
 | `composer audit` | **Advisories** | Low-severity `symfony/yaml` CVE-2026-45133 (transitive) |
 | Admin `npm run build` | Not run in this pass | Run before commit if shipping admin UI changes |
 
@@ -148,7 +148,7 @@ UPDATE_SNAPSHOTS=true php artisan test --filter=ContractTest    # snapshots refr
 ## 11. Remaining risks
 
 1. **Gift-card migration** truncates legacy cards on deploy — acceptable on test; verify before prod.
-2. **StockReservationService** — order creation 500s in tests; likely affects online/POS until fixed.
+2. ~~**StockReservationService**~~ — resolved (missing `use` imports in `OrderCreationService`).
 3. **Return URL fallback** still calls BML API when params present — safe when API rejects; monitor UAT.
 4. **Queue worker** must run on server for async listeners (credit refund listener is queued).
 

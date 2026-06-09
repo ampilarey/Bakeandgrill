@@ -1,7 +1,7 @@
 # Bake & Grill — Production Readiness (living doc)
 
 **Last updated:** 2026-06-09  
-**Source:** Local codebase — waves 1–4 plus Production Blockers Finish pass. See [`PRODUCTION_BLOCKERS_FINISH_REPORT.md`](PRODUCTION_BLOCKERS_FINISH_REPORT.md).
+**Source:** Local codebase — waves 1–5 plus Full Production Audit pass. See [`FULL_PRODUCTION_AUDIT_REPORT.md`](FULL_PRODUCTION_AUDIT_REPORT.md) and [`PRODUCTION_BLOCKERS_FINISH_REPORT.md`](PRODUCTION_BLOCKERS_FINISH_REPORT.md).
 
 ---
 
@@ -40,6 +40,15 @@ Config: [`backend/config/pos.php`](../backend/config/pos.php). Tests: [`EnsureAc
 - Refund listeners use fallback actor (refund user → order staff → owner) for credit/deposit reversal
 - Fixed `StockManagementService` import in domain [`OrderCreationService.php`](../backend/app/Domains/Orders/Services/OrderCreationService.php)
 
+### Wave 6 — Full production audit (2026-06-09)
+
+- **Imports:** `StockReservationService`, `PrintJobService`, `PrintProxyService` — order creation and print proxy restored
+- **Tests:** Full suite green (1,018); readiness 89; security/KDS/offline/inventory/logging expansions
+- **Gift cards:** `POST /api/gift-cards/balance`; POS staff apply/remove tests
+- **Security:** Inactive staff blocked on `staff.token` routes; expanded prefix/customer-negative tests
+- **Privacy:** OTP bodies redacted in `sms_logs`; BML success logs host-only
+- **Harness:** `DeferAfterResponse` testing queue + auto-flush after HTTP calls in `TestCase`
+
 ### Wave 3 — Reports
 
 - Admin **Deposit Activity** tab ([`ReportsPage.tsx`](../apps/admin-dashboard/src/pages/ReportsPage.tsx), [`finance.ts`](../apps/admin-dashboard/src/api/finance.ts))
@@ -62,10 +71,10 @@ Config: [`backend/config/pos.php`](../backend/config/pos.php). Tests: [`EnsureAc
 
 | Priority | Item | Notes |
 |----------|------|-------|
-| High | `StockReservationService` missing | Order creation 500 in many tests — fix import/class |
 | Medium | Dual-purpose `auth:sanctum` routes | `/orders/{id}/pay/bml`, promos, delivery — controller-enforced |
 | Low | `OrderController` size | Still large; continue incremental extraction |
-| Ops | Test deploy smoke | Run on `test.bakeandgrill.mv` after pull + migrations |
+| Low | `symfony/yaml` CVE-2026-45133 | Composer audit — low severity transitive |
+| Ops | Test deploy smoke | Run on `test.bakeandgrill.mv` after pull |
 
 ---
 

@@ -117,6 +117,30 @@ class GiftCardStockTest extends TestCase
         $this->assertArrayNotHasKey('code', $response->json());
     }
 
+    public function test_post_balance_check_returns_current_balance(): void
+    {
+        ['code' => $code] = $this->makeGiftCard(['current_balance' => 75, 'initial_balance' => 75]);
+
+        $response = $this->postJson('/api/gift-cards/balance', ['code' => $code])
+            ->assertStatus(200);
+
+        $this->assertEquals(75, $response->json('current_balance'));
+        $this->assertArrayHasKey('masked_code', $response->json());
+        $this->assertArrayNotHasKey('code', $response->json());
+    }
+
+    public function test_post_balance_check_returns_404_for_cancelled_card(): void
+    {
+        ['code' => $code] = $this->makeGiftCard([
+            'initial_balance' => 50,
+            'current_balance' => 50,
+            'status' => 'cancelled',
+        ]);
+
+        $this->postJson('/api/gift-cards/balance', ['code' => $code])
+            ->assertStatus(404);
+    }
+
     public function test_balance_check_returns_404_for_unknown_code(): void
     {
         $this->getJson('/api/gift-cards/FAKE-CODE-1234/balance')
@@ -365,5 +389,76 @@ class GiftCardStockTest extends TestCase
 
         $this->getJson('/api/admin/gift-cards', $headers)->assertForbidden();
         $this->postJson('/api/admin/gift-cards', ['amount' => 25], $headers)->assertForbidden();
+    }
+
+    // ── Staff POS: apply / remove ─────────────────────────────────────────────
+
+    public function test_staff_can_apply_gift_card_to_pos_order(): void
+    {
+        ['card' => $card, 'code' => $code] = $this->makeGiftCard([
+            'initial_balance' => 20,
+            'current_balance' => 20,
+        ]);
+
+        $item = $this->makeItem(false, 10, ['base_price' => 30.00]);
+        $order = $this->makeOrder(null, [
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'subtotal' => 30.00,
+            'subtotal_laar' => 3000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 30.00,
+            'total_laar' => 3000,
+        ]);
+        $order->items()->create([
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 1,
+            'unit_price' => 30.00,
+            'total_price' => 30.00,
+        ]);
+
+        $response = $this->postJson(
+            "/api/pos/orders/{$order->id}/gift-card",
+            ['code' => $code],
+            $this->adminHeaders,
+        )->assertOk();
+
+        $order->refresh();
+        $this->assertEquals($card->id, $order->gift_card_id);
+        $this->assertGreaterThan(0, (int) $response->json('discount_laar'));
+        $this->assertSame($card->masked_code, $response->json('order.gift_card_masked'));
+    }
+
+    public function test_staff_can_remove_gift_card_from_pos_order(): void
+    {
+        ['card' => $card] = $this->makeGiftCard([
+            'initial_balance' => 20,
+            'current_balance' => 20,
+        ]);
+
+        $order = $this->makeOrder(null, [
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'subtotal' => 30.00,
+            'subtotal_laar' => 3000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 30.00,
+            'total_laar' => 3000,
+            'gift_card_id' => $card->id,
+            'gift_card_discount_laar' => 2000,
+        ]);
+
+        $this->deleteJson(
+            "/api/pos/orders/{$order->id}/gift-card",
+            [],
+            $this->adminHeaders,
+        )->assertOk();
+
+        $order->refresh();
+        $this->assertNull($order->gift_card_id);
+        $this->assertSame(0, (int) $order->gift_card_discount_laar);
     }
 }

@@ -17,6 +17,12 @@ class StaffRouteMiddlewareTest extends TestCase
 
     /** Staff-only prefixes (dual customer/staff routes under api/orders are excluded). */
     /** @var list<string> */
+    /** Public endpoints that share a staff prefix but must stay unauthenticated. */
+    private const PUBLIC_EXCEPTIONS = [
+        'api/site-settings/public',
+        'api/stream/order-status/',
+    ];
+
     private const STAFF_PREFIXES = [
         'api/pos/',
         'api/kds/',
@@ -25,6 +31,12 @@ class StaffRouteMiddlewareTest extends TestCase
         'api/admin/',
         'api/reports',
         'api/invoices',
+        'api/webhooks',
+        'api/stream',
+        'api/time-clock',
+        'api/waste-logs',
+        'api/permissions',
+        'api/site-settings',
     ];
 
     public function test_staff_route_prefixes_require_staff_token_middleware(): void
@@ -55,6 +67,12 @@ class StaffRouteMiddlewareTest extends TestCase
 
     private function isStaffPrefix(string $uri): bool
     {
+        foreach (self::PUBLIC_EXCEPTIONS as $exception) {
+            if (str_starts_with($uri, $exception)) {
+                return false;
+            }
+        }
+
         foreach (self::STAFF_PREFIXES as $prefix) {
             if (str_starts_with($uri, $prefix)) {
                 return true;
