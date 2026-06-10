@@ -66,7 +66,7 @@ return [
     */
 
     'admin_token_ttl_hours' => max(1, (int) (env('ADMIN_TOKEN_TTL_HOURS') ?: 24)),
-    'pos_token_ttl_hours' => max(1, (int) (env('POS_TOKEN_TTL_HOURS') ?: 12)),
+    'pos_token_ttl_hours' => max(1, (int) (env('POS_TOKEN_TTL_HOURS') ?: 72)),
     'driver_token_ttl_hours' => max(1, (int) (env('DRIVER_TOKEN_TTL_HOURS') ?: 12)),
 
     /*
