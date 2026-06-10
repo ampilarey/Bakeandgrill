@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ticketDisplayTotal } from "./OpenTicketsPanel";
+import { ticketDisplayTotal } from "../utils/openTicketUtils";
 
 describe("ticketDisplayTotal", () => {
   it("uses persisted total when positive", () => {
