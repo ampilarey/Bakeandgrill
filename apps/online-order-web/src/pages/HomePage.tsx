@@ -8,6 +8,7 @@ import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { HeroCarousel } from '../components/HeroCarousel';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct: number | null | undefined): boolean {
   if (!badge || !discountPct || discountPct <= 0) return false;
@@ -43,6 +44,7 @@ export function HomePage() {
   const [corpSubmitting, setCorpSubmitting] = useState(false);
   const [corpMessage, setCorpMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const { settings: s, trustItems, heroSlides, homepageCategories, text } = useSiteSettingsContext();
+  const { isAuthenticated, authReady } = useAuth();
   const reorderFetched = useRef(false);
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
@@ -86,15 +88,13 @@ export function HomePage() {
 
   // Load last order for returning customers (non-blocking)
   useEffect(() => {
-    if (reorderFetched.current) return;
-    const token = localStorage.getItem('online_token');
-    if (!token) return;
+    if (reorderFetched.current || !authReady || !isAuthenticated) return;
     reorderFetched.current = true;
-    fetchCustomerOrders(token).then(({ data }) => {
+    fetchCustomerOrders().then(({ data }) => {
       const completed = (data ?? []).find((o) => ['completed', 'delivered', 'paid'].includes(o.status));
       if (completed) setLastOrder(completed);
     }).catch(() => { /* non-blocking */ });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authReady, isAuthenticated]);
 
   const statusBadge =
     isOpen !== null ? (
@@ -183,11 +183,10 @@ export function HomePage() {
               type="button"
               disabled={reordering}
               onClick={async () => {
-                const token = localStorage.getItem('online_token');
-                if (!token) { navigate('/account'); return; }
+                if (!isAuthenticated) { navigate('/account'); return; }
                 setReordering(true);
                 try {
-                  const payload = await getReorderPayload(token, lastOrder.id);
+                  const payload = await getReorderPayload(lastOrder.id);
                   clearCart();
                   for (const i of payload.items) {
                     const fakeItem = { id: i.item_id, name: i.item_name, base_price: i.unit_price, has_variants: false, is_available: true } as any;

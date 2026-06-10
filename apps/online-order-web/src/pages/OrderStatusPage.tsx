@@ -7,12 +7,9 @@ import { WhatsAppIcon, ViberIcon } from "../components/icons";
 import { useCart } from "../context/CartContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useSiteSettings } from "../context/SiteSettingsContext";
+import { useAuth } from "../context/AuthContext";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
-
-function readToken(): string | null {
-  return localStorage.getItem("online_token");
-}
 
 const PENDING_ORDER_KEY = "checkout_pending_order_id";
 
@@ -25,7 +22,7 @@ type DriverLocationData = {
   driver?: { name: string; phone: string } | null;
 };
 
-function DriverTracker({ orderId, token }: { orderId: number; token: string | null }) {
+function DriverTracker({ orderId, authenticated }: { orderId: number; authenticated: boolean }) {
   const [data, setData] = useState<{ location: DriverLocationData | null; driver: { name: string; phone: string } | null; eta_minutes?: number | null } | null>(null);
   const [fetchErr, setFetchErr] = useState(false);
 
@@ -33,10 +30,8 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
     const load = async () => {
       try {
         const res = await fetch(`${API_ORIGIN}/api/driver/deliveries/${orderId}/location`, {
-          headers: {
-            Accept: 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          credentials: authenticated ? 'include' : 'same-origin',
+          headers: { Accept: 'application/json' },
         });
         if (res.ok) {
           const json = await res.json() as { location: DriverLocationData | null; driver: { name: string; phone: string } | null; eta_minutes?: number | null };
@@ -52,7 +47,7 @@ function DriverTracker({ orderId, token }: { orderId: number; token: string | nu
     void load();
     const id = setInterval(() => void load(), 10_000);
     return () => clearInterval(id);
-  }, [orderId, token]);
+  }, [orderId, authenticated]);
 
   const location = data?.location;
   const driver = data?.driver;
@@ -255,6 +250,7 @@ export function OrderStatusPage() {
   const navigate = useNavigate();
   const { clearCart, addItem } = useCart();
   const s = useSiteSettings();
+  const { isAuthenticated } = useAuth();
 
   const paymentState = searchParams.get("payment") as PaymentState;
   const trackingToken = trackingTokenFromPath ?? searchParams.get("tok");
@@ -272,7 +268,6 @@ export function OrderStatusPage() {
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
 
-  const token = readToken();
   const esRef = useRef<EventSource | null>(null);
   // Guard so clearCart() is called at most once per page visit, regardless of
   // how many times order.status re-renders in a confirmed state (F-4).
@@ -293,8 +288,8 @@ export function OrderStatusPage() {
         // Public link — no login required
         const res = await getOrderByTrackingToken(trackingToken);
         setOrder(res.order);
-      } else if (token) {
-        const res = await getOrderDetail(token, parsedId);
+      } else if (isAuthenticated) {
+        const res = await getOrderDetail(parsedId);
         setOrder(res.order);
       } else {
         setError("Open the full link from your SMS, or log in to view your order.");
@@ -304,7 +299,7 @@ export function OrderStatusPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, trackingToken, orderId]);
+  }, [isAuthenticated, trackingToken, orderId]);
 
   useEffect(() => {
     document.title = order?.order_number
@@ -324,14 +319,14 @@ export function OrderStatusPage() {
   }, [order?.status, order?.id]);
 
   useEffect(() => {
-    if (!token) {
+    if (!isAuthenticated) {
       setReferralCode(null);
       return;
     }
-    getMyReferralCode(token)
+    getMyReferralCode()
       .then((res) => setReferralCode(res.code ?? null))
       .catch(() => setReferralCode(null));
-  }, [token]);
+  }, [isAuthenticated]);
 
   // ONL-002: only trust the SERVER for "is this order paid?". The
   // ?payment=CONFIRMED query param can be forged by anyone pasting a
@@ -353,7 +348,7 @@ export function OrderStatusPage() {
 
   const needsRemainingPayment =
     !!order &&
-    !!token &&
+    !!isAuthenticated &&
     remainingLaar > 0 &&
     !['cancelled', 'refunded', 'completed'].includes(order.status) &&
     order.payment_status !== 'paid';
@@ -369,7 +364,7 @@ export function OrderStatusPage() {
   };
 
   const handlePayAgain = async () => {
-    if (!order || !token) {
+    if (!order || !isAuthenticated) {
       setPayError("Please sign in to pay for this order.");
       navigate("/checkout");
       return;
@@ -378,7 +373,7 @@ export function OrderStatusPage() {
     setPayError("");
     try {
       localStorage.setItem(PENDING_ORDER_KEY, String(order.id));
-      const payment = await initiateOnlinePayment(token, order.id);
+      const payment = await initiateOnlinePayment(order.id);
       redirectToPayment(payment.payment_url);
     } catch (e) {
       setPayError((e as Error).message);
@@ -387,7 +382,7 @@ export function OrderStatusPage() {
   };
 
   const handlePayPartial = async () => {
-    if (!order || !token) {
+    if (!order || !isAuthenticated) {
       setPayError("Please sign in to pay for this order.");
       return;
     }
@@ -405,7 +400,6 @@ export function OrderStatusPage() {
     try {
       localStorage.setItem(PENDING_ORDER_KEY, String(order.id));
       const payment = await initiatePartialPayment(
-        token,
         order.id,
         amountLaar,
         `web-partial:${order.id}:${amountLaar}:${Date.now()}`,
@@ -434,11 +428,12 @@ export function OrderStatusPage() {
     const controller = new AbortController();
     const startStream = async () => {
       let ticketParam = "";
-      if (token) {
+      if (isAuthenticated) {
         try {
           const res = await fetch(`${API_ORIGIN}/api/orders/${streamOrderId}/stream-ticket`, {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
             signal: controller.signal,
           });
           if (res.ok) {
@@ -471,7 +466,7 @@ export function OrderStatusPage() {
       controller.abort();
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
     };
-  }, [order?.id, orderId, token]);
+  }, [order?.id, orderId, isAuthenticated]);
 
   // Fallback polling — uses stable loadOrder reference from useCallback
   useEffect(() => {
@@ -517,13 +512,13 @@ export function OrderStatusPage() {
       navigate('/');
       return;
     }
-    if (!token) {
+    if (!isAuthenticated) {
       navigate('/account');
       return;
     }
     setReordering(true);
     try {
-      const payload = await getReorderPayload(token, order.id);
+      const payload = await getReorderPayload(order.id);
       clearCart();
       for (const line of payload.items) {
         const fakeItem = {
@@ -548,7 +543,7 @@ export function OrderStatusPage() {
     }
   };
 
-  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe } = usePushNotifications(token);
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe } = usePushNotifications(isAuthenticated);
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
   const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
@@ -921,7 +916,7 @@ export function OrderStatusPage() {
 
             {/* Driver tracking — shown when driver is on the way */}
             {order.type === 'delivery' && ['picked_up', 'on_the_way'].includes(order.status) && (
-              <DriverTracker orderId={order.id} token={token} />
+              <DriverTracker orderId={order.id} authenticated={isAuthenticated} />
             )}
 
             {/* Delivery address */}
@@ -969,7 +964,7 @@ export function OrderStatusPage() {
             </p>
 
             {/* Push notification opt-in banner */}
-            {pushSupported && !pushSubscribed && !isCancelled && !isDone && token && (
+            {pushSupported && !pushSubscribed && !isCancelled && !isDone && isAuthenticated && (
               <div style={{
                 ...S.card,
                 display: 'flex', alignItems: 'center', gap: '0.875rem',
@@ -1008,8 +1003,8 @@ export function OrderStatusPage() {
             )}
 
             {/* Review form */}
-            {token && ['completed', 'paid', 'delivered'].includes(order.status) && !reviewDone && (
-              <ReviewForm orderId={order.id} token={token} onDone={() => setReviewDone(true)} />
+            {isAuthenticated && ['completed', 'paid', 'delivered'].includes(order.status) && !reviewDone && (
+              <ReviewForm orderId={order.id} onDone={() => setReviewDone(true)} />
             )}
 
             {/* Support block */}

@@ -33,7 +33,7 @@ export function PreOrderPage() {
       { text: 'Payment is collected on delivery or pickup day.' },
     ];
   }
-  const { token, customerName, setAuth } = useAuth();
+  const { isAuthenticated, customerName, setAuth } = useAuth();
   const [step, setStep] = useState<'items' | 'details' | 'confirm' | 'done'>('items');
   const [items, setItems] = useState<Item[]>([]);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
@@ -65,7 +65,7 @@ export function PreOrderPage() {
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     const parsedDate = Date.parse(fulfillmentDate);
     if (!fulfillmentDate || !Number.isFinite(parsedDate)) {
       setError('Please select a valid fulfillment date and time.');
@@ -74,7 +74,7 @@ export function PreOrderPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await createPreOrder(token, {
+      const res = await createPreOrder({
         items: selectedLines.map(i => ({ item_id: i.id, quantity: quantities[i.id] })),
         fulfillment_date: new Date(parsedDate).toISOString(),
         customer_notes: notes || undefined,
@@ -260,8 +260,8 @@ export function PreOrderPage() {
             )}
 
             {/* Auth if needed */}
-            {!token ? (
-              <AuthBlock onSuccess={(t, name) => setAuth(t, name)} />
+            {!isAuthenticated ? (
+              <AuthBlock onSuccess={(name) => setAuth(name)} />
             ) : (
               <div style={{ background: 'var(--color-surface-alt)', borderRadius: '10px', padding: '0.875rem 1rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
                 ✅ Ordering as <strong>{customerName}</strong>
@@ -277,9 +277,9 @@ export function PreOrderPage() {
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button style={S.ghostBtn} onClick={() => setStep('details')}>← Back</button>
               <button
-                style={{ ...S.primaryBtn, flex: 1, opacity: (!token || loading) ? 0.55 : 1, cursor: (!token || loading) ? 'not-allowed' : 'pointer' }}
+                style={{ ...S.primaryBtn, flex: 1, opacity: (!isAuthenticated || loading) ? 0.55 : 1, cursor: (!isAuthenticated || loading) ? 'not-allowed' : 'pointer' }}
                 onClick={handleSubmit}
-                disabled={!token || loading}
+                disabled={!isAuthenticated || loading}
               >
                 {loading ? 'Submitting…' : text('preorder_submit_label', 'Submit Pre-Order')}
               </button>

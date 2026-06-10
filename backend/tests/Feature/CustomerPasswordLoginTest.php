@@ -51,7 +51,9 @@ class CustomerPasswordLoginTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonStructure(['token', 'customer' => ['id', 'phone']]);
+            ->assertJsonStructure(['customer' => ['id', 'phone']])
+            ->assertJsonMissing(['token']);
+        $this->assertAuthenticatedAs($this->customer, 'customer');
     }
 
     public function test_wrong_password_returns_422(): void

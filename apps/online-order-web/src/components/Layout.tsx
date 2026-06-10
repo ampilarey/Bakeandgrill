@@ -36,31 +36,25 @@ export function Layout() {
   const addrLine1  = addrParts[0]?.trim() || address;
   const addrCity   = addrParts.slice(1).join(',').trim() || 'Maldives';
 
-  const { token, customerName, clearAuth } = useAuth();
+  const { isAuthenticated, customerName, clearAuth, authReady, setAuth } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
   const [mobMoreOpen, setMobMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
-  // If token exists but name is missing, hydrate from API
+  // If authenticated but name is missing, hydrate from API
   useEffect(() => {
     let cancelled = false;
-    const existingToken = localStorage.getItem('online_token');
-    const existingName  = localStorage.getItem('online_customer_name');
-    if (existingToken && !existingName) {
-      getCustomerMe(existingToken)
+    if (isAuthenticated && !customerName && authReady) {
+      getCustomerMe()
         .then((r) => {
           if (cancelled) return;
           const raw = r.customer.phone ?? r.customer.name ?? '';
           const n = r.customer.phone ? raw.replace(/^\+?960/, '') : raw;
-          if (n) {
-            localStorage.setItem('online_customer_name', n);
-            window.dispatchEvent(new Event('auth_change'));
-          }
+          if (n) setAuth(n);
         })
         .catch((err: unknown) => {
           if (cancelled) return;
-          // Only log out on auth errors — don't clear session on transient network/server failures
           const status = (err as { status?: number })?.status;
           if (status === 401 || status === 403) {
             clearAuth();
@@ -68,7 +62,7 @@ export function Layout() {
         });
     }
     return () => { cancelled = true; };
-  }, [clearAuth]);
+  }, [isAuthenticated, customerName, authReady, setAuth, clearAuth]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = darkMode ? 'dark' : '';
@@ -258,7 +252,7 @@ export function Layout() {
             </button>
 
             {/* Logged-in customer — "Hi, number" pill links to account on all screen sizes */}
-            {token && (
+            {isAuthenticated && (
               <div className="order-header-account" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                 {/* Desktop: "Hi, name" text + My Account link */}
                 {customerName && (

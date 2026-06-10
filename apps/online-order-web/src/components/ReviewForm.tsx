@@ -3,11 +3,10 @@ import { submitReview } from "../api";
 
 interface Props {
   orderId: number;
-  token: string;
   onDone: () => void;
 }
 
-export function ReviewForm({ orderId, token, onDone }: Props) {
+export function ReviewForm({ orderId, onDone }: Props) {
   const [rating, setRating]   = useState(0);
   const [hovered, setHovered] = useState(0);
   const [comment, setComment] = useState("");
@@ -24,7 +23,7 @@ export function ReviewForm({ orderId, token, onDone }: Props) {
     setLoading(true);
     setError("");
     try {
-      await submitReview(token, { order_id: orderId, rating, comment, is_anonymous: anon });
+      await submitReview({ order_id: orderId, rating, comment, is_anonymous: anon });
       setDone(true);
       doneTimer.current = setTimeout(onDone, 2000);
     } catch (e) {
@@ -47,7 +46,6 @@ export function ReviewForm({ orderId, token, onDone }: Props) {
       <h3 style={s.title}>Rate your order</h3>
       {error && <div style={s.err}>{error}</div>}
 
-      {/* Stars */}
       <div style={s.stars}>
         {[1, 2, 3, 4, 5].map(n => (
           <button

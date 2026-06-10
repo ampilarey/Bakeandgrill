@@ -1,6 +1,5 @@
 // ── Shared API client instance ─────────────────────────────────────────────────
-// Single source of truth for the base URL and the `request` helper.
-// All domain slices import from here — never create a second client.
+// Session cookie auth (Sanctum stateful SPA) — no Bearer tokens in localStorage.
 
 import { createApiClient } from '@shared/api';
 
@@ -13,6 +12,42 @@ export const API_ORIGIN =
   API_BASE_URL.replace(/\/api\/?$/, '') ||
   (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-// credentials: 'include' enables Sanctum SPA cookie auth and session detection.
-const client = createApiClient({ baseUrl: API_BASE_URL, credentials: 'include' });
-export const { request } = client;
+function readCookie(name: string): string | null {
+  const m = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
+  return m ? decodeURIComponent(m.split('=').slice(1).join('=')) : null;
+}
+
+let csrfPrimed = false;
+
+export async function ensureCsrfCookie(): Promise<void> {
+  if (typeof window === 'undefined' || csrfPrimed) {
+    return;
+  }
+  await fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, { credentials: 'include' });
+  csrfPrimed = true;
+}
+
+function xsrfHeaders(): Record<string, string> {
+  const xsrf = readCookie('XSRF-TOKEN');
+  return xsrf ? { 'X-XSRF-TOKEN': xsrf } : {};
+}
+
+const { request: coreRequest } = createApiClient({
+  baseUrl: API_BASE_URL,
+  credentials: 'include',
+});
+
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method ?? 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD') {
+    await ensureCsrfCookie();
+  }
+
+  return coreRequest<T>(path, {
+    ...options,
+    headers: {
+      ...xsrfHeaders(),
+      ...(options.headers ?? {}),
+    },
+  });
+}

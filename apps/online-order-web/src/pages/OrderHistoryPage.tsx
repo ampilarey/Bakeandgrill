@@ -43,7 +43,7 @@ function ordersFromResponse(res: unknown): Order[] {
 
 export function OrderHistoryPage() {
   usePageTitle('My Orders');
-  const { token, authReady, setAuth } = useAuth();
+  const { isAuthenticated, authReady, setAuth } = useAuth();
   const { addItem } = useCart();
   const { showToast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -53,23 +53,23 @@ export function OrderHistoryPage() {
 
   useEffect(() => {
     if (!authReady) return; // wait for session check to resolve
-    if (!token) { setOrders([]); return; }
+    if (!isAuthenticated) { setOrders([]); return; }
 
     setLoading(true);
     setError('');
-    fetchCustomerOrders(token)
+    fetchCustomerOrders()
       .then((res) => setOrders(ordersFromResponse(res)))
       .catch(() => setError('Could not load orders. Please try again.'))
       .finally(() => setLoading(false));
-  }, [token, authReady]);
+  }, [isAuthenticated, authReady]);
 
-  const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
+  const handleAuthSuccess = (name: string) => setAuth(name);
 
   const handleReorder = async (orderId: number) => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     setReordering(orderId);
     try {
-      const payload = await getReorderPayload(token, orderId);
+      const payload = await getReorderPayload(orderId);
       let added = 0;
       for (const line of payload.items) {
         // Backend returns item_name / unit_price
@@ -105,7 +105,7 @@ export function OrderHistoryPage() {
       )}
 
       {/* Not logged in — show inline auth block */}
-      {authReady && !loading && !token && (
+      {authReady && !loading && !isAuthenticated && (
         <div>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
             Sign in to view your orders.
@@ -120,7 +120,7 @@ export function OrderHistoryPage() {
         </div>
       )}
 
-      {authReady && !loading && token && error && (
+      {authReady && !loading && isAuthenticated && error && (
         <div style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>{error}</p>
           <Link to="/menu" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
@@ -129,7 +129,7 @@ export function OrderHistoryPage() {
         </div>
       )}
 
-      {authReady && !loading && token && !error && orders.length === 0 && (
+      {authReady && !loading && isAuthenticated && !error && orders.length === 0 && (
         <div style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📋</div>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>No orders yet.</p>
@@ -139,7 +139,7 @@ export function OrderHistoryPage() {
         </div>
       )}
 
-      {authReady && !loading && token && orders.length > 0 && (
+      {authReady && !loading && isAuthenticated && orders.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {orders.map((order) => {
             const s = STATUS_LABEL[order.status] ?? { label: order.status, color: '#374151', bg: '#f3f4f6' };

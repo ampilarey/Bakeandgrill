@@ -37,14 +37,13 @@ function normalizeOrders(res: unknown): Order[] {
 }
 
 export function OrderStatusBar() {
-  const { token, authReady } = useAuth();
+  const { isAuthenticated, authReady } = useAuth();
   const location = useLocation();
-  const [order, setOrder] = useState<Order | null | undefined>(undefined); // undefined = not loaded yet
+  const [order, setOrder] = useState<Order | null | undefined>(undefined);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Hide on checkout and per-order tracking pages (already showing full detail there)
   const skip =
-    !token ||
+    !isAuthenticated ||
     !authReady ||
     location.pathname.startsWith('/checkout') ||
     location.pathname.startsWith('/orders/');
@@ -55,7 +54,7 @@ export function OrderStatusBar() {
     const controller = new AbortController();
 
     const load = () => {
-      fetchCustomerOrders(token!, controller.signal)
+      fetchCustomerOrders(controller.signal)
         .then((res) => {
           const orders = normalizeOrders(res);
           const active = orders.find((o) => ACTIVE.has(o.status));
@@ -71,13 +70,12 @@ export function OrderStatusBar() {
       controller.abort();
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [token, authReady, skip]);
+  }, [isAuthenticated, authReady, skip]);
 
-  // Stable callback for reloading on pathname change — avoids exhaustive-deps suppression
   const reloadOnNav = useCallback(() => {
-    if (!token || !authReady) return undefined;
+    if (!isAuthenticated || !authReady) return undefined;
     const controller = new AbortController();
-    fetchCustomerOrders(token, controller.signal)
+    fetchCustomerOrders(controller.signal)
       .then((res) => {
         const orders = normalizeOrders(res);
         const active = orders.find((o) => ACTIVE.has(o.status));
@@ -85,17 +83,15 @@ export function OrderStatusBar() {
       })
       .catch((err) => { if (err.name !== 'AbortError') setOrder(null); });
     return controller;
-  }, [token, authReady]);
+  }, [isAuthenticated, authReady]);
 
-  // Re-load when returning to the page
   useEffect(() => {
     if (skip || order === undefined) return;
     const controller = reloadOnNav();
     return () => controller?.abort();
   }, [location.pathname, skip, order, reloadOnNav]);
 
-  // Nothing to show
-  if (!token || order === undefined || order === null) return null;
+  if (!isAuthenticated || order === undefined || order === null) return null;
 
   const s = STATUS[order.status] ?? { label: order.status, color: '#374151', dot: '#9ca3af' };
   const isActive = ACTIVE.has(order.status);
@@ -114,7 +110,6 @@ export function OrderStatusBar() {
 
   return (
     <div style={barStyle}>
-      {/* Left — clicking "My orders" goes to full order history */}
       <Link
         to="/order-history"
         style={{
@@ -139,7 +134,6 @@ export function OrderStatusBar() {
         </span>
       </Link>
 
-      {/* Right — "Track" goes to the specific order; "View all" also goes to history */}
       <Link
         to={isActive ? `/orders/${order.id}` : '/order-history'}
         style={{

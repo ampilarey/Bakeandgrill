@@ -38,10 +38,9 @@ export type PreOrderResult = {
   status: string;
 };
 
-export async function createPreOrder(token: string, payload: PreOrderPayload): Promise<{ pre_order: PreOrderResult }> {
+export async function createPreOrder(payload: PreOrderPayload): Promise<{ pre_order: PreOrderResult }> {
   return request<{ pre_order: PreOrderResult }>(ENDPOINTS.CUSTOMER_PRE_ORDERS, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
 }
@@ -85,12 +84,12 @@ export async function createReservation(payload: {
   return data.reservation;
 }
 
-export async function getMyReservations(token: string): Promise<{ data: CustomerReservation[] }> {
-  return request('/reservations', { headers: { Authorization: `Bearer ${token}` } });
+export async function getMyReservations(): Promise<{ data: CustomerReservation[] }> {
+  return request('/reservations');
 }
 
-export async function cancelMyReservation(token: string, id: number): Promise<void> {
-  await request<void>(`/reservations/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+export async function cancelMyReservation(id: number): Promise<void> {
+  await request<void>(`/reservations/${id}`, { method: 'DELETE' });
 }
 
 // ── Favourites ─────────────────────────────────────────────────────────────────
@@ -104,12 +103,12 @@ export interface FavouriteItem {
   is_available: boolean;
 }
 
-export async function getMyFavourites(token: string): Promise<{ data: FavouriteItem[] }> {
-  return request('/customer/favorites', { headers: { Authorization: `Bearer ${token}` } });
+export async function getMyFavourites(): Promise<{ data: FavouriteItem[] }> {
+  return request('/customer/favorites');
 }
 
-export async function toggleFavourite(token: string, itemId: number): Promise<{ is_favourite: boolean }> {
-  return request(`/customer/favorites/${itemId}/toggle`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+export async function toggleFavourite(itemId: number): Promise<{ is_favourite: boolean }> {
+  return request(`/customer/favorites/${itemId}/toggle`, { method: 'POST' });
 }
 
 // ── Pre-order History ──────────────────────────────────────────────────────────
@@ -124,8 +123,8 @@ export interface CustomerPreOrder {
   created_at: string;
 }
 
-export async function getMyPreOrders(token: string): Promise<{ data: CustomerPreOrder[] }> {
-  return request('/customer/pre-orders', { headers: { Authorization: `Bearer ${token}` } });
+export async function getMyPreOrders(): Promise<{ data: CustomerPreOrder[] }> {
+  return request('/customer/pre-orders');
 }
 
 // ── Reviews ────────────────────────────────────────────────────────────────────
@@ -142,32 +141,24 @@ export interface CustomerReview {
 }
 
 export async function submitReview(
-  token: string,
   payload: { order_id: number; rating: number; comment: string; is_anonymous: boolean },
 ): Promise<void> {
   await request<void>(ENDPOINTS.REVIEWS, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
 }
 
 export async function getMyReviews(
-  token: string,
   params: { page?: number; per_page?: number } = {},
 ): Promise<{
   data: CustomerReview[];
   meta?: { current_page: number; last_page: number; per_page: number; total: number };
 }> {
-  // ONL-004: explicit per_page cap. The backend will paginate either
-  // way; without us asking for a page we got the first ~15 reviews
-  // forever and customers thought the rest were gone.
   const q = new URLSearchParams();
   if (params.page) q.set('page', String(params.page));
   q.set('per_page', String(params.per_page ?? 20));
-  return request(`/customer/reviews?${q.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  return request(`/customer/reviews?${q.toString()}`);
 }
 
 // ── Credit account ────────────────────────────────────────────────────────────
@@ -196,21 +187,19 @@ export type CustomerCreditInvoice = {
   view_url: string | null;
 };
 
-export async function getCustomerCredit(token: string): Promise<{
+export async function getCustomerCredit(): Promise<{
   credit: (CustomerCreditSummary & { open_invoices: CustomerCreditInvoice[] }) | null;
 }> {
-  return request('/customer/credit', { headers: { Authorization: `Bearer ${token}` } });
+  return request('/customer/credit');
 }
 
 export async function updateCustomerCreditPreferences(
-  token: string,
   data: { credit_reminder_sms: boolean },
 ): Promise<{
   credit: CustomerCreditSummary & { open_invoices: CustomerCreditInvoice[] };
 }> {
   return request('/customer/credit/preferences', {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data),
   });
 }
@@ -232,13 +221,13 @@ export type CustomerDepositTransaction = {
   created_at?: string | null;
 };
 
-export async function getCustomerDeposit(token: string): Promise<{ deposit: CustomerDepositSummary | null }> {
-  return request('/customer/deposit', { headers: { Authorization: `Bearer ${token}` } });
+export async function getCustomerDeposit(): Promise<{ deposit: CustomerDepositSummary | null }> {
+  return request('/customer/deposit');
 }
 
-export async function getCustomerDepositLedger(token: string): Promise<{
+export async function getCustomerDepositLedger(): Promise<{
   deposit: CustomerDepositSummary | null;
   transactions: CustomerDepositTransaction[];
 }> {
-  return request('/customer/deposit/ledger', { headers: { Authorization: `Bearer ${token}` } });
+  return request('/customer/deposit/ledger');
 }

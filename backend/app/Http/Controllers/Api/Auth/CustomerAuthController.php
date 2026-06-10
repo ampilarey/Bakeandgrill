@@ -27,7 +27,7 @@ class CustomerAuthController extends Controller
         return MaldivesPhone::normalize($phone);
     }
 
-    private function customerResponse(Customer $customer, string $token): array
+    private function customerResponse(Customer $customer): array
     {
         return [
             'id' => $customer->id,
@@ -37,6 +37,25 @@ class CustomerAuthController extends Controller
             'loyalty_points' => $customer->loyalty_points,
             'tier' => $customer->tier,
             'is_profile_complete' => (bool) $customer->is_profile_complete,
+        ];
+    }
+
+    private function establishCustomerSession(Request $request, Customer $customer): void
+    {
+        Auth::guard('customer')->login($customer);
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+    }
+
+    /**
+     * @return array{message: string, customer: array<string, mixed>}
+     */
+    private function authenticatedPayload(string $message, Customer $customer): array
+    {
+        return [
+            'message' => $message,
+            'customer' => $this->customerResponse($customer),
         ];
     }
 
@@ -169,16 +188,9 @@ class CustomerAuthController extends Controller
         }
 
         $customer->update(['last_login_at' => now()]);
+        $this->establishCustomerSession($request, $customer);
 
-        // Issue a new token without revoking existing ones — customers may be
-        // logged in on multiple devices or tabs simultaneously.
-        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
-
-        return response()->json([
-            'message' => 'Login successful',
-            'token' => $token,
-            'customer' => $this->customerResponse($customer, $token),
-        ]);
+        return response()->json($this->authenticatedPayload('Login successful', $customer));
     }
 
     /**
@@ -292,23 +304,17 @@ class CustomerAuthController extends Controller
         // profile (name + password) is submitted.
 
         $customer->update(['last_login_at' => now()]);
-
-        // Issue a new token without revoking existing ones — customers may be
-        // logged in on multiple devices or tabs simultaneously.
-        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
+        $this->establishCustomerSession($request, $customer);
 
         return response()->json([
-            'message' => 'Verified successfully',
-            'token' => $token,
+            ...$this->authenticatedPayload('Verified successfully', $customer),
             'is_new_customer' => $isNew,
-            'customer' => $this->customerResponse($customer, $token),
         ]);
     }
 
     /**
      * Check if the customer is already authenticated via session cookie.
      * Called by the React app on mount to auto-login customers who logged in on the Blade site.
-     * If authenticated, issues a fresh Sanctum token for use in subsequent API calls.
      */
     public function check(Request $request)
     {
@@ -322,23 +328,27 @@ class CustomerAuthController extends Controller
             return response()->json(['authenticated' => false, 'message' => 'Account deactivated.'], 403);
         }
 
-        // Bridge a Blade session to a Sanctum token without revoking other device tokens.
-        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
-
         return response()->json([
             'authenticated' => true,
-            'token' => $token,
-            'customer' => $this->customerResponse($customer, $token),
+            'customer' => $this->customerResponse($customer),
         ]);
     }
 
     /**
-     * Revoke the current token and log the customer out of the React app.
-     * Called by the React order app before clearing localStorage auth state.
+     * End the customer session (and revoke Bearer token when present).
      */
     public function logout(Request $request)
     {
-        $request->user()?->currentAccessToken()?->delete();
+        $user = $request->user();
+        if ($user instanceof Customer && $request->bearerToken()) {
+            $user->currentAccessToken()?->delete();
+        }
+
+        Auth::guard('customer')->logout();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['message' => 'Logged out successfully'], 200);
     }
@@ -413,15 +423,11 @@ class CustomerAuthController extends Controller
         $customer->last_login_at = now();
         $customer->save();
 
-        // Password reset: intentionally revoke all sessions for security.
+        // Password reset: revoke legacy bearer tokens, then establish a fresh session.
         $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token = $customer->createToken('customer-' . $customer->phone . '-' . bin2hex(random_bytes(4)), ['customer'])->plainTextToken;
+        $this->establishCustomerSession($request, $customer);
 
-        return response()->json([
-            'message' => 'Password reset successfully',
-            'token' => $token,
-            'customer' => $this->customerResponse($customer, $token),
-        ]);
+        return response()->json($this->authenticatedPayload('Password reset successfully', $customer));
     }
 
     /**
@@ -470,17 +476,11 @@ class CustomerAuthController extends Controller
         }
 
         $customer->update(['last_login_at' => now()]);
-
-        $token = $customer->createToken(
-            'customer-guest-' . $customer->phone . '-' . bin2hex(random_bytes(4)),
-            ['customer'],
-        )->plainTextToken;
+        $this->establishCustomerSession($request, $customer);
 
         return response()->json([
-            'message' => 'Guest session started',
-            'token' => $token,
+            ...$this->authenticatedPayload('Guest session started', $customer),
             'is_new_customer' => $customer->wasRecentlyCreated,
-            'customer' => $this->customerResponse($customer, $token),
         ]);
     }
 }

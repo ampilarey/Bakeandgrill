@@ -5,63 +5,53 @@ import { request } from './client';
 
 // ── Promotions ─────────────────────────────────────────────────────────────────
 
-export async function validatePromoCode(code: string, token?: string): Promise<PromoValidation> {
+export async function validatePromoCode(code: string): Promise<PromoValidation> {
   return request<PromoValidation>(ENDPOINTS.PROMOTIONS_VALIDATE, {
     method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: JSON.stringify({ code }),
   });
 }
 
 export async function applyPromoCode(
-  token: string,
   orderId: number,
   code: string,
 ): Promise<{ order: unknown; discount_laar: number; promotion_id: number }> {
   return request(ENDPOINTS.ORDER_APPLY_PROMO(orderId), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ code }),
   });
 }
 
-export async function removePromoCode(token: string, orderId: number, promotionId: number): Promise<{ order: unknown }> {
+export async function removePromoCode(orderId: number, promotionId: number): Promise<{ order: unknown }> {
   return request(ENDPOINTS.ORDER_REMOVE_PROMO(orderId, promotionId), {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
   });
 }
 
 // ── Loyalty ────────────────────────────────────────────────────────────────────
 
-export async function getLoyaltyAccount(token: string): Promise<LoyaltyMeResponse> {
-  return request<LoyaltyMeResponse>(ENDPOINTS.LOYALTY_ME, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export async function getLoyaltyAccount(): Promise<LoyaltyMeResponse> {
+  return request<LoyaltyMeResponse>(ENDPOINTS.LOYALTY_ME);
 }
 
-export async function previewLoyaltyHold(token: string, orderId: number, points: number): Promise<LoyaltyHoldPreview> {
+export async function previewLoyaltyHold(orderId: number, points: number): Promise<LoyaltyHoldPreview> {
   return request<LoyaltyHoldPreview>(ENDPOINTS.LOYALTY_HOLD_PREVIEW, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ order_id: orderId, points }),
   });
 }
 
 export async function createLoyaltyHold(
-  token: string,
   orderId: number,
   points: number,
 ): Promise<{ hold: { points_held: number; discount_laar: number } }> {
   return request(ENDPOINTS.LOYALTY_HOLD, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ order_id: orderId, points }),
   });
 }
 
 export async function snapshotCustomerCart(
-  token: string,
   payload: {
     items: Array<{ id: number; name: string; quantity: number; price?: number }>;
     subtotal_laar?: number;
@@ -69,15 +59,13 @@ export async function snapshotCustomerCart(
 ): Promise<{ cart_token: string; snapshot_at: string }> {
   return request(ENDPOINTS.CUSTOMER_CART_SNAPSHOT, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
 }
 
-export async function releaseLoyaltyHold(token: string, orderId: number): Promise<void> {
+export async function releaseLoyaltyHold(orderId: number): Promise<void> {
   await request<void>(`${ENDPOINTS.LOYALTY_HOLD}/${orderId}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
   });
 }
 
@@ -90,21 +78,18 @@ export async function checkGiftCardBalance(
 }
 
 export async function applyGiftCard(
-  token: string,
   orderId: number,
   code: string,
 ): Promise<{ discount_laar: number; discount_mvr: string; card_balance: number }> {
   return request(`/orders/${orderId}/apply-gift-card`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ code: code.toUpperCase() }),
   });
 }
 
-export async function removeGiftCard(token: string, orderId: number): Promise<void> {
+export async function removeGiftCard(orderId: number): Promise<void> {
   await request(`/orders/${orderId}/gift-card`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
   });
 }
 
@@ -124,27 +109,22 @@ export async function validateReferralCode(
   }
 }
 
-export async function getMyReferralCode(
-  token: string,
-): Promise<{ code: string; uses_count: number; referee_discount_mvr: number }> {
-  return request('/customer/referral-code', { headers: { Authorization: `Bearer ${token}` } });
+export async function getMyReferralCode(): Promise<{ code: string; uses_count: number; referee_discount_mvr: number }> {
+  return request('/customer/referral-code');
 }
 
 export async function applyReferralToOrder(
-  token: string,
   orderId: number,
   code: string,
 ): Promise<{ code: string; discount_laar: number; discount_mvr: string }> {
   return request(ENDPOINTS.ORDER_APPLY_REFERRAL(orderId), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ code: code.trim().toUpperCase() }),
   });
 }
 
-export async function removeReferralFromOrder(token: string, orderId: number): Promise<void> {
+export async function removeReferralFromOrder(orderId: number): Promise<void> {
   await request<void>(ENDPOINTS.ORDER_REMOVE_REFERRAL(orderId), {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
   });
 }

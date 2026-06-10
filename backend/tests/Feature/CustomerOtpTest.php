@@ -42,7 +42,8 @@ class CustomerOtpTest extends TestCase
         ]);
 
         $verifyResponse->assertOk()
-            ->assertJsonStructure(['token', 'customer' => ['id', 'phone']]);
+            ->assertJsonStructure(['customer' => ['id', 'phone']])
+            ->assertJsonMissing(['token']);
     }
 
     /**

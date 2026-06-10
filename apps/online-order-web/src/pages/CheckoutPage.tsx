@@ -254,7 +254,7 @@ export function CheckoutPage() {
   }, []);
 
   const {
-    cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
+    cart, isAuthenticated, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, pickupSlotAt, setPickupSlotAt, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
@@ -432,7 +432,7 @@ export function CheckoutPage() {
           ? `Your order qualifies for free delivery (orders over MVR ${freeThreshold.toFixed(0)}).`
           : `Free delivery on orders over MVR ${freeThreshold.toFixed(0)} — add MVR ${Math.max(0, freeThreshold - cartMvr).toFixed(2)} more to qualify.`}
       </p>
-      {token && savedAddresses.length > 0 && (
+      {isAuthenticated && savedAddresses.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Saved address
@@ -474,7 +474,7 @@ export function CheckoutPage() {
       </div>
       <Field label="Delivery notes" placeholder="Any special instructions for the rider"
         value={delivery.notes} onChange={(v) => setDelivery({ ...delivery, notes: v })} multiline />
-      {token && (selectedAddressId === 'new' || saveAddress) && (
+      {isAuthenticated && (selectedAddressId === 'new' || saveAddress) && (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
             <input
@@ -724,7 +724,7 @@ export function CheckoutPage() {
         <span>Total</span>
         <span style={S.totalRowAmount}>MVR {laarToMvr(totalLaar)}</span>
       </div>
-      {token && totalLaar > 0 && (
+      {isAuthenticated && totalLaar > 0 && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: '0.8rem' }}>⭐</span>
           <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
@@ -870,8 +870,8 @@ export function CheckoutPage() {
         /* ── Mobile: single column, sections in logical order ─────────── */
         <div style={{ ...S.layout, gridTemplateColumns: '1fr' }}>
           <div style={S.col}>
-            {!token && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
-            {token && (
+            {!isAuthenticated && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
+            {isAuthenticated && (
               <>
                 {sectionOrderType}
                 {sectionPickupSlot}
@@ -896,8 +896,8 @@ export function CheckoutPage() {
         <div style={{ ...S.layout, gridTemplateColumns: 'minmax(0,1fr) minmax(300px,380px)' }}>
           {/* Left: form */}
           <div style={S.col}>
-            {!token && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
-            {token && (
+            {!isAuthenticated && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
+            {isAuthenticated && (
               <>
                 {sectionOrderType}
                 {sectionPickupSlot}
@@ -916,7 +916,7 @@ export function CheckoutPage() {
             {sectionCartSummary}
             {sectionOrderSummary}
             {myReferralCode && sectionReferral}
-            {token && (
+            {isAuthenticated && (
               <>
                 {sectionCompliance}
                 {paySectionEl}

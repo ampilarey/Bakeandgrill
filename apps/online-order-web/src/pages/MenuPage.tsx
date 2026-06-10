@@ -56,7 +56,7 @@ export function MenuPage() {
   const { addItem } = useCart();
   const { t } = useLanguage();
   const { showToast } = useToast();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -151,11 +151,11 @@ export function MenuPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
-    getMyFavourites(token)
+    if (!isAuthenticated) return;
+    getMyFavourites()
       .then((res) => setFavouriteIds(new Set((res.data ?? []).map((f) => f.id))))
       .catch(() => { /* non-blocking */ });
-  }, [token]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     getWaitTimeEstimate()
@@ -167,13 +167,13 @@ export function MenuPage() {
   }, []);
 
   const handleToggleFavourite = (itemId: number) => {
-    if (!token) { showToast('Sign in to save favourites'); return; }
+    if (!isAuthenticated) { showToast('Sign in to save favourites'); return; }
     setFavouriteIds((prev) => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
       return next;
     });
-    toggleFavourite(token, itemId).catch(() => {
+    toggleFavourite(itemId).catch(() => {
       // Revert on failure
       setFavouriteIds((prev) => {
         const next = new Set(prev);

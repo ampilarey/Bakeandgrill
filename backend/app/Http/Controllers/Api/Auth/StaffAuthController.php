@@ -69,8 +69,12 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        // Create token with 'staff' ability
-        $token = $user->createToken('staff-' . $user->id, ['staff'])->plainTextToken;
+        // POS tokens: 12-hour per-device expiry (shorter than global Sanctum TTL).
+        $token = $user->createToken(
+            'staff-pos-' . $user->id,
+            ['staff'],
+            now()->addHours(12),
+        )->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',

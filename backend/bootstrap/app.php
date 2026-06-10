@@ -28,11 +28,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 Illuminate\Http\Request::HEADER_X_FORWARDED_PREFIX);
         }
 
+        // Sanctum SPA cookie auth for same-origin React apps (/order, future admin cookie migration).
+        $middleware->statefulApi();
+
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
 
-        // Use our custom EncryptCookies so _cauth/_cauth_name stay plain-text
-        // (they are short-lived handoff cookies read by the React order app via JS)
-        $middleware->encryptCookies(except: ['_cauth', '_cauth_name', '_cauth_revoked']);
+        // _cauth_revoked: short-lived JS-readable logout signal for the order SPA.
+        $middleware->encryptCookies(except: ['_cauth_revoked']);
 
         $middleware->alias([
             'device.active' => App\Http\Middleware\EnsureActiveDevice::class,

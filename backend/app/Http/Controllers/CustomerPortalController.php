@@ -175,8 +175,6 @@ class CustomerPortalController extends Controller
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
-        $this->queueHandoffCookies($customer);
-
         return redirect('/order/menu')->with('message', 'Password reset successfully. Welcome back!');
     }
 
@@ -232,12 +230,8 @@ class CustomerPortalController extends Controller
 
         // Redirect to profile setup if this is a first-time customer
         if (!$customer->is_profile_complete) {
-            $this->queueHandoffCookies($customer);
-
             return redirect()->route('customer.complete-profile');
         }
-
-        $this->queueHandoffCookies($customer);
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
@@ -274,12 +268,8 @@ class CustomerPortalController extends Controller
         $request->session()->regenerate();
 
         if (!$customer->is_profile_complete) {
-            $this->queueHandoffCookies($customer);
-
             return redirect()->route('customer.complete-profile');
         }
-
-        $this->queueHandoffCookies($customer);
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
@@ -323,8 +313,6 @@ class CustomerPortalController extends Controller
             'password' => Hash::make($request->password),
             'is_profile_complete' => true,
         ]);
-
-        $this->queueHandoffCookies($customer);
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
@@ -382,25 +370,6 @@ class CustomerPortalController extends Controller
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /**
-     * Queue short-lived non-httponly cookies so the React order app can
-     * detect the Blade login without touching the session cookie.
-     * TTL: 24 hours — the React app consumes and deletes them on first mount.
-     */
-    private function queueHandoffCookies(Customer $customer): void
-    {
-        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
-        $token = $customer->createToken('customer-' . $customer->phone, ['customer'])->plainTextToken;
-        // Always show the short phone number (strip +960) so both apps show the same thing
-        $name = str_replace('+960', '', $customer->phone ?? '');
-        $domain = config('session.domain'); // .bakeandgrill.mv
-        $secure = request()->isSecure();
-
-        // non-httponly so React JS can read with document.cookie
-        Cookie::queue('_cauth', $token, 1440, '/', $domain, $secure, false, false, 'Lax');
-        Cookie::queue('_cauth_name', $name, 1440, '/', $domain, $secure, false, false, 'Lax');
-    }
 
     private function normalizePhone(string $phone): string
     {

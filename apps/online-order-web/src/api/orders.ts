@@ -47,15 +47,11 @@ export interface ReorderPayload {
   original_type?: string;
 }
 
-export async function fetchCustomerOrders(token: string, signal?: AbortSignal): Promise<{ data: Order[] }> {
-  return request<{ data: Order[] }>(ENDPOINTS.CUSTOMER_ORDERS, {
-    headers: { Authorization: `Bearer ${token}` },
-    signal,
-  });
+export async function fetchCustomerOrders(signal?: AbortSignal): Promise<{ data: Order[] }> {
+  return request<{ data: Order[] }>(ENDPOINTS.CUSTOMER_ORDERS, { signal });
 }
 
 export async function createCustomerOrder(
-  token: string,
   payload: {
     items: Array<{ item_id: number; quantity: number; variant_id?: number; modifiers?: Array<{ modifier_id: number; quantity?: number }> }>;
     customer_notes?: string;
@@ -65,23 +61,19 @@ export async function createCustomerOrder(
 ): Promise<{ order: Order }> {
   return request<{ order: Order }>(ENDPOINTS.CUSTOMER_ORDERS, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
 }
 
-export async function createDeliveryOrder(token: string, payload: DeliveryOrderPayload): Promise<{ order: OrderDetail }> {
+export async function createDeliveryOrder(payload: DeliveryOrderPayload): Promise<{ order: OrderDetail }> {
   return request<{ order: OrderDetail }>(ENDPOINTS.DELIVERY_ORDER, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
 }
 
-export async function getOrderDetail(token: string, orderId: number): Promise<{ order: OrderDetail }> {
-  return request<{ order: OrderDetail }>(`${ENDPOINTS.CUSTOMER_ORDERS}/${orderId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export async function getOrderDetail(orderId: number): Promise<{ order: OrderDetail }> {
+  return request<{ order: OrderDetail }>(`${ENDPOINTS.CUSTOMER_ORDERS}/${orderId}`);
 }
 
 export async function getOrderByTrackingToken(trackingToken: string): Promise<{ order: OrderDetail }> {
@@ -96,16 +88,13 @@ export async function getOrderByTrackingToken(trackingToken: string): Promise<{ 
   return res.json() as Promise<{ order: OrderDetail }>;
 }
 
-export async function getReorderPayload(token: string, orderId: number): Promise<ReorderPayload> {
-  return request(`/customer/orders/${orderId}/reorder`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export async function getReorderPayload(orderId: number): Promise<ReorderPayload> {
+  return request(`/customer/orders/${orderId}/reorder`);
 }
 
-export async function initiateOnlinePayment(token: string, orderId: number): Promise<InitiatePaymentResult> {
+export async function initiateOnlinePayment(orderId: number): Promise<InitiatePaymentResult> {
   return request<InitiatePaymentResult>(ENDPOINTS.ORDER_PAY_BML(orderId), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
   });
 }
 
@@ -119,14 +108,12 @@ export type InitiatePartialPaymentResult = {
 };
 
 export async function initiatePartialPayment(
-  token: string,
   orderId: number,
   amountLaar: number,
   idempotencyKey: string,
 ): Promise<InitiatePartialPaymentResult> {
   return request<InitiatePartialPaymentResult>(ENDPOINTS.PARTIAL_PAYMENT, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       order_id: orderId,
       amount: amountLaar,
@@ -135,9 +122,8 @@ export async function initiatePartialPayment(
   });
 }
 
-export async function completeZeroBalanceOrder(token: string, orderId: number): Promise<{ order: OrderDetail }> {
+export async function completeZeroBalanceOrder(orderId: number): Promise<{ order: OrderDetail }> {
   return request<{ order: OrderDetail }>(ENDPOINTS.ORDER_COMPLETE_ZERO_BALANCE(orderId), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
   });
 }

@@ -1,17 +1,17 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { syncBladeSession, checkSession } from '../api';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { checkSession, logoutCustomerSession, logoutCustomerWebSession } from '../api';
 
 interface AuthState {
-  token: string | null;
+  isAuthenticated: boolean;
   customerName: string | null;
-  /** true once the initial cookie/localStorage check has resolved */
+  /** true once the initial session check has resolved */
   authReady: boolean;
-  setAuth: (token: string, name: string) => void;
+  setAuth: (name: string) => void;
   clearAuth: () => void;
 }
 
 const AuthContext = createContext<AuthState>({
-  token: null,
+  isAuthenticated: false,
   customerName: null,
   authReady: false,
   setAuth: () => {},
@@ -22,16 +22,9 @@ const AuthContext = createContext<AuthState>({
 function toDisplayName(name?: string | null, phone?: string | null): string {
   const stripped = (phone ?? '').replace(/^\+?960/, '').replace(/\D/g, '');
   if (stripped.length === 7) return stripped;
-  if (name) return name.split(' ')[0]; // first name only
+  if (name) return name.split(' ')[0];
   return '';
 }
-
-const COOKIE_DOMAIN = (() => {
-  if (typeof window === 'undefined') return '';
-  const h = window.location.hostname;
-  // Return '' for localhost/127.x so no domain is set (avoids browser cookie rejection on localhost)
-  return h.includes('.') && !h.startsWith('127.') ? '.' + h.split('.').slice(-2).join('.') : '';
-})();
 
 function getCookie(name: string): string | null {
   const m = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
@@ -39,177 +32,82 @@ function getCookie(name: string): string | null {
 }
 
 function deleteCookie(name: string) {
-  document.cookie = `${name}=; Max-Age=0; path=/; domain=${COOKIE_DOMAIN}`;
-}
-
-/**
- * Read and immediately delete the _cauth handoff cookies set by Blade login.
- * Returns {token, name} if found, null otherwise.
- */
-function consumeHandoffCookies(): { token: string; name: string } | null {
-  const token = getCookie('_cauth');
-  if (!token) return null;
-  const name = getCookie('_cauth_name') ?? '';
-  deleteCookie('_cauth');
-  deleteCookie('_cauth_name');
-  return { token, name };
+  const h = window.location.hostname;
+  const domain =
+    h.includes('.') && !h.startsWith('127.') ? '.' + h.split('.').slice(-2).join('.') : '';
+  document.cookie = `${name}=; Max-Age=0; path=/; domain=${domain}`;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken]               = useState<string | null>(() => localStorage.getItem('online_token'));
-  const [customerName, setCustomerName] = useState<string | null>(() => localStorage.getItem('online_customer_name'));
-  const [authReady, setAuthReady]       = useState<boolean>(() => !!localStorage.getItem('online_token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [customerName, setCustomerName] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
-  // Track whether we need to sync the Blade session on mount
-  const bladeSyncedRef = useRef(false);
+  const applyCustomer = (name: string | null) => {
+    setIsAuthenticated(true);
+    setCustomerName(name);
+    window.dispatchEvent(new Event('auth_change'));
+  };
 
-  // ── On mount ────────────────────────────────────────────────────────────────
+  const resetAuth = () => {
+    setIsAuthenticated(false);
+    setCustomerName(null);
+    window.dispatchEvent(new Event('auth_change'));
+  };
+
   useEffect(() => {
-    // Check for Blade logout signal first — this covers the case where the
-    // user logged out on the main website and then navigated to the order app.
     const revoked = getCookie('_cauth_revoked');
     if (revoked) {
       deleteCookie('_cauth_revoked');
-      localStorage.removeItem('online_token');
-      localStorage.removeItem('online_customer_name');
-      setToken(null);
-      setCustomerName(null);
+      resetAuth();
       setAuthReady(true);
       return;
     }
 
-    const existingToken = localStorage.getItem('online_token');
-
-    if (existingToken) {
-      // Sync Blade session in case it expired (fire-and-forget)
-      if (!bladeSyncedRef.current) {
-        bladeSyncedRef.current = true;
-        syncBladeSession(existingToken).catch(() => {});
-      }
-      setAuthReady(true);
-      return;
-    }
-
-    // Check for handoff cookie from a Blade login
-    const handoff = consumeHandoffCookies();
-    if (handoff) {
-      localStorage.setItem('online_token', handoff.token);
-      if (handoff.name) localStorage.setItem('online_customer_name', handoff.name);
-      setToken(handoff.token);
-      setCustomerName(handoff.name || null);
-      bladeSyncedRef.current = true;
-      window.dispatchEvent(new Event('auth_change'));
-      setAuthReady(true);
-      return;
-    }
-
-    // Fallback: try to recover session from Blade cookie (e.g. after BML payment redirect
-    // cleared localStorage on mobile Safari). If the customer logged in via React OTP and
-    // syncBladeSession was called, the session cookie survives cross-origin navigation.
     checkSession()
       .then((res) => {
-        if (res.authenticated && res.token) {
-          const name = toDisplayName(res.customer?.name, res.customer?.phone);
-          localStorage.setItem('online_token', res.token);
-          if (name) localStorage.setItem('online_customer_name', name);
-          setToken(res.token);
-          setCustomerName(name || null);
-          bladeSyncedRef.current = true;
-          window.dispatchEvent(new Event('auth_change'));
+        if (res.authenticated && res.customer) {
+          const name = toDisplayName(res.customer.name, res.customer.phone);
+          applyCustomer(name || null);
         }
       })
-      .catch(() => { /* no session — user is a guest */ })
+      .catch(() => { /* guest */ })
       .finally(() => setAuthReady(true));
   }, []);
 
-  // ── Sync with localStorage changes (other tabs / auth_change events) ────────
   useEffect(() => {
-    const sync = () => {
-      setToken(localStorage.getItem('online_token'));
-      setCustomerName(localStorage.getItem('online_customer_name'));
-    };
-    const handleExpired = () => {
-      localStorage.removeItem('online_token');
-      localStorage.removeItem('online_customer_name');
-      setToken(null);
-      setCustomerName(null);
-    };
-    window.addEventListener('storage', sync);
-    window.addEventListener('auth_change', sync);
-    window.addEventListener('auth_expired', handleExpired);
-    return () => {
-      window.removeEventListener('storage', sync);
-      window.removeEventListener('auth_change', sync);
-      window.removeEventListener('auth_expired', handleExpired);
-    };
-  }, []);
-
-  // ── On window focus / tab becomes visible ───────────────────────────────────
-  // 1. _cauth_revoked: Blade logout → clear React session
-  // 2. _cauth: Blade login (in another tab) → absorb the handoff token
-  useEffect(() => {
-    const check = () => {
-      // Blade logout signal
+    const handleExpired = () => resetAuth();
+    const onFocus = () => {
       const revoked = getCookie('_cauth_revoked');
       if (revoked) {
         deleteCookie('_cauth_revoked');
-        if (localStorage.getItem('online_token')) {
-          localStorage.removeItem('online_token');
-          localStorage.removeItem('online_customer_name');
-          setToken(null);
-          setCustomerName(null);
-          window.dispatchEvent(new Event('auth_change'));
-        }
-        return;
-      }
-
-      // Blade login signal (user logged in on main site in another tab)
-      if (!localStorage.getItem('online_token')) {
-        const handoff = consumeHandoffCookies();
-        if (handoff) {
-          localStorage.setItem('online_token', handoff.token);
-          if (handoff.name) localStorage.setItem('online_customer_name', handoff.name);
-          setToken(handoff.token);
-          setCustomerName(handoff.name || null);
-          bladeSyncedRef.current = true;
-          window.dispatchEvent(new Event('auth_change'));
-        }
+        resetAuth();
       }
     };
 
-    const onVisibility = () => { if (!document.hidden) check(); };
-    window.addEventListener('focus', check);
-    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('auth_expired', handleExpired);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
     return () => {
-      window.removeEventListener('focus', check);
-      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('auth_expired', handleExpired);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
     };
   }, []);
 
-  // ── setAuth — called after any React login ──────────────────────────────────
-  const setAuth = (tok: string, name: string) => {
-    localStorage.setItem('online_token', tok);
-    if (name) localStorage.setItem('online_customer_name', name);
-    setToken(tok);
-    setCustomerName(name || null);
+  const setAuth = (name: string) => {
+    applyCustomer(name || null);
     setAuthReady(true);
-    bladeSyncedRef.current = true;
-    window.dispatchEvent(new Event('auth_change'));
-    // Sync Blade session so main website header shows logged-in state
-    syncBladeSession(tok).catch(() => {});
   };
 
-  // ── clearAuth — called after any React logout ───────────────────────────────
   const clearAuth = () => {
-    localStorage.removeItem('online_token');
-    localStorage.removeItem('online_customer_name');
-    bladeSyncedRef.current = false;
-    setToken(null);
-    setCustomerName(null);
+    void logoutCustomerSession().catch(() => {});
+    void logoutCustomerWebSession().catch(() => {});
+    resetAuth();
   };
 
   return (
-    <AuthContext.Provider value={{ token, customerName, authReady, setAuth, clearAuth }}>
+    <AuthContext.Provider value={{ isAuthenticated, customerName, authReady, setAuth, clearAuth }}>
       {children}
     </AuthContext.Provider>
   );

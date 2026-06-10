@@ -16,7 +16,6 @@ import {
   getOrderDetail,
   initiateOnlinePayment,
   completeZeroBalanceOrder,
-  syncBladeSession,
   checkGiftCardBalance,
   applyGiftCard,
   removeGiftCard,
@@ -39,6 +38,7 @@ import {
   type LoyaltyRatesConfig,
 } from '../utils/loyalty';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useAuth } from '../context/AuthContext';
 import {
   parseServiceChargePublicSettings,
   previewServiceCharge,
@@ -137,12 +137,9 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
   } catch { return []; }
 }
 
-function readToken(): string | null {
-  return localStorage.getItem("online_token");
-}
-
 export function useCheckout() {
   const navigate = useNavigate();
+  const { isAuthenticated, customerName: authCustomerName, setAuth } = useAuth();
   const { pruneCartToAllowedItemIds, refreshPricesFromMenu } = useCart();
   const siteSettings = useSiteSettings();
   const serviceChargeConfig = useMemo(
@@ -152,8 +149,7 @@ export function useCheckout() {
 
   const [cartTick, bumpCart] = useReducer((n: number) => n + 1, 0);
   const cart = useMemo(() => readCart(), [cartTick]);
-  const [token, setToken] = useState<string | null>(readToken);
-  const [customerName, setCustomerName] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState<string | null>(authCustomerName);
   const [loyaltyAccount, setLoyaltyAccount] = useState<LoyaltyAccount | null>(null);
   const [loyaltyTierProgress, setLoyaltyTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyRates, setLoyaltyRates] = useState<LoyaltyRatesConfig>(DEFAULT_LOYALTY_RATES);
@@ -167,25 +163,17 @@ export function useCheckout() {
       .catch(() => setDefaultTaxRatePercent(8));
   }, []);
 
-  // Sync token when AuthContext recovers session via Blade cookie (e.g. after BML payment
-  // clears localStorage on mobile Safari, checkSession() restores it asynchronously).
   useEffect(() => {
-    const sync = () => {
-      const t = localStorage.getItem("online_token");
-      if (t && t !== token) setToken(t);
-    };
+    if (authCustomerName) setCustomerName(authCustomerName);
+  }, [authCustomerName]);
+
+  useEffect(() => {
     const expire = () => {
-      setToken(null);
       setCustomerName(null);
       setLoyaltyAccount(null);
     };
-    window.addEventListener("auth_change", sync);
     window.addEventListener("auth_expired", expire);
-    return () => {
-      window.removeEventListener("auth_change", sync);
-      window.removeEventListener("auth_expired", expire);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => window.removeEventListener("auth_expired", expire);
   }, []);
 
   const [orderType, setOrderType]   = useState<OrderType>("pickup");
@@ -263,20 +251,15 @@ export function useCheckout() {
   }, [orderType, pruneCartToAllowedItemIds]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     let cancelled = false;
 
-    getCustomerMe(token)
+    getCustomerMe()
       .then((r) => {
         if (cancelled) return;
         const raw = r.customer.phone ?? r.customer.name ?? "";
         const display = r.customer.phone ? localPhone(r.customer.phone) : raw;
         setCustomerName(display);
-        if (display) {
-          localStorage.setItem("online_customer_name", display);
-          window.dispatchEvent(new Event("auth_change"));
-        }
-        // Pre-fill delivery contact phone (local format, no +960 prefix)
         if (r.customer.phone) {
           setDelivery((prev) => ({
             ...prev,
@@ -284,18 +267,9 @@ export function useCheckout() {
           }));
         }
       })
-      .catch((e: Error) => {
-        if (!cancelled) {
-          // Only clear token on 401 (expired/invalid). Transient network errors
-          // should not log the user out.
-          if (e.message.includes('401') || e.message.toLowerCase().includes('unauthenticated')) {
-            localStorage.removeItem('online_token');
-            window.dispatchEvent(new CustomEvent('auth_change'));
-          }
-        }
-      });
+      .catch(() => { /* transient errors — session may still be valid */ });
 
-    fetchCustomerAddresses(token)
+    fetchCustomerAddresses()
       .then((res) => {
         if (cancelled) return;
         const list = res.addresses ?? [];
@@ -311,7 +285,7 @@ export function useCheckout() {
       })
       .catch(() => { /* optional — manual entry still works */ });
 
-    getLoyaltyAccount(token).then((r) => {
+    getLoyaltyAccount().then((r) => {
       if (!cancelled && r.program) {
         setLoyaltyProgramMessage(r.program.customer_message ?? '');
       }
@@ -329,14 +303,14 @@ export function useCheckout() {
       if (import.meta.env.DEV) console.warn('Loyalty account load failed:', e.message);
     });
 
-    getMyReferralCode(token).then((r) => {
+    getMyReferralCode().then((r) => {
       if (!cancelled) setMyReferralCode(r.code);
     }).catch((e: Error) => {
       if (import.meta.env.DEV) console.warn('Referral code load failed:', e.message);
     });
 
     return () => { cancelled = true; };
-  }, [token]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (hasMounted.current && cart.length === 0) navigate("/");
@@ -381,9 +355,9 @@ export function useCheckout() {
   }, [orderType, delivery.island, subtotalLaar]);
 
   useEffect(() => {
-    if (!token || cart.length === 0) return;
+    if (!isAuthenticated || cart.length === 0) return;
     const timer = window.setTimeout(() => {
-      snapshotCustomerCart(token, {
+      snapshotCustomerCart({
         items: cart.map((item) => ({
           id: item.id,
           name: item.name,
@@ -394,7 +368,7 @@ export function useCheckout() {
       }).catch(() => { /* best-effort abandon tracking */ });
     }, 2000);
     return () => window.clearTimeout(timer);
-  }, [token, cart, subtotalLaar]);
+  }, [isAuthenticated, cart, subtotalLaar]);
 
   // Full tax on the un-discounted subtotal (used only to derive the effective rate)
   const fullTaxLaar = cart.reduce((sum, item) => {
@@ -477,14 +451,14 @@ export function useCheckout() {
 
   // ── Promo ──────────────────────────────────────────────────────────────────
   const handleApplyPromo = async () => {
-    if (!token) { setPromoError("Please sign in first."); return; }
+    if (!isAuthenticated) { setPromoError("Please sign in first."); return; }
     setPromoError("");
     setPromoLoading(true);
     if (!pendingOrderId) {
       // No order yet — validate the code and compute an estimated discount so
       // the customer sees the saving before they pay.
       try {
-        const validation = await validatePromoCode(promoCode.trim().toUpperCase(), token);
+        const validation = await validatePromoCode(promoCode.trim().toUpperCase());
         if (!validation.valid || !validation.promotion) {
           setPromoError(validation.message ?? "Invalid promo code.");
           return;
@@ -507,7 +481,7 @@ export function useCheckout() {
       return;
     }
     try {
-      const res = await applyPromoCode(token, pendingOrderId, promoCode.trim().toUpperCase());
+      const res = await applyPromoCode(pendingOrderId, promoCode.trim().toUpperCase());
       setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: res.discount_laar, promotionId: res.promotion_id });
       setPromoCode("");
     } catch (e) {
@@ -532,7 +506,7 @@ export function useCheckout() {
   };
 
   const handleApplyGiftCard = async () => {
-    if (!token) { setGiftCardError("Please sign in first."); return; }
+    if (!isAuthenticated) { setGiftCardError("Please sign in first."); return; }
     if (!giftCardCode.trim()) return;
 
     if (!pendingOrderId) {
@@ -552,7 +526,7 @@ export function useCheckout() {
     }
     setGiftCardError(""); setGiftCardLoading(true);
     try {
-      const res = await applyGiftCard(token, pendingOrderId, giftCardCode.trim().toUpperCase());
+      const res = await applyGiftCard(pendingOrderId, giftCardCode.trim().toUpperCase());
       setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: res.discount_laar });
       setGiftCardCode("");
     } catch (e) {
@@ -563,9 +537,9 @@ export function useCheckout() {
   };
 
   const handleRemoveGiftCard = async () => {
-    if (token && pendingOrderId && giftCardApplied && !giftCardApplied.pending) {
+    if (isAuthenticated && pendingOrderId && giftCardApplied && !giftCardApplied.pending) {
       try {
-        await removeGiftCard(token, pendingOrderId);
+        await removeGiftCard(pendingOrderId);
       } catch (e) {
         setGiftCardError((e as Error).message);
         return;
@@ -577,7 +551,7 @@ export function useCheckout() {
   };
 
   const handleApplyFriendReferral = async () => {
-    if (!token) { setFriendReferralError("Please sign in first."); return; }
+    if (!isAuthenticated) { setFriendReferralError("Please sign in first."); return; }
     const raw = friendReferralCode.trim().toUpperCase();
     if (!raw) return;
     if (myReferralCode && raw === myReferralCode.toUpperCase()) {
@@ -618,7 +592,7 @@ export function useCheckout() {
     setFriendReferralError("");
     setFriendReferralLoading(true);
     try {
-      const res = await applyReferralToOrder(token, pendingOrderId, raw);
+      const res = await applyReferralToOrder(pendingOrderId, raw);
       setFriendReferralApplied({ code: res.code, discountLaar: res.discount_laar });
       setFriendReferralCode("");
     } catch (e) {
@@ -630,9 +604,9 @@ export function useCheckout() {
   };
 
   const handleRemoveFriendReferral = async () => {
-    if (token && pendingOrderId && friendReferralApplied && !friendReferralApplied.pending) {
+    if (isAuthenticated && pendingOrderId && friendReferralApplied && !friendReferralApplied.pending) {
       try {
-        await removeReferralFromOrder(token, pendingOrderId);
+        await removeReferralFromOrder(pendingOrderId);
       } catch (e) {
         setFriendReferralError((e as Error).message);
         return;
@@ -643,9 +617,9 @@ export function useCheckout() {
   };
 
   const handleRemovePromo = async () => {
-    if (token && pendingOrderId && promoApplied?.promotionId && !promoApplied.pending) {
+    if (isAuthenticated && pendingOrderId && promoApplied?.promotionId && !promoApplied.pending) {
       try {
-        await removePromoCode(token, pendingOrderId, promoApplied.promotionId);
+        await removePromoCode(pendingOrderId, promoApplied.promotionId);
       } catch (e) {
         setPromoError((e as Error).message);
         return;
@@ -682,7 +656,7 @@ export function useCheckout() {
 
   // ── Place order + Pay ──────────────────────────────────────────────────────
   const handlePlaceAndPay = async () => {
-    if (!token) { setGlobalError('Please sign in to continue.'); return; }
+    if (!isAuthenticated) { setGlobalError('Please sign in to continue.'); return; }
     if (isPlacing) return; // prevent double-submission
     if (orderType === "delivery" && !validateDelivery()) return;
 
@@ -697,7 +671,7 @@ export function useCheckout() {
       if (pendingOrderId) {
         orderId = pendingOrderId;
       } else if (orderType === "delivery") {
-        const res = await createDeliveryOrder(token, {
+        const res = await createDeliveryOrder({
           items: cart.map((item) => ({
             item_id: item.id,
             quantity: item.quantity,
@@ -717,7 +691,7 @@ export function useCheckout() {
         });
         orderId = res.order.id;
       } else {
-        const res = await createCustomerOrder(token, {
+        const res = await createCustomerOrder({
           items: cart.map((item) => ({
             item_id: item.id,
             quantity: item.quantity,
@@ -739,7 +713,7 @@ export function useCheckout() {
 
       if (promoToApply && (!promoApplied || promoApplied.pending)) {
         try {
-          const promoRes = await applyPromoCode(token, orderId, promoToApply);
+          const promoRes = await applyPromoCode(orderId, promoToApply);
           setPromoApplied({ code: promoToApply, discountLaar: promoRes.discount_laar, promotionId: promoRes.promotion_id });
           setPromoCode("");
         } catch (e) {
@@ -768,14 +742,14 @@ export function useCheckout() {
         }
 
         try {
-          const preview = await previewLoyaltyHold(token, orderId, pointsToRedeem);
+          const preview = await previewLoyaltyHold(orderId, pointsToRedeem);
           pointsToRedeem = preview.points;
           if (pointsToRedeem < loyaltyRates.minRedeemPoints) {
             setGlobalError('Loyalty discount cannot be applied to this order total.');
             setIsPlacing(false);
             return;
           }
-          await createLoyaltyHold(token, orderId, pointsToRedeem);
+          await createLoyaltyHold(orderId, pointsToRedeem);
         } catch (e) {
           setGlobalError("Could not apply loyalty points: " + (e as Error).message);
           setIsPlacing(false);
@@ -786,7 +760,7 @@ export function useCheckout() {
       const giftCardToApply = giftCardApplied?.pending ? giftCardApplied.code : (giftCardCode.trim().toUpperCase() || null);
       if (giftCardToApply && (!giftCardApplied || giftCardApplied.pending)) {
         try {
-          const gcRes = await applyGiftCard(token, orderId, giftCardToApply);
+          const gcRes = await applyGiftCard(orderId, giftCardToApply);
           setGiftCardApplied({ code: giftCardToApply, discountLaar: gcRes.discount_laar });
           setGiftCardCode("");
         } catch (e) {
@@ -802,7 +776,7 @@ export function useCheckout() {
       if (referralToApply && (!friendReferralApplied || friendReferralApplied.pending)) {
         if (!myReferralCode || referralToApply !== myReferralCode.toUpperCase()) {
           try {
-            const refRes = await applyReferralToOrder(token, orderId, referralToApply);
+            const refRes = await applyReferralToOrder(orderId, referralToApply);
             setFriendReferralApplied({ code: refRes.code, discountLaar: refRes.discount_laar });
             setFriendReferralCode("");
           } catch (e) {
@@ -814,14 +788,14 @@ export function useCheckout() {
         }
       }
 
-      const { order: freshOrder } = await getOrderDetail(token, orderId);
+      const { order: freshOrder } = await getOrderDetail(orderId);
       const dueLaar =
         typeof freshOrder.total_laar === "number"
           ? freshOrder.total_laar
           : Math.round(Number(freshOrder.total) * 100);
 
       if (dueLaar <= 0) {
-        await completeZeroBalanceOrder(token, orderId);
+        await completeZeroBalanceOrder(orderId);
         try {
           const historyKey = 'bakegrill_order_history';
           const existing = JSON.parse(localStorage.getItem(historyKey) ?? '[]');
@@ -840,7 +814,7 @@ export function useCheckout() {
         return;
       }
 
-      const payment = await initiateOnlinePayment(token, orderId);
+      const payment = await initiateOnlinePayment(orderId);
       if (!payment.payment_url) {
         throw new Error("Payment could not be started. Please try again in a moment.");
       }
@@ -875,19 +849,13 @@ export function useCheckout() {
     }
   };
 
-  const handleAuthSuccess = (tok: string, name: string) => {
-    localStorage.setItem("online_token", tok);
-    localStorage.setItem("online_customer_name", name);
-    window.dispatchEvent(new Event("auth_change"));
-    setToken(tok);
+  const handleAuthSuccess = (name: string) => {
+    setAuth(name);
     setCustomerName(name);
-    // Establish a Blade session so the token can be recovered if localStorage
-    // is cleared by the mobile browser during a cross-origin redirect (e.g. BML payment).
-    syncBladeSession(tok).catch(() => {});
   };
 
   return {
-    cart, token, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
+    cart, isAuthenticated, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, pickupSlotAt, setPickupSlotAt, delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,

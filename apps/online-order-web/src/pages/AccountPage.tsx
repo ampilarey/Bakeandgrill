@@ -4,7 +4,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
 import {
   getCustomerMe, updateCustomerProfile, changeCustomerPassword,
-  revokeCustomerToken, logoutCustomerWebSession, getLoyaltyAccount,
+  getLoyaltyAccount,
   getMyReservations, cancelMyReservation, getMyFavourites,
   getMyPreOrders, getMyReviews, submitReview, fetchCustomerOrders,
   getMyReferralCode,
@@ -93,7 +93,7 @@ const TIER_COLOR: Record<string, { bg: string; text: string; border: string }> =
 export function AccountPage() {
   usePageTitle('My Account');
   const navigate = useNavigate();
-  const { token, authReady, setAuth, clearAuth, customerName } = useAuth();
+  const { isAuthenticated, authReady, setAuth, clearAuth, customerName } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals' | 'credit' | 'deposit'>('profile');
 
@@ -183,9 +183,9 @@ export function AccountPage() {
   const [addressMsg, setAddressMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   useEffect(() => {
-    if (!authReady || !token) return;
+    if (!authReady || !isAuthenticated) return;
     setLoadingProfile(true);
-    getCustomerMe(token)
+    getCustomerMe()
       .then((res) => {
         setCustomer(res.customer as AuthCustomer);
         setProfileForm({
@@ -196,47 +196,47 @@ export function AccountPage() {
       })
       .catch((e: Error) => setProfileMsg({ type: 'error', text: e.message || 'Failed to load profile.' }))
       .finally(() => setLoadingProfile(false));
-    getLoyaltyAccount(token)
+    getLoyaltyAccount()
       .then(({ account, tier_progress }) => {
         setLoyalty(account);
         if (tier_progress) setLoyaltyTierProgress(tier_progress);
       })
       .catch((e: Error) => setLoyaltyError(e.message || 'Failed to load loyalty account.'));
-  }, [token, authReady]);
+  }, [isAuthenticated, authReady]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'reservations' || reservations.length > 0) return;
+    if (!authReady || !isAuthenticated || activeTab !== 'reservations' || reservations.length > 0) return;
     setReservationsLoading(true);
-    getMyReservations(token)
+    getMyReservations()
       .then((res) => setReservations(res.data ?? []))
       .catch((e: Error) => setReservationsError(e.message || 'Failed to load reservations.'))
       .finally(() => setReservationsLoading(false));
-  }, [token, authReady, activeTab]);
+  }, [isAuthenticated, authReady, activeTab]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'favourites') return;
+    if (!authReady || !isAuthenticated || activeTab !== 'favourites') return;
     setFavouritesLoading(true);
-    getMyFavourites(token)
+    getMyFavourites()
       .then((res) => setFavourites(res.data ?? []))
       .catch((e: Error) => setFavouritesError(e.message || 'Failed to load favourites.'))
       .finally(() => setFavouritesLoading(false));
-  }, [token, authReady, activeTab]);
+  }, [isAuthenticated, authReady, activeTab]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'preorders' || preOrders.length > 0) return;
+    if (!authReady || !isAuthenticated || activeTab !== 'preorders' || preOrders.length > 0) return;
     setPreOrdersLoading(true);
-    getMyPreOrders(token)
+    getMyPreOrders()
       .then((res) => setPreOrders(res.data ?? []))
       .catch((e: Error) => setPreOrdersError(e.message || 'Failed to load pre-orders.'))
       .finally(() => setPreOrdersLoading(false));
-  }, [token, authReady, activeTab]);
+  }, [isAuthenticated, authReady, activeTab]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'reviews') return;
+    if (!authReady || !isAuthenticated || activeTab !== 'reviews') return;
     setReviewsLoading(true);
     Promise.all([
-      getMyReviews(token, { page: reviewsPage, per_page: 20 }),
-      fetchCustomerOrders(token),
+      getMyReviews({ page: reviewsPage, per_page: 20 }),
+      fetchCustomerOrders(),
     ])
       .then(([reviewRes, orderRes]) => {
         const myReviews = reviewRes.data ?? [];
@@ -249,30 +249,30 @@ export function AccountPage() {
       })
       .catch((e: Error) => setReviewsError(e.message || 'Failed to load reviews.'))
       .finally(() => setReviewsLoading(false));
-  }, [token, authReady, activeTab, reviewsPage]);
+  }, [isAuthenticated, authReady, activeTab, reviewsPage]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'referrals' || referralCode !== null) return;
+    if (!authReady || !isAuthenticated || activeTab !== 'referrals' || referralCode !== null) return;
     setReferralLoading(true);
-    getMyReferralCode(token)
+    getMyReferralCode()
       .then((r) => { setReferralCode(r.code); setReferralUses(r.uses_count); setReferralDiscount(r.referee_discount_mvr); })
       .catch((e: Error) => setReferralError(e.message || 'Failed to load referral code.'))
       .finally(() => setReferralLoading(false));
-  }, [token, authReady, activeTab]);
+  }, [isAuthenticated, authReady, activeTab]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'credit' || creditLoaded) return;
+    if (!authReady || !isAuthenticated || activeTab !== 'credit' || creditLoaded) return;
     setCreditLoading(true);
-    getCustomerCredit(token)
+    getCustomerCredit()
       .then((res) => { setCredit(res.credit); setCreditLoaded(true); })
       .catch((e: Error) => setCreditError(e.message || 'Failed to load credit account.'))
       .finally(() => setCreditLoading(false));
-  }, [token, authReady, activeTab, creditLoaded]);
+  }, [isAuthenticated, authReady, activeTab, creditLoaded]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'deposit' || depositLoaded) return;
+    if (!authReady || !isAuthenticated || activeTab !== 'deposit' || depositLoaded) return;
     setDepositLoading(true);
-    getCustomerDepositLedger(token)
+    getCustomerDepositLedger()
       .then((res) => {
         setDeposit(res.deposit);
         setDepositTransactions(res.transactions ?? []);
@@ -280,24 +280,24 @@ export function AccountPage() {
       })
       .catch((e: Error) => setDepositError(e.message || 'Failed to load deposit account.'))
       .finally(() => setDepositLoading(false));
-  }, [token, authReady, activeTab, depositLoaded]);
+  }, [isAuthenticated, authReady, activeTab, depositLoaded]);
 
   useEffect(() => {
-    if (!authReady || !token || activeTab !== 'addresses' || addressesLoaded) return;
+    if (!authReady || !isAuthenticated || activeTab !== 'addresses' || addressesLoaded) return;
     setAddressesLoading(true);
-    fetchCustomerAddresses(token)
+    fetchCustomerAddresses()
       .then((res) => setAddresses(res.addresses ?? []))
       .catch((e: Error) => setAddressesError(e.message || 'Failed to load addresses.'))
       .finally(() => {
         setAddressesLoading(false);
         setAddressesLoaded(true);
       });
-  }, [token, authReady, activeTab, addressesLoaded]);
+  }, [isAuthenticated, authReady, activeTab, addressesLoaded]);
 
   const reloadAddresses = () => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     setAddressesLoading(true);
-    fetchCustomerAddresses(token)
+    fetchCustomerAddresses()
       .then((res) => setAddresses(res.addresses ?? []))
       .catch((e: Error) => setAddressesError(e.message || 'Failed to load addresses.'))
       .finally(() => setAddressesLoading(false));
@@ -338,7 +338,7 @@ export function AccountPage() {
   };
 
   const handleSaveAddress = async () => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     if (!addressForm.address_line1.trim() || !addressForm.island.trim()
       || !addressForm.contact_name.trim() || !addressForm.contact_phone.trim()) {
       setAddressMsg({ type: 'error', text: 'Please fill in address, island, contact name, and phone.' });
@@ -359,9 +359,9 @@ export function AccountPage() {
         is_default: addressForm.is_default,
       };
       if (editingAddressId) {
-        await updateCustomerAddress(token, editingAddressId, payload);
+        await updateCustomerAddress(editingAddressId, payload);
       } else {
-        await createCustomerAddress(token, payload);
+        await createCustomerAddress(payload);
       }
       setShowAddressForm(false);
       setEditingAddressId(null);
@@ -375,9 +375,9 @@ export function AccountPage() {
   };
 
   const handleDeleteAddress = async (id: number) => {
-    if (!token || !window.confirm('Delete this address?')) return;
+    if (!isAuthenticated || !window.confirm('Delete this address?')) return;
     try {
-      await deleteCustomerAddress(token, id);
+      await deleteCustomerAddress(id);
       reloadAddresses();
     } catch (e) {
       setAddressesError((e as Error).message || 'Could not delete address.');
@@ -385,22 +385,22 @@ export function AccountPage() {
   };
 
   const handleSetDefaultAddress = async (id: number) => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     try {
-      await setDefaultCustomerAddress(token, id);
+      await setDefaultCustomerAddress(id);
       reloadAddresses();
     } catch (e) {
       setAddressesError((e as Error).message || 'Could not set default address.');
     }
   };
 
-  const handleAuthSuccess = (tok: string, name: string) => setAuth(tok, name);
+  const handleAuthSuccess = (name: string) => setAuth(name);
 
   const handleCancelReservation = async (id: number) => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     setCancellingId(id);
     try {
-      await cancelMyReservation(token, id);
+      await cancelMyReservation(id);
       setReservations((prev) => prev.map((r) => r.id === id ? { ...r, status: 'cancelled' } : r));
     } catch (e) {
       setReservationsError((e as Error).message || 'Could not cancel reservation.');
@@ -409,23 +409,16 @@ export function AccountPage() {
     }
   };
 
-  const handleLogout = async () => {
-    const currentToken = token;
+  const handleLogout = () => {
     clearAuth();
     navigate('/');
-    try {
-      if (currentToken) await revokeCustomerToken(currentToken);
-      await logoutCustomerWebSession();
-    } catch {
-      /* ignore — local state already cleared */
-    }
   };
 
   const handleSaveProfile = async () => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     setSavingProfile(true); setProfileMsg(null);
     try {
-      const res = await updateCustomerProfile(token, {
+      const res = await updateCustomerProfile({
         name: profileForm.name || undefined,
         email: profileForm.email || undefined,
         date_of_birth: profileForm.date_of_birth || null,
@@ -440,7 +433,7 @@ export function AccountPage() {
   };
 
   const handleChangePassword = async () => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     if (!pwForm.current_password || !pwForm.new_password) {
       setPwMsg({ type: 'error', text: 'Please fill in all password fields.' });
       return;
@@ -455,7 +448,7 @@ export function AccountPage() {
     }
     setSavingPw(true); setPwMsg(null);
     try {
-      await changeCustomerPassword(token, {
+      await changeCustomerPassword({
         current_password: pwForm.current_password,
         new_password: pwForm.new_password,
       });
@@ -476,7 +469,7 @@ export function AccountPage() {
     );
   }
 
-  if (!token) {
+  if (!isAuthenticated) {
     return (
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '2rem var(--page-gutter)' }}>
         <div style={{ marginBottom: '1.5rem' }}>
@@ -997,16 +990,16 @@ export function AccountPage() {
                 <button
                   disabled={submittingReview}
                   onClick={async () => {
-                    if (!token || !reviewOrderId) return;
+                    if (!isAuthenticated || !reviewOrderId) return;
                     setSubmittingReview(true); setReviewSubmitError('');
                     try {
-                      await submitReview(token, { order_id: reviewOrderId, rating: reviewRating, comment: reviewComment, is_anonymous: reviewAnon });
+                      await submitReview({ order_id: reviewOrderId, rating: reviewRating, comment: reviewComment, is_anonymous: reviewAnon });
                       setShowReviewForm(false);
                       setReviewableOrders((rs) => rs.filter((o) => o.id !== reviewOrderId));
                       // Force refresh reviews list
                       setReviews([]);
                       setReviewsLoading(true);
-                      getMyReviews(token, { page: 1, per_page: 20 }).then((res) => {
+                      getMyReviews({ page: 1, per_page: 20 }).then((res) => {
                         setReviews(res.data);
                         setReviewsTotalPages(res.meta?.last_page ?? 1);
                         setReviewsPage(1);
@@ -1263,13 +1256,13 @@ export function AccountPage() {
                   <input
                     type="checkbox"
                     checked={credit.reminder_sms_enabled}
-                    disabled={reminderSaving || !token}
+                    disabled={reminderSaving || !isAuthenticated}
                     onChange={(e) => {
-                      if (!token) return;
+                      if (!isAuthenticated) return;
                       const enabled = e.target.checked;
                       setReminderSaving(true);
                       setCreditError('');
-                      updateCustomerCreditPreferences(token, { credit_reminder_sms: enabled })
+                      updateCustomerCreditPreferences({ credit_reminder_sms: enabled })
                         .then((res) => setCredit(res.credit))
                         .catch((err: Error) => setCreditError(err.message || 'Failed to update reminder preference.'))
                         .finally(() => setReminderSaving(false));

@@ -24,7 +24,7 @@ type Props = {
 
 export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { cart, cartTotal, updateQuantity, addItem } = useCart();
   const { t } = useLanguage();
   const s = useSiteSettings();
@@ -36,14 +36,14 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const hasFetched = useRef(false);
 
   useEffect(() => {
-    if (!token) {
+    if (!isAuthenticated) {
       setFavouriteIds(new Set());
       return;
     }
-    getMyFavourites(token)
+    getMyFavourites()
       .then((res) => setFavouriteIds(new Set((res.data ?? []).map((f) => f.id))))
       .catch(() => { /* non-fatal */ });
-  }, [token]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -59,13 +59,13 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   }, [cart.length]);
 
   const handleToggleFavourite = (itemId: number) => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     setFavouriteIds((prev) => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
       return next;
     });
-    toggleFavourite(token, itemId).catch(() => {
+    toggleFavourite(itemId).catch(() => {
       setFavouriteIds((prev) => {
         const next = new Set(prev);
         if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
@@ -75,12 +75,12 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   };
 
   useEffect(() => {
-    if (!token || cart.length === 0) {
+    if (!isAuthenticated || cart.length === 0) {
       setEarnRatePerMvr(1);
       return;
     }
     let cancelled = false;
-    getLoyaltyAccount(token)
+    getLoyaltyAccount()
       .then((res) => {
         if (!cancelled && (res.program?.enabled ?? true)) {
           setEarnRatePerMvr(res.rates?.earn_per_mvr ?? 1);
@@ -88,12 +88,12 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
       })
       .catch(() => { /* non-fatal */ });
     return () => { cancelled = true; };
-  }, [token, cart.length]);
+  }, [isAuthenticated, cart.length]);
 
   const earnPreviewPoints = useMemo(() => {
-    if (!token || cart.length === 0) return 0;
+    if (!isAuthenticated || cart.length === 0) return 0;
     return estimateEarnPointsForSubtotalMvr(cartTotal, earnRatePerMvr);
-  }, [token, cart.length, cartTotal, earnRatePerMvr]);
+  }, [isAuthenticated, cart.length, cartTotal, earnRatePerMvr]);
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -162,7 +162,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                       </span>
                     )}
                   </p>
-                  {token && (
+                  {isAuthenticated && (
                     <button
                       type="button"
                       onClick={() => handleToggleFavourite(entry.item.id)}

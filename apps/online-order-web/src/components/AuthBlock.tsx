@@ -23,18 +23,13 @@ type Step =
   | "profile_setup";
 
 type Props = {
-  onSuccess: (token: string, name: string) => void;
+  onSuccess: (name: string) => void;
   skipProfileSetup?: boolean;
 };
 
-function persistAuth(token: string, customer: AuthCustomer) {
-  // Show phone without +960 prefix (e.g. "7972434") — shorter than full name in header
+function displayName(customer: AuthCustomer): string {
   const stripped = (customer.phone ?? "").replace(/^\+?960/, "").replace(/\D/g, "");
-  const display = stripped.length === 7 ? stripped : (customer.name ?? customer.phone ?? "");
-  localStorage.setItem("online_token", token);
-  if (display) localStorage.setItem("online_customer_name", display);
-  window.dispatchEvent(new Event("auth_change"));
-  return display;
+  return stripped.length === 7 ? stripped : (customer.name ?? customer.phone ?? "");
 }
 
 export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
@@ -48,25 +43,17 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Profile setup fields
   const [setupName, setSetupName]   = useState("");
   const [setupEmail, setSetupEmail] = useState("");
   const [setupPwd, setSetupPwd]     = useState("");
   const [setupPwdConfirm, setSetupPwdConfirm] = useState("");
 
-  // Stored mid-flow so profile setup can finish auth
-  const [pendingToken, setPendingToken]     = useState("");
   const [pendingCustomer, setPendingCustomer] = useState<AuthCustomer | null>(null);
 
-  // Reset form state
   const [resetOtp, setResetOtp]     = useState("");
   const [newPwd, setNewPwd]         = useState("");
   const [newPwdConfirm, setNewPwdConfirm] = useState("");
 
-  // ONL-006: Resend OTP with 30s lockout. Without a cooldown,
-  // customers tapped Resend repeatedly thinking the SMS was lost,
-  // and ended up with multiple codes (only the latest valid one)
-  // arriving out of order — plus we burned through the SMS quota.
   const [resendIn, setResendIn] = useState(0);
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -116,16 +103,13 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     setLoading(true);
     try {
       const res = await guestSession({ phone, name: guestName.trim() });
-      const name = persistAuth(res.token, res.customer);
-      onSuccess(res.token, name);
+      onSuccess(displayName(res.customer));
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
   };
-
-  // ── Step 2a: password login ───────────────────────────────────────────────
 
   const handlePasswordLogin = async () => {
     setError("");
@@ -133,12 +117,10 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     try {
       const res = await passwordLogin({ phone, password });
       if (!res.customer.is_profile_complete) {
-        setPendingToken(res.token);
         setPendingCustomer(res.customer);
         go("profile_setup");
       } else {
-        const name = persistAuth(res.token, res.customer);
-        onSuccess(res.token, name);
+        onSuccess(displayName(res.customer));
       }
     } catch (e) {
       setError((e as Error).message);
@@ -146,8 +128,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
       setLoading(false);
     }
   };
-
-  // ── Step 2b: OTP verify ───────────────────────────────────────────────────
 
   const handleVerifyOtp = async () => {
     setError("");
@@ -155,12 +135,10 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     try {
       const res = await verifyOtp({ phone, otp });
       if (!res.customer.is_profile_complete && !skipProfileSetup) {
-        setPendingToken(res.token);
         setPendingCustomer(res.customer);
         go("profile_setup");
       } else {
-        const name = persistAuth(res.token, res.customer);
-        onSuccess(res.token, name);
+        onSuccess(displayName(res.customer));
       }
     } catch (e) {
       setError((e as Error).message);
@@ -169,32 +147,27 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     }
   };
 
-  // ── Step 3 (conditional): profile setup ──────────────────────────────────
-
   const handleCompleteProfile = async () => {
-    if (!pendingToken || !pendingCustomer) return;
+    if (!pendingCustomer) return;
     if (setupPwd !== setupPwdConfirm) { setError("Passwords don't match."); return; }
 
     setError("");
     setLoading(true);
     try {
-      const res = await completeProfile(pendingToken, {
+      const res = await completeProfile({
         name: setupName.trim(),
         email: setupEmail.trim() || undefined,
         password: setupPwd,
         password_confirmation: setupPwdConfirm,
       });
       const updated = { ...pendingCustomer, ...res.customer };
-      const name = persistAuth(pendingToken, updated);
-      onSuccess(pendingToken, name);
+      onSuccess(displayName(updated));
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
   };
-
-  // ── Forgot password flow ──────────────────────────────────────────────────
 
   const handleForgotRequest = async () => {
     setError("");
@@ -221,8 +194,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         password: newPwd,
         password_confirmation: newPwdConfirm,
       });
-      const name = persistAuth(res.token, res.customer);
-      onSuccess(res.token, name);
+      onSuccess(displayName(res.customer));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -230,11 +202,8 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div style={S.card}>
-      {/* ── Phone entry ─────────────────────────────────── */}
       {step === "phone" && (
         <>
           <h2 style={S.title}>Your phone number</h2>
@@ -259,7 +228,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         </>
       )}
 
-      {/* ── Guest checkout (name + phone) ───────────────── */}
       {step === "guest" && (
         <>
           <h2 style={S.title}>Guest checkout</h2>
@@ -288,7 +256,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         </>
       )}
 
-      {/* ── Password login ──────────────────────────────── */}
       {step === "password" && (
         <>
           <h2 style={S.title}>Welcome back</h2>
@@ -316,7 +283,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         </>
       )}
 
-      {/* ── OTP verification ────────────────────────────── */}
       {step === "otp" && (
         <>
           <h2 style={S.title}>Enter the code we sent</h2>
@@ -346,7 +312,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         </>
       )}
 
-      {/* ── Profile setup (first time) ──────────────────── */}
       {step === "profile_setup" && (
         <>
           <h2 style={S.title}>One last step</h2>
@@ -372,9 +337,8 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
           <button
             style={{ ...S.ghostBtn, marginTop: "0.25rem" }}
             onClick={() => {
-              if (!pendingToken || !pendingCustomer) return;
-              const name = persistAuth(pendingToken, pendingCustomer);
-              onSuccess(pendingToken, name);
+              if (!pendingCustomer) return;
+              onSuccess(displayName(pendingCustomer));
             }}
           >
             Skip for now — go to checkout
@@ -382,7 +346,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         </>
       )}
 
-      {/* ── Forgot password: phone ───────────────────────── */}
       {step === "forgot_phone" && (
         <>
           <h2 style={S.title}>Reset your password</h2>
@@ -402,7 +365,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         </>
       )}
 
-      {/* ── Forgot password: OTP ─────────────────────────── */}
       {step === "forgot_otp" && (
         <>
           <h2 style={S.title}>Enter the code</h2>
@@ -432,7 +394,6 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
         </>
       )}
 
-      {/* ── Forgot password: set new password ───────────── */}
       {step === "reset_password" && (
         <>
           <h2 style={S.title}>New password</h2>

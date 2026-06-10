@@ -26,52 +26,39 @@ export type CustomerAddressInput = {
   is_default?: boolean;
 };
 
-function authHeaders(token: string): HeadersInit {
-  return { Authorization: `Bearer ${token}` };
-}
-
-export async function fetchCustomerAddresses(token: string): Promise<{ addresses: CustomerAddress[] }> {
-  return request<{ addresses: CustomerAddress[] }>(ENDPOINTS.CUSTOMER_ADDRESSES, {
-    headers: authHeaders(token),
-  });
+export async function fetchCustomerAddresses(): Promise<{ addresses: CustomerAddress[] }> {
+  return request<{ addresses: CustomerAddress[] }>(ENDPOINTS.CUSTOMER_ADDRESSES);
 }
 
 export async function createCustomerAddress(
-  token: string,
   data: CustomerAddressInput,
 ): Promise<{ address: CustomerAddress }> {
   return request<{ address: CustomerAddress }>(ENDPOINTS.CUSTOMER_ADDRESSES, {
     method: 'POST',
-    headers: authHeaders(token),
     body: JSON.stringify(data),
   });
 }
 
 export async function updateCustomerAddress(
-  token: string,
   id: number,
   data: Partial<CustomerAddressInput>,
 ): Promise<{ address: CustomerAddress }> {
   return request<{ address: CustomerAddress }>(ENDPOINTS.CUSTOMER_ADDRESS_BY_ID(id), {
     method: 'PATCH',
-    headers: authHeaders(token),
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteCustomerAddress(token: string, id: number): Promise<{ message: string }> {
+export async function deleteCustomerAddress(id: number): Promise<{ message: string }> {
   return request<{ message: string }>(ENDPOINTS.CUSTOMER_ADDRESS_BY_ID(id), {
     method: 'DELETE',
-    headers: authHeaders(token),
   });
 }
 
 export async function setDefaultCustomerAddress(
-  token: string,
   id: number,
 ): Promise<{ address: CustomerAddress }> {
   return request<{ address: CustomerAddress }>(ENDPOINTS.CUSTOMER_ADDRESS_DEFAULT(id), {
     method: 'POST',
-    headers: authHeaders(token),
   });
 }

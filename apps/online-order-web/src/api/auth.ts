@@ -1,10 +1,14 @@
 // ── Customer Authentication ────────────────────────────────────────────────────
 import { ENDPOINTS } from '@shared/api';
 import type { Customer } from '@shared/types';
-import { API_BASE_URL, API_ORIGIN, request } from './client';
+import { API_ORIGIN, ensureCsrfCookie, request } from './client';
 
 export type AuthCustomer = Customer & { is_profile_complete: boolean };
-export type AuthResponse = { token: string; customer: AuthCustomer; is_new_customer?: boolean };
+export type AuthResponse = {
+  customer: AuthCustomer;
+  is_new_customer?: boolean;
+  message?: string;
+};
 
 function readCookie(name: string): string | null {
   const m = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
@@ -12,52 +16,23 @@ function readCookie(name: string): string | null {
   return decodeURIComponent(m.split('=').slice(1).join('='));
 }
 
-/**
- * Establish a Blade web session from a Sanctum Bearer token.
- * Call after every React login so the main website header shows "Hi, [phone]".
- */
-export async function syncBladeSession(token: string): Promise<void> {
-  if (typeof window === 'undefined') return;
-  await fetch(`${API_ORIGIN}/customer/sync-session`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-      'X-Requested-With': 'XMLHttpRequest',
-    },
-  });
-}
-
-/**
- * Revoke the current Sanctum Bearer token.
- * Call before clearing localStorage so the old token stops working immediately.
- */
-export async function revokeCustomerToken(token: string): Promise<void> {
-  if (!token) return;
+/** End the API customer session (HttpOnly session cookie). */
+export async function logoutCustomerSession(): Promise<void> {
   try {
-    await fetch(`${API_BASE_URL}/auth/customer/logout`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-    });
+    await request<void>('/auth/customer/logout', { method: 'POST' });
   } catch {
-    /* token may already be gone */
+    /* session may already be gone */
   }
 }
 
 /**
  * Invalidate the Blade customer web session so the main site header
- * shows "Login" instead of the phone number after sign-out.
+ * shows "Login" after sign-out from the order app.
  */
 export async function logoutCustomerWebSession(): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
-    await fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, { method: 'GET', credentials: 'include' });
+    await ensureCsrfCookie();
   } catch { /* cookie may already exist */ }
   const xsrf = readCookie('XSRF-TOKEN');
   const headers: Record<string, string> = {
@@ -99,34 +74,28 @@ export async function resetPassword(payload: {
 }
 
 export async function completeProfile(
-  token: string,
   payload: { name: string; email?: string; password: string; password_confirmation: string },
 ): Promise<{ customer: AuthCustomer }> {
   return request(ENDPOINTS.CUSTOMER_COMPLETE_PROFILE, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
 }
 
 export async function updateCustomerProfile(
-  token: string,
   data: { name?: string; email?: string; date_of_birth?: string | null },
 ): Promise<{ customer: AuthCustomer }> {
   return request(ENDPOINTS.CUSTOMER_PROFILE, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data),
   });
 }
 
 export async function changeCustomerPassword(
-  token: string,
   data: { current_password: string; new_password: string },
 ): Promise<void> {
   await request(ENDPOINTS.CUSTOMER_CHANGE_PASSWORD, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       current_password: data.current_password,
       password: data.new_password,
@@ -135,8 +104,8 @@ export async function changeCustomerPassword(
   });
 }
 
-export async function getCustomerMe(token: string): Promise<{ customer: AuthCustomer }> {
-  return request(ENDPOINTS.CUSTOMER_ME, { headers: { Authorization: `Bearer ${token}` } });
+export async function getCustomerMe(): Promise<{ customer: AuthCustomer }> {
+  return request(ENDPOINTS.CUSTOMER_ME);
 }
 
 export async function guestSession(payload: { phone: string; name: string }): Promise<AuthResponse> {

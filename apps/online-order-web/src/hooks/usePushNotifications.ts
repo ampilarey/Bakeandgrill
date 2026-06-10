@@ -25,13 +25,12 @@ async function fetchVapidKey(): Promise<string> {
   }
 }
 
-export function usePushNotifications(token: string | null) {
+export function usePushNotifications(isAuthenticated: boolean) {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [vapidKey, setVapidKey] = useState<string>("");
 
-  // Check browser support and load VAPID key
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
@@ -43,7 +42,6 @@ export function usePushNotifications(token: string | null) {
     });
   }, []);
 
-  // Check if already subscribed
   useEffect(() => {
     if (!supported) return;
     void navigator.serviceWorker.ready.then(async (reg) => {
@@ -53,7 +51,7 @@ export function usePushNotifications(token: string | null) {
   }, [supported]);
 
   const subscribe = useCallback(async () => {
-    if (!supported || !token || !vapidKey) return;
+    if (!supported || !isAuthenticated || !vapidKey) return;
     setLoading(true);
     try {
       const reg = await navigator.serviceWorker.ready;
@@ -66,10 +64,10 @@ export function usePushNotifications(token: string | null) {
 
       const res = await fetch(`${API_BASE}/push/subscribe`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           endpoint:   sub.endpoint,
@@ -85,7 +83,7 @@ export function usePushNotifications(token: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [supported, token, vapidKey]);
+  }, [supported, isAuthenticated, vapidKey]);
 
   const unsubscribe = useCallback(async () => {
     if (!supported) return;
@@ -96,10 +94,10 @@ export function usePushNotifications(token: string | null) {
       if (sub) {
         await fetch(`${API_BASE}/push/unsubscribe`, {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ endpoint: sub.endpoint }),
         });
@@ -111,7 +109,7 @@ export function usePushNotifications(token: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [supported, token]);
+  }, [supported]);
 
   return { supported, subscribed, loading, subscribe, unsubscribe };
 }

@@ -26,7 +26,8 @@ class Wave12GrowthTest extends TestCase
             'name' => 'Guest User',
         ])
             ->assertOk()
-            ->assertJsonStructure(['token', 'customer' => ['phone', 'name']]);
+            ->assertJsonStructure(['customer' => ['phone', 'name']])
+            ->assertJsonMissing(['token']);
 
         $this->assertDatabaseHas('customers', [
             'phone' => '+9607912345',
