@@ -1,0 +1,484 @@
+import { useState } from 'react';
+import type { MenuCategory, MenuGroupRow, MenuItem } from '../../api';
+import { useGstBootstrap } from '../../hooks/useGstBootstrap';
+import { Btn, ErrorMsg, Input, Modal } from '../../components/Layout';
+import { Field, FormTextarea, ImageUploadField } from './menuFormPrimitives';
+import {
+  emptyVariantRow, SALES_CHANNELS, type ItemForm, type VariantRow,
+} from './menuItemForm';
+import { PhotosTab } from './PhotosTab';
+
+const TAX_CODE_OPTIONS = [
+  { value: 'standard_8', label: 'Standard rated (8%)' },
+  { value: 'zero_rated', label: 'Zero rated' },
+  { value: 'exempt', label: 'Exempt' },
+  { value: 'out_of_scope', label: 'Out of scope' },
+] as const;
+
+function TaxCodeField({
+  value,
+  onChange,
+  bootstrap,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  bootstrap: ReturnType<typeof useGstBootstrap>;
+}) {
+  const displayRate = value === 'standard_8' ? (bootstrap?.tax_rate_percent ?? 8) : 0;
+  return (
+    <Field label="Tax classification">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #E8DDD0', fontSize: 14 }}
+      >
+        {TAX_CODE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.value === 'standard_8'
+              ? `Standard rated (${bootstrap?.tax_rate_percent ?? 8}%)`
+              : o.label}
+          </option>
+        ))}
+      </select>
+      {value === 'standard_8' && (
+        <span style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4, display: 'block' }}>
+          Rate from GST settings: {displayRate}% (read-only)
+        </span>
+      )}
+    </Field>
+  );
+}
+
+function VariantsEditor({
+  rows, onChange,
+}: { rows: VariantRow[]; onChange: (rows: VariantRow[]) => void }) {
+  const update = (key: string, field: keyof VariantRow, val: unknown) =>
+    onChange(rows.map((r) => (r._key === key ? { ...r, [field]: val } : r)));
+
+  const remove = (key: string) => onChange(rows.filter((r) => r._key !== key));
+
+  const addRow = () => onChange([...rows, emptyVariantRow()]);
+
+  const headerStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em',
+  };
+  const cellStyle: React.CSSProperties = { padding: '4px 0' };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Variants</label>
+        <Btn variant="ghost" onClick={addRow} style={{ fontSize: 12, padding: '3px 10px' }}>+ Add variant</Btn>
+      </div>
+      {rows.length === 0 ? (
+        <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
+          No variants yet. Click "+ Add variant" to start.
+        </p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #E8E0D8' }}>
+                <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 100 }}>Name *</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Price *</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Cost</th>
+                <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 90 }}>SKU</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Stock</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Alert at</th>
+                <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Track</th>
+                <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Active</th>
+                <th style={{ paddingBottom: 6, minWidth: 30 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row._key} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                  <td style={cellStyle}>
+                    <input
+                      value={row.name}
+                      onChange={(e) => update(row._key, 'name', e.target.value)}
+                      placeholder="e.g. Large"
+                      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 8px', fontSize: 12 }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={row.price}
+                      onChange={(e) => update(row._key, 'price', parseFloat(e.target.value) || 0)}
+                      style={{ width: 68, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={row.cost ?? ''}
+                      onChange={(e) => update(row._key, 'cost', e.target.value !== '' ? parseFloat(e.target.value) : null)}
+                      placeholder="—"
+                      style={{ width: 68, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      value={row.sku ?? ''}
+                      onChange={(e) => update(row._key, 'sku', e.target.value || null)}
+                      placeholder="optional"
+                      style={{ width: 86, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12 }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="1"
+                      value={row.stock_qty ?? 0}
+                      onChange={(e) => update(row._key, 'stock_qty', parseInt(e.target.value) || 0)}
+                      disabled={!row.track_stock}
+                      style={{ width: 52, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="1"
+                      value={row.low_stock_threshold ?? 5}
+                      onChange={(e) => update(row._key, 'low_stock_threshold', parseInt(e.target.value) || 0)}
+                      disabled={!row.track_stock}
+                      title="Low-stock alert threshold"
+                      style={{ width: 52, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!row.track_stock}
+                      onChange={(e) => update(row._key, 'track_stock', e.target.checked)}
+                      title="Track stock for this variant"
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={row.is_active}
+                      onChange={(e) => update(row._key, 'is_active', e.target.checked)}
+                      title="Active / visible"
+                    />
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => remove(row._key)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
+                      title="Remove variant"
+                    >×</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function MenuItemEditorModal({
+  initial, title, categories, menuGroups, allItems, onSave, onClose, itemId,
+}: {
+  initial: ItemForm;
+  title: string;
+  categories: MenuCategory[];
+  menuGroups: MenuGroupRow[];
+  allItems: MenuItem[];
+  onSave: (f: ItemForm) => Promise<void>;
+  onClose: () => void;
+  itemId?: number;
+}) {
+  const [activeTab, setActiveTab] = useState<'details' | 'photos'>('details');
+  const [form, setForm] = useState<ItemForm>(initial);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const gstBootstrap = useGstBootstrap();
+  const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setError('Item name is required.'); return; }
+    if (!form.has_variants) {
+      const priceNum = parseFloat(form.base_price);
+      if (!form.base_price || !Number.isFinite(priceNum) || priceNum < 0) { setError('Price must be a valid number (0 or more).'); return; }
+    }
+    if (form.has_variants && form.variants.length === 0) { setError('Add at least one variant, or turn off "This product has variants".'); return; }
+    if (form.has_variants && form.variants.some((v) => !v.name.trim())) { setError('All variants must have a name.'); return; }
+    if (form.is_combo && !form.has_variants) {
+      const rows = form.combo_items.filter((row) => row.item_id !== '');
+      if (rows.length === 0) { setError('Add at least one component item for this bundle.'); return; }
+    }
+    if (!form.has_variants && form.track_stock) {
+      const qty = parseInt(form.stock_quantity, 10);
+      if (!Number.isFinite(qty) || qty < 0) { setError('Quantity on hand must be 0 or more.'); return; }
+    }
+    setError(''); setLoading(true);
+    try { await onSave(form); }
+    catch (e) { setError((e as Error).message); }
+    finally { setLoading(false); }
+  };
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    padding: '7px 16px', fontSize: 13, fontWeight: 600, border: 'none',
+    borderBottom: active ? '2px solid #D4813A' : '2px solid transparent',
+    background: 'none', cursor: 'pointer',
+    color: active ? '#D4813A' : '#9C8E7E',
+  });
+
+  return (
+    <Modal title={title} onClose={onClose} maxWidth={640}>
+
+      {itemId && (
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E8E0D8', marginBottom: 20 }}>
+          <button type="button" style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
+          <button type="button" style={tabStyle(activeTab === 'photos')} onClick={() => setActiveTab('photos')}>Photos</button>
+        </div>
+      )}
+
+      {activeTab === 'details' && (
+        <>
+          {error && <ErrorMsg message={error} />}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Name (English) *">
+                <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Chicken Grill" />
+              </Field>
+              <Field label="Name (Dhivehi) — optional">
+                <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
+              </Field>
+            </div>
+            <Field label="Description">
+              <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Describe the item…" />
+            </Field>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Dietary tags">
+                <Input value={form.dietary_tags} onChange={(v) => set('dietary_tags', v)} placeholder="vegetarian, halal, spicy" />
+              </Field>
+              <Field label="Allergens">
+                <Input value={form.allergens} onChange={(v) => set('allergens', v)} placeholder="nuts, dairy, gluten" />
+              </Field>
+            </div>
+            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '-6px 0 0' }}>Comma-separated. Tags appear as menu filters online.</p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: '#F8F6F3', borderRadius: 8, border: '1px solid #E8E0D8' }}>
+              <input
+                type="checkbox"
+                checked={form.has_variants}
+                onChange={(e) => {
+                  set('has_variants', e.target.checked);
+                  if (e.target.checked && form.variants.length === 0) {
+                    set('variants', [emptyVariantRow()]);
+                  }
+                }}
+              />
+              <span style={{ fontWeight: 600 }}>This product has variants</span>
+              <span style={{ color: '#94a3b8', fontWeight: 400 }}>(e.g. sizes, portions)</span>
+            </label>
+
+            {form.has_variants ? (
+              <>
+                <VariantsEditor rows={form.variants} onChange={(rows) => set('variants', rows)} />
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <TaxCodeField value={form.tax_code} onChange={(v) => set('tax_code', v)} bootstrap={gstBootstrap} />
+                  <Field label="Sort Order">
+                    <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
+                  </Field>
+                </div>
+              </>
+            ) : (
+              <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <Field label="Price (MVR) *">
+                  <Input value={form.base_price} onChange={(v) => set('base_price', v)} type="number" placeholder="0.00" />
+                </Field>
+                <TaxCodeField value={form.tax_code} onChange={(v) => set('tax_code', v)} bootstrap={gstBootstrap} />
+                <Field label="Sort Order">
+                  <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
+                </Field>
+              </div>
+            )}
+
+            {!form.has_variants && (
+              <div style={{ padding: '12px 14px', background: '#F8F6F3', borderRadius: 10, border: '1px solid #E8E0D8' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: form.is_combo ? 12 : 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_combo}
+                    onChange={(e) => {
+                      set('is_combo', e.target.checked);
+                      if (e.target.checked && form.combo_items.length === 0) {
+                        set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
+                      }
+                    }}
+                  />
+                  <span style={{ fontWeight: 600 }}>Bundle / combo item</span>
+                </label>
+                {form.is_combo && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <Field label="Bundle discount (%)">
+                      <Input value={form.combo_discount_pct} onChange={(v) => set('combo_discount_pct', v)} type="number" placeholder="Optional" />
+                    </Field>
+                    <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', fontWeight: 600 }}>Included items</p>
+                    {form.combo_items.map((row, idx) => (
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px auto auto', gap: 8, alignItems: 'center' }}>
+                        <select
+                          value={row.item_id}
+                          onChange={(e) => {
+                            const next = [...form.combo_items];
+                            next[idx] = { ...next[idx], item_id: e.target.value };
+                            set('combo_items', next);
+                          }}
+                          style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                        >
+                          <option value="">Select item…</option>
+                          {allItems.filter((it) => it.id !== itemId && !it.is_combo).map((it) => (
+                            <option key={it.id} value={String(it.id)}>{it.name}</option>
+                          ))}
+                        </select>
+                        <Input value={row.quantity} onChange={(v) => {
+                          const next = [...form.combo_items];
+                          next[idx] = { ...next[idx], quantity: v };
+                          set('combo_items', next);
+                        }} type="number" placeholder="Qty" />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                          <input type="checkbox" checked={row.is_optional} onChange={(e) => {
+                            const next = [...form.combo_items];
+                            next[idx] = { ...next[idx], is_optional: e.target.checked };
+                            set('combo_items', next);
+                          }} />
+                          Optional
+                        </label>
+                        <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>×</Btn>
+                      </div>
+                    ))}
+                    <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false }])}>
+                      + Add component
+                    </Btn>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Category">
+                <select
+                  value={form.category_id}
+                  onChange={(e) => set('category_id', e.target.value)}
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                >
+                  <option value="">— No category —</option>
+                  {categories.filter((c) => !c.parent_id).map((parent) => (
+                    <optgroup key={parent.id} label={parent.name}>
+                      <option value={String(parent.id)}>{parent.name}</option>
+                      {categories.filter((c) => c.parent_id === parent.id).map((sub) => (
+                        <option key={sub.id} value={String(sub.id)}>{'↳ ' + sub.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Menu group (chef / station)">
+                <select
+                  value={form.menu_group_id}
+                  onChange={(e) => set('menu_group_id', e.target.value)}
+                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                >
+                  {menuGroups.map((g) => (
+                    <option key={g.id} value={String(g.id)}>{g.name}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="SKU / Internal Code">
+              <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
+            </Field>
+            {itemId && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
+                  Per-channel availability
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px' }}>
+                  {SALES_CHANNELS.map(({ id, label }) => (
+                    <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!form.channels[id]}
+                        onChange={(e) => setForm((f) => ({
+                          ...f,
+                          channels: { ...f.channels, [id]: e.target.checked },
+                        }))}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 0' }}>
+                  Delivery also requires the global delivery switch (Settings → Website) and active menu duty above.
+                </p>
+              </div>
+            )}
+            <Field label="Image">
+              <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
+            </Field>
+            {!form.has_variants && (
+              <div style={{ border: '1px solid #E8E0D8', borderRadius: 10, padding: '14px 16px', background: '#FAFAF8' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: form.track_stock ? 12 : 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.track_stock}
+                    onChange={(e) => set('track_stock', e.target.checked)}
+                  />
+                  Track prepared quantity
+                </label>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '6px 0 0 24px' }}>
+                  Turn on for pre-made batches (e.g. 12 croissants ready). Leave off for made-to-order items.
+                </p>
+                {form.track_stock && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 14, paddingLeft: 24 }}>
+                    <Field label="Quantity on hand">
+                      <Input
+                        value={form.stock_quantity}
+                        onChange={(v) => set('stock_quantity', v.replace(/[^\d]/g, ''))}
+                        placeholder="0"
+                      />
+                    </Field>
+                    <Field label="Low-stock alert at">
+                      <Input
+                        value={form.low_stock_threshold}
+                        onChange={(v) => set('low_stock_threshold', v.replace(/[^\d]/g, ''))}
+                        placeholder="5"
+                      />
+                    </Field>
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
+                Active (exists in system)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.is_available} onChange={(e) => set('is_available', e.target.checked)} />
+                Available (orderable today)
+              </label>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+            <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+            <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Item'}</Btn>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'photos' && itemId && (
+        <>
+          <PhotosTab itemId={itemId} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+            <Btn variant="ghost" onClick={onClose}>Close</Btn>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}

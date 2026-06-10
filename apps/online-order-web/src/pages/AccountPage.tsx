@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
 import {
-  getCustomerMe, updateCustomerProfile, changeCustomerPassword,
   getLoyaltyAccount,
   getMyReservations, cancelMyReservation, getMyFavourites,
   getMyPreOrders, getMyReviews, submitReview, fetchCustomerOrders,
@@ -11,84 +10,22 @@ import {
   getCustomerCredit,
   getCustomerDepositLedger,
   updateCustomerCreditPreferences,
-  fetchCustomerAddresses,
-  createCustomerAddress,
-  updateCustomerAddress,
-  deleteCustomerAddress,
-  setDefaultCustomerAddress,
 } from '../api';
 import type {
-  AuthCustomer, CustomerReservation, FavouriteItem,
+  CustomerReservation, FavouriteItem,
   CustomerPreOrder, CustomerReview, Order,
   CustomerCreditSummary, CustomerCreditInvoice,
   CustomerDepositSummary, CustomerDepositTransaction,
-  CustomerAddress,
 } from '../api';
 import type { LoyaltyAccount, LoyaltyTierProgress } from '@shared/types';
 import { AuthBlock } from '../components/AuthBlock';
-
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-const inputStyle: React.CSSProperties = {
-  padding: '10px 12px',
-  border: '1.5px solid var(--color-border)',
-  borderRadius: 10,
-  fontSize: 14,
-  fontFamily: 'inherit',
-  outline: 'none',
-  background: 'var(--color-surface)',
-  color: 'var(--color-text)',
-  width: '100%',
-  boxSizing: 'border-box',
-};
-
-const btnStyle: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  height: 42, padding: '0 20px',
-  background: 'var(--color-primary)', color: '#fff',
-  border: 'none', borderRadius: 10,
-  fontSize: 14, fontWeight: 700,
-  fontFamily: 'inherit', cursor: 'pointer',
-};
-
-const alertStyle = (type: 'error' | 'success'): React.CSSProperties => ({
-  padding: '10px 14px',
-  borderRadius: 10,
-  fontSize: 13,
-  background: type === 'error' ? 'var(--color-error-bg)' : 'var(--color-success-bg)',
-  color: type === 'error' ? 'var(--color-error)' : 'var(--color-success)',
-  border: `1px solid ${type === 'error' ? 'var(--color-error)' : 'var(--color-success)'}`,
-});
-
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{
-      background: 'var(--color-surface)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 16,
-      padding: '20px 24px',
-    }}>
-      <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-dark)', margin: '0 0 18px' }}>{title}</h2>
-      {children}
-    </div>
-  );
-}
-
-const TIER_COLOR: Record<string, { bg: string; text: string; border: string }> = {
-  bronze:   { bg: 'var(--tier-bronze-bg)',   text: 'var(--tier-bronze-text)',   border: 'var(--tier-bronze-border)' },
-  silver:   { bg: 'var(--tier-silver-bg)',   text: 'var(--tier-silver-text)',   border: 'var(--tier-silver-border)' },
-  gold:     { bg: 'var(--tier-gold-bg)',     text: 'var(--tier-gold-text)',     border: 'var(--tier-gold-border)' },
-  platinum: { bg: 'var(--tier-platinum-bg)', text: 'var(--tier-platinum-text)', border: 'var(--tier-platinum-border)' },
-};
+import { AddressesSection } from './AccountPage/AddressesSection';
+import { ProfileSection } from './AccountPage/ProfileSection';
+import {
+  SectionCard, TIER_COLOR, btnStyle, inputStyle, statusBadge, tabStyle,
+} from './AccountPage/accountShared';
+import { useAccountAddresses } from './AccountPage/useAccountAddresses';
+import { useAccountProfile } from './AccountPage/useAccountProfile';
 
 export function AccountPage() {
   usePageTitle('My Account');
@@ -97,8 +34,10 @@ export function AccountPage() {
 
   const [activeTab, setActiveTab] = useState<'profile' | 'addresses' | 'reservations' | 'favourites' | 'preorders' | 'reviews' | 'loyalty' | 'referrals' | 'credit' | 'deposit'>('profile');
 
-  const [customer, setCustomer] = useState<AuthCustomer | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(false);
+  const profile = useAccountProfile(isAuthenticated, authReady);
+  const addresses = useAccountAddresses(isAuthenticated, authReady, activeTab, profile.customer, customerName);
+  const { customer } = profile;
+
   const [loyalty, setLoyalty] = useState<LoyaltyAccount | null>(null);
   const [loyaltyTierProgress, setLoyaltyTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyError, setLoyaltyError] = useState('');
@@ -158,44 +97,8 @@ export function AccountPage() {
   const [depositError, setDepositError] = useState('');
   const [depositLoaded, setDepositLoaded] = useState(false);
 
-  // Profile edit state
-  const [profileForm, setProfileForm] = useState({ name: '', email: '', date_of_birth: '' });
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileMsg, setProfileMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
-
-  // Password change state
-  const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
-  const [savingPw, setSavingPw] = useState(false);
-  const [pwMsg, setPwMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
-
-  // Saved addresses
-  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
-  const [addressesLoading, setAddressesLoading] = useState(false);
-  const [addressesError, setAddressesError] = useState('');
-  const [addressesLoaded, setAddressesLoaded] = useState(false);
-  const [addressForm, setAddressForm] = useState({
-    label: '', address_line1: '', address_line2: '', island: 'Male',
-    contact_name: '', contact_phone: '', notes: '', location_link: '', is_default: false,
-  });
-  const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [addressSaving, setAddressSaving] = useState(false);
-  const [addressMsg, setAddressMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
-
   useEffect(() => {
     if (!authReady || !isAuthenticated) return;
-    setLoadingProfile(true);
-    getCustomerMe()
-      .then((res) => {
-        setCustomer(res.customer as AuthCustomer);
-        setProfileForm({
-          name: res.customer.name ?? '',
-          email: (res.customer as AuthCustomer).email ?? '',
-          date_of_birth: (res.customer as AuthCustomer).date_of_birth ?? '',
-        });
-      })
-      .catch((e: Error) => setProfileMsg({ type: 'error', text: e.message || 'Failed to load profile.' }))
-      .finally(() => setLoadingProfile(false));
     getLoyaltyAccount()
       .then(({ account, tier_progress }) => {
         setLoyalty(account);
@@ -282,118 +185,6 @@ export function AccountPage() {
       .finally(() => setDepositLoading(false));
   }, [isAuthenticated, authReady, activeTab, depositLoaded]);
 
-  useEffect(() => {
-    if (!authReady || !isAuthenticated || activeTab !== 'addresses' || addressesLoaded) return;
-    setAddressesLoading(true);
-    fetchCustomerAddresses()
-      .then((res) => setAddresses(res.addresses ?? []))
-      .catch((e: Error) => setAddressesError(e.message || 'Failed to load addresses.'))
-      .finally(() => {
-        setAddressesLoading(false);
-        setAddressesLoaded(true);
-      });
-  }, [isAuthenticated, authReady, activeTab, addressesLoaded]);
-
-  const reloadAddresses = () => {
-    if (!isAuthenticated) return;
-    setAddressesLoading(true);
-    fetchCustomerAddresses()
-      .then((res) => setAddresses(res.addresses ?? []))
-      .catch((e: Error) => setAddressesError(e.message || 'Failed to load addresses.'))
-      .finally(() => setAddressesLoading(false));
-  };
-
-  const startAddAddress = () => {
-    setEditingAddressId(null);
-    setAddressForm({
-      label: customer?.name ? 'Home' : '',
-      address_line1: '',
-      address_line2: '',
-      island: 'Male',
-      contact_name: customer?.name ?? customerName ?? '',
-      contact_phone: (customer?.phone ?? '').replace(/^(\+?960)/, ''),
-      notes: '',
-      location_link: '',
-      is_default: addresses.length === 0,
-    });
-    setAddressMsg(null);
-    setShowAddressForm(true);
-  };
-
-  const startEditAddress = (a: CustomerAddress) => {
-    setEditingAddressId(a.id);
-    setAddressForm({
-      label: a.label ?? '',
-      address_line1: a.address_line1,
-      address_line2: a.address_line2 ?? '',
-      island: a.island,
-      contact_name: a.contact_name,
-      contact_phone: a.contact_phone.replace(/^(\+?960)/, ''),
-      notes: a.notes ?? '',
-      location_link: a.location_link ?? '',
-      is_default: a.is_default,
-    });
-    setAddressMsg(null);
-    setShowAddressForm(true);
-  };
-
-  const handleSaveAddress = async () => {
-    if (!isAuthenticated) return;
-    if (!addressForm.address_line1.trim() || !addressForm.island.trim()
-      || !addressForm.contact_name.trim() || !addressForm.contact_phone.trim()) {
-      setAddressMsg({ type: 'error', text: 'Please fill in address, island, contact name, and phone.' });
-      return;
-    }
-    setAddressSaving(true);
-    setAddressMsg(null);
-    try {
-      const payload = {
-        label: addressForm.label.trim() || undefined,
-        address_line1: addressForm.address_line1.trim(),
-        address_line2: addressForm.address_line2.trim() || undefined,
-        island: addressForm.island.trim(),
-        contact_name: addressForm.contact_name.trim(),
-        contact_phone: addressForm.contact_phone.trim(),
-        notes: addressForm.notes.trim() || undefined,
-        location_link: addressForm.location_link.trim() || undefined,
-        is_default: addressForm.is_default,
-      };
-      if (editingAddressId) {
-        await updateCustomerAddress(editingAddressId, payload);
-      } else {
-        await createCustomerAddress(payload);
-      }
-      setShowAddressForm(false);
-      setEditingAddressId(null);
-      reloadAddresses();
-      setAddressMsg({ type: 'success', text: editingAddressId ? 'Address updated.' : 'Address saved.' });
-    } catch (e) {
-      setAddressMsg({ type: 'error', text: (e as Error).message || 'Could not save address.' });
-    } finally {
-      setAddressSaving(false);
-    }
-  };
-
-  const handleDeleteAddress = async (id: number) => {
-    if (!isAuthenticated || !window.confirm('Delete this address?')) return;
-    try {
-      await deleteCustomerAddress(id);
-      reloadAddresses();
-    } catch (e) {
-      setAddressesError((e as Error).message || 'Could not delete address.');
-    }
-  };
-
-  const handleSetDefaultAddress = async (id: number) => {
-    if (!isAuthenticated) return;
-    try {
-      await setDefaultCustomerAddress(id);
-      reloadAddresses();
-    } catch (e) {
-      setAddressesError((e as Error).message || 'Could not set default address.');
-    }
-  };
-
   const handleAuthSuccess = (name: string) => setAuth(name);
 
   const handleCancelReservation = async (id: number) => {
@@ -412,53 +203,6 @@ export function AccountPage() {
   const handleLogout = () => {
     clearAuth();
     navigate('/');
-  };
-
-  const handleSaveProfile = async () => {
-    if (!isAuthenticated) return;
-    setSavingProfile(true); setProfileMsg(null);
-    try {
-      const res = await updateCustomerProfile({
-        name: profileForm.name || undefined,
-        email: profileForm.email || undefined,
-        date_of_birth: profileForm.date_of_birth || null,
-      });
-      setCustomer(res.customer);
-      setProfileMsg({ type: 'success', text: 'Profile updated.' });
-    } catch (e) {
-      setProfileMsg({ type: 'error', text: (e as Error).message || 'Could not save changes.' });
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (!isAuthenticated) return;
-    if (!pwForm.current_password || !pwForm.new_password) {
-      setPwMsg({ type: 'error', text: 'Please fill in all password fields.' });
-      return;
-    }
-    if (pwForm.new_password !== pwForm.confirm_password) {
-      setPwMsg({ type: 'error', text: 'New passwords do not match.' });
-      return;
-    }
-    if (pwForm.new_password.length < 8) {
-      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters.' });
-      return;
-    }
-    setSavingPw(true); setPwMsg(null);
-    try {
-      await changeCustomerPassword({
-        current_password: pwForm.current_password,
-        new_password: pwForm.new_password,
-      });
-      setPwForm({ current_password: '', new_password: '', confirm_password: '' });
-      setPwMsg({ type: 'success', text: 'Password changed successfully.' });
-    } catch (e) {
-      setPwMsg({ type: 'error', text: (e as Error).message || 'Could not change password. Check your current password.' });
-    } finally {
-      setSavingPw(false);
-    }
   };
 
   if (!authReady) {
@@ -482,30 +226,6 @@ export function AccountPage() {
       </div>
     );
   }
-
-  const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: '8px 16px', borderRadius: 20, border: 'none',
-    background: active ? 'var(--color-primary)' : 'transparent',
-    color: active ? '#fff' : 'var(--color-text-muted)',
-    fontSize: 13, fontWeight: active ? 700 : 500,
-    fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
-  });
-
-  const statusBadge = (s: string) => {
-    const colors: Record<string, { bg: string; color: string }> = {
-      confirmed: { bg: 'var(--color-success-bg)', color: 'var(--color-success)' },
-      pending:   { bg: 'var(--color-warning-bg)', color: 'var(--color-warning)' },
-      cancelled: { bg: 'var(--color-error-bg)',   color: 'var(--color-error)' },
-      no_show:   { bg: 'var(--color-surface-alt)', color: 'var(--color-text-muted)' },
-      completed: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
-    };
-    const c = colors[s] ?? { bg: '#F3F4F6', color: '#374151' };
-    return (
-      <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: c.bg, color: c.color, textTransform: 'capitalize' }}>
-        {s.split('_').join(' ')}
-      </span>
-    );
-  };
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '2rem var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -535,261 +255,17 @@ export function AccountPage() {
         ))}
       </div>
 
-      {/* Quick links — show only on profile tab */}
-      {activeTab === 'profile' && (<>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Link
-          to="/order-history"
-          style={{
-            display: 'flex', flexDirection: 'column', gap: 4,
-            padding: '16px 18px',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 14,
-            textDecoration: 'none',
-          }}
-        >
-          <span style={{ fontSize: 22 }}>🧾</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>Order History</span>
-          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>View past orders</span>
-        </Link>
-
-        {loyalty ? (
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 4,
-            padding: '16px 18px',
-            background: TIER_COLOR[loyalty.tier]?.bg ?? '#FEF3E2',
-            border: `1px solid ${TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D'}`,
-            borderRadius: 14,
-          }}>
-            <span style={{ fontSize: 22 }}>⭐</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }}>
-              {loyalty.points_balance.toLocaleString()} pts
-            </span>
-            <span style={{ fontSize: 12, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.75, textTransform: 'capitalize' }}>
-              {loyalty.tier} member
-              {loyalty.lifetime_points != null ? ` · ${loyalty.lifetime_points.toLocaleString()} lifetime` : ''}
-            </span>
-          </div>
-        ) : (
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 4,
-            padding: '16px 18px',
-            background: loyaltyError ? '#FEF2F2' : 'var(--color-surface)',
-            border: loyaltyError ? '1px solid #FECACA' : '1px solid var(--color-border)',
-            borderRadius: 14,
-          }}>
-            <span style={{ fontSize: 22 }}>⭐</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>Loyalty Points</span>
-            {loyaltyError && <span style={{ fontSize: 12, color: '#DC2626' }}>{loyaltyError}</span>}
-            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Earn 1 pt per MVR 1</span>
-          </div>
-        )}
-      </div>
-
-      {/* Profile section */}
-      <SectionCard title="Profile">
-        {loadingProfile ? (
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {profileMsg && <div style={alertStyle(profileMsg.type)}>{profileMsg.text}</div>}
-
-            <FieldRow label="Phone">
-              <input
-                style={{ ...inputStyle, background: 'var(--color-surface-alt)', color: 'var(--color-text-muted)', cursor: 'not-allowed' }}
-                value={customer?.phone ?? ''}
-                readOnly
-              />
-            </FieldRow>
-
-            <FieldRow label="Name">
-              <input
-                style={inputStyle}
-                value={profileForm.name}
-                onChange={(e) => setProfileForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Your name"
-              />
-            </FieldRow>
-
-            <FieldRow label="Email">
-              <input
-                type="email"
-                style={inputStyle}
-                value={profileForm.email}
-                onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="you@example.com"
-              />
-            </FieldRow>
-
-            <FieldRow label="Date of birth">
-              <input
-                type="date"
-                style={inputStyle}
-                value={profileForm.date_of_birth}
-                onChange={(e) => setProfileForm((f) => ({ ...f, date_of_birth: e.target.value }))}
-                max={new Date().toISOString().slice(0, 10)}
-              />
-              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                Optional — used for birthday loyalty rewards (SMS only if you haven&apos;t opted out).
-              </p>
-            </FieldRow>
-
-            <button
-              style={{ ...btnStyle, opacity: savingProfile ? 0.6 : 1, cursor: savingProfile ? 'not-allowed' : 'pointer' }}
-              onClick={() => void handleSaveProfile()}
-              disabled={savingProfile}
-            >
-              {savingProfile ? 'Saving…' : 'Save Changes'}
-            </button>
-          </div>
-        )}
-      </SectionCard>
-
-      {/* Password section */}
-      <SectionCard title="Change Password">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {pwMsg && <div style={alertStyle(pwMsg.type)}>{pwMsg.text}</div>}
-
-          <FieldRow label="Current Password">
-            <input
-              type="password"
-              style={inputStyle}
-              value={pwForm.current_password}
-              onChange={(e) => setPwForm((f) => ({ ...f, current_password: e.target.value }))}
-              autoComplete="current-password"
-            />
-          </FieldRow>
-
-          <FieldRow label="New Password">
-            <input
-              type="password"
-              style={inputStyle}
-              value={pwForm.new_password}
-              onChange={(e) => setPwForm((f) => ({ ...f, new_password: e.target.value }))}
-              autoComplete="new-password"
-            />
-          </FieldRow>
-
-          <FieldRow label="Confirm New Password">
-            <input
-              type="password"
-              style={inputStyle}
-              value={pwForm.confirm_password}
-              onChange={(e) => setPwForm((f) => ({ ...f, confirm_password: e.target.value }))}
-              autoComplete="new-password"
-            />
-          </FieldRow>
-
-          <button
-            style={{ ...btnStyle, opacity: savingPw ? 0.6 : 1, cursor: savingPw ? 'not-allowed' : 'pointer' }}
-            onClick={() => void handleChangePassword()}
-            disabled={savingPw}
-          >
-            {savingPw ? 'Changing…' : 'Change Password'}
-          </button>
-        </div>
-      </SectionCard>
-
-      {/* Sign out */}
-      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          onClick={() => void handleLogout()}
-          style={{
-            padding: '10px 20px',
-            background: 'transparent',
-            border: '1.5px solid var(--color-error, #dc2626)',
-            borderRadius: 10,
-            fontSize: 14, fontWeight: 600,
-            color: 'var(--color-error, #dc2626)',
-            fontFamily: 'inherit', cursor: 'pointer',
-          }}
-        >
-          Sign Out
-        </button>
-      </div>
-      </>)}
+      {activeTab === 'profile' && (
+        <ProfileSection
+          profile={profile}
+          loyalty={loyalty}
+          loyaltyError={loyaltyError}
+          onLogout={handleLogout}
+        />
+      )}
 
       {activeTab === 'addresses' && (
-        <SectionCard title="Saved Delivery Addresses">
-          {addressMsg && <div style={{ ...alertStyle(addressMsg.type), marginBottom: 14 }}>{addressMsg.text}</div>}
-          {addressesError && <div style={{ ...alertStyle('error'), marginBottom: 14 }}>{addressesError}</div>}
-          {addressesLoading && addresses.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
-          ) : (
-            <>
-              {addresses.length === 0 && !showAddressForm && (
-                <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
-                  No saved addresses yet. Add one for faster checkout.
-                </p>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-                {addresses.map((a) => (
-                  <div key={a.id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>
-                          {a.label || 'Address'}{a.is_default ? ' · Default' : ''}
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                          {a.address_line1}{a.address_line2 ? `, ${a.address_line2}` : ''} · {a.island}
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                          {a.contact_name} · {a.contact_phone}
-                        </div>
-                        {a.location_link && (
-                          <a href={a.location_link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--color-primary)', marginTop: 4, display: 'inline-block' }}>
-                            Open map →
-                          </a>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {!a.is_default && (
-                          <button type="button" onClick={() => void handleSetDefaultAddress(a.id)} style={{ ...btnStyle, height: 32, padding: '0 12px', fontSize: 12 }}>
-                            Set default
-                          </button>
-                        )}
-                        <button type="button" onClick={() => startEditAddress(a)} style={{ ...btnStyle, height: 32, padding: '0 12px', fontSize: 12, background: 'var(--color-surface)', color: 'var(--color-dark)', border: '1px solid var(--color-border)' }}>
-                          Edit
-                        </button>
-                        <button type="button" onClick={() => void handleDeleteAddress(a.id)} style={{ height: 32, padding: '0 12px', fontSize: 12, background: 'transparent', border: '1px solid var(--color-error, #dc2626)', color: 'var(--color-error, #dc2626)', borderRadius: 10, cursor: 'pointer' }}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {!showAddressForm ? (
-                <button type="button" style={btnStyle} onClick={startAddAddress}>Add address</button>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--color-border)', paddingTop: 16 }}>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{editingAddressId ? 'Edit address' : 'New address'}</h3>
-                  <FieldRow label="Label"><input style={inputStyle} value={addressForm.label} onChange={(e) => setAddressForm((f) => ({ ...f, label: e.target.value }))} placeholder="Home, Office…" /></FieldRow>
-                  <FieldRow label="Address *"><input style={inputStyle} value={addressForm.address_line1} onChange={(e) => setAddressForm((f) => ({ ...f, address_line1: e.target.value }))} /></FieldRow>
-                  <FieldRow label="Address line 2"><input style={inputStyle} value={addressForm.address_line2} onChange={(e) => setAddressForm((f) => ({ ...f, address_line2: e.target.value }))} /></FieldRow>
-                  <FieldRow label="Island *"><input style={inputStyle} value={addressForm.island} onChange={(e) => setAddressForm((f) => ({ ...f, island: e.target.value }))} /></FieldRow>
-                  <FieldRow label="Location link"><input style={inputStyle} value={addressForm.location_link} onChange={(e) => setAddressForm((f) => ({ ...f, location_link: e.target.value }))} placeholder="https://maps.google.com/…" /></FieldRow>
-                  <FieldRow label="Contact name *"><input style={inputStyle} value={addressForm.contact_name} onChange={(e) => setAddressForm((f) => ({ ...f, contact_name: e.target.value }))} /></FieldRow>
-                  <FieldRow label="Contact phone *"><input style={inputStyle} value={addressForm.contact_phone} onChange={(e) => setAddressForm((f) => ({ ...f, contact_phone: e.target.value }))} /></FieldRow>
-                  <FieldRow label="Notes"><textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} value={addressForm.notes} onChange={(e) => setAddressForm((f) => ({ ...f, notes: e.target.value }))} /></FieldRow>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-                    <input type="checkbox" checked={addressForm.is_default} onChange={(e) => setAddressForm((f) => ({ ...f, is_default: e.target.checked }))} />
-                    Set as default address
-                  </label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" style={{ ...btnStyle, opacity: addressSaving ? 0.6 : 1 }} disabled={addressSaving} onClick={() => void handleSaveAddress()}>
-                      {addressSaving ? 'Saving…' : 'Save address'}
-                    </button>
-                    <button type="button" style={{ ...btnStyle, background: 'var(--color-surface)', color: 'var(--color-dark)', border: '1px solid var(--color-border)' }} onClick={() => { setShowAddressForm(false); setEditingAddressId(null); }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </SectionCard>
+        <AddressesSection addresses={addresses} />
       )}
 
       {/* ── Reservations tab ── */}
