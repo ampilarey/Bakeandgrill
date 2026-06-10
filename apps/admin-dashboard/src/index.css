@@ -221,11 +221,21 @@ a { text-decoration: none; color: inherit; }
 }
 
 .admin-nav-group-items {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease;
+}
+
+.admin-nav-group-items--open {
+  grid-template-rows: 1fr;
+}
+
+.admin-nav-group-items-inner {
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow: hidden;
-  transition: max-height 0.22s ease;
 }
 
 .admin-nav-item {

@@ -527,19 +527,23 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                 )}
 
                 <div
-                  className="admin-nav-group-items"
-                  style={{ maxHeight: isOpen ? '800px' : '0px' }}
+                  className={[
+                    'admin-nav-group-items',
+                    isOpen ? 'admin-nav-group-items--open' : '',
+                  ].filter(Boolean).join(' ')}
                 >
-                  {visibleItems.map(({ to, icon, label }) => (
-                    <SideNavItem
-                      key={to}
-                      to={to}
-                      icon={icon}
-                      label={label}
-                      collapsed={collapsed}
-                      badge={to === '/inventory' && lowStockCount > 0 ? lowStockCount : undefined}
-                    />
-                  ))}
+                  <div className="admin-nav-group-items-inner">
+                    {visibleItems.map(({ to, icon, label }) => (
+                      <SideNavItem
+                        key={to}
+                        to={to}
+                        icon={icon}
+                        label={label}
+                        collapsed={collapsed}
+                        badge={to === '/inventory' && lowStockCount > 0 ? lowStockCount : undefined}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             );
