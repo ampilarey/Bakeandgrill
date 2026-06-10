@@ -142,7 +142,6 @@ interface LayoutProps {
 export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { onSearch?: () => void }) {
   const width = useWindowWidth();
   const isMobile = width < 768;
-  const isTablet = width >= 768 && width < 1024;
   const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed());
   const viewportBandRef = useRef<ViewportBand>(getViewportBand(window.innerWidth));
   const [moreOpen, setMoreOpen] = useState(false);

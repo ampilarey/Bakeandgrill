@@ -177,9 +177,6 @@ export function resolveNavItemForPath(pathname: string, items: NavItem[]): NavIt
     .find((item) => path === item.to || path.startsWith(item.to + '/'));
 }
 
-/** @deprecated Use getAllNavItems() — kept for gradual migration */
-export const ALL_NAV_ITEMS = getAllNavItems();
-
 export const BOTTOM_TABS: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home',    permission: 'dashboard.view' },
   { to: '/orders',    icon: ClipboardList,   label: 'Orders',  permission: 'orders.view'  },
