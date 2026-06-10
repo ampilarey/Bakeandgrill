@@ -45,6 +45,11 @@ function isNavItemActive(pathname: string, to: string): boolean {
   return path === to || path.startsWith(to + '/');
 }
 
+function getNavItemBadge(to: string, lowStockCount: number): number | undefined {
+  if (to === '/inventory' && lowStockCount > 0) return lowStockCount;
+  return undefined;
+}
+
 function SideNavItem({
   to, icon: Icon, label, collapsed, badge,
 }: { to: string; icon: React.ElementType; label: string; collapsed: boolean; badge?: number }) {
@@ -121,7 +126,7 @@ function NavSection({
           icon={icon}
           label={label}
           collapsed={collapsed}
-          badge={to === '/inventory' && lowStockCount > 0 ? lowStockCount : undefined}
+          badge={getNavItemBadge(to, lowStockCount)}
         />
       ))}
     </>
@@ -155,6 +160,17 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
 
   const navGroups = useMemo(() => getNavGroups(), []);
   const allNavItems = useMemo(() => getAllNavItems(), []);
+
+  const groupBadges = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const group of navGroups) {
+      const total = group.items
+        .filter((item) => can(user, item.permission))
+        .reduce((sum, item) => sum + (getNavItemBadge(item.to, lowStockCount) ?? 0), 0);
+      if (total > 0) map.set(group.id, total);
+    }
+    return map;
+  }, [navGroups, lowStockCount, user]);
 
   const toggleAudio = () => {
     const next = !audioOn;
@@ -536,6 +552,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
             const hasActive = visibleItems.some((i) => isNavItemActive(location.pathname, i.to));
             const GroupIcon = group.icon;
             const groupItemsId = `nav-group-${group.id}-items`;
+            const groupBadge = groupBadges.get(group.id) ?? 0;
 
             return (
               <div key={group.id} className="admin-nav-group">
@@ -549,6 +566,11 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                   >
                     <span className="admin-nav-group-icon"><GroupIcon size={13} /></span>
                     <span className="admin-nav-group-label">{group.label}</span>
+                    {!groupOpen && groupBadge > 0 && (
+                      <span className="admin-nav-badge">
+                        {groupBadge > 99 ? '99+' : groupBadge}
+                      </span>
+                    )}
                     <ChevronDown
                       size={12}
                       className={`admin-nav-group-chevron${groupOpen ? '' : ' admin-nav-group-chevron--closed'}`}
@@ -573,7 +595,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                         icon={icon}
                         label={label}
                         collapsed={collapsed}
-                        badge={to === '/inventory' && lowStockCount > 0 ? lowStockCount : undefined}
+                        badge={getNavItemBadge(to, lowStockCount)}
                       />
                     ))}
                   </div>
