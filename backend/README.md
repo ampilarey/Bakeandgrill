@@ -8,7 +8,7 @@ Laravel 11 API + Blade public site for **Bake & Grill** (Maldives). Powers POS, 
 |-------|------|
 | Framework | Laravel 11, PHP 8.2 |
 | Auth | Sanctum (staff PIN + customer OTP) |
-| DB | MySQL (prod/test), SQLite (PHPUnit) |
+| DB | PostgreSQL 15 (prod/test), SQLite (PHPUnit default) |
 | Queue | Redis (`queue:work redis`) |
 | Realtime | SSE streams for POS/KDS |
 
@@ -34,12 +34,28 @@ php artisan serve
 
 ## Tests
 
+PHPUnit defaults to **SQLite in-memory** (`phpunit.xml`) for fast local runs. Production uses **PostgreSQL 15**; CI runs the full Feature + Contract suites against both engines.
+
 ```bash
 cd backend
-php artisan test                    # full suite
+php artisan test                    # full suite (SQLite)
 composer test:readiness             # production-readiness filter
 UPDATE_SNAPSHOTS=true php artisan test --filter=ContractTest
 ```
+
+**PostgreSQL locally** (Docker example):
+
+```bash
+docker run -d --name bakegrill-pg -e POSTGRES_DB=bakegrill_test \
+  -e POSTGRES_USER=bakegrill -e POSTGRES_PASSWORD=secret -p 5432:5432 postgres:15-alpine
+
+cd backend
+DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 \
+  DB_DATABASE=bakegrill_test DB_USERNAME=bakegrill DB_PASSWORD=secret \
+  php artisan test --testsuite=Feature
+```
+
+GitHub Actions job `test-postgres` mirrors this against `postgres:15-alpine`.
 
 ## Deploy (test server default)
 
