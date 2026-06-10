@@ -1,10 +1,17 @@
-import { createApiClient, resolveApiBaseUrl } from '@shared/api';
+import {
+  createApiClient,
+  resolveApiBaseUrl,
+  getApiOrigin,
+  type ApiRequestOptions,
+} from '@shared/api';
 
 const API_BASE_URL = resolveApiBaseUrl({
   envUrl: import.meta.env.VITE_API_BASE_URL as string | undefined,
   prod: import.meta.env.PROD,
   rewriteLocalhostOnRemotePage: true,
 });
+
+const API_ORIGIN = getApiOrigin(API_BASE_URL);
 
 if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   // eslint-disable-next-line no-console
@@ -38,21 +45,58 @@ export function getApiBaseUrl(): string {
   return API_BASE_URL;
 }
 
+function readCookie(name: string): string | null {
+  const m = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
+  return m ? decodeURIComponent(m.split('=').slice(1).join('=')) : null;
+}
+
+let csrfPrimed = false;
+
+/** Required for POST/PATCH/DELETE when Sanctum statefulApi() is enabled on this origin. */
+async function ensureCsrfCookie(): Promise<void> {
+  if (typeof window === 'undefined' || csrfPrimed) {
+    return;
+  }
+  await fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, { credentials: 'include' });
+  csrfPrimed = true;
+}
+
+function xsrfHeaders(): Record<string, string> {
+  const xsrf = readCookie('XSRF-TOKEN');
+  return xsrf ? { 'X-XSRF-TOKEN': xsrf } : {};
+}
+
 const { request: _coreRequest } = createApiClient({
   baseUrl: API_BASE_URL,
   getToken: () => _token,
+  credentials: 'include',
 });
 
+async function withCsrf(options: ApiRequestOptions = {}): Promise<ApiRequestOptions> {
+  const method = (options.method ?? 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD') {
+    return options;
+  }
+  await ensureCsrfCookie();
+  return {
+    ...options,
+    headers: {
+      ...xsrfHeaders(),
+      ...(options.headers ?? {}),
+    },
+  };
+}
+
 // Wraps every API call: injects optional X-Device-Identifier for audit metadata.
-export async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const deviceId = localStorage.getItem('pos_device_id');
   const extraHeaders: HeadersInit = deviceId
     ? { 'X-Device-Identifier': deviceId }
     : {};
-  const merged: RequestInit = {
+  const merged = await withCsrf({
     ...options,
-    headers: { ...extraHeaders, ...(options?.headers ?? {}) },
-  };
+    headers: { ...extraHeaders, ...(options.headers ?? {}) },
+  });
   try {
     return await _coreRequest<T>(path, merged);
   } catch (e) {

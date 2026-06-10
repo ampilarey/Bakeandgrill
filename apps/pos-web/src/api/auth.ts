@@ -9,6 +9,7 @@ export async function staffLogin(
   return request<StaffLoginResponse>("/auth/staff/pin-login", {
     method: "POST",
     body: JSON.stringify({ username, pin, device_identifier: deviceIdentifier }),
+    anonymous: true,
   });
 }
 
