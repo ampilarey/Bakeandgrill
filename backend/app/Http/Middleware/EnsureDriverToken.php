@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Models\DeliveryDriver;
+use App\Support\SanctumBearerResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,6 +21,18 @@ class EnsureDriverToken
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+
+        if (!($user instanceof DeliveryDriver) && $request->bearerToken()) {
+            if (SanctumBearerResolver::bearerTokenIsInvalid($request)) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+
+            $driverFromBearer = SanctumBearerResolver::resolveTokenable($request, DeliveryDriver::class);
+            if ($driverFromBearer instanceof DeliveryDriver) {
+                $user = $driverFromBearer;
+                $request->setUserResolver(static fn () => $user);
+            }
+        }
 
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);

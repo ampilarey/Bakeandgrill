@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\SanctumBearerResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,6 +28,20 @@ class EnsureStaffToken
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+
+        // Session guards run before Sanctum bearer resolution — prefer a valid staff
+        // bearer token when present so a concurrent customer session cannot shadow it.
+        if (!($user instanceof User) && $request->bearerToken()) {
+            if (SanctumBearerResolver::bearerTokenIsInvalid($request)) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+
+            $staffFromBearer = SanctumBearerResolver::resolveTokenable($request, User::class);
+            if ($staffFromBearer instanceof User) {
+                $user = $staffFromBearer;
+                $request->setUserResolver(static fn () => $user);
+            }
+        }
 
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
