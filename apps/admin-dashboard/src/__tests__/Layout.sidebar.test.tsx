@@ -89,4 +89,25 @@ describe('Layout desktop sidebar groups', () => {
     rerender(<LayoutAt path="/reports" />);
     expect(isGroupOpen('Finance')).toBe(true);
   });
+
+  it('persists manual desktop collapse across re-render and remount', () => {
+    const { rerender, unmount } = renderLayout('/dashboard');
+
+    fireEvent.click(screen.getByLabelText('Collapse sidebar'));
+    expect(screen.getByLabelText('Expand sidebar')).toBeTruthy();
+    expect(localStorage.getItem('bg_sidebar_collapsed')).toBe('true');
+
+    rerender(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <Layout user={owner} onLogout={() => {}}>
+          <div>Page</div>
+        </Layout>
+      </MemoryRouter>,
+    );
+    expect(screen.getByLabelText('Expand sidebar')).toBeTruthy();
+
+    unmount();
+    renderLayout('/dashboard');
+    expect(screen.getByLabelText('Expand sidebar')).toBeTruthy();
+  });
 });

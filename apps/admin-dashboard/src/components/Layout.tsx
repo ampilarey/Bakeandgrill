@@ -11,6 +11,24 @@ import {
   type NavItem,
 } from './navConfig';
 
+const SIDEBAR_COLLAPSED_KEY = 'bg_sidebar_collapsed';
+
+type ViewportBand = 'mobile' | 'tablet' | 'desktop';
+
+function getViewportBand(width: number): ViewportBand {
+  if (width < 768) return 'mobile';
+  if (width < 1024) return 'tablet';
+  return 'desktop';
+}
+
+function readPersistedCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 function useWindowWidth() {
   const [w, setW] = useState(() => window.innerWidth);
   useEffect(() => {
@@ -120,7 +138,8 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   const width = useWindowWidth();
   const isMobile = width < 768;
   const isTablet = width >= 768 && width < 1024;
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed());
+  const viewportBandRef = useRef<ViewportBand>(getViewportBand(window.innerWidth));
   const [moreOpen, setMoreOpen] = useState(false);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [audioOn, setAudioOn] = useState(isAudioEnabled);
@@ -167,9 +186,27 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   }, []);
 
   useEffect(() => {
-    if (isTablet) setCollapsed(true);
-    else if (!isMobile) setCollapsed(false);
-  }, [isTablet, isMobile]);
+    const band = getViewportBand(width);
+    const prev = viewportBandRef.current;
+    if (band === prev) return;
+    viewportBandRef.current = band;
+
+    if (band === 'tablet') {
+      setCollapsed(true);
+    } else if (band === 'desktop') {
+      setCollapsed(readPersistedCollapsed());
+    }
+  }, [width]);
+
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   useEffect(() => { setMoreOpen(false); }, [location.pathname]);
 
@@ -548,7 +585,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
             {!collapsed && 'Log out'}
           </SidebarFooterBtn>
           <SidebarFooterBtn
-            onClick={() => setCollapsed((c) => !c)}
+            onClick={toggleCollapsed}
             collapsed={collapsed}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
