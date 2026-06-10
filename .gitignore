@@ -82,3 +82,4 @@ playwright-report/
 
 # print-proxy build output (built in Docker)
 /print-proxy/dist/
+pos-uat-evidence/
