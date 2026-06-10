@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Orders\Support;
 
 use App\Domains\Orders\DTOs\DiscountsInput;
+use App\Support\Money;
 
 /**
  * Computes the discount actually taken off an order subtotal when
@@ -121,6 +122,6 @@ final class EffectiveDiscount
             return (int) $order->subtotal_laar;
         }
 
-        return (int) round((float) ($order->subtotal ?? 0) * 100);
+        return Money::toLaar($order->subtotal ?? 0);
     }
 }

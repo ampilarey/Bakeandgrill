@@ -7,6 +7,7 @@ namespace App\Domains\Reservations\Repositories;
 use App\Models\Reservation;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class EloquentReservationRepository implements ReservationRepositoryInterface
 {
@@ -64,9 +65,24 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
 
     public function overdueUnseated(int $minutesGrace): Collection
     {
-        return Reservation::whereIn('status', ['pending', 'confirmed'])
-            ->whereDate('date', today())
-            ->whereRaw('TIME(time_slot) < TIME(DATE_SUB(NOW(), INTERVAL ? MINUTE))', [$minutesGrace])
-            ->get();
+        $query = Reservation::whereIn('status', ['pending', 'confirmed'])
+            ->whereDate('date', today());
+
+        match (DB::getDriverName()) {
+            'pgsql' => $query->whereRaw(
+                'time_slot::time < (NOW() - make_interval(mins => ?))::time',
+                [$minutesGrace],
+            ),
+            'sqlite' => $query->whereRaw(
+                "time(time_slot) < time(datetime('now', ?))",
+                ['-' . $minutesGrace . ' minutes'],
+            ),
+            default => $query->whereRaw(
+                'TIME(time_slot) < TIME(DATE_SUB(NOW(), INTERVAL ? MINUTE))',
+                [$minutesGrace],
+            ),
+        };
+
+        return $query->get();
     }
 }

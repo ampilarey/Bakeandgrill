@@ -9,6 +9,7 @@ use App\Domains\Promotions\Repositories\PromotionRepositoryInterface;
 use App\Models\Order;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
+use App\Support\Money;
 
 /**
  * Evaluates whether a promo code is valid for an order and calculates the discount.
@@ -119,7 +120,7 @@ class PromotionEvaluator
     {
         if ($promo->scope === 'order') {
             if ($promo->targets->isEmpty()) {
-                return (int) ($order->subtotal_laar ?? round((float) $order->subtotal * 100));
+                return (int) ($order->subtotal_laar ?? Money::toLaar($order->subtotal));
             }
         }
 
@@ -147,7 +148,7 @@ class PromotionEvaluator
                 }
             }
 
-            $total += (int) round((float) $orderItem->total_price * 100);
+            $total += Money::toLaar($orderItem->total_price);
         }
 
         return $total;
@@ -171,7 +172,7 @@ class PromotionEvaluator
             return 0;
         }
 
-        return (int) round((float) $cheapestItem->unit_price * 100);
+        return Money::toLaar($cheapestItem->unit_price);
     }
 
     private function reject(string $message): array

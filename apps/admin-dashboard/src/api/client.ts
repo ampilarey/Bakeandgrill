@@ -9,6 +9,13 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   console.error('[CONFIG] VITE_API_BASE_URL is not set in production — all API calls will fail if the app is not served from the same origin as the API.');
 }
 
+/**
+ * Security TODO: `admin_token` in localStorage is readable by any XSS on this origin.
+ * Future hardening: migrate to Sanctum stateful SPA auth (`/sanctum/csrf-cookie`,
+ * `credentials: 'include'`) and teach `EnsureStaffToken` to accept session-authenticated
+ * staff without a bearer token carrying the `staff` ability. POS/KDS intentionally
+ * keep bearer tokens for offline/device use.
+ */
 const { request: req } = createApiClient({
   baseUrl: BASE,
   getToken: () => localStorage.getItem('admin_token'),

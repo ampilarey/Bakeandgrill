@@ -71,6 +71,7 @@ Config: [`backend/config/pos.php`](../backend/config/pos.php). Tests: [`EnsureAc
 
 | Priority | Item | Notes |
 |----------|------|-------|
+| Medium | Admin SPA cookie auth | `admin_token` in localStorage — migrate to Sanctum stateful SPA; see `apps/admin-dashboard/src/api/client.ts` |
 | Medium | Dual-purpose `auth:sanctum` routes | `/orders/{id}/pay/bml`, promos, delivery — controller-enforced |
 | Low | `OrderController` size | Still large; continue incremental extraction |
 | Low | `symfony/yaml` CVE-2026-45133 | Composer audit — low severity transitive |

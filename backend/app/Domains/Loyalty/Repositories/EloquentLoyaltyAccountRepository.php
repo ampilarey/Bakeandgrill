@@ -44,9 +44,12 @@ class EloquentLoyaltyAccountRepository implements LoyaltyAccountRepositoryInterf
                 ->where('customer_id', $customerId)
                 ->update([
                     'points_balance' => $balance,
-                    'lifetime_points' => DB::raw('lifetime_points + ' . (int) $addLifetime),
                     'tier' => $this->settings->tierForLifetimePoints($newLifetime),
                 ]);
+
+            DB::table('loyalty_accounts')
+                ->where('customer_id', $customerId)
+                ->increment('lifetime_points', $addLifetime);
 
             return;
         }
