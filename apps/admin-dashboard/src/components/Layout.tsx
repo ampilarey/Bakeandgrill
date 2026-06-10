@@ -150,6 +150,8 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   const location = useLocation();
   const navigate = useNavigate();
   const drawerRef = useRef<HTMLDivElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
+  const moreTriggerRef = useRef<HTMLElement | null>(null);
 
   const navGroups = useMemo(() => getNavGroups(), []);
   const allNavItems = useMemo(() => getAllNavItems(), []);
@@ -211,6 +213,27 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   useEffect(() => { setMoreOpen(false); }, [location.pathname]);
 
   useEffect(() => {
+    if (!notifOpen && !moreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (notifOpen) setNotifOpen(false);
+        if (moreOpen) setMoreOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [notifOpen, moreOpen]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    if (moreOpen) {
+      drawerCloseRef.current?.focus();
+      return;
+    }
+    moreTriggerRef.current?.focus();
+  }, [moreOpen, isMobile]);
+
+  useEffect(() => {
     if (!moreOpen || !isMobile) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -270,6 +293,10 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   };
 
   const currentPage = resolveNavItemForPath(location.pathname, allNavItems)?.label ?? 'Admin';
+  const openMoreDrawer = (trigger: HTMLElement) => {
+    moreTriggerRef.current = trigger;
+    setMoreOpen(true);
+  };
   const closeDrawer = () => setMoreOpen(false);
   const sidebarW = collapsed ? 68 : 260;
 
@@ -289,6 +316,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
             </div>
           </div>
           <button
+            ref={drawerCloseRef}
             onClick={() => setMoreOpen(false)}
             aria-label="Close menu"
             style={{
@@ -384,7 +412,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
       <div className="admin-mobile-shell">
         <header className="admin-mobile-header">
           <button
-            onClick={() => setMoreOpen(true)}
+            onClick={(e) => openMoreDrawer(e.currentTarget)}
             style={{
               width: 44, height: 44, borderRadius: 10,
               border: 'none', background: 'var(--color-bg)',
@@ -419,7 +447,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
               return (
                 <button
                   key="more"
-                  onClick={() => setMoreOpen(true)}
+                  onClick={(e) => openMoreDrawer(e.currentTarget)}
                   style={{
                     flex: 1, border: 'none', background: 'transparent',
                     display: 'flex', flexDirection: 'column',
@@ -503,9 +531,11 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
           {navGroups.map((group) => {
             const visibleItems = group.items.filter((item) => can(user, item.permission));
             if (visibleItems.length === 0) return null;
-            const isOpen = collapsed || openGroups.has(group.id);
+            const groupOpen = openGroups.has(group.id);
+            const isOpen = collapsed || groupOpen;
             const hasActive = visibleItems.some((i) => isNavItemActive(location.pathname, i.to));
             const GroupIcon = group.icon;
+            const groupItemsId = `nav-group-${group.id}-items`;
 
             return (
               <div key={group.id} className="admin-nav-group">
@@ -514,12 +544,14 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                     type="button"
                     onClick={() => toggleGroup(group.id)}
                     className={`admin-nav-group-header${hasActive ? ' admin-nav-group-header--active' : ''}`}
+                    aria-expanded={groupOpen}
+                    aria-controls={groupItemsId}
                   >
                     <span className="admin-nav-group-icon"><GroupIcon size={13} /></span>
                     <span className="admin-nav-group-label">{group.label}</span>
                     <ChevronDown
                       size={12}
-                      className={`admin-nav-group-chevron${openGroups.has(group.id) ? '' : ' admin-nav-group-chevron--closed'}`}
+                      className={`admin-nav-group-chevron${groupOpen ? '' : ' admin-nav-group-chevron--closed'}`}
                     />
                   </button>
                 ) : (
@@ -527,6 +559,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
                 )}
 
                 <div
+                  id={groupItemsId}
                   className={[
                     'admin-nav-group-items',
                     isOpen ? 'admin-nav-group-items--open' : '',
@@ -657,6 +690,8 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
             <button
               onClick={() => { setNotifOpen((o) => !o); if (!notifOpen) markAllRead(); }}
               title="Notifications"
+              aria-label="Notifications"
+              aria-expanded={notifOpen}
               style={{
                 position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 34, height: 34, borderRadius: 10,
