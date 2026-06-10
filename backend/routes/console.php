@@ -176,3 +176,22 @@ Schedule::command('marketing:send-tier-milestones')
     ->withoutOverlapping()
     ->onFailure($alertOnFailure('marketing:send-tier-milestones'))
     ->after($trackSuccess('marketing:send-tier-milestones'));
+
+// Database + upload backups (spatie/laravel-backup)
+Schedule::command('backup:clean')
+    ->dailyAt('01:00')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('backup:clean'))
+    ->after($trackSuccess('backup:clean'));
+
+Schedule::command('backup:run')
+    ->dailyAt('01:30')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('backup:run'))
+    ->after($trackSuccess('backup:run'));
+
+Schedule::command('backup:monitor')
+    ->dailyAt('02:00')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('backup:monitor'))
+    ->after($trackSuccess('backup:monitor'));
