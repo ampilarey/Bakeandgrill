@@ -194,13 +194,21 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
 
   useEffect(() => {
     const load = () => {
+      if (document.visibilityState === 'hidden') return;
       fetchLowStockItems()
         .then((r) => setLowStockCount((r.data ?? []).length))
         .catch(() => { /* non-blocking */ });
     };
     load();
     const t = setInterval(load, 5 * 60 * 1000);
-    return () => clearInterval(t);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   useEffect(() => {
