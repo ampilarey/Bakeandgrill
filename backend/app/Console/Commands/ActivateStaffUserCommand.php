@@ -7,17 +7,13 @@ namespace App\Console\Commands;
 use App\Services\StaffUserLookup;
 use Illuminate\Console\Command;
 
-/**
- * Recover admin dashboard login when the owner password is unknown.
- */
-class SetStaffPasswordCommand extends Command
+class ActivateStaffUserCommand extends Command
 {
-    protected $signature = 'staff:set-password
+    protected $signature = 'staff:activate
         {login : Staff email or mobile number}
-        {password : New admin password (min 8 chars)}
         {--force : Required in production when ALLOW_STAFF_CLI_CREATE is true}';
 
-    protected $description = 'Set or reset a staff member admin password (mobile/email + password login).';
+    protected $description = 'Re-enable a deactivated staff account so they can sign in.';
 
     public function handle(): int
     {
@@ -34,33 +30,24 @@ class SetStaffPasswordCommand extends Command
             }
         }
 
-        $password = (string) $this->argument('password');
-        if (strlen($password) < 8) {
-            $this->error('Password must be at least 8 characters.');
-
-            return 1;
-        }
-
         $login = trim((string) $this->argument('login'));
         $user = StaffUserLookup::findByUsername($login);
 
         if ($user === null) {
             $this->error("No staff user found for: {$login}");
-            $this->line('Run `php artisan staff:list` to see emails and phones on this server.');
+            $this->line('Run `php artisan staff:list` to see accounts on this server.');
 
             return 1;
         }
 
-        if (!$user->is_active) {
-            $this->error("{$user->email} (id {$user->id}) is deactivated. Run: php artisan staff:activate {$user->email} --force");
+        if ($user->is_active) {
+            $this->info("{$user->email} (id {$user->id}) is already active.");
 
-            return 1;
+            return 0;
         }
 
-        $user->update(['password' => $password]);
-        $user->tokens()->where('name', 'like', 'staff-%')->delete();
-
-        $this->info("Password updated for {$user->email} (id {$user->id}). Old sessions revoked.");
+        $user->update(['is_active' => true]);
+        $this->info("Activated {$user->email} (id {$user->id}). They can sign in now.");
 
         return 0;
     }

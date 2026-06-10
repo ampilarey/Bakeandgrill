@@ -30,13 +30,12 @@ final class StaffUserLookup
         return array_values(array_unique(array_filter($values, static fn (string $v) => $v !== '')));
     }
 
-    public static function findActiveByUsername(string $raw): ?User
+    public static function findByUsername(string $raw): ?User
     {
         $values = self::usernameLookupValues($raw);
         $localSeven = self::localSevenDigits($raw);
 
         return User::query()
-            ->where('is_active', true)
             ->where(function ($query) use ($values, $localSeven) {
                 foreach ($values as $value) {
                     $query->orWhere('phone', $value)
@@ -47,6 +46,13 @@ final class StaffUserLookup
                 }
             })
             ->first();
+    }
+
+    public static function findActiveByUsername(string $raw): ?User
+    {
+        $user = self::findByUsername($raw);
+
+        return ($user !== null && $user->is_active) ? $user : null;
     }
 
     /** Last 7 local digits from a Maldivian phone input, if any. */

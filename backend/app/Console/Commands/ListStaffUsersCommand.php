@@ -29,6 +29,11 @@ class ListStaffUsersCommand extends Command
             return 0;
         }
 
+        $inactive = $users->where('is_active', false);
+        if ($inactive->isNotEmpty()) {
+            $this->warn($inactive->count() . ' account(s) are inactive and cannot sign in until activated (`php artisan staff:activate ...`).');
+        }
+
         $this->table(
             ['ID', 'Name', 'Email', 'Phone', 'Role', 'Active', 'Has PIN', 'Has password'],
             $users->map(fn (User $u) => [
