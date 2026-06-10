@@ -10,14 +10,14 @@ describe('LoginPage', () => {
         vi.restoreAllMocks();
     });
 
-    it('renders Mobile Number + Password fields and Sign In button', () => {
+    it('renders mobile/email + password fields and Sign In button', () => {
         render(
             <MemoryRouter>
                 <LoginPage onLogin={vi.fn()} />
             </MemoryRouter>,
         );
-        expect(screen.getByPlaceholderText(/\+960/i)).toBeTruthy();
-        expect(screen.getByPlaceholderText(/your password/i)).toBeTruthy();
+        expect(screen.getByPlaceholderText(/7820288 or you@example.com/i)).toBeTruthy();
+        expect(screen.getByPlaceholderText(/your admin password/i)).toBeTruthy();
         expect(screen.getByRole('button', { name: /sign in/i })).toBeTruthy();
     });
 
@@ -31,10 +31,10 @@ describe('LoginPage', () => {
         // Submit is the only `disabled`-capable button in the form
         expect(btn.disabled).toBe(true);
 
-        fireEvent.change(screen.getByPlaceholderText(/\+960/i), { target: { value: '9609123456' } });
+        fireEvent.change(screen.getByPlaceholderText(/7820288 or you@example.com/i), { target: { value: '9609123456' } });
         expect(btn.disabled).toBe(true);
 
-        fireEvent.change(screen.getByPlaceholderText(/your password/i), { target: { value: 'hunter2' } });
+        fireEvent.change(screen.getByPlaceholderText(/your admin password/i), { target: { value: 'hunter2' } });
         expect(btn.disabled).toBe(false);
     });
 
@@ -49,8 +49,8 @@ describe('LoginPage', () => {
             </MemoryRouter>,
         );
 
-        fireEvent.change(screen.getByPlaceholderText(/\+960/i), { target: { value: '9609123456' } });
-        fireEvent.change(screen.getByPlaceholderText(/your password/i), { target: { value: 'hunter2' } });
+        fireEvent.change(screen.getByPlaceholderText(/7820288 or you@example.com/i), { target: { value: '9609123456' } });
+        fireEvent.change(screen.getByPlaceholderText(/your admin password/i), { target: { value: 'hunter2' } });
         fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
         await waitFor(() => expect(phoneLoginSpy).toHaveBeenCalledWith('9609123456', 'hunter2'));
@@ -66,8 +66,8 @@ describe('LoginPage', () => {
             </MemoryRouter>,
         );
 
-        fireEvent.change(screen.getByPlaceholderText(/\+960/i), { target: { value: '9609123456' } });
-        fireEvent.change(screen.getByPlaceholderText(/your password/i), { target: { value: 'wrong' } });
+        fireEvent.change(screen.getByPlaceholderText(/7820288 or you@example.com/i), { target: { value: '9609123456' } });
+        fireEvent.change(screen.getByPlaceholderText(/your admin password/i), { target: { value: 'wrong' } });
         fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
         await waitFor(() => expect(screen.getByText(/invalid credentials/i)).toBeTruthy());
