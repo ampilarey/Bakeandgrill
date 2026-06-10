@@ -195,3 +195,14 @@ Schedule::command('backup:monitor')
     ->withoutOverlapping()
     ->onFailure($alertOnFailure('backup:monitor'))
     ->after($trackSuccess('backup:monitor'));
+
+// External dead-man's switch — pings HEALTHCHECK_URL when configured
+Schedule::command('scheduler:heartbeat')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('scheduler:heartbeat'))
+    ->after($trackSuccess('scheduler:heartbeat'));
+
+// Horizon metrics snapshots (requires `php artisan horizon` worker)
+Schedule::command('horizon:snapshot')
+    ->everyFiveMinutes();
