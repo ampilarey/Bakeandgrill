@@ -38,52 +38,69 @@ export class ApiRequestError extends Error {
 
 export type ApiClient = ReturnType<typeof createApiClient>;
 
+function buildAuthHeaders(
+  config: ApiClientConfig,
+  options: RequestInit,
+  defaults: Record<string, string>,
+): HeadersInit {
+  const token = config.getToken?.();
+  return {
+    ...defaults,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+}
+
+async function throwForFailedResponse(response: Response): Promise<never> {
+  if (response.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth_expired'));
+    }
+    throw new ApiRequestError('Session expired. Please log in again.', 401);
+  }
+
+  const text = await response.text().catch(() => '');
+  let message = 'Request failed';
+  let parsedBody: unknown = undefined;
+  try {
+    const body = JSON.parse(text) as ApiError;
+    parsedBody = body;
+    message =
+      Object.values(body.errors ?? {})[0]?.[0] ??
+      body.message ??
+      'Request failed';
+  } catch {
+    message = `Server error (${response.status})`;
+  }
+  throw new ApiRequestError(message, response.status, parsedBody);
+}
+
+/** Trigger a browser download for a Blob (PDF, CSV, XLSX exports). */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export function createApiClient(config: ApiClientConfig) {
   async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const token = config.getToken?.();
-    // Don't set Content-Type for FormData — browser must set it with the multipart boundary
     const isFormData = options.body instanceof FormData;
 
     const response = await fetch(`${config.baseUrl}${path}`, {
       credentials: config.credentials ?? 'same-origin',
       ...options,
-      headers: {
+      headers: buildAuthHeaders(config, options, {
         ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
         Accept: 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        // Caller-supplied headers override defaults (including auth if needed)
-        ...options.headers,
-      },
+      }),
     });
 
     if (!response.ok) {
-      // Token expired or revoked — notify the app so it can redirect to login
-      if (response.status === 401) {
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('auth_expired'));
-        }
-        throw new ApiRequestError('Session expired. Please log in again.', 401);
-      }
-
-      const text = await response.text().catch(() => '');
-      let message = 'Request failed';
-      let parsedBody: unknown = undefined;
-      try {
-        const body = JSON.parse(text) as ApiError;
-        parsedBody = body;
-        // Prefer the first field-level error (e.g. "Invalid OTP code. 4 attempts remaining.")
-        // over the generic Laravel validation message ("The given data was invalid.").
-        message =
-          Object.values(body.errors ?? {})[0]?.[0] ??
-          body.message ??
-          'Request failed';
-      } catch {
-        message = `Server error (${response.status})`;
-      }
-      throw new ApiRequestError(message, response.status, parsedBody);
+      await throwForFailedResponse(response);
     }
 
-    // 204 No Content
     if (response.status === 204) {
       return undefined as T;
     }
@@ -91,5 +108,19 @@ export function createApiClient(config: ApiClientConfig) {
     return response.json() as Promise<T>;
   }
 
-  return { request };
+  async function requestBlob(path: string, options: RequestInit = {}): Promise<Blob> {
+    const response = await fetch(`${config.baseUrl}${path}`, {
+      credentials: config.credentials ?? 'same-origin',
+      ...options,
+      headers: buildAuthHeaders(config, options, {}),
+    });
+
+    if (!response.ok) {
+      await throwForFailedResponse(response);
+    }
+
+    return response.blob();
+  }
+
+  return { request, requestBlob };
 }

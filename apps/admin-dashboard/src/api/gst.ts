@@ -1,4 +1,5 @@
-import { req, BASE } from './client';
+import { downloadBlob } from '@shared/api';
+import { req, requestBlob } from './client';
 
 export interface GstSettings {
   gst_registered: boolean;
@@ -66,18 +67,8 @@ export async function lockGstPeriod(period: string): Promise<{ message: string }
 }
 
 export async function downloadGstExport(path: string, period: string, filename: string): Promise<void> {
-  const token = localStorage.getItem('admin_token');
-  const url = `${BASE}${path}?period=${encodeURIComponent(period)}`;
-  const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error(`Export failed (${res.status})`);
-  const blob = await res.blob();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const blob = await requestBlob(`${path}?period=${encodeURIComponent(period)}`);
+  downloadBlob(blob, filename);
 }
 
 export async function downloadGstSummaryCsv(period: string): Promise<void> {

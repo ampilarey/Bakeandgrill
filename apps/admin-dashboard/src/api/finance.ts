@@ -1,4 +1,4 @@
-import { BASE, req } from './client';
+import { BASE, getStoredAdminToken, req, requestBlob } from './client';
 
 // ── Invoices ──────────────────────────────────────────────────────────────────
 
@@ -96,15 +96,9 @@ export async function createCreditNote(invoiceId: number, data: {
 }
 
 export async function generateInvoicePdf(id: number): Promise<Blob> {
-  const token = localStorage.getItem('admin_token');
-  const res = await fetch(`${BASE}/invoices/${id}/pdf`, {
-    headers: {
-      Accept: 'application/pdf',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+  return requestBlob(`/invoices/${id}/pdf`, {
+    headers: { Accept: 'application/pdf' },
   });
-  if (!res.ok) throw new Error(`PDF generation failed (${res.status})`);
-  return res.blob();
 }
 
 export async function createInvoiceFromOrder(orderId: number): Promise<{ invoice: Invoice }> {
@@ -210,22 +204,9 @@ export async function getExpenseSummary(from: string, to: string): Promise<{ tot
 }
 
 export async function uploadExpenseReceipt(id: number, file: File): Promise<{ expense: Expense }> {
-  const token = localStorage.getItem('admin_token');
   const form = new FormData();
   form.append('receipt', file);
-  const res = await fetch(`${BASE}/expenses/${id}/receipt`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: form,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { message?: string };
-    throw new Error(body.message ?? `Upload failed (${res.status})`);
-  }
-  return res.json() as Promise<{ expense: Expense }>;
+  return req(`/expenses/${id}/receipt`, { method: 'POST', body: form });
 }
 
 export async function approveExpense(id: number): Promise<{ expense: Expense }> {
@@ -1122,13 +1103,12 @@ export async function getSystemHealth(): Promise<SystemHealth> {
 // ── Server-side CSV export URLs (returns URL to navigate to, token-signed) ───
 
 export function getReportCsvUrl(type: 'sales-summary' | 'sales-breakdown' | 'x-report' | 'z-report' | 'inventory-valuation', params?: { from?: string; to?: string }): string {
-  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
   const qs = new URLSearchParams();
   if (params?.from) qs.set('from', params.from);
   if (params?.to) qs.set('to', params.to);
-  const token = localStorage.getItem('admin_token') ?? '';
+  const token = getStoredAdminToken() ?? '';
   if (token) qs.set('token', token);
-  return `${base}/reports/${type}/csv?${qs}`;
+  return `${BASE}/reports/${type}/csv?${qs}`;
 }
 
 // ── Purchase Import & Receipt Upload ─────────────────────────────────────────

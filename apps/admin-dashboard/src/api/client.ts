@@ -1,8 +1,11 @@
-import { createApiClient } from '@shared/api';
+import { createApiClient, resolveApiBaseUrl } from '@shared/api';
 
-export const BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
+export const ADMIN_TOKEN_KEY = 'admin_token';
+
+export const BASE = resolveApiBaseUrl({
+  envUrl: import.meta.env.VITE_API_BASE_URL as string | undefined,
+  prod: import.meta.env.PROD,
+});
 
 if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   // eslint-disable-next-line no-console
@@ -16,12 +19,16 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
  * staff without a bearer token carrying the `staff` ability. POS/KDS intentionally
  * keep bearer tokens for offline/device use.
  */
-const { request: req } = createApiClient({
+const { request: req, requestBlob } = createApiClient({
   baseUrl: BASE,
-  getToken: () => localStorage.getItem('admin_token'),
+  getToken: () => localStorage.getItem(ADMIN_TOKEN_KEY),
 });
 
-export { req };
+export { req, requestBlob };
+
+export function getStoredAdminToken(): string | null {
+  return localStorage.getItem(ADMIN_TOKEN_KEY);
+}
 
 /**
  * Generic authenticated request helper for ad-hoc admin API calls.

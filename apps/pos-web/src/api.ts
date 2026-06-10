@@ -1,4 +1,3 @@
-import { createApiClient } from "@shared/api";
 import type {
   Category,
   MenuItem as Item,
@@ -7,97 +6,12 @@ import type {
   StaffLoginResponse,
   StaffUser,
 } from "@shared/types";
+import { getApiBaseUrl, request, setAuthToken } from "./api/client";
 
 export type { SalesSummary };
-
-function resolvePosApiBaseUrl(): string {
-  const envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  const defaultForMode = import.meta.env.PROD
-    ? "/api"
-    : "http://localhost:8000/api";
-  let base = envUrl ?? defaultForMode;
-
-  // Deployed sites must not call a dev machine URL (often baked in if the bundle
-  // was built with MODE=development or VITE_API_BASE_URL=http://localhost:8000/api).
-  if (typeof window !== "undefined") {
-    const h = window.location.hostname;
-    const pageIsLocal = h === "localhost" || h === "127.0.0.1";
-    const baseLooksLocal =
-      base.includes("localhost") || base.includes("127.0.0.1");
-    if (!pageIsLocal && baseLooksLocal) {
-      base = "/api";
-    }
-  }
-
-  return base;
-}
-
-const API_BASE_URL = resolvePosApiBaseUrl();
-
-/** Shared base URL for fetch calls outside the authenticated api client. */
-export function getApiBaseUrl(): string {
-  return API_BASE_URL;
-}
-
-if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
-  // eslint-disable-next-line no-console
-  console.warn("[CONFIG] VITE_API_BASE_URL is not set — falling back to same-origin /api");
-}
-
-// Module-level token — initialised from localStorage so page refresh
-// doesn't silently log out the POS. Cleared on explicit logout.
-//
-// SECURITY DEBT (H9): storing the Sanctum token in localStorage exposes
-// it to XSS exfiltration and to anyone with physical access to the iPad
-// (e.g. via Safari → Develop → Storage). Production-grade fix is to move
-// staff auth onto HttpOnly cookies with Sanctum's stateful flow, which
-// requires:
-//   - Sanctum SPA mode + sanctum/csrf-cookie endpoint
-//   - SANCTUM_STATEFUL_DOMAINS env on the API
-//   - withCredentials: true on every fetch
-//   - Backend CORS + same-site cookie config
-// That migration touches every app (pos, admin, online-order) plus the
-// kiosk receipt flow — tracked as a separate effort. For now we mitigate
-// with strict CSP on the kiosk Safari profile (no external scripts) and
-// short-lived tokens (Sanctum default).
-let _token: string | null = localStorage.getItem('pos_token');
-export function setAuthToken(t: string | null): void {
-  _token = t;
-}
-
-const { request: _coreRequest } = createApiClient({
-  baseUrl: API_BASE_URL,
-  getToken: () => _token,
-});
-
-// Wraps every API call: injects optional X-Device-Identifier for audit metadata.
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const deviceId = localStorage.getItem('pos_device_id');
-  const extraHeaders: HeadersInit = deviceId
-    ? { 'X-Device-Identifier': deviceId }
-    : {};
-  const merged: RequestInit = {
-    ...options,
-    headers: { ...extraHeaders, ...(options?.headers ?? {}) },
-  };
-  try {
-    return await _coreRequest<T>(path, merged);
-  } catch (e) {
-    // Auth expiry: bubble a single global event the App listens for.
-    // Without this, individual call sites silently log a 401 and the
-    // cashier wonders why nothing works. ApiRequestError carries the
-    // HTTP status from the shared client.
-    const status = (e as { status?: number })?.status;
-    if (status === 401) {
-      // Clear the cached token so reauth flow doesn't loop with a
-      // stale value still attached to outgoing requests.
-      _token = null;
-      localStorage.removeItem('pos_token');
-      window.dispatchEvent(new Event('auth_expired'));
-    }
-    throw e;
-  }
-}
+export { getApiBaseUrl, setAuthToken };
+export type { PosOfflineSyncPayload, PosOfflineSyncResponse } from "./api/offline";
+export { syncOfflineOrders } from "./api/offline";
 
 export async function fetchCategories(): Promise<Category[]> {
   const data = await request<{ categories?: Category[]; data?: Category[] }>(
@@ -1455,61 +1369,6 @@ export async function updateOrderCustomer(
   return request(`/orders/${orderId}/customer`, {
     method: "PATCH",
     body: JSON.stringify({ customer_id: customerId }),
-  });
-}
-
-export type PosOfflineSyncPayload = {
-  orders: Array<{
-    idempotency_key: string;
-    local_order_id: string;
-    local_order_number: string;
-    device_identifier: string;
-    shift_id: number;
-    created_at_local: string;
-    type: string;
-    items: Array<{
-      item_id: number;
-      quantity: number;
-      variant_id?: number;
-      unit_price: number;
-      modifiers?: Array<{ modifier_id: number; name?: string; price?: number }>;
-      notes?: string;
-    }>;
-    totals: { subtotal: number; tax: number; total: number };
-    payment: {
-      method: "cash" | "card" | "bank_transfer";
-      amount: number;
-      reference?: string;
-    };
-    discount_amount?: number;
-    customer_id?: number;
-    rewards?: {
-      promo_code?: string | null;
-      loyalty_points?: number;
-      gift_card_code?: string | null;
-    };
-    ticket_name?: string;
-    ticket_note?: string;
-    restaurant_table_id?: number;
-    prepared_locally?: boolean;
-  }>;
-};
-
-export type PosOfflineSyncResponse = {
-  results: Array<{
-    local_order_id: string;
-    status: "synced" | "conflict" | "failed";
-    server_order_id?: number;
-    server_order_number?: string;
-    inventory_conflict?: boolean;
-    message?: string | null;
-  }>;
-};
-
-export async function syncOfflineOrders(payload: PosOfflineSyncPayload): Promise<PosOfflineSyncResponse> {
-  return request("/pos/offline-sync", {
-    method: "POST",
-    body: JSON.stringify(payload),
   });
 }
 

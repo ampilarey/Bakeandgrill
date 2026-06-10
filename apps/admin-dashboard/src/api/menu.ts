@@ -1,4 +1,4 @@
-import { BASE, req } from './client';
+import { req } from './client';
 
 export type MenuCategory = {
   id: number;
@@ -214,22 +214,9 @@ export async function toggleItemAvailability(id: number): Promise<{ item: MenuIt
 }
 
 export async function uploadMenuImage(file: File): Promise<{ url: string }> {
-  const token = localStorage.getItem('admin_token');
   const formData = new FormData();
   formData.append('image', file);
-  const res = await fetch(`${BASE}/admin/upload-image`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: formData,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { message?: string };
-    throw new Error(body.message ?? `Upload failed (${res.status})`);
-  }
-  return res.json() as Promise<{ url: string }>;
+  return req('/admin/upload-image', { method: 'POST', body: formData });
 }
 
 // ── Item Photos ────────────────────────────────────────────────────────────────
@@ -248,22 +235,9 @@ export async function getItemPhotos(itemId: number): Promise<{ data: ItemPhoto[]
 }
 
 export async function uploadItemPhoto(itemId: number, file: File): Promise<{ photo: ItemPhoto }> {
-  const token = localStorage.getItem('admin_token');
   const form = new FormData();
   form.append('photo', file);
-  const res = await fetch(`${BASE}/items/${itemId}/photos`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: form,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { message?: string };
-    throw new Error(body.message ?? `Upload failed (${res.status})`);
-  }
-  return res.json() as Promise<{ photo: ItemPhoto }>;
+  return req(`/items/${itemId}/photos`, { method: 'POST', body: form });
 }
 
 export async function updateItemPhoto(
