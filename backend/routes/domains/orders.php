@@ -25,21 +25,21 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     Route::post('/orders/sync', [App\Http\Controllers\Api\OrderController::class, 'sync'])
         ->middleware(['permission:pos.ring_sales', 'device.active']);
     Route::get('/orders/{id}', [App\Http\Controllers\Api\OrderController::class, 'show']);
-    Route::post('/orders/{id}/hold', [App\Http\Controllers\Api\OrderController::class, 'hold'])
+    Route::post('/orders/{id}/hold', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'hold'])
         ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
-    Route::post('/orders/{id}/resume', [App\Http\Controllers\Api\OrderController::class, 'resume'])
+    Route::post('/orders/{id}/resume', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'resume'])
         ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
-    Route::post('/orders/{id}/fire-to-kitchen', [App\Http\Controllers\Api\OrderController::class, 'fireToKitchen'])
+    Route::post('/orders/{id}/fire-to-kitchen', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'fireToKitchen'])
         ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
     Route::post('/orders/{id}/send-pay-link', [App\Http\Controllers\Api\OrderController::class, 'sendPayLink'])
         ->middleware(['permission:orders.send_payment_link', 'throttle:10,1']);
-    Route::post('/orders/{id}/start-cooking', [App\Http\Controllers\Api\OrderController::class, 'startCooking'])
+    Route::post('/orders/{id}/start-cooking', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'startCooking'])
         ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
-    Route::post('/orders/{id}/mark-ready', [App\Http\Controllers\Api\OrderController::class, 'markReady'])
+    Route::post('/orders/{id}/mark-ready', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'markReady'])
         ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
-    Route::post('/orders/{id}/mark-picked-up', [App\Http\Controllers\Api\OrderController::class, 'markPickedUp'])
+    Route::post('/orders/{id}/mark-picked-up', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'markPickedUp'])
         ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
-    Route::post('/orders/{id}/cancel', [App\Http\Controllers\Api\OrderController::class, 'cancel'])
+    Route::post('/orders/{id}/cancel', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'cancel'])
         ->middleware(['permission:orders.void', 'device.active', 'throttle:10,1']);
     Route::patch('/orders/{id}/items', [App\Http\Controllers\Api\OrderController::class, 'updateItems'])
         ->middleware(['permission:pos.hold_resume', 'throttle:30,1']);
