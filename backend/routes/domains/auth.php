@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\Auth\CustomerAuthController;
 use App\Http\Controllers\Api\Auth\StaffAuthController;
 use App\Http\Controllers\Api\CustomerController;
-use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\Orders\OrderCreationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -97,7 +97,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::patch('/credit/preferences', [CustomerController::class, 'updateCreditPreferences']);
     Route::get('/orders', [CustomerController::class, 'orders']);
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
-    Route::post('/orders', [OrderController::class, 'storeCustomer']);
+    Route::post('/orders', [OrderCreationController::class, 'storeCustomer']);
     Route::patch('/profile', [CustomerController::class, 'update']);
     Route::post('/cart/snapshot', [App\Http\Controllers\Api\CustomerCartController::class, 'snapshot']);
     Route::get('/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'index']);

@@ -19,12 +19,12 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     routes_domain_mark_loaded('orders.core');
 
     // Orders
-    Route::get('/orders', [App\Http\Controllers\Api\OrderController::class, 'index']);
-    Route::post('/orders', [App\Http\Controllers\Api\OrderController::class, 'store'])
+    Route::get('/orders', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'index']);
+    Route::post('/orders', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'store'])
         ->middleware(['permission:pos.ring_sales', 'device.active']);
-    Route::post('/orders/sync', [App\Http\Controllers\Api\OrderController::class, 'sync'])
+    Route::post('/orders/sync', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'sync'])
         ->middleware(['permission:pos.ring_sales', 'device.active']);
-    Route::get('/orders/{id}', [App\Http\Controllers\Api\OrderController::class, 'show']);
+    Route::get('/orders/{id}', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'show']);
     Route::post('/orders/{id}/hold', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'hold'])
         ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
     Route::post('/orders/{id}/resume', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'resume'])
