@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Orders\Support;
 
 use App\Domains\Orders\DTOs\DiscountsInput;
-use App\Support\Money;
+use App\Support\LaariConverter;
 
 /**
  * Computes the discount actually taken off an order subtotal when
@@ -122,6 +122,6 @@ final class EffectiveDiscount
             return (int) $order->subtotal_laar;
         }
 
-        return Money::toLaar($order->subtotal ?? 0);
+        return LaariConverter::toLaar($order->subtotal ?? 0);
     }
 }

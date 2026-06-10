@@ -12,6 +12,9 @@ use InvalidArgumentException;
  * All amounts are stored as integer laari (1 MVR = 100 laari).
  * This avoids floating-point precision errors in financial calculations.
  *
+ * For MVR ↔ laari conversion on legacy decimals (including negative
+ * discount amounts), use {@see \App\Support\LaariConverter} instead.
+ *
  * Rounding policy:
  *   - Percentage discounts (PromotionEvaluator): floor() on laar
  *   - Tax extraction: round() — standard rounding

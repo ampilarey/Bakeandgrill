@@ -19,7 +19,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Shift;
 use App\Models\WebhookLog;
-use App\Support\Money;
+use App\Support\LaariConverter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -603,6 +603,6 @@ class PaymentService
             return (int) $order->total_laar;
         }
 
-        return Money::toLaar($order->total);
+        return LaariConverter::toLaar($order->total);
     }
 }

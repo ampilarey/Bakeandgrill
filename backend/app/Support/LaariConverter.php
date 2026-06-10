@@ -7,10 +7,12 @@ namespace App\Support;
 /**
  * MVR ↔ laari conversion helpers (1 MVR = 100 laari).
  *
- * Separate from App\Domains\Shared\ValueObjects\Money, which is a non-negative VO.
- * Use this for legacy decimal columns and discount paths that may be negative.
+ * For non-negative monetary amounts in domain logic, prefer
+ * {@see \App\Domains\Shared\ValueObjects\Money} — an immutable VO with
+ * arithmetic helpers. LaariConverter is for legacy decimal columns and
+ * discount paths that may be negative.
  */
-final class Money
+final class LaariConverter
 {
     public static function toLaar(string|int|float|null $mvr): int
     {

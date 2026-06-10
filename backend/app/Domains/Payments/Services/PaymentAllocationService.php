@@ -10,7 +10,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\PermissionService;
-use App\Support\Money;
+use App\Support\LaariConverter;
 
 final class PaymentAllocationService
 {
@@ -86,7 +86,7 @@ final class PaymentAllocationService
                 $creditCustomer = Customer::findOrFail((int) $order->customer_id);
                 $creditService->assertCanCharge(
                     $creditCustomer,
-                    Money::toLaar($paymentPayload['amount']),
+                    LaariConverter::toLaar($paymentPayload['amount']),
                 );
             }
             $method = $paymentPayload['method'] ?? '';
@@ -100,7 +100,7 @@ final class PaymentAllocationService
                 $depositCustomer = Customer::findOrFail((int) $order->customer_id);
                 $depositService->assertCanUseDeposit(
                     $depositCustomer,
-                    Money::toLaar($paymentPayload['amount']),
+                    LaariConverter::toLaar($paymentPayload['amount']),
                 );
             }
         }
@@ -138,7 +138,7 @@ final class PaymentAllocationService
      */
     public function assertTenderCap(Order $order, array $payments): void
     {
-        $orderTotalLaarPre = (int) ($order->total_laar ?? Money::toLaar($order->total));
+        $orderTotalLaarPre = (int) ($order->total_laar ?? LaariConverter::toLaar($order->total));
         $alreadyPaidLaar = (int) $order->payments()
             ->whereIn('status', ['paid', 'completed', 'confirmed'])
             ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as t')
@@ -148,7 +148,7 @@ final class PaymentAllocationService
         $incomingLaar = 0;
         $anyNonCash = false;
         foreach ($payments as $row) {
-            $incomingLaar += Money::toLaar($row['amount']);
+            $incomingLaar += LaariConverter::toLaar($row['amount']);
             if ($row['method'] !== 'cash') {
                 $anyNonCash = true;
             }
