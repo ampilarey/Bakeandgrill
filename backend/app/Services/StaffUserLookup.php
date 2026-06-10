@@ -33,16 +33,31 @@ final class StaffUserLookup
     public static function findActiveByUsername(string $raw): ?User
     {
         $values = self::usernameLookupValues($raw);
+        $localSeven = self::localSevenDigits($raw);
 
         return User::query()
             ->where('is_active', true)
-            ->where(function ($query) use ($values) {
+            ->where(function ($query) use ($values, $localSeven) {
                 foreach ($values as $value) {
                     $query->orWhere('phone', $value)
                         ->orWhere('email', $value);
                 }
+                if ($localSeven !== null) {
+                    $query->orWhere('phone', 'like', '%' . $localSeven);
+                }
             })
             ->first();
+    }
+
+    /** Last 7 local digits from a Maldivian phone input, if any. */
+    public static function localSevenDigits(string $raw): ?string
+    {
+        $digits = preg_replace('/\D/', '', trim($raw)) ?? '';
+        if (preg_match('/(?:^960)?([3679][0-9]{6})$/', $digits, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     public static function findActiveByPhone(string $raw): ?User

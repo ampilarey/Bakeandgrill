@@ -46,6 +46,7 @@ class SetStaffPasswordCommand extends Command
 
         if ($user === null) {
             $this->error("No active staff user found for: {$login}");
+            $this->line('Run `php artisan staff:list` to see emails and phones on this server.');
 
             return 1;
         }
