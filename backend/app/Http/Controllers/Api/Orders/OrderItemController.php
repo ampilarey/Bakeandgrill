@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Orders;
 
 use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Services\AuditLogService;
 use App\Services\OrderCreationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class OrderController extends Controller
+class OrderItemController extends Controller
 {
     /**
      * PATCH /api/orders/{id}/items
@@ -134,7 +135,7 @@ class OrderController extends Controller
 
             // Re-parent items. Modifiers travel with their items
             // because OrderItemModifier.order_item_id stays the same.
-            \App\Models\OrderItem::where('order_id', $source->id)
+            OrderItem::where('order_id', $source->id)
                 ->update(['order_id' => $target->id]);
 
             // Recalculate target totals via the calculator (single
@@ -247,7 +248,7 @@ class OrderController extends Controller
                 'ticket_note' => "Split from order #{$source->id}",
             ], $request->user());
 
-            \App\Models\OrderItem::whereIn('id', $toSplit)->update(['order_id' => $split->id]);
+            OrderItem::whereIn('id', $toSplit)->update(['order_id' => $split->id]);
 
             $service = app(OrderCreationService::class);
             $source = $service->recalculateTotals($source->fresh());
@@ -273,104 +274,6 @@ class OrderController extends Controller
         return response()->json([
             'source' => ['id' => $result['source']->id, 'total' => (float) $result['source']->total],
             'split' => ['id' => $result['split']->id, 'total' => (float) $result['split']->total],
-        ]);
-    }
-
-    /**
-     * GET /api/orders/track/{token}
-     *
-     * Public order tracking — no authentication required.
-     * Only exposes status and items, not customer PII.
-     */
-    public function trackByToken(string $token): JsonResponse
-    {
-        $order = Order::with(['items.modifiers'])
-            ->where('tracking_token', $token)
-            ->first();
-
-        if (!$order) {
-            return response()->json(['message' => 'Order not found'], 404);
-        }
-
-        return response()->json([
-            'order' => [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'status' => $order->status,
-                'payment_status' => $order->payment_status,
-                'type' => $order->type,
-                'subtotal' => $order->subtotal,
-                'tax_amount' => $order->tax_amount,
-                'promo_discount_laar' => $order->promo_discount_laar,
-                'loyalty_discount_laar' => $order->loyalty_discount_laar,
-                'gift_card_discount_laar' => $order->gift_card_discount_laar,
-                'referral_discount_laar' => $order->referral_discount_laar,
-                'delivery_fee' => $order->delivery_fee,
-                'total' => $order->total,
-                'paid_at' => $order->paid_at,
-                'estimated_wait_minutes' => $order->estimated_wait_minutes,
-                // Delivery info (customer already knows their own address)
-                'delivery_address_line1' => $order->delivery_address_line1,
-                'delivery_island' => $order->delivery_island,
-                'delivery_contact_name' => $order->delivery_contact_name,
-                'delivery_contact_phone' => $order->delivery_contact_phone,
-                'items' => $order->items->map(fn ($item) => [
-                    'id' => $item->id,
-                    'item_name' => $item->item_name,
-                    'variant_name' => $item->variant_name,
-                    'quantity' => $item->quantity,
-                    'unit_price' => (float) $item->unit_price,
-                    'total_price' => (float) $item->total_price,
-                    'notes' => $item->notes,
-                    'modifiers' => $item->modifiers->map(fn ($m) => [
-                        'id' => $m->id,
-                        'name' => $m->modifier_name,
-                        'modifier_name' => $m->modifier_name,
-                        'modifier_price' => (float) $m->modifier_price,
-                    ])->values(),
-                ])->values(),
-            ],
-        ]);
-    }
-
-    /**
-     * PATCH /api/orders/{id}/customer
-     *
-     * Link, change, or remove the customer on an open order — used when
-     * a paid pickup ticket is opened view-only at the counter and the
-     * cashier needs to attach a phone for receipt SMS / handover.
-     */
-    public function updateCustomer(Request $request, int $id): JsonResponse
-    {
-        if (!$request->user()?->tokenCan('staff')) {
-            return response()->json(['message' => 'Forbidden - staff access only'], 403);
-        }
-
-        $request->validate([
-            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
-        ]);
-
-        $order = Order::with('customer')->findOrFail($id);
-
-        if (in_array($order->status, ['completed', 'cancelled', 'refunded'], true)) {
-            return response()->json(['message' => 'Cannot change customer on a closed order.'], 422);
-        }
-
-        $before = $order->customer_id;
-        $order->update(['customer_id' => $request->input('customer_id')]);
-
-        app(AuditLogService::class)->log(
-            'order.customer_updated',
-            'Order',
-            $order->id,
-            ['customer_id' => $before],
-            ['customer_id' => $order->customer_id],
-            [],
-            $request,
-        );
-
-        return response()->json([
-            'order' => $order->fresh(['customer:id,name,phone,loyalty_points,sms_opt_out']),
         ]);
     }
 }

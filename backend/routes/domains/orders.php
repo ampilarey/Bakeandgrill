@@ -41,17 +41,17 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
     Route::post('/orders/{id}/cancel', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'cancel'])
         ->middleware(['permission:orders.void', 'device.active', 'throttle:10,1']);
-    Route::patch('/orders/{id}/items', [App\Http\Controllers\Api\OrderController::class, 'updateItems'])
+    Route::patch('/orders/{id}/items', [App\Http\Controllers\Api\Orders\OrderItemController::class, 'updateItems'])
         ->middleware(['permission:pos.hold_resume', 'throttle:30,1']);
-    Route::post('/orders/{id}/merge', [App\Http\Controllers\Api\OrderController::class, 'merge'])
+    Route::post('/orders/{id}/merge', [App\Http\Controllers\Api\Orders\OrderItemController::class, 'merge'])
         ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
-    Route::post('/orders/{id}/split', [App\Http\Controllers\Api\OrderController::class, 'split'])
+    Route::post('/orders/{id}/split', [App\Http\Controllers\Api\Orders\OrderItemController::class, 'split'])
         ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
     Route::post('/orders/{id}/payments', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'addPayments'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/send-bill', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'sendBill'])
         ->middleware(['permission:orders.send_sms_bill', 'throttle:10,1']);
-    Route::patch('/orders/{id}/customer', [App\Http\Controllers\Api\OrderController::class, 'updateCustomer'])
+    Route::patch('/orders/{id}/customer', [App\Http\Controllers\Api\Orders\OrderCustomerController::class, 'updateCustomer'])
         ->middleware(['permission:pos.ring_sales', 'throttle:30,1']);
 
     // Receipts (staff)

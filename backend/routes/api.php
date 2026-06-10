@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\CustomerController;
-use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\Orders\OrderTrackingController;
 use App\Http\Controllers\Api\ReceiptController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,7 +16,7 @@ $GLOBALS['routes_sections'] = [];
 Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
 
 // Public order tracking — no auth required, token in URL acts as shared secret
-Route::get('/orders/track/{token}', [OrderController::class, 'trackByToken'])
+Route::get('/orders/track/{token}', [OrderTrackingController::class, 'trackByToken'])
     ->middleware('throttle:10,1');
 
 // ── Prayer Times (public, throttled) ─────────────────────────────────────────
