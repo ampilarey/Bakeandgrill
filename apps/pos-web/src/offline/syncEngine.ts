@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import { syncOfflineOrders, type PosOfflineSyncPayload } from "../api";
 import {
   getPendingOfflineOrders,
@@ -119,6 +120,12 @@ export async function runOfflineSync(force = false): Promise<SyncEngineResult> {
       } catch (e) {
         failed += batch.length;
         const msg = e instanceof Error ? e.message : "Network error during sync";
+        Sentry.captureException(e instanceof Error ? e : new Error(msg), {
+          extra: {
+            batch_size: batch.length,
+            local_order_ids: batch.map((o) => o.local_order_id),
+          },
+        });
         for (const order of batch) {
           await updateOfflineOrder(order.local_order_id, { status: "failed", last_error: msg });
         }

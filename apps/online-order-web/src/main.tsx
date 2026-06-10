@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react';
 import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
@@ -10,6 +11,14 @@ import { AuthProvider } from './context/AuthContext';
 import { Layout } from './components/Layout';
 import { ScrollToTop } from './components/ScrollToTop';
 import './index.css';
+
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: import.meta.env.MODE,
+  });
+}
 
 // Lazily load all page components for code splitting
 const HomePage         = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
