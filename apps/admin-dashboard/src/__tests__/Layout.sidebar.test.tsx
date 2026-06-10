@@ -1,0 +1,92 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { Layout } from '../components/Layout';
+import type { StaffUser } from '../api';
+
+vi.mock('../api', () => ({
+  fetchLowStockItems: vi.fn().mockResolvedValue({ data: [] }),
+}));
+
+const owner: StaffUser = {
+  id: 1,
+  name: 'Owner',
+  email: 'o@test.com',
+  role: 'owner',
+  permissions: [],
+};
+
+function mockDesktopWidth() {
+  Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+  window.dispatchEvent(new Event('resize'));
+}
+
+function groupHeader(label: string) {
+  const headers = screen.getAllByRole('button').filter((btn) =>
+    btn.classList.contains('admin-nav-group-header') &&
+    btn.querySelector('.admin-nav-group-label')?.textContent === label,
+  );
+  return headers[0] ?? null;
+}
+
+function isGroupOpen(label: string): boolean {
+  const header = groupHeader(label);
+  if (!header) return false;
+  return !header.querySelector('.admin-nav-group-chevron--closed');
+}
+
+function renderLayout(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Layout user={owner} onLogout={() => {}}>
+        <div>Page</div>
+      </Layout>
+    </MemoryRouter>,
+  );
+}
+
+describe('Layout desktop sidebar groups', () => {
+  beforeEach(() => {
+    mockDesktopWidth();
+    localStorage.clear();
+    localStorage.setItem('bg_nav_open_groups', JSON.stringify(['operations', 'online-store', 'customers']));
+  });
+
+  it('collapses an open group containing the active route when the header is clicked', () => {
+    renderLayout('/delivery');
+    expect(isGroupOpen('Operations')).toBe(true);
+
+    fireEvent.click(groupHeader('Operations')!);
+    expect(isGroupOpen('Operations')).toBe(false);
+
+    // Effect must not immediately re-open on the same route
+    expect(isGroupOpen('Operations')).toBe(false);
+  });
+
+  it('does not mark Operations active on /delivery-settings', () => {
+    renderLayout('/delivery-settings');
+    const opsHeader = groupHeader('Operations');
+    expect(opsHeader).toBeTruthy();
+    expect(opsHeader!.classList.contains('admin-nav-group-header--active')).toBe(false);
+  });
+
+  it('auto-opens the group for the current route after navigation', () => {
+    localStorage.setItem('bg_nav_open_groups', JSON.stringify(['operations', 'customers']));
+
+    function LayoutAt({ path }: { path: string }) {
+      return (
+        <MemoryRouter initialEntries={[path]} key={path}>
+          <Layout user={owner} onLogout={() => {}}>
+            <div>Page</div>
+          </Layout>
+        </MemoryRouter>
+      );
+    }
+
+    const { rerender } = render(<LayoutAt path="/dashboard" />);
+    expect(isGroupOpen('Finance')).toBe(false);
+
+    rerender(<LayoutAt path="/reports" />);
+    expect(isGroupOpen('Finance')).toBe(true);
+  });
+});

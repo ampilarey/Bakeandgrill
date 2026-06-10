@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
@@ -132,8 +132,8 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   const navigate = useNavigate();
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  const navGroups = getNavGroups();
-  const allNavItems = getAllNavItems();
+  const navGroups = useMemo(() => getNavGroups(), []);
+  const allNavItems = useMemo(() => getAllNavItems(), []);
 
   const toggleAudio = () => {
     const next = !audioOn;
@@ -203,9 +203,10 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   });
 
   useEffect(() => {
-    const activeGroup = navGroups.find((g) =>
-      g.items.some((i) => location.pathname.startsWith(i.to)),
-    );
+    const activeGroup = navGroups.find((g) => {
+      const visibleItems = g.items.filter((item) => can(user, item.permission));
+      return visibleItems.some((i) => isNavItemActive(location.pathname, i.to));
+    });
     if (activeGroup) {
       setOpenGroups((prev) => {
         if (prev.has(activeGroup.id)) return prev;
@@ -214,7 +215,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         return next;
       });
     }
-  }, [location.pathname, navGroups]);
+  }, [location.pathname]);
 
   useEffect(() => {
     try {
@@ -466,7 +467,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
             const visibleItems = group.items.filter((item) => can(user, item.permission));
             if (visibleItems.length === 0) return null;
             const isOpen = collapsed || openGroups.has(group.id);
-            const hasActive = group.items.some((i) => location.pathname.startsWith(i.to));
+            const hasActive = visibleItems.some((i) => isNavItemActive(location.pathname, i.to));
             const GroupIcon = group.icon;
 
             return (
