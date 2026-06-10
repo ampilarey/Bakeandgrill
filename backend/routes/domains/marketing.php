@@ -1,0 +1,165 @@
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/_helpers.php';
+
+use App\Http\Controllers\Api\SmsPromotionController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Promotions, SMS campaigns, referrals, gift cards, and push notifications
+|--------------------------------------------------------------------------
+| SMS promotions block: loaded inside auth:sanctum + staff.token group.
+| Remaining marketing routes: loaded at top level.
+*/
+
+if (routes_domain_section_is_or_unset('marketing', 'sms_promotions', 'sms_promotions') && !routes_domain_loaded('marketing.sms_promotions')) {
+    routes_domain_mark_loaded('marketing.sms_promotions');
+
+    // SMS promotions — preview/list for marketing staff; send is manager-only
+    Route::get('/sms/promotions', [SmsPromotionController::class, 'index'])
+        ->middleware('permission:integrations.sms');
+    Route::get('/sms/promotions/{id}', [SmsPromotionController::class, 'show'])
+        ->middleware('permission:integrations.sms');
+    Route::post('/sms/promotions/preview', [SmsPromotionController::class, 'preview'])
+        ->middleware(['permission:integrations.sms', 'throttle:10,5']);
+    Route::post('/sms/promotions/send', [SmsPromotionController::class, 'send'])
+        ->middleware(['permission:integrations.sms', 'throttle:5,60']);
+}
+
+if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('marketing.public')) {
+    routes_domain_mark_loaded('marketing.public');
+
+    // ─── Promotions ──────────────────────────────────────────────────────────────
+    // Public/customer — validate a code
+    Route::post('/promotions/validate', [App\Http\Controllers\Api\PromotionController::class, 'validate'])
+        ->middleware('throttle:20,1');
+
+    // Apply/remove promo — requires auth; authorization matrix enforced in the controller:
+    //   - Customer token: may only modify their own order (IDOR check)
+    //   - Staff token: requires promotions.discounts permission (checked in controller)
+    //   - Unauthenticated: rejected by auth:sanctum
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/orders/{orderId}/apply-promo', [App\Http\Controllers\Api\PromotionController::class, 'applyToOrder']);
+        Route::delete('/orders/{orderId}/promo/{promotionId}', [App\Http\Controllers\Api\PromotionController::class, 'removeFromOrder']);
+    });
+
+    // Admin — full CRUD (requires promotions.manage permission)
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.manage'])->prefix('admin')->group(function () {
+        Route::get('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminIndex']);
+        Route::post('/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminStore']);
+        Route::patch('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminUpdate']);
+        Route::delete('/promotions/{id}', [App\Http\Controllers\Api\PromotionController::class, 'adminDestroy']);
+        Route::get('/reports/promotions', [App\Http\Controllers\Api\PromotionController::class, 'adminReport']);
+    });
+
+    // ─── Marketing: Referrals & Gift Cards ───────────────────────────────────────
+    // Public: validate referral code
+    Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController::class, 'validate'])
+        ->middleware('throttle:30,1');
+
+    // Public: gift card balance check
+    Route::post('/gift-cards/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balancePost'])
+        ->middleware('throttle:10,1');
+    Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
+        ->middleware('throttle:10,1');
+
+    // Customer: referral management + gift card on orders
+    Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
+        Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
+        Route::post('/orders/{orderId}/apply-gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'applyToOrder']);
+        Route::delete('/orders/{orderId}/gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'removeFromOrder']);
+        Route::post('/orders/{orderId}/apply-referral', [App\Http\Controllers\Api\ReferralController::class, 'applyToOrder']);
+        Route::delete('/orders/{orderId}/referral', [App\Http\Controllers\Api\ReferralController::class, 'removeFromOrder']);
+    });
+
+    // Admin: gift cards and referral overview
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.manage'])->group(function () {
+        Route::get('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'index']);
+        Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
+        Route::get('/admin/referrals', [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
+        Route::get('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'show']);
+        Route::patch('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'update']);
+    });
+
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.analytics'])->group(function () {
+        Route::get('/admin/marketing/item-pairs', [App\Http\Controllers\Api\ItemPairAdminController::class, 'index']);
+    });
+
+    // ─── Push Notification Subscriptions ─────────────────────────────────────────
+    // Public: VAPID public key for subscription setup (no auth needed)
+    Route::get('/push/vapid-key', [App\Http\Controllers\Api\PushSubscriptionController::class, 'vapidKey']);
+
+    Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
+        Route::post('/push/subscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])
+            ->middleware('throttle:5,1');
+        Route::post('/push/unsubscribe', [App\Http\Controllers\Api\PushSubscriptionController::class, 'unsubscribe'])
+            ->middleware('throttle:5,1');
+    });
+
+    // ─── Favorites & Quick Reorder ───────────────────────────────────────────────
+    Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
+        Route::get('/customer/favorites', [App\Http\Controllers\Api\FavoritesController::class, 'index']);
+        Route::post('/customer/favorites/{itemId}/toggle', [App\Http\Controllers\Api\FavoritesController::class, 'toggle']);
+        Route::get('/customer/orders/{orderId}/reorder', [App\Http\Controllers\Api\FavoritesController::class, 'reorder']);
+    });
+
+    // ─── Pre-Orders (Event / Catering orders) ────────────────────────────────────
+    Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
+        Route::get('/customer/pre-orders', [App\Http\Controllers\Api\PreOrderApiController::class, 'index']);
+        Route::post('/customer/pre-orders', [App\Http\Controllers\Api\PreOrderApiController::class, 'store']);
+    });
+}
+
+if (routes_domain_section_is('marketing', 'sms_admin') && !routes_domain_loaded('marketing.sms_admin')) {
+    routes_domain_mark_loaded('marketing.sms_admin');
+
+    // ─── SMS Campaigns + Logs (Admin) ────────────────────────────────────────────
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.sms'])->prefix('admin/sms')->group(function () {
+        // Full SMS audit log (OTP + promo + campaign + transactional)
+        Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
+        Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
+
+        // Bulk SMS campaigns
+        Route::get('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'index']);
+        Route::post('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'store']);
+        Route::post('/campaigns/preview', [App\Http\Controllers\Api\SmsCampaignController::class, 'preview']);
+        Route::get('/campaigns/{campaign}', [App\Http\Controllers\Api\SmsCampaignController::class, 'show']);
+        Route::post('/campaigns/{campaign}/send', [App\Http\Controllers\Api\SmsCampaignController::class, 'send']);
+        Route::post('/campaigns/{campaign}/cancel', [App\Http\Controllers\Api\SmsCampaignController::class, 'cancel']);
+
+        // SMS Contacts & Groups
+        Route::get('/contacts', [App\Http\Controllers\Api\SmsContactController::class, 'index']);
+        Route::post('/contacts', [App\Http\Controllers\Api\SmsContactController::class, 'store']);
+        Route::patch('/contacts/{id}', [App\Http\Controllers\Api\SmsContactController::class, 'update']);
+        Route::delete('/contacts/{id}', [App\Http\Controllers\Api\SmsContactController::class, 'destroy']);
+
+        Route::get('/contact-groups', [App\Http\Controllers\Api\SmsContactGroupController::class, 'index']);
+        Route::post('/contact-groups', [App\Http\Controllers\Api\SmsContactGroupController::class, 'store']);
+        Route::patch('/contact-groups/{id}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'update']);
+        Route::delete('/contact-groups/{id}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'destroy']);
+        Route::post('/contact-groups/{id}/members', [App\Http\Controllers\Api\SmsContactGroupController::class, 'addMember']);
+        Route::delete('/contact-groups/{id}/members/{contactId}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'removeMember']);
+
+        // SMS Templates
+        Route::get('/templates', [App\Http\Controllers\Api\SmsTemplateController::class, 'index']);
+        Route::post('/templates', [App\Http\Controllers\Api\SmsTemplateController::class, 'store']);
+        Route::patch('/templates/{id}', [App\Http\Controllers\Api\SmsTemplateController::class, 'update']);
+        Route::delete('/templates/{id}', [App\Http\Controllers\Api\SmsTemplateController::class, 'destroy']);
+        Route::post('/templates/{id}/preview', [App\Http\Controllers\Api\SmsTemplateController::class, 'preview']);
+
+        // Scheduled Messages
+        Route::get('/scheduled', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'index']);
+        Route::post('/scheduled', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'store']);
+        Route::patch('/scheduled/{id}', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'update']);
+        Route::delete('/scheduled/{id}', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'destroy']);
+        Route::post('/scheduled/{id}/pause', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'pause']);
+        Route::post('/scheduled/{id}/resume', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'resume']);
+
+        // Staff notification logs
+        Route::get('/staff-logs', [App\Http\Controllers\Api\StaffNotificationLogController::class, 'index']);
+        Route::post('/staff-logs/{id}/resend', [App\Http\Controllers\Api\StaffNotificationLogController::class, 'resend']);
+    });
+}
