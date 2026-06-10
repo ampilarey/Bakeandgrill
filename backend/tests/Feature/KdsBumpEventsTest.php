@@ -34,7 +34,7 @@ use Tests\TestCase;
  * Fix:
  *   KDS bump dispatches OrderCompleted (which earns loyalty + fires the
  *   order.completed webhook). OrderPaid is reserved for actual payment
- *   collection via PaymentService::confirmPayment / OrderController::addPayments.
+ *   collection via PaymentService::confirmPayment / OrderPaymentController::addPayments.
  */
 class KdsBumpEventsTest extends TestCase
 {

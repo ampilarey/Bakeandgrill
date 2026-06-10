@@ -31,7 +31,7 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
     Route::post('/orders/{id}/fire-to-kitchen', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'fireToKitchen'])
         ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
-    Route::post('/orders/{id}/send-pay-link', [App\Http\Controllers\Api\OrderController::class, 'sendPayLink'])
+    Route::post('/orders/{id}/send-pay-link', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'sendPayLink'])
         ->middleware(['permission:orders.send_payment_link', 'throttle:10,1']);
     Route::post('/orders/{id}/start-cooking', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'startCooking'])
         ->middleware(['permission:pos.manage_order_status', 'throttle:30,1']);
@@ -47,9 +47,9 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
     Route::post('/orders/{id}/split', [App\Http\Controllers\Api\OrderController::class, 'split'])
         ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
-    Route::post('/orders/{id}/payments', [App\Http\Controllers\Api\OrderController::class, 'addPayments'])
+    Route::post('/orders/{id}/payments', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'addPayments'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
-    Route::post('/orders/{id}/send-bill', [App\Http\Controllers\Api\OrderController::class, 'sendBill'])
+    Route::post('/orders/{id}/send-bill', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'sendBill'])
         ->middleware(['permission:orders.send_sms_bill', 'throttle:10,1']);
     Route::patch('/orders/{id}/customer', [App\Http\Controllers\Api\OrderController::class, 'updateCustomer'])
         ->middleware(['permission:pos.ring_sales', 'throttle:30,1']);

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Settles a single offline-synced payment on an order. Extracted from
- * OrderController::addPayments for cash / card / bank_transfer only.
+ * OrderPaymentController::addPayments for cash / card / bank_transfer only.
  */
 class OrderOfflineSettlementService
 {

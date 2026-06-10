@@ -15,7 +15,7 @@ class StoreOrderPaymentsRequest extends FormRequest
      * frontend bug could persist garbage like "venmo" or "bml-pay" and
      * silently drift the payments ledger.
      *
-     * Keep in sync with the gateway dispatch in OrderController::addPayments —
+     * Keep in sync with the gateway dispatch in OrderPaymentController::addPayments —
      * 'bml_pay', 'bml', 'online' there map to async confirmation.
      */
     public const ALLOWED_METHODS = [

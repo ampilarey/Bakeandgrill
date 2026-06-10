@@ -96,7 +96,7 @@ class OrderCreationService
                 'order_number' => $this->generateOrderNumber(),
                 'type' => $payload['type'],
                 'status' => $initialStatus,
-                // `payment_status` is computed by OrderController::addPayments
+                // `payment_status` is computed by OrderPaymentController::addPayments
                 // whenever payments are applied. At create time everything
                 // starts as unpaid (the migration default also handles
                 // backfill); the only exception is a zero-total order
