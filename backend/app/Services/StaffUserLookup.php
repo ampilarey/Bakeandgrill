@@ -55,6 +55,22 @@ final class StaffUserLookup
         return ($user !== null && $user->is_active) ? $user : null;
     }
 
+    /**
+     * Canonical cache / rate-limit key for a login identifier.
+     * Phones collapse to local 7 digits; emails are lowercased.
+     */
+    public static function canonicalIdentityKey(string $raw): string
+    {
+        $trimmed = trim($raw);
+        $seven = self::localSevenDigits($trimmed);
+
+        if ($seven !== null) {
+            return 'phone:' . $seven;
+        }
+
+        return 'email:' . strtolower($trimmed);
+    }
+
     /** Last 7 local digits from a Maldivian phone input, if any. */
     public static function localSevenDigits(string $raw): ?string
     {
