@@ -34,7 +34,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
 
         // _cauth_revoked: short-lived JS-readable logout signal for the order SPA.
-        $middleware->encryptCookies(except: ['_cauth_revoked']);
+        // XSRF-TOKEN must stay readable by JS for SPA CSRF headers.
+        $middleware->encryptCookies(except: ['_cauth_revoked', 'XSRF-TOKEN']);
+
+        // Staff/POS/admin login uses bearer tokens — CSRF on these routes breaks SPA login.
+        $middleware->validateCsrfTokens(except: [
+            'api/auth/staff/*',
+        ]);
 
         $middleware->alias([
             'device.active' => App\Http\Middleware\EnsureActiveDevice::class,

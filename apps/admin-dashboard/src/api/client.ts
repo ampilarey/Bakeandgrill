@@ -1,5 +1,6 @@
 import {
   createApiClient,
+  csrfHeadersForMutation,
   getApiOrigin,
   resolveApiBaseUrl,
   type ApiRequestOptions,
@@ -19,32 +20,6 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   console.error('[CONFIG] VITE_API_BASE_URL is not set in production — all API calls will fail if the app is not served from the same origin as the API.');
 }
 
-function readCookie(name: string): string | null {
-  const m = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
-  return m ? decodeURIComponent(m.split('=').slice(1).join('=')) : null;
-}
-
-let csrfPrimed = false;
-
-/** Required for POST/PATCH/DELETE when Sanctum statefulApi() is enabled on this origin. */
-async function ensureCsrfCookie(): Promise<void> {
-  if (typeof window === 'undefined' || csrfPrimed) {
-    return;
-  }
-  await fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, { credentials: 'include' });
-  csrfPrimed = true;
-}
-
-function xsrfHeaders(): Record<string, string> {
-  const xsrf = readCookie('XSRF-TOKEN');
-  return xsrf ? { 'X-XSRF-TOKEN': xsrf } : {};
-}
-
-/**
- * Security TODO: `admin_token` in localStorage is readable by any XSS on this origin.
- * Future hardening: migrate to Sanctum stateful SPA session auth without bearer tokens.
- * POS/KDS intentionally keep bearer tokens for offline/device use.
- */
 const { request: coreRequest, requestBlob: coreRequestBlob } = createApiClient({
   baseUrl: BASE,
   getToken: () => localStorage.getItem(ADMIN_TOKEN_KEY),
@@ -56,11 +31,10 @@ async function withCsrf(options: ApiRequestOptions = {}): Promise<ApiRequestOpti
   if (method === 'GET' || method === 'HEAD') {
     return options;
   }
-  await ensureCsrfCookie();
   return {
     ...options,
     headers: {
-      ...xsrfHeaders(),
+      ...(await csrfHeadersForMutation(API_ORIGIN)),
       ...(options.headers ?? {}),
     },
   };

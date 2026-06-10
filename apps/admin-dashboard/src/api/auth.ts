@@ -4,7 +4,11 @@ import { req } from './client';
 export type { StaffUser };
 
 export async function pinLogin(username: string, pin: string): Promise<{ token: string; user: StaffUser }> {
-  return req('/auth/staff/pin-login', { method: 'POST', body: JSON.stringify({ username, pin }) });
+  return req('/auth/staff/pin-login', {
+    method: 'POST',
+    body: JSON.stringify({ username, pin }),
+    anonymous: true,
+  });
 }
 
 export async function phoneLogin(phone: string, password: string): Promise<{ token: string; user: StaffUser }> {
