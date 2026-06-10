@@ -19,25 +19,18 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Staff Authentication Routes
 |--------------------------------------------------------------------------
-| Bearer-token login — CSRF waived (see bootstrap/app.php + web.php pattern).
+| Bearer-token login — CSRF except list is in bootstrap/app.php (api/auth/staff/*).
 */
-$staffAuthWithoutCsrf = [Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class];
-
-Route::prefix('auth/staff')->group(function () use ($staffAuthWithoutCsrf) {
+Route::prefix('auth/staff')->group(function () {
     Route::post('/pin-login', [StaffAuthController::class, 'pinLogin'])
-        ->withoutMiddleware($staffAuthWithoutCsrf)
         ->middleware('throttle:10,1');
     Route::post('/pos-password-login', [StaffAuthController::class, 'posPasswordLogin'])
-        ->withoutMiddleware($staffAuthWithoutCsrf)
         ->middleware('throttle:10,1');
     Route::post('/login', [StaffAuthController::class, 'phoneLogin'])
-        ->withoutMiddleware($staffAuthWithoutCsrf)
         ->middleware('throttle:10,1');
     Route::post('/password/reset-request', [StaffAuthController::class, 'passwordResetRequest'])
-        ->withoutMiddleware($staffAuthWithoutCsrf)
         ->middleware('throttle:5,1');
     Route::post('/password/reset-verify', [StaffAuthController::class, 'passwordResetVerify'])
-        ->withoutMiddleware($staffAuthWithoutCsrf)
         ->middleware('throttle:5,1');
 });
 

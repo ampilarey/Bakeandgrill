@@ -38,6 +38,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['_cauth_revoked', 'XSRF-TOKEN']);
 
         // Staff/POS/admin login uses bearer tokens — CSRF on these routes breaks SPA login.
+        // Route-level withoutMiddleware(ValidateCsrfToken) does NOT affect Sanctum's
+        // stateful CSRF pipeline; this bootstrap except-list is the mechanism that works.
         $middleware->validateCsrfTokens(except: [
             'api/auth/staff/*',
         ]);
