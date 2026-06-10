@@ -2,18 +2,27 @@
 
 Quick reference for deploying Bake & Grill to production (`bakeandgrill.mv`).
 
-## Environment (`.env`)
+## Required production env
 
-| Variable | Production value |
-|----------|------------------|
-| `APP_ENV` | `production` |
-| `APP_DEBUG` | `false` |
-| `APP_URL` | `https://bakeandgrill.mv` |
-| `SESSION_DOMAIN` | `.bakeandgrill.mv` |
-| `SANCTUM_STATEFUL_DOMAINS` | `bakeandgrill.mv,app.bakeandgrill.mv` (remove test domain) |
-| `TRUSTED_PROXIES` | `*` or your proxy IP/CIDR |
-| `BML_ENFORCE_SIGNATURE` | `true` |
-| `QUEUE_CONNECTION` | `redis` |
+Run `php artisan app:verify-production-config` after every production deploy (also wired into CI). It exits non-zero when fatal misconfigurations are detected.
+
+| Variable | Production value | Notes |
+|----------|------------------|-------|
+| `APP_ENV` | `production` | |
+| `APP_DEBUG` | `false` | Must never be `true` on live |
+| `APP_KEY` | *(set)* | `php artisan key:generate` if missing |
+| `APP_URL` | `https://bakeandgrill.mv` | |
+| `SESSION_DOMAIN` | `.bakeandgrill.mv` | |
+| `SANCTUM_STATEFUL_DOMAINS` | `bakeandgrill.mv,app.bakeandgrill.mv` | Remove test domain on prod |
+| `TRUSTED_PROXIES` | Explicit IPs/CIDRs | **Never `*`** — OTP/login throttles use client IP |
+| `SENTRY_LARAVEL_DSN` | Backend Sentry DSN | Error monitoring |
+| `VITE_SENTRY_DSN` | Per-app DSN | **Build-time** — rebuild admin/pos/order after setting |
+| `BACKUP_DISKS` | `s3` (recommended) | Plus `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET`, `AWS_DEFAULT_REGION` |
+| `HEALTHCHECK_URL` | Healthchecks.io ping URL | Scheduler heartbeat (warn-only if unset) |
+| `ADMIN_TOKEN_TTL_HOURS` | `24` (default) | Admin dashboard Sanctum token lifetime |
+| `QUEUE_CONNECTION` | `redis` | |
+| `CACHE_STORE` | `redis` | |
+| `BML_ENFORCE_SIGNATURE` | `true` | |
 
 See `backend/.env.example` for the full list.
 

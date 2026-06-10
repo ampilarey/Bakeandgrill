@@ -67,6 +67,18 @@ Config: [`backend/config/pos.php`](../backend/config/pos.php). Tests: [`EnsureAc
 
 ---
 
+## Required production env (post-audit round 2)
+
+Before go-live, confirm [`GO_LIVE_OPS.md`](GO_LIVE_OPS.md) **Required production env** table and run:
+
+```bash
+cd backend && php artisan app:verify-production-config
+```
+
+Fatal when `APP_DEBUG=true`, `APP_KEY` empty, `TRUSTED_PROXIES` unset or `*`, `SENTRY_LARAVEL_DSN` unset, `BACKUP_DISKS` empty, or queue/cache not on Redis.
+
+---
+
 ## Remaining gaps (prioritized)
 
 | Priority | Item | Notes |

@@ -341,6 +341,7 @@ jobs:
             && php artisan config:cache \
             && php artisan route:cache \
             && php artisan view:clear \
+            && php artisan app:verify-production-config \
             && php artisan queue:restart \
             && (pgrep -f "queue:work.*test.bakeandgrill" >/dev/null || cd /home/bakeandgrill/test.bakeandgrill.mv/backend && nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &) \
             && pgrep -af "artisan queue:work" | grep test.bakeandgrill || echo "WARN: test queue worker not running" \
@@ -382,6 +383,7 @@ jobs:
             && php artisan config:cache \
             && php artisan route:cache \
             && php artisan view:clear \
+            && php artisan app:verify-production-config \
             && php artisan queue:restart \
             && (pgrep -f "queue:work.*public_html" >/dev/null || cd /home/bakeandgrill/public_html/backend && nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &) \
             && pgrep -af "artisan queue:work" | grep public_html || echo "WARN: production queue worker not running" \

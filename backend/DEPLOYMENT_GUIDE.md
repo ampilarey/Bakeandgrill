@@ -189,6 +189,17 @@ This Laravel setup makes it easy to add the full Bake & Grill POS system later:
 - Check JavaScript console for errors
 - Verify date format in opening date JavaScript
 
+## Post-deploy configuration check
+
+After `migrate`, `config:cache`, and before marking a production deploy complete:
+
+```bash
+cd backend
+php artisan app:verify-production-config
+```
+
+Exits non-zero when `APP_DEBUG=true`, `TRUSTED_PROXIES` is unset or `*`, Sentry/backup/Redis settings are missing in production. See `docs/GO_LIVE_OPS.md` for the full required env table. CI runs this automatically on test and production SSH deploys.
+
 ## ✅ Pre-Deployment Checklist
 
 - [ ] Laravel project structure intact
