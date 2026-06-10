@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchTables, setAuthToken, staffLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type KitchenHandoverSettings } from "../api";
+import { ApiRequestError } from "@shared/api";
+import type { StaffLoginResponse } from "@shared/types";
+import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type KitchenHandoverSettings } from "../api";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "../offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "../offline/offlineGate";
 import { startSyncEnginePolling } from "../offline/syncEngine";
@@ -727,6 +729,31 @@ export function usePosApp() {
     return () => window.clearTimeout(handle);
   }, [isLoggedIn, deviceId, persistDeviceDbId, checkDeviceStatus]);
 
+  const completeStaffLogin = useCallback((response: StaffLoginResponse) => {
+    localStorage.setItem("pos_token", response.token);
+    localStorage.setItem("pos_username", username.trim());
+    const name = response.user?.name ?? username.trim();
+    localStorage.setItem("pos_cashier_name", name);
+    localStorage.setItem("pos_staff_role", response.user?.role ?? "");
+    const loginPerms = response.user?.permissions ?? [];
+    localStorage.setItem("pos_staff_permissions", JSON.stringify(loginPerms));
+    setCashierName(name);
+    setStaffRole(response.user?.role ?? "");
+    setStaffPermissions(loginPerms);
+    setIdleLockMinutes(resolveIdleLockMinutes(response.user));
+    setAuthToken(response.token);
+    if (response.user?.id) {
+      void cacheStaffSessionFromUser({
+        id: response.user.id,
+        name: response.user.name ?? name,
+        permissions: loginPerms,
+      });
+    }
+    setIsLoggedIn(true);
+    setPin("");
+    void checkDeviceStatus();
+  }, [username, checkDeviceStatus]);
+
   // ── Login handler ───────────────────────────────────────────────────────────
   const handleLogin = async () => {
     setAuthError("");
@@ -734,33 +761,21 @@ export function usePosApp() {
     if (pin.trim().length < 4) { setAuthError("Enter a valid PIN."); return; }
     try {
       const response = await staffLogin(username.trim(), pin.trim(), deviceId.trim());
-      localStorage.setItem("pos_token", response.token);
-      // Persist the login identifier so lock/unlock survives reloads.
-      // We deliberately do NOT persist the PIN — unlock asks for it
-      // every time.
-      localStorage.setItem("pos_username", username.trim());
-      const name = response.user?.name ?? username.trim();
-      localStorage.setItem("pos_cashier_name", name);
-      localStorage.setItem("pos_staff_role", response.user?.role ?? "");
-      const loginPerms = response.user?.permissions ?? [];
-      localStorage.setItem("pos_staff_permissions", JSON.stringify(loginPerms));
-      setCashierName(name);
-      setStaffRole(response.user?.role ?? "");
-      setStaffPermissions(loginPerms);
-      setIdleLockMinutes(resolveIdleLockMinutes(response.user));
-      setAuthToken(response.token);
-      if (response.user?.id) {
-        void cacheStaffSessionFromUser({
-          id: response.user.id,
-          name: response.user.name ?? name,
-          permissions: loginPerms,
-        });
-      }
-      setIsLoggedIn(true);
-      setPin("");
-      void checkDeviceStatus();
-    } catch {
-      setAuthError("Login failed. Check your mobile/email and PIN.");
+      completeStaffLogin(response);
+    } catch (e) {
+      setAuthError(e instanceof ApiRequestError ? e.message : "Login failed. Check your mobile/email and PIN.");
+    }
+  };
+
+  const handlePasswordLogin = async (password: string) => {
+    setAuthError("");
+    if (!username.trim()) { setAuthError("Enter your mobile or email."); return; }
+    if (password.length < 6) { setAuthError("Enter your admin password."); return; }
+    try {
+      const response = await staffPasswordLogin(username.trim(), password, deviceId.trim());
+      completeStaffLogin(response);
+    } catch (e) {
+      setAuthError(e instanceof ApiRequestError ? e.message : "Login failed. Check your mobile/email and password.");
     }
   };
 
@@ -1032,7 +1047,7 @@ export function usePosApp() {
     canEnterPosShell, shiftOpen, menu, cart, applyPosDeliveryAddress, handleClearCart,
     deliveryFeeEst, ops, refreshOfflineCounts, filteredItems, refreshOpenTickets, order,
     chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshTables,
-    refreshQuickNotes, isRefreshingAll, refreshAll, checkDeviceStatus, handleLogin,
+    refreshQuickNotes, isRefreshingAll, refreshAll, checkDeviceStatus, handleLogin, handlePasswordLogin,
     handleLogout, handleOpenShift, handleCloseShift, handleSaveTicketSubmit, handleUnlock,
     lockScreen, drawerItems, paneAllowed, persistDeviceDbId,
   };

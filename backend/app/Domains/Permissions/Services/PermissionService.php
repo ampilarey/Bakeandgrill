@@ -18,7 +18,7 @@ class PermissionService
     {
         $user->loadMissing('role');
 
-        return $user->role?->slug === 'owner';
+        return in_array($user->role?->slug, ['owner', 'admin'], true);
     }
 
     public function hasPermission(User $user, string $slug): bool

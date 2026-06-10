@@ -48,6 +48,109 @@ class StaffAuthTest extends TestCase
             ]);
     }
 
+    public function test_owner_can_login_with_normalized_phone_and_pin(): void
+    {
+        $role = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => 'Owner role', 'is_active' => true],
+        );
+
+        User::create([
+            'name' => 'Phone Owner',
+            'email' => 'phone-owner@example.com',
+            'phone' => '+9607820288',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/auth/staff/pin-login', [
+            'username' => '7820288',
+            'pin' => '1234',
+            'device_identifier' => 'POS-001',
+        ])->assertOk();
+    }
+
+    public function test_pin_login_without_pin_set_returns_helpful_error(): void
+    {
+        $role = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => 'Owner role', 'is_active' => true],
+        );
+
+        User::create([
+            'name' => 'No Pin Owner',
+            'email' => 'nopin@example.com',
+            'phone' => '7820999',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => null,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/auth/staff/pin-login', [
+            'username' => '7820999',
+            'pin' => '1234',
+            'device_identifier' => 'POS-001',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['pin']);
+        $this->assertStringContainsString(
+            'No PIN is set on this account',
+            (string) $response->json('errors.pin.0'),
+        );
+    }
+
+    public function test_owner_can_pos_password_login_without_pin(): void
+    {
+        $role = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => 'Owner role', 'is_active' => true],
+        );
+
+        User::create([
+            'name' => 'Password Owner',
+            'email' => 'pwd-owner@example.com',
+            'phone' => '7820888',
+            'password' => Hash::make('secret-pass'),
+            'role_id' => $role->id,
+            'pin_hash' => null,
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/auth/staff/pos-password-login', [
+            'username' => '7820888',
+            'password' => 'secret-pass',
+            'device_identifier' => 'POS-001',
+        ])->assertOk()
+            ->assertJsonStructure(['token', 'user' => ['permissions']]);
+    }
+
+    public function test_admin_phone_login_accepts_local_phone_format(): void
+    {
+        $role = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => 'Owner role', 'is_active' => true],
+        );
+
+        User::create([
+            'name' => 'Admin Phone Owner',
+            'email' => 'admin-phone@example.com',
+            'phone' => '+9607820777',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/auth/staff/login', [
+            'phone' => '7820777',
+            'password' => 'password',
+        ])->assertOk();
+    }
+
     public function test_login_without_username_returns_422(): void
     {
         $this->createOwner();

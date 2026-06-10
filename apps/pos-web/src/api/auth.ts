@@ -13,6 +13,19 @@ export async function staffLogin(
   });
 }
 
+/** Owner/manager sign-in with admin password when no PIN is set. */
+export async function staffPasswordLogin(
+  username: string,
+  password: string,
+  deviceIdentifier: string
+): Promise<StaffLoginResponse> {
+  return request<StaffLoginResponse>("/auth/staff/pos-password-login", {
+    method: "POST",
+    body: JSON.stringify({ username, password, device_identifier: deviceIdentifier }),
+    anonymous: true,
+  });
+}
+
 /**
  * Bug-052: cheap "is my token still good?" ping. Used by the POS
  * shell on visibilitychange to proactively boot the cashier to

@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth/staff')->group(function () {
     Route::post('/pin-login', [StaffAuthController::class, 'pinLogin'])
         ->middleware('throttle:10,1');
+    Route::post('/pos-password-login', [StaffAuthController::class, 'posPasswordLogin'])
+        ->middleware('throttle:10,1');
     Route::post('/login', [StaffAuthController::class, 'phoneLogin'])
         ->middleware('throttle:10,1');
     Route::post('/password/reset-request', [StaffAuthController::class, 'passwordResetRequest'])

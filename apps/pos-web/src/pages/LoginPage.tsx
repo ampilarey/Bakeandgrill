@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PosVersionLabel } from '../components/PosUpdateBanner';
 import { POS_BUILD_INFO } from '../posBuildInfo';
 import { palette, radius, shadow, space, type, btnPrimary, btnSecondary, inputField } from '../theme';
+
+type SignInMode = 'pin' | 'password';
 
 type Props = {
   username: string;
@@ -11,6 +13,7 @@ type Props = {
   deviceId: string;
   authError: string;
   onLogin: () => void;
+  onPasswordLogin: (password: string) => void;
 };
 
 /**
@@ -23,8 +26,11 @@ type Props = {
  * screens. The dark band on the left is a deliberate brand moment so
  * the POS doesn't look like a generic admin form.
  */
-export function LoginPage({ username, setUsername, pin, setPin, deviceId, authError, onLogin }: Props) {
+export function LoginPage({ username, setUsername, pin, setPin, deviceId, authError, onLogin, onPasswordLogin }: Props) {
+  const [signInMode, setSignInMode] = useState<SignInMode>('pin');
+  const [password, setPassword] = useState('');
   const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Refs that always reflect the latest props, so the keydown listener stays
   // stable and the effect can have an empty dependency array. The previous
@@ -81,7 +87,14 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const canSubmit = !!username.trim() && pin.length >= 4;
+  const canSubmitPin = !!username.trim() && pin.length >= 4;
+  const canSubmitPassword = !!username.trim() && password.length >= 6;
+
+  const switchMode = (mode: SignInMode) => {
+    setSignInMode(mode);
+    setPin('');
+    setPassword('');
+  };
 
   return (
     <div style={{
@@ -169,7 +182,42 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
             </div>
           </div>
 
-          {/* PIN dots */}
+          <div style={{ display: 'flex', gap: space.xs, marginBottom: space.l }}>
+            <button
+              type="button"
+              onClick={() => switchMode('pin')}
+              style={{
+                flex: 1,
+                height: 40,
+                borderRadius: radius.s,
+                border: `1px solid ${signInMode === 'pin' ? palette.primary : palette.border}`,
+                background: signInMode === 'pin' ? palette.primaryBg : palette.panel,
+                color: signInMode === 'pin' ? palette.primaryDark : palette.panelMuted,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Staff PIN
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('password')}
+              style={{
+                flex: 1,
+                height: 40,
+                borderRadius: radius.s,
+                border: `1px solid ${signInMode === 'password' ? palette.primary : palette.border}`,
+                background: signInMode === 'password' ? palette.primaryBg : palette.panel,
+                color: signInMode === 'password' ? palette.primaryDark : palette.panelMuted,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Owner / admin
+            </button>
+          </div>
+
+          {signInMode === 'pin' ? (
           <div style={{
             display: 'flex',
             justifyContent: 'center',
@@ -195,6 +243,26 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
               ))
             )}
           </div>
+          ) : (
+          <div style={{ marginBottom: space.l }}>
+            <label style={{ ...type.label, color: palette.panelMuted, display: 'block', marginBottom: space.xxs }}>
+              Admin password
+            </label>
+            <input
+              ref={passwordRef}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && canSubmitPassword && onPasswordLogin(password)}
+              placeholder="Same password as admin dashboard"
+              autoComplete="current-password"
+              style={{ ...inputField, width: '100%' }}
+            />
+            <p style={{ ...type.caption, color: palette.panelSubtle, marginTop: space.xs, lineHeight: 1.5 }}>
+              For owner/manager accounts without a POS PIN.
+            </p>
+          </div>
+          )}
 
           {authError && (
             <div style={{
@@ -211,7 +279,7 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
             </div>
           )}
 
-          {/* Numpad */}
+          {signInMode === 'pin' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: space.s }}>
             {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d) => (
               <button
@@ -241,18 +309,31 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
               </button>
             ))}
           </div>
+          )}
 
           <div style={{ display: 'flex', gap: space.s, marginTop: space.l }}>
-            <button onClick={clear} style={{ ...btnSecondary(), flex: 1, height: 52 }}>
-              Clear
-            </button>
-            <button
-              onClick={onLogin}
-              disabled={!canSubmit}
-              style={{ ...btnPrimary(!canSubmit), flex: 2, height: 52 }}
-            >
-              Sign In →
-            </button>
+            {signInMode === 'pin' ? (
+              <>
+                <button onClick={clear} style={{ ...btnSecondary(), flex: 1, height: 52 }}>
+                  Clear
+                </button>
+                <button
+                  onClick={onLogin}
+                  disabled={!canSubmitPin}
+                  style={{ ...btnPrimary(!canSubmitPin), flex: 2, height: 52 }}
+                >
+                  Sign In →
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => onPasswordLogin(password)}
+                disabled={!canSubmitPassword}
+                style={{ ...btnPrimary(!canSubmitPassword), flex: 1, height: 52 }}
+              >
+                Sign In with Password →
+              </button>
+            )}
           </div>
 
           <div style={{ marginTop: space.l, textAlign: 'center' }}>

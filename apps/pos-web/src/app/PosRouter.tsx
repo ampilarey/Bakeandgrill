@@ -15,7 +15,7 @@ export function PosRouter() {
   const app = usePosAppContext();
   const {
     showTimeClock, setShowTimeClock, isLoggedIn, username, setUsername, pin, setPin,
-    deviceId, authError, handleLogin, canTimeClock, isLocked, cashierName, handleUnlock,
+    deviceId, authError, handleLogin, handlePasswordLogin, canTimeClock, isLocked, cashierName, handleUnlock,
     handleLogout, canLockScreen, lockScreen, canKitchenOnly, kitchenPane, setKitchenPane,
     showRequestItemModal, setShowRequestItemModal, canCreatePurchaseRequest,
     canViewOwnPurchaseRequests, canBuyAssigned, shift, canEnterPosShell, showOpenShift,
@@ -34,7 +34,7 @@ export function PosRouter() {
           username={username} setUsername={setUsername}
           pin={pin} setPin={setPin}
           deviceId={deviceId}
-          authError={authError} onLogin={handleLogin}
+          authError={authError} onLogin={handleLogin} onPasswordLogin={handlePasswordLogin}
         />
         {canTimeClock && (
         <button
