@@ -33,10 +33,10 @@ class StaffAuthController extends Controller
         ]);
 
         $pin = $request->pin;
-        $username = strtolower(trim($request->username));
+        $identityKey = StaffUserLookup::canonicalIdentityKey($request->username);
         $forAdmin = $request->input('intent') === 'admin';
 
-        $rateKey = 'staff-pin:' . $username . ':' . $request->ip();
+        $rateKey = 'staff-pin:' . $identityKey . ':' . $request->ip();
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $seconds = RateLimiter::availableIn($rateKey);
             throw ValidationException::withMessages([
@@ -87,8 +87,8 @@ class StaffAuthController extends Controller
             'device_identifier' => 'nullable|string',
         ]);
 
-        $username = strtolower(trim($request->username));
-        $rateKey = 'staff-pos-pwd:' . $username . ':' . $request->ip();
+        $identityKey = StaffUserLookup::canonicalIdentityKey($request->username);
+        $rateKey = 'staff-pos-pwd:' . $identityKey . ':' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $seconds = RateLimiter::availableIn($rateKey);
@@ -122,7 +122,8 @@ class StaffAuthController extends Controller
         ]);
 
         $login = trim($request->phone);
-        $rateKey = 'staff-phone-login:' . strtolower($login) . ':' . $request->ip();
+        $identityKey = StaffUserLookup::canonicalIdentityKey($login);
+        $rateKey = 'staff-phone-login:' . $identityKey . ':' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $seconds = RateLimiter::availableIn($rateKey);
@@ -166,8 +167,9 @@ class StaffAuthController extends Controller
     {
         $request->validate(['phone' => 'required|string|max:255']);
 
-        $login = strtolower(trim($request->phone));
-        $rateKey = 'staff-pwd-reset-req:' . $login;
+        $login = trim($request->phone);
+        $identityKey = StaffUserLookup::canonicalIdentityKey($login);
+        $rateKey = 'staff-pwd-reset-req:' . $identityKey;
 
         if (RateLimiter::tooManyAttempts($rateKey, 3)) {
             return response()->json(['message' => 'Too many OTP requests. Please wait a few minutes.'], 429);
@@ -178,8 +180,9 @@ class StaffAuthController extends Controller
 
         if ($user && $smsPhone) {
             $otp = (string) random_int(100000, 999999);
-            $cacheKey = 'staff-pwd-reset:' . $login;
+            $cacheKey = $this->passwordResetOtpCacheKey($identityKey);
             Cache::put($cacheKey, Hash::make($otp), now()->addMinutes(10));
+            Cache::forget($this->passwordResetOtpAttemptKey($identityKey));
 
             app(SmsService::class)->send(new SmsMessage(
                 to: $smsPhone,
@@ -204,11 +207,21 @@ class StaffAuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $login = strtolower(trim($request->phone));
-        $cacheKey = 'staff-pwd-reset:' . $login;
+        $login = trim($request->phone);
+        $identityKey = StaffUserLookup::canonicalIdentityKey($login);
+        $cacheKey = $this->passwordResetOtpCacheKey($identityKey);
+        $attemptKey = $this->passwordResetOtpAttemptKey($identityKey);
         $stored = Cache::get($cacheKey);
 
         if (!$stored || !Hash::check($request->otp, $stored)) {
+            $attempts = (int) Cache::get($attemptKey, 0) + 1;
+            Cache::put($attemptKey, $attempts, now()->addMinutes(10));
+
+            if ($attempts >= 5) {
+                Cache::forget($cacheKey);
+                Cache::forget($attemptKey);
+            }
+
             throw ValidationException::withMessages([
                 'otp' => ['Invalid or expired OTP.'],
             ]);
@@ -224,6 +237,7 @@ class StaffAuthController extends Controller
 
         $user->update(['password' => $request->password]);
         Cache::forget($cacheKey);
+        Cache::forget($attemptKey);
 
         $user->tokens()->where('name', 'like', 'staff-%')->delete();
 
@@ -292,6 +306,16 @@ class StaffAuthController extends Controller
             'message' => 'Preferences saved',
             'user' => $this->serializeStaffUser($user),
         ]);
+    }
+
+    private function passwordResetOtpCacheKey(string $identityKey): string
+    {
+        return 'staff-pwd-reset:' . $identityKey;
+    }
+
+    private function passwordResetOtpAttemptKey(string $identityKey): string
+    {
+        return 'staff-pwd-reset-attempts:' . $identityKey;
     }
 
     private function findActiveStaffByUsername(string $raw): ?User
