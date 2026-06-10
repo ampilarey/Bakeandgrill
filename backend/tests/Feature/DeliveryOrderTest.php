@@ -32,9 +32,8 @@ class DeliveryOrderTest extends TestCase
         MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
         $category = Category::create(['name' => 'Food', 'slug' => 'food', 'is_active' => true]);
         $this->item = Item::create([
-            'name' => 'Burger', 'slug' => 'burger',
+            'name' => 'Burger',
             'category_id' => $category->id,
-            'price' => 50.00,
             'base_price' => 50.00,
             'cost' => 10.00,
             'is_active' => true, 'is_available' => true,

@@ -117,7 +117,7 @@ class BmlReturnUrlTest extends TestCase
             'status' => 'pending',
             'idempotency_key' => 'bml:init:' . $this->order->id . ':' . now()->format('Ymd'),
             'local_id' => 'LOCAL-BML-001',
-            'transaction_id' => 'TXN-BML-WH-001',
+            'provider_transaction_id' => 'TXN-BML-WH-001',
         ]);
 
         // A valid-looking BML webhook body

@@ -32,7 +32,14 @@ class InvoiceController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Invoice::with(['customer:id,name,phone', 'supplier:id,name', 'createdBy:id,name'])
+        $query = Invoice::with([
+            'customer:id,name,phone',
+            'supplier:id,name',
+            'createdBy:id,name',
+            'parentInvoice:id,invoice_number',
+            'items.item:id,name',
+            'items.inventoryItem:id,name',
+        ])
             ->orderByDesc('issue_date');
 
         if ($request->filled('type')) {
@@ -546,6 +553,15 @@ class InvoiceController extends Controller
 
     private function format(Invoice $inv): array
     {
+        $inv->loadMissing([
+            'customer:id,name,phone',
+            'supplier:id,name',
+            'createdBy:id,name',
+            'parentInvoice:id,invoice_number',
+            'items.item:id,name',
+            'items.inventoryItem:id,name',
+        ]);
+
         return [
             'id' => $inv->id,
             'invoice_number' => $inv->invoice_number,

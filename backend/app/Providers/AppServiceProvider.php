@@ -12,6 +12,7 @@ use App\Observers\OrderObserver;
 use App\Observers\StaffScheduleObserver;
 use App\Support\BmlSignatureGuard;
 use App\Support\DocumentBrandView;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -32,6 +33,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (!$this->app->isProduction()) {
+            Model::preventLazyLoading();
+            Model::preventSilentlyDiscardingAttributes();
+        }
+
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
 

@@ -71,7 +71,7 @@ class OrderUpdateCustomerTest extends TestCase
             'item_name' => $item->name,
             'unit_price' => 30,
             'quantity' => 1,
-            'line_total' => 30,
+            'total_price' => 30,
         ]);
 
         Sanctum::actingAs($staff, ['staff']);

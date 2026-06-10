@@ -225,7 +225,6 @@ class RefundFlowTest extends TestCase
         $orderItemId = $order->items()->first()->id;
         StockMovement::create([
             'inventory_item_id' => null,
-            'item_id' => $item->id,
             'type' => 'sale',
             'quantity' => -2,
             'idempotency_key' => 'pos:order:' . $order->id . ':item:' . $orderItemId,

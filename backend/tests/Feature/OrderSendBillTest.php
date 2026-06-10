@@ -81,7 +81,7 @@ class OrderSendBillTest extends TestCase
             'item_name' => $item->name,
             'unit_price' => 50,
             'quantity' => 1,
-            'total' => 50,
+            'total_price' => 50,
         ]);
     }
 

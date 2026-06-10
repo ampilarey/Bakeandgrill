@@ -55,7 +55,7 @@ class WebhookIdempotencyTest extends TestCase
             'status' => 'pending',
             'idempotency_key' => 'bml:init:' . $this->order->id . ':test',
             'local_id' => 'LOCAL-WH-IDEM-001',
-            'transaction_id' => 'TXN-WH-IDEM-001',
+            'provider_transaction_id' => 'TXN-WH-IDEM-001',
         ]);
     }
 

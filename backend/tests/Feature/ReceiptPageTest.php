@@ -24,9 +24,8 @@ class ReceiptPageTest extends TestCase
         $category = Category::create(['name' => 'Food', 'slug' => 'food', 'is_active' => true]);
         $item = Item::create([
             'name' => 'Bajiya',
-            'slug' => 'bajiya',
             'category_id' => $category->id,
-            'price' => 1.00,
+            'base_price' => 1.00,
             'base_price' => 1.00,
             'cost' => 0.50,
             'is_active' => true,

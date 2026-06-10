@@ -138,7 +138,7 @@ class GiftCardController extends Controller
             ->whereIn('status', ['payment_pending', 'pending'])
             ->findOrFail($orderId);
 
-        return DB::transaction(function () use ($validated, $order, $calc): JsonResponse {
+        return DB::transaction(function () use ($validated, $order, $calc, $request): JsonResponse {
             $card = $this->giftCardCodes->findActiveByCodeForUpdate($validated['code']);
 
             if (!$card) {

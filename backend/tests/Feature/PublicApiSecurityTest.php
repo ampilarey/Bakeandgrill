@@ -42,7 +42,6 @@ class PublicApiSecurityTest extends TestCase
         $recipe = Recipe::create([
             'item_id' => $this->item->id,
             'yield_quantity' => 1,
-            'yield_unit' => 'serving',
         ]);
 
         $inventoryItem = InventoryItem::create([
@@ -57,7 +56,6 @@ class PublicApiSecurityTest extends TestCase
             'recipe_id' => $recipe->id,
             'inventory_item_id' => $inventoryItem->id,
             'quantity' => 50, // Secret quantity - should NOT be exposed
-            'unit' => 'ml',
         ]);
     }
 

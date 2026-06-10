@@ -85,7 +85,7 @@ class KdsPrintTicketTest extends TestCase
             'item_name' => $item->name,
             'quantity' => 1,
             'unit_price' => 40.0,
-            'total' => 40.0,
+            'total_price' => 40.0,
         ]);
 
         Sanctum::actingAs($this->kitchenStaff, ['staff']);

@@ -17,7 +17,7 @@ class OrderTrackPageTest extends TestCase
     {
         $item = Item::create([
             'name' => 'BML Bajiya',
-            'price' => 1.00,
+            'base_price' => 1.00,
             'is_active' => true,
         ]);
 

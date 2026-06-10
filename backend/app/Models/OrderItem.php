@@ -25,6 +25,7 @@ class OrderItem extends Model
         'daily_special_id',
         'total_price',
         'tax_rate',
+        'tax_code',
         'notes',
         'status',
         'kitchen_produced_qty',

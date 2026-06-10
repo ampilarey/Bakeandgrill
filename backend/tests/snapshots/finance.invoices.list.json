@@ -37,7 +37,19 @@
             "customer": null,
             "supplier": null,
             "created_by": "__VOLATILE__",
-            "items": [],
+            "items": [
+                {
+                    "id": "__VOLATILE__",
+                    "description": "Meal",
+                    "quantity": 1,
+                    "unit": null,
+                    "unit_price": "20.00",
+                    "total": "20.00",
+                    "tax_rate_bp": 0,
+                    "item": null,
+                    "inventory_item": null
+                }
+            ],
             "created_at": "__VOLATILE__"
         }
     ],

@@ -89,7 +89,7 @@ class StripeController extends Controller
                             'amount' => round($amount / 100, 2),
                             'amount_laar' => $amount,
                             'status' => 'completed',
-                            'reference' => $pi['id'],
+                            'reference_number' => $pi['id'],
                             'processed_at' => now(),
                         ],
                     );

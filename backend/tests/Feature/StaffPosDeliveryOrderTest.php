@@ -34,9 +34,8 @@ class StaffPosDeliveryOrderTest extends TestCase
         $category = Category::create(['name' => 'Food', 'slug' => 'food', 'is_active' => true]);
         $this->item = Item::create([
             'name' => 'Counter Burger',
-            'slug' => 'counter-burger',
             'category_id' => $category->id,
-            'price' => 50.00,
+            'base_price' => 50.00,
             'base_price' => 50.00,
             'cost' => 10.00,
             'is_active' => true,

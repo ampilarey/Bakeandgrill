@@ -57,6 +57,7 @@ class Order extends Model
         'held_at',
         'paid_at',
         'completed_at',
+        'created_at',
         'kitchen_done_at',
         'kitchen_done_by',
         'pos_received_at',

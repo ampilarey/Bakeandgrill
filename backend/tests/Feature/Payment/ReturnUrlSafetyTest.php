@@ -49,7 +49,7 @@ class ReturnUrlSafetyTest extends TestCase
             'amount_laar' => 10000,
             'status' => 'pending',
             'local_id' => 'LOCAL-RET-URL-001',
-            'transaction_id' => 'TXN-RET-URL-001',
+            'provider_transaction_id' => 'TXN-RET-URL-001',
         ]);
     }
 

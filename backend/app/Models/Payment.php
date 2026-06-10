@@ -23,8 +23,10 @@ class Payment extends Model
         'commission_rate_bp',
         'commission_channel',
         'local_id',
+        'provider_transaction_id',
         'status',
         'reference_number',
+        'gateway_response',
         'processed_at',
     ];
 
