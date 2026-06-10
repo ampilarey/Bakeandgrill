@@ -8,11 +8,19 @@ export async function pinLogin(username: string, pin: string): Promise<{ token: 
 }
 
 export async function phoneLogin(phone: string, password: string): Promise<{ token: string; user: StaffUser }> {
-  return req('/auth/staff/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+  return req('/auth/staff/login', {
+    method: 'POST',
+    body: JSON.stringify({ phone, password }),
+    anonymous: true,
+  });
 }
 
 export async function staffPasswordResetRequest(phone: string): Promise<{ message: string }> {
-  return req('/auth/staff/password/reset-request', { method: 'POST', body: JSON.stringify({ phone }) });
+  return req('/auth/staff/password/reset-request', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+    anonymous: true,
+  });
 }
 
 export async function staffPasswordResetVerify(
@@ -24,6 +32,7 @@ export async function staffPasswordResetVerify(
   return req('/auth/staff/password/reset-verify', {
     method: 'POST',
     body: JSON.stringify({ phone, otp, password, password_confirmation }),
+    anonymous: true,
   });
 }
 

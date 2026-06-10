@@ -51,9 +51,12 @@ function buildAuthHeaders(
   };
 }
 
-async function throwForFailedResponse(response: Response): Promise<never> {
+async function throwForFailedResponse(
+  response: Response,
+  options: { emitAuthExpired?: boolean } = {},
+): Promise<never> {
   if (response.status === 401) {
-    if (typeof window !== 'undefined') {
+    if (options.emitAuthExpired !== false && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth_expired'));
     }
     throw new ApiRequestError('Session expired. Please log in again.', 401);
@@ -84,21 +87,30 @@ export function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(a.href);
 }
 
+export type ApiRequestOptions = RequestInit & {
+  /** Skip bearer token and do not fire auth_expired on 401 (login / password reset). */
+  anonymous?: boolean;
+};
+
 export function createApiClient(config: ApiClientConfig) {
-  async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const isFormData = options.body instanceof FormData;
+  async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+    const { anonymous, ...fetchOptions } = options;
+    const isFormData = fetchOptions.body instanceof FormData;
+    const defaultHeaders = {
+      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
+      Accept: 'application/json',
+    };
 
     const response = await fetch(`${config.baseUrl}${path}`, {
       credentials: config.credentials ?? 'same-origin',
-      ...options,
-      headers: buildAuthHeaders(config, options, {
-        ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
-        Accept: 'application/json',
-      }),
+      ...fetchOptions,
+      headers: anonymous
+        ? { ...defaultHeaders, ...fetchOptions.headers }
+        : buildAuthHeaders(config, fetchOptions, defaultHeaders),
     });
 
     if (!response.ok) {
-      await throwForFailedResponse(response);
+      await throwForFailedResponse(response, { emitAuthExpired: !anonymous });
     }
 
     if (response.status === 204) {

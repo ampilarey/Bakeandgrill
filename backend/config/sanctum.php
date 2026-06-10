@@ -49,7 +49,10 @@ return [
     |
     */
 
-    'expiration' => env('SANCTUM_TOKEN_EXPIRATION', 10080), // 7 days in minutes (override via env)
+    // Empty env values must not become 0 — that makes every token instantly invalid.
+    'expiration' => ($minutes = env('SANCTUM_TOKEN_EXPIRATION', env('SANCTUM_EXPIRATION'))) !== null && $minutes !== ''
+        ? (int) $minutes
+        : 10080,
 
     /*
     |--------------------------------------------------------------------------
@@ -62,9 +65,9 @@ return [
     |
     */
 
-    'admin_token_ttl_hours' => (int) env('ADMIN_TOKEN_TTL_HOURS', 24),
-    'pos_token_ttl_hours' => (int) env('POS_TOKEN_TTL_HOURS', 12),
-    'driver_token_ttl_hours' => (int) env('DRIVER_TOKEN_TTL_HOURS', 12),
+    'admin_token_ttl_hours' => max(1, (int) (env('ADMIN_TOKEN_TTL_HOURS') ?: 24)),
+    'pos_token_ttl_hours' => max(1, (int) (env('POS_TOKEN_TTL_HOURS') ?: 12)),
+    'driver_token_ttl_hours' => max(1, (int) (env('DRIVER_TOKEN_TTL_HOURS') ?: 12)),
 
     /*
     |--------------------------------------------------------------------------

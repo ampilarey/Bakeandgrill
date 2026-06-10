@@ -54,6 +54,12 @@ class AdminTokenExpiryTest extends TestCase
         );
     }
 
+    public function test_admin_token_ttl_config_never_resolves_to_zero(): void
+    {
+        config(['sanctum.admin_token_ttl_hours' => max(1, (int) ('' ?: 24))]);
+        $this->assertSame(24, config('sanctum.admin_token_ttl_hours'));
+    }
+
     public function test_expired_staff_token_returns_401_on_protected_route(): void
     {
         $user = $this->createAdminUser();

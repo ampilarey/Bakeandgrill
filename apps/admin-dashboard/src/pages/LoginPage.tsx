@@ -60,6 +60,8 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
     setLoginError('');
     setLoginLoading(true);
     try {
+      // Drop any expired token so login is not sent with a stale Bearer header.
+      localStorage.removeItem('admin_token');
       const res = await phoneLogin(phone.trim(), password);
       localStorage.setItem('admin_token', res.token);
       onLogin(res.token, res.user, returnTo);
