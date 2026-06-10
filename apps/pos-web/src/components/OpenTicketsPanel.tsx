@@ -1,65 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  cancelOrder,
-  fetchActiveOrdersMine,
-  fetchActiveOrdersOnline,
-  fetchActiveOrdersVenueWide,
-  fetchReceipts,
-  fireOrderToKitchen,
-  markOrderPickedUp,
-  markOrderReady,
-  startOrderCooking,
-  mergeOpenTickets,
-  sendBill,
-  sendPayLink,
-  splitOpenTicket,
-} from "../api";
+import { useEffect, useRef, useState } from "react";
 import { palette, radius, space, shadow, btnPrimary, btnSecondary, inputField, type, z } from "../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel } from "../orderTypeLabels";
 import { formatTicketAge, parkedTicketAgeLevel, PARKED_AGE_COLORS } from "../utils/ticketAging";
+import {
+  type OpenTicket,
+  type OpenTicketsFilterKey,
+  useOpenTickets,
+} from "../hooks/useOpenTickets";
+import {
+  ticketDisplayTotal,
+  ticketStage,
+  type TicketStage,
+} from "../utils/openTicketUtils";
 
-export type OpenTicket = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
-
-/**
- * Robust money display for a ticket.
- *
- * The backend `total` column drifts to 0 in several edge cases we've
- * had to firefight — orders created via legacy paths, orders saved
- * before `OrderTotalsCalculator` was wired into every code path, and
- * any future race where the order is created before items are
- * persisted. When that happens the cashier sees "MVR 0.00" on a
- * ticket that clearly has items, which destroys trust in the panel.
- *
- * Falls back to summing line-item `total_price` when the persisted
- * `total` is 0 or missing. Items are eager-loaded by the API so the
- * data is already on the row — no extra request, no flicker.
- *
- * Laravel's `decimal:2` cast returns money values as strings (e.g.
- * `"50.00"`), so every field has to go through `Number()` before any
- * arithmetic or `.toFixed()` call to avoid `NaN` (Bug-053 / Bug-055).
- */
-export function ticketDisplayTotal(t: OpenTicket): number {
-  const stored = Number(t.total ?? 0);
-  if (stored > 0) return stored;
-  const items = t.items ?? [];
-  const summed = items.reduce(
-    (sum, it) => sum + Number(it.total_price ?? 0),
-    0,
-  );
-  return summed > 0 ? summed : stored;
-}
-
-/** Kitchen lifecycle stage — aligned with KDS columns (Pending / Cooking / Ready). */
-export type TicketStage = "parked" | "queued" | "cooking" | "ready";
-
-export function ticketStage(status: string | null | undefined): TicketStage {
-  if (status === "held") return "parked";
-  if (status === "ready") return "ready";
-  if (status === "in_progress" || status === "preparing") return "cooking";
-  // KDS Pending column: paid online orders + POS tickets fired but not started.
-  if (status === "pending" || status === "paid") return "queued";
-  return "cooking";
-}
+export type { OpenTicket, TicketStage };
+export { ticketDisplayTotal, ticketStage };
 
 type Props = {
   /** Hide the destructive Void chip for cashiers without the
@@ -113,35 +68,48 @@ export function OpenTicketsPanel({
   cartCustomerPhone,
   smsNotifications = { send_bill: true, send_pay_link: true },
 }: Props) {
-  const [tickets, setTickets] = useState<OpenTicket[]>([]);
-  /** Server total for the current list scope (may exceed loaded rows). */
-  const [activeTotal, setActiveTotal] = useState(0);
-  // Default all-staff so the list matches the sales-page badge. Cashiers
-  // can narrow to tickets they created via the scope chips.
-  const [listScope, setListScope] = useState<"all" | "mine" | "online">("all");
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-  // Per-row "action in progress" indicator (sendBill is the only async
-  // per-row action that matters — Print just opens a tab).
-  const [busyId, setBusyId] = useState<number | null>(null);
-  const [rowMsg, setRowMsg] = useState<{ id: number; text: string; kind: "ok" | "err" } | null>(null);
-  // Bug-029: auto-clear the per-row success/error message after a
-  // sensible delay so the green/red strip doesn't sit on the row
-  // forever. Errors get the longer 10s fuse to match the global
-  // status banner (Bug-015) — cashier needs time to read + retry.
-  // Successes get 6s. Timer is reset on every new rowMsg, so a
-  // rapid sequence of taps doesn't accumulate stale timers.
-  useEffect(() => {
-    if (!rowMsg) return;
-    const ms = rowMsg.kind === "err" ? 10000 : 6000;
-    const handle = window.setTimeout(() => setRowMsg(null), ms);
-    return () => window.clearTimeout(handle);
-  }, [rowMsg]);
-  // Modal state for asking the cashier for a phone number when sending
-  // a bill SMS for a ticket that has no linked customer. Replaces the
-  // native window.prompt which was fragile, off-brand, and unusable
-  // on iPad in PWA fullscreen mode.
-  const [phonePrompt, setPhonePrompt] = useState<{ ticket: OpenTicket; phone: string } | null>(null);
+  const {
+    tickets,
+    loading,
+    err,
+    listScope,
+    selectListScope,
+    busyId,
+    rowMsg,
+    phonePrompt,
+    setPhonePrompt,
+    activeFilter,
+    setActiveFilter,
+    searchOpen,
+    search,
+    setSearch,
+    toggleSearchOpen,
+    mergeTargetId,
+    mergeConfirm,
+    setMergeConfirm,
+    mergeBusy,
+    splitFor,
+    setSplitFor,
+    filteredTickets,
+    allCount,
+    paymentCounts,
+    typeCounts,
+    stageCounts,
+    handleFireToKitchen,
+    handleSendPayLink,
+    handleStartCooking,
+    handleMarkReady,
+    confirmVoidTicket,
+    handleMarkPickedUp,
+    handleSendBill,
+    submitPhonePrompt,
+    handlePrintBill,
+    handleStartMerge,
+    handleCancelMerge,
+    handlePickMergeSource,
+    handleConfirmMerge,
+    handleSplitConfirm,
+  } = useOpenTickets({ cartCustomerPhone });
 
   // Void / cancel modal — explicit two-step destructive flow.
   // Cashier hits the red 🗑️ Void chip on a row, this modal opens
@@ -157,214 +125,6 @@ export function OpenTicketsPanel({
   const [voidPrompt, setVoidPrompt] = useState<{ ticket: OpenTicket; reason: string } | null>(null);
   const [voidBusy, setVoidBusy] = useState(false);
 
-  // ── Filter state ──────────────────────────────────────────────
-  // Single-select chip filter — at any moment exactly ONE chip is
-  // highlighted (or [All] when nothing is filtered). Stacking
-  // filters AND'd together (Ready AND Pickup AND Paid) produced
-  // empty results in the wild because no single ticket matches
-  // every dimension at once, which looked broken. One filter at a
-  // time matches how Loyverse / Square / Toast handle these top-
-  // level chip bars and is impossible to misinterpret.
-  //
-  // Filter is namespaced: "stage:ready", "type:dine_in",
-  // "payment:paid", or "all". Keeping it as one string makes the
-  // toggle logic trivial and prevents the old multi-state bug.
-  type FilterKey =
-    | "all"
-    | "stage:queued" | "stage:cooking" | "stage:ready" | "stage:parked"
-    | "type:dine_in" | "type:takeaway" | "type:online_pickup" | "type:delivery"
-    | "payment:paid" | "payment:unpaid";
-  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
-  // Search bar is a separate dimension — it narrows whatever chip
-  // bucket is currently active, so a cashier can do
-  // "show Pickup tickets matching 'aisha'". Hidden by default.
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [, setAgeTick] = useState(0);
-
-  useEffect(() => {
-    const timerId = window.setInterval(() => setAgeTick((t) => t + 1), 30_000);
-    return () => window.clearInterval(timerId);
-  }, []);
-
-  // ── Merge / split state ────────────────────────────────────────
-  // Two-tap-plus-confirm merge flow:
-  //   1. tap 🔀 Merge on a row  → mergeTargetId set, picker mode
-  //   2. tap any other row      → mergeConfirm set, confirmation modal
-  //   3. tap "Confirm merge"    → backend merge + reload
-  // Step 2 used to fire the merge immediately. Cashiers hit it by
-  // accident (any tap on any row consolidated two tickets — easy to
-  // undo only by re-splitting). Confirmation modal prevents the slip.
-  const [mergeTargetId, setMergeTargetId] = useState<number | null>(null);
-  const [mergeConfirm, setMergeConfirm] = useState<{ target: OpenTicket; source: OpenTicket } | null>(null);
-  const [mergeBusy, setMergeBusy] = useState(false);
-  // Split picker is a modal — choose which items from a single
-  // ticket to peel off into a sibling.
-  const [splitFor, setSplitFor] = useState<OpenTicket | null>(null);
-
-  /**
-   * Auto-refresh interval (ms) for the Open Tickets list. 15s is the
-   * sweet spot between "cashier sees state changes promptly" (kitchen
-   * marks ready, BML pay-link redeemed, etc.) and "we don't hammer
-   * the backend during a quiet hour". Pauses while the tab is hidden
-   * — no point polling a backgrounded PWA — and refreshes immediately
-   * on tab focus so a cashier who switches away and back gets a
-   * fresh list before they tap anything.
-   */
-  const POLL_MS = 30_000;
-
-  const loadActiveOrders = useCallback(async () => {
-    if (listScope === "mine") {
-      return fetchActiveOrdersMine();
-    }
-    if (listScope === "online") {
-      return fetchActiveOrdersOnline();
-    }
-    return fetchActiveOrdersVenueWide();
-  }, [listScope]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const reload = async (showSpinner: boolean) => {
-      if (cancelled) return;
-      try {
-        if (showSpinner) setLoading(true);
-        const { data, total } = await loadActiveOrders();
-        if (!cancelled) {
-          setTickets(data);
-          setActiveTotal(total);
-          setErr("");
-        }
-      } catch (e) {
-        // Soft-fail subsequent polls — we don't want a momentary
-        // network blip to wipe the list the cashier is looking at.
-        // Only the initial load surfaces the error.
-        if (!cancelled && showSpinner) setErr((e as Error).message);
-      } finally {
-        if (!cancelled && showSpinner) setLoading(false);
-      }
-    };
-
-    void reload(true);
-
-    const interval = window.setInterval(() => {
-      // Skip polls while the tab is hidden — saves battery and
-      // avoids piling up requests that would all execute when the
-      // tab returns to foreground.
-      if (document.visibilityState === "visible") void reload(false);
-    }, POLL_MS);
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void reload(false);
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [loadActiveOrders]);
-
-  // Update the local row after a side action so the cashier sees the
-  // new state (e.g. "fired" badge appearing, payment_status flipping)
-  // without a manual refresh.
-  const patchTicket = (id: number, patch: Partial<OpenTicket>) => {
-    setTickets((curr) =>
-      curr.map((row) => (row.id === id ? { ...row, ...patch } : row)),
-    );
-  };
-
-  const handleFireToKitchen = async (t: OpenTicket) => {
-    setBusyId(t.id);
-    setRowMsg(null);
-    try {
-      await fireOrderToKitchen(t.id);
-      patchTicket(t.id, { status: "pending", fired_at: new Date().toISOString() });
-      setRowMsg({ id: t.id, kind: "ok", text: "Sent to kitchen." });
-    } catch (e) {
-      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't fire to kitchen" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleSendPayLink = async (t: OpenTicket) => {
-    setBusyId(t.id);
-    setRowMsg(null);
-    try {
-      const res = await sendPayLink(t.id);
-      setRowMsg({ id: t.id, kind: "ok", text: `Pay link sent (MVR ${Number(res.amount).toFixed(2)}) to ${res.sent_to}` });
-    } catch (e) {
-      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't send pay link" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  /**
-   * Cashier hits "Mark ready" — flips the order to status=ready, which
-   * fires the existing "Ready for pickup!" SMS chain. Used in
-   * cashier-only setups (no KDS terminal in the kitchen) so the
-   * lifecycle SMS still goes out. Idempotent — if the order is already
-   * ready (e.g. KDS bumped it first), the backend returns
-   * {unchanged: true} and we silently skip the success toast.
-   */
-  const handleStartCooking = async (t: OpenTicket) => {
-    setBusyId(t.id);
-    setRowMsg(null);
-    try {
-      const res = await startOrderCooking(t.id);
-      patchTicket(t.id, { status: res.order.status });
-      if (!res.unchanged) {
-        setRowMsg({ id: t.id, kind: "ok", text: "Cooking — sent to kitchen." });
-      }
-    } catch (e) {
-      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't start cooking" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleMarkReady = async (t: OpenTicket) => {
-    setBusyId(t.id);
-    setRowMsg(null);
-    try {
-      const res = await markOrderReady(t.id);
-      patchTicket(t.id, { status: res.order.status });
-      if (!res.unchanged) {
-        setRowMsg({ id: t.id, kind: "ok", text: "Marked ready — customer notified." });
-      }
-    } catch (e) {
-      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't mark ready" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  /**
-   * Cashier hits "Picked up" — flips the order to status=completed,
-   * which removes it from the Active orders feed and fires
-   * OrderCompleted (loyalty award, webhook notify, etc.). Backend
-   * guards against unpaid orders, so the action is hidden from the
-   * row when the ticket still owes a balance.
-   */
-  /**
-   * Cashier voids an open ticket — opens the reason modal first,
-   * then on Confirm calls `cancelOrder()` which atomically:
-   *   - flips status → cancelled
-   *   - returns POS-deducted stock to the shelves
-   *   - releases promo / loyalty / gift-card holds
-   *   - frees the dine-in table
-   *   - audit-logs the cashier + reason
-   *
-   * Optimistically removes the ticket from the panel on success so
-   * the cashier sees instant feedback (active_only filter would
-   * exclude it on the next poll anyway). Errors fall through to the
-   * row banner — common server-side rejection is "Order is paid —
-   * issue a refund instead", and the cashier needs to see that.
-   */
   const handleConfirmVoid = async () => {
     if (!voidPrompt) return;
     const t = voidPrompt.ticket;
@@ -373,317 +133,12 @@ export function OpenTicketsPanel({
 
     setVoidBusy(true);
     try {
-      await cancelOrder(t.id, reason);
-      setTickets((curr) => curr.filter((row) => row.id !== t.id));
-      setVoidPrompt(null);
-      setRowMsg({ id: t.id, kind: "ok", text: `Ticket voided — ${reason}` });
-    } catch (e) {
-      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't void ticket" });
+      await confirmVoidTicket(t, reason);
       setVoidPrompt(null);
     } finally {
       setVoidBusy(false);
     }
   };
-
-  const handleMarkPickedUp = async (t: OpenTicket) => {
-    setBusyId(t.id);
-    setRowMsg(null);
-    try {
-      const res = await markOrderPickedUp(t.id);
-      // Optimistic: drop from the list. A poll cycle would do it
-      // anyway, but this avoids the half-second of "wait, did it
-      // work?" between the tap and the next refresh.
-      setTickets((curr) => curr.filter((row) => row.id !== t.id));
-      if (res.unchanged) {
-        // Already completed — no need to toast, just disappeared.
-      }
-    } catch (e) {
-      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't mark picked up" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  /**
-   * Send Bill (SMS) for a parked ticket. Two paths:
-   *   - ticket already has a linked customer with a phone → use that phone
-   *     immediately (server-side firstOrCreate keeps the same customer row).
-   *   - no linked customer → open the inline phone prompt modal so the
-   *     cashier types a number without leaving the panel.
-   */
-  const handleSendBill = (t: OpenTicket) => {
-    const linkedPhone = t.customer?.phone ?? null;
-    if (linkedPhone) {
-      void doSendBill(t, linkedPhone);
-      return;
-    }
-    setPhonePrompt({ ticket: t, phone: cartCustomerPhone ?? "" });
-  };
-
-  const doSendBill = async (t: OpenTicket, phone: string) => {
-    setBusyId(t.id);
-    setRowMsg(null);
-    try {
-      const res = await sendBill(t.id, phone);
-      setRowMsg({ id: t.id, kind: "ok", text: `Bill sent to ${phone}` });
-      // Update local row so the customer name shows immediately even
-      // if the backend just created the customer.
-      setTickets((curr) =>
-        curr.map((row) =>
-          row.id === t.id
-            ? { ...row, customer: (res.order as { customer?: OpenTicket["customer"] })?.customer ?? row.customer }
-            : row,
-        ),
-      );
-    } catch (e) {
-      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Failed to send" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const submitPhonePrompt = async () => {
-    if (!phonePrompt) return;
-    const phone = phonePrompt.phone.trim();
-    if (!phone) return;
-    const ticket = phonePrompt.ticket;
-    setPhonePrompt(null);
-    await doSendBill(ticket, phone);
-  };
-
-  /**
-   * Open the public invoice link (Blade) in a new tab with ?print=1 so
-   * the browser print dialog fires automatically. The backend ensures
-   * an invoice exists (idempotent) even if Send Bill was never called.
-   */
-  const handlePrintBill = async (t: OpenTicket) => {
-    setBusyId(t.id);
-    setRowMsg(null);
-    try {
-      const res = await sendBill(t.id);
-      const link = res.link;
-      const url = link.includes("?") ? `${link}&print=1` : `${link}?print=1`;
-      // Bug-047: when the cashier has popups blocked for the POS
-      // (default on iPad Safari for any not-yet-trusted host),
-      // `window.open` silently returns null and the cashier
-      // assumes the print succeeded. Detect the null and surface
-      // a clear "allow popups" message — and copy the link to the
-      // clipboard as a fallback so they can paste it into a new
-      // tab to print.
-      const win = window.open(url, "_blank", "noopener,noreferrer");
-      if (!win) {
-        try { await navigator.clipboard.writeText(url); } catch { /* permissions */ }
-        setRowMsg({
-          id: t.id,
-          kind: "err",
-          text: "Print blocked by browser popup-blocker. Allow popups for the POS, or paste the copied link into a new tab.",
-        });
-      }
-    } catch (e) {
-      setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Failed to open invoice" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  /**
-   * Merge flow — two-tap interaction. First tap picks the TARGET
-   * (cashier explicitly chooses the survivor); panel header switches
-   * to "select source to merge in". Second tap on any other row
-   * runs the backend merge — items move, source is cancelled, both
-   * rows reflect new state.
-   */
-  const handleStartMerge = (target: OpenTicket) => {
-    setMergeTargetId(target.id);
-    setRowMsg(null);
-  };
-
-  const handleCancelMerge = () => {
-    setMergeTargetId(null);
-    setMergeConfirm(null);
-  };
-
-  /**
-   * Step 2 — cashier picked the source. Open the confirm modal
-   * showing both tickets side-by-side so they can sanity-check
-   * (matches the table-merge UX in admin which also confirms
-   * before consolidating an active table's bill).
-   */
-  const handlePickMergeSource = (source: OpenTicket) => {
-    if (mergeTargetId === null || source.id === mergeTargetId) {
-      setMergeTargetId(null);
-      return;
-    }
-    const target = tickets.find((t) => t.id === mergeTargetId);
-    if (!target) {
-      setMergeTargetId(null);
-      return;
-    }
-    setMergeConfirm({ target, source });
-  };
-
-  /**
-   * Step 3 — confirmation accepted. Runs the backend merge then
-   * reloads the full ticket list so the TARGET row reflects its new
-   * total/item-count (items moved over, totals recalculated by
-   * OrderTotalsCalculator). Local optimistic patching is too
-   * error-prone here: we'd need to recompute taxes/discounts/etc.
-   * client-side and that drifts from the server source of truth.
-   */
-  const handleConfirmMerge = async () => {
-    if (!mergeConfirm) return;
-    const { target, source } = mergeConfirm;
-    setMergeBusy(true);
-    setRowMsg(null);
-    try {
-      await mergeOpenTickets(target.id, { source_id: source.id });
-      // Full reload — pulls the updated target (new total + items)
-      // and reflects the cancelled source falling out of the
-      // active feed in one round-trip.
-      const fresh = await loadActiveOrders();
-      setTickets(fresh.data);
-      setActiveTotal(fresh.total);
-      setMergeTargetId(null);
-      setMergeConfirm(null);
-      setRowMsg({
-        id: target.id,
-        kind: "ok",
-        text: `Merged ${source.order_number} into ${target.order_number}.`,
-      });
-    } catch (e) {
-      setRowMsg({ id: source.id, kind: "err", text: (e as Error).message || "Couldn't merge" });
-      // Leave the confirm modal open so the cashier can retry or
-      // cancel cleanly — auto-dismissing it would lose context on
-      // what just failed.
-    } finally {
-      setMergeBusy(false);
-    }
-  };
-
-  const handleSplitConfirm = async (sourceId: number, itemIds: number[]) => {
-    setBusyId(sourceId);
-    setRowMsg(null);
-    try {
-      const res = await splitOpenTicket(sourceId, { item_ids: itemIds });
-      setSplitFor(null);
-      setRowMsg({
-        id: sourceId,
-        kind: "ok",
-        text: `Split into order #${res.split.id} (MVR ${Number(res.split.total).toFixed(2)})`,
-      });
-      // Force reload to pull both the slimmed source AND the new
-      // sibling ticket. Optimistic patch is awkward here (we don't
-      // have the full row shape for the brand-new order locally).
-      const fresh = await loadActiveOrders();
-      setTickets(fresh.data);
-      setActiveTotal(fresh.total);
-    } catch (e) {
-      setRowMsg({ id: sourceId, kind: "err", text: (e as Error).message || "Couldn't split" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  // ── Derived: filtered ticket list ─────────────────────────────
-  // ONE chip-filter at a time + an optional search. Stage of each
-  // ticket maps to KDS columns via ticketStage().
-  // Search is plain client-side .includes() across the obvious POS
-  // identifiers — orders are <50 rows so server-side search would
-  // be overkill. Table name + location are searched so the cashier
-  // can type "T4" or "Patio".
-  const filteredTickets = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return tickets.filter((t) => {
-      if (activeFilter === "all") {
-        // no chip-level filter
-      } else if (activeFilter.startsWith("stage:")) {
-        const want = activeFilter.slice(6) as TicketStage;
-        if (ticketStage(t.status) !== want) return false;
-      } else if (activeFilter.startsWith("type:")) {
-        const want = activeFilter.slice(5);
-        if (t.type !== want) return false;
-      } else if (activeFilter === "payment:paid") {
-        if (t.payment_status !== "paid") return false;
-      } else if (activeFilter === "payment:unpaid") {
-        if (t.payment_status === "paid") return false;
-      }
-      if (q.length > 0) {
-        const tableHay = t.table
-          ? `${t.table.name ?? ""} ${t.table.location ?? ""}`
-          : "";
-        const haystack = [
-          t.order_number,
-          t.ticket_name ?? "",
-          t.ticket_note ?? "",
-          t.customer?.name ?? "",
-          t.customer?.phone ?? "",
-          tableHay,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [tickets, activeFilter, search]);
-
-  // Bug-028: chip badges must respect the SEARCH box (but NOT the
-  // currently-active chip — switching chips is the whole point, so
-  // we still want to see how many tickets sit in the *other*
-  // buckets). Pre-filter on search-only and tally the buckets from
-  // there. When search is empty this collapses back to the previous
-  // "show total per bucket" behaviour, matching Loyverse.
-  const searchScopedTickets = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return tickets;
-    return tickets.filter((t) => {
-      const tableHay = t.table
-        ? `${t.table.name ?? ""} ${t.table.location ?? ""}`
-        : "";
-      const haystack = [
-        t.order_number,
-        t.ticket_name ?? "",
-        t.ticket_note ?? "",
-        t.customer?.name ?? "",
-        t.customer?.phone ?? "",
-        tableHay,
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [tickets, search]);
-
-  const allCount = search.trim() ? searchScopedTickets.length : activeTotal;
-
-  const paymentCounts = useMemo(() => {
-    let paid = 0;
-    let unpaid = 0;
-    searchScopedTickets.forEach((t) => {
-      if (t.payment_status === "paid") paid++;
-      else unpaid++;
-    });
-    return { paid, unpaid };
-  }, [searchScopedTickets]);
-
-  const typeCounts = useMemo(() => {
-    const counts = { dine_in: 0, takeaway: 0, online_pickup: 0, delivery: 0 };
-    searchScopedTickets.forEach((t) => {
-      if (t.type === "dine_in") counts.dine_in++;
-      else if (t.type === "takeaway") counts.takeaway++;
-      else if (t.type === "online_pickup") counts.online_pickup++;
-      else if (t.type === "delivery") counts.delivery++;
-    });
-    return counts;
-  }, [searchScopedTickets]);
-
-  const stageCounts = useMemo(() => {
-    const counts = { parked: 0, queued: 0, cooking: 0, ready: 0 };
-    searchScopedTickets.forEach((t) => {
-      counts[ticketStage(t.status)]++;
-    });
-    return counts;
-  }, [searchScopedTickets]);
 
   return (
     <PanelShell
@@ -747,28 +202,19 @@ export function OpenTicketsPanel({
         >
           <ScopeChip
             active={listScope === "all"}
-            onClick={() => {
-              setListScope("all");
-              setActiveFilter("all");
-            }}
+            onClick={() => selectListScope("all")}
           >
             👥 All staff
           </ScopeChip>
           <ScopeChip
             active={listScope === "mine"}
-            onClick={() => {
-              setListScope("mine");
-              setActiveFilter("all");
-            }}
+            onClick={() => selectListScope("mine")}
           >
             👤 Mine
           </ScopeChip>
           <ScopeChip
             active={listScope === "online"}
-            onClick={() => {
-              setListScope("online");
-              setActiveFilter("all");
-            }}
+            onClick={() => selectListScope("online")}
           >
             📱 Online
           </ScopeChip>
@@ -820,7 +266,7 @@ export function OpenTicketsPanel({
             { key: "stage:parked", label: "📋 Parked", count: stageCounts.parked },
           ]}
           selected={activeFilter}
-          onSelect={(k) => setActiveFilter(k as FilterKey)}
+          onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
         />
 
         <Divider />
@@ -835,7 +281,7 @@ export function OpenTicketsPanel({
             { key: "type:delivery", label: "🚗 Delivery", count: typeCounts.delivery },
           ]}
           selected={activeFilter}
-          onSelect={(k) => setActiveFilter(k as FilterKey)}
+          onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
         />
 
         <Divider />
@@ -847,7 +293,7 @@ export function OpenTicketsPanel({
             { key: "payment:unpaid", label: "UNPAID", count: paymentCounts.unpaid, activeColor: "#B91C1C" },
           ]}
           selected={activeFilter}
-          onSelect={(k) => setActiveFilter(k as FilterKey)}
+          onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
         />
 
         {/* Spacer — pushes the search toggle to the right edge on
@@ -858,13 +304,7 @@ export function OpenTicketsPanel({
             second line. Closing also clears the search text so
             it can't quietly keep filtering. */}
         <button
-          onClick={() => {
-            setSearchOpen((v) => {
-              const next = !v;
-              if (!next) setSearch("");
-              return next;
-            });
-          }}
+          onClick={toggleSearchOpen}
           title="Search by name, phone, table, or order #"
           style={{
             padding: "6px 10px",
