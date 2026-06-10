@@ -10,6 +10,7 @@ use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;
+use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -19,6 +20,7 @@ class GiftCardController extends Controller
 {
     public function __construct(
         private readonly GiftCardCodeService $giftCardCodes,
+        private readonly AuditLogService $audit,
     ) {}
 
     // ── Public: check balance ─────────────────────────────────────────────────
@@ -160,6 +162,16 @@ class GiftCardController extends Controller
 
             $order = $calc->recalculateAndPersist($order->fresh());
 
+            $this->audit->log(
+                'gift_card.applied',
+                'Order',
+                $order->id,
+                [],
+                ['gift_card_id' => $card->id, 'discount_laar' => $discountLaar],
+                ['masked_code' => $card->masked_code, 'source' => 'pos'],
+                $request,
+            );
+
             return response()->json([
                 'discount_laar' => $discountLaar,
                 'discount_mvr' => number_format($discountLaar / 100, 2),
@@ -190,8 +202,21 @@ class GiftCardController extends Controller
             ->whereIn('status', ['payment_pending', 'pending'])
             ->findOrFail($orderId);
 
+        $previousCardId = $order->gift_card_id;
+        $previousDiscount = (int) $order->gift_card_discount_laar;
+
         $order->update(['gift_card_id' => null, 'gift_card_discount_laar' => 0]);
         $calc->recalculateAndPersist($order->fresh());
+
+        $this->audit->log(
+            'gift_card.removed',
+            'Order',
+            $order->id,
+            ['gift_card_id' => $previousCardId, 'gift_card_discount_laar' => $previousDiscount],
+            ['gift_card_id' => null, 'gift_card_discount_laar' => 0],
+            ['source' => 'pos'],
+            $request,
+        );
 
         return response()->json(['message' => 'Gift card removed.']);
     }
@@ -229,6 +254,20 @@ class GiftCardController extends Controller
             'type' => 'load',
             'balance_after' => $validated['amount'],
         ]);
+
+        $this->audit->log(
+            'gift_card.issued',
+            'GiftCard',
+            $card->id,
+            [],
+            [
+                'initial_balance' => (float) $card->initial_balance,
+                'issued_to_customer_id' => $card->issued_to_customer_id,
+                'expires_at' => $card->expires_at?->toDateString(),
+            ],
+            ['masked_code' => $card->masked_code],
+            $request,
+        );
 
         return response()->json([
             'gift_card' => array_merge($this->format($card), ['code' => $generated['plain']]),

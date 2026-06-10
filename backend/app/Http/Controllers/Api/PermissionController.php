@@ -7,11 +7,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PermissionController extends Controller
 {
+    public function __construct(private readonly AuditLogService $audit) {}
+
     /** GET /api/permissions — list all permissions grouped */
     public function index(): JsonResponse
     {
@@ -65,6 +68,8 @@ class PermissionController extends Controller
         // through, so a non-owner could strip permissions they didn't hold
         // (e.g. a manager revoking integrations.xero from an owner-delegated
         // power user). Same gate now applies uniformly.
+        $oldOverrides = $user->permissions()->pluck('granted', 'slug')->all();
+
         $isOwner = $actor?->role?->slug === 'owner';
         foreach ($validated['permissions'] as $slug => $value) {
             if (!$isOwner && !$actor->hasPermission($slug)) {
@@ -82,6 +87,16 @@ class PermissionController extends Controller
         }
 
         $user->load('role');
+
+        $this->audit->log(
+            'user.permissions.updated',
+            'User',
+            $user->id,
+            ['overrides' => $oldOverrides],
+            ['overrides' => $user->permissions()->pluck('granted', 'slug')->all()],
+            ['changed' => array_keys($validated['permissions'])],
+            $request,
+        );
 
         return response()->json([
             'message' => 'Permissions updated.',

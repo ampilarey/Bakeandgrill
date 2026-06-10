@@ -105,8 +105,23 @@ class StaffController extends Controller
             $validated['email'] = strtolower(trim($validated['email']));
         }
 
+        $tracked = array_intersect_key($validated, array_flip(['name', 'email', 'phone', 'role_id', 'is_active']));
+        $before = $user->only(array_keys($tracked));
+
         $user->update($validated);
         $user->load('role');
+
+        if ($tracked !== []) {
+            $this->audit->log(
+                'staff.updated',
+                'User',
+                $user->id,
+                $before,
+                $user->only(array_keys($tracked)),
+                [],
+                $request,
+            );
+        }
 
         return response()->json(['staff' => $this->formatUser($user)]);
     }
