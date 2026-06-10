@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { getMe, logout as apiLogout, type StaffUser } from './api';
@@ -53,6 +54,15 @@ const OnlineOrderingPage      = lazyWithRetry(() => import('./pages/OnlineOrderi
 const DeliverySettingsPage    = lazyWithRetry(() => import('./pages/DeliverySettingsPage'));
 const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+    },
+  },
+});
 
 function PageFallback() {
   return (
@@ -174,6 +184,7 @@ export default function App() {
   }
 
   return (
+    <QueryClientProvider client={queryClient}>
     <ToastProvider>
     <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     <Routes>
@@ -424,5 +435,6 @@ export default function App() {
       />
     </Routes>
     </ToastProvider>
+    </QueryClientProvider>
   );
 }

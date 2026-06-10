@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, ChefHat, ClipboardList, Clock, CreditCard, DollarSign, MessageSquare, Monitor, Package, Play, Printer, Receipt, ShoppingBag, Trash2, TrendingUp, Truck, Users } from 'lucide-react';
@@ -24,10 +25,6 @@ import {
   type InventoryItem,
   type Order,
   type Shift,
-  type SystemHealth,
-  type PosOverview,
-  type SalesSummary,
-  type CreditExposureReport,
 } from '../api';
 import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -74,14 +71,6 @@ const STATUS_BG: Record<string, string> = {
   delivered:  '#D1FAE5',
   completed:  '#F8F6F3',
   cancelled:  '#FEE2E2',
-};
-
-type DailySummary = {
-  date: string; revenue: number; tax: number; orders: number;
-  avg_order: number; expenses: number; purchases: number;
-  waste_cost: number; net_profit: number;
-  by_type: { type: string; count: number; revenue: number }[];
-  top_items: { name: string; qty: number; revenue: number }[];
 };
 
 // ── sub-components ────────────────────────────────────────────────────────────
@@ -338,6 +327,7 @@ export function DashboardPage() {
   usePageTitle('Dashboard');
   const now = useNow();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { can } = useCurrentUserPermissions();
   const showPosOverview = can('reports.view');
   const showMaintenance = can('website.manage');
@@ -350,178 +340,153 @@ export function DashboardPage() {
   const canDelivery = can('delivery.view');
   const [summaryDate, setSummaryDate] = useState(localToday);
 
-  const [summary, setSummary]       = useState<DailySummary | null>(null);
-  const [summaryErr, setSummaryErr] = useState('');
-  const [summaryLoading, setSummaryLoading] = useState(true);
-  const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
-  const [creditExposure, setCreditExposure] = useState<CreditExposureReport | null>(null);
-
-  const [activeOrders, setActiveOrders]   = useState<Order[]>([]);
-  const [ordersErr, setOrdersErr]         = useState('');
-  const [ordersLoading, setOrdersLoading] = useState(true);
-
-  const [lowStock, setLowStock]       = useState<InventoryItem[]>([]);
-  const [lowStockErr, setLowStockErr] = useState('');
-
-  const [shift, setShift]     = useState<Shift | null>(null);
-  const [shiftErr, setShiftErr] = useState('');
-
-  const [lowStockTotal, setLowStockTotal] = useState(0);
-  const [stockRunway, setStockRunway] = useState<Array<{ id: number; name: string; days_of_stock: number | null; status: string; unit: string }>>([]);
-  const [poSuggestCount, setPoSuggestCount] = useState(0);
-  const [printPending, setPrintPending] = useState(0);
-  const [smsFailed, setSmsFailed] = useState(0);
-  const [smsSent, setSmsSent] = useState(0);
-
   // Tracks orders that changed status since the last poll — drives the "recent changes" panel
   const [liveEvents, setLiveEvents] = useState<{ id: number; order_number: string; status: string; ts: number }[]>([]);
   const prevOrdersRef  = useRef<Record<number, string>>({});
   const isFirstLoadRef = useRef(true);
 
-  // ── load daily summary ──
-  useEffect(() => {
-    if (!canFinancialSummary) {
-      setSummary(null);
-      setSummaryLoading(false);
-      return;
-    }
-    setSummaryLoading(true); setSummaryErr('');
-    getDailySummary(summaryDate)
-      .then(setSummary)
-      .catch((e: Error) => setSummaryErr(e.message))
-      .finally(() => setSummaryLoading(false));
-    fetchSalesSummary({ from: summaryDate, to: summaryDate })
-      .then(setSalesSummary)
-      .catch(() => setSalesSummary(null));
-    getCreditExposureReport()
-      .then(setCreditExposure)
-      .catch(() => setCreditExposure(null));
-  }, [summaryDate, canFinancialSummary]);
+  const {
+    data: summary = null,
+    isLoading: summaryLoading,
+    error: summaryQueryError,
+  } = useQuery({
+    queryKey: ['dashboard', 'daily-summary', summaryDate],
+    queryFn: () => getDailySummary(summaryDate),
+    enabled: canFinancialSummary,
+  });
+  const summaryErr = summaryQueryError?.message ?? '';
 
-  // ── load active orders (poll every 10s) — diff drives the live feed ──
-  const loadOrders = () => {
-    if (!canOrders) return;
-    fetchOrders({ status: 'pending,paid,confirmed,preparing,in_progress,ready', per_page: 50 })
-      .then((r) => {
-        setActiveOrders(r.data ?? []);
-        setOrdersErr('');
-        // Detect status changes and brand-new orders since last poll
-        const changed: typeof liveEvents = [];
-        const newPending: typeof liveEvents = [];
-        (r.data ?? []).forEach((o) => {
-          if (prevOrdersRef.current[o.id] === undefined) {
-            // Brand-new order appeared in the feed
-            if (!isFirstLoadRef.current && ['pending', 'paid'].includes(o.status)) {
-              newPending.push({ id: o.id, order_number: o.order_number, status: o.status, ts: Date.now() });
-            }
-          } else if (prevOrdersRef.current[o.id] !== o.status) {
-            changed.push({ id: o.id, order_number: o.order_number, status: o.status, ts: Date.now() });
-          }
-          prevOrdersRef.current[o.id] = o.status;
-        });
-        isFirstLoadRef.current = false;
-        if (newPending.length > 0) {
-          playChime();
-          newPending.forEach((o) =>
-            pushNotification({ type: 'order', title: 'New Order', body: `Order #${o.order_number} is waiting` })
-          );
-        }
-        if (newPending.length > 0 || changed.length > 0) {
-          setLiveEvents((prev) => [...newPending, ...changed, ...prev].slice(0, 20));
-        }
-      })
-      .catch((e: Error) => setOrdersErr(e.message))
-      .finally(() => setOrdersLoading(false));
-  };
-  useEffect(() => {
-    if (!canOrders) {
-      setActiveOrders([]);
-      setOrdersLoading(false);
-      return;
-    }
-    loadOrders();
-    const t = setInterval(loadOrders, 10_000);
-    return () => clearInterval(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canOrders]);
+  const { data: salesSummary = null } = useQuery({
+    queryKey: ['dashboard', 'sales-summary', summaryDate],
+    queryFn: () => fetchSalesSummary({ from: summaryDate, to: summaryDate }),
+    enabled: canFinancialSummary,
+  });
 
-  // ── load inventory intelligence (reorder + runway + PO suggestions) ──
+  const { data: creditExposure = null } = useQuery({
+    queryKey: ['dashboard', 'credit-exposure'],
+    queryFn: getCreditExposureReport,
+    enabled: canFinancialSummary,
+  });
+
+  const {
+    data: activeOrders = [],
+    isLoading: ordersLoading,
+    error: ordersQueryError,
+    refetch: refetchOrders,
+  } = useQuery({
+    queryKey: ['dashboard', 'active-orders'],
+    queryFn: async () => {
+      const r = await fetchOrders({ status: 'pending,paid,confirmed,preparing,in_progress,ready', per_page: 50 });
+      return r.data ?? [];
+    },
+    enabled: canOrders,
+    refetchInterval: canOrders ? 10_000 : false,
+  });
+  const ordersErr = ordersQueryError?.message ?? '';
+
   useEffect(() => {
-    if (!canInventory) return;
-    Promise.all([
-      fetchLowStockItems(),
-      getInventoryForecast().catch(() => ({ items: [] as Awaited<ReturnType<typeof getInventoryForecast>>['items'] })),
-      getPurchaseSuggestions().catch(() => ({ items: [] as Awaited<ReturnType<typeof getPurchaseSuggestions>>['items'], by_supplier: [] })),
-    ])
-      .then(([lowStockRes, forecastRes, suggestRes]) => {
-        const items = lowStockRes.data ?? [];
-        setLowStock(items.slice(0, 8));
-        setLowStockTotal(items.length);
-        const urgentRunway = (forecastRes.items ?? [])
+    if (!canOrders || activeOrders.length === 0 && ordersLoading) return;
+    const changed: typeof liveEvents = [];
+    const newPending: typeof liveEvents = [];
+    activeOrders.forEach((o) => {
+      if (prevOrdersRef.current[o.id] === undefined) {
+        if (!isFirstLoadRef.current && ['pending', 'paid'].includes(o.status)) {
+          newPending.push({ id: o.id, order_number: o.order_number, status: o.status, ts: Date.now() });
+        }
+      } else if (prevOrdersRef.current[o.id] !== o.status) {
+        changed.push({ id: o.id, order_number: o.order_number, status: o.status, ts: Date.now() });
+      }
+      prevOrdersRef.current[o.id] = o.status;
+    });
+    isFirstLoadRef.current = false;
+    if (newPending.length > 0) {
+      playChime();
+      newPending.forEach((o) =>
+        pushNotification({ type: 'order', title: 'New Order', body: `Order #${o.order_number} is waiting` })
+      );
+    }
+    if (newPending.length > 0 || changed.length > 0) {
+      setLiveEvents((prev) => [...newPending, ...changed, ...prev].slice(0, 20));
+    }
+  }, [activeOrders, canOrders, ordersLoading]);
+
+  const {
+    data: inventoryIntel = { lowStock: [] as InventoryItem[], lowStockTotal: 0, stockRunway: [] as Array<{ id: number; name: string; days_of_stock: number | null; status: string; unit: string }>, poSuggestCount: 0 },
+    error: lowStockQueryError,
+  } = useQuery({
+    queryKey: ['dashboard', 'inventory-intelligence'],
+    enabled: canInventory,
+    queryFn: async () => {
+      const [lowStockRes, forecastRes, suggestRes] = await Promise.all([
+        fetchLowStockItems(),
+        getInventoryForecast().catch(() => ({ items: [] as Awaited<ReturnType<typeof getInventoryForecast>>['items'] })),
+        getPurchaseSuggestions().catch(() => ({ items: [] as Awaited<ReturnType<typeof getPurchaseSuggestions>>['items'], by_supplier: [] })),
+      ]);
+      const items = lowStockRes.data ?? [];
+      if (items.length > 0) {
+        const key = 'admin_low_stock_notified_count';
+        const prev = sessionStorage.getItem(key);
+        if (prev !== String(items.length)) {
+          pushNotification({ type: 'stock', title: 'Low Stock', body: `${items.length} item${items.length !== 1 ? 's' : ''} below reorder level` });
+          sessionStorage.setItem(key, String(items.length));
+        }
+      }
+      return {
+        lowStock: items.slice(0, 8),
+        lowStockTotal: items.length,
+        stockRunway: (forecastRes.items ?? [])
           .filter((i) => ['out_of_stock', 'critical', 'low'].includes(i.status))
           .filter((i) => i.days_of_stock == null || i.days_of_stock <= 7)
           .sort((a, b) => (a.days_of_stock ?? 999) - (b.days_of_stock ?? 999))
-          .slice(0, 5);
-        setStockRunway(urgentRunway);
-        setPoSuggestCount((suggestRes.items ?? []).length);
-        if (items.length > 0) {
-          const key = 'admin_low_stock_notified_count';
-          const prev = sessionStorage.getItem(key);
-          if (prev !== String(items.length)) {
-            pushNotification({ type: 'stock', title: 'Low Stock', body: `${items.length} item${items.length !== 1 ? 's' : ''} below reorder level` });
-            sessionStorage.setItem(key, String(items.length));
-          }
-        }
-      })
-      .catch((e: Error) => setLowStockErr(e.message));
-  }, [canInventory]);
+          .slice(0, 5),
+        poSuggestCount: (suggestRes.items ?? []).length,
+      };
+    },
+  });
+  const { lowStock, lowStockTotal, stockRunway, poSuggestCount } = inventoryIntel;
+  const lowStockErr = lowStockQueryError?.message ?? '';
 
-  // ── load shift ──
-  useEffect(() => {
-    if (!canShift) return;
-    getCurrentShift()
-      .then((r) => setShift(r.shift))
-      .catch((e: Error) => setShiftErr(e.message));
-  }, [canShift]);
+  const {
+    data: shift = null,
+    error: shiftQueryError,
+  } = useQuery({
+    queryKey: ['dashboard', 'current-shift'],
+    queryFn: async () => (await getCurrentShift()).shift,
+    enabled: canShift,
+  });
+  const shiftErr = shiftQueryError?.message ?? '';
 
-  useEffect(() => {
-    if (!canPrintJobs) return;
-    fetchPrintJobs({ status: 'pending' })
-      .then((r) => setPrintPending(r.meta?.total ?? r.data?.length ?? 0))
-      .catch(() => setPrintPending(0));
-  }, [canPrintJobs]);
+  const { data: printPending = 0 } = useQuery({
+    queryKey: ['dashboard', 'print-jobs-pending'],
+    queryFn: async () => {
+      const r = await fetchPrintJobs({ status: 'pending' });
+      return r.meta?.total ?? r.data?.length ?? 0;
+    },
+    enabled: canPrintJobs,
+  });
 
-  useEffect(() => {
-    if (!canSms) return;
-    fetchSmsLogStats()
-      .then((s) => { setSmsSent(s.sent); setSmsFailed(s.failed); })
-      .catch(() => { setSmsSent(0); setSmsFailed(0); });
-  }, [canSms]);
+  const { data: smsStats = { sent: 0, failed: 0 } } = useQuery({
+    queryKey: ['dashboard', 'sms-stats'],
+    queryFn: fetchSmsLogStats,
+    enabled: canSms,
+  });
+  const { sent: smsSent, failed: smsFailed } = smsStats;
 
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  useEffect(() => {
-    getSystemHealth()
-      .then(setHealth)
-      .catch(() => { /* non-blocking — requires website.manage permission */ });
-  }, []);
+  const { data: health = null } = useQuery({
+    queryKey: ['dashboard', 'system-health'],
+    queryFn: getSystemHealth,
+  });
 
-  const [posOverview, setPosOverview] = useState<PosOverview | null>(null);
-  const [posOverviewErr, setPosOverviewErr] = useState('');
-  const [maintenanceTick, setMaintenanceTick] = useState(0);
-
-  const reloadPosOverview = () => {
-    if (!showPosOverview) return;
-    fetchPosOverview()
-      .then(setPosOverview)
-      .catch((e: Error) => setPosOverviewErr(e.message));
-  };
-
-  useEffect(() => {
-    if (!showPosOverview) return;
-    reloadPosOverview();
-    const t = setInterval(reloadPosOverview, 30_000);
-    return () => clearInterval(t);
-  }, [showPosOverview, maintenanceTick]);
+  const {
+    data: posOverview = null,
+    error: posOverviewQueryError,
+  } = useQuery({
+    queryKey: ['dashboard', 'pos-overview'],
+    queryFn: fetchPosOverview,
+    enabled: showPosOverview,
+    refetchInterval: showPosOverview ? 30_000 : false,
+  });
+  const posOverviewErr = posOverviewQueryError?.message ?? '';
 
 
   // ── derived ──
@@ -831,7 +796,7 @@ export function DashboardPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 480, overflowY: 'auto' }}>
               {activeOrders.map((o) => (
-                <OrderCard key={o.id} order={o} now={now} onPrepare={() => { void loadOrders(); }} />
+                <OrderCard key={o.id} order={o} now={now} onPrepare={() => { void refetchOrders(); }} />
               ))}
             </div>
           )}
@@ -1125,7 +1090,7 @@ export function DashboardPage() {
       )}
 
       {showMaintenance && (
-        <MaintenancePanel onDone={() => setMaintenanceTick((t) => t + 1)} />
+        <MaintenancePanel onDone={() => { void queryClient.invalidateQueries({ queryKey: ['dashboard', 'pos-overview'] }); }} />
       )}
     </>
   );

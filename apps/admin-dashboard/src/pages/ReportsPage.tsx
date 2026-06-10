@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
@@ -117,6 +118,82 @@ function sectionForTab(t: Tab) {
   return REPORT_SECTIONS.find((s) => (s.tabs as readonly string[]).includes(t)) ?? REPORT_SECTIONS[0];
 }
 
+type ReportData = {
+  summary?: SalesSummary;
+  breakdown?: SalesBreakdown;
+  xReport?: XReport | null;
+  zReport?: ZReport | null;
+  taxReport?: TaxReport;
+  inventory?: InventoryValuation;
+  ap?: AccountsPayable[];
+  ar?: AccountsReceivable[];
+  promoReport?: PromotionReportItem[];
+  loyaltyReport?: LoyaltyReport;
+  deliveryZones?: DeliveryZonesReport;
+  discountsReport?: DiscountsByTypeReport;
+  voidsReport?: VoidsByStaffReport;
+  refundsReport?: RefundsByReasonReport;
+  creditExposure?: CreditExposureReport;
+  depositExposure?: DepositExposureReport;
+  depositActivity?: DepositActivityReport;
+  overridesReport?: ManagerOverridesReport;
+  velocityReport?: StockVelocityReport;
+  shiftVariances?: ShiftVariancesReport;
+  customerLtv?: CustomerLtvReport;
+  customerCohorts?: CustomerCohortsReport;
+  cashierPerf?: CashierPerformanceReport;
+  productMargins?: ProductMarginsReport;
+  stockDiscrepancy?: StockDiscrepancyReport;
+  hourlySales?: HourlySalesReport;
+  stationPerf?: StationPerformanceReport;
+};
+
+async function fetchReportData(
+  tab: Tab,
+  from: string,
+  to: string,
+  posFilters: { user_id?: number; shift_id?: number; device_id?: number },
+): Promise<ReportData> {
+  const result: ReportData = {};
+  if (tab === 'Summary') result.summary = await fetchSalesSummary({ from, to, ...posFilters });
+  if (tab === 'Breakdown') result.breakdown = await getSalesBreakdown({ from, to });
+  if (tab === 'Delivery Zones') result.deliveryZones = await getDeliveryZonesReport({ from, to });
+  if (tab === 'Tax') result.taxReport = await getTaxReport({ from, to });
+  if (tab === 'X / Z Report') {
+    const [xResult, zResult] = await Promise.allSettled([
+      getXReport(),
+      getZReport({ from, to }),
+    ]);
+    result.xReport = xResult.status === 'fulfilled' ? xResult.value : null;
+    result.zReport = zResult.status === 'fulfilled' ? zResult.value : null;
+    if (xResult.status === 'rejected' && zResult.status === 'rejected') {
+      throw xResult.reason;
+    }
+  }
+  if (tab === 'Inventory') result.inventory = await getInventoryValuation();
+  if (tab === 'Accounts Payable') result.ap = (await getAccountsPayable()).data;
+  if (tab === 'Accounts Receivable') result.ar = (await getAccountsReceivable()).data;
+  if (tab === 'Promotions') result.promoReport = (await getPromotionReport({ from, to })).report;
+  if (tab === 'Loyalty') result.loyaltyReport = (await getLoyaltyReport({ from, to })).report;
+  if (tab === 'Discounts') result.discountsReport = await getDiscountsByTypeReport({ from, to });
+  if (tab === 'Voids') result.voidsReport = await getVoidsByStaffReport({ from, to });
+  if (tab === 'Refunds') result.refundsReport = await getRefundsByReasonReport({ from, to });
+  if (tab === 'Credit Exposure') result.creditExposure = await getCreditExposureReport();
+  if (tab === 'Deposit Exposure') result.depositExposure = await getDepositExposureReport();
+  if (tab === 'Deposit Activity') result.depositActivity = await getDepositActivityReport({ from, to });
+  if (tab === 'Overrides') result.overridesReport = await getManagerOverridesReport({ from, to });
+  if (tab === 'Stock Velocity') result.velocityReport = await getStockVelocityReport({ from, to });
+  if (tab === 'Shift Variances') result.shiftVariances = await getShiftVariancesReport({ from, to });
+  if (tab === 'Customer LTV') result.customerLtv = await getCustomerLtvReport({ from, to });
+  if (tab === 'Customer Cohorts') result.customerCohorts = await getCustomerCohortsReport({ from, to });
+  if (tab === 'Cashier Performance') result.cashierPerf = await getCashierPerformanceReport({ from, to });
+  if (tab === 'Product Margins') result.productMargins = await getProductMarginsReport();
+  if (tab === 'Stock Discrepancy') result.stockDiscrepancy = await getStockDiscrepancyReport();
+  if (tab === 'Hourly Sales') result.hourlySales = await getHourlySalesReport({ from, to });
+  if (tab === 'Station Performance') result.stationPerf = await getStationPerformanceReport({ from, to });
+  return result;
+}
+
 const S = {
   sectionTab: (active: boolean): React.CSSProperties => ({
     padding: '10px 16px',
@@ -173,105 +250,69 @@ export function ReportsPage() {
   const [cashierId, setCashierId] = useState('');
   const [shiftId, setShiftId]     = useState('');
   const [deviceId, setDeviceId]   = useState('');
-  const [staffOptions, setStaffOptions] = useState<{ id: number; name: string }[]>([]);
-  const [shiftOptions, setShiftOptions] = useState<{ id: number; label: string }[]>([]);
-  const [deviceOptions, setDeviceOptions] = useState<{ id: number; name: string }[]>([]);
 
-  const [summary,   setSummary]   = useState<SalesSummary | null>(null);
-  const [breakdown, setBreakdown] = useState<SalesBreakdown | null>(null);
-  const [xReport,   setXReport]   = useState<XReport | null>(null);
-  const [zReport,   setZReport]   = useState<ZReport | null>(null);
-  const [taxReport, setTaxReport] = useState<TaxReport | null>(null);
-  const [inventory, setInventory] = useState<InventoryValuation | null>(null);
-  const [ap,        setAp]        = useState<AccountsPayable[] | null>(null);
-  const [ar,        setAr]        = useState<AccountsReceivable[] | null>(null);
-  const [promoReport, setPromoReport] = useState<PromotionReportItem[] | null>(null);
-  const [loyaltyReport, setLoyaltyReport] = useState<LoyaltyReport | null>(null);
-  const [deliveryZones, setDeliveryZones] = useState<DeliveryZonesReport | null>(null);
-  const [discountsReport, setDiscountsReport] = useState<DiscountsByTypeReport | null>(null);
-  const [voidsReport, setVoidsReport] = useState<VoidsByStaffReport | null>(null);
-  const [refundsReport, setRefundsReport] = useState<RefundsByReasonReport | null>(null);
-  const [creditExposure, setCreditExposure] = useState<CreditExposureReport | null>(null);
-  const [depositExposure, setDepositExposure] = useState<DepositExposureReport | null>(null);
-  const [depositActivity, setDepositActivity] = useState<DepositActivityReport | null>(null);
-  const [overridesReport, setOverridesReport] = useState<ManagerOverridesReport | null>(null);
-  const [velocityReport, setVelocityReport] = useState<StockVelocityReport | null>(null);
-  const [shiftVariances, setShiftVariances] = useState<ShiftVariancesReport | null>(null);
-  const [customerLtv, setCustomerLtv] = useState<CustomerLtvReport | null>(null);
-  const [customerCohorts, setCustomerCohorts] = useState<CustomerCohortsReport | null>(null);
-  const [cashierPerf, setCashierPerf] = useState<CashierPerformanceReport | null>(null);
-  const [productMargins, setProductMargins] = useState<ProductMarginsReport | null>(null);
-  const [stockDiscrepancy, setStockDiscrepancy] = useState<StockDiscrepancyReport | null>(null);
-  const [hourlySales, setHourlySales] = useState<HourlySalesReport | null>(null);
-  const [stationPerf, setStationPerf] = useState<StationPerformanceReport | null>(null);
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
-
-  const load = async () => {
-    setLoading(true); setError('');
-    try {
-      const posFilters = {
-        user_id: cashierId ? Number(cashierId) : undefined,
-        shift_id: shiftId ? Number(shiftId) : undefined,
-        device_id: deviceId ? Number(deviceId) : undefined,
-      };
-      if (tab === 'Summary')    setSummary(await fetchSalesSummary({ from, to, ...posFilters }));
-      if (tab === 'Breakdown')  setBreakdown(await getSalesBreakdown({ from, to }));
-      if (tab === 'Delivery Zones') setDeliveryZones(await getDeliveryZonesReport({ from, to }));
-      if (tab === 'Tax')        setTaxReport(await getTaxReport({ from, to }));
-      if (tab === 'X / Z Report') {
-        const [xResult, zResult] = await Promise.allSettled([
-          getXReport(),
-          getZReport({ from, to }),
-        ]);
-        setXReport(xResult.status === 'fulfilled' ? xResult.value : null);
-        setZReport(zResult.status === 'fulfilled' ? zResult.value : null);
-        if (xResult.status === 'rejected' && zResult.status === 'rejected') {
-          throw xResult.reason;
-        }
-      }
-      if (tab === 'Inventory')           setInventory(await getInventoryValuation());
-      if (tab === 'Accounts Payable')    setAp((await getAccountsPayable()).data);
-      if (tab === 'Accounts Receivable') setAr((await getAccountsReceivable()).data);
-      // Promotions + Loyalty now honour the date filter — pre-fix they
-      // ignored from/to entirely, so toggling the date range did nothing
-      // and the numbers shown disagreed with every other date-sensitive
-      // tab. The backend was already date-aware via optional from/to.
-      if (tab === 'Promotions')          setPromoReport((await getPromotionReport({ from, to })).report);
-      if (tab === 'Loyalty')             setLoyaltyReport((await getLoyaltyReport({ from, to })).report);
-      if (tab === 'Discounts')           setDiscountsReport(await getDiscountsByTypeReport({ from, to }));
-      if (tab === 'Voids')               setVoidsReport(await getVoidsByStaffReport({ from, to }));
-      if (tab === 'Refunds')             setRefundsReport(await getRefundsByReasonReport({ from, to }));
-      if (tab === 'Credit Exposure')     setCreditExposure(await getCreditExposureReport());
-      if (tab === 'Deposit Exposure')    setDepositExposure(await getDepositExposureReport());
-      if (tab === 'Deposit Activity')    setDepositActivity(await getDepositActivityReport({ from, to }));
-      if (tab === 'Overrides')             setOverridesReport(await getManagerOverridesReport({ from, to }));
-      if (tab === 'Stock Velocity')       setVelocityReport(await getStockVelocityReport({ from, to }));
-      if (tab === 'Shift Variances')       setShiftVariances(await getShiftVariancesReport({ from, to }));
-      if (tab === 'Customer LTV')          setCustomerLtv(await getCustomerLtvReport({ from, to }));
-      if (tab === 'Customer Cohorts')      setCustomerCohorts(await getCustomerCohortsReport({ from, to }));
-      if (tab === 'Cashier Performance')   setCashierPerf(await getCashierPerformanceReport({ from, to }));
-      if (tab === 'Product Margins')       setProductMargins(await getProductMarginsReport());
-      if (tab === 'Stock Discrepancy')     setStockDiscrepancy(await getStockDiscrepancyReport());
-      if (tab === 'Hourly Sales')          setHourlySales(await getHourlySalesReport({ from, to }));
-      if (tab === 'Station Performance')   setStationPerf(await getStationPerformanceReport({ from, to }));
-    } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
+  const posFilters = {
+    user_id: cashierId ? Number(cashierId) : undefined,
+    shift_id: shiftId ? Number(shiftId) : undefined,
+    device_id: deviceId ? Number(deviceId) : undefined,
   };
 
-  useEffect(() => { void load(); }, [tab, from, to, cashierId, shiftId, deviceId]);
+  const {
+    data: reportData,
+    isLoading: loading,
+    error: reportError,
+    refetch: load,
+  } = useQuery({
+    queryKey: ['reports', tab, from, to, cashierId, shiftId, deviceId],
+    queryFn: () => fetchReportData(tab, from, to, posFilters),
+  });
+  const error = reportError?.message ?? '';
 
-  useEffect(() => {
-    fetchPosStaffOptions().then((r) => setStaffOptions(r.staff ?? [])).catch(() => undefined);
-    fetchShiftHistory().then((r) => {
-      setShiftOptions((r.shifts ?? []).map((s) => ({
-        id: s.id,
-        label: `#${s.id} · ${s.user?.name ?? 'Unknown'} · ${new Date(s.opened_at).toLocaleDateString()}`,
-      })));
-    }).catch(() => undefined);
-    fetchDevices().then((r) => setDeviceOptions((r.data ?? []).map((d) => ({ id: d.id, name: d.name })))).catch(() => undefined);
-  }, []);
+  const { data: staffOptions = [] } = useQuery({
+    queryKey: ['reports', 'pos-staff-options'],
+    queryFn: async () => (await fetchPosStaffOptions()).staff ?? [],
+  });
+
+  const { data: shiftOptions = [] } = useQuery({
+    queryKey: ['reports', 'shift-history'],
+    queryFn: async () => (await fetchShiftHistory()).shifts?.map((s) => ({
+      id: s.id,
+      label: `#${s.id} · ${s.user?.name ?? 'Unknown'} · ${new Date(s.opened_at).toLocaleDateString()}`,
+    })) ?? [],
+  });
+
+  const { data: deviceOptions = [] } = useQuery({
+    queryKey: ['reports', 'devices'],
+    queryFn: async () => (await fetchDevices()).data?.map((d) => ({ id: d.id, name: d.name })) ?? [],
+  });
+
+  const summary = reportData?.summary ?? null;
+  const breakdown = reportData?.breakdown ?? null;
+  const xReport = reportData?.xReport ?? null;
+  const zReport = reportData?.zReport ?? null;
+  const taxReport = reportData?.taxReport ?? null;
+  const inventory = reportData?.inventory ?? null;
+  const ap = reportData?.ap ?? null;
+  const ar = reportData?.ar ?? null;
+  const promoReport = reportData?.promoReport ?? null;
+  const loyaltyReport = reportData?.loyaltyReport ?? null;
+  const deliveryZones = reportData?.deliveryZones ?? null;
+  const discountsReport = reportData?.discountsReport ?? null;
+  const voidsReport = reportData?.voidsReport ?? null;
+  const refundsReport = reportData?.refundsReport ?? null;
+  const creditExposure = reportData?.creditExposure ?? null;
+  const depositExposure = reportData?.depositExposure ?? null;
+  const depositActivity = reportData?.depositActivity ?? null;
+  const overridesReport = reportData?.overridesReport ?? null;
+  const velocityReport = reportData?.velocityReport ?? null;
+  const shiftVariances = reportData?.shiftVariances ?? null;
+  const customerLtv = reportData?.customerLtv ?? null;
+  const customerCohorts = reportData?.customerCohorts ?? null;
+  const cashierPerf = reportData?.cashierPerf ?? null;
+  const productMargins = reportData?.productMargins ?? null;
+  const stockDiscrepancy = reportData?.stockDiscrepancy ?? null;
+  const hourlySales = reportData?.hourlySales ?? null;
+  const stationPerf = reportData?.stationPerf ?? null;
 
   const needsDate = tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Customer Cohorts' || tab === 'Hourly Sales' || tab === 'Station Performance' || tab === 'Deposit Activity';
 
@@ -398,7 +439,7 @@ export function ReportsPage() {
                   {label}
                 </Btn>
               ))}
-              <Btn small onClick={load}>Apply</Btn>
+              <Btn small onClick={() => { void load(); }}>Apply</Btn>
             </div>
           </div>
         </Card>
