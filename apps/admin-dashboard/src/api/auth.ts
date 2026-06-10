@@ -6,7 +6,7 @@ export type { StaffUser };
 export async function pinLogin(username: string, pin: string): Promise<{ token: string; user: StaffUser }> {
   return req('/auth/staff/pin-login', {
     method: 'POST',
-    body: JSON.stringify({ username, pin }),
+    body: JSON.stringify({ username, pin, intent: 'admin' }),
     anonymous: true,
   });
 }

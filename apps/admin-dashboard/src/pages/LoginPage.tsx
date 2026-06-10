@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  phoneLogin, staffPasswordResetRequest, staffPasswordResetVerify,
+  phoneLogin, pinLogin, staffPasswordResetRequest, staffPasswordResetVerify,
   type StaffUser,
 } from '../api';
 
 type Screen = 'login' | 'reset-phone' | 'reset-otp';
+type LoginMode = 'password' | 'pin';
 
 const INPUT: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
@@ -33,9 +34,11 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
   const returnTo = (location.state as { from?: string } | null)?.from;
 
   const [screen, setScreen]         = useState<Screen>('login');
+  const [loginMode, setLoginMode]   = useState<LoginMode>('password');
 
   // Login
   const [phone, setPhone]           = useState('');
+  const [pin, setPin]               = useState('');
   const [password, setPassword]     = useState('');
   const [showPass, setShowPass]     = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -56,13 +59,16 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone.trim() || !password) return;
+    if (!phone.trim()) return;
+    if (loginMode === 'password' && !password) return;
+    if (loginMode === 'pin' && pin.length < 4) return;
     setLoginError('');
     setLoginLoading(true);
     try {
-      // Drop any expired token so login is not sent with a stale Bearer header.
       localStorage.removeItem('admin_token');
-      const res = await phoneLogin(phone.trim(), password);
+      const res = loginMode === 'pin'
+        ? await pinLogin(phone.trim(), pin.trim())
+        : await phoneLogin(phone.trim(), password);
       localStorage.setItem('admin_token', res.token);
       onLogin(res.token, res.user, returnTo);
     } catch (err) {
@@ -133,22 +139,41 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
             Admin Sign In
           </h2>
 
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {(['password', 'pin'] as LoginMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => { setLoginMode(mode); setLoginError(''); }}
+                style={{
+                  flex: 1, height: 40, borderRadius: 10, cursor: 'pointer', fontWeight: 700,
+                  border: `1px solid ${loginMode === mode ? '#D4813A' : '#EDE4D4'}`,
+                  background: loginMode === mode ? '#FEF3E8' : '#FFFDF9',
+                  color: loginMode === mode ? '#9A3412' : '#8B7355',
+                }}
+              >
+                {mode === 'password' ? 'Password' : 'PIN'}
+              </button>
+            ))}
+          </div>
+
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Mobile Number
+                Mobile or email
               </label>
               <input
-                type="tel"
+                type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+960 7XX XXXX"
-                autoComplete="tel"
+                placeholder="7820288 or you@example.com"
+                autoComplete="username"
                 autoFocus
                 style={INPUT}
               />
             </div>
 
+            {loginMode === 'password' ? (
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Password
@@ -158,7 +183,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Your password"
+                  placeholder="Your admin password"
                   autoComplete="current-password"
                   style={{ ...INPUT, paddingRight: 48 }}
                 />
@@ -175,6 +200,22 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
                 </button>
               </div>
             </div>
+            ) : (
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                PIN
+              </label>
+              <input
+                type="password"
+                inputMode="numeric"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="4–8 digit staff PIN"
+                autoComplete="one-time-code"
+                style={INPUT}
+              />
+            </div>
+            )}
 
             {loginError && (
               <div style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
@@ -184,8 +225,8 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
 
             <button
               type="submit"
-              disabled={loginLoading || !phone.trim() || !password}
-              style={{ ...BTN_PRIMARY, opacity: (loginLoading || !phone.trim() || !password) ? 0.6 : 1, marginTop: 4 }}
+              disabled={loginLoading || !phone.trim() || (loginMode === 'password' ? !password : pin.length < 4)}
+              style={{ ...BTN_PRIMARY, opacity: (loginLoading || !phone.trim() || (loginMode === 'password' ? !password : pin.length < 4)) ? 0.6 : 1, marginTop: 4 }}
             >
               {loginLoading ? 'Signing in…' : 'Sign In →'}
             </button>
@@ -193,9 +234,11 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
 
           <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <a href="/" style={{ fontSize: 12, color: '#C4A882', textDecoration: 'none' }}>← Main Website</a>
-            <button style={BTN_GHOST} onClick={() => { setScreen('reset-phone'); setResetPhone(phone); }}>
-              Forgot password?
-            </button>
+            {loginMode === 'password' && (
+              <button style={BTN_GHOST} onClick={() => { setScreen('reset-phone'); setResetPhone(phone); }}>
+                Forgot password?
+              </button>
+            )}
           </div>
         </div>
       </div>

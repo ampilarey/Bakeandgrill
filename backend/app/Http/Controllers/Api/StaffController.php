@@ -75,7 +75,7 @@ class StaffController extends Controller
             'name' => $validated['name'],
             'email' => strtolower(trim($validated['email'])),
             'phone' => $validated['phone'] ?? null,
-            'password' => Hash::make(str()->random(32)),
+            'password' => str()->random(32),
             'role_id' => $validated['role_id'],
             'pin_hash' => Hash::make($validated['pin']),
             'is_active' => true,

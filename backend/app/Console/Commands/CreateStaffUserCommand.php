@@ -22,6 +22,8 @@ class CreateStaffUserCommand extends Command
         {pin : 4–8 digit PIN}
         {--role=owner : Role slug: owner, manager, staff, kitchen_staff}
         {--name= : Display name (default: local part of email)}
+        {--phone= : Mobile number for admin password login / SMS reset}
+        {--password= : Admin password (min 8 chars; random if omitted)}
         {--force : Required in production when ALLOW_STAFF_CLI_CREATE is true}';
 
     protected $description = 'Create or update a staff user for PIN login (Admin + POS).';
@@ -59,18 +61,29 @@ class CreateStaffUserCommand extends Command
             return 1;
         }
 
+        $password = (string) ($this->option('password') ?: Str::password(16));
+        if (strlen($password) < 8) {
+            $this->error('Password must be at least 8 characters when --password is set.');
+
+            return 1;
+        }
+
         User::updateOrCreate(
             ['email' => $email],
             [
                 'name' => $name,
-                'password' => Hash::make(Str::password(24)),
+                'phone' => $this->option('phone') ?: null,
+                'password' => $password,
                 'role_id' => $role->id,
                 'pin_hash' => Hash::make($pin),
                 'is_active' => true,
             ],
         );
 
-        $this->info("Staff user saved: {$email} (role: {$roleSlug}). Use this email + PIN in Admin and POS.");
+        $this->info("Staff user saved: {$email} (role: {$roleSlug}).");
+        $this->line("  PIN login: {$email} + PIN {$pin}");
+        $this->line("  Admin password login: mobile/email + password (password shown once below).");
+        $this->warn("  Admin password: {$password}");
 
         return 0;
     }

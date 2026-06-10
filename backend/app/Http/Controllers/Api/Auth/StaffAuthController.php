@@ -8,7 +8,7 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Rules\MaldivesPhone;
+use App\Services\StaffUserLookup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -29,10 +29,12 @@ class StaffAuthController extends Controller
             'username' => 'required|string|max:255',
             'pin' => 'required|string|min:4|max:8',
             'device_identifier' => 'nullable|string',
+            'intent' => 'nullable|string|in:pos,admin',
         ]);
 
         $pin = $request->pin;
         $username = strtolower(trim($request->username));
+        $forAdmin = $request->input('intent') === 'admin';
 
         $rateKey = 'staff-pin:' . $username . ':' . $request->ip();
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
@@ -67,6 +69,10 @@ class StaffAuthController extends Controller
 
         RateLimiter::clear($rateKey);
 
+        if ($forAdmin) {
+            return $this->issueAdminStaffToken($user, 'pin');
+        }
+
         return $this->issuePosStaffToken($user, 'pin');
     }
 
@@ -93,7 +99,7 @@ class StaffAuthController extends Controller
 
         $user = $this->findActiveStaffByUsername($request->username);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !$this->verifyStaffPassword($user, $request->password)) {
             RateLimiter::hit($rateKey, 900);
             throw ValidationException::withMessages([
                 'password' => ['Invalid mobile/email or password.'],
@@ -111,12 +117,12 @@ class StaffAuthController extends Controller
     public function phoneLogin(Request $request): JsonResponse
     {
         $request->validate([
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|max:255',
             'password' => 'required|string|min:6',
         ]);
 
-        $phone = trim($request->phone);
-        $rateKey = 'staff-phone-login:' . strtolower($phone) . ':' . $request->ip();
+        $login = trim($request->phone);
+        $rateKey = 'staff-phone-login:' . strtolower($login) . ':' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $seconds = RateLimiter::availableIn($rateKey);
@@ -125,36 +131,32 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        $user = $this->findActiveStaffByPhone($phone);
+        $user = $this->findActiveStaffByUsername($login);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
             RateLimiter::hit($rateKey, 900);
             throw ValidationException::withMessages([
-                'phone' => ['Invalid phone number or password.'],
+                'phone' => ['Invalid mobile/email or password.'],
+            ]);
+        }
+
+        if (!$this->staffHasAdminPassword($user)) {
+            RateLimiter::hit($rateKey, 900);
+            throw ValidationException::withMessages([
+                'phone' => ['No admin password is set. Use PIN sign-in, Forgot password, or ask another owner to set one in Staff.'],
+            ]);
+        }
+
+        if (!$this->verifyStaffPassword($user, $request->password)) {
+            RateLimiter::hit($rateKey, 900);
+            throw ValidationException::withMessages([
+                'phone' => ['Invalid mobile/email or password.'],
             ]);
         }
 
         RateLimiter::clear($rateKey);
-        $user->update(['last_login_at' => now()]);
 
-        $user->loadMissing('role');
-        if (!app(\App\Services\PermissionService::class)->hasPermission($user, 'admin.access')) {
-            throw ValidationException::withMessages([
-                'phone' => ['You do not have permission to access the admin panel.'],
-            ]);
-        }
-
-        $token = $user->createToken(
-            'staff-' . $user->id,
-            ['staff'],
-            now()->addHours((int) config('sanctum.admin_token_ttl_hours')),
-        )->plainTextToken;
-
-        return response()->json([
-            'message' => 'Login successful',
-            'token' => $token,
-            'user' => $this->serializeStaffUser($user),
-        ]);
+        return $this->issueAdminStaffToken($user, 'phone');
     }
 
     /**
@@ -162,24 +164,25 @@ class StaffAuthController extends Controller
      */
     public function passwordResetRequest(Request $request)
     {
-        $request->validate(['phone' => 'required|string|max:20']);
+        $request->validate(['phone' => 'required|string|max:255']);
 
-        $phone = trim($request->phone);
-        $rateKey = 'staff-pwd-reset-req:' . $phone;
+        $login = strtolower(trim($request->phone));
+        $rateKey = 'staff-pwd-reset-req:' . $login;
 
         if (RateLimiter::tooManyAttempts($rateKey, 3)) {
             return response()->json(['message' => 'Too many OTP requests. Please wait a few minutes.'], 429);
         }
 
-        $user = $this->findActiveStaffByPhone($phone);
+        $user = $this->findActiveStaffByUsername($login);
+        $smsPhone = $user?->phone;
 
-        if ($user) {
+        if ($user && $smsPhone) {
             $otp = (string) random_int(100000, 999999);
-            $cacheKey = 'staff-pwd-reset:' . $phone;
+            $cacheKey = 'staff-pwd-reset:' . $login;
             Cache::put($cacheKey, Hash::make($otp), now()->addMinutes(10));
 
             app(SmsService::class)->send(new SmsMessage(
-                to: $phone,
+                to: $smsPhone,
                 message: "Your Bake & Grill admin password reset code is: {$otp}. Valid for 10 minutes.",
                 type: 'staff_password_reset',
             ));
@@ -196,13 +199,13 @@ class StaffAuthController extends Controller
     public function passwordResetVerify(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|max:255',
             'otp' => 'required|string|size:6',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $phone = trim($request->phone);
-        $cacheKey = 'staff-pwd-reset:' . $phone;
+        $login = strtolower(trim($request->phone));
+        $cacheKey = 'staff-pwd-reset:' . $login;
         $stored = Cache::get($cacheKey);
 
         if (!$stored || !Hash::check($request->otp, $stored)) {
@@ -211,7 +214,7 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        $user = $this->findActiveStaffByPhone($phone);
+        $user = $this->findActiveStaffByUsername($login);
 
         if (!$user) {
             throw ValidationException::withMessages([
@@ -219,7 +222,7 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        $user->update(['password' => Hash::make($request->password)]);
+        $user->update(['password' => $request->password]);
         Cache::forget($cacheKey);
 
         $user->tokens()->where('name', 'like', 'staff-%')->delete();
@@ -291,56 +294,23 @@ class StaffAuthController extends Controller
         ]);
     }
 
-    /**
-     * @return list<string>
-     */
-    private function usernameLookupValues(string $raw): array
-    {
-        $trimmed = trim($raw);
-        $lower = strtolower($trimmed);
-        $values = [$trimmed, $lower];
-
-        try {
-            $normalized = MaldivesPhone::normalize($trimmed);
-            $values[] = $normalized;
-            if (preg_match('/^\+960([0-9]{7})$/', $normalized, $matches)) {
-                $values[] = $matches[1];
-                $values[] = '960' . $matches[1];
-            }
-        } catch (\InvalidArgumentException) {
-            // Not a Maldivian phone — email or other identifier.
-        }
-
-        return array_values(array_unique(array_filter($values, static fn (string $v) => $v !== '')));
-    }
-
     private function findActiveStaffByUsername(string $raw): ?User
     {
-        $values = $this->usernameLookupValues($raw);
-
-        return User::query()
-            ->where('is_active', true)
-            ->where(function ($query) use ($values) {
-                foreach ($values as $value) {
-                    $query->orWhere('phone', $value)
-                        ->orWhere('email', $value);
-                }
-            })
-            ->first();
+        return StaffUserLookup::findActiveByUsername($raw);
     }
 
-    private function findActiveStaffByPhone(string $raw): ?User
+    private function verifyStaffPassword(User $user, string $plain): bool
     {
-        $values = $this->usernameLookupValues($raw);
+        $hash = $user->getAuthPassword();
 
-        return User::query()
-            ->where('is_active', true)
-            ->where(function ($query) use ($values) {
-                foreach ($values as $value) {
-                    $query->orWhere('phone', $value);
-                }
-            })
-            ->first();
+        return is_string($hash) && $hash !== '' && Hash::check($plain, $hash);
+    }
+
+    private function staffHasAdminPassword(User $user): bool
+    {
+        $hash = $user->getAuthPassword();
+
+        return is_string($hash) && $hash !== '';
     }
 
     private function canSignInToPos(User $user): bool
@@ -367,6 +337,30 @@ class StaffAuthController extends Controller
             'staff-pos-' . $user->id,
             ['staff'],
             now()->addHours((int) config('sanctum.pos_token_ttl_hours')),
+        )->plainTextToken;
+
+        return response()->json([
+            'message' => 'Login successful',
+            'token' => $token,
+            'user' => $this->serializeStaffUser($user),
+        ]);
+    }
+
+    private function issueAdminStaffToken(User $user, string $errorField = 'phone'): JsonResponse
+    {
+        $user->update(['last_login_at' => now()]);
+        $user->loadMissing('role');
+
+        if (!app(\App\Services\PermissionService::class)->hasPermission($user, 'admin.access')) {
+            throw ValidationException::withMessages([
+                $errorField => ['You do not have permission to access the admin panel.'],
+            ]);
+        }
+
+        $token = $user->createToken(
+            'staff-' . $user->id,
+            ['staff'],
+            now()->addHours((int) config('sanctum.admin_token_ttl_hours')),
         )->plainTextToken;
 
         return response()->json([

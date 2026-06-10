@@ -24,7 +24,7 @@ class StaffAuthTest extends TestCase
         return User::create([
             'name' => 'Test User',
             'email' => $email,
-            'password' => Hash::make('password'),
+            'password' => 'password',
             'role_id' => $role->id,
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
@@ -59,7 +59,7 @@ class StaffAuthTest extends TestCase
             'name' => 'Phone Owner',
             'email' => 'phone-owner@example.com',
             'phone' => '+9607820288',
-            'password' => Hash::make('password'),
+            'password' => 'password',
             'role_id' => $role->id,
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
@@ -114,7 +114,7 @@ class StaffAuthTest extends TestCase
             'name' => 'Password Owner',
             'email' => 'pwd-owner@example.com',
             'phone' => '7820888',
-            'password' => Hash::make('secret-pass'),
+            'password' => 'secret-pass',
             'role_id' => $role->id,
             'pin_hash' => null,
             'is_active' => true,
@@ -124,6 +124,53 @@ class StaffAuthTest extends TestCase
             'username' => '7820888',
             'password' => 'secret-pass',
             'device_identifier' => 'POS-001',
+        ])->assertOk()
+            ->assertJsonStructure(['token', 'user' => ['permissions']]);
+    }
+
+    public function test_admin_phone_login_accepts_email_in_phone_field(): void
+    {
+        $role = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => 'Owner role', 'is_active' => true],
+        );
+
+        User::create([
+            'name' => 'Email Owner',
+            'email' => 'owner-login@example.com',
+            'phone' => '7820666',
+            'password' => 'password',
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/auth/staff/login', [
+            'phone' => 'owner-login@example.com',
+            'password' => 'password',
+        ])->assertOk();
+    }
+
+    public function test_admin_pin_login_with_intent_admin(): void
+    {
+        $role = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            ['name' => 'Owner', 'description' => 'Owner role', 'is_active' => true],
+        );
+
+        User::create([
+            'name' => 'Pin Admin',
+            'email' => 'pin-admin@example.com',
+            'password' => 'password',
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('4321'),
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/auth/staff/pin-login', [
+            'username' => 'pin-admin@example.com',
+            'pin' => '4321',
+            'intent' => 'admin',
         ])->assertOk()
             ->assertJsonStructure(['token', 'user' => ['permissions']]);
     }
@@ -139,7 +186,7 @@ class StaffAuthTest extends TestCase
             'name' => 'Admin Phone Owner',
             'email' => 'admin-phone@example.com',
             'phone' => '+9607820777',
-            'password' => Hash::make('password'),
+            'password' => 'password',
             'role_id' => $role->id,
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
