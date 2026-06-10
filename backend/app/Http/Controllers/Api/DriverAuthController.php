@@ -56,7 +56,11 @@ class DriverAuthController extends Controller
         // Revoke old driver tokens to prevent accumulation
         $driver->tokens()->delete();
 
-        $token = $driver->createToken('driver-app', ['driver'])->plainTextToken;
+        $token = $driver->createToken(
+            'driver-app',
+            ['driver'],
+            now()->addHours((int) config('sanctum.driver_token_ttl_hours')),
+        )->plainTextToken;
 
         $driver->update(['last_login_at' => now()]);
 

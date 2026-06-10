@@ -69,11 +69,10 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        // POS tokens: 12-hour per-device expiry (shorter than global Sanctum TTL).
         $token = $user->createToken(
             'staff-pos-' . $user->id,
             ['staff'],
-            now()->addHours(12),
+            now()->addHours((int) config('sanctum.pos_token_ttl_hours')),
         )->plainTextToken;
 
         return response()->json([
@@ -124,7 +123,11 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('staff-' . $user->id, ['staff'])->plainTextToken;
+        $token = $user->createToken(
+            'staff-' . $user->id,
+            ['staff'],
+            now()->addHours((int) config('sanctum.admin_token_ttl_hours')),
+        )->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',

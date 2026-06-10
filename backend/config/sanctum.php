@@ -53,6 +53,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Per-token TTL overrides (hours)
+    |--------------------------------------------------------------------------
+    |
+    | Used when issuing Sanctum personal access tokens with an explicit
+    | expires_at. Admin dashboard (phone+password), POS (PIN), and driver
+    | apps each get shorter-lived tokens than the global expiration default.
+    |
+    */
+
+    'admin_token_ttl_hours' => (int) env('ADMIN_TOKEN_TTL_HOURS', 24),
+    'pos_token_ttl_hours' => (int) env('POS_TOKEN_TTL_HOURS', 12),
+    'driver_token_ttl_hours' => (int) env('DRIVER_TOKEN_TTL_HOURS', 12),
+
+    /*
+    |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------
     |
