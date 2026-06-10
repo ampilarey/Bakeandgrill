@@ -107,7 +107,7 @@ trait ModelHelpers
     }
 
     /**
-     * @param  array<string, mixed>  $attrs
+     * @param array<string, mixed> $attrs
      * @return array{card: GiftCard, code: string}
      */
     protected function makeGiftCard(array $attrs = [], ?string $plainCode = null): array

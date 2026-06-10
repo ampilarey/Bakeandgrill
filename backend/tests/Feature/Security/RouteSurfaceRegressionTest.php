@@ -16,7 +16,7 @@ class RouteSurfaceRegressionTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * @param  list<string>  $middleware
+     * @param list<string> $middleware
      */
     private function assertRoute(string $uri, string $method, array $middleware = []): void
     {

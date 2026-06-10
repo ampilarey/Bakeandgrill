@@ -736,6 +736,6 @@ class CustomerCreditTest extends TestCase
         $second = $service->recordCharge($this->customer->fresh(), \App\Models\Order::findOrFail($orderId), $payment, $this->staff);
 
         $this->assertSame($first->id, $second->id);
-        $this->assertSame(1, \App\Models\CustomerCreditLedger::where('payment_id', $payment->id)->where('type', 'charge')->count());
+        $this->assertSame(1, CustomerCreditLedger::where('payment_id', $payment->id)->where('type', 'charge')->count());
     }
 }
