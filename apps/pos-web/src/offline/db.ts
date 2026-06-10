@@ -276,7 +276,7 @@ export async function getConflictOfflineOrders(shiftId?: number): Promise<Offlin
   const db = await getOfflineDb();
   const conflicts = await db.getAllFromIndex("offline_orders", "status", "conflict");
   if (shiftId == null) return conflicts;
-  return conflicts.filter((o) => o.shift_id === shiftId);
+  return conflicts.filter((o: OfflineOrderRecord) => o.shift_id === shiftId);
 }
 
 export async function deleteOfflineOrder(localOrderId: string): Promise<void> {
