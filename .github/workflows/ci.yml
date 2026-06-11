@@ -354,7 +354,7 @@ jobs:
       - name: Deploy skipped or failed
         if: steps.deploy.outcome != 'success'
         run: |
-          echo "::notice::Test deploy skipped or failed. Configure DEPLOY_HOST, DEPLOY_USER, and DEPLOY_SSH_KEY secrets to enable auto-deploy."
+          echo "::notice::SSH deploy not configured (server port 22 is closed). The test server self-updates via scripts/self-update-test.sh on a 5-minute cron — it deploys this commit once all checks here are green."
 
   deploy-production:
     name: Deploy (production — bakeandgrill.mv)
