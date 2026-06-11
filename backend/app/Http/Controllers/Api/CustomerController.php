@@ -77,14 +77,16 @@ class CustomerController extends Controller
             }
         }
 
-        $like = '%' . $q . '%';
+        // LOWER() on both sides keeps the match case-insensitive on Postgres,
+        // where LIKE is case-sensitive (MySQL/SQLite collations already are not).
+        $like = '%' . mb_strtolower($q) . '%';
         $matches = Customer::query()
             ->select(['id', 'name', 'phone', 'email', 'loyalty_points', 'tier', 'sms_opt_out', 'last_order_at'])
             ->withCount('orders')
-            ->where(function ($w) use ($like, $normalised) {
-                $w->where('name', 'like', $like)
-                    ->orWhere('email', 'like', $like)
-                    ->orWhere('phone', 'like', $like);
+            ->where(function ($w) use ($like, $q, $normalised) {
+                $w->whereRaw('LOWER(name) LIKE ?', [$like])
+                    ->orWhereRaw("LOWER(COALESCE(email, '')) LIKE ?", [$like])
+                    ->orWhere('phone', 'like', '%' . $q . '%');
                 if ($normalised) {
                     $w->orWhere('phone', $normalised);
                 }

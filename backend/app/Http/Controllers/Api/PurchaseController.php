@@ -252,7 +252,7 @@ class PurchaseController extends Controller
     {
         // Lock the latest record to prevent duplicate number generation under concurrency
         $date = now()->format('Ymd');
-        $count = Purchase::whereDate('purchase_date', now()->toDateString())->lockForUpdate()->count() + 1;
+        $count = Purchase::whereDate('purchase_date', now()->toDateString())->lockForUpdate()->get(['id'])->count() + 1;
         $sequence = str_pad((string) $count, 4, '0', STR_PAD_LEFT);
 
         return "PO-{$date}-{$sequence}";

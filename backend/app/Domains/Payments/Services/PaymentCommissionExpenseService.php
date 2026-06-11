@@ -83,9 +83,11 @@ class PaymentCommissionExpenseService
     private function generateExpenseNumber(): string
     {
         $date = now()->format('Ymd');
+        // Postgres rejects FOR UPDATE with aggregates — lock the rows, count in PHP.
         $count = Expense::whereDate('created_at', now()->toDateString())
             ->withTrashed()
             ->lockForUpdate()
+            ->get(['id'])
             ->count() + 1;
 
         return 'EXP-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
