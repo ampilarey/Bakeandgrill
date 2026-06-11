@@ -29,14 +29,31 @@ function readPersistedCollapsed(): boolean {
   }
 }
 
-function useWindowWidth() {
-  const [w, setW] = useState(() => window.innerWidth);
+/** Re-renders only when the mobile/tablet/desktop band changes, not on every resize pixel. */
+function useViewportBand(): ViewportBand {
+  const [band, setBand] = useState<ViewportBand>(() => getViewportBand(window.innerWidth));
   useEffect(() => {
-    const h = () => setW(window.innerWidth);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
+    const queries = [window.matchMedia('(max-width: 767px)'), window.matchMedia('(min-width: 1024px)')];
+    const update = () => setBand(getViewportBand(window.innerWidth));
+    queries.forEach((q) => q.addEventListener('change', update));
+    return () => queries.forEach((q) => q.removeEventListener('change', update));
   }, []);
-  return w;
+  return band;
+}
+
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const SEARCH_SHORTCUT = IS_MAC ? '⌘K' : 'Ctrl+K';
+
+/** "14:32" today, "Yesterday 14:32", else "12 Jun 14:32". */
+function formatNotifTime(ts: number): string {
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return time;
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${time}`;
+  return `${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} ${time}`;
 }
 
 function isNavItemActive(pathname: string, to: string): boolean {
@@ -106,6 +123,100 @@ function SidebarFooterBtn({
   );
 }
 
+/** Bell + dropdown, self-contained so it can live in both the desktop and mobile headers. */
+function NotificationsBell() {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const { notifications, unreadCount } = useNotifications();
+
+  useEffect(() => {
+    if (!open) return;
+    const onMouse = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onMouse);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onMouse);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => { setOpen((o) => !o); if (!open) markAllRead(); }}
+        title="Notifications"
+        aria-label="Notifications"
+        aria-expanded={open}
+        style={{
+          position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 34, height: 34, borderRadius: 10,
+          border: '1px solid var(--color-border)', background: open ? 'rgba(212,129,58,0.08)' : 'var(--color-bg)',
+          cursor: 'pointer', color: notifications.length > 0 ? '#D4813A' : 'var(--color-text-muted)',
+        }}
+      >
+        <Bell size={16} />
+        {unreadCount > 0 && (
+          <span style={{
+            position: 'absolute', top: -4, right: -4,
+            minWidth: 16, height: 16, borderRadius: 8,
+            background: '#ef4444', color: '#fff',
+            fontSize: 9, fontWeight: 800, lineHeight: '16px', textAlign: 'center', padding: '0 3px',
+          }}>
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 42, right: 0,
+          width: 'min(320px, calc(100vw - 24px))',
+          background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14,
+          boxShadow: 'var(--shadow-lg)', zIndex: 'var(--z-dropdown)' as never, overflow: 'hidden',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', flex: 1 }}>Notifications</span>
+            {notifications.length > 0 && (
+              <button onClick={clearAll} style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Clear all
+              </button>
+            )}
+            <button onClick={() => setOpen(false)} aria-label="Close notifications" style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex' }}>
+              <X size={14} />
+            </button>
+          </div>
+          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+            {notifications.length === 0 ? (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+                No notifications yet
+              </div>
+            ) : notifications.map((n) => {
+              const iconMap: Record<string, string> = { order: '🛒', stock: '📦', info: 'ℹ️', warning: '⚠️' };
+              return (
+                <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{iconMap[n.type] ?? 'ℹ️'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{n.title}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>{n.body}</p>
+                    <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                      {formatNotifTime(n.ts)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NavSection({
   items, user, collapsed, lowStockCount,
 }: {
@@ -140,17 +251,14 @@ interface LayoutProps {
 }
 
 export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { onSearch?: () => void }) {
-  const width = useWindowWidth();
-  const isMobile = width < 768;
+  const band = useViewportBand();
+  const isMobile = band === 'mobile';
   const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed());
-  const viewportBandRef = useRef<ViewportBand>(getViewportBand(window.innerWidth));
+  const viewportBandRef = useRef<ViewportBand>(band);
   const [moreOpen, setMoreOpen] = useState(false);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [audioOn, setAudioOn] = useState(isAudioEnabled);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('bg_theme') === 'dark');
-  const [notifOpen, setNotifOpen] = useState(false);
-  const notifRef = useRef<HTMLDivElement>(null);
-  const { notifications, unreadCount } = useNotifications();
   const location = useLocation();
   const navigate = useNavigate();
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -183,15 +291,6 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   }, [darkMode]);
 
   useEffect(() => {
-    if (!notifOpen) return;
-    const h = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [notifOpen]);
-
-  useEffect(() => {
     const load = () => {
       if (document.visibilityState === 'hidden') return;
       fetchLowStockItems()
@@ -211,7 +310,6 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   }, []);
 
   useEffect(() => {
-    const band = getViewportBand(width);
     const prev = viewportBandRef.current;
     if (band === prev) return;
     viewportBandRef.current = band;
@@ -221,7 +319,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
     } else if (band === 'desktop') {
       setCollapsed(readPersistedCollapsed());
     }
-  }, [width]);
+  }, [band]);
 
   const toggleCollapsed = () => {
     setCollapsed((c) => {
@@ -236,16 +334,13 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   useEffect(() => { setMoreOpen(false); }, [location.pathname]);
 
   useEffect(() => {
-    if (!notifOpen && !moreOpen) return;
+    if (!moreOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (notifOpen) setNotifOpen(false);
-        if (moreOpen) setMoreOpen(false);
-      }
+      if (e.key === 'Escape') setMoreOpen(false);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [notifOpen, moreOpen]);
+  }, [moreOpen]);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -298,7 +393,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         return next;
       });
     }
-  }, [location.pathname]);
+  }, [location.pathname, navGroups, user]);
 
   useEffect(() => {
     try {
@@ -326,7 +421,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   const renderMobileDrawer = () => (
     <>
       <div className="admin-mobile-drawer-backdrop overlay-enter" onClick={closeDrawer} />
-      <div ref={drawerRef} className="admin-mobile-drawer-panel">
+      <div ref={drawerRef} className="admin-mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Navigation menu">
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 20px', borderBottom: '1px solid var(--color-border)',
@@ -446,10 +541,18 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
           >
             <Menu size={20} />
           </button>
-          <img src="/logo.png" alt="Bake & Grill" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            aria-label="Go to dashboard"
+            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', flexShrink: 0, display: 'flex' }}
+          >
+            <img src="/logo.png" alt="Bake & Grill" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
+          </button>
           <span style={{ flex: 1, fontWeight: 700, color: 'var(--color-text)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {currentPage}
           </span>
+          <NotificationsBell />
           <div style={{
             width: 32, height: 32, borderRadius: '50%',
             background: 'rgba(212,129,58,0.12)',
@@ -460,7 +563,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: '16px', paddingBottom: 80, overflowX: 'hidden' }}>
+        <main style={{ flex: 1, padding: '16px', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))', overflowX: 'hidden' }}>
           {children}
         </main>
 
@@ -514,7 +617,13 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar sidebar-transition" style={{ width: sidebarW }}>
-        <div className={`admin-sidebar-brand${collapsed ? ' admin-sidebar-brand--collapsed' : ''}`}>
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          aria-label="Go to dashboard"
+          className={`admin-sidebar-brand${collapsed ? ' admin-sidebar-brand--collapsed' : ''}`}
+          style={{ border: 'none', background: 'transparent', width: '100%', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+        >
           <img
             src="/logo.png"
             alt="Bake & Grill"
@@ -526,7 +635,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
               <p style={{ color: 'var(--color-sidebar-text)', fontSize: 10, margin: 0 }}>Admin Panel</p>
             </div>
           )}
-        </div>
+        </button>
 
         <nav className="admin-sidebar-nav">
           {!collapsed && PINNED_NAV_ITEMS.some((i) => can(user, i.permission)) && (
@@ -674,7 +783,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
           {onSearch && (
             <button
               onClick={onSearch}
-              title="Search (Ctrl+K)"
+              title={`Search (${SEARCH_SHORTCUT})`}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '6px 12px', borderRadius: 10,
@@ -685,7 +794,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
             >
               <Search size={14} />
               <span style={{ color: 'var(--color-text-muted)' }}>Search…</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', background: 'var(--color-border)', borderRadius: 4, padding: '1px 5px' }}>⌘K</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', background: 'var(--color-border)', borderRadius: 4, padding: '1px 5px' }}>{SEARCH_SHORTCUT}</span>
             </button>
           )}
           <button
@@ -715,76 +824,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
             {audioOn ? <Bell size={16} /> : <BellOff size={16} />}
           </button>
 
-          <div ref={notifRef} style={{ position: 'relative', flexShrink: 0 }}>
-            <button
-              onClick={() => { setNotifOpen((o) => !o); if (!notifOpen) markAllRead(); }}
-              title="Notifications"
-              aria-label="Notifications"
-              aria-expanded={notifOpen}
-              style={{
-                position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 34, height: 34, borderRadius: 10,
-                border: '1px solid var(--color-border)', background: notifOpen ? 'rgba(212,129,58,0.08)' : 'var(--color-bg)',
-                cursor: 'pointer', color: notifications.length > 0 ? '#D4813A' : 'var(--color-text-muted)',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-              {unreadCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: -4, right: -4,
-                  minWidth: 16, height: 16, borderRadius: 8,
-                  background: '#ef4444', color: '#fff',
-                  fontSize: 9, fontWeight: 800, lineHeight: '16px', textAlign: 'center', padding: '0 3px',
-                }}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-
-            {notifOpen && (
-              <div style={{
-                position: 'absolute', top: 42, right: 0, width: 320,
-                background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14,
-                boxShadow: 'var(--shadow-lg)', zIndex: 60, overflow: 'hidden',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', flex: 1 }}>Notifications</span>
-                  {notifications.length > 0 && (
-                    <button onClick={clearAll} style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Clear all
-                    </button>
-                  )}
-                  <button onClick={() => setNotifOpen(false)} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex' }}>
-                    <X size={14} />
-                  </button>
-                </div>
-                <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-                  {notifications.length === 0 ? (
-                    <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
-                      No notifications yet
-                    </div>
-                  ) : notifications.map((n) => {
-                    const iconMap: Record<string, string> = { order: '🛒', stock: '📦', info: 'ℹ️', warning: '⚠️' };
-                    return (
-                      <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                        <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{iconMap[n.type] ?? 'ℹ️'}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{n.title}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>{n.body}</p>
-                          <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
-                            {new Date(n.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          <NotificationsBell />
 
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,

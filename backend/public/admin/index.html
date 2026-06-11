@@ -5,20 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bake & Grill — Admin Dashboard</title>
     <meta name="robots" content="noindex, nofollow" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com;" />
+    <!-- Keep in sync with backend SecurityHeaders middleware: browsers enforce the
+         INTERSECTION of this meta CSP and the server header, and the /admin/ directory
+         index can be served statically (bypassing Laravel), so this meta is load-bearing. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io;" />
     <meta name="theme-color" content="#0f172a" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="/admin/theme-init.js"></script>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1e293b; }
+      html[data-theme="dark"] body { background: #0F0D0A; color: #F0EAE0; }
       button { font-family: inherit; cursor: pointer; }
       input, select, textarea { font-family: inherit; }
     </style>
-    <script type="module" crossorigin src="/admin/assets/index-CWk5PEmB.js"></script>
+    <script type="module" crossorigin src="/admin/assets/index-BlGcc7EV.js"></script>
     <link rel="modulepreload" crossorigin href="/admin/assets/vendor-DLnZUeNZ.js">
-    <link rel="stylesheet" crossorigin href="/admin/assets/index-D-DTM74g.css">
+    <link rel="stylesheet" crossorigin href="/admin/assets/index-CKOu673M.css">
   </head>
   <body>
     <div id="root"></div>

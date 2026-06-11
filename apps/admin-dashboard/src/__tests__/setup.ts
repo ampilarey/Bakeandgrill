@@ -18,3 +18,19 @@ if (typeof localStorage === 'undefined' || typeof localStorage.setItem !== 'func
     Object.defineProperty(globalThis, 'localStorage', { value: polyfill, configurable: true });
     Object.defineProperty(globalThis, 'sessionStorage', { value: polyfill, configurable: true });
 }
+
+// jsdom has no matchMedia. Layout's useViewportBand reads window.innerWidth for
+// the current band and only uses matchMedia for change notifications, so a
+// static stub is sufficient — tests drive the viewport via innerWidth before render.
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+    window.matchMedia = (query: string): MediaQueryList => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+    } as MediaQueryList);
+}

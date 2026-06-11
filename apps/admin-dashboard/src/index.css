@@ -110,7 +110,8 @@ a { text-decoration: none; color: inherit; }
 .toast-enter { animation: slide-in-right 0.25s ease both; }
 
 /* ── Sidebar transition ─────────────────────────────────────── */
-.sidebar-transition { transition: width 0.2s ease, transform 0.2s ease; }
+/* Must match .admin-main margin-left transition (0.22s) or the content edge wobbles. */
+.sidebar-transition { transition: width 0.22s ease, transform 0.22s ease; }
 
 /* ── Admin shell & sidebar ────────────────────────────────────── */
 .admin-shell {
@@ -679,6 +680,7 @@ a { text-decoration: none; color: inherit; }
 :root {
   --z-sidebar:  30;
   --z-overlay:  40;
+  --z-dropdown: 45;
   --z-modal:    50;
   --z-toast:    60;
 }
