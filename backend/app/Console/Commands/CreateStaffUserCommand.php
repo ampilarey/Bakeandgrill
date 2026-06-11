@@ -82,7 +82,7 @@ class CreateStaffUserCommand extends Command
 
         $this->info("Staff user saved: {$email} (role: {$roleSlug}).");
         $this->line("  PIN login: {$email} + PIN {$pin}");
-        $this->line("  Admin password login: mobile/email + password (password shown once below).");
+        $this->line('  Admin password login: mobile/email + password (password shown once below).');
         $this->warn("  Admin password: {$password}");
 
         return 0;
