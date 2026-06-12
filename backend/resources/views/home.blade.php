@@ -919,11 +919,12 @@
     document.addEventListener('error', function(e) {
         var img = e.target;
         if (!img || img.tagName !== 'IMG' || !img.dataset.fallbackClass || !img.parentElement) return;
+        var parent = img.parentElement; // clearing innerHTML detaches img, so grab it first
         var ph = document.createElement('div');
         ph.className = img.dataset.fallbackClass;
         ph.textContent = img.dataset.fallbackIcon || '🍽️';
-        img.parentElement.innerHTML = '';
-        img.parentElement.appendChild(ph);
+        parent.innerHTML = '';
+        parent.appendChild(ph);
     }, true);
 
     // Touch swipe support for mobile
