@@ -17,9 +17,26 @@ class OverdueUnseatedQueryTest extends TestCase
     {
         $repo = app(EloquentReservationRepository::class);
         $today = today()->toDateString();
+        $now = now();
 
-        $overdueSlot = now()->subHours(2)->format('H:i:s');
-        $futureSlot = now()->addHours(2)->format('H:i:s');
+        // Within the grace window after midnight no slot today can be overdue yet.
+        if ($now->lt(today()->addMinutes(20))) {
+            $this->markTestSkipped('No overdue slot can exist this close to midnight.');
+        }
+
+        // Clamp both slots inside today — "2 hours ago/ahead" crosses the date
+        // boundary near midnight and would silently test the wrong day.
+        $overdueAt = $now->copy()->subHours(2);
+        if (!$overdueAt->isSameDay($now)) {
+            $overdueAt = $now->copy()->startOfDay();
+        }
+        $futureAt = $now->copy()->addHours(2);
+        if (!$futureAt->isSameDay($now)) {
+            $futureAt = $now->copy()->endOfDay();
+        }
+
+        $overdueSlot = $overdueAt->format('H:i:s');
+        $futureSlot = $futureAt->format('H:i:s');
 
         $overdue = Reservation::create([
             'customer_name' => 'Late Guest',

@@ -68,18 +68,24 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
         $query = Reservation::whereIn('status', ['pending', 'confirmed'])
             ->whereDate('date', today());
 
+        // Compare full timestamps (date + slot) against an app-clock cutoff.
+        // Two old bugs lived here: comparing bare time-of-day wraps at midnight
+        // (briefly marking every future slot today overdue — the auto-cancel job
+        // acted on that), and the DB's NOW() can disagree with the app timezone.
+        $cutoff = now()->subMinutes($minutesGrace)->format('Y-m-d H:i:s');
+
         match (DB::getDriverName()) {
             'pgsql' => $query->whereRaw(
-                'time_slot::time < (NOW() - make_interval(mins => ?))::time',
-                [$minutesGrace],
+                '(date::timestamp + time_slot::interval) < ?',
+                [$cutoff],
             ),
             'sqlite' => $query->whereRaw(
-                "time(time_slot) < time(datetime('now', ?))",
-                ['-' . $minutesGrace . ' minutes'],
+                "datetime(date(date) || ' ' || time_slot) < ?",
+                [$cutoff],
             ),
             default => $query->whereRaw(
-                'TIME(time_slot) < TIME(DATE_SUB(NOW(), INTERVAL ? MINUTE))',
-                [$minutesGrace],
+                'TIMESTAMP(date, time_slot) < ?',
+                [$cutoff],
             ),
         };
 
