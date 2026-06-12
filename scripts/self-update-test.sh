@@ -14,6 +14,11 @@
 # Watch it work:  tail -f ~/self-update-test.log
 set -uo pipefail
 
+# Cron runs with a minimal PATH that often misses php/composer on cPanel.
+export PATH="$HOME/bin:/usr/local/bin:/opt/cpanel/ea-php84/root/usr/bin:/usr/bin:/bin:$PATH"
+command -v php >/dev/null || { echo "$(date '+%F %T') php not found on PATH=$PATH"; exit 1; }
+command -v git >/dev/null || { echo "$(date '+%F %T') git not found on PATH"; exit 1; }
+
 ROOT="/home/bakeandgrill/test.bakeandgrill.mv"
 REPO="ampilarey/Bakeandgrill"
 LOCK="$HOME/.self-update-test.lock"
