@@ -40,18 +40,18 @@ CHECKS=$(curl -fsS -m 20 -H 'Accept: application/vnd.github+json' \
     "https://api.github.com/repos/${REPO}/commits/${REMOTE}/check-runs?per_page=100") \
     || { echo "$(date '+%F %T') GitHub API unreachable — will retry next run"; exit 0; }
 
-GREEN=$(printf '%s' "$CHECKS" | php -r '
-    $d = json_decode(stream_get_contents(STDIN), true);
-    if (!is_array($d) || empty($d["check_runs"])) { echo "no"; exit; }
-    foreach ($d["check_runs"] as $r) {
-        if (($r["status"] ?? "") !== "completed") { echo "no"; exit; }
-        if (!in_array($r["conclusion"] ?? "", ["success", "skipped", "neutral"], true)) { echo "no"; exit; }
-    }
-    echo "yes";
-')
-
-if [ "$GREEN" != "yes" ]; then
-    echo "$(date '+%F %T') ${REMOTE:0:8}: CI not green yet — holding."
+# Parse with grep only — cPanel's php wrapper does not support `php -r`.
+# Green means: at least one check exists, none still running, none concluded badly.
+if ! printf '%s' "$CHECKS" | grep -q '"total_count": *[1-9]'; then
+    echo "$(date '+%F %T') ${REMOTE:0:8}: no CI checks reported yet — holding."
+    exit 0
+fi
+if printf '%s' "$CHECKS" | grep -qE '"status": *"(queued|in_progress|pending|waiting)"'; then
+    echo "$(date '+%F %T') ${REMOTE:0:8}: CI still running — holding."
+    exit 0
+fi
+if printf '%s' "$CHECKS" | grep -qE '"conclusion": *"(failure|cancelled|timed_out|action_required|startup_failure|stale)"'; then
+    echo "$(date '+%F %T') ${REMOTE:0:8}: CI not green — holding."
     exit 0
 fi
 
