@@ -1,1 +1,1 @@
-deploy-test 2026-06-11T21:43:13Z — pushed to verify cron self-update
+auto-deploy-test-2 2026-06-12T00:53:03Z — must reach the server via cron alone, no manual steps
