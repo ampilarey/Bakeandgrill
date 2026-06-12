@@ -13,23 +13,6 @@ use Illuminate\Support\Str;
 
 class PreOrderController extends Controller
 {
-    public function create()
-    {
-        // Require login for event orders
-        if (!session('customer_id')) {
-            session(['intended_url' => '/pre-order']);
-
-            return redirect('/customer/login')->with('message', 'Please login to place event orders');
-        }
-
-        $items = Item::where('is_active', true)
-            ->with('category')
-            ->orderBy('name')
-            ->get();
-
-        return view('pre-order.create', compact('items'));
-    }
-
     public function store(Request $request)
     {
         // Require login
