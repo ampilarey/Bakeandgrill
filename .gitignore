@@ -39,6 +39,7 @@ apps/**/.env.*
 
 # Storage & caches
 /public/storage
+/backend/public/storage
 /storage/*.key
 /storage/pail
 /backend/storage/logs/*.log

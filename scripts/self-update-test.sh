@@ -66,6 +66,11 @@ if git diff --name-only "$LOCAL" "$REMOTE" | grep -q '^backend/composer.lock$'; 
         || { echo "$(date '+%F %T') composer install failed"; exit 1; }
 fi
 
+# Ensure public/storage -> storage/app/public exists (uploads 403 via the
+# framework's signed /storage route when the symlink is missing).
+php artisan storage:link --force 2>/dev/null \
+    || echo "$(date '+%F %T') WARN: storage:link failed — is backend/public/storage a real directory?"
+
 php artisan migrate --force \
     && php artisan config:cache \
     && php artisan route:cache \
