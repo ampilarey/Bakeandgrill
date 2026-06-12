@@ -70,7 +70,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function() {
     const API = '/api';
     const TOKEN_KEY = 'admin_staff_token';

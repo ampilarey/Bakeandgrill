@@ -109,7 +109,7 @@
 
         <div class="doc-actions">
             <a class="doc-btn doc-btn-primary" href="{{ url('/invoices/' . $invoice->token . '/pdf') }}">Download PDF</a>
-            <button type="button" class="doc-btn" onclick="window.print()">Print</button>
+            <button type="button" class="doc-btn doc-btn-print">Print</button>
         </div>
 
         @include('partials.document-print-footer')
@@ -117,9 +117,17 @@
 </div>
 @endsection
 
+@push('scripts')
+    <script nonce="{{ csp_nonce() }}">
+        document.querySelectorAll('.doc-btn-print').forEach(function (btn) {
+            btn.addEventListener('click', function () { window.print(); });
+        });
+    </script>
+@endpush
+
 @if(request()->boolean('print'))
     @push('scripts')
-        <script>
+        <script nonce="{{ csp_nonce() }}">
             window.addEventListener('load', function () {
                 setTimeout(function () { try { window.print(); } catch (e) {} }, 350);
             });

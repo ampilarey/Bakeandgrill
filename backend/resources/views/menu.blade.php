@@ -268,7 +268,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 function applyFilters() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const category = document.getElementById('categoryFilter').value;

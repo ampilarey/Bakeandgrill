@@ -103,7 +103,7 @@
     </script>
 
     <!-- Apply saved theme before first paint to avoid flash -->
-    <script>if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';</script>
+    <script nonce="{{ csp_nonce() }}">if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';</script>
 
     <link rel="icon" type="image/png" href="{{ \App\Models\SiteSetting::get('favicon', asset('logo.png')) }}">
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
@@ -113,10 +113,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     @if($gtmId !== '')
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ e($gtmId) }}');</script>
+    <script nonce="{{ csp_nonce() }}">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{{ e($gtmId) }}');</script>
     @elseif($gaId !== '' && str_starts_with($gaId, 'G-'))
     <script async src="https://www.googletagmanager.com/gtag/js?id={{ e($gaId) }}"></script>
-    <script>
+    <script nonce="{{ csp_nonce() }}">
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
@@ -820,7 +820,7 @@
 
     @yield('styles')
 
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         document.addEventListener('DOMContentLoaded', () => {
             const hdr = document.querySelector('.site-header');
             if (hdr) window.addEventListener('scroll', () => hdr.classList.toggle('scrolled', scrollY > 10), { passive: true });
@@ -1160,7 +1160,7 @@
     <div class="hpt-list" id="hptList"></div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function () {
     'use strict';
 

@@ -155,7 +155,7 @@
             @if ($isPaid)
                 <a class="doc-btn doc-btn-primary" href="{{ url('/receipts/' . $receipt->token . '/pdf') }}">Download PDF</a>
             @endif
-            <button type="button" class="doc-btn" onclick="window.print()">Print</button>
+            <button type="button" class="doc-btn doc-btn-print">Print</button>
         </div>
 
         @if ($isPaid)
@@ -185,9 +185,17 @@
 </div>
 @endsection
 
+@push('scripts')
+    <script nonce="{{ csp_nonce() }}">
+        document.querySelectorAll('.doc-btn-print').forEach(function (btn) {
+            btn.addEventListener('click', function () { window.print(); });
+        });
+    </script>
+@endpush
+
 @if(request()->boolean('print'))
     @push('scripts')
-        <script>
+        <script nonce="{{ csp_nonce() }}">
             window.addEventListener('load', function () {
                 setTimeout(function () { try { window.print(); } catch (e) {} }, 350);
             });

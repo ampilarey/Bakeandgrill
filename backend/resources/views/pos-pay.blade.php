@@ -124,7 +124,7 @@
 </div>
 
 @push('scripts')
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function () {
     var terms = document.getElementById('accept-terms');
     var payBtn = document.getElementById('pay-btn');

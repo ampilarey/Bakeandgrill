@@ -2,6 +2,22 @@
 
 declare(strict_types=1);
 
+if (!function_exists('csp_nonce')) {
+    /**
+     * Per-request nonce for inline <script> tags, whitelisted by SecurityHeaders'
+     * Content-Security-Policy. Inline scripts without this nonce are blocked.
+     */
+    function csp_nonce(): string
+    {
+        $attributes = request()->attributes;
+        if (!$attributes->has('csp_nonce')) {
+            $attributes->set('csp_nonce', base64_encode(random_bytes(16)));
+        }
+
+        return $attributes->get('csp_nonce');
+    }
+}
+
 if (!function_exists('thumb_path')) {
     /**
      * Return thumbnail path for local cafe images (e.g. thumb/images/cafe/file.png), or null.

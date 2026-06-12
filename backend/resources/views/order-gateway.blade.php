@@ -61,14 +61,14 @@
     </div>
 
     @if(session('customer_token'))
-        <script>
+        <script nonce="{{ csp_nonce() }}">
             localStorage.setItem('online_token', '{{ session('customer_token') }}');
             setTimeout(function () {
                 window.location.href = '/order?type={{ request('type', 'takeaway') }}';
             }, 500);
         </script>
     @else
-        <script>
+        <script nonce="{{ csp_nonce() }}">
             window.location.href = '/customer/login';
         </script>
     @endif

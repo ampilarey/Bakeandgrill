@@ -879,35 +879,52 @@
         @endif
     </div>
 
-    <button class="banner-btn prev" onclick="moveBanner(-1)" aria-label="Previous slide">‹</button>
-    <button class="banner-btn next" onclick="moveBanner(1)"  aria-label="Next slide">›</button>
+    <button class="banner-btn prev" aria-label="Previous slide">‹</button>
+    <button class="banner-btn next" aria-label="Next slide">›</button>
 
     <div class="banner-dots" id="bannerDots">
         @for($d = 0; $d < $slideCount; $d++)
-            <div class="banner-dot {{ $d === 0 ? 'active' : '' }}" onclick="goBanner({{ $d }})"></div>
+            <div class="banner-dot {{ $d === 0 ? 'active' : '' }}" data-slide="{{ $d }}"></div>
         @endfor
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function() {
     var idx = 0, total = {{ $slideCount }};
     var slides = document.querySelectorAll('.banner-slide');
     var timer = setInterval(function() { move(1); }, 6000);
 
     function move(d) { idx = (idx + d + total) % total; apply(); }
-    window.moveBanner = move;
-    window.goBanner = function(i) {
+    function go(i) {
         idx = i;
         clearInterval(timer);
         timer = setInterval(function() { move(1); }, 6000);
         apply();
-    };
+    }
+    var prevBtn = document.querySelector('.banner-btn.prev');
+    var nextBtn = document.querySelector('.banner-btn.next');
+    if (prevBtn) prevBtn.addEventListener('click', function() { move(-1); });
+    if (nextBtn) nextBtn.addEventListener('click', function() { move(1); });
+    document.querySelectorAll('.banner-dot').forEach(function(d) {
+        d.addEventListener('click', function() { go(+d.dataset.slide); });
+    });
     function apply() {
         document.getElementById('bannerTrack').style.transform = 'translateX(-' + (idx * 100) + '%)';
         document.querySelectorAll('.banner-dot').forEach(function(d, i) { d.classList.toggle('active', i === idx); });
         slides.forEach(function(s, i) { s.classList.toggle('active', i === idx); });
     }
+
+    // Broken-image fallback: swap imgs carrying data-fallback-class for a placeholder
+    document.addEventListener('error', function(e) {
+        var img = e.target;
+        if (!img || img.tagName !== 'IMG' || !img.dataset.fallbackClass || !img.parentElement) return;
+        var ph = document.createElement('div');
+        ph.className = img.dataset.fallbackClass;
+        ph.textContent = img.dataset.fallbackIcon || '🍽️';
+        img.parentElement.innerHTML = '';
+        img.parentElement.appendChild(ph);
+    }, true);
 
     // Touch swipe support for mobile
     var touchStartX = null;
@@ -1028,7 +1045,8 @@
                     @if(!empty($cat['image_url']))
                         <img src="{{ $cat['image_url'] }}"
                              alt="{{ $cat['name'] ?? '' }}"
-                             onerror="this.parentElement.innerHTML='<div class=cat-img-placeholder>{{ $cat['icon'] ?? '🍽️' }}</div>'">
+                             data-fallback-class="cat-img-placeholder"
+                             data-fallback-icon="{{ $cat['icon'] ?? '🍽️' }}">
                     @else
                         <div class="cat-img-placeholder">{{ $cat['icon'] ?? '🍽️' }}</div>
                     @endif
@@ -1084,7 +1102,8 @@
                                     : ($item->image_url ?? '');
                             @endphp
                             <img src="{{ $imgUrl }}" alt="{{ $item->name }}" loading="lazy"
-                                 onerror="this.parentElement.innerHTML='<div class=\'product-img-placeholder\'>🍽️</div>'">
+                                 data-fallback-class="product-img-placeholder"
+                                 data-fallback-icon="🍽️">
                         @else
                             <div class="product-img-placeholder">🍽️</div>
                         @endif

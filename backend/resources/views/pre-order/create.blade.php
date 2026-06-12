@@ -146,7 +146,7 @@ input[type="number"] {
     </form>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 function increaseQty(id) {
     const input = document.getElementById('qty-' + id);
     const card = document.querySelector(`[data-id="${id}"]`);

@@ -763,7 +763,7 @@
     {{ date('Y') }}
 </footer>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function () {
     'use strict';
 
