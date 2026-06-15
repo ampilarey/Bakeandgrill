@@ -18,8 +18,6 @@ class GetPrayerTimesForIslandAndDateCacheTest extends TestCase
 
     public function test_null_lookup_is_not_cached(): void
     {
-        Cache::flush();
-
         $island = new IslandData(
             id: 1,
             categoryId: 99,
