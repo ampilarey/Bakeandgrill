@@ -14,6 +14,8 @@ final class GetPrayerTimesForIslandAndDate
 {
     private const CACHE_TTL = 86400; // 24 hours — prayer data is static per year
 
+    private const CACHE_MISS = '__prayer_times_cache_miss__';
+
     public function __construct(
         private readonly PrayerTimeResolver $resolver,
     ) {}
@@ -22,8 +24,9 @@ final class GetPrayerTimesForIslandAndDate
     {
         $key = "prayer_times.{$island->id}.{$date->format('Y-m-d')}";
 
-        if (Cache::has($key)) {
-            return Cache::get($key);
+        $cached = Cache::get($key, self::CACHE_MISS);
+        if ($cached !== self::CACHE_MISS) {
+            return $cached;
         }
 
         $result = $this->resolver->resolve($island, $date);
