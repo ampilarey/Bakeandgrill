@@ -93,6 +93,22 @@ class PrayerTimesSeeder extends Seeder
                 $total += count($buffer);
             }
             $this->command->info("Inserted {$total} prayer time rows.");
+
+            $invalid = DB::table('prayer_times')
+                ->select('category_id', DB::raw('COUNT(*) as row_count'))
+                ->groupBy('category_id')
+                ->having('row_count', '!=', 366)
+                ->get();
+
+            if ($invalid->isNotEmpty()) {
+                $details = $invalid->map(
+                    fn ($row) => "category {$row->category_id} has {$row->row_count} rows",
+                )->implode(', ');
+
+                throw new \RuntimeException(
+                    "Prayer import failed: each category must have exactly 366 day_of_year rows (leap-year source). {$details}",
+                );
+            }
         });
 
         if ($driver === 'mysql') {
