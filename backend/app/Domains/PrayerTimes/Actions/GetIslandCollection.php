@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Domains\PrayerTimes\Actions;
 
 use App\Domains\PrayerTimes\DTOs\IslandData;
+use App\Domains\PrayerTimes\Support\PrayerCacheVersion;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 final class GetIslandCollection
 {
-    private const CACHE_KEY = 'prayer_islands_all';
-
     private const CACHE_TTL = 3600; // 1 hour
 
     /**
@@ -22,7 +21,7 @@ final class GetIslandCollection
      */
     public function execute(): Collection
     {
-        return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+        return Cache::remember(self::cacheKey(), self::CACHE_TTL, function () {
             return DB::table('prayer_islands')
                 ->where('is_active', true)
                 ->orderBy('atoll')
@@ -38,7 +37,12 @@ final class GetIslandCollection
 
     public static function forgetCache(): void
     {
-        Cache::forget(self::CACHE_KEY);
+        PrayerCacheVersion::bump();
+    }
+
+    private static function cacheKey(): string
+    {
+        return 'prayer_cache.' . PrayerCacheVersion::current() . '.islands_all';
     }
 
     public function findById(int $id): ?IslandData

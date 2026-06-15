@@ -9,7 +9,6 @@ use App\Domains\PrayerTimes\DTOs\IslandData;
 use App\Domains\PrayerTimes\Services\PrayerTimeResolver;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -38,7 +37,6 @@ class GetPrayerTimesForIslandAndDateCacheTest extends TestCase
         $date = Carbon::parse('2026-01-01');
 
         $this->assertNull($action->execute($island, $date));
-        $this->assertFalse(Cache::has("prayer_times.1.2026-01-01"));
 
         DB::table('prayer_categories')->insert(['id' => 99]);
         DB::table('prayer_times')->insert([

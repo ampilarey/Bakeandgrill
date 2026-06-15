@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\PrayerTimes\Support\PrayerCacheVersion;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
 
 class PrayerClearCache extends Command
 {
@@ -15,12 +15,9 @@ class PrayerClearCache extends Command
 
     public function handle(): int
     {
-        Cache::forget('prayer_islands_all');
+        $version = PrayerCacheVersion::bump();
 
-        // The prayer_times.* keys are per-island-per-date — flush entire cache store
-        // if using a dedicated store, or accept that a full flush is the safest approach
-        $this->info('Cleared island list cache.');
-        $this->info('To fully purge all prayer time caches, run: php artisan cache:clear');
+        $this->info("Prayer cache invalidated (version {$version}). All island lists and prayer time lookups will refresh on next request.");
 
         return self::SUCCESS;
     }
