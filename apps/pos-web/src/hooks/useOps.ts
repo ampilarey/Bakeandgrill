@@ -5,17 +5,12 @@ import {
   createCashMovement,
   createPurchase,
   createRefund,
-  createSupplier,
   fetchInventory,
   fetchRefunds,
   fetchSuppliers,
   getCurrentShift,
-  getSalesSummary,
   openShift,
-  previewSmsPromotion,
-  sendSmsPromotion,
 } from "../api";
-import type { SalesSummary } from "../api";
 
 type Shift = {
   id: number;
@@ -50,18 +45,6 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const [cashMoveType, setCashMoveType] = useState<"cash_in" | "cash_out">("cash_in");
   const [cashMoveAmount, setCashMoveAmount] = useState("");
   const [cashMoveReason, setCashMoveReason] = useState("");
-  const [reportFrom, setReportFrom] = useState(today);
-  const [reportTo, setReportTo] = useState(today);
-  const [reportData, setReportData] = useState<SalesSummary | null>(null);
-  // Bug-049: opsMessage used to be a plain string overwritten by
-  // every action. A cashier who hit "Open shift" + immediately
-  // "Cash in" would see only "Cash movement recorded" — the
-  // shift-open success was wiped before they could read it.
-  // Now `setOpsMessage` is a queue-aware setter: a new message
-  // is APPENDED with ` · ` to whatever's still showing, and the
-  // whole accumulated banner auto-clears after a sliding 8s
-  // window. Errors get a 12s window so the cashier has time to
-  // act on them.
   const [opsMessage, setOpsMessageRaw] = useState("");
   const clearTimerRef = useRef<number | null>(null);
   const setOpsMessage = useCallback((text: string) => {
@@ -90,8 +73,6 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const [adjustQuantity, setAdjustQuantity] = useState("");
   const [adjustNotes, setAdjustNotes] = useState("");
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string }>>([]);
-  const [newSupplierName, setNewSupplierName] = useState("");
-  const [newSupplierPhone, setNewSupplierPhone] = useState("");
   const [purchaseSupplierId, setPurchaseSupplierId] = useState<number | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(today);
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([emptyPurchaseLine()]);
@@ -102,13 +83,6 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const [refunds, setRefunds] = useState<
     Array<{ id: number; amount: number; status: string; reason: string | null; order_id: number }>
   >([]);
-  const [promoMessage, setPromoMessage] = useState("");
-  const [promoLastOrderDays, setPromoLastOrderDays] = useState("");
-  const [promoEstimate, setPromoEstimate] = useState<{
-    recipient_count: number;
-    segments: number;
-    total_cost_mvr: number;
-  } | null>(null);
 
   // Load static ops data (shift, inventory, suppliers) when entering ops mode.
   useEffect(() => {
@@ -134,7 +108,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
       if (failed.length === 1)      setOpsMessage(`Unable to load ${failed[0]}.`);
       else if (failed.length > 1)   setOpsMessage(`Unable to load: ${failed.join(", ")}.`);
     })();
-  }, [isLoggedIn, viewMode]);
+  }, [isLoggedIn, viewMode, setOpsMessage]);
 
   // Refunds reload when filter changes (or on first ops entry).
   useEffect(() => {
@@ -143,16 +117,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     fetchRefunds(refundStatusFilter || undefined)
       .then((r) => setRefunds(r.refunds.data))
       .catch(() => setOpsMessage("Unable to load refunds."));
-  }, [isLoggedIn, viewMode, refundStatusFilter]);
-
-  // Sales summary re-fetches when date range changes (separated so only 1 API call fires)
-  useEffect(() => {
-    if (!isLoggedIn || viewMode !== "ops") return;
-
-    getSalesSummary({ from: reportFrom, to: reportTo })
-      .then((r) => setReportData(r))
-      .catch(() => setOpsMessage("Unable to load sales summary."));
-  }, [isLoggedIn, viewMode, reportFrom, reportTo]);
+  }, [isLoggedIn, viewMode, refundStatusFilter, setOpsMessage]);
 
   const handleOpenShift = () => {
     const value = Number.parseFloat(openingCash);
@@ -182,12 +147,6 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
       .catch(() => setOpsMessage("Unable to record cash movement."));
   };
 
-  const handleLoadReport = () => {
-    getSalesSummary({ from: reportFrom, to: reportTo })
-      .then((r) => setReportData(r))
-      .catch(() => setOpsMessage("Unable to load sales summary."));
-  };
-
   const handleAdjustInventory = () => {
     if (!adjustItemId) return;
     const quantity = Number.parseFloat(adjustQuantity);
@@ -196,14 +155,6 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
       .then(() => { setAdjustQuantity(""); setAdjustNotes(""); return fetchInventory(); })
       .then((r) => setInventoryItems(r.items.data))
       .catch(() => setOpsMessage("Unable to adjust inventory."));
-  };
-
-  const handleCreateSupplier = () => {
-    if (!newSupplierName.trim()) return;
-    createSupplier({ name: newSupplierName.trim(), phone: newSupplierPhone || undefined })
-      .then(() => { setNewSupplierName(""); setNewSupplierPhone(""); return fetchSuppliers(); })
-      .then((r) => setSuppliers(r.suppliers.data))
-      .catch(() => setOpsMessage("Unable to add supplier."));
   };
 
   const handleCreatePurchase = () => {
@@ -268,39 +219,20 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
       .catch(() => setOpsMessage("Unable to record refund."));
   };
 
-  const handlePreviewPromotion = () => {
-    if (!promoMessage.trim()) { setOpsMessage("Enter a promotion message."); return; }
-    const lastOrderDays = promoLastOrderDays ? Number.parseInt(promoLastOrderDays, 10) : undefined;
-    previewSmsPromotion({ message: promoMessage.trim(), filters: { last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined } })
-      .then((r) => setPromoEstimate({ recipient_count: r.estimate.recipient_count, segments: r.estimate.segments, total_cost_mvr: r.estimate.total_cost_mvr }))
-      .catch(() => setOpsMessage("Unable to preview SMS promotion."));
-  };
-
-  const handleSendPromotion = () => {
-    if (!promoMessage.trim()) { setOpsMessage("Enter a promotion message."); return; }
-    const lastOrderDays = promoLastOrderDays ? Number.parseInt(promoLastOrderDays, 10) : undefined;
-    sendSmsPromotion({ name: "POS Promotion", message: promoMessage.trim(), filters: { last_order_days: Number.isFinite(lastOrderDays) ? lastOrderDays : undefined } })
-      .then(() => { setPromoMessage(""); setPromoLastOrderDays(""); setPromoEstimate(null); })
-      .catch(() => setOpsMessage("Unable to send promotion SMS."));
-  };
-
   return {
     shift, openingCash, setOpeningCash, closingCash, setClosingCash,
     cashMoveType, setCashMoveType, cashMoveAmount, setCashMoveAmount,
-    cashMoveReason, setCashMoveReason, reportFrom, setReportFrom,
-    reportTo, setReportTo, reportData, opsMessage, inventoryItems,
+    cashMoveReason, setCashMoveReason, opsMessage, inventoryItems,
     adjustItemId, setAdjustItemId, adjustType, setAdjustType,
     adjustQuantity, setAdjustQuantity, adjustNotes, setAdjustNotes,
-    suppliers, newSupplierName, setNewSupplierName, newSupplierPhone, setNewSupplierPhone,
-    purchaseSupplierId, setPurchaseSupplierId, purchaseDate, setPurchaseDate,
+    suppliers, purchaseSupplierId, setPurchaseSupplierId, purchaseDate, setPurchaseDate,
     purchaseLines, addPurchaseLine, removePurchaseLine, updatePurchaseLine,
     refundOrderId, setRefundOrderId,
     refundAmount, setRefundAmount, refundReason, setRefundReason,
     refundStatusFilter, setRefundStatusFilter, refunds,
-    promoMessage, setPromoMessage, promoLastOrderDays, setPromoLastOrderDays, promoEstimate,
-    handleOpenShift, handleCloseShift, handleCashMovement, handleLoadReport,
-    handleAdjustInventory, handleCreateSupplier, handleCreatePurchase,
-    handleCreateRefund, handlePreviewPromotion, handleSendPromotion,
+    handleOpenShift, handleCloseShift, handleCashMovement,
+    handleAdjustInventory, handleCreatePurchase,
+    handleCreateRefund,
     setOpsMessage,
   };
 }

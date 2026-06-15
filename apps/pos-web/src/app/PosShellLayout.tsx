@@ -38,7 +38,7 @@ export function PosShellLayout() {
     canManageOrderStatus, canSendBill, canSendPayLink, canRefund, canCreatePurchaseRequest,
     canLockScreen, canPayCash,
     canPayCard, canPaySplit, canUseCredit, canUseWallet, canApplyDiscount, canUseRewards,
-    canOpsInventory, canOpsPreparedStock, canOpsSuppliers, canOpsReports, canOpsMarketing,
+    canOpsInventory, canOpsPreparedStock,
     canCashInOut, isReachable, offlineQueueCount, offlinePendingCount,
     offlinePendingTotals, showOfflineSyncPanel, setShowOfflineSyncPanel, deviceBlockedMessage,
     receiptBanner, setReceiptBanner, orderType, setOrderType, deliveryDetails, setDeliveryDetails,
@@ -472,9 +472,6 @@ export function PosShellLayout() {
             permissions={{
               inventory: canOpsInventory,
               preparedStock: canOpsPreparedStock,
-              suppliers: canOpsSuppliers,
-              reports: canOpsReports,
-              marketing: canOpsMarketing,
               refunds: canRefund,
               shiftOpen,
             }}

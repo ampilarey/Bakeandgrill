@@ -66,9 +66,6 @@ export function usePosApp() {
   const canLockScreen = hasPosPermission(staffPermissions, "pos.lock_screen");
   const canOpsInventory = hasPosPermission(staffPermissions, "inventory.manage");
   const canOpsPreparedStock = hasPosPermission(staffPermissions, "menu.prepared_stock");
-  const canOpsSuppliers = hasPosPermission(staffPermissions, "suppliers.manage");
-  const canOpsReports = hasPosPermission(staffPermissions, "reports.view");
-  const canOpsMarketing = hasPosPermission(staffPermissions, "integrations.sms");
   const canUseCredit = hasPosPermission(staffPermissions, "payments.credit");
   const canUseWallet = hasPosPermission(staffPermissions, "payments.deposit")
     || hasPosPermission(staffPermissions, "payments.wallet");
@@ -83,7 +80,7 @@ export function usePosApp() {
   const canManageOrderStatus = hasPosPermission(staffPermissions, "pos.manage_order_status");
   const canTimeClock = hasPosPermission(staffPermissions, "pos.time_clock");
   const canViewKds = hasPosPermission(staffPermissions, "kds.view");
-  const canAccessOps = canOpsInventory || canOpsPreparedStock || canOpsSuppliers || canOpsReports || canOpsMarketing;
+  const canAccessOps = canOpsInventory || canOpsPreparedStock || canRefund;
   const canKitchenOnly = canViewKds && !canRingSales && !canAccessOps && !canViewShiftHistory;
   const canCreatePurchaseRequest = hasPosPermission(staffPermissions, "purchase_requests.create");
   const canViewOwnPurchaseRequests = hasPosPermission(staffPermissions, "purchase_requests.view_own");
@@ -1026,7 +1023,7 @@ export function usePosApp() {
     isLoggedIn, username, setUsername, pin, setPin, cashierName, staffPermissions,
     canVoidOrders, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canCashInOut, canLockScreen,
-    canOpsInventory, canOpsPreparedStock, canOpsSuppliers, canOpsReports, canOpsMarketing,
+    canOpsInventory, canOpsPreparedStock,
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
     canUseRewards, canRefund, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
     canViewKds, canAccessOps, canKitchenOnly, canCreatePurchaseRequest, canViewOwnPurchaseRequests,

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { smsCharCount } from "@shared/utils/smsCharCount";
 import { adjustPreparedStock, fetchPreparedStock, type PreparedStockRow } from "../api";
 import type { useOps } from "../hooks/useOps";
 
 type OpsState = ReturnType<typeof useOps>;
-type Tab = "inventory" | "prepared" | "suppliers" | "refunds" | "reports" | "marketing";
+type Tab = "inventory" | "prepared" | "refunds";
 
 const C = {
   bg: "#F5F6F8",
@@ -25,29 +24,14 @@ const C = {
 type OpsPermissions = {
   inventory?: boolean;
   preparedStock?: boolean;
-  suppliers?: boolean;
-  reports?: boolean;
-  marketing?: boolean;
   refunds?: boolean;
   shiftOpen?: boolean;
 };
 
 /**
- * The old OpsPanel was a 6-card grid full of cramped raw forms — and half
- * of it (shift, cash drawer, refunds) is now duplicated by the dedicated
- * shift / receipts panels in the new POS. This rewrite turns Operations
- * into a focused back-office workspace with the four jobs that actually
- * belong here: inventory care, supplier book, KPI reports, SMS marketing.
- *
- * UX choices:
- *  - Left rail for tab nav so the content area stays roomy on a tablet.
- *  - Inventory tab gets a search box + low-stock filter so cashiers can
- *    find the one item they want without scrolling a 100-row dropdown.
- *  - Reports tab leads with preset chips (Today, 7d, 30d) — date pickers
- *    are still there but most lookups are one tap.
- *  - Marketing tab shows a live segment count + cost estimate so staff
- *    can't accidentally fire 3-segment Unicode messages without seeing
- *    the bill first.
+ * On-floor operations workspace: inventory care, menu stock counts, and
+ * refunds (when a shift is open). Suppliers, reports, and SMS marketing
+ * live in the Admin dashboard — a pointer in the left rail reminds staff.
  */
 export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onRequestItem?: () => void }) {
   const { permissions, onRequestItem, ...ops } = props;
@@ -61,18 +45,12 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onReq
 
   const showInv = permissions ? !!permissions.inventory : true;
   const showPrepared = permissions ? !!permissions.preparedStock : false;
-  const showSup = permissions ? !!permissions.suppliers : true;
-  const showRep = permissions ? !!permissions.reports : true;
-  const showMkt = permissions ? !!permissions.marketing : true;
   const showRefunds = (permissions ? !!permissions.refunds : true) && !!permissions?.shiftOpen;
 
   const tabs: Array<{ id: Tab; label: string; icon: string; badge?: string }> = [
     ...(showInv ? [{ id: "inventory" as Tab, label: "Inventory", icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined }] : []),
     ...(showPrepared ? [{ id: "prepared" as Tab, label: "Menu stock", icon: "🥐" }] : []),
-    ...(showSup ? [{ id: "suppliers" as Tab, label: "Suppliers", icon: "🏭" }] : []),
     ...(showRefunds ? [{ id: "refunds" as Tab, label: "Refunds", icon: "↩️" }] : []),
-    ...(showRep ? [{ id: "reports" as Tab, label: "Reports", icon: "📊" }] : []),
-    ...(showMkt ? [{ id: "marketing" as Tab, label: "Marketing", icon: "📣" }] : []),
   ];
 
   const activeTab = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? "inventory");
@@ -97,32 +75,40 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onReq
         background: "#F8FAFC", borderRight: `1px solid ${C.border}`,
         padding: "12px 8px", display: "flex", flexDirection: "column", gap: 4,
       }}>
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "10px 12px", borderRadius: 8,
-              background: activeTab === t.id ? C.panel : "transparent",
-              color: activeTab === t.id ? C.text : C.muted,
-              border: "none",
-              boxShadow: activeTab === t.id ? "0 1px 2px rgba(15,23,42,0.06)" : "none",
-              textAlign: "left", cursor: "pointer",
-              fontWeight: 600, fontSize: 13,
-            }}
-          >
-            <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{t.icon}</span>
-            <span style={{ flex: 1 }}>{t.label}</span>
-            {t.badge && (
-              <span style={{
-                background: C.warn, color: "#fff",
-                padding: "1px 8px", borderRadius: 999,
-                fontSize: 10, fontWeight: 800,
-              }}>{t.badge}</span>
-            )}
-          </button>
-        ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 12px", borderRadius: 8,
+                background: activeTab === t.id ? C.panel : "transparent",
+                color: activeTab === t.id ? C.text : C.muted,
+                border: "none",
+                boxShadow: activeTab === t.id ? "0 1px 2px rgba(15,23,42,0.06)" : "none",
+                textAlign: "left", cursor: "pointer",
+                fontWeight: 600, fontSize: 13,
+              }}
+            >
+              <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{t.icon}</span>
+              <span style={{ flex: 1 }}>{t.label}</span>
+              {t.badge && (
+                <span style={{
+                  background: C.warn, color: "#fff",
+                  padding: "1px 8px", borderRadius: 999,
+                  fontSize: 10, fontWeight: 800,
+                }}>{t.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <p style={{
+          margin: "8px 4px 0", padding: "0 8px",
+          fontSize: 11, lineHeight: 1.45, color: C.muted,
+        }}>
+          Suppliers, Reports, and SMS marketing are in the <strong style={{ color: C.text }}>Admin dashboard</strong>.
+        </p>
       </nav>
 
       {/* ── Content ──────────────────────────────────────────────── */}
@@ -132,10 +118,7 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onReq
       }}>
         {activeTab === "inventory"  && <InventoryTab ops={ops} lowStockThreshold={lowStockThreshold} onRequestItem={onRequestItem} />}
         {activeTab === "prepared"   && <PreparedStockTab setOpsMessage={ops.setOpsMessage} />}
-        {activeTab === "suppliers"  && <SuppliersTab ops={ops} />}
         {activeTab === "refunds"    && <RefundsTab ops={ops} />}
-        {activeTab === "reports"    && <ReportsTab ops={ops} />}
-        {activeTab === "marketing"  && <MarketingTab ops={ops} />}
       </div>
     </div>
   );
@@ -715,221 +698,6 @@ function RefundsTab({ ops }: { ops: OpsState }) {
   );
 }
 
-function SuppliersTab({ ops }: { ops: OpsState }) {
-  return (
-    <>
-      <Header
-        title="Suppliers"
-        subtitle="Vendors you buy stock from. Used to attribute purchases for finance."
-      />
-
-      {/* Add row */}
-      <FormCard title="Add supplier" help="Phone is optional but helps when you need to reorder.">
-        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr auto", gap: 10 }}>
-          <input
-            value={ops.newSupplierName}
-            onChange={(e) => ops.setNewSupplierName(e.target.value)}
-            placeholder="Supplier name"
-            style={fieldStyle}
-          />
-          <input
-            value={ops.newSupplierPhone}
-            onChange={(e) => ops.setNewSupplierPhone(e.target.value)}
-            placeholder="Phone (optional)"
-            style={fieldStyle}
-          />
-          <PrimaryBtn onClick={ops.handleCreateSupplier} disabled={!ops.newSupplierName.trim()}>
-            Add supplier
-          </PrimaryBtn>
-        </div>
-      </FormCard>
-
-      {/* Chips list */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {ops.suppliers.length === 0 ? (
-          <Empty emoji="🏭" title="No suppliers yet" body="Add your first supplier above so you can attribute purchases." />
-        ) : ops.suppliers.map((s) => (
-          <div key={s.id} style={{
-            padding: "10px 14px", borderRadius: 999,
-            background: C.panel, border: `1px solid ${C.border}`,
-            fontSize: 13, fontWeight: 600, color: C.text,
-          }}>
-            🏭 {s.name}
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────
-// Reports tab
-// ────────────────────────────────────────────────────────────────────
-
-function ReportsTab({ ops }: { ops: OpsState }) {
-  const presets: Array<{ id: string; label: string; from: () => string; to: () => string }> = [
-    { id: "today",   label: "Today",      from: () => isoDate(0),  to: () => isoDate(0) },
-    { id: "yest",    label: "Yesterday",  from: () => isoDate(1),  to: () => isoDate(1) },
-    { id: "7d",      label: "Last 7 days",from: () => isoDate(6),  to: () => isoDate(0) },
-    { id: "30d",     label: "Last 30 days",from: () => isoDate(29),to: () => isoDate(0) },
-  ];
-
-  const applyPreset = (p: typeof presets[number]) => {
-    ops.setReportFrom(p.from());
-    ops.setReportTo(p.to());
-  };
-
-  return (
-    <>
-      <Header
-        title="Reports"
-        subtitle="Sales summary across any date range. For the live shift snapshot, see Current Shift in the side menu."
-      />
-
-      {/* Preset chips + custom dates */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {presets.map((p) => {
-          const active = ops.reportFrom === p.from() && ops.reportTo === p.to();
-          return (
-            <button key={p.id} onClick={() => applyPreset(p)} style={{
-              padding: "8px 14px", borderRadius: 999, cursor: "pointer",
-              background: active ? C.text : "#fff",
-              color: active ? "#fff" : C.muted,
-              border: `1px solid ${active ? C.text : C.border2}`,
-              fontWeight: 700, fontSize: 12,
-            }}>{p.label}</button>
-          );
-        })}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
-          <input type="date" value={ops.reportFrom} onChange={(e) => ops.setReportFrom(e.target.value)} style={fieldStyle} />
-          <span style={{ color: C.subtle, fontSize: 12 }}>→</span>
-          <input type="date" value={ops.reportTo} onChange={(e) => ops.setReportTo(e.target.value)} style={fieldStyle} />
-        </div>
-      </div>
-
-      {/* KPI tiles */}
-      <div className="pos-ops-grid pos-ops-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-        <KpiTile label="Orders"    value={ops.reportData ? String(ops.reportData.totals.orders_count ?? 0) : "—"} />
-        <KpiTile label="Gross"     value={ops.reportData ? mvr(ops.reportData.totals.subtotal) : "—"} />
-        <KpiTile label="Discounts" value={ops.reportData ? `− ${mvr(ops.reportData.totals.discount_amount)}` : "—"} tone="muted" />
-        <KpiTile label="Net total" value={ops.reportData ? mvr(ops.reportData.totals.total) : "—"} accent />
-      </div>
-
-      {/* Payments breakdown */}
-      <div style={{
-        background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10,
-        overflow: "hidden",
-      }}>
-        <div style={{ padding: "10px 14px", borderBottom: `1px solid ${C.border}`,
-          fontSize: 11, fontWeight: 700, color: C.muted,
-          textTransform: "uppercase", letterSpacing: "0.06em",
-          display: "flex", justifyContent: "space-between",
-        }}>
-          <span>Payments by method</span>
-          <span>Amount</span>
-        </div>
-        {!ops.reportData ? (
-          <Empty emoji="📊" title="Loading…" body="Pick a date range and the summary will populate." />
-        ) : Object.keys(ops.reportData.payments ?? {}).length === 0 ? (
-          <Empty emoji="💳" title="No payments yet" body="There were no payments in this range." />
-        ) : Object.entries(ops.reportData.payments).map(([method, amount]) => (
-          <div key={method} style={{
-            display: "flex", justifyContent: "space-between",
-            padding: "10px 14px", borderTop: `1px solid ${C.border}`,
-            fontSize: 13, color: C.text,
-          }}>
-            <span style={{ fontWeight: 600, textTransform: "capitalize" }}>{method.replace("_", " ")}</span>
-            <span style={{ fontWeight: 700 }}>{mvr(amount)}</span>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────
-// Marketing tab
-// ────────────────────────────────────────────────────────────────────
-
-function MarketingTab({ ops }: { ops: OpsState }) {
-  const [confirming, setConfirming] = useState(false);
-
-  const smsStats = useMemo(() => smsCharCount(ops.promoMessage), [ops.promoMessage]);
-  const encoding = smsStats.encoding as "GSM-7" | "UCS-2";
-  const segments = smsStats.segments;
-
-  return (
-    <>
-      <Header
-        title="Marketing"
-        subtitle="Send a one-off SMS to opted-in customers. Estimate cost before sending."
-      />
-
-      <FormCard title="Compose" help="Keep it under 160 ASCII chars (or 70 if you include emoji/Thaana) to stay at 1 segment.">
-        <textarea
-          rows={4}
-          value={ops.promoMessage}
-          onChange={(e) => ops.setPromoMessage(e.target.value)}
-          placeholder="e.g. Friday special — buy 1 burger get 1 free. Reply STOP to opt out."
-          style={{
-            ...fieldStyle,
-            resize: "vertical", fontFamily: "inherit",
-          }}
-        />
-        <div style={{
-          display: "flex", justifyContent: "space-between",
-          fontSize: 11, color: C.muted, marginTop: 6,
-        }}>
-          <span>
-            {ops.promoMessage.length} chars · {encoding}
-          </span>
-          <span style={{ fontWeight: 700, color: segments > 1 ? C.warn : C.muted }}>
-            {segments} segment{segments === 1 ? "" : "s"}
-          </span>
-        </div>
-
-        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-          <input
-            value={ops.promoLastOrderDays}
-            onChange={(e) => ops.setPromoLastOrderDays(e.target.value)}
-            placeholder="Active in last X days (optional)"
-            inputMode="none"
-            style={fieldStyle}
-          />
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <SecondaryBtn onClick={ops.handlePreviewPromotion} disabled={!ops.promoMessage.trim()}>Preview</SecondaryBtn>
-            <PrimaryBtn onClick={() => setConfirming(true)} disabled={!ops.promoMessage.trim() || !ops.promoEstimate}>
-              Send SMS
-            </PrimaryBtn>
-          </div>
-        </div>
-      </FormCard>
-
-      {ops.promoEstimate && (
-        <div className="pos-ops-grid pos-ops-grid-3" style={{
-          background: C.panel, borderRadius: 10, border: `1px solid ${C.border}`,
-          padding: 16, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16,
-        }}>
-          <KpiTile compact label="Recipients" value={String(ops.promoEstimate.recipient_count)} />
-          <KpiTile compact label="Segments / msg" value={String(ops.promoEstimate.segments)} />
-          <KpiTile compact label="Estimated cost" value={mvr(ops.promoEstimate.total_cost_mvr)} accent />
-        </div>
-      )}
-
-      {confirming && ops.promoEstimate && (
-        <SmsBlastConfirmDialog
-          recipients={ops.promoEstimate.recipient_count}
-          costMvr={ops.promoEstimate.total_cost_mvr}
-          segments={ops.promoEstimate.segments}
-          message={ops.promoMessage}
-          onConfirm={() => { ops.handleSendPromotion(); setConfirming(false); }}
-          onCancel={() => setConfirming(false)}
-        />
-      )}
-    </>
-  );
-}
-
 // ────────────────────────────────────────────────────────────────────
 // Shared bits
 // ────────────────────────────────────────────────────────────────────
@@ -974,33 +742,6 @@ function FormCard({ title, help, children, onCancel }: {
   );
 }
 
-function KpiTile({ label, value, accent, tone, compact }: {
-  label: string; value: string;
-  accent?: boolean;
-  tone?: "muted";
-  compact?: boolean;
-}) {
-  return (
-    <div style={{
-      background: accent ? C.text : C.panel,
-      color: accent ? "#fff" : C.text,
-      borderRadius: 10, border: accent ? "none" : `1px solid ${C.border}`,
-      padding: compact ? 12 : 16,
-    }}>
-      <div style={{
-        fontSize: 11, fontWeight: 700,
-        color: accent ? "#94A3B8" : C.muted,
-        textTransform: "uppercase", letterSpacing: "0.06em",
-      }}>{label}</div>
-      <div style={{
-        marginTop: 6,
-        fontSize: compact ? 20 : 24, fontWeight: 800,
-        color: tone === "muted" ? C.muted : (accent ? "#fff" : C.text),
-      }}>{value}</div>
-    </div>
-  );
-}
-
 function Pill({ children, tone }: { children: React.ReactNode; tone: "success" | "warn" | "danger" }) {
   const palette = {
     success: { bg: "#DCFCE7", color: "#15803D" },
@@ -1025,124 +766,6 @@ function Empty({ emoji, title, body }: { emoji: string; title: string; body: str
       <div style={{ fontSize: 38 }}>{emoji}</div>
       <div style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{title}</div>
       <div style={{ fontSize: 12, maxWidth: 280 }}>{body}</div>
-    </div>
-  );
-}
-
-/**
- * Bug-019: dedicated SMS-blast confirm dialog with a message
- * preview, full cost/recipient breakdown, and (for big blasts)
- * type-to-confirm so a stray tap can't accidentally fire off a
- * 500-recipient promotion. The plain ConfirmDialog wasn't enough
- * because cashiers couldn't see the actual message they were
- * about to send and the cost callout was buried in body text.
- */
-function SmsBlastConfirmDialog({
-  recipients,
-  costMvr,
-  segments,
-  message,
-  onConfirm,
-  onCancel,
-}: {
-  recipients: number;
-  costMvr: number;
-  segments: number;
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  // Big-blast threshold: 100 recipients OR MVR 50 cost. Either
-  // is a "no take-backs" level of money / customer reach, so we
-  // force a typed acknowledgement before the Send button enables.
-  const requiresTypeToConfirm = recipients >= 100 || costMvr >= 50;
-  const [typed, setTyped] = useState("");
-  const isReady = !requiresTypeToConfirm || typed.trim().toUpperCase() === "SEND";
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 800,
-      background: "rgba(15,23,42,0.6)",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-    }}>
-      <div style={{ background: "#fff", borderRadius: 14, padding: 22, width: "100%", maxWidth: 480, display: "flex", flexDirection: "column", gap: 14 }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: 18, color: C.text }}>
-            📣 Send SMS blast?
-          </h3>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: C.muted }}>
-            Once you tap Send the messages start queueing immediately. This cannot be undone.
-          </p>
-        </div>
-
-        <div className="pos-ops-grid pos-ops-grid-3" style={{
-          background: "#F8FAFC", border: `1px solid ${C.border}`, borderRadius: 10,
-          padding: "10px 12px", fontSize: 13, color: C.text,
-          display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10,
-        }}>
-          <Cell label="Recipients" value={recipients.toLocaleString()} />
-          <Cell label="Segments / msg" value={String(segments)} />
-          <Cell label="Total cost" value={mvr(costMvr)} accent />
-        </div>
-
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-            Message preview
-          </div>
-          <div style={{
-            background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8,
-            padding: "10px 12px", fontSize: 13, color: "#78350F",
-            whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 140, overflowY: "auto",
-          }}>
-            {message || <em style={{ color: "#A8A29E" }}>(empty)</em>}
-          </div>
-        </div>
-
-        {requiresTypeToConfirm && (
-          <div>
-            <div style={{ fontSize: 12, color: "#B45309", fontWeight: 700, marginBottom: 6 }}>
-              ⚠️ Large blast — type SEND to confirm
-            </div>
-            <input
-              autoFocus
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder='Type "SEND" here'
-              style={{
-                width: "100%", padding: "10px 12px", borderRadius: 8,
-                border: `1px solid ${isReady ? "#15803D" : "#CBD5E1"}`,
-                fontSize: 14, color: C.text, boxSizing: "border-box",
-                outline: "none",
-              }}
-            />
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <SecondaryBtn onClick={onCancel}>Cancel</SecondaryBtn>
-          <button
-            onClick={onConfirm}
-            disabled={!isReady}
-            style={{
-              padding: "10px 18px", borderRadius: 8, border: "none",
-              background: isReady ? C.accent : "#F1B98C",
-              color: "#fff", fontWeight: 800, fontSize: 13,
-              cursor: isReady ? "pointer" : "not-allowed",
-            }}
-          >
-            Send {recipients.toLocaleString()} SMS
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Cell({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 800, color: accent ? C.accent : C.text }}>{value}</span>
     </div>
   );
 }
@@ -1184,13 +807,3 @@ const fieldStyle: React.CSSProperties = {
   background: "#fff", color: C.text, outline: "none",
   width: "100%", boxSizing: "border-box",
 };
-
-function isoDate(daysAgo: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
-}
-
-function mvr(n: unknown): string {
-  return `MVR ${Number.parseFloat(String(n ?? 0)).toFixed(2)}`;
-}
