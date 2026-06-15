@@ -37,14 +37,16 @@ function formatCountdown(ms: number): string {
 
 /** Returns a Date whose UTC fields represent the current Maldives time (UTC+5). */
 let timeSkew = 0;
-(function syncClock() {
-  fetch('/api/health', { method: 'HEAD' }).then(r => {
+
+function syncClock(apiBase: string): void {
+  const base = apiBase.replace(/\/$/, '');
+  fetch(`${base}/api/health`, { method: 'HEAD' }).then(r => {
     try {
       const d = r.headers.get('Date');
       if (d) { const s = new Date(d).getTime(); if (!isNaN(s)) timeSkew = s - Date.now(); }
     } catch { /* ignore */ }
   }).catch(() => { /* ignore */ });
-})();
+}
 function getMVT(): Date {
   return new Date(Date.now() + timeSkew + 5 * 3600 * 1000);
 }
@@ -110,6 +112,10 @@ export function PrayerTimesWidget({
   className,
 }: PrayerTimesWidgetProps) {
   const base = apiBase.replace(/\/$/, '');
+
+  useEffect(() => {
+    syncClock(base);
+  }, [base]);
 
   const [islands,  setIslands]  = useState<Island[]>([]);
   const [islandId, setIslandId] = useState<number>(initialIslandId ?? 0);
