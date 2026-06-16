@@ -6,24 +6,85 @@ import {
   can,
   getDefaultNavPath,
   canAny,
+  getAllNavItems,
 } from '../components/navConfig';
 import type { StaffUser } from '../api';
 
+/** Frozen route + permission pairs — IA regroup must not change gating or deep links. */
+const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string }> = [
+  { to: '/dashboard', permission: 'dashboard.view' },
+  { to: '/orders', permission: 'orders.view' },
+  { to: '/kds', permission: 'orders.view' },
+  { to: '/tables', permission: 'orders.view' },
+  { to: '/delivery', permission: 'delivery.view' },
+  { to: '/kitchen-production', permission: 'kitchen.production.view_all' },
+  { to: '/activity', permission: 'reports.view' },
+  { to: '/shifts', permission: 'shifts.view_own_history' },
+  { to: '/time-clock', permission: 'pos.time_clock' },
+  { to: '/menu', permission: 'menu.view' },
+  { to: '/specials', permission: 'menu.manage' },
+  { to: '/inventory', permission: 'inventory.view' },
+  { to: '/purchase-requests', permission: 'purchase_requests.view_all' },
+  { to: '/purchase-orders', permission: 'suppliers.purchases' },
+  { to: '/supplier-intelligence', permission: 'suppliers.view' },
+  { to: '/waste-logs', permission: 'menu.manage' },
+  { to: '/reservations', permission: 'reservations.view' },
+  { to: '/online-ordering', permission: 'settings.update' },
+  { to: '/delivery-settings', permission: 'settings.update' },
+  { to: '/customers', permission: 'customers.manage' },
+  { to: '/customers/growth', permission: 'customers.manage' },
+  { to: '/loyalty', permission: 'loyalty.manage' },
+  { to: '/gift-cards', permission: 'promotions.manage' },
+  { to: '/referrals', permission: 'customers.manage' },
+  { to: '/reviews', permission: 'customers.manage' },
+  { to: '/promotions', permission: 'promotions.manage' },
+  { to: '/sms', permission: 'sms_marketing.view' },
+  { to: '/reports', permission: 'reports.view' },
+  { to: '/analytics', permission: 'customers.analytics' },
+  { to: '/forecasts', permission: 'reports.financial' },
+  { to: '/gst', permission: 'reports.financial' },
+  { to: '/profit-loss', permission: 'finance.profit_loss' },
+  { to: '/invoices', permission: 'finance.invoices' },
+  { to: '/expenses', permission: 'finance.expenses' },
+  { to: '/refunds', permission: 'orders.refund' },
+  { to: '/staff', permission: 'staff.view' },
+  { to: '/settings', permission: 'settings.update' },
+  { to: '/devices', permission: 'devices.view' },
+  { to: '/print-jobs', permission: 'devices.view' },
+  { to: '/webhooks', permission: 'webhooks.manage' },
+  { to: '/xero', permission: 'xero.manage' },
+  { to: '/system-health', permission: 'website.manage' },
+  { to: '/account' },
+];
+
 describe('navConfig', () => {
-  it('Inventory lives in Menu & Inventory group, not pinned', () => {
-    expect(PINNED_NAV_ITEMS.find((i) => i.to === '/inventory')).toBeUndefined();
-    const group = NAV_GROUPS.find((g) => g.id === 'menu-inventory');
-    const inv = group?.items.find((i) => i.to === '/inventory');
-    expect(inv?.permission).toBe('inventory.view');
+  it('has five IA sections with no pinned strip', () => {
+    expect(PINNED_NAV_ITEMS).toEqual([]);
+    expect(NAV_GROUPS.map((g) => g.id)).toEqual([
+      'monitor',
+      'manage',
+      'customers-marketing',
+      'analyze',
+      'system-team',
+    ]);
   });
 
-  it('pinned quick access has four daily ops items', () => {
-    expect(PINNED_NAV_ITEMS.map((i) => i.to)).toEqual([
-      '/dashboard',
-      '/orders',
-      '/kds',
-      '/menu',
-    ]);
+  it('every routed page appears exactly once with unchanged permissions', () => {
+    const items = getAllNavItems(false);
+    const pairs = items.map((i) => ({ to: i.to, permission: i.permission }));
+    expect(pairs).toHaveLength(ROUTE_PERMISSION_BASELINE.length);
+    for (const baseline of ROUTE_PERMISSION_BASELINE) {
+      const matches = pairs.filter((p) => p.to === baseline.to);
+      expect(matches).toHaveLength(1);
+      expect(matches[0].permission).toBe(baseline.permission);
+    }
+  });
+
+  it('Inventory lives in Manage group, not pinned', () => {
+    expect(PINNED_NAV_ITEMS.find((i) => i.to === '/inventory')).toBeUndefined();
+    const group = NAV_GROUPS.find((g) => g.id === 'manage');
+    const inv = group?.items.find((i) => i.to === '/inventory');
+    expect(inv?.permission).toBe('inventory.view');
   });
 
   it('resolveNavItemForPath matches delivery route', () => {
@@ -38,8 +99,8 @@ describe('navConfig', () => {
     expect(match?.to).toBe('/delivery-settings');
   });
 
-  it('ordering control is under Online Store group', () => {
-    const group = NAV_GROUPS.find((g) => g.id === 'online-store');
+  it('ordering control is under Manage group', () => {
+    const group = NAV_GROUPS.find((g) => g.id === 'manage');
     const ordering = group?.items.find((i) => i.to === '/online-ordering');
     expect(ordering?.label).toBe('Ordering Control');
   });

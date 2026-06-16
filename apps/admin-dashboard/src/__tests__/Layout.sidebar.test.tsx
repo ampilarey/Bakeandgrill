@@ -49,29 +49,29 @@ describe('Layout desktop sidebar groups', () => {
   beforeEach(() => {
     mockDesktopWidth();
     localStorage.clear();
-    localStorage.setItem('bg_nav_open_groups', JSON.stringify(['operations', 'online-store', 'customers']));
+    localStorage.setItem('bg_nav_open_groups', JSON.stringify(['monitor', 'customers-marketing']));
   });
 
   it('collapses an open group containing the active route when the header is clicked', () => {
     renderLayout('/delivery');
-    expect(isGroupOpen('Operations')).toBe(true);
+    expect(isGroupOpen('Monitor')).toBe(true);
 
-    fireEvent.click(groupHeader('Operations')!);
-    expect(isGroupOpen('Operations')).toBe(false);
+    fireEvent.click(groupHeader('Monitor')!);
+    expect(isGroupOpen('Monitor')).toBe(false);
 
     // Effect must not immediately re-open on the same route
-    expect(isGroupOpen('Operations')).toBe(false);
+    expect(isGroupOpen('Monitor')).toBe(false);
   });
 
-  it('does not mark Operations active on /delivery-settings', () => {
+  it('does not mark Monitor active on /delivery-settings', () => {
     renderLayout('/delivery-settings');
-    const opsHeader = groupHeader('Operations');
-    expect(opsHeader).toBeTruthy();
-    expect(opsHeader!.classList.contains('admin-nav-group-header--active')).toBe(false);
+    const monitorHeader = groupHeader('Monitor');
+    expect(monitorHeader).toBeTruthy();
+    expect(monitorHeader!.classList.contains('admin-nav-group-header--active')).toBe(false);
   });
 
   it('auto-opens the group for the current route after navigation', () => {
-    localStorage.setItem('bg_nav_open_groups', JSON.stringify(['operations', 'customers']));
+    localStorage.setItem('bg_nav_open_groups', JSON.stringify(['monitor', 'customers-marketing']));
 
     function LayoutAt({ path }: { path: string }) {
       return (
@@ -84,10 +84,10 @@ describe('Layout desktop sidebar groups', () => {
     }
 
     const { rerender } = render(<LayoutAt path="/dashboard" />);
-    expect(isGroupOpen('Finance')).toBe(false);
+    expect(isGroupOpen('Analyze')).toBe(false);
 
     rerender(<LayoutAt path="/reports" />);
-    expect(isGroupOpen('Finance')).toBe(true);
+    expect(isGroupOpen('Analyze')).toBe(true);
   });
 
   it('persists manual desktop collapse across re-render and remount', () => {

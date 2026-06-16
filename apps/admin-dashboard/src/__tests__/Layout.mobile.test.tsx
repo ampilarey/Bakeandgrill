@@ -36,11 +36,11 @@ describe('Layout mobile drawer', () => {
     );
 
     fireEvent.click(screen.getByLabelText('Open menu'));
-    expect(screen.getByText('Quick access')).toBeTruthy();
+    expect(screen.getByText('Monitor')).toBeTruthy();
 
     const drawerOrders = document.querySelector('.admin-mobile-drawer-tile[href="/orders"]');
     expect(drawerOrders).toBeTruthy();
     fireEvent.click(drawerOrders!);
-    expect(screen.queryByText('Quick access')).toBeNull();
+    expect(screen.queryByText('Monitor')).toBeNull();
   });
 });
