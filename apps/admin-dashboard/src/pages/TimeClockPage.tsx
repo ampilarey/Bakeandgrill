@@ -1,13 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
-import {
-  getTimeClockStatus, clockIn, clockOut, getTimeClockHistory, getTimeClockSummary,
-  type TimeEntry,
-} from '../api';
+import { getTimeClockHistory, getTimeClockSummary, type TimeEntry } from '../api';
 
 const S = {
   tab: (active: boolean): React.CSSProperties => ({
@@ -17,13 +14,6 @@ const S = {
     color: active ? '#fff' : '#6B5D4F',
   }),
 };
-
-function fmtDuration(ms: number) {
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
 
 function fmtHours(h: number | null) {
   if (h == null) return '—';
@@ -35,59 +25,22 @@ function fmtHours(h: number | null) {
 export default function TimeClockPage() {
   usePageTitle('Time Clock');
 
-  const [tab, setTab] = useState<'clock' | 'history' | 'summary'>('clock');
+  const [tab, setTab] = useState<'history' | 'summary'>('history');
 
-  // Clock-in/out
-  const [clockedIn, setClockedIn] = useState(false);
-  const [sinceTime, setSinceTime] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState('00:00:00');
-  const [statusLoading, setStatusLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [clockError, setClockError] = useState('');
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const loadStatus = async () => {
-    setStatusLoading(true);
-    try {
-      const res = await getTimeClockStatus();
-      setClockedIn(res.clocked_in);
-      setSinceTime(res.entry?.clocked_in_at ?? null);
-    } catch (e) { setClockError((e as Error).message); }
-    finally { setStatusLoading(false); }
-  };
-
-  useEffect(() => { void loadStatus(); }, []);
-
-  useEffect(() => {
-    if (clockedIn && sinceTime) {
-      timerRef.current = setInterval(() => {
-        setElapsed(fmtDuration(Date.now() - new Date(sinceTime).getTime()));
-      }, 1000);
-    } else {
-      setElapsed('00:00:00');
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [clockedIn, sinceTime]);
-
-  const handleClock = async () => {
-    setActionLoading(true); setClockError('');
-    try {
-      if (clockedIn) { await clockOut(); }
-      else { const r = await clockIn(); if (r.entry?.clocked_in_at) setSinceTime(r.entry.clocked_in_at); }
-      await loadStatus();
-    } catch (e) { setClockError((e as Error).message); }
-    finally { setActionLoading(false); }
-  };
-
-  // History
   const today = new Date().toISOString().slice(0, 10);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [histLoading, setHistLoading] = useState(false);
   const [histFrom, setHistFrom] = useState(today);
   const [histTo, setHistTo] = useState(today);
-
   const [histError, setHistError] = useState('');
+
+  type SumRow = { staff: { id: number; name: string }; total_hours: number; entries_count: number };
+  const [summary, setSummary] = useState<SumRow[]>([]);
+  const [sumLoading, setSumLoading] = useState(false);
+  const [sumFrom, setSumFrom] = useState(today);
+  const [sumTo, setSumTo] = useState(today);
+  const [sumError, setSumError] = useState('');
+
   const loadHistory = async () => {
     setHistLoading(true); setHistError('');
     try {
@@ -97,16 +50,6 @@ export default function TimeClockPage() {
     finally { setHistLoading(false); }
   };
 
-  useEffect(() => { if (tab === 'history') void loadHistory(); }, [tab, histFrom, histTo]);
-
-  // Summary
-  type SumRow = { staff: { id: number; name: string }; total_hours: number; entries_count: number };
-  const [summary, setSummary] = useState<SumRow[]>([]);
-  const [sumLoading, setSumLoading] = useState(false);
-  const [sumFrom, setSumFrom] = useState(today);
-  const [sumTo, setSumTo] = useState(today);
-
-  const [sumError, setSumError] = useState('');
   const loadSummary = async () => {
     setSumLoading(true); setSumError('');
     try {
@@ -116,6 +59,7 @@ export default function TimeClockPage() {
     finally { setSumLoading(false); }
   };
 
+  useEffect(() => { if (tab === 'history') void loadHistory(); }, [tab, histFrom, histTo]);
   useEffect(() => { if (tab === 'summary') void loadSummary(); }, [tab, sumFrom, sumTo]);
 
   return (
@@ -135,60 +79,15 @@ export default function TimeClockPage() {
         }
       />
 
+      <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 16px' }}>
+        To clock in or out, use the <strong>POS terminal</strong> (Time Clock on the login screen or side menu).
+      </p>
+
       <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
-        <button role="tab" aria-selected={tab === 'clock'} style={S.tab(tab === 'clock')} onClick={() => setTab('clock')}>Clock In/Out</button>
         <button role="tab" aria-selected={tab === 'history'} style={S.tab(tab === 'history')} onClick={() => setTab('history')}>History</button>
         <button role="tab" aria-selected={tab === 'summary'} style={S.tab(tab === 'summary')} onClick={() => setTab('summary')}>Summary</button>
       </div>
 
-      {/* ── Clock Tab ── */}
-      {tab === 'clock' && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
-          {clockError && <p style={{ color: '#ef4444', marginBottom: 16 }}>{clockError}</p>}
-
-          <div style={{
-            width: 200, height: 200, borderRadius: '50%',
-            background: clockedIn ? '#dcfce7' : '#F5F0EB',
-            border: `4px solid ${clockedIn ? '#16a34a' : '#E8E0D8'}`,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            marginBottom: 32,
-          }}>
-            <div style={{ fontSize: 13, color: '#6B5D4F', fontWeight: 600, marginBottom: 6 }}>
-              {clockedIn ? 'CLOCKED IN' : 'CLOCKED OUT'}
-            </div>
-            {clockedIn && (
-              <div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: '#16a34a' }}>
-                {statusLoading ? '—' : elapsed}
-              </div>
-            )}
-            {clockedIn && sinceTime && (
-              <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 6 }}>
-                since {new Date(sinceTime).toLocaleTimeString()}
-              </div>
-            )}
-          </div>
-
-          <Btn
-            onClick={handleClock}
-            disabled={actionLoading || statusLoading}
-            style={{
-              padding: '14px 40px', fontSize: 16, fontWeight: 700,
-              background: clockedIn ? '#ef4444' : '#D4813A',
-              borderRadius: 12,
-            }}
-          >
-            {actionLoading ? '…' : clockedIn ? 'Clock Out' : 'Clock In'}
-          </Btn>
-
-          {clockedIn && sinceTime && (
-            <p style={{ marginTop: 16, color: '#6B5D4F', fontSize: 13 }}>
-              Clocked in at {new Date(sinceTime).toLocaleTimeString()} · {new Date(sinceTime).toLocaleDateString()}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* ── History Tab ── */}
       {tab === 'history' && (
         <>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap' }}>
@@ -225,7 +124,6 @@ export default function TimeClockPage() {
         </>
       )}
 
-      {/* ── Summary Tab ── */}
       {tab === 'summary' && (
         <>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap' }}>
