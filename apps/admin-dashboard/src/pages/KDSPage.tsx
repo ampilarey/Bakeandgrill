@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchKdsOrders, kdsStart, kdsBump, kdsRecall } from '../api';
+import { fetchKdsOrders } from '../api';
 import type { KdsTicket } from '../api';
-import { fetchMenuGroups, fetchAdminItems, toggleItemAvailability } from '../api/menu';
+import { fetchMenuGroups, fetchAdminItems } from '../api/menu';
 import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useSse } from '../hooks/useSse';
 import { playChime, playLateAlert } from '../utils/audio';
 
@@ -43,28 +42,21 @@ function ticketPrepTarget(ticket: KdsTicket, itemPrepMap: Record<number, number>
 }
 
 export function KDSPage() {
-    usePageTitle('Kitchen Display');
-  const { can } = useCurrentUserPermissions();
-  const canStart = can('kds.start_order') || can('orders.manage');
-  const canBumpRecall = can('kds.bump_order') || can('orders.manage');
-  const can86Items = can('kds.manage_availability') || can('menu.manage');
+  usePageTitle('Kitchen Display');
   const [tickets, setTickets] = useState<KdsTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [acting, setActing] = useState<number | null>(null);
   const [newTicketFlash, setNewTicketFlash] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [stationFilter, setStationFilter] = useState<number | 'all'>('all');
   const [menuGroups, setMenuGroups] = useState<{ id: number; name: string }[]>([]);
   const [itemGroupMap, setItemGroupMap] = useState<Record<number, number>>({});
   const [itemPrepMap, setItemPrepMap] = useState<Record<number, number>>({});
-  const [eightySixing, setEightySixing] = useState<number | null>(null);
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const lateAlertedRef = useRef<Set<number>>(new Set());
-  const isFirstKdsLoad    = useRef(true);
+  const isFirstKdsLoad = useRef(true);
   const kdsRef = useRef<HTMLDivElement>(null);
 
-  // Sync fullscreen state with browser events
   useEffect(() => {
     const h = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', h);
@@ -86,7 +78,6 @@ export function KDSPage() {
       setTickets(incoming);
       setError('');
 
-      // Detect new pending/paid tickets
       const newIds = incoming
         .filter((t) => ['pending', 'paid'].includes(t.status) && !prevPendingIdsRef.current.has(t.id))
         .map((t) => t.id);
@@ -115,7 +106,6 @@ export function KDSPage() {
     }
   }, [itemPrepMap]);
 
-  // Initial load
   useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
@@ -132,25 +122,15 @@ export function KDSPage() {
     }).catch(() => undefined);
   }, []);
 
-  // SSE: reload whenever the kitchen stream fires any order event
   const handleSseEvent = useCallback(() => { void load(); }, [load]);
   const { connected: sseConnected } = useSse('/stream/kds', { onEvent: handleSseEvent });
 
-  // Fallback polling — only active when SSE is disconnected (degraded mode)
   useEffect(() => {
     if (sseConnected) return;
     const t = setInterval(() => void load(), 15_000);
     return () => clearInterval(t);
   }, [sseConnected, load]);
 
-  const act = async (id: number, fn: (id: number) => Promise<void>) => {
-    setActing(id);
-    try { await fn(id); await load(); } catch (e) { setError((e as Error).message); }
-    finally { setActing(null); }
-  };
-
-  // Backend statuses: pending → in_progress → ready → completed
-  // paid = online order waiting for kitchen
   const filteredTickets = useMemo(() => {
     if (stationFilter === 'all') return tickets;
     return tickets.filter((t) => (t.items ?? []).some((line) => {
@@ -167,18 +147,6 @@ export function KDSPage() {
     ? Math.round(items.reduce((sum, t) => sum + minutesSince(t.created_at), 0) / items.length)
     : 0;
 
-  const handle86 = async (itemId: number) => {
-    setEightySixing(itemId);
-    try {
-      await toggleItemAvailability(itemId);
-      await load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setEightySixing(null);
-    }
-  };
-
   const Column = ({ title, items, color, flash, children }: {
     title: string; items: KdsTicket[]; color: string; flash?: boolean;
     children: (t: KdsTicket) => React.ReactNode;
@@ -186,7 +154,7 @@ export function KDSPage() {
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
-        padding: flash ? '6px 10px' : '6px 10px', borderRadius: 10,
+        padding: '6px 10px', borderRadius: 10,
         background: flash ? 'rgba(245,158,11,0.12)' : 'transparent',
         transition: 'background 0.3s',
         animation: flash ? 'kds-pulse 0.5s ease-in-out 4' : 'none',
@@ -223,7 +191,7 @@ export function KDSPage() {
     <div ref={kdsRef} style={isFullscreen ? { background: '#F8F6F3', padding: 20, minHeight: '100vh' } : undefined}>
       <PageHeader
         title="Kitchen Display"
-        subtitle={sseConnected ? '● Live' : '○ Polling every 15s'}
+        subtitle={sseConnected ? '● Live monitor' : '○ Polling every 15s'}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
@@ -233,6 +201,9 @@ export function KDSPage() {
           </div>
         }
       />
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.45 }}>
+        Kitchen staff run tickets on the <strong>KDS app</strong> (<code style={{ fontSize: 12 }}>/kds</code>) — this screen is a live monitor for managers.
+      </p>
       {error && <ErrorMsg message={error} />}
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -262,37 +233,14 @@ export function KDSPage() {
         <div className="kds-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
           <Column title="Pending" items={pending} color="#f59e0b" flash={newTicketFlash}>
             {(t) => (
-              <>
-                <TicketHeader ticket={t} on86={can86Items ? handle86 : undefined} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
-                {canStart && (
-                <Btn
-                  small onClick={() => act(t.id, kdsStart)}
-                  disabled={acting === t.id}
-                  style={{ marginTop: 12, width: '100%', background: '#f59e0b', color: '#fff', border: 'none' }}
-                >
-                  {acting === t.id ? '…' : 'Start Cooking'}
-                </Btn>
-                )}
-              </>
+              <TicketHeader ticket={t} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
             )}
           </Column>
 
           <Column title="Cooking" items={cooking} color="#3b82f6">
             {(t) => (
               <>
-                <TicketHeader ticket={t} on86={can86Items ? handle86 : undefined} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
-                {/*
-                  Marking ready moved to POS — cashier owns the
-                  "Ready for pickup!" SMS so the call to notify the
-                  customer can't fire without someone at the till.
-                  Kitchen finishes cooking → tells the cashier
-                  verbally / hands the bag over → cashier hits Mark
-                  ready in POS → SMS goes → order shows up in the
-                  Ready column here automatically.
-                  We render a passive label instead of a button so
-                  the chef knows the workflow has shifted without
-                  having to read release notes.
-                */}
+                <TicketHeader ticket={t} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
                 <div
                   style={{
                     marginTop: 12,
@@ -308,7 +256,7 @@ export function KDSPage() {
                     lineHeight: 1.3,
                   }}
                 >
-                  ⏳ Ready? Tell the cashier — they mark ready from POS
+                  Ready? Cashier marks ready from POS — tickets update here automatically.
                 </div>
               </>
             )}
@@ -316,27 +264,7 @@ export function KDSPage() {
 
           <Column title="Ready" items={ready} color="#22c55e">
             {(t) => (
-              <>
-                <TicketHeader ticket={t} on86={can86Items ? handle86 : undefined} eightySixing={eightySixing} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
-                {canBumpRecall && (
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <Btn
-                    small onClick={() => act(t.id, kdsBump)}
-                    disabled={acting === t.id}
-                    style={{ flex: 1, background: '#22c55e', color: '#fff', border: 'none' }}
-                  >
-                    Complete
-                  </Btn>
-                  <Btn
-                    small onClick={() => act(t.id, kdsRecall)}
-                    disabled={acting === t.id}
-                    variant="ghost"
-                  >
-                    Recall
-                  </Btn>
-                </div>
-                )}
-              </>
+              <TicketHeader ticket={t} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
             )}
           </Column>
         </div>
@@ -347,13 +275,9 @@ export function KDSPage() {
 
 function TicketHeader({
   ticket,
-  on86,
-  eightySixing,
   prepTargetMin = PREP_TARGET_DEFAULT,
 }: {
   ticket: KdsTicket;
-  on86?: (itemId: number) => void;
-  eightySixing?: number | null;
   prepTargetMin?: number;
 }) {
   const overdue = minutesSince(ticket.created_at) >= prepTargetMin
@@ -385,26 +309,13 @@ function TicketHeader({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {(ticket.items ?? []).map((item, i) => (
-          <div key={i} style={{ fontSize: 13, color: '#6B5D4F', display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
-            <div>
-              <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}
-              {item.modifiers && item.modifiers.length > 0 && (
-                <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
-                  + {item.modifiers.map((m) => m.modifier_name).join(', ')}
-                </span>
-              )}
-            </div>
-            {on86 && item.item_id ? (
-              <button
-                type="button"
-                onClick={() => on86(item.item_id!)}
-                disabled={eightySixing === item.item_id}
-                title="Mark item sold out (86)"
-                style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, border: '1px solid #FECACA', background: '#FEF2F2', color: '#991B1B', cursor: 'pointer', flexShrink: 0 }}
-              >
-                {eightySixing === item.item_id ? '…' : '86'}
-              </button>
-            ) : null}
+          <div key={i} style={{ fontSize: 13, color: '#6B5D4F' }}>
+            <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}
+            {item.modifiers && item.modifiers.length > 0 && (
+              <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
+                + {item.modifiers.map((m) => m.modifier_name).join(', ')}
+              </span>
+            )}
           </div>
         ))}
       </div>

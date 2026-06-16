@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { useSse } from '../hooks/useSse';
 import {
-  fetchOrders, fetchOrder, holdOrder, resumeOrder, sendOrderBill,
-  kdsStart, kdsBump, addOrderPayments,
+  fetchOrders, fetchOrder, resumeOrder, sendOrderBill,
+  addOrderPayments,
   getReceiptLinkForOrder, sendReceiptForOrder,
   createInvoiceFromOrder, sendInvoiceToCustomer,
   fetchDeliveryDrivers, assignDeliveryDriver,
@@ -58,8 +58,7 @@ function timeAgo(iso: string) {
 }
 
 function canQuickAdvanceStatus(status: string, can: (slug?: string) => boolean): boolean {
-  if (status === 'held') return can('pos.hold_resume');
-  if (['pending', 'paid', 'preparing', 'in_progress', 'ready'].includes(status)) return can('orders.manage');
+  if (status === 'held') return can('pos.hold_resume') || can('orders.manage');
   return false;
 }
 
@@ -251,24 +250,9 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             {/* Action buttons */}
             {(canManage || canHoldResume || canSendBill || canRecordPayment) && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              {canManage && ['pending', 'paid'].includes(order.status) && (
-                <Btn small onClick={() => doAction('start', () => kdsStart(order.id), 'Start preparing')}>
-                  {acting === 'start' ? '…' : '▶ Start Preparing'}
-                </Btn>
-              )}
-              {canManage && ['preparing', 'in_progress'].includes(order.status) && (
-                <Btn small onClick={() => doAction('bump', () => kdsBump(order.id), 'Mark ready')}>
-                  {acting === 'bump' ? '…' : '✓ Mark Ready'}
-                </Btn>
-              )}
               {canHoldResume && order.status === 'held' && (
                 <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
                   {acting === 'resume' ? '…' : '▶ Resume Order'}
-                </Btn>
-              )}
-              {canHoldResume && ['pending', 'paid', 'preparing', 'in_progress', 'ready'].includes(order.status) && (
-                <Btn small variant="secondary" onClick={() => doAction('hold', () => holdOrder(order.id), 'Order held')}>
-                  {acting === 'hold' ? '…' : '⏸ Hold'}
                 </Btn>
               )}
               {canSendBill && order.type === 'dine_in' && ['ready', 'preparing', 'in_progress'].includes(order.status) && (
@@ -524,21 +508,16 @@ export function OrdersPage() {
   };
 
   const quickAdvance = async (o: Order) => {
+    if (o.status !== 'held') return;
     setQuickActing(o.id);
     try {
-      if (['pending', 'paid'].includes(o.status)) await kdsStart(o.id);
-      else if (['in_progress', 'preparing', 'ready'].includes(o.status)) await kdsBump(o.id);
-      else if (o.status === 'held') await resumeOrder(o.id);
-      else return;
+      await resumeOrder(o.id);
       void load();
     } catch { /* non-blocking */ } finally { setQuickActing(null); }
   };
 
   const quickLabel = (status: string): string | null => {
-    if (['pending', 'paid'].includes(status))                  return '▶ Cook';
-    if (['in_progress', 'preparing'].includes(status))         return '✓ Ready';
-    if (status === 'ready')                                    return '✓ Done';
-    if (status === 'held')                                     return '▶ Resume';
+    if (status === 'held') return '▶ Resume';
     return null;
   };
 
@@ -636,6 +615,10 @@ export function OrdersPage() {
           </div>
         }
       />
+
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.45 }}>
+        Kitchen prep and register actions run on the <strong>POS</strong> and <strong>KDS</strong> apps — this page is for monitoring and manager overrides.
+      </p>
 
       <TableStateBar error={error} onRetry={load} />
 
