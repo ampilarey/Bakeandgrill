@@ -70,6 +70,14 @@ describe('Layout desktop sidebar groups', () => {
     expect(monitorHeader!.classList.contains('admin-nav-group-header--active')).toBe(false);
   });
 
+  it('defaults to Monitor and Customers & Marketing when localStorage is empty', () => {
+    localStorage.removeItem('bg_nav_open_groups');
+    renderLayout('/settings');
+    expect(isGroupOpen('Monitor')).toBe(true);
+    expect(isGroupOpen('Customers & Marketing')).toBe(true);
+    expect(isGroupOpen('Manage')).toBe(false);
+  });
+
   it('auto-opens the group for the current route after navigation', () => {
     localStorage.setItem('bg_nav_open_groups', JSON.stringify(['monitor', 'customers-marketing']));
 

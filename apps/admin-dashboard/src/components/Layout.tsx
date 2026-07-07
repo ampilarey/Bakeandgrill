@@ -377,7 +377,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         return new Set(parsed.filter((id) => navGroups.some((g) => g.id === id)));
       }
     } catch { /* ignore */ }
-    return new Set(['operations', 'customers']);
+    return new Set(['monitor', 'customers-marketing']);
   });
 
   useEffect(() => {
