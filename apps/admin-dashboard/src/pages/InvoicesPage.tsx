@@ -8,6 +8,7 @@ import {
 } from '../api';
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { today } from '../utils/dateHelpers';
 
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
 
@@ -53,7 +54,7 @@ export function InvoicesPage() {
   // Manual invoice creation
   const emptyLine = (): ManualInvoiceLineItem => ({ description: '', quantity: 1, unit_price: 0 });
   const [showManual, setShowManual]       = useState(false);
-  const [manualForm, setManualForm]       = useState({ type: 'sale' as 'sale' | 'purchase' | 'credit_note', recipient_name: '', recipient_phone: '', issue_date: new Date().toISOString().slice(0, 10), due_date: '', notes: '', tax_rate_bp: '0' });
+  const [manualForm, setManualForm]       = useState({ type: 'sale' as 'sale' | 'purchase' | 'credit_note', recipient_name: '', recipient_phone: '', issue_date: today(), due_date: '', notes: '', tax_rate_bp: '0' });
   const [manualLines, setManualLines]     = useState<ManualInvoiceLineItem[]>([emptyLine()]);
   const [manualSaving, setManualSaving]   = useState(false);
   const [manualError, setManualError]     = useState('');
@@ -253,7 +254,7 @@ export function InvoicesPage() {
       showToast(`Invoice ${res.invoice.invoice_number} created.`);
       setShowManual(false);
       setManualLines([emptyLine()]);
-      setManualForm({ type: 'sale', recipient_name: '', recipient_phone: '', issue_date: new Date().toISOString().slice(0, 10), due_date: '', notes: '', tax_rate_bp: '0' });
+      setManualForm({ type: 'sale', recipient_name: '', recipient_phone: '', issue_date: today(), due_date: '', notes: '', tax_rate_bp: '0' });
       void load();
     } catch (e) { setManualError((e as Error).message); }
     finally { setManualSaving(false); }

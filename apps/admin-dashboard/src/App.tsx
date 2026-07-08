@@ -382,12 +382,12 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="shifts" element={
-                  <PermissionGuard user={user} permission="shifts.view_own_history">
+                  <PermissionGuard user={user} permission="shifts.view_all_history">
                     <ShiftsPage />
                   </PermissionGuard>
                 } />
                 <Route path="time-clock" element={
-                  <PermissionGuard user={user} permission="pos.time_clock">
+                  <PermissionGuard user={user} permissions={['staff.view', 'pos.time_clock']}>
                     <TimeClockPage />
                   </PermissionGuard>
                 } />

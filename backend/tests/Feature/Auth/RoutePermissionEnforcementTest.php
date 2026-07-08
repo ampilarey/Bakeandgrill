@@ -41,6 +41,25 @@ class RoutePermissionEnforcementTest extends TestCase
         $this->getJson('/api/time-clock/status')->assertOk();
     }
 
+    public function test_manager_with_staff_view_can_read_time_clock_history_without_pos_time_clock(): void
+    {
+        $manager = $this->makeManager();
+        $manager->revokePermission('pos.time_clock');
+
+        Sanctum::actingAs($manager, ['staff']);
+
+        $this->getJson('/api/time-clock/history')->assertOk();
+    }
+
+    public function test_staff_with_time_clock_but_without_staff_view_cannot_read_summary(): void
+    {
+        $user = $this->makeStaff('staff');
+
+        Sanctum::actingAs($user, ['staff']);
+
+        $this->getJson('/api/time-clock/summary')->assertForbidden();
+    }
+
     public function test_manager_can_update_online_ordering_settings(): void
     {
         $manager = $this->makeManager();

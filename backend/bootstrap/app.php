@@ -49,6 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'bml.signature' => App\Http\Middleware\VerifyBmlSignature::class,
             'role' => App\Http\Middleware\RequireRole::class,
             'permission' => App\Http\Middleware\RequirePermission::class,
+            'permission.any' => App\Http\Middleware\RequireAnyPermission::class,
             'customer.token' => App\Http\Middleware\EnsureCustomerToken::class,
             'staff.token' => App\Http\Middleware\EnsureStaffToken::class,
             'driver.token' => App\Http\Middleware\EnsureDriverToken::class,

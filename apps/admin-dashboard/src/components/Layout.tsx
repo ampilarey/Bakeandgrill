@@ -6,7 +6,7 @@ import { Bell, BellOff, ChevronDown, ChevronLeft, ChevronRight, Menu, Moon, Sear
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
 import { useNotifications, markAllRead, clearAll } from '../utils/notifications';
 import {
-  PINNED_NAV_ITEMS, getNavGroups, getAllNavItems, resolveNavItemForPath, BOTTOM_TABS, can, LogOut,
+  PINNED_NAV_ITEMS, getNavGroups, getAllNavItems, resolveNavItemForPath, BOTTOM_TABS, canNavItem, LogOut,
   NAV_EXACT_MATCH_PATHS,
   type NavItem,
 } from './navConfig';
@@ -225,7 +225,7 @@ function NavSection({
   collapsed: boolean;
   lowStockCount: number;
 }) {
-  const visible = items.filter((item) => can(user, item.permission));
+  const visible = items.filter((item) => canNavItem(user, item));
   if (visible.length === 0) return null;
 
   return (
@@ -272,7 +272,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
     const map = new Map<string, number>();
     for (const group of navGroups) {
       const total = group.items
-        .filter((item) => can(user, item.permission))
+        .filter((item) => canNavItem(user, item))
         .reduce((sum, item) => sum + (getNavItemBadge(item.to, lowStockCount) ?? 0), 0);
       if (total > 0) map.set(group.id, total);
     }
@@ -382,7 +382,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
 
   useEffect(() => {
     const activeGroup = navGroups.find((g) => {
-      const visibleItems = g.items.filter((item) => can(user, item.permission));
+      const visibleItems = g.items.filter((item) => canNavItem(user, item));
       return visibleItems.some((i) => isNavItemActive(location.pathname, i.to));
     });
     if (activeGroup) {
@@ -448,14 +448,14 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         </div>
 
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {PINNED_NAV_ITEMS.filter((item) => can(user, item.permission)).length > 0 && (
+          {PINNED_NAV_ITEMS.filter((item) => canNavItem(user, item)).length > 0 && (
             <div>
               <p className="admin-mobile-drawer-group-title">
                 <Menu size={14} />
                 Quick access
               </p>
               <div className="more-drawer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                {PINNED_NAV_ITEMS.filter((item) => can(user, item.permission)).map(({ to, icon: Icon, label }) => {
+                {PINNED_NAV_ITEMS.filter((item) => canNavItem(user, item)).map(({ to, icon: Icon, label }) => {
                   const isActive = isNavItemActive(location.pathname, to);
                   return (
                     <NavLink key={to} to={to} onClick={closeDrawer} className={`admin-mobile-drawer-tile${isActive ? ' admin-mobile-drawer-tile--active' : ''}`}>
@@ -469,7 +469,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
           )}
 
           {navGroups.map((group) => {
-            const visibleItems = group.items.filter((item) => can(user, item.permission));
+            const visibleItems = group.items.filter((item) => canNavItem(user, item));
             if (visibleItems.length === 0) return null;
             const GroupIcon = group.icon;
             return (
@@ -568,7 +568,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         </main>
 
         <nav className="admin-mobile-bottom-nav">
-          {BOTTOM_TABS.filter((item) => can(user, item.permission)).map(({ to, icon: Icon, label }) => {
+          {BOTTOM_TABS.filter((item) => canNavItem(user, item)).map(({ to, icon: Icon, label }) => {
             if (to === '#more') {
               return (
                 <button
@@ -638,7 +638,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
         </button>
 
         <nav className="admin-sidebar-nav">
-          {!collapsed && PINNED_NAV_ITEMS.some((i) => can(user, i.permission)) && (
+          {!collapsed && PINNED_NAV_ITEMS.some((i) => canNavItem(user, i)) && (
             <div className="admin-nav-pinned">
               <NavSection
                 items={PINNED_NAV_ITEMS}
@@ -661,7 +661,7 @@ export function Layout({ user, onLogout, children, onSearch }: LayoutProps & { o
           )}
 
           {navGroups.map((group) => {
-            const visibleItems = group.items.filter((item) => can(user, item.permission));
+            const visibleItems = group.items.filter((item) => canNavItem(user, item));
             if (visibleItems.length === 0) return null;
             const groupOpen = openGroups.has(group.id);
             const isOpen = collapsed || groupOpen;

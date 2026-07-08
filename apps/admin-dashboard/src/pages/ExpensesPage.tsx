@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
 import { downloadCSV } from '../utils/csvExport';
+import { today, monthStart } from '../utils/dateHelpers';
 import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
-
-function today() { return new Date().toISOString().slice(0, 10); }
-function monthStart() { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); }
 
 const STATUS_COLOR: Record<string, string> = { approved: 'green', pending: 'yellow', rejected: 'red' };
 

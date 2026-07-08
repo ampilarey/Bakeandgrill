@@ -113,9 +113,9 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::post('/time-clock/out', [App\Http\Controllers\Api\TimeClockController::class, 'clockOut'])
             ->middleware('permission:pos.time_clock');
         Route::get('/time-clock/history', [App\Http\Controllers\Api\TimeClockController::class, 'history'])
-            ->middleware('permission:pos.time_clock');
+            ->middleware('permission.any:staff.view,pos.time_clock');
         Route::get('/time-clock/summary', [App\Http\Controllers\Api\TimeClockController::class, 'summary'])
-            ->middleware('permission:pos.time_clock');
+            ->middleware('permission:staff.view');
     });
 
     // ─── Xero OAuth ─────────────────────────────────────────────────────────────

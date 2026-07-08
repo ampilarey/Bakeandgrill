@@ -5,6 +5,7 @@ import {
 } from '../components/SharedUI';
 import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
 import { ApiRequestError } from '@shared/api';
+import { today } from '../utils/dateHelpers';
 import { Pencil, Trash2 } from 'lucide-react';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -27,7 +28,6 @@ type SpecialForm = {
   is_active: boolean;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
 
 type ListFilter = 'all' | 'active' | 'discount' | 'special' | 'inactive';
 

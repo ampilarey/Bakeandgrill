@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, fetchInventoryItems, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryItem } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { today } from '../utils/dateHelpers';
 
 const STATUS_COLOR: Record<string, string> = {
   draft:    'gray',
@@ -54,7 +55,7 @@ export function PurchaseOrdersPage() {
   const [manualInvItems, setManualInvItems] = useState<InventoryItem[]>([]);
   const [manualPoForm, setManualPoForm] = useState({
     supplier_id: '',
-    purchase_date: new Date().toISOString().slice(0, 10),
+    purchase_date: today(),
     notes: '',
     lines: [{ inventory_item_id: '', quantity: '1', unit_cost: '0' }],
   });
@@ -65,7 +66,7 @@ export function PurchaseOrdersPage() {
     setManualPoError('');
     setManualPoForm({
       supplier_id: '',
-      purchase_date: new Date().toISOString().slice(0, 10),
+      purchase_date: today(),
       notes: '',
       lines: [{ inventory_item_id: '', quantity: '1', unit_cost: '0' }],
     });
@@ -116,7 +117,7 @@ export function PurchaseOrdersPage() {
   // CSV import
   const [showImport, setShowImport] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importDate, setImportDate] = useState(new Date().toISOString().slice(0, 10));
+  const [importDate, setImportDate] = useState(today());
   const [importNotes, setImportNotes] = useState('');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');

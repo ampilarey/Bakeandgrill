@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { fetchOrders, getDriverSettlementReport, type Order, type DriverSettlementReport, adminRequest } from '../api';
 import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, Spinner, StatCard, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { today, daysAgo } from '../utils/dateHelpers';
 
 type Driver = {
   id: number;
@@ -39,11 +40,8 @@ export function DeliveryPage() {
   const [tab, setTab] = useState<'orders' | 'drivers' | 'settlement'>('orders');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [settlementFrom, setSettlementFrom] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() - 7);
-    return d.toISOString().slice(0, 10);
-  });
-  const [settlementTo, setSettlementTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [settlementFrom, setSettlementFrom] = useState(() => daysAgo(7));
+  const [settlementTo, setSettlementTo] = useState(() => today());
   const [settlement, setSettlement] = useState<DriverSettlementReport | null>(null);
   const [settlementLoading, setSettlementLoading] = useState(false);
 

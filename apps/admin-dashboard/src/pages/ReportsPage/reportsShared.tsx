@@ -15,16 +15,10 @@ import {
   type HourlySalesReport, type StationPerformanceReport,
   type PaymentCommissionSummary,
 } from '../../api';
+import { localISO, today, daysAgo } from '../../utils/dateHelpers';
 
-// Local-timezone date helpers — `toISOString()` is always UTC and was
-// shifting Maldives (UTC+5) reports by a day during the late-evening
-// hours. See ADM-012.
-export function localISO(d: Date): string {
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
-}
-export function today()        { return localISO(new Date()); }
-export function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return localISO(d); }
+// Re-export for report tab modules that import from here.
+export { localISO, today, daysAgo };
 export function mvr(n: number) { return `MVR ${(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 export function pct(n: number, total: number) { return total > 0 ? `${((n / total) * 100).toFixed(1)}%` : '0%'; }
 

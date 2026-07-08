@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ChefHat, ClipboardList, Clock, CreditCard, DollarSign, MessageSquare, Monitor, Package, Play, Printer, Receipt, ShoppingBag, Trash2, TrendingUp, Truck, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChefHat, ClipboardList, Clock, CreditCard, DollarSign, MessageSquare, Monitor, Package, Printer, Receipt, ShoppingBag, Trash2, TrendingUp, Truck, Users } from 'lucide-react';
 import { playChime } from '../utils/audio';
 import { pushNotification } from '../utils/notifications';
 import {
@@ -13,7 +13,6 @@ import {
   getInventoryForecast,
   getPurchaseSuggestions,
   getSystemHealth,
-  kdsStart,
   fetchPosOverview,
   formatAuditAction,
   fetchMaintenancePreview,
@@ -76,21 +75,12 @@ const STATUS_BG: Record<string, string> = {
 // ── sub-components ────────────────────────────────────────────────────────────
 
 
-function OrderCard({ order, now, onPrepare }: { order: Order; now: number; onPrepare: (id: number) => void }) {
+function OrderCard({ order, now }: { order: Order; now: number }) {
   void now;
-  const [preparing, setPreparing] = useState(false);
   const color  = STATUS_COLOR[order.status] ?? '#9C8E7E';
   const bg     = STATUS_BG[order.status]    ?? '#F8F6F3';
   const urgent = ['pending', 'confirmed'].includes(order.status) &&
     (Date.now() - new Date(order.created_at).getTime()) > 10 * 60 * 1000;
-  const canPrepare = ['pending', 'paid'].includes(order.status);
-
-  const handlePrepare = async () => {
-    setPreparing(true);
-    try { await kdsStart(order.id); onPrepare(order.id); }
-    catch { /* non-critical */ }
-    finally { setPreparing(false); }
-  };
 
   return (
     <div style={{
@@ -121,23 +111,6 @@ function OrderCard({ order, now, onPrepare }: { order: Order; now: number; onPre
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontWeight: 700, fontSize: 13, color: '#D4813A' }}>{fmt(order.total)}</span>
-        {canPrepare && (
-          <button
-            onClick={() => void handlePrepare()}
-            disabled={preparing}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '4px 10px', borderRadius: 8, border: 'none',
-              background: preparing ? '#F0EBE5' : '#FEF3E8',
-              color: preparing ? '#9C8E7E' : '#D4813A',
-              fontSize: 12, fontWeight: 700, cursor: preparing ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit', transition: 'all 0.15s',
-            }}
-          >
-            <Play size={11} />
-            {preparing ? 'Starting…' : 'Prepare'}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -372,7 +345,6 @@ export function DashboardPage() {
     data: activeOrders = [],
     isLoading: ordersLoading,
     error: ordersQueryError,
-    refetch: refetchOrders,
   } = useQuery({
     queryKey: ['dashboard', 'active-orders'],
     queryFn: async () => {
@@ -796,7 +768,7 @@ export function DashboardPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 480, overflowY: 'auto' }}>
               {activeOrders.map((o) => (
-                <OrderCard key={o.id} order={o} now={now} onPrepare={() => { void refetchOrders(); }} />
+                <OrderCard key={o.id} order={o} now={now} />
               ))}
             </div>
           )}
