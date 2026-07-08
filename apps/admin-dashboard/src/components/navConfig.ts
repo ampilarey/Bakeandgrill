@@ -18,6 +18,8 @@ export interface NavItem {
   icon: React.ElementType;
   label: string;
   permission?: string;
+  /** When set, user needs any one of these slugs (overrides `permission`). */
+  permissions?: string[];
   /** Short hint for command palette / search */
   description?: string;
 }
@@ -50,8 +52,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'delivery.view',          description: 'Active delivery queue' },
       { to: '/kitchen-production', icon: Utensils, label: 'Kitchen Handover', permission: 'kitchen.production.view_all', description: 'Production, receiving & variance' },
       { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
-      { to: '/shifts',      icon: Wallet,     label: 'Shifts & Cash',  permission: 'shifts.view_own_history', description: 'Cash drawer & shifts' },
-      { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permission: 'pos.time_clock',         description: 'Clock in / out' },
+      { to: '/shifts',      icon: Wallet,     label: 'Shifts & Cash',  permission: 'shifts.view_all_history', description: 'Live stations & shift history' },
+      { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permissions: ['staff.view', 'pos.time_clock'], description: 'Punch history & summaries' },
     ],
   },
   {
@@ -211,6 +213,12 @@ export function can(user: StaffUser, permission?: string): boolean {
   return false;
 }
 
+/** Nav visibility — supports single `permission` or any-of `permissions`. */
+export function canNavItem(user: StaffUser, item: NavItem): boolean {
+  if (item.permissions?.length) return canAny(user, item.permissions);
+  return can(user, item.permission);
+}
+
 /** True if the user holds any of the listed permission slugs (owner always true). */
 export function canAny(user: StaffUser, permissions: string[]): boolean {
   if (user.role === 'owner') return true;
@@ -222,7 +230,7 @@ export function getDefaultNavPath(user: StaffUser): string {
   const items = getAllNavItems(showDevNavItems() || user.role === 'owner');
   for (const item of items) {
     if (item.to.startsWith('#')) continue;
-    if (can(user, item.permission)) return item.to;
+    if (canNavItem(user, item)) return item.to;
   }
   return '/account';
 }
@@ -230,7 +238,7 @@ export function getDefaultNavPath(user: StaffUser): string {
 /** Nav items the user can access (for palette / diagnostics). */
 export function getAccessibleNavItems(user: StaffUser): NavItem[] {
   return getAllNavItems(showDevNavItems() || user.role === 'owner').filter(
-    (item) => !item.to.startsWith('#') && can(user, item.permission),
+    (item) => !item.to.startsWith('#') && canNavItem(user, item),
   );
 }
 

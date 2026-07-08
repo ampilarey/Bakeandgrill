@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
+import { today } from '../utils/dateHelpers';
 import { getTimeClockHistory, getTimeClockSummary, type TimeEntry } from '../api';
 
 const S = {
@@ -24,21 +26,23 @@ function fmtHours(h: number | null) {
 
 export default function TimeClockPage() {
   usePageTitle('Time Clock');
+  const { can } = useCurrentUserPermissions();
+  const canViewSummary = can('staff.view');
 
   const [tab, setTab] = useState<'history' | 'summary'>('history');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const todayStr = today();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [histLoading, setHistLoading] = useState(false);
-  const [histFrom, setHistFrom] = useState(today);
-  const [histTo, setHistTo] = useState(today);
+  const [histFrom, setHistFrom] = useState(todayStr);
+  const [histTo, setHistTo] = useState(todayStr);
   const [histError, setHistError] = useState('');
 
   type SumRow = { staff: { id: number; name: string }; total_hours: number; entries_count: number };
   const [summary, setSummary] = useState<SumRow[]>([]);
   const [sumLoading, setSumLoading] = useState(false);
-  const [sumFrom, setSumFrom] = useState(today);
-  const [sumTo, setSumTo] = useState(today);
+  const [sumFrom, setSumFrom] = useState(todayStr);
+  const [sumTo, setSumTo] = useState(todayStr);
   const [sumError, setSumError] = useState('');
 
   const loadHistory = async () => {
@@ -60,7 +64,13 @@ export default function TimeClockPage() {
   };
 
   useEffect(() => { if (tab === 'history') void loadHistory(); }, [tab, histFrom, histTo]);
-  useEffect(() => { if (tab === 'summary') void loadSummary(); }, [tab, sumFrom, sumTo]);
+  useEffect(() => {
+    if (tab === 'summary' && canViewSummary) void loadSummary();
+  }, [tab, sumFrom, sumTo, canViewSummary]);
+
+  useEffect(() => {
+    if (tab === 'summary' && !canViewSummary) setTab('history');
+  }, [tab, canViewSummary]);
 
   return (
     <div>
@@ -85,7 +95,9 @@ export default function TimeClockPage() {
 
       <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 24, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         <button role="tab" aria-selected={tab === 'history'} style={S.tab(tab === 'history')} onClick={() => setTab('history')}>History</button>
-        <button role="tab" aria-selected={tab === 'summary'} style={S.tab(tab === 'summary')} onClick={() => setTab('summary')}>Summary</button>
+        {canViewSummary && (
+          <button role="tab" aria-selected={tab === 'summary'} style={S.tab(tab === 'summary')} onClick={() => setTab('summary')}>Summary</button>
+        )}
       </div>
 
       {tab === 'history' && (
@@ -124,7 +136,7 @@ export default function TimeClockPage() {
         </>
       )}
 
-      {tab === 'summary' && (
+      {tab === 'summary' && canViewSummary && (
         <>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap' }}>
             <DateInput label="From" value={sumFrom} onChange={v => setSumFrom(v)} />

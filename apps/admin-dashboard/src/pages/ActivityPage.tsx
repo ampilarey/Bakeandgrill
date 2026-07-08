@@ -11,12 +11,7 @@ import {
   type AuditLogRow,
 } from '../api/pos-admin';
 import { downloadCSV } from '../utils/csvExport';
-
-function localToday() {
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
-}
+import { today } from '../utils/dateHelpers';
 
 export default function ActivityPage() {
   usePageTitle('POS Activity');
@@ -33,8 +28,8 @@ export default function ActivityPage() {
   const [actions, setActions] = useState<string[]>([]);
   const [userId, setUserId] = useState('');
   const [action, setAction] = useState('');
-  const [from, setFrom] = useState(localToday());
-  const [to, setTo] = useState(localToday());
+  const [from, setFrom] = useState(today());
+  const [to, setTo] = useState(today());
   const [q, setQ] = useState('');
 
   const load = async (p = page) => {

@@ -5,6 +5,7 @@ import {
 } from '../components/SharedUI';
 import { fetchWasteLogs, fetchWasteSummary, createWasteLog, fetchAdminItems, fetchInventoryItems, type WasteLog, type WasteSummary, type MenuItem, type InventoryItem } from '../api';
 import { downloadCSV } from '../utils/csvExport';
+import { today, daysAgo } from '../utils/dateHelpers';
 
 const REASONS = ['spoilage', 'over_prep', 'drop', 'expired', 'quality', 'other'] as const;
 type Reason = typeof REASONS[number];
@@ -18,14 +19,9 @@ function mvr(n: number) {
   return `MVR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function daysAgo(n: number) {
-  const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10);
-}
-
 export default function WasteLogsPage() {
   usePageTitle('Waste Tracking');
 
-  const today = new Date().toISOString().slice(0, 10);
   const [tab, setTab] = useState<Tab>('logs');
 
   // shared date range

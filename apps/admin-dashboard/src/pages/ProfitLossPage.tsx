@@ -3,17 +3,7 @@ import { getProfitAndLoss, getCashFlow, getDailySummary, type PnLReport } from '
 import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
-// ── Date helpers — LOCAL timezone, not UTC ─────────────────────────────────
-// Pre-fix these used `.toISOString().slice(0,10)` which formats in UTC.
-// Maldives is UTC+5; at 9pm local "today" was already tomorrow in UTC,
-// so reports defaulted to a wrong date for a 5-hour window every night.
-function localISO(d: Date): string {
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
-}
-function today() { return localISO(new Date()); }
-function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return localISO(d); }
-function monthStart() { const d = new Date(); d.setDate(1); return localISO(d); }
+import { today, daysAgo, monthStart } from '../utils/dateHelpers';
 
 function ProgressBar({ pct, color = '#D4813A' }: { pct: number; color?: string }) {
   return (

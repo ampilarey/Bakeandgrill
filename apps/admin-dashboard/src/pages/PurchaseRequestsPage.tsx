@@ -71,7 +71,7 @@ export default function PurchaseRequestsPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [showReject, setShowReject] = useState(false);
 
-  const activeTab = TABS.find((t) => t.id === tab)!;
+  const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
   const load = async () => {
     setLoading(true);

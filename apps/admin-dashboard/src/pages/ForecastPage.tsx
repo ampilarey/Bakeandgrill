@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, fetchAdminItems, type ItemForecast, type MenuItem } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
-
-function today() { return new Date().toISOString().slice(0, 10); }
-function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+import { today, daysAgo } from '../utils/dateHelpers';
 
 const STATUS_COLOR: Record<string, string> = {
   ok:           '#22c55e',

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { fetchOrders, fetchStaff } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
-import { getAllNavItems, getNavItemGroupLabel } from './navConfig';
+import { getAllNavItems, getNavItemGroupLabel, canNavItem } from './navConfig';
 
 type Result = {
   id: string;
@@ -20,7 +20,7 @@ interface Props {
 
 export function CommandPalette({ open, onClose }: Props) {
   const navigate = useNavigate();
-  const { can } = useCurrentUserPermissions();
+  const { can, user } = useCurrentUserPermissions();
   const canOrders = can('orders.view');
   const canStaff = can('staff.view');
   const [query, setQuery] = useState('');
@@ -52,7 +52,7 @@ export function CommandPalette({ open, onClose }: Props) {
   const buildStatic = (q: string): Result[] => {
     const lower = q.toLowerCase();
     return getAllNavItems()
-      .filter((item) => can(item.permission))
+      .filter((item) => user != null && canNavItem(user, item))
       .filter((item) => {
         if (!q) return true;
         const group = getNavItemGroupLabel(item.to);
