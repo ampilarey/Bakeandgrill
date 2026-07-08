@@ -8,8 +8,11 @@
 # Red or still-running CI never deploys.
 #
 # Install once (cPanel Terminal):
+#   bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-self-update-cron-test.sh
+#
+# Or manually:
 #   chmod +x /home/bakeandgrill/test.bakeandgrill.mv/scripts/self-update-test.sh
-#   (crontab -l 2>/dev/null; echo "*/5 * * * * /home/bakeandgrill/test.bakeandgrill.mv/scripts/self-update-test.sh >> \$HOME/self-update-test.log 2>&1") | crontab -
+#   (crontab -l 2>/dev/null; echo "* * * * * /home/bakeandgrill/test.bakeandgrill.mv/scripts/self-update-test.sh >> \$HOME/self-update-test.log 2>&1") | crontab -
 #
 # Watch it work:  tail -f ~/self-update-test.log
 set -uo pipefail

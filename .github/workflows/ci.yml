@@ -354,7 +354,7 @@ jobs:
       - name: Deploy skipped or failed
         if: steps.deploy.outcome != 'success'
         run: |
-          echo "::notice::SSH deploy not configured (server port 22 is closed). The test server self-updates via scripts/self-update-test.sh on a 5-minute cron — it deploys this commit once all checks here are green."
+          echo "::notice::SSH deploy not configured (server port 22 is closed). The test server self-updates via scripts/self-update-test.sh on a 1-minute cron — it deploys this commit once all checks here are green."
 
   deploy-production:
     name: Deploy (production — bakeandgrill.mv)
