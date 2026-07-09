@@ -25,9 +25,8 @@ describe("OpenShiftModal", () => {
 
     await user.click(screen.getByRole("button", { name: "Open shift" }));
 
-    expect(await screen.findByText(/Tap 0 if the drawer is empty/i)).toBeTruthy();
-    // Error box (red) — distinct from the always-visible keypad hint.
-    expect(screen.getByText(/Enter the cash you counted in the drawer/i)).toBeTruthy();
+    // Error box uses the full sentence; keypad hint is a different string.
+    expect(await screen.findByText("Enter the cash you counted in the drawer. Tap 0 if the drawer is empty.")).toBeTruthy();
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
