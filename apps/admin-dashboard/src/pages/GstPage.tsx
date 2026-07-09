@@ -11,6 +11,7 @@ import {
   type GstSettings, type GstSummary,
 } from '../api/gst';
 import { getInvoices, type Invoice } from '../api/finance';
+import { today } from '../utils/dateHelpers';
 
 const mvr = (laar: number) => `MVR ${(laar / 100).toFixed(2)}`;
 const mvrFromDecimal = (amount: number) => `MVR ${Number(amount).toFixed(2)}`;
@@ -21,10 +22,14 @@ function periodRange(period: string): { from: string; to: string } {
   return { from: `${period}-01`, to: `${period}-${String(last).padStart(2, '0')}` };
 }
 
+function currentPeriod(): string {
+  return today().slice(0, 7);
+}
+
 export default function GstPage() {
   usePageTitle('GST');
   const [tab, setTab] = useState('Dashboard');
-  const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  const [period, setPeriod] = useState(currentPeriod);
   const [summary, setSummary] = useState<GstSummary | null>(null);
   const [settings, setSettings] = useState<GstSettings | null>(null);
   const [output, setOutput] = useState<{ tax_invoices: unknown[]; other_transactions: unknown[] } | null>(null);

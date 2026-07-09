@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\TimePunch;
 use App\Services\AuditLogService;
+use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -141,12 +142,11 @@ class TimeClockController extends Controller
             $query->whereDate('clocked_in_at', '<=', $to);
         }
 
-        // Non-manager users see only their own records
+        // Oversight (staff.view): all punches. Cashiers (pos.time_clock only): own records.
         $user = $request->user();
-        $user->loadMissing('role');
-        $roleSlug = $user->role?->slug;
+        $canViewAll = app(PermissionService::class)->hasPermission($user, 'staff.view');
 
-        if (!in_array($roleSlug, ['manager', 'owner'], true)) {
+        if (!$canViewAll) {
             $query->where('user_id', $user->id);
         }
 
@@ -163,11 +163,9 @@ class TimeClockController extends Controller
 
     public function summary(Request $request): JsonResponse
     {
-        // Only managers and owners may view all-staff summaries
+        // All-staff summary requires staff.view (route middleware also enforces this).
         $user = $request->user();
-        $user->loadMissing('role');
-        $roleSlug = $user->role?->slug;
-        abort_unless(in_array($roleSlug, ['manager', 'owner'], true), 403);
+        abort_unless(app(PermissionService::class)->hasPermission($user, 'staff.view'), 403);
 
         $from = $request->query('from', now()->startOfWeek()->toDateString());
         $to = $request->query('to', now()->toDateString());

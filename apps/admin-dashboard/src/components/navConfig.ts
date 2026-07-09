@@ -111,7 +111,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Wrench,
     items: [
       { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
-      { to: '/settings',      icon: Settings,    label: 'Settings',       permission: 'settings.update', description: 'Operational settings & charges' },
+      { to: '/settings',      icon: Settings,    label: 'Settings',       permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Operational settings & charges' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
       { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'webhooks.manage', description: 'Outbound integrations' },
@@ -189,8 +189,9 @@ const PERM_ALIASES: Record<string, string[]> = {
   'roles_permissions.manage': ['website.manage', 'settings.manage'],
   'settings.manage': ['website.manage', 'settings.update'],
   'settings.update': ['settings.manage', 'website.manage'],
+  // Keep aliases aligned with backend PermissionCatalog::SATISFIED_BY.
+  // Do not invent frontend-only aliases (e.g. reports.view → shifts) — UI would open, APIs 403.
   'shifts.view_own_history': ['finance.cash_manage', 'payments.cash_manage'],
-  'shifts.view_all_history': ['reports.view', 'finance.cash_manage'],
   'reports.view': ['reports.basic'],
   'reports.basic': ['reports.view'],
   'orders.view': ['pos.active_orders', 'pos.view_this_device_orders'],

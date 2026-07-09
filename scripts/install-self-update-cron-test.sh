@@ -8,7 +8,7 @@ set -euo pipefail
 
 ROOT="/home/bakeandgrill/test.bakeandgrill.mv"
 SCRIPT="$ROOT/scripts/self-update-test.sh"
-LOG='$HOME/self-update-test.log'
+LOG="$HOME/self-update-test.log"
 CRON_LINE="* * * * * $SCRIPT >> $LOG 2>&1"
 
 if [[ ! -f "$SCRIPT" ]]; then

@@ -60,7 +60,8 @@ final class PermissionCatalog
         'promotions.apply_promo_code' => ['promotions.discounts'],
         'promotions.gift_cards' => ['promotions.discounts'],
         'shifts.view_own_history' => ['finance.cash_manage'],
-        'inventory.view' => ['inventory.view'],
+        // Manage implies view so inventory.manage-only roles can list stock.
+        'inventory.view' => ['inventory.manage'],
         'suppliers.view' => ['suppliers.view'],
         'kds.view' => ['orders.view'],
         'kds.start_order' => ['orders.manage'],

@@ -13,6 +13,12 @@ cd backend
 echo "Installing Composer dependencies..."
 composer install --no-dev --optimize-autoloader
 
+echo "Ensuring storage symlink..."
+php artisan storage:link --force 2>/dev/null || true
+
+echo "Running migrations..."
+php artisan migrate --force
+
 echo "Caching Laravel config..."
 php artisan config:cache
 

@@ -60,6 +60,16 @@ class RoutePermissionEnforcementTest extends TestCase
         $this->getJson('/api/time-clock/summary')->assertForbidden();
     }
 
+    public function test_staff_with_staff_view_can_read_time_clock_summary(): void
+    {
+        $user = $this->makeStaff('staff');
+        $user->grantPermission('staff.view');
+
+        Sanctum::actingAs($user, ['staff']);
+
+        $this->getJson('/api/time-clock/summary')->assertOk();
+    }
+
     public function test_manager_can_update_online_ordering_settings(): void
     {
         $manager = $this->makeManager();
