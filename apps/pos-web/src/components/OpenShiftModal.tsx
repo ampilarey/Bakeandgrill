@@ -45,8 +45,10 @@ function formatStaleness(closedAt: string): { label: string; hoursAgo: number } 
 }
 
 export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash }: Props) {
+  // Empty string (not "0.00") when unfilled — CashInput shows "MVR" + a grey
+  // "0.00" placeholder which cashiers mistook for an entered value (Bug-032 follow-up).
   const [openingCash, setOpeningCash] = useState<string>(
-    suggestedOpeningCash != null ? suggestedOpeningCash.toFixed(2) : "0.00",
+    suggestedOpeningCash != null ? suggestedOpeningCash.toFixed(2) : "",
   );
   const [notes, setNotes] = useState("");
   const [err, setErr] = useState("");
@@ -70,21 +72,27 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
             setHint(`Pre-filled from previous shift's closing cash (${label}). Tap to overwrite.`);
           }
         } else {
-          // Stale — keep the field blank, just inform.
+          // Stale — leave empty so the cashier must type the counted amount.
+          setOpeningCash("");
           setWarning(
             `Last shift closed ${label} with MVR ${cash.toFixed(2)} in the drawer. ` +
             `Please physically count the cash in the drawer right now and enter that — the old close is too old to trust.`,
           );
         }
-      } catch { /* ignore — fall back to 0.00 */ }
+      } catch { /* ignore — leave field empty */ }
     })();
     return () => { cancelled = true; };
   }, [suggestedOpeningCash]);
 
   const submit = async () => {
-    const n = Number.parseFloat(openingCash);
+    const trimmed = openingCash.trim();
+    if (trimmed === "") {
+      setErr("Enter the cash you counted in the drawer. Tap 0 if the drawer is empty.");
+      return;
+    }
+    const n = Number.parseFloat(trimmed);
     if (!Number.isFinite(n) || n < 0) {
-      setErr("Enter the starting cash amount (0 or more).");
+      setErr("Enter a valid starting cash amount (0 or more).");
       return;
     }
     try {
@@ -102,7 +110,7 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
             value={openingCash}
             onChange={(v) => { setOpeningCash(v); setErr(""); }}
             autoFocus
-            placeholder="0.00"
+            placeholder="Enter amount"
           />
           {hint && (
             <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>{hint}</div>
