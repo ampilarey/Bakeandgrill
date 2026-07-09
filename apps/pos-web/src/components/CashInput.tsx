@@ -101,7 +101,9 @@ export function CashInput({
             padding: "14px 16px", borderRadius: 10,
             border: `2px solid ${focused ? C.primary : C.border2}`,
             fontSize: 24, fontWeight: 700,
-            textAlign: "right", background: "#fff", color: C.text,
+            textAlign: "right", background: "#fff",
+            // Empty value uses muted placeholder color; filled amounts stay dark.
+            color: value === "" ? C.muted : C.text,
             outline: "none",
             fontVariantNumeric: "tabular-nums",
             caretColor: "transparent",

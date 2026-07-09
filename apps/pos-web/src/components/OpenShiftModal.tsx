@@ -30,10 +30,9 @@ type Props = {
  * opening at 7am today, the float in the drawer is genuinely the
  * same). When the last close was a day or more ago, somebody has
  * almost certainly touched the drawer (manager drop, bank deposit,
- * weekend skim) so we deliberately leave the field at "0.00" and
- * warn the cashier that they MUST count physical cash. We also
- * show the timestamp of the last close so the suggestion is never
- * a black-box number.
+ * weekend skim) so we deliberately leave the field EMPTY (not a
+ * grey "0.00" placeholder that looks entered) and warn the cashier
+ * that they MUST count physical cash.
  */
 function formatStaleness(closedAt: string): { label: string; hoursAgo: number } {
   const closedMs = new Date(closedAt).getTime();
@@ -110,8 +109,13 @@ export function OpenShiftModal({ onConfirm, onCancel, busy, suggestedOpeningCash
             value={openingCash}
             onChange={(v) => { setOpeningCash(v); setErr(""); }}
             autoFocus
-            placeholder="Enter amount"
+            placeholder="—"
           />
+          {openingCash.trim() === "" && !hint && (
+            <div style={{ marginTop: 6, fontSize: 12, color: "#64748B", fontWeight: 600 }}>
+              Use the keypad to enter the cash you counted. Tap 0 if the drawer is empty.
+            </div>
+          )}
           {hint && (
             <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>{hint}</div>
           )}

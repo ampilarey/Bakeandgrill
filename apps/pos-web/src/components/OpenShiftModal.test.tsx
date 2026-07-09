@@ -25,7 +25,9 @@ describe("OpenShiftModal", () => {
 
     await user.click(screen.getByRole("button", { name: "Open shift" }));
 
-    expect(await screen.findByText(/Enter the cash you counted/i)).toBeTruthy();
+    expect(await screen.findByText(/Tap 0 if the drawer is empty/i)).toBeTruthy();
+    // Error box (red) — distinct from the always-visible keypad hint.
+    expect(screen.getByText(/Enter the cash you counted in the drawer/i)).toBeTruthy();
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
@@ -65,6 +67,6 @@ describe("OpenShiftModal", () => {
 
     expect(await screen.findByText(/too old to trust/i)).toBeTruthy();
     expect(screen.getByLabelText("Amount in MVR")).toHaveValue("");
-    expect(screen.getByPlaceholderText("Enter amount")).toBeTruthy();
+    expect(screen.getByText(/Use the keypad to enter the cash you counted/i)).toBeTruthy();
   });
 });
