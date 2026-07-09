@@ -25,22 +25,20 @@ export async function refreshCsrfCookie(apiOrigin: string): Promise<void> {
 }
 
 /**
- * Ensure a CSRF cookie exists and return headers for mutating API requests.
- * Always re-reads the cookie after priming — never caches a failed prime.
+ * Ensure a fresh CSRF cookie and return headers for mutating API requests.
+ *
+ * Always primes `/sanctum/csrf-cookie` before reading the cookie. Reusing a
+ * stale XSRF-TOKEN (e.g. shared SESSION_DOMAIN across test/prod) causes 419
+ * CSRF token mismatch on Sanctum stateful domains.
  */
 export async function csrfHeadersForMutation(apiOrigin: string): Promise<Record<string, string>> {
+  await refreshCsrfCookie(apiOrigin);
   let headers = xsrfHeaderFromCookie();
   if (headers['X-XSRF-TOKEN']) {
     return headers;
   }
 
-  await refreshCsrfCookie(apiOrigin);
-  headers = xsrfHeaderFromCookie();
-  if (headers['X-XSRF-TOKEN']) {
-    return headers;
-  }
-
-  // One more try — some browsers commit cookies asynchronously after fetch().
+  // Some browsers commit Set-Cookie asynchronously after fetch() resolves.
   await refreshCsrfCookie(apiOrigin);
   return xsrfHeaderFromCookie();
 }

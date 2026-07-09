@@ -17,14 +17,15 @@ function readCookie(name: string): string | null {
   return m ? decodeURIComponent(m.split('=').slice(1).join('=')) : null;
 }
 
-let csrfPrimed = false;
-
+/** Always re-prime CSRF before mutations — stale XSRF cookies cause 419s. */
 export async function ensureCsrfCookie(): Promise<void> {
-  if (typeof window === 'undefined' || csrfPrimed) {
+  if (typeof window === 'undefined') {
     return;
   }
-  await fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, { credentials: 'include' });
-  csrfPrimed = true;
+  await fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
 }
 
 function xsrfHeaders(): Record<string, string> {
