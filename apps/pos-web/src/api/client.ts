@@ -1,8 +1,11 @@
 import {
+  ApiRequestError,
   createApiClient,
   csrfHeadersForMutation,
   getApiOrigin,
+  refreshCsrfCookie,
   resolveApiBaseUrl,
+  xsrfHeaderFromCookie,
   type ApiRequestOptions,
 } from '@shared/api';
 
@@ -35,8 +38,12 @@ const { request: _coreRequest } = createApiClient({
   credentials: 'include',
 });
 
-export async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+function deviceHeaders(): Record<string, string> {
   const deviceId = localStorage.getItem('pos_device_id');
+  return deviceId ? { 'X-Device-Identifier': deviceId } : {};
+}
+
+export async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase();
   const csrfHeaders = method === 'GET' || method === 'HEAD'
     ? {}
@@ -45,14 +52,28 @@ export async function request<T>(path: string, options: ApiRequestOptions = {}):
     ...options,
     headers: {
       ...csrfHeaders,
-      ...(deviceId ? { 'X-Device-Identifier': deviceId } : {}),
+      ...deviceHeaders(),
       ...(options.headers ?? {}),
     },
   };
   try {
     return await _coreRequest<T>(path, merged);
   } catch (e) {
-    const status = (e as { status?: number })?.status;
+    const status = e instanceof ApiRequestError ? e.status : (e as { status?: number })?.status;
+
+    // Stale XSRF cookie (shared SESSION_DOMAIN) — refresh once and retry mutations.
+    if (status === 419 && method !== 'GET' && method !== 'HEAD') {
+      await refreshCsrfCookie(API_ORIGIN);
+      return await _coreRequest<T>(path, {
+        ...options,
+        headers: {
+          ...xsrfHeaderFromCookie(),
+          ...deviceHeaders(),
+          ...(options.headers ?? {}),
+        },
+      });
+    }
+
     if (status === 401) {
       _token = null;
       localStorage.removeItem('pos_token');

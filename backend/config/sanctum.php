@@ -98,7 +98,8 @@ return [
     'middleware' => [
         'authenticate_session' => Laravel\Sanctum\Http\Middleware\AuthenticateSession::class,
         'encrypt_cookies' => Illuminate\Cookie\Middleware\EncryptCookies::class,
-        'validate_csrf_token' => Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        // Custom: skip CSRF when Authorization: Bearer is present (POS/admin tokens).
+        'validate_csrf_token' => App\Http\Middleware\ValidateCsrfToken::class,
     ],
 
 ];

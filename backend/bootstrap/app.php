@@ -31,6 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sanctum SPA cookie auth for same-origin React apps (/order, future admin cookie migration).
         $middleware->statefulApi();
 
+        // Use app CSRF middleware (Bearer bypass) for both web and Sanctum stateful stacks.
+        $middleware->replace(
+            Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            App\Http\Middleware\ValidateCsrfToken::class,
+        );
+
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
 
         // _cauth_revoked: short-lived JS-readable logout signal for the order SPA.
@@ -40,6 +46,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Staff/POS/admin login uses bearer tokens — CSRF on these routes breaks SPA login.
         // Route-level withoutMiddleware(ValidateCsrfToken) does NOT affect Sanctum's
         // stateful CSRF pipeline; this bootstrap except-list is the mechanism that works.
+        // Bearer-authenticated API mutations are skipped in App\Http\Middleware\ValidateCsrfToken
+        // (wired via config/sanctum.php) so stale XSRF cookies cannot 419 POS/admin calls.
         $middleware->validateCsrfTokens(except: [
             'api/auth/staff/*',
         ]);

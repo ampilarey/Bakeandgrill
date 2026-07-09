@@ -1,8 +1,11 @@
 import {
+  ApiRequestError,
   createApiClient,
   csrfHeadersForMutation,
   getApiOrigin,
+  refreshCsrfCookie,
   resolveApiBaseUrl,
+  xsrfHeaderFromCookie,
   type ApiRequestOptions,
 } from '@shared/api';
 
@@ -40,12 +43,36 @@ async function withCsrf(options: ApiRequestOptions = {}): Promise<ApiRequestOpti
   };
 }
 
+async function withCsrfRetry<T>(
+  run: (opts: ApiRequestOptions) => Promise<T>,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const method = (options.method ?? 'GET').toUpperCase();
+  const prepared = await withCsrf(options);
+  try {
+    return await run(prepared);
+  } catch (e) {
+    const status = e instanceof ApiRequestError ? e.status : (e as { status?: number })?.status;
+    if (status === 419 && method !== 'GET' && method !== 'HEAD') {
+      await refreshCsrfCookie(API_ORIGIN);
+      return run({
+        ...options,
+        headers: {
+          ...xsrfHeaderFromCookie(),
+          ...(options.headers ?? {}),
+        },
+      });
+    }
+    throw e;
+  }
+}
+
 export async function req<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  return coreRequest<T>(path, await withCsrf(options));
+  return withCsrfRetry((opts) => coreRequest<T>(path, opts), options);
 }
 
 export async function requestBlob(path: string, options: ApiRequestOptions = {}): Promise<Blob> {
-  return coreRequestBlob(path, await withCsrf(options));
+  return withCsrfRetry((opts) => coreRequestBlob(path, opts), options);
 }
 
 export function getStoredAdminToken(): string | null {
