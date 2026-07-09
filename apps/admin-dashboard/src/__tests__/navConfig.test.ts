@@ -48,7 +48,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/expenses', permission: 'finance.expenses' },
   { to: '/refunds', permission: 'orders.refund' },
   { to: '/staff', permission: 'staff.view' },
-  { to: '/settings', permission: 'settings.update' },
+  { to: '/settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/devices', permission: 'devices.view' },
   { to: '/print-jobs', permission: 'devices.view' },
   { to: '/webhooks', permission: 'webhooks.manage' },
@@ -116,6 +116,18 @@ describe('navConfig', () => {
     };
     expect(can(user, 'inventory.view')).toBe(true);
     expect(can(user, 'inventory.manage')).toBe(true);
+  });
+
+  it('reports.view does not satisfy shifts.view_all_history', () => {
+    const user: StaffUser = {
+      id: 6,
+      name: 'Reporter',
+      email: 'r@test.com',
+      role: 'staff',
+      permissions: ['reports.view', 'finance.cash_manage'],
+    };
+    expect(can(user, 'shifts.view_all_history')).toBe(false);
+    expect(can(user, 'shifts.view_own_history')).toBe(true);
   });
 
   it('inventory.view alone does not grant inventory.manage', () => {

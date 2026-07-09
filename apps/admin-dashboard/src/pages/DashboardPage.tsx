@@ -28,6 +28,8 @@ import {
 import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { today } from '../utils/dateHelpers';
+import { showDevNavItems } from '../components/navConfig';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -291,11 +293,6 @@ function MaintenancePanel({ onDone }: { onDone: () => void }) {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-function localToday() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 export function DashboardPage() {
   usePageTitle('Dashboard');
   const now = useNow();
@@ -307,11 +304,12 @@ export function DashboardPage() {
   const canFinancialSummary = can('reports.financial');
   const canOrders = can('orders.view');
   const canInventory = can('inventory.view');
-  const canShift = can('pos.open_shift') || can('shifts.view_own_history');
+  const canViewShifts = can('shifts.view_all_history');
   const canSms = can('sms_marketing.view');
   const canPrintJobs = can('devices.view');
   const canDelivery = can('delivery.view');
-  const [summaryDate, setSummaryDate] = useState(localToday);
+  const showChecklist = showDevNavItems() || can('website.manage');
+  const [summaryDate, setSummaryDate] = useState(today);
 
   // Tracks orders that changed status since the last poll — drives the "recent changes" panel
   const [liveEvents, setLiveEvents] = useState<{ id: number; order_number: string; status: string; ts: number }[]>([]);
@@ -424,7 +422,7 @@ export function DashboardPage() {
   } = useQuery({
     queryKey: ['dashboard', 'current-shift'],
     queryFn: async () => (await getCurrentShift()).shift,
-    enabled: canShift,
+    enabled: canViewShifts,
   });
   const shiftErr = shiftQueryError?.message ?? '';
 
@@ -505,11 +503,11 @@ export function DashboardPage() {
       onClick: () => navigate('/inventory'),
     });
   }
-  if (canShift) {
+  if (canViewShifts) {
     opsCards.push({
       key: 'shift', label: shift ? 'Shift Open' : 'No Open Shift',
       value: shift ? fmt(shift.expected_cash ?? shift.opening_cash) : '—',
-      sub: shift ? `Since ${elapsed(shift.opened_at)}` : 'Open from Shifts',
+      sub: shift ? `Since ${elapsed(shift.opened_at)}` : 'Open shifts on POS',
       accent: shift ? '#22c55e' : '#9C8E7E', icon: CreditCard,
       onClick: () => navigate('/shifts'),
     });
@@ -549,6 +547,7 @@ export function DashboardPage() {
         subtitle={new Date(summaryDate + 'T00:00:00').toLocaleDateString('en-MV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         action={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {showChecklist && (
             <button
               type="button"
               onClick={() => navigate('/checklist')}
@@ -562,16 +561,17 @@ export function DashboardPage() {
               <ClipboardList size={14} />
               Go-live checklist
             </button>
+            )}
             <input
               type="date"
               value={summaryDate}
-              max={localToday()}
+              max={today()}
               onChange={(e) => e.target.value && setSummaryDate(e.target.value)}
               style={{ padding: '6px 10px', borderRadius: 10, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', background: '#F8F6F3', color: '#1C1408', cursor: 'pointer' }}
             />
-            {summaryDate !== localToday() && (
+            {summaryDate !== today() && (
               <button
-                onClick={() => setSummaryDate(localToday())}
+                onClick={() => setSummaryDate(today())}
                 style={{ fontSize: 12, fontWeight: 700, color: '#D4813A', background: 'rgba(212,129,58,0.1)', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 ← Today
@@ -603,7 +603,7 @@ export function DashboardPage() {
       )}
 
       {/* ── Shift banner ── */}
-      {canShift && (shiftErr ? <ErrorMsg message={shiftErr} /> : <ShiftBanner shift={shift} />)}
+      {canViewShifts && (shiftErr ? <ErrorMsg message={shiftErr} /> : <ShiftBanner shift={shift} />)}
 
       {showPosOverview && (
         <>
@@ -696,7 +696,7 @@ export function DashboardPage() {
       <>
       <SectionLabel>Today at a glance</SectionLabel>
       <p style={{ margin: '-8px 0 12px', fontSize: 12, color: '#9C8E7E' }}>
-        Completed sales for {summaryDate === localToday() ? 'today' : summaryDate}. Open tickets below are not included until the order is completed.
+        Completed sales for {summaryDate === today() ? 'today' : summaryDate}. Open tickets below are not included until the order is completed.
       </p>
       {summaryErr && <ErrorMsg message={summaryErr} />}
       {summaryLoading ? <Spinner /> : summary && (
