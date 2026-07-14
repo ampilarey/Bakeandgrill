@@ -170,7 +170,7 @@ export function PosShellLayout() {
 
       {!isReachable && (
         <div className="pos-offline-banner">
-          Offline mode — cash, POS, transfer, and QR only (manual). Orders sync when internet returns.
+          Offline mode — cash, card, transfer, and QR only (manual). Orders sync when internet returns.
           {menu.usingCachedMenu ? " Showing cached menu." : ""}
         </div>
       )}

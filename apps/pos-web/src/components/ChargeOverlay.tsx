@@ -26,7 +26,7 @@ type Props = {
   /** Show customer deposit tender when customer has prepaid balance. */
   walletEligible?: boolean;
   walletAvailableMvr?: number;
-  /** When true, only cash / POS / transfer / QR are offered. */
+  /** When true, only cash / card / transfer / QR are offered. */
   isOffline?: boolean;
   /** Hide tender types the cashier is not permitted to use. */
   allowedTenders?: {
@@ -50,7 +50,7 @@ type Props = {
 
 const METHOD_LABEL: Record<ChargeMethod, string> = {
   cash: "Cash",
-  card: "POS",
+  card: "Card",
   qr: "QR",
   digital_wallet: "Transfer",
   house_account: "Credit Account",
@@ -379,45 +379,55 @@ export function ChargeOverlay({
           }}>
             <div>
               <p style={tinyLabel}>Tender</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {/* Base tenders always share one equal-width row (iPad-friendly). */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${Math.max(baseMethods.length, 1)}, minmax(0, 1fr))`,
+                gap: 8,
+              }}>
                 {baseMethods.map((m) => (
                   <button
                     key={m}
                     onClick={() => setMethod(m)}
                     style={{
-                      flex: "1 1 80px", padding: "12px 8px", borderRadius: 10,
+                      padding: "12px 6px", borderRadius: 10,
                       background: method === m ? "#0F172A" : "#fff",
                       color: method === m ? "#fff" : "#0F172A",
                       border: `1px solid ${method === m ? "#0F172A" : "#CBD5E1"}`,
                       fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      minWidth: 0,
                     }}
                   >{METHOD_LABEL[m]}</button>
                 ))}
-                {creditEligible && !isOffline && (
-                  <button
-                    onClick={() => setMethod("house_account")}
-                    style={{
-                      flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
-                      background: method === "house_account" ? "#1D4ED8" : "#EFF6FF",
-                      color: method === "house_account" ? "#fff" : "#1D4ED8",
-                      border: `1px solid ${method === "house_account" ? "#1D4ED8" : "#BFDBFE"}`,
-                      fontWeight: 700, fontSize: 13, cursor: "pointer",
-                    }}
-                  >Credit Account</button>
-                )}
-                {walletEligible && !isOffline && (
-                  <button
-                    onClick={() => setMethod("wallet")}
-                    style={{
-                      flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
-                      background: method === "wallet" ? "#047857" : "#ECFDF5",
-                      color: method === "wallet" ? "#fff" : "#047857",
-                      border: `1px solid ${method === "wallet" ? "#047857" : "#A7F3D0"}`,
-                      fontWeight: 700, fontSize: 13, cursor: "pointer",
-                    }}
-                  >{METHOD_LABEL.wallet}</button>
-                )}
               </div>
+              {(creditEligible || walletEligible) && !isOffline && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                  {creditEligible && (
+                    <button
+                      onClick={() => setMethod("house_account")}
+                      style={{
+                        flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
+                        background: method === "house_account" ? "#1D4ED8" : "#EFF6FF",
+                        color: method === "house_account" ? "#fff" : "#1D4ED8",
+                        border: `1px solid ${method === "house_account" ? "#1D4ED8" : "#BFDBFE"}`,
+                        fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      }}
+                    >Credit Account</button>
+                  )}
+                  {walletEligible && (
+                    <button
+                      onClick={() => setMethod("wallet")}
+                      style={{
+                        flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
+                        background: method === "wallet" ? "#047857" : "#ECFDF5",
+                        color: method === "wallet" ? "#fff" : "#047857",
+                        border: `1px solid ${method === "wallet" ? "#047857" : "#A7F3D0"}`,
+                        fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      }}
+                    >{METHOD_LABEL.wallet}</button>
+                  )}
+                </div>
+              )}
               {method === "house_account" && (
                 <div style={{
                   marginTop: 8, padding: "10px 12px", borderRadius: 8,
@@ -451,7 +461,7 @@ export function ChargeOverlay({
                 padding: "10px 12px", borderRadius: 8, background: "#FEF3C7",
                 border: "1px solid #FDE68A", fontSize: 12, color: "#92400E",
               }}>
-                Offline mode — cash, POS, transfer, and QR only (manual record). Orders sync when internet returns.
+                Offline mode — cash, card, transfer, and QR only (manual record). Orders sync when internet returns.
               </div>
             )}
 

@@ -455,7 +455,7 @@ export function useOrderCreation(params: Params) {
       return method === "house_account" || method === "wallet" || method === "bml" || method === "online";
     });
     if (blocked) {
-      flashError("Only cash, POS, transfer, and QR are available offline.");
+      flashError("Only cash, card, transfer, and QR are available offline.");
       return false;
     }
 
@@ -469,7 +469,7 @@ export function useOrderCreation(params: Params) {
     const primary = paymentSnapshot[0];
     const offlineMethod = primary ? mapChargeMethodToOffline(primary.method) : null;
     if (!primary || !offlineMethod) {
-      flashError("Only cash, POS, transfer, and QR are available offline.");
+      flashError("Only cash, card, transfer, and QR are available offline.");
       return false;
     }
 
