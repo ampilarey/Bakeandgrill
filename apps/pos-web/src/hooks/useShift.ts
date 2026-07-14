@@ -22,109 +22,169 @@ export type ShiftRow = {
 
 export type ShiftSummary = Awaited<ReturnType<typeof getShiftSummary>>;
 
+/** Sync fallback — IndexedDB hydrate is async and loses the race after SW updates. */
+const LS_SHIFT_KEY = "pos_open_shift";
+
+function readLocalShift(): ShiftRow | null {
+  try {
+    const raw = localStorage.getItem(LS_SHIFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ShiftRow>;
+    if (typeof parsed.id !== "number" || typeof parsed.opened_at !== "string") return null;
+    return {
+      id: parsed.id,
+      opened_at: parsed.opened_at,
+      closed_at: parsed.closed_at ?? null,
+      opening_cash: Number(parsed.opening_cash ?? 0),
+      closing_cash: parsed.closing_cash ?? null,
+      expected_cash: parsed.expected_cash ?? null,
+      variance: parsed.variance ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalShift(shift: ShiftRow): void {
+  try {
+    localStorage.setItem(LS_SHIFT_KEY, JSON.stringify({
+      id: shift.id,
+      opened_at: shift.opened_at,
+      closed_at: shift.closed_at,
+      opening_cash: shift.opening_cash,
+      closing_cash: shift.closing_cash,
+      expected_cash: shift.expected_cash,
+      variance: shift.variance,
+    }));
+  } catch {
+    /* private mode / quota — ignore */
+  }
+}
+
+function clearLocalShift(): void {
+  try {
+    localStorage.removeItem(LS_SHIFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function persistShiftCaches(shift: ShiftRow, deviceIdentifier?: string): void {
+  writeLocalShift(shift);
+  void saveCachedShift({
+    shift_id: shift.id,
+    opened_at: shift.opened_at,
+    device_identifier: deviceIdentifier
+      || localStorage.getItem("pos_device_id")
+      || "unknown",
+  });
+}
+
+function clearShiftCaches(): void {
+  clearLocalShift();
+  void clearCachedShift();
+}
+
 /**
  * Single source of truth for the cashier's current shift. The whole POS
  * is gated on the result of `current`: if it's `null` the cashier sees
- * the "Open shift" screen before any sales UI loads. This matches the
- * Loyverse "hard shift gate" behaviour.
+ * the "Open shift" screen before any sales UI loads.
  *
- * `ready` is false until IndexedDB hydrate + at least one network check
- * (bootstrap or /shifts/current) finishes — so we never flash "Open shift"
- * while an already-open shift is still loading after app reopen/update.
+ * Reopen/update safety:
+ * - Hydrate synchronously from localStorage so we never flash Open-shift
+ *   while an open shift is still being confirmed over the network.
+ * - A null bootstrap must NOT mark us "ready" — only /shifts/current
+ *   (or a non-null bootstrap) is authoritative for "no open shift".
  */
 export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIdentifier?: string) {
-  const [current, setCurrent] = useState<ShiftRow | null>(null);
-  const [loading, setLoading] = useState(true);
-  /** True after first authoritative (network) shift check completes. */
+  const [current, setCurrent] = useState<ShiftRow | null>(() => (
+    isLoggedIn ? readLocalShift() : null
+  ));
+  const [loading, setLoading] = useState(() => !(isLoggedIn && readLocalShift()));
+  /** True only after an authoritative network answer for "is there a shift?". */
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string>("");
   const [summary, setSummary] = useState<ShiftSummary | null>(null);
   const cacheHydratedRef = useRef(false);
-  const networkCheckedRef = useRef(false);
+  const refreshGenRef = useRef(0);
 
-  const markNetworkChecked = useCallback(() => {
-    networkCheckedRef.current = true;
+  const markReady = useCallback(() => {
     setReady(true);
     setLoading(false);
   }, []);
 
+  const applyOpenShift = useCallback((shift: ShiftRow, deviceId?: string) => {
+    setCurrent(shift);
+    setError("");
+    persistShiftCaches(shift, deviceId ?? deviceIdentifier);
+  }, [deviceIdentifier]);
+
   const seedFromBootstrap = useCallback((shift: PosBootstrapShift | null) => {
-    // Never wipe a cached/open shift with a null bootstrap payload — that
-    // caused the "Open shift" flash on iPad reopen/update. A follow-up
-    // refresh confirms whether the shift is truly closed.
     if (shift) {
-      setCurrent(shift);
-      setError("");
-      if (deviceIdentifier) {
-        void saveCachedShift({
-          shift_id: shift.id,
-          opened_at: shift.opened_at,
-          device_identifier: deviceIdentifier,
-        });
-      }
+      applyOpenShift(shift as ShiftRow);
+      // Non-null bootstrap is enough to enter the register; refresh still
+      // runs in the background to stay in sync.
+      markReady();
+      return;
     }
-    markNetworkChecked();
-  }, [deviceIdentifier, markNetworkChecked]);
+    // Null bootstrap is NOT authoritative — keep any local/cached shift
+    // and leave ready=false until /shifts/current confirms.
+  }, [applyOpenShift, markReady]);
 
   const refresh = useCallback(async () => {
     if (!isLoggedIn || !deviceApproved) return;
+    const gen = ++refreshGenRef.current;
     try {
       const res = await getCurrentShift();
+      if (gen !== refreshGenRef.current) return;
       const shift = res.shift as ShiftRow | null;
-      setCurrent(shift);
-      if (shift && deviceIdentifier) {
-        void saveCachedShift({
-          shift_id: shift.id,
-          opened_at: shift.opened_at,
-          device_identifier: deviceIdentifier,
-        });
-      } else if (!shift) {
-        void clearCachedShift();
+      if (shift) {
+        applyOpenShift(shift);
+      } else {
+        setCurrent(null);
+        clearShiftCaches();
+        setError("");
       }
-      setError("");
     } catch (e) {
+      if (gen !== refreshGenRef.current) return;
       // Distinguish "no shift" (genuine null response or 404) from
       // transient network/server failures so a flaky API doesn't
       // bounce a busy cashier into the Shift Closed gate mid-service.
-      //
-      //   - 404            → server says "no current shift" → treat as null
-      //   - 401 / 403      → token gone → bubble up via setError, blank shift
-      //   - 5xx / network  → keep the LAST known shift in place + log error
-      //                       so the cashier can keep ringing while we retry
       if (e instanceof ApiRequestError) {
         if (e.status === 404) {
           setCurrent(null);
           setError("");
-          void clearCachedShift();
+          clearShiftCaches();
         } else if (e.status === 401 || e.status === 403) {
           setError(e.message);
           setCurrent(null);
+          clearShiftCaches();
         } else {
-          // 5xx or other API error — keep existing shift, surface message
-          // so a banner can prompt the cashier to retry.
           setError(e.message || "Couldn't refresh shift — retrying.");
         }
       } else {
-        // Network / offline — keep last shift; hydrate from IndexedDB
-        // cache on cold start when the API is unreachable.
         const cached = await loadCachedShift();
-        if (cached) {
-          setCurrent((prev) => prev ?? {
-            id: cached.shift_id,
-            opened_at: cached.opened_at,
-            closed_at: null,
-            opening_cash: 0,
-            closing_cash: null,
-            expected_cash: null,
-            variance: null,
-          });
+        const local = readLocalShift();
+        const fallback = local ?? (cached ? {
+          id: cached.shift_id,
+          opened_at: cached.opened_at,
+          closed_at: null,
+          opening_cash: 0,
+          closing_cash: null,
+          expected_cash: null,
+          variance: null,
+        } : null);
+        if (fallback) {
+          setCurrent((prev) => prev ?? fallback);
         }
         setError("Network issue — shift status may be stale.");
       }
     } finally {
-      markNetworkChecked();
+      if (gen === refreshGenRef.current) {
+        markReady();
+      }
     }
-  }, [isLoggedIn, deviceApproved, deviceIdentifier, markNetworkChecked]);
+  }, [isLoggedIn, deviceApproved, applyOpenShift, markReady]);
 
   const refreshSummary = useCallback(async () => {
     if (!current) {
@@ -139,10 +199,7 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     }
   }, [current]);
 
-  // Hydrate shift from IndexedDB immediately so reopen/update can show
-  // the register without waiting on the network when we already cached
-  // an open shift. Keep `ready` false until network confirms — so a
-  // cache miss never flashes the Open-shift gate early.
+  // Secondary hydrate from IndexedDB (async) — localStorage already covered mount.
   useEffect(() => {
     if (!isLoggedIn || !deviceApproved || cacheHydratedRef.current) return;
     cacheHydratedRef.current = true;
@@ -157,8 +214,6 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
         expected_cash: null,
         variance: null,
       });
-      // Optimistic UI only — still wait for bootstrap/refresh before
-      // treating "no shift" as authoritative.
       setLoading(false);
     });
   }, [isLoggedIn, deviceApproved]);
@@ -166,34 +221,26 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
   useEffect(() => {
     if (!isLoggedIn) {
       cacheHydratedRef.current = false;
-      networkCheckedRef.current = false;
+      refreshGenRef.current += 1;
       setReady(false);
       setLoading(true);
+      setCurrent(null);
+      // Drop local shift hints so the next login never inherits another cashier's drawer.
+      clearShiftCaches();
       return;
     }
     if (!deviceApproved) return;
 
-    // Confirm shift ASAP. Bootstrap may also seed; refresh always runs
-    // so a null bootstrap cannot leave us stuck on a stale "no shift".
-    const handle = window.setTimeout(() => {
-      void refresh();
-    }, 150);
-
-    return () => window.clearTimeout(handle);
+    // Confirm with the server immediately. Do not wait on bootstrap —
+    // a null bootstrap used to mark ready too early and flash Open-shift.
+    void refresh();
   }, [refresh, isLoggedIn, deviceApproved]);
 
   // Live polling for the shift summary so the cashier sees fresh expected
   // cash + sales counts without manually refreshing. 30s is plenty for
   // an actual cash drawer; faster would just hammer the API.
   //
-  // Bug-027: gate polling on Page Visibility. If the iPad screen is off,
-  // the POS tab is backgrounded, or another app is focused, the
-  // interval used to keep firing — burning battery and hitting the
-  // /shifts/{id}/summary endpoint with stale-tab requests. Now the
-  // interval clears when document.visibilityState !== "visible" and
-  // re-arms on visibilitychange. A burst-refresh runs on each
-  // become-visible event so the first thing the cashier sees when
-  // they wake the screen is already up-to-date.
+  // Bug-027: gate polling on Page Visibility.
   useEffect(() => {
     if (!current) return;
     let timerId: number | null = null;
@@ -215,8 +262,12 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
       }
     };
     const onVisibility = () => {
-      if (document.visibilityState === "visible") arm();
-      else disarm();
+      if (document.visibilityState === "visible") {
+        void refresh();
+        arm();
+      } else {
+        disarm();
+      }
     };
 
     if (document.visibilityState === "visible") arm();
@@ -226,36 +277,24 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
       disarm();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [current, refreshSummary]);
+  }, [current, refreshSummary, refresh]);
 
   const open = useCallback(async (openingCash: number, notes?: string, deviceDbId?: number | null) => {
-    try {
-      const res = await openShift({
-        opening_cash: openingCash,
-        notes,
-        ...(deviceDbId ? { device_id: deviceDbId } : {}),
-      });
-      await refresh();
-      const opened = res.shift as ShiftRow;
-      if (deviceIdentifier) {
-        void saveCachedShift({
-          shift_id: opened.id,
-          opened_at: opened.opened_at,
-          device_identifier: deviceIdentifier,
-        });
-      }
-      return res.shift;
-    } catch (e) {
-      throw e;
-    }
-  }, [refresh, deviceIdentifier]);
+    const res = await openShift({
+      opening_cash: openingCash,
+      notes,
+      ...(deviceDbId ? { device_id: deviceDbId } : {}),
+    });
+    await refresh();
+    return res.shift;
+  }, [refresh]);
 
   const close = useCallback(async (closingCash: number, notes?: string) => {
     if (!current) throw new Error("No open shift to close.");
     const res = await closeShift(current.id, { closing_cash: closingCash, notes });
     setCurrent(null);
     setSummary(null);
-    await clearCachedShift();
+    clearShiftCaches();
     return res;
   }, [current]);
 
