@@ -92,7 +92,23 @@ export function PosRouter() {
   }
 
   // Hard shift gate — sales-only cashiers must open a shift first.
-  if (!shift.loading && !shift.current && !canEnterPosShell) {
+  // Wait until shift status is confirmed so reopen/update doesn't flash
+  // "Open shift" while an already-open shift is still loading.
+  if (!shift.current && !canEnterPosShell) {
+    if (shift.loading || !shift.ready) {
+      return (
+        <div style={{
+          minHeight: "100vh", background: "#1C1408",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 16, color: "#F8FAFC",
+        }}>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Checking shift…</p>
+            <p style={{ fontSize: 13, color: "#94A3B8", margin: "8px 0 0" }}>One moment</p>
+          </div>
+        </div>
+      );
+    }
     return (
       <>
         <ShiftClosedGate

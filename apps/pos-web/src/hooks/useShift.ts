@@ -27,28 +27,44 @@ export type ShiftSummary = Awaited<ReturnType<typeof getShiftSummary>>;
  * is gated on the result of `current`: if it's `null` the cashier sees
  * the "Open shift" screen before any sales UI loads. This matches the
  * Loyverse "hard shift gate" behaviour.
+ *
+ * `ready` is false until IndexedDB hydrate + at least one network check
+ * (bootstrap or /shifts/current) finishes — so we never flash "Open shift"
+ * while an already-open shift is still loading after app reopen/update.
  */
 export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIdentifier?: string) {
   const [current, setCurrent] = useState<ShiftRow | null>(null);
   const [loading, setLoading] = useState(true);
+  /** True after first authoritative (network) shift check completes. */
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string>("");
   const [summary, setSummary] = useState<ShiftSummary | null>(null);
-  const bootstrapSeededRef = useRef(false);
   const cacheHydratedRef = useRef(false);
+  const networkCheckedRef = useRef(false);
+
+  const markNetworkChecked = useCallback(() => {
+    networkCheckedRef.current = true;
+    setReady(true);
+    setLoading(false);
+  }, []);
 
   const seedFromBootstrap = useCallback((shift: PosBootstrapShift | null) => {
-    bootstrapSeededRef.current = true;
-    setCurrent(shift);
-    setLoading(false);
-    setError("");
-    if (shift && deviceIdentifier) {
-      void saveCachedShift({
-        shift_id: shift.id,
-        opened_at: shift.opened_at,
-        device_identifier: deviceIdentifier,
-      });
+    // Never wipe a cached/open shift with a null bootstrap payload — that
+    // caused the "Open shift" flash on iPad reopen/update. A follow-up
+    // refresh confirms whether the shift is truly closed.
+    if (shift) {
+      setCurrent(shift);
+      setError("");
+      if (deviceIdentifier) {
+        void saveCachedShift({
+          shift_id: shift.id,
+          opened_at: shift.opened_at,
+          device_identifier: deviceIdentifier,
+        });
+      }
     }
-  }, [deviceIdentifier]);
+    markNetworkChecked();
+  }, [deviceIdentifier, markNetworkChecked]);
 
   const refresh = useCallback(async () => {
     if (!isLoggedIn || !deviceApproved) return;
@@ -62,6 +78,8 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
           opened_at: shift.opened_at,
           device_identifier: deviceIdentifier,
         });
+      } else if (!shift) {
+        void clearCachedShift();
       }
       setError("");
     } catch (e) {
@@ -104,9 +122,9 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
         setError("Network issue — shift status may be stale.");
       }
     } finally {
-      setLoading(false);
+      markNetworkChecked();
     }
-  }, [isLoggedIn, deviceApproved, deviceIdentifier]);
+  }, [isLoggedIn, deviceApproved, deviceIdentifier, markNetworkChecked]);
 
   const refreshSummary = useCallback(async () => {
     if (!current) {
@@ -121,8 +139,10 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     }
   }, [current]);
 
-  // Hydrate shift from IndexedDB immediately so login doesn't block on
-  // the network when we already cached a shift from the last session.
+  // Hydrate shift from IndexedDB immediately so reopen/update can show
+  // the register without waiting on the network when we already cached
+  // an open shift. Keep `ready` false until network confirms — so a
+  // cache miss never flashes the Open-shift gate early.
   useEffect(() => {
     if (!isLoggedIn || !deviceApproved || cacheHydratedRef.current) return;
     cacheHydratedRef.current = true;
@@ -137,6 +157,8 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
         expected_cash: null,
         variance: null,
       });
+      // Optimistic UI only — still wait for bootstrap/refresh before
+      // treating "no shift" as authoritative.
       setLoading(false);
     });
   }, [isLoggedIn, deviceApproved]);
@@ -144,20 +166,18 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
   useEffect(() => {
     if (!isLoggedIn) {
       cacheHydratedRef.current = false;
-      bootstrapSeededRef.current = false;
+      networkCheckedRef.current = false;
+      setReady(false);
       setLoading(true);
       return;
     }
     if (!deviceApproved) return;
 
-    // Let /pos/bootstrap seed shift first; fall back if bootstrap fails.
+    // Confirm shift ASAP. Bootstrap may also seed; refresh always runs
+    // so a null bootstrap cannot leave us stuck on a stale "no shift".
     const handle = window.setTimeout(() => {
-      if (bootstrapSeededRef.current) {
-        bootstrapSeededRef.current = false;
-        return;
-      }
       void refresh();
-    }, 2500);
+    }, 150);
 
     return () => window.clearTimeout(handle);
   }, [refresh, isLoggedIn, deviceApproved]);
@@ -253,6 +273,7 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     current,
     summary,
     loading,
+    ready,
     error,
     refresh,
     refreshSummary,
