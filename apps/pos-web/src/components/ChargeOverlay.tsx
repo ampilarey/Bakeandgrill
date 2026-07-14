@@ -3,7 +3,7 @@ import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { z } from "../theme";
 
-export type ChargeMethod = "cash" | "card" | "digital_wallet" | "house_account" | "wallet";
+export type ChargeMethod = "cash" | "card" | "qr" | "digital_wallet" | "house_account" | "wallet";
 
 type Props = {
   total: number;
@@ -26,12 +26,13 @@ type Props = {
   /** Show customer deposit tender when customer has prepaid balance. */
   walletEligible?: boolean;
   walletAvailableMvr?: number;
-  /** When true, only cash / card / transfer are offered. */
+  /** When true, only cash / POS / transfer / QR are offered. */
   isOffline?: boolean;
   /** Hide tender types the cashier is not permitted to use. */
   allowedTenders?: {
     cash?: boolean;
     card?: boolean;
+    qr?: boolean;
     digital_wallet?: boolean;
     split?: boolean;
   };
@@ -49,7 +50,8 @@ type Props = {
 
 const METHOD_LABEL: Record<ChargeMethod, string> = {
   cash: "Cash",
-  card: "Card",
+  card: "POS",
+  qr: "QR",
   digital_wallet: "Transfer",
   house_account: "Credit Account",
   wallet: "Pay from Deposit",
@@ -84,11 +86,12 @@ export function ChargeOverlay({
   const tenderAllowed = useMemo(() => ({
     cash: allowedTenders?.cash !== false,
     card: allowedTenders?.card !== false,
+    qr: allowedTenders?.qr !== false,
     digital_wallet: allowedTenders?.digital_wallet !== false,
     split: allowedTenders?.split !== false,
-  }), [allowedTenders?.cash, allowedTenders?.card, allowedTenders?.digital_wallet, allowedTenders?.split]);
+  }), [allowedTenders?.cash, allowedTenders?.card, allowedTenders?.qr, allowedTenders?.digital_wallet, allowedTenders?.split]);
   const baseMethods = useMemo(
-    () => (["cash", "card", "digital_wallet"] as const).filter((m) => tenderAllowed[m]),
+    () => (["cash", "card", "digital_wallet", "qr"] as const).filter((m) => tenderAllowed[m]),
     [tenderAllowed],
   );
   const showBreakdown =
@@ -448,11 +451,11 @@ export function ChargeOverlay({
                 padding: "10px 12px", borderRadius: 8, background: "#FEF3C7",
                 border: "1px solid #FDE68A", fontSize: 12, color: "#92400E",
               }}>
-                Offline mode — cash, card, and transfer only (manual record). Orders sync when internet returns.
+                Offline mode — cash, POS, transfer, and QR only (manual record). Orders sync when internet returns.
               </div>
             )}
 
-            {isOffline && (method === "card" || method === "digital_wallet") && (
+            {isOffline && (method === "card" || method === "qr" || method === "digital_wallet") && (
               <div style={{ fontSize: 12, color: "#64748B" }}>
                 Payment must already be received — will sync when online.
               </div>

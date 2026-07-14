@@ -46,7 +46,8 @@ const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup"
  */
 function mapChargeMethodToOffline(method: string): OfflineOrderRecord["payment"]["method"] | null {
   if (method === "cash") return "cash";
-  if (method === "card" || method === "card_pos") return "card";
+  // QR is audited as card (same as POS terminal).
+  if (method === "card" || method === "card_pos" || method === "qr") return "card";
   if (method === "digital_wallet" || method === "bank_transfer") return "bank_transfer";
   return null;
 }
@@ -65,6 +66,8 @@ function lineUnitPrice(item: CartItem): number {
 /** Map POS ChargeOverlay methods to backend payment method whitelist. */
 function mapPaymentMethodForApi(method: string): string {
   if (method === "digital_wallet") return "bank_transfer";
+  // QR is the same as POS/card for audit — store as card.
+  if (method === "qr") return "card";
   return method;
 }
 
@@ -452,7 +455,7 @@ export function useOrderCreation(params: Params) {
       return method === "house_account" || method === "wallet" || method === "bml" || method === "online";
     });
     if (blocked) {
-      flashError("Only cash, card, and transfer are available offline.");
+      flashError("Only cash, POS, transfer, and QR are available offline.");
       return false;
     }
 
@@ -466,7 +469,7 @@ export function useOrderCreation(params: Params) {
     const primary = paymentSnapshot[0];
     const offlineMethod = primary ? mapChargeMethodToOffline(primary.method) : null;
     if (!primary || !offlineMethod) {
-      flashError("Only cash, card, and transfer are available offline.");
+      flashError("Only cash, POS, transfer, and QR are available offline.");
       return false;
     }
 

@@ -232,8 +232,8 @@ function Row({ label, value, bold, count }: { label: string; value: number; bold
 
 function methodLabel(m: string): string {
   if (m === "cash") return "Cash";
-  if (m === "card") return "Card";
-  if (m === "digital_wallet") return "Transfer";
+  if (m === "card" || m === "card_pos" || m === "qr") return "POS";
+  if (m === "digital_wallet" || m === "bank_transfer") return "Transfer";
   if (m === "wallet") return "Deposit";
   if (m === "house_account") return "Credit";
   return m;

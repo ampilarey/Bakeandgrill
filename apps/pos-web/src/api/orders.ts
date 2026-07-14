@@ -274,7 +274,7 @@ export async function sendPayLink(
  * loyalty awards still fire on transition to completed.
  *
  * `markPickedUp` is guarded server-side: it refuses to close an
- * unpaid order. Take payment first (cash, card, or Send pay link)
+ * unpaid order. Take payment first (cash, POS, transfer, QR, or Send pay link)
  * before tapping "Picked up".
  *
  * The {unchanged: true} return flag distinguishes a real transition

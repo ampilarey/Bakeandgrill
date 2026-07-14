@@ -13,7 +13,7 @@ import { fetchPublicSiteSettings, fetchGstBootstrap } from "../api";
 
 export type PaymentRow = {
   id: string;
-  method: "cash" | "card" | "digital_wallet" | "house_account" | "wallet";
+  method: "cash" | "card" | "qr" | "digital_wallet" | "house_account" | "wallet";
   amount: string;
 };
 

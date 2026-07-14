@@ -416,7 +416,7 @@ export async function importLegacyLocalStorageQueue(): Promise<number> {
 
 function mapLegacyMethod(method: string): OfflineOrderRecord["payment"]["method"] | null {
   if (method === "cash") return "cash";
-  if (method === "card" || method === "card_pos") return "card";
+  if (method === "card" || method === "card_pos" || method === "qr") return "card";
   if (method === "digital_wallet" || method === "bank_transfer") return "bank_transfer";
   return null;
 }

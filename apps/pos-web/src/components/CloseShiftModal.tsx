@@ -87,7 +87,7 @@ export function CloseShiftModal({
             )}
             {(pendingOfflineCardTotal > 0 || pendingOfflineTransferTotal > 0) && (
               <div style={{ marginTop: 4, color: "#991B1B" }}>
-                Pending card MVR {pendingOfflineCardTotal.toFixed(2)} · transfer MVR {pendingOfflineTransferTotal.toFixed(2)}
+                Pending POS MVR {pendingOfflineCardTotal.toFixed(2)} · transfer MVR {pendingOfflineTransferTotal.toFixed(2)}
               </div>
             )}
             {onSyncNow && (
