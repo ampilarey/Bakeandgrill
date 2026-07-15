@@ -456,6 +456,7 @@ class CustomerAuthController extends Controller
         $existing = Customer::withTrashed()->where('phone', $phone)->first();
         if ($existing && $existing->trashed()) {
             $existing->restoreForReregistration();
+            $existing->update(['name' => $input['name']]);
             $customer = $existing;
         } elseif ($existing) {
             if (!$existing->is_active) {
