@@ -44,6 +44,7 @@ use App\Http\Controllers\CustomerPortalController;
 
 Route::get('/customer/login', [CustomerPortalController::class, 'showLogin'])->name('customer.login');
 Route::post('/customer/request-otp', [CustomerPortalController::class, 'requestOtp'])->name('customer.request-otp');
+Route::get('/customer/verify-otp', [CustomerPortalController::class, 'showVerifyOtp'])->name('customer.verify-otp.show');
 Route::post('/customer/verify-otp', [CustomerPortalController::class, 'verifyOtp'])->name('customer.verify-otp');
 Route::post('/customer/login', [CustomerPortalController::class, 'passwordLogin'])->name('customer.password-login');
 Route::post('/customer/logout', [CustomerPortalController::class, 'logout'])->name('customer.logout');

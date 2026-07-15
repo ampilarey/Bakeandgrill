@@ -170,12 +170,33 @@ class CustomerPortalController extends Controller
             return back()->withErrors(['phone' => 'No account found for this phone number.']);
         }
 
-        $customer->update(['password' => Hash::make($request->password)]);
+        // 'password' is excluded from $fillable — set directly so the hashed cast
+        // encrypts once. Mass-assigning throws under preventSilentlyDiscardingAttributes.
+        $customer->password = $request->password;
+        $customer->save();
 
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
 
         return redirect('/order/menu')->with('message', 'Password reset successfully. Welcome back!');
+    }
+
+    /**
+     * GET /customer/verify-otp — form posts here; refresh after a failed POST
+     * would otherwise 405. Send guests back to login; send authed customers on.
+     */
+    public function showVerifyOtp()
+    {
+        if (Auth::guard('customer')->check()) {
+            $customer = Auth::guard('customer')->user();
+            if ($customer instanceof Customer && !$customer->is_profile_complete) {
+                return redirect()->route('customer.complete-profile');
+            }
+
+            return redirect('/order/menu');
+        }
+
+        return redirect()->route('customer.login');
     }
 
     // ── Step 2a: Verify OTP ───────────────────────────────────────────────────
@@ -190,12 +211,12 @@ class CustomerPortalController extends Controller
         $phone = $this->normalizePhone($request->phone);
 
         $verifyKey = 'otp-web-verify:' . $phone;
-        if (RateLimiter::tooManyAttempts($verifyKey, 5)) {
-            $seconds = RateLimiter::availableIn($verifyKey);
-
-            return back()->withErrors(['otp' => 'Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.']);
+        $limited = $this->otpRateLimited($verifyKey, 5);
+        if ($limited !== null) {
+            return back()->withErrors([
+                'otp' => 'Too many attempts. Try again in ' . ceil($limited / 60) . ' minutes.',
+            ]);
         }
-        RateLimiter::hit($verifyKey, 600);
 
         $otpRecord = OtpVerification::where('phone', $phone)
             ->whereNull('used_at')
@@ -210,14 +231,12 @@ class CustomerPortalController extends Controller
         $otpRecord->update(['used_at' => now()]);
 
         // Successful verification — clear the OTP request rate limit for this phone
-        RateLimiter::clear('otp-request:web:' . $phone);
+        $this->clearOtpRateLimit('otp-request:web:' . $phone);
 
-        $customer = Customer::firstOrCreate(
-            ['phone' => $phone],
-            ['loyalty_points' => 0, 'tier' => 'bronze'],
-        );
-
-        if (!$customer->wasRecentlyCreated && !$customer->is_active) {
+        // Match API: include soft-deleted rows so we don't hit a unique constraint
+        // when a customer who was admin-deleted tries to log back in via OTP.
+        $customer = $this->findOrRestoreCustomerByPhone($phone);
+        if ($customer === null) {
             return back()->withErrors(['otp' => 'This account has been deactivated. Please contact support.']);
         }
 
@@ -376,5 +395,58 @@ class CustomerPortalController extends Controller
     private function normalizePhone(string $phone): string
     {
         return \App\Support\PhoneNormalizer::normalize($phone);
+    }
+
+    /**
+     * Find by phone, restore soft-deleted accounts, or create a new customer.
+     * Returns null when an existing non-deleted account is deactivated.
+     */
+    private function findOrRestoreCustomerByPhone(string $phone): ?Customer
+    {
+        $existing = Customer::withTrashed()->where('phone', $phone)->first();
+
+        if ($existing && $existing->trashed()) {
+            $existing->restore();
+            $existing->update(['is_active' => true]);
+
+            return $existing;
+        }
+
+        if ($existing) {
+            return $existing->is_active ? $existing : null;
+        }
+
+        return Customer::create([
+            'phone' => $phone,
+            'loyalty_points' => 0,
+            'tier' => 'bronze',
+        ]);
+    }
+
+    /**
+     * Hit the OTP verify rate limiter. Returns seconds until available when
+     * limited, or null when allowed. Redis blips must not 500 the login flow.
+     */
+    private function otpRateLimited(string $key, int $maxAttempts): ?int
+    {
+        try {
+            if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
+                return RateLimiter::availableIn($key);
+            }
+            RateLimiter::hit($key, 600);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return null;
+    }
+
+    private function clearOtpRateLimit(string $key): void
+    {
+        try {
+            RateLimiter::clear($key);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }
