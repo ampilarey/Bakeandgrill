@@ -273,11 +273,13 @@ class CustomerAuthController extends Controller
         // when a customer who was admin-deleted tries to log back in via OTP.
         $existing = Customer::withTrashed()->where('phone', $phone)->first();
 
+        $restoredFromTrash = false;
         if ($existing && $existing->trashed()) {
             // Restore the soft-deleted account — OTP proves ownership of the phone.
-            $existing->restore();
-            $existing->update(['is_active' => true]);
+            // Clear old profile so they re-enter name/password like a new signup.
+            $existing->restoreForReregistration();
             $customer = $existing;
+            $restoredFromTrash = true;
         } elseif ($existing) {
             $customer = $existing;
             if (!$customer->is_active) {
@@ -295,7 +297,7 @@ class CustomerAuthController extends Controller
             ]);
         }
 
-        $isNew = $customer->wasRecentlyCreated;
+        $isNew = $customer->wasRecentlyCreated || $restoredFromTrash;
 
         // Note: CustomerCreated event is intentionally NOT fired here.
         // OTP registrations are silent/quick-checkout flows — the customer has no name yet
@@ -453,8 +455,7 @@ class CustomerAuthController extends Controller
 
         $existing = Customer::withTrashed()->where('phone', $phone)->first();
         if ($existing && $existing->trashed()) {
-            $existing->restore();
-            $existing->update(['is_active' => true]);
+            $existing->restoreForReregistration();
             $customer = $existing;
         } elseif ($existing) {
             if (!$existing->is_active) {

@@ -406,8 +406,7 @@ class CustomerPortalController extends Controller
         $existing = Customer::withTrashed()->where('phone', $phone)->first();
 
         if ($existing && $existing->trashed()) {
-            $existing->restore();
-            $existing->update(['is_active' => true]);
+            $existing->restoreForReregistration();
 
             return $existing;
         }

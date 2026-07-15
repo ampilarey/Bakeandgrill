@@ -188,4 +188,25 @@ class Customer extends Model implements AuthenticatableContract
     {
         return $this->hasMany(SmsLog::class);
     }
+
+    /**
+     * Bring back a soft-deleted customer after OTP proves phone ownership.
+     * Admin delete is a soft-delete that keeps name/password/profile flags —
+     * re-registration must feel like a fresh signup (complete-profile again).
+     */
+    public function restoreForReregistration(): void
+    {
+        $this->restore();
+
+        // password is not fillable — set directly (hashed cast leaves null alone).
+        $this->password = null;
+        $this->forceFill([
+            'is_active' => true,
+            'is_profile_complete' => false,
+            'name' => null,
+            'email' => null,
+        ])->save();
+
+        $this->tokens()->delete();
+    }
 }

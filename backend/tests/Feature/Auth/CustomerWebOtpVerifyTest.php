@@ -41,8 +41,11 @@ class CustomerWebOtpVerifyTest extends TestCase
 
         $customer = Customer::factory()->create([
             'phone' => $phone,
-            'is_profile_complete' => false,
+            'name' => 'Old Name',
+            'email' => 'old@example.com',
+            'is_profile_complete' => true,
             'is_active' => true,
+            'password' => 'old-secret',
         ]);
         $customer->delete();
 
@@ -60,14 +63,16 @@ class CustomerWebOtpVerifyTest extends TestCase
             ])
             ->assertRedirect(route('customer.complete-profile'));
 
-        $this->assertDatabaseHas('customers', [
-            'id' => $customer->id,
-            'phone' => $phone,
-            'deleted_at' => null,
-            'is_active' => 1,
-        ]);
+        $restored = $customer->fresh();
+        $this->assertNotNull($restored);
+        $this->assertNull($restored->deleted_at);
+        $this->assertTrue($restored->is_active);
+        $this->assertFalse($restored->is_profile_complete);
+        $this->assertNull($restored->name);
+        $this->assertNull($restored->email);
+        $this->assertNull($restored->password);
 
-        $this->assertAuthenticatedAs($customer->fresh(), 'customer');
+        $this->assertAuthenticatedAs($restored, 'customer');
     }
 
     #[Test]
