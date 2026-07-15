@@ -297,7 +297,7 @@ class CustomerPortalController extends Controller
             return redirect()->route('customer.login');
         }
 
-        $request->validate([
+        $input = $request->validate([
             'name' => 'required|string|max:100',
             'email' => 'nullable|email|max:100',
             'password' => 'required|string|min:6|confirmed',
@@ -307,12 +307,14 @@ class CustomerPortalController extends Controller
         /** @var Customer $customer */
         $customer = Auth::guard('customer')->user();
 
-        $customer->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'is_profile_complete' => true,
-        ]);
+        // 'password' is excluded from $fillable — must be set directly so the
+        // 'hashed' cast encrypts it. Mass-assigning it throws under
+        // Model::preventSilentlyDiscardingAttributes() (APP_ENV=local/test).
+        $customer->name = $input['name'];
+        $customer->email = $input['email'] ?? $customer->email;
+        $customer->password = $input['password'];
+        $customer->is_profile_complete = true;
+        $customer->save();
 
         $intendedUrl = session('intended_url', '/');
         session()->forget('intended_url');
