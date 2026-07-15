@@ -8,6 +8,8 @@ enum PaymentMethod: string
 {
     case Cash = 'cash';
     case Card = 'card';
+    case Qr = 'qr';
+    case BankTransfer = 'bank_transfer';
     case GiftCard = 'gift_card';
     case Wallet = 'wallet';
 }

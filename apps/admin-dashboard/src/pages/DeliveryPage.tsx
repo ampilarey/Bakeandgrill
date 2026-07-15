@@ -202,7 +202,7 @@ export function DeliveryPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
-                        {['Driver', 'Orders', 'Completed', 'Revenue', 'Fees', 'Cash', 'Card', 'Prepaid'].map((h) => (
+                        {['Driver', 'Orders', 'Completed', 'Revenue', 'Fees', 'Cash', 'Card', 'QR', 'Transfer', 'Other', 'Prepaid'].map((h) => (
                           <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>{h}</th>
                         ))}
                       </tr>
@@ -217,6 +217,9 @@ export function DeliveryPage() {
                           <td style={{ padding: '10px 12px' }}>MVR {row.delivery_fees.toFixed(2)}</td>
                           <td style={{ padding: '10px 12px', color: '#16a34a', fontWeight: 600 }}>MVR {row.cash_collected.toFixed(2)}</td>
                           <td style={{ padding: '10px 12px' }}>MVR {row.card_collected.toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px' }}>MVR {(row.qr_collected ?? 0).toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px' }}>MVR {(row.transfer_collected ?? 0).toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px' }}>MVR {(row.other_collected ?? 0).toFixed(2)}</td>
                           <td style={{ padding: '10px 12px' }}>{row.prepaid_count}</td>
                         </tr>
                       ))}

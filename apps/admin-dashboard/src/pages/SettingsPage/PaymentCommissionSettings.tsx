@@ -81,7 +81,7 @@ export function PaymentCommissionSettings() {
       )}
 
       <p style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
-        BML deducts a processing fee from card and online gateway income. These rates are snapshotted on each payment at settlement time — changing them does not rewrite history. Refunds do not automatically reverse commission (BML typically keeps the fee).
+        BML deducts a processing fee from card, QR, and online gateway income. These rates are snapshotted on each payment at settlement time — changing them does not rewrite history. Refunds do not automatically reverse commission (BML typically keeps the fee).
       </p>
 
       <Card>
@@ -97,7 +97,7 @@ export function PaymentCommissionSettings() {
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>POS card rate (%)</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>POS card / QR rate (%)</label>
             <input
               type="number"
               min={0}
@@ -108,7 +108,7 @@ export function PaymentCommissionSettings() {
               style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8E0D8', fontFamily: 'inherit' }}
             />
             <p style={{ margin: '6px 0 0', fontSize: 12, color: '#9C8E7E' }}>
-              Example: MVR 100 POS card → MVR {posExample.fee.toFixed(2)} fee → MVR {posExample.net.toFixed(2)} net
+              Example: MVR 100 POS card/QR → MVR {posExample.fee.toFixed(2)} fee → MVR {posExample.net.toFixed(2)} net
             </p>
           </div>
           <div>

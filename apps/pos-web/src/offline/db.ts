@@ -20,7 +20,7 @@ export type OfflineOrderRecord = {
   }>;
   totals: { subtotal: number; tax: number; total: number };
   payment: {
-    method: "cash" | "card" | "bank_transfer";
+    method: "cash" | "card" | "qr" | "bank_transfer";
     amount: number;
     reference?: string;
     change_given?: number;
@@ -307,7 +307,7 @@ export async function getOfflineOrderSyncCounts(shiftId?: number): Promise<{
   for (const o of orders) {
     if (o.status === "failed") failed += 1;
     if (o.payment.method === "cash") pendingCashTotal += o.payment.amount;
-    else if (o.payment.method === "card") pendingCardTotal += o.payment.amount;
+    else if (o.payment.method === "card" || o.payment.method === "qr") pendingCardTotal += o.payment.amount;
     else pendingTransferTotal += o.payment.amount;
   }
 
@@ -416,7 +416,8 @@ export async function importLegacyLocalStorageQueue(): Promise<number> {
 
 function mapLegacyMethod(method: string): OfflineOrderRecord["payment"]["method"] | null {
   if (method === "cash") return "cash";
-  if (method === "card" || method === "card_pos" || method === "qr") return "card";
+  if (method === "card" || method === "card_pos") return "card";
+  if (method === "qr") return "qr";
   if (method === "digital_wallet" || method === "bank_transfer") return "bank_transfer";
   return null;
 }

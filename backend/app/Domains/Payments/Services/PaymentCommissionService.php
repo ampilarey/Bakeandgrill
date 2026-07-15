@@ -18,7 +18,7 @@ class PaymentCommissionService
     public const MAX_RATE_BP = 1000;
 
     /** @var list<string> */
-    private const POS_CARD_METHODS = ['card', 'card_pos'];
+    private const POS_CARD_METHODS = ['card', 'card_pos', 'qr'];
 
     /** @var list<string> */
     private const GATEWAY_METHODS = ['bml_connect', 'bml_pay', 'bml', 'online'];
@@ -170,7 +170,7 @@ class PaymentCommissionService
 
             $byChannel[] = [
                 'channel' => $channel,
-                'label' => $channel === self::CHANNEL_POS_CARD ? 'POS card' : 'Online / BML gateway',
+                'label' => $channel === self::CHANNEL_POS_CARD ? 'POS card / QR' : 'Online / BML gateway',
                 'gross' => $gross,
                 'commission' => $commission,
                 'net' => round($gross - $commission, 2),
@@ -196,6 +196,7 @@ class PaymentCommissionService
             'by_channel' => $byChannel,
             'by_method' => $methodRows->map(fn ($row) => [
                 'method' => (string) $row->method,
+                'method_label' => \App\Support\PaymentMethodLabel::for((string) $row->method),
                 'channel' => (string) $row->commission_channel,
                 'gross' => (float) $row->gross,
                 'commission' => (float) $row->commission,

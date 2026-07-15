@@ -51,7 +51,7 @@ class ReportsController extends Controller
             ['payment_method', 'amount'],
         ];
         foreach ($data['payments'] ?? [] as $method => $amount) {
-            $rows[] = [$method, $amount];
+            $rows[] = [\App\Support\PaymentMethodLabel::for((string) $method), $amount];
         }
 
         return $this->csvResponse('sales-summary.csv', $rows);
@@ -122,7 +122,7 @@ class ReportsController extends Controller
             ['payment_method', 'amount'],
         ];
         foreach ($data['payments'] ?? [] as $method => $amount) {
-            $rows[] = [$method, $amount];
+            $rows[] = [\App\Support\PaymentMethodLabel::for((string) $method), $amount];
         }
 
         return $this->csvResponse('x-report.csv', $rows);
@@ -155,7 +155,7 @@ class ReportsController extends Controller
             ['payment_method', 'amount'],
         ];
         foreach ($data['payments'] ?? [] as $method => $amount) {
-            $rows[] = [$method, $amount];
+            $rows[] = [\App\Support\PaymentMethodLabel::for((string) $method), $amount];
         }
 
         return $this->csvResponse('z-report.csv', $rows);

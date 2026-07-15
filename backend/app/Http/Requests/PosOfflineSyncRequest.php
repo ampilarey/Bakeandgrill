@@ -37,7 +37,7 @@ class PosOfflineSyncRequest extends FormRequest
             'orders.*.totals.tax' => ['required', 'numeric', 'min:0'],
             'orders.*.totals.total' => ['required', 'numeric', 'min:0'],
             'orders.*.payment' => ['required', 'array'],
-            'orders.*.payment.method' => ['required', 'string', Rule::in(['cash', 'card', 'bank_transfer'])],
+            'orders.*.payment.method' => ['required', 'string', Rule::in(['cash', 'card', 'qr', 'bank_transfer'])],
             'orders.*.payment.amount' => ['required', 'numeric', 'min:0'],
             'orders.*.payment.reference' => ['nullable', 'string', 'max:255'],
             'orders.*.payment.reference_number' => ['nullable', 'string', 'max:255'],

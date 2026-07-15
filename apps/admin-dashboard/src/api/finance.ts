@@ -262,7 +262,7 @@ export type PaymentCommissionSummary = {
   rates: { pos_card_rate_bp: number; online_gateway_rate_bp: number };
   totals: { gross_commissionable: number; commission_total: number; net_settlement: number };
   by_channel: PaymentCommissionChannel[];
-  by_method: { method: string; channel: string; gross: number; commission: number; net: number }[];
+  by_method: { method: string; method_label?: string; channel: string; gross: number; commission: number; net: number }[];
 };
 
 export type SalesSummary = {
@@ -668,6 +668,9 @@ export type DriverSettlementRow = {
   delivery_fees: number;
   cash_collected: number;
   card_collected: number;
+  qr_collected?: number;
+  transfer_collected?: number;
+  other_collected?: number;
   prepaid_count: number;
 };
 

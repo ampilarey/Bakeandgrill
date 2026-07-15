@@ -1,4 +1,5 @@
 import { Card, StatCard } from '../../components/Layout';
+import { paymentMethodLabel } from '../../lib/paymentMethods';
 import {
   BarCell, DISCOUNT_TYPE_LABELS, mvr, ORDER_TYPE_LABELS, PaymentCommissionBlock,
   pct, S, today, type ReportData, type Tab,
@@ -77,7 +78,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   <tbody>
                     {Object.entries(summary.payments).map(([method, amount]) => (
                       <tr key={method}>
-                        <td style={S.td}>{method.replace(/_/g, ' ')}</td>
+                        <td style={S.td}>{paymentMethodLabel(method)}</td>
                         <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(Number(amount))}</td>
                       </tr>
                     ))}
@@ -276,7 +277,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                           <tbody>
                             {Object.entries(data.payments ?? {}).map(([method, total]) => (
                               <tr key={method}>
-                                <td style={S.td}>{method}</td>
+                                <td style={S.td}>{paymentMethodLabel(method)}</td>
                                 <td style={S.td}>{mvr(total as number)}</td>
                               </tr>
                             ))}

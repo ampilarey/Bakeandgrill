@@ -12,6 +12,7 @@ import {
 } from '../api';
 import { Badge, Btn, ErrorMsg } from './SharedUI';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { paymentMethodLabel } from '../lib/paymentMethods';
 
 type Props = {
   customerId: number;
@@ -303,7 +304,7 @@ export function CustomerDepositSection({ customerId }: Props) {
               <select style={inputStyle} value={topUpMethod} onChange={(e) => setTopUpMethod(e.target.value as typeof topUpMethod)}>
                 <option value="cash">Cash</option>
                 <option value="card">Card</option>
-                <option value="bank_transfer">Bank transfer</option>
+                <option value="bank_transfer">Transfer</option>
               </select>
               <input style={inputStyle} value={topUpReference} onChange={(e) => setTopUpReference(e.target.value)} placeholder="Reference (optional)" />
               <textarea style={{ ...inputStyle, height: 48, resize: 'vertical' }} value={topUpNotes} onChange={(e) => setTopUpNotes(e.target.value)} placeholder="Notes (optional)" />
@@ -318,7 +319,7 @@ export function CustomerDepositSection({ customerId }: Props) {
               <select style={inputStyle} value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as typeof refundMethod)}>
                 <option value="cash">Cash</option>
                 <option value="card">Card</option>
-                <option value="bank_transfer">Bank transfer</option>
+                <option value="bank_transfer">Transfer</option>
               </select>
               <textarea style={{ ...inputStyle, height: 48, resize: 'vertical' }} value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="Reason (required)" />
               <Btn small variant="secondary" onClick={() => void handleRefund()} disabled={saving}>Payout deposit</Btn>
@@ -374,7 +375,7 @@ export function CustomerDepositSection({ customerId }: Props) {
                       </span>
                     </div>
                     <p style={{ margin: '2px 0 0', color: '#9C8E7E', fontSize: 11 }}>
-                      {row.method ? `${row.method} · ` : ''}
+                      {row.method ? `${paymentMethodLabel(row.method)} · ` : ''}
                       Bal MVR {row.balance_after_mvr.toFixed(2)}
                       {row.order_id ? ` · Order #${row.order_id}` : ''}
                       {row.actor_name ? ` · ${row.actor_name}` : ''}

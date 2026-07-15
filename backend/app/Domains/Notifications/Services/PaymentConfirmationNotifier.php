@@ -171,9 +171,13 @@ class PaymentConfirmationNotifier
             ->map(fn ($m) => match ((string) $m) {
                 'bml_pay', 'bml', 'bml_connect', 'online' => 'BML Pay',
                 'cash' => 'cash',
-                'card' => 'card',
+                'card', 'card_pos' => 'card',
+                'qr' => 'QR',
+                'bank_transfer', 'digital_wallet' => 'transfer',
                 'gift_card' => 'gift card',
                 'loyalty' => 'loyalty points',
+                'house_account' => 'credit',
+                'wallet', 'customer_deposit' => 'deposit',
                 default => str_replace('_', ' ', (string) $m),
             })
             ->unique()

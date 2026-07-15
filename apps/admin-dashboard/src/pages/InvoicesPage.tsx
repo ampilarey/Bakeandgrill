@@ -9,6 +9,7 @@ import {
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
+import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
 
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
 
@@ -456,8 +457,8 @@ export function InvoicesPage() {
               onChange={(e) => setPayMethod(e.target.value)}
               style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none' }}
             >
-              {['cash', 'card', 'bml_pay', 'bank_transfer', 'other'].map((m) => (
-                <option key={m} value={m}>{m.replace('_', ' ').toUpperCase()}</option>
+              {ADMIN_INVOICE_PAYMENT_METHODS.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
           </div>

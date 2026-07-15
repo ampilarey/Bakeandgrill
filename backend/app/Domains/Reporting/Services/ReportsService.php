@@ -728,6 +728,9 @@ class ReportsService
                     'delivery_fees' => 0.0,
                     'cash_collected' => 0.0,
                     'card_collected' => 0.0,
+                    'qr_collected' => 0.0,
+                    'transfer_collected' => 0.0,
+                    'other_collected' => 0.0,
                     'prepaid_count' => 0,
                 ];
             }
@@ -745,11 +748,19 @@ class ReportsService
                 ->where('amount', '>', 0);
 
             $cash = (float) $paidPayments->where('method', 'cash')->sum('amount');
-            $card = (float) $paidPayments->whereNotIn('method', ['cash'])->sum('amount');
+            $card = (float) $paidPayments->whereIn('method', ['card', 'card_pos'])->sum('amount');
+            $qr = (float) $paidPayments->where('method', 'qr')->sum('amount');
+            $transfer = (float) $paidPayments->whereIn('method', ['bank_transfer', 'digital_wallet'])->sum('amount');
+            $other = (float) $paidPayments
+                ->whereNotIn('method', ['cash', 'card', 'card_pos', 'qr', 'bank_transfer', 'digital_wallet'])
+                ->sum('amount');
             $row['cash_collected'] += $cash;
             $row['card_collected'] += $card;
+            $row['qr_collected'] += $qr;
+            $row['transfer_collected'] += $transfer;
+            $row['other_collected'] += $other;
 
-            if ($order->payment_status === 'paid' && $cash <= 0 && $card <= 0) {
+            if ($order->payment_status === 'paid' && ($cash + $card + $qr + $transfer + $other) <= 0) {
                 $row['prepaid_count']++;
             }
             unset($row);
@@ -764,6 +775,9 @@ class ReportsService
                 'delivery_fees' => round($row['delivery_fees'], 2),
                 'cash_collected' => round($row['cash_collected'], 2),
                 'card_collected' => round($row['card_collected'], 2),
+                'qr_collected' => round($row['qr_collected'], 2),
+                'transfer_collected' => round($row['transfer_collected'], 2),
+                'other_collected' => round($row['other_collected'], 2),
             ])
             ->all();
 

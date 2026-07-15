@@ -46,8 +46,8 @@ const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup"
  */
 function mapChargeMethodToOffline(method: string): OfflineOrderRecord["payment"]["method"] | null {
   if (method === "cash") return "cash";
-  // QR is audited as card (same as POS terminal).
-  if (method === "card" || method === "card_pos" || method === "qr") return "card";
+  if (method === "card" || method === "card_pos") return "card";
+  if (method === "qr") return "qr";
   if (method === "digital_wallet" || method === "bank_transfer") return "bank_transfer";
   return null;
 }
@@ -66,8 +66,6 @@ function lineUnitPrice(item: CartItem): number {
 /** Map POS ChargeOverlay methods to backend payment method whitelist. */
 function mapPaymentMethodForApi(method: string): string {
   if (method === "digital_wallet") return "bank_transfer";
-  // QR is the same as POS/card for audit — store as card.
-  if (method === "qr") return "card";
   return method;
 }
 

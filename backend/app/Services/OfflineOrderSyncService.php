@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class OfflineOrderSyncService
 {
-    private const ALLOWED_METHODS = ['cash', 'card', 'bank_transfer'];
+    private const ALLOWED_METHODS = ['cash', 'card', 'qr', 'bank_transfer'];
 
     private const BLOCKED_METHODS = ['house_account', 'bml_pay', 'bml', 'online', 'wallet', 'cheque', 'card_pos'];
 

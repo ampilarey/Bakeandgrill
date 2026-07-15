@@ -22,7 +22,7 @@ export type PosOfflineSyncPayload = {
     }>;
     totals: { subtotal: number; tax: number; total: number };
     payment: {
-      method: 'cash' | 'card' | 'bank_transfer';
+      method: 'cash' | 'card' | 'qr' | 'bank_transfer';
       amount: number;
       reference?: string;
     };

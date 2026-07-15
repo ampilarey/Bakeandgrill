@@ -22,6 +22,7 @@ class StoreOrderPaymentsRequest extends FormRequest
         'cash',
         'card',
         'card_pos',
+        'qr',
         'bank_transfer',
         'bml_pay',
         'bml',

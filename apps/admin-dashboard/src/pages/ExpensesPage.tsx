@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type Se
 import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
 import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
+import { ADMIN_EXPENSE_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
 import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -268,7 +269,7 @@ export function ExpensesPage() {
         subtitle="Track operating costs and overheads"
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="secondary" onClick={() => downloadCSV('expenses', expenses.map((e) => ({ Date: e.expense_date, Category: e.category?.name ?? '', Description: e.description, 'Amount (MVR)': Number(e.amount ?? 0).toFixed(2), Method: e.payment_method ?? '', Status: e.status, Notes: e.notes ?? '' })))}>Export CSV</Btn>
+            <Btn variant="secondary" onClick={() => downloadCSV('expenses', expenses.map((e) => ({ Date: e.expense_date, Category: e.category?.name ?? '', Description: e.description, 'Amount (MVR)': Number(e.amount ?? 0).toFixed(2), Method: paymentMethodLabel(e.payment_method), Status: e.status, Notes: e.notes ?? '' })))}>Export CSV</Btn>
             <Btn onClick={() => setShowAdd(true)}>+ Add Expense</Btn>
           </div>
         }
@@ -326,7 +327,7 @@ export function ExpensesPage() {
                         )}
                       </td>
                       <td style={{ ...TD, fontWeight: 700, color: '#D4813A', whiteSpace: 'nowrap' }}>MVR {parseFloat(String(exp.amount ?? 0)).toFixed(2)}</td>
-                      <td style={{ ...TD, color: '#6B5D4F' }}>{exp.payment_method?.replace('_', ' ') ?? '—'}</td>
+                      <td style={{ ...TD, color: '#6B5D4F' }}>{paymentMethodLabel(exp.payment_method)}</td>
                       <td style={TD}>
                         <Badge label={exp.status} color={STATUS_COLOR[exp.status] ?? 'gray'} />
                       </td>
@@ -411,8 +412,8 @@ export function ExpensesPage() {
             <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
               Payment Method
               <select value={form.payment_method} onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }}>
-                {['cash', 'card', 'bank_transfer', 'bml_pay', 'other'].map((m) => (
-                  <option key={m} value={m}>{m.replace('_', ' ').toUpperCase()}</option>
+                {ADMIN_EXPENSE_PAYMENT_METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
             </label>
@@ -481,8 +482,8 @@ export function ExpensesPage() {
                 onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
                 style={{ ...fieldStyle, marginTop: 4 }}
               >
-                {['cash', 'card', 'bank_transfer', 'bml_pay', 'other'].map((m) => (
-                  <option key={m} value={m}>{m.replace('_', ' ').toUpperCase()}</option>
+                {ADMIN_EXPENSE_PAYMENT_METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
             </label>

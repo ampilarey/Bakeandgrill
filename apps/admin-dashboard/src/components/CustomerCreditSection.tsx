@@ -282,7 +282,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                   <select style={inputStyle} value={repayMethod} onChange={(e) => setRepayMethod(e.target.value as typeof repayMethod)}>
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
-                    <option value="bank_transfer">Bank transfer</option>
+                    <option value="bank_transfer">Transfer</option>
                   </select>
                   <input style={inputStyle} value={repayReference} onChange={(e) => setRepayReference(e.target.value)} placeholder="Reference (optional)" />
                   <textarea style={{ ...inputStyle, height: 50, resize: 'vertical' }} value={repayNotes} onChange={(e) => setRepayNotes(e.target.value)} placeholder="Notes (optional)" />

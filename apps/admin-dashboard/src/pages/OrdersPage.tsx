@@ -10,6 +10,7 @@ import {
   fetchPosStaffOptions, fetchDevices,
   type Order, type DeliveryDriver,
 } from '../api';
+import { ADMIN_ORDER_PAYMENT_METHODS } from '../lib/paymentMethods';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -409,8 +410,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                       onChange={(e) => setPayRows((rs) => rs.map((r, j) => j === i ? { ...r, method: e.target.value } : r))}
                       style={{ height: 34, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: '#fff', flex: '0 0 110px' }}
                     >
-                      {['cash', 'card', 'bml_pay', 'bank_transfer', 'other'].map((m) => (
-                        <option key={m} value={m}>{m.replace('_', ' ').toUpperCase()}</option>
+                      {ADMIN_ORDER_PAYMENT_METHODS.map((m) => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
                       ))}
                     </select>
                     <input

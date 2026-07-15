@@ -28,7 +28,7 @@ export function PaymentCommissionBlock({ commission }: { commission?: PaymentCom
   const td = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #F3EDE4' };
   return (
     <div style={{ marginTop: 20 }}>
-      <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Card / gateway settlement</p>
+      <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Card / QR / gateway settlement</p>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
