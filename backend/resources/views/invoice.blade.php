@@ -50,7 +50,8 @@
         }
     }
     // Open / unpaid bills only — paid tax invoices don't need a mistake CTA.
-    $showMistakeCta = ! in_array($invoice->status, ['paid', 'void', 'cancelled'], true);
+    $showMistakeCta = ! in_array($invoice->status, ['paid', 'void', 'cancelled'], true)
+        && $balanceDueMvr > 0;
     $waLink = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
     $orderNumber = $invoice->order?->order_number;
     $mistakeMsg = 'Hi Bake & Grill — I think there\'s a mistake on bill '.$invoice->invoice_number

@@ -258,11 +258,13 @@ class InvoiceController extends Controller
         ]);
 
         $invoice = Invoice::findOrFail($id);
+        $totalLaar = (int) ($invoice->total_laar ?? round((float) $invoice->total * 100));
         $invoice->update([
             'status' => 'paid',
             'paid_at' => now(),
             'payment_method' => $validated['payment_method'],
             'payment_reference' => $validated['payment_reference'] ?? null,
+            'amount_paid_laar' => $totalLaar,
         ]);
         $this->audit->log('invoice.paid', 'Invoice', $invoice->id, [], [], [], $request);
 
@@ -465,6 +467,74 @@ class InvoiceController extends Controller
 
             return $this->ensureInvoiceHeaderMatchesLines($inv->fresh('items'), $order);
         });
+    }
+
+    /**
+     * Mirror order payments onto the linked sale invoice.
+     *
+     * Send Bill creates a durable invoice snapshot; cash/card/BML settlement
+     * historically updated only the order — leaving the public /invoices/{token}
+     * page stuck on "balance due". Credit (house_account) invoices stay open
+     * until repayment (CreditLedgerService).
+     */
+    public function syncPaymentStateFromOrder(Order $order): ?Invoice
+    {
+        $invoice = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
+        if (! $invoice || in_array($invoice->status, ['void', 'cancelled'], true)) {
+            return $invoice;
+        }
+
+        $order->loadMissing('payments');
+        $invoice->setRelation('order', $order);
+
+        // Credit charges keep the invoice open until the customer repays.
+        if ($invoice->isOnCreditAccount()) {
+            return $invoice;
+        }
+
+        $paidTotalLaar = (int) $order->payments()
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+            ->value('total_laar');
+
+        $invoiceTotalLaar = (int) ($invoice->total_laar ?? round((float) $invoice->total * 100));
+        if ($invoiceTotalLaar <= 0) {
+            $invoiceTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        }
+
+        $amountPaidLaar = $invoiceTotalLaar > 0
+            ? min($paidTotalLaar, $invoiceTotalLaar)
+            : $paidTotalLaar;
+
+        $primaryMethod = $order->payments()
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->orderByDesc('id')
+            ->value('method');
+
+        $updates = [];
+        if ((int) ($invoice->amount_paid_laar ?? 0) !== $amountPaidLaar) {
+            $updates['amount_paid_laar'] = $amountPaidLaar;
+        }
+
+        if ($invoiceTotalLaar > 0 && $paidTotalLaar >= $invoiceTotalLaar) {
+            if ($invoice->status !== 'paid') {
+                $updates['status'] = 'paid';
+                $updates['paid_at'] = $order->paid_at ?? now();
+                $updates['payment_method'] = $primaryMethod;
+            }
+        } elseif ($invoice->status === 'paid' && $paidTotalLaar < $invoiceTotalLaar) {
+            // Payment reversed / partial after a mistaken paid mark.
+            $updates['status'] = 'sent';
+            $updates['paid_at'] = null;
+            $updates['payment_method'] = null;
+            $updates['payment_reference'] = null;
+        }
+
+        if ($updates !== []) {
+            $invoice->update($updates);
+        }
+
+        return $invoice->fresh();
     }
 
     /**

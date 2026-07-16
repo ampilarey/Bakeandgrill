@@ -135,7 +135,11 @@ class OrderOfflineSettlementService
                 );
             }
 
-            return [$order->fresh('payments'), $paidTotal];
+            $order = $order->fresh('payments');
+            app(\App\Http\Controllers\Api\InvoiceController::class)
+                ->syncPaymentStateFromOrder($order);
+
+            return [$order, $paidTotal];
         });
     }
 }

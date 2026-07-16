@@ -34,6 +34,7 @@ use App\Domains\Orders\Listeners\ReleasePreparedStockOnCancelListener;
 use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Listeners\PaymentConfirmedListener;
 use App\Domains\Payments\Listeners\RedeemGiftCardOnOrderPaidListener;
+use App\Domains\Payments\Listeners\SyncInvoicePaymentOnOrderPaidListener;
 use App\Domains\Printing\Listeners\DispatchKitchenPrintListener;
 use App\Domains\Printing\Listeners\DispatchReceiptPrintListener;
 use App\Domains\Promotions\Listeners\ConsumePromoRedemptionsListener;
@@ -67,6 +68,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         ],
 
         OrderPaid::class => [
+            SyncInvoicePaymentOnOrderPaidListener::class,
             RedeemGiftCardOnOrderPaidListener::class,
             DeductInventoryListener::class,
             DeductPreparedStockListener::class,

@@ -164,6 +164,10 @@ final class SettleOrderPaymentAction
                 $this->audit->log('order.partial', 'Order', $order->id, ['status' => $oldStatus], ['status' => 'partial'], ['paid_total' => $paidTotal], $request);
             }
 
+            // Keep the Send Bill public invoice in sync with cash/card settlement.
+            app(\App\Http\Controllers\Api\InvoiceController::class)
+                ->syncPaymentStateFromOrder($order->fresh('payments'));
+
             return [$order, $paidTotal];
         });
     }
