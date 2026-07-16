@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -309,7 +310,8 @@ export default function PurchaseRequestsPage() {
                     disabled={actionBusy}
                     onClick={() => void runAction(async () => {
                       const res = await convertPurchaseRequestToPurchase(detail.id);
-                      toast.success(`Draft PO #${res.purchase.id} created.`);
+                      const poNo = res.purchase.purchase_number || `PO #${res.purchase.id}`;
+                      toast.success(`Draft ${poNo} created.`);
                       await refreshDetail(detail.id);
                     })}
                   >
@@ -322,7 +324,8 @@ export default function PurchaseRequestsPage() {
                     disabled={actionBusy}
                     onClick={() => void runAction(async () => {
                       const res = await convertPurchaseRequestToExpense(detail.id);
-                      toast.success(`Expense #${res.expense.id} created (pending).`);
+                      const expNo = res.expense.expense_number || `Expense #${res.expense.id}`;
+                      toast.success(`${expNo} created (pending).`);
                       await refreshDetail(detail.id);
                     })}
                   >
@@ -389,10 +392,24 @@ export default function PurchaseRequestsPage() {
               )}
 
               {(detail.purchase_id || detail.expense_id) && (
-                <p style={{ fontSize: 12, color: '#9C8E7E', marginTop: 12 }}>
-                  {detail.purchase_id ? `Linked PO #${detail.purchase_id}` : ''}
-                  {detail.purchase_id && detail.expense_id ? ' · ' : ''}
-                  {detail.expense_id ? `Linked expense #${detail.expense_id}` : ''}
+                <p style={{ fontSize: 12, color: '#9C8E7E', marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  {detail.purchase_id ? (
+                    <span>
+                      Linked PO:{' '}
+                      <Link to="/purchase-orders" style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                        {detail.purchase?.purchase_number || `PO #${detail.purchase_id}`}
+                      </Link>
+                    </span>
+                  ) : null}
+                  {detail.purchase_id && detail.expense_id ? <span>·</span> : null}
+                  {detail.expense_id ? (
+                    <span>
+                      Linked expense:{' '}
+                      <Link to="/expenses" style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                        {detail.expense?.expense_number || `Expense #${detail.expense_id}`}
+                      </Link>
+                    </span>
+                  ) : null}
                 </p>
               )}
             </>

@@ -365,7 +365,14 @@ class PurchaseRequestController extends Controller
 
     private function formatRequest(PurchaseRequest $pr, User $user, bool $staffView): array
     {
-        $pr->loadMissing(['requester', 'assignee', 'items.inventoryItem', 'items.menuItem']);
+        $pr->loadMissing([
+            'requester',
+            'assignee',
+            'items.inventoryItem',
+            'items.menuItem',
+            'purchase:id,purchase_number',
+            'expense:id,expense_number',
+        ]);
 
         $payload = [
             'id' => $pr->id,
@@ -382,7 +389,15 @@ class PurchaseRequestController extends Controller
             'assigned_to' => $pr->assigned_to,
             'assignee' => $pr->assignee ? ['id' => $pr->assignee->id, 'name' => $pr->assignee->name] : null,
             'purchase_id' => $pr->purchase_id,
+            'purchase' => $pr->purchase ? [
+                'id' => $pr->purchase->id,
+                'purchase_number' => $pr->purchase->purchase_number,
+            ] : null,
             'expense_id' => $pr->expense_id,
+            'expense' => $pr->expense ? [
+                'id' => $pr->expense->id,
+                'expense_number' => $pr->expense->expense_number,
+            ] : null,
             'created_at' => $pr->created_at?->toIso8601String(),
             'updated_at' => $pr->updated_at?->toIso8601String(),
             'items' => $pr->items->map(fn (PurchaseRequestItem $i) => $this->formatItem($i, $user, $staffView))->values()->all(),

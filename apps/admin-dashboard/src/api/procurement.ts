@@ -41,7 +41,9 @@ export type PurchaseRequest = {
   assigned_to: number | null;
   assignee: { id: number; name: string } | null;
   purchase_id: number | null;
+  purchase?: { id: number; purchase_number: string } | null;
   expense_id: number | null;
+  expense?: { id: number; expense_number: string } | null;
   total_estimated_laar?: number | null;
   total_actual_laar?: number | null;
   created_at: string;
@@ -115,11 +117,17 @@ export async function verifyAllPurchaseRequestItems(id: number): Promise<{ reque
   return req(`/purchase-requests/${id}/verify-all`, { method: 'POST' });
 }
 
-export async function convertPurchaseRequestToPurchase(id: number): Promise<{ purchase: { id: number }; request: PurchaseRequest }> {
+export async function convertPurchaseRequestToPurchase(id: number): Promise<{
+  purchase: { id: number; purchase_number: string };
+  request: PurchaseRequest;
+}> {
   return req(`/purchase-requests/${id}/convert-to-purchase`, { method: 'POST' });
 }
 
-export async function convertPurchaseRequestToExpense(id: number): Promise<{ expense: { id: number }; request: PurchaseRequest }> {
+export async function convertPurchaseRequestToExpense(id: number): Promise<{
+  expense: { id: number; expense_number: string };
+  request: PurchaseRequest;
+}> {
   return req(`/purchase-requests/${id}/convert-to-expense`, { method: 'POST' });
 }
 
