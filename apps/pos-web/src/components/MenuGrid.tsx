@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Item, Modifier, Variant } from "../types";
 import { effectiveItemPrice, originalItemPrice } from "../hooks/useCart";
+import { z } from "../theme";
 
 type Props = {
   categories: Category[];
@@ -617,8 +618,9 @@ export function MenuGrid({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Slide-up sheet for choosing modifiers before adding to cart. Modal so the
-// cashier can't accidentally tap another tile mid-configuration.
+// Centered modal for choosing size/variant + modifiers before adding to cart.
+// Centered (not a bottom sheet) so it stays in the thumb/eye zone on iPad
+// portrait and phone — the old flex-end dock sat under the cart dock.
 
 function ConfigurePanel({
   item,
@@ -681,29 +683,46 @@ function ConfigurePanel({
 
   return (
     <div
+      className="pos-configure-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)',
-        zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        padding: 16,
+        position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
+        zIndex: z.modalBackdrop,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
+        paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
+        paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+        paddingLeft: 'max(16px, env(safe-area-inset-left, 0px))',
+        boxSizing: 'border-box',
       }}
       role="dialog"
       aria-modal="true"
+      aria-label={`Configure ${item.name}`}
     >
       <div
+        className="pos-configure-panel"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#FFFFFF', borderRadius: 14,
-          width: '100%', maxWidth: 460, maxHeight: '80vh',
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          background: '#FFFFFF',
+          borderRadius: 16,
+          width: '100%',
+          maxWidth: 480,
+          maxHeight: 'min(78dvh, 640px)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 20px 48px rgba(15,23,42,0.22)',
         }}
       >
         {/* Header tile */}
         <div style={{
           background: c.bg, color: c.fg, padding: '18px 20px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexShrink: 0,
         }}>
-          <div>
+          <div style={{ minWidth: 0, paddingRight: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{item.name}</div>
             <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
               {oneTapMode && !chosenVariant ? 'from ' : ''}MVR {headlinePrice.toFixed(2)}
@@ -723,9 +742,9 @@ function ConfigurePanel({
             style={{
               background: 'rgba(255,255,255,0.55)',
               color: c.fg,
-              border: 'none', width: 36, height: 36, borderRadius: 999,
+              border: 'none', width: 44, height: 44, borderRadius: 999,
               fontSize: 22, lineHeight: 1, cursor: 'pointer',
-              fontWeight: 700,
+              fontWeight: 700, flexShrink: 0,
             }}
           >×</button>
         </div>
@@ -855,7 +874,13 @@ function ConfigurePanel({
           )}
         </div>
 
-        <div style={{ padding: 16, borderTop: `1px solid ${C.border}`, display: 'flex', gap: 8 }}>
+        <div style={{
+          padding: 16,
+          borderTop: `1px solid ${C.border}`,
+          display: 'flex',
+          gap: 8,
+          flexShrink: 0,
+        }}>
           {/* In one-tap variant mode (no modifiers) tapping a size IS
               the add — a second "Add to ticket" button next to it
               was confusing cashiers ("why is this here?") and risked
