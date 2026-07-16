@@ -165,11 +165,11 @@
             <button type="button" class="doc-btn doc-btn-print">Print</button>
         </div>
 
-        <div class="doc-actions doc-mistake-cta" style="flex-direction: column; align-items: stretch; margin-top: 0.75rem;">
-            <a class="doc-btn" href="{{ $waLink }}?text={{ rawurlencode($mistakeMsg) }}" target="_blank" rel="noopener">
+        <div class="doc-mistake-cta" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border, #e5e7eb); text-align: center;">
+            <a class="doc-btn" style="width: 100%;" href="{{ $waLink }}?text={{ rawurlencode($mistakeMsg) }}" target="_blank" rel="noopener">
                 Something wrong with this {{ $isPaid ? 'receipt' : 'bill' }}?
             </a>
-            <p class="doc-subtitle" style="margin: 0.35rem 0 0; text-align: center;">
+            <p class="doc-subtitle" style="margin: 0.5rem 0 0;">
                 Message us on WhatsApp and we’ll fix it.
             </p>
         </div>
