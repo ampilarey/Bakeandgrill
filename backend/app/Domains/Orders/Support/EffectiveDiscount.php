@@ -124,4 +124,12 @@ final class EffectiveDiscount
 
         return LaariConverter::toLaar($order->subtotal ?? 0);
     }
+
+    /** Merchandise remaining after allocated discounts (for free-delivery / fee thresholds). */
+    public static function discountedSubtotalLaarFromOrder(object $order): int
+    {
+        $sub = self::subtotalLaarFromOrder($order);
+
+        return max(0, $sub - self::effectiveTotalLaar($sub, self::partsFromOrder($order)));
+    }
 }

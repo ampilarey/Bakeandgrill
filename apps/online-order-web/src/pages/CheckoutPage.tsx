@@ -262,7 +262,7 @@ export function CheckoutPage() {
     promoError, promoLoading,
     useLoyalty, setUseLoyalty,
     deliveryFee, errors, isPlacing, globalError,
-    subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
+    subtotalLaar, discountedSubtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
     serviceChargeLaar, serviceChargeLabel, totalLaar,
     packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
@@ -411,7 +411,7 @@ export function CheckoutPage() {
       ? Object.entries(zoneFees).find(([z]) => z.toLowerCase() === islandKey.toLowerCase())?.[1]
       : undefined;
     const explainedFee = zoneFee ?? defaultFee;
-    const cartMvr = subtotalLaar / 100;
+    const cartMvr = discountedSubtotalLaar / 100;
     const qualifiesFree = cartMvr >= freeThreshold;
 
     return (

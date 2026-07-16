@@ -354,34 +354,6 @@ export function useCheckout() {
   );
 
   useEffect(() => {
-    if (orderType !== 'delivery') {
-      setDeliveryFee(0);
-      return;
-    }
-    const island = delivery.island.trim();
-    if (!island) {
-      setDeliveryFee(0);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      fetchDeliveryFeePreview(island, subtotalLaar)
-        .then((preview) => {
-          if (!cancelled) setDeliveryFee(preview.fee_laar);
-        })
-        .catch(() => {
-          if (!cancelled) setDeliveryFee(estimateDeliveryFeeLaar(island, subtotalLaar));
-        });
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [orderType, delivery.island, subtotalLaar]);
-
-  useEffect(() => {
     if (!isAuthenticated || cart.length === 0) return;
     const timer = window.setTimeout(() => {
       snapshotCustomerCart({
@@ -426,6 +398,36 @@ export function useCheckout() {
     gift_card: giftCardDelta,
     referral: referralDelta,
   });
+
+  // Free-delivery threshold uses discounted merchandise (same as OrderTotalsCalculator).
+  useEffect(() => {
+    if (orderType !== 'delivery') {
+      setDeliveryFee(0);
+      return;
+    }
+    const island = delivery.island.trim();
+    if (!island) {
+      setDeliveryFee(0);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      fetchDeliveryFeePreview(island, discountedSubtotalLaar)
+        .then((preview) => {
+          if (!cancelled) setDeliveryFee(preview.fee_laar);
+        })
+        .catch(() => {
+          if (!cancelled) setDeliveryFee(estimateDeliveryFeeLaar(island, discountedSubtotalLaar));
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [orderType, delivery.island, discountedSubtotalLaar]);
+
   const backendOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
   const serviceChargePreview = useMemo(
     () => previewServiceCharge(serviceChargeConfig, backendOrderType, discountedSubtotalLaar),
@@ -889,7 +891,7 @@ export function useCheckout() {
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
-    subtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
+    subtotalLaar, discountedSubtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
     serviceChargeLaar, serviceChargeLabel: serviceChargePreview.label,
     packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,
     totalLaar,

@@ -89,17 +89,17 @@ final readonly class Money
 
     /**
      * Extract included tax from a tax-inclusive price.
-     * Tax = amount - (amount / (1 + rate))
-     * Uses round() per standard accounting.
+     * Same integer formula as GstTaxCalculator: amount * rate / (10000 + rate).
+     * Avoids float drift from amount - amount/(1+r).
      *
      * @param int $rateBp e.g. 1200 = 12.00% GST
      */
     public function extractTax(int $rateBp): self
     {
-        if ($rateBp <= 0) {
+        if ($rateBp <= 0 || $this->amountLaar <= 0) {
             return self::zero($this->currency);
         }
-        $taxLaar = (int) round($this->amountLaar - $this->amountLaar / (1 + $rateBp / 10000));
+        $taxLaar = (int) round($this->amountLaar * $rateBp / (10000 + $rateBp));
 
         return new self($taxLaar, $this->currency);
     }

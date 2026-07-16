@@ -58,7 +58,7 @@ class DeliveryFeeCalculatorTest extends TestCase
         $this->assertEquals(3000, $this->calculator->calculateLaar('Hulhumale'));
     }
 
-    public function test_calculate_laar_floors_properly(): void
+    public function test_calculate_laar_rounds_to_integer_cents(): void
     {
         // Default fee is 30.00 MVR = 3000 laari (no fractions in these defaults)
         $laar = $this->calculator->calculateLaar('Unknown Island');

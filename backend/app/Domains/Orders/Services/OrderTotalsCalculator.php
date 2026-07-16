@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Orders\Services;
 
+use App\Domains\Delivery\Services\DeliveryFeeCalculator;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Orders\DTOs\DiscountsInput;
@@ -219,13 +220,22 @@ class OrderTotalsCalculator
         $smallOrderLaar = $feesLocked
             ? (int) ($order->small_order_fee_laar ?? 0)
             : $this->packagingFeeCalculator->calculateSmallOrder($order, $discountedLaar);
+
+        // Free-delivery threshold uses discounted merchandise (promo/loyalty/gift/referral).
         $deliveryFeeLaar = (int) ($order->delivery_fee_laar ?? 0);
+        $island = trim((string) ($order->delivery_island ?? ''));
+        if (! $feesLocked && ($order->type ?? '') === 'delivery' && $island !== '') {
+            $deliveryFeeLaar = app(DeliveryFeeCalculator::class)->calculateLaar($island, $discountedLaar);
+        }
+
         $tipLaar = (int) round((float) ($order->tip_amount ?? 0) * 100);
         $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar + $packagingLaar + $smallOrderLaar + $deliveryFeeLaar + $tipLaar;
 
         $order->update(array_merge($breakdown->toOrderAttributes(), [
             'packaging_fee_laar' => $packagingLaar,
             'small_order_fee_laar' => $smallOrderLaar,
+            'delivery_fee_laar' => $deliveryFeeLaar,
+            'delivery_fee' => round($deliveryFeeLaar / 100, 2),
             'total_laar' => $totalWithExtrasLaar,
             'total' => round($totalWithExtrasLaar / 100, 2),
         ]));

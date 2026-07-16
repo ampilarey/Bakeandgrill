@@ -40,4 +40,18 @@ class EffectiveDiscountTest extends TestCase
         $this->assertSame(6153, EffectiveDiscount::giftCardRedeemLaar($order));
         $this->assertSame(5000, EffectiveDiscount::remainingPreTaxBeforeGift($order));
     }
+
+    public function test_discounted_subtotal_for_fee_threshold(): void
+    {
+        $order = (object) [
+            'subtotal_laar' => 25000,
+            'promo_discount_laar' => 6000,
+            'loyalty_discount_laar' => 0,
+            'manual_discount_laar' => 0,
+            'gift_card_discount_laar' => 0,
+            'referral_discount_laar' => 0,
+        ];
+
+        $this->assertSame(19000, EffectiveDiscount::discountedSubtotalLaarFromOrder($order));
+    }
 }

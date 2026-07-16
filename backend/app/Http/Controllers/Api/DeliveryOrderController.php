@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Delivery\DTOs\DeliveryDetails;
 use App\Domains\Delivery\Services\DeliveryFeeCalculator;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Http\Controllers\Controller;
@@ -107,10 +108,10 @@ class DeliveryOrderController extends Controller
         $order = DB::transaction(function () use ($payload, $staffUser, $delivery): Order {
             $order = $this->orderCreation->createFromPayload($payload, $staffUser);
 
-            // Calculate delivery fee
+            // Free-delivery threshold uses discounted merchandise, not raw subtotal.
             $feeLaar = $this->feeCalculator->calculateLaar(
                 $delivery->island,
-                (int) ($order->subtotal_laar ?? (int) round($order->subtotal * 100)),
+                EffectiveDiscount::discountedSubtotalLaarFromOrder($order),
             );
             $feeMvr = round($feeLaar / 100, 2);
 
@@ -179,11 +180,11 @@ class DeliveryOrderController extends Controller
             'delivery_eta_at' => 'nullable|date|after:now',
         ]);
 
-        // Recalculate delivery fee if island changed (pass subtotal so free-delivery threshold applies).
+        // Recalculate delivery fee if island changed (discounted base for free-delivery threshold).
         if (isset($validated['delivery_island'])) {
             $feeLaar = $this->feeCalculator->calculateLaar(
                 $validated['delivery_island'],
-                (int) ($order->subtotal_laar ?? (int) round((float) $order->subtotal * 100)),
+                EffectiveDiscount::discountedSubtotalLaarFromOrder($order),
             );
             $validated['delivery_fee'] = round($feeLaar / 100, 2);
             $validated['delivery_fee_laar'] = $feeLaar;

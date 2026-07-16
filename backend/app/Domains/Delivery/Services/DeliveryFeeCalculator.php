@@ -22,7 +22,7 @@ class DeliveryFeeCalculator
      * Calculate delivery fee in MVR.
      *
      * @param string $island Destination island/atoll e.g. "Male", "Hulhumale"
-     * @param int $subtotalLaar Order subtotal in laari (for potential threshold-based free delivery)
+     * @param int $subtotalLaar Discounted merchandise subtotal in laari (free-delivery threshold)
      */
     public function calculate(string $island, int $subtotalLaar = 0): float
     {
@@ -50,9 +50,10 @@ class DeliveryFeeCalculator
 
     /**
      * Calculate delivery fee in laari (integer).
+     * Uses round() like the rest of the money pipeline (not floor).
      */
     public function calculateLaar(string $island, int $subtotalLaar = 0): int
     {
-        return (int) floor($this->calculate($island, $subtotalLaar) * 100);
+        return (int) round($this->calculate($island, $subtotalLaar) * 100);
     }
 }

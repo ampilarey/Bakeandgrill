@@ -265,13 +265,8 @@ export function ChargeOverlay({
       return;
     }
     if (!enough && !splitValid && !canConfirmAccountTender) return;
-    const amount = method === "cash"
-      ? Math.max(total, receivedNum) // record what the cashier collected
-      : total;
-    // We only send `total` to the payments endpoint; over-tender
-    // is "change given" which the server doesn't store as a separate row.
+    // Cash over-tender is "change given" — payments endpoint only stores the order total.
     await onConfirm([{ method, amount: total }]);
-    void amount;
   };
 
   // Bug-035: trap Tab inside the charge overlay so keyboard focus
