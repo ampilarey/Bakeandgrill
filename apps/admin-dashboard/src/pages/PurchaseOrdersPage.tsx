@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, fetchInventoryItems, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryItem } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
+import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
+
+type ManualPoLine = {
+  selection: InventoryItemSelection | null;
+  quantity: string;
+  unit_cost: string;
+};
+
+const blankManualLine = (): ManualPoLine => ({ selection: null, quantity: '1', unit_cost: '0' });
 
 const STATUS_COLOR: Record<string, string> = {
   draft:    'gray',
@@ -52,12 +61,11 @@ export function PurchaseOrdersPage() {
   // Manual PO
   const [showManualPo, setShowManualPo] = useState(false);
   const [manualSuppliers, setManualSuppliers] = useState<Supplier[]>([]);
-  const [manualInvItems, setManualInvItems] = useState<InventoryItem[]>([]);
   const [manualPoForm, setManualPoForm] = useState({
     supplier_id: '',
     purchase_date: today(),
     notes: '',
-    lines: [{ inventory_item_id: '', quantity: '1', unit_cost: '0' }],
+    lines: [blankManualLine()] as ManualPoLine[],
   });
   const [manualPoSaving, setManualPoSaving] = useState(false);
   const [manualPoError, setManualPoError] = useState('');
@@ -68,28 +76,24 @@ export function PurchaseOrdersPage() {
       supplier_id: '',
       purchase_date: today(),
       notes: '',
-      lines: [{ inventory_item_id: '', quantity: '1', unit_cost: '0' }],
+      lines: [blankManualLine()],
     });
     setShowManualPo(true);
     try {
-      const [supRes, invRes] = await Promise.all([
-        fetchSuppliers({ active_only: true }),
-        fetchInventoryItems({ page: 1 }),
-      ]);
+      const supRes = await fetchSuppliers({ active_only: true });
       setManualSuppliers(supRes.data ?? []);
-      setManualInvItems(invRes.data ?? []);
     } catch (e) { setManualPoError((e as Error).message); }
   };
 
   const handleCreateManualPo = async () => {
     if (!manualPoForm.supplier_id) { setManualPoError('Select a supplier.'); return; }
     const lines = manualPoForm.lines
-      .filter((l) => l.inventory_item_id)
+      .filter((l) => l.selection)
       .map((l) => {
-        const item = manualInvItems.find((i) => i.id === Number(l.inventory_item_id));
+        const item = l.selection!.item;
         const qty = parseFloat(l.quantity);
         const cost = parseFloat(l.unit_cost);
-        if (!item || isNaN(qty) || qty <= 0 || isNaN(cost) || cost < 0) return null;
+        if (isNaN(qty) || qty <= 0 || isNaN(cost) || cost < 0) return null;
         return {
           inventory_item_id: item.id,
           name: item.name,
@@ -562,35 +566,39 @@ export function PurchaseOrdersPage() {
             style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
           <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Line items</p>
           {manualPoForm.lines.map((line, idx) => (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'end' }}>
-              <select value={line.inventory_item_id} onChange={(e) => {
-                const val = e.target.value;
-                const item = manualInvItems.find((i) => i.id === Number(val));
-                setManualPoForm((f) => ({
-                  ...f,
-                  lines: f.lines.map((l, i) => i === idx ? {
-                    ...l,
-                    inventory_item_id: val,
-                    unit_cost: item?.cost_per_unit != null ? String(item.cost_per_unit) : l.unit_cost,
-                  } : l),
-                }));
-              }}
-                style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }}>
-                <option value="">Inventory item…</option>
-                {manualInvItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-              <input type="number" min="0.001" step="any" placeholder="Qty" value={line.quantity}
-                onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
-                style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }} />
-              <input type="number" min="0" step="0.01" placeholder="Unit cost" value={line.unit_cost}
-                onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value } : l) }))}
-                style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }} />
-              {manualPoForm.lines.length > 1 && (
-                <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }))}>✕</Btn>
-              )}
+            <div key={idx} style={{ border: '1px solid #E8E0D8', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Item {idx + 1}</span>
+                {manualPoForm.lines.length > 1 && (
+                  <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }))}>Remove</Btn>
+                )}
+              </div>
+              <ItemSearch
+                kind="inventory"
+                value={line.selection}
+                onChange={(sel) => {
+                  setManualPoForm((f) => ({
+                    ...f,
+                    lines: f.lines.map((l, i) => i === idx ? {
+                      ...l,
+                      selection: sel,
+                      unit_cost: sel?.item.cost_per_unit != null ? String(sel.item.cost_per_unit) : l.unit_cost,
+                    } : l),
+                  }));
+                }}
+                placeholder="Search inventory item…"
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                <input type="number" min="0.001" step="any" placeholder="Qty" value={line.quantity}
+                  onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
+                  style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }} />
+                <input type="number" min="0" step="0.01" placeholder="Unit cost" value={line.unit_cost}
+                  onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value } : l) }))}
+                  style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }} />
+              </div>
             </div>
           ))}
-          <Btn small variant="secondary" onClick={() => setManualPoForm((f) => ({ ...f, lines: [...f.lines, { inventory_item_id: '', quantity: '1', unit_cost: '0' }] }))} style={{ marginBottom: 12 }}>
+          <Btn small variant="secondary" onClick={() => setManualPoForm((f) => ({ ...f, lines: [...f.lines, blankManualLine()] }))} style={{ marginBottom: 12 }}>
             + Add line
           </Btn>
           <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
