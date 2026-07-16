@@ -3,7 +3,8 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
-import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchAdminItems, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
+import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
+import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { ApiRequestError } from '@shared/api';
 import { today } from '../utils/dateHelpers';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -264,8 +265,8 @@ export default function SpecialsPage() {
 
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, active_today_count: 0 });
-  const [items, setItems] = useState<MenuItem[]>([]);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
+  const [itemSelection, setItemSelection] = useState<MenuItemSelection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -298,11 +299,6 @@ export default function SpecialsPage() {
   };
 
   useEffect(() => { void load(); }, [page, listFilter]);
-  useEffect(() => {
-    fetchAdminItems({ per_page: 200 })
-      .then(r => setItems(r.data))
-      .catch(() => { /* menu item picker still works with empty list; don't block discounts table */ });
-  }, []);
 
   useEffect(() => {
     if (editing || !modalOpen || !form.item_id || !form.start_date || !form.end_date) {
@@ -323,16 +319,19 @@ export default function SpecialsPage() {
 
           setConflictSpecialId(overlap.id);
 
-          const item = editItem ?? items.find(i => i.id === form.item_id);
+          const item = editItem;
           if (!item?.has_variants) return;
 
           const loadedKey = `${lookupKey}:${overlap.id}`;
           if (autoLoadedKeyRef.current === loadedKey) return;
 
           const { special } = await getSpecial(overlap.id);
-          const resolved = await resolveItemForSpecial(special, items);
+          const resolved = await resolveItemForSpecial(special, editItem ? [editItem] : []);
           autoLoadedKeyRef.current = loadedKey;
           setEditItem(resolved ?? null);
+          if (resolved) {
+            setItemSelection({ id: resolved.id, label: resolved.name, item: resolved });
+          }
           setEditing(special);
           setForm(mergeSpecialForms(formFromSpecial(special, resolved), formRef.current));
           setConflictSpecialId(null);
@@ -345,10 +344,10 @@ export default function SpecialsPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [editing, modalOpen, form.item_id, form.start_date, form.end_date, items, editItem]);
+  }, [editing, modalOpen, form.item_id, form.start_date, form.end_date, editItem]);
 
   const openCreate = () => {
-    setEditing(null); setEditItem(null);
+    setEditing(null); setEditItem(null); setItemSelection(null);
     setForm({ ...BLANK, start_date: today(), end_date: today() });
     setFormError(''); setConflictSpecialId(null); setAutoLoadedHint(false);
     autoLoadedKeyRef.current = null;
@@ -360,8 +359,9 @@ export default function SpecialsPage() {
     autoLoadedKeyRef.current = null;
     try {
       const { special } = await getSpecial(s.id);
-      const item = await resolveItemForSpecial(special, items);
+      const item = await resolveItemForSpecial(special, []);
       setEditItem(item ?? null);
+      setItemSelection(item ? { id: item.id, label: item.name, item } : null);
       setEditing(special);
       setForm(formFromSpecial(special, item));
       setModalOpen(true);
@@ -376,8 +376,9 @@ export default function SpecialsPage() {
     setFormError('');
     try {
       const { special } = await getSpecial(conflictSpecialId);
-      const item = await resolveItemForSpecial(special, items);
+      const item = await resolveItemForSpecial(special, editItem ? [editItem] : []);
       setEditItem(item ?? null);
+      setItemSelection(item ? { id: item.id, label: item.name, item } : null);
       setEditing(special);
       setForm(mergeSpecialForms(formFromSpecial(special, item), pendingForm));
       setConflictSpecialId(null);
@@ -387,7 +388,7 @@ export default function SpecialsPage() {
     }
   };
 
-  const selectedItem = editItem ?? items.find(i => i.id === form.item_id);
+  const selectedItem = editItem;
   const hasVariants = Boolean(selectedItem?.has_variants && (selectedItem.variants?.length ?? 0) > 0);
   const catalogPrice = Number(selectedItem?.base_price ?? 0);
 
@@ -401,24 +402,27 @@ export default function SpecialsPage() {
     setForm(f => ({ ...f, discount_pct: linked.pct, special_price: linked.price }));
   };
 
-  const setItemId = (itemId: number | '') => {
-    if (!itemId) {
+  const selectMenuItem = (sel: MenuItemSelection | null) => {
+    setItemSelection(sel);
+    if (!sel) {
       setEditItem(null);
       setForm(f => ({ ...f, item_id: '', variant_overrides: {} }));
       return;
     }
-    const item = items.find(i => i.id === itemId);
-    setEditItem(item ?? null);
+    const item = sel.item;
+    const itemId = item.id;
+    setEditItem(item);
     setForm(f => ({
       ...f,
       item_id: itemId,
       variant_overrides: blankVariantOverrides(item),
-      special_price: item?.has_variants ? '' : f.special_price,
+      special_price: item.has_variants ? '' : f.special_price,
     }));
-    if (item?.has_variants && !item.variants?.length) {
+    if (item.has_variants && !item.variants?.length) {
       void fetchItemVariants(itemId).then(({ variants }) => {
-        const withVariants = { ...(item as MenuItem), has_variants: true, variants };
+        const withVariants = { ...item, has_variants: true, variants };
         setEditItem(prev => (prev?.id === itemId ? withVariants : prev));
+        setItemSelection(prev => (prev?.id === itemId ? { id: itemId, label: withVariants.name, item: withVariants } : prev));
         setForm(f => {
           if (f.item_id !== itemId) return f;
           const blanks = blankVariantOverrides(withVariants);
@@ -486,12 +490,12 @@ export default function SpecialsPage() {
       setFormError('Max quantity must be a positive whole number.'); return;
     }
     setSaving(true); setFormError('');
-    const payload = buildSpecialPayload(form, selectedItem);
+    const payload = buildSpecialPayload(form, selectedItem ?? undefined);
     try {
       if (editing) {
         await updateSpecial(editing.id, payload);
       } else if (conflictSpecialId) {
-        await saveToExistingSpecial(conflictSpecialId, form, items);
+        await saveToExistingSpecial(conflictSpecialId, form, editItem ? [editItem] : []);
       } else {
         await createSpecial(payload);
       }
@@ -500,7 +504,7 @@ export default function SpecialsPage() {
       const conflictId = conflictIdFromError(e);
       if (conflictId && !editing) {
         try {
-          await saveToExistingSpecial(conflictId, form, items);
+          await saveToExistingSpecial(conflictId, form, editItem ? [editItem] : []);
           setModalOpen(false); void load();
           return;
         } catch (retryError) {
@@ -682,11 +686,7 @@ export default function SpecialsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Menu Item *</span>
-              <select value={form.item_id} onChange={e => setItemId(e.target.value ? Number(e.target.value) : '')}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}>
-                <option value="">Select item…</option>
-                {items.map(item => <option key={item.id} value={item.id}>{item.name} (MVR {parseFloat(String(item.base_price)).toFixed(2)})</option>)}
-              </select>
+              <ItemSearch kind="menu" value={itemSelection} onChange={selectMenuItem} />
             </label>
             {!hasVariants ? (
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

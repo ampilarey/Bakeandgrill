@@ -3,7 +3,8 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
-import { fetchWasteLogs, fetchWasteSummary, createWasteLog, fetchAdminItems, fetchInventoryItems, type WasteLog, type WasteSummary, type MenuItem, type InventoryItem } from '../api';
+import { fetchWasteLogs, fetchWasteSummary, createWasteLog, type WasteLog, type WasteSummary } from '../api';
+import { ItemSearch, type MenuItemSelection, type InventoryItemSelection } from '../components/ItemSearch';
 import { downloadCSV } from '../utils/csvExport';
 import { today, daysAgo } from '../utils/dateHelpers';
 
@@ -41,11 +42,11 @@ export default function WasteLogsPage() {
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   // log form
-  const [menuItems, setMenuItems]           = useState<MenuItem[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [logOpen, setLogOpen]               = useState(false);
   const [itemType, setItemType]             = useState<'menu' | 'inventory'>('menu');
-  const [form, setForm]                     = useState({ item_id: '', quantity: '', unit: '', cost_estimate: '', reason: 'spoilage' as Reason, notes: '' });
+  const [menuSelection, setMenuSelection]   = useState<MenuItemSelection | null>(null);
+  const [invSelection, setInvSelection]     = useState<InventoryItemSelection | null>(null);
+  const [form, setForm]                     = useState({ quantity: '', unit: '', cost_estimate: '', reason: 'spoilage' as Reason, notes: '' });
   const [saving, setSaving]                 = useState(false);
   const [formError, setFormError]           = useState('');
 
@@ -73,10 +74,6 @@ export default function WasteLogsPage() {
 
   useEffect(() => { void load(); }, [page, from, to]);
   useEffect(() => { if (tab === 'summary') void loadSummary(); }, [tab, from, to]);
-  useEffect(() => {
-    fetchAdminItems({ per_page: 200 }).then(r => setMenuItems(r.data ?? [])).catch(() => {});
-    fetchInventoryItems({}).then(r => setInventoryItems(r.data ?? [])).catch(() => {});
-  }, []);
 
   // ── Summary aggregations ────────────────────────────────────────────────────
   const byReason = useMemo(() => {
@@ -100,20 +97,29 @@ export default function WasteLogsPage() {
   const maxTrendCost = wasteTrend.reduce((m, d) => Math.max(m, d.cost), 0) || 1;
 
   // ── Log form handler ────────────────────────────────────────────────────────
+  const resetLogForm = () => {
+    setMenuSelection(null);
+    setInvSelection(null);
+    setForm({ quantity: '', unit: '', cost_estimate: '', reason: 'spoilage', notes: '' });
+    setFormError('');
+  };
+
   const handleLog = async () => {
-    if (!form.item_id) { setFormError(`Select a ${itemType === 'menu' ? 'menu item' : 'inventory item'}.`); return; }
+    const selectedId = itemType === 'menu' ? menuSelection?.id : invSelection?.id;
+    if (!selectedId) { setFormError(`Select a ${itemType === 'menu' ? 'menu item' : 'inventory item'}.`); return; }
     const qty = parseFloat(form.quantity);
     if (isNaN(qty) || qty <= 0) { setFormError('Enter a valid quantity.'); return; }
     setSaving(true); setFormError('');
     try {
       const payload = itemType === 'menu'
-        ? { item_id: Number(form.item_id) }
-        : { inventory_item_id: Number(form.item_id) };
+        ? { item_id: selectedId }
+        : { inventory_item_id: selectedId };
       const costRaw = form.cost_estimate ? parseFloat(form.cost_estimate) : undefined;
       if (costRaw !== undefined && isNaN(costRaw)) { setFormError('Enter a valid cost estimate.'); setSaving(false); return; }
-      await createWasteLog({ ...payload, quantity: qty, unit: form.unit || undefined, cost_estimate: costRaw, reason: form.reason, notes: form.notes || undefined });
+      const unit = form.unit || (itemType === 'inventory' ? invSelection?.item.unit : undefined) || undefined;
+      await createWasteLog({ ...payload, quantity: qty, unit, cost_estimate: costRaw, reason: form.reason, notes: form.notes || undefined });
       setLogOpen(false);
-      setForm({ item_id: '', quantity: '', unit: '', cost_estimate: '', reason: 'spoilage', notes: '' });
+      resetLogForm();
       void load();
     } catch (e) { setFormError((e as Error).message); }
     finally { setSaving(false); }
@@ -137,7 +143,7 @@ export default function WasteLogsPage() {
                 Export CSV
               </Btn>
             )}
-            <Btn onClick={() => { setLogOpen(true); setFormError(''); }}>+ Log Waste</Btn>
+            <Btn onClick={() => { resetLogForm(); setLogOpen(true); }}>+ Log Waste</Btn>
           </div>
         }
       />
@@ -378,14 +384,20 @@ export default function WasteLogsPage() {
 
       {/* ── Log Waste Modal ──────────────────────────────────────────────────── */}
       {logOpen && (
-        <Modal title="Log Waste" onClose={() => setLogOpen(false)}>
+        <Modal title="Log Waste" onClose={() => { setLogOpen(false); resetLogForm(); }}>
           {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', gap: 0, border: '1px solid #E8E0D8', borderRadius: 8, overflow: 'hidden' }}>
               {(['menu', 'inventory'] as const).map(t => (
                 <button
                   key={t}
-                  onClick={() => { setItemType(t); setForm(f => ({ ...f, item_id: '' })); }}
+                  type="button"
+                  onClick={() => {
+                    setItemType(t);
+                    setMenuSelection(null);
+                    setInvSelection(null);
+                    setFormError('');
+                  }}
                   style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: itemType === t ? 700 : 500, background: itemType === t ? '#D4813A' : '#fff', color: itemType === t ? '#fff' : '#6B5D4F', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {t === 'menu' ? 'Menu Item' : 'Inventory Item'}
@@ -396,13 +408,28 @@ export default function WasteLogsPage() {
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
                 {itemType === 'menu' ? 'Menu Item' : 'Inventory Item'} *
               </span>
-              <select value={form.item_id} onChange={e => setForm(f => ({ ...f, item_id: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}>
-                <option value="">Select…</option>
-                {itemType === 'menu'
-                  ? menuItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)
-                  : inventoryItems.map(item => <option key={item.id} value={item.id}>{item.name}{item.unit ? ` (${item.unit})` : ''}</option>)
-                }
-              </select>
+              {itemType === 'menu' ? (
+                <ItemSearch
+                  kind="menu"
+                  value={menuSelection}
+                  onChange={(sel) => {
+                    setMenuSelection(sel);
+                    setFormError('');
+                  }}
+                />
+              ) : (
+                <ItemSearch
+                  kind="inventory"
+                  value={invSelection}
+                  onChange={(sel) => {
+                    setInvSelection(sel);
+                    setFormError('');
+                    if (sel?.item.unit && !form.unit) {
+                      setForm((f) => ({ ...f, unit: sel.item.unit }));
+                    }
+                  }}
+                />
+              )}
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
               <label>
@@ -430,8 +457,10 @@ export default function WasteLogsPage() {
             </label>
           </div>
           <ModalActions>
-            <Btn variant="secondary" onClick={() => setLogOpen(false)}>Cancel</Btn>
-            <Btn onClick={handleLog} disabled={saving}>{saving ? 'Logging…' : 'Log Waste'}</Btn>
+            <Btn variant="secondary" onClick={() => { setLogOpen(false); resetLogForm(); }}>Cancel</Btn>
+            <Btn onClick={() => void handleLog()} disabled={saving || !(itemType === 'menu' ? menuSelection : invSelection)}>
+              {saving ? 'Logging…' : 'Log Waste'}
+            </Btn>
           </ModalActions>
         </Modal>
       )}
