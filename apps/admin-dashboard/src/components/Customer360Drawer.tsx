@@ -165,7 +165,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div className="stat-grid" data-responsive-grid style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
               {[
                 { label: 'Paid orders', value: String(summary.lifetime.paid_orders_count) },
                 { label: 'Lifetime spend', value: `MVR ${summary.lifetime.total_paid_spend.toFixed(2)}` },
@@ -178,7 +178,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
+            <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
               <div><strong>Loyalty:</strong> {(summary.loyalty as { points_balance?: number }).points_balance ?? 0} pts</div>
               <div><strong>Reviews:</strong> {summary.reviews.count} ({summary.reviews.average_rating}★)</div>
               <div><strong>Referrals:</strong> {summary.referral.redemptions_as_referee} used</div>

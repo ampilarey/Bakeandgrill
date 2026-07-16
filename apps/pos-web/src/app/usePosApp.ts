@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
-import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type KitchenHandoverSettings } from "../api";
+import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type KitchenHandoverSettings } from "../api";
+import { ticketStage } from "../utils/openTicketUtils";
+import { ticketAgeAnchor, ticketAgeLevel } from "../utils/ticketAging";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "../offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "../offline/offlineGate";
 import { startSyncEnginePolling } from "../offline/syncEngine";
@@ -174,6 +176,7 @@ export function usePosApp() {
   const [showCloseShift, setShowCloseShift] = useState(false);
   const [openShiftBusy, setOpenShiftBusy] = useState(false);
   const [openTicketsCount, setOpenTicketsCount] = useState(0);
+  const [openTicketsCritical, setOpenTicketsCritical] = useState(false);
   /** After a paid dine-in/takeaway sale, jump to Receipts with this order selected. */
   const [receiptsFocusOrderId, setReceiptsFocusOrderId] = useState<number | null>(null);
   /** After a paid sale, show receipt print/SMS actions until dismissed. */
@@ -457,7 +460,12 @@ export function usePosApp() {
   const refreshOpenTickets = useCallback(async () => {
     if (!isLoggedIn) return;
     try {
-      setOpenTicketsCount(await countActiveOrders());
+      const { count, rows } = await fetchActiveOrdersBadgeSample();
+      setOpenTicketsCount(count);
+      setOpenTicketsCritical(rows.some((t) => {
+        const stage = ticketStage(t.status);
+        return ticketAgeLevel(ticketAgeAnchor(t, stage), stage) === "critical";
+      }));
     } catch { /* best-effort */ }
   }, [isLoggedIn]);
 
@@ -991,13 +999,14 @@ export function usePosApp() {
   }, [isLoggedIn, isLocked, lockScreen, canLockScreen]);
 
   const drawerItems = useMemo(() => {
-    const main: Array<{ id: string; label: string; icon: string; group: "main"; badge?: string; disabled?: boolean }> = [];
+    const main: Array<{ id: string; label: string; icon: string; group: "main"; badge?: string; badgeCritical?: boolean; disabled?: boolean }> = [];
     if (canRingSales && shiftOpen) main.push({ id: "sales", label: "Sales", icon: "🛒", group: "main" });
     if (canViewReceipts && shiftOpen) main.push({ id: "receipts", label: "Receipts", icon: "🧾", group: "main" });
     if (canViewActiveOrders && shiftOpen) {
       main.push({
         id: "open_tickets", label: "Active Orders", icon: "🎫", group: "main",
         badge: openTicketsCount > 0 ? String(openTicketsCount) : undefined,
+        badgeCritical: openTicketsCritical,
       });
     }
     if (shiftOpen || canOpenShift || canCloseShift) {
@@ -1028,7 +1037,7 @@ export function usePosApp() {
   }, [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canAccessOps,
     canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
-    canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount,
+    canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount, openTicketsCritical,
   ]);
 
   const paneAllowed = useMemo((): Record<Pane, boolean> => ({
@@ -1070,7 +1079,7 @@ export function usePosApp() {
     kitchenPane, setKitchenPane, showCharge, setShowCharge, chargeCreditAvailable,
     chargeCreditEligible, chargeWalletAvailable, chargeWalletEligible, showSaveTicket,
     setShowSaveTicket, showOpenShift, setShowOpenShift, showCloseShift, setShowCloseShift,
-    openShiftBusy, openTicketsCount, receiptsFocusOrderId, setReceiptsFocusOrderId,
+    openShiftBusy, openTicketsCount, openTicketsCritical, receiptsFocusOrderId, setReceiptsFocusOrderId,
     receiptBanner, setReceiptBanner, deviceBlockedMessage, onlineOrderWatcher,
     orderType, setOrderType, deliveryDetails, setDeliveryDetails, customerAddresses,
     selectedDeliveryAddressId, setSelectedDeliveryAddressId, tables, selectedTableId, setSelectedTableId, quickNotes,

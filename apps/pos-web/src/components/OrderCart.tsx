@@ -65,6 +65,8 @@ type Props = {
   pendingPaymentForOrderId: number | null;
   lastCreatedOrderId: number | null;
   openTicketsCount: number;
+  /** True when any active ticket is past critical age thresholds. */
+  openTicketsCritical?: boolean;
 
   attachedCustomer: PosCustomer | null;
   onAttachCustomer: (c: PosCustomer) => void;
@@ -811,10 +813,14 @@ export function OrderCart(p: Props) {
           >
             Active orders
             {p.openTicketsCount > 0 && (
-              <span style={{
-                marginLeft: 6, padding: '1px 8px', borderRadius: 999,
-                background: '#D4813A', color: '#fff', fontSize: 11, fontWeight: 800,
-              }}>{p.openTicketsCount}</span>
+              <span
+                title={p.openTicketsCritical ? "One or more tickets are critically aged" : undefined}
+                style={{
+                  marginLeft: 6, padding: '1px 8px', borderRadius: 999,
+                  background: p.openTicketsCritical ? '#B91C1C' : '#D4813A',
+                  color: '#fff', fontSize: 11, fontWeight: 800,
+                }}
+              >{p.openTicketsCount}</span>
             )}
           </button>
         </div>

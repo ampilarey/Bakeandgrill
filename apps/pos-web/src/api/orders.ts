@@ -434,6 +434,8 @@ export async function fetchReceipts(params: {
     /** New: timestamp the kitchen first saw the chit. NULL means
      *  the ticket is still parked (Save Ticket without Fire). */
     fired_at?: string | null;
+    /** Set when cashier parks the ticket (status held). */
+    held_at?: string | null;
     total: number;
     subtotal: number;
     discount_amount: number;
@@ -474,6 +476,16 @@ export async function fetchReceipts(params: {
 export async function countActiveOrders(): Promise<number> {
   const res = await fetchReceipts({ active_only: true, slim: true, per_page: 1, page: 1 });
   return res.total ?? res.data?.length ?? 0;
+}
+
+/** Slim page of active orders for badge count + aging signals. */
+export async function fetchActiveOrdersBadgeSample(): Promise<{
+  count: number;
+  rows: Awaited<ReturnType<typeof fetchReceipts>>["data"];
+}> {
+  const res = await fetchReceipts({ active_only: true, slim: true, per_page: 50, page: 1 });
+  const rows = res.data ?? [];
+  return { count: res.total ?? rows.length, rows };
 }
 
 async function fetchActiveOrderPages(

@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { palette, radius, space, btnPrimary, btnSecondary, type } from "../../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel } from "../../orderTypeLabels";
-import { formatTicketAge, parkedTicketAgeLevel, PARKED_AGE_COLORS } from "../../utils/ticketAging";
+import {
+  formatTicketAge,
+  ticketAgeAnchor,
+  ticketAgeLevel,
+  ticketAgeTitle,
+  TICKET_AGE_COLORS,
+} from "../../utils/ticketAging";
 import { ticketDisplayTotal, ticketStage, type OpenTicket } from "../../utils/openTicketUtils";
 import { ActionButton } from "./ActionButton";
 
@@ -82,8 +88,9 @@ export function TicketRow({
     ready: { label: "✅ READY", color: "#047857", bg: "#ECFDF5", border: "#A7F3D0", title: "Ready for the customer to collect" },
   }[stage];
 
-  const parkedAgeLevel = stage === "parked" ? parkedTicketAgeLevel(t.created_at) : "ok";
-  const parkedAgeStyle = PARKED_AGE_COLORS[parkedAgeLevel];
+  const ageIso = ticketAgeAnchor(t, stage);
+  const ageLevel = ticketAgeLevel(ageIso, stage);
+  const ageStyle = TICKET_AGE_COLORS[ageLevel];
   const isMergeTarget = mergeTargetId === t.id;
   const isMergeCandidate = mergeTargetId !== null && !isMergeTarget;
 
@@ -176,21 +183,17 @@ export function TicketRow({
                 Received
               </span>
             )}
-            {stage === "parked" && (
+            {ageIso && (
               <span
-                title={parkedAgeLevel === "critical"
-                  ? "Parked 30+ minutes — fire or void soon"
-                  : parkedAgeLevel === "warn"
-                    ? "Parked 15+ minutes"
-                    : "Time since ticket was saved"}
+                title={ticketAgeTitle(ageLevel, stage)}
                 style={{
                   fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                  color: parkedAgeStyle.color, background: parkedAgeStyle.bg,
+                  color: ageStyle.color, background: ageStyle.bg,
                   padding: "2px 6px", borderRadius: 4,
-                  border: `1px solid ${parkedAgeStyle.border}`,
+                  border: `1px solid ${ageStyle.border}`,
                 }}
               >
-                ⏱ {formatTicketAge(t.created_at)}
+                ⏱ {formatTicketAge(ageIso)}
               </span>
             )}
             {isPaid && (

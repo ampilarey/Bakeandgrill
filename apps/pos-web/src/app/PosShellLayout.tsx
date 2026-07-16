@@ -46,7 +46,7 @@ export function PosShellLayout() {
     selectedTableId, setSelectedTableId, quickNotes, smsNotifications, notePickerKey,
     setNotePickerKey, menu, cart, deliveryFeeEst, ops, filteredItems, refreshOpenTickets,
     order, chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshAll,
-    isRefreshingAll, openTicketsCount, kitchenHandoverSettings, handleClearCart,
+    isRefreshingAll, openTicketsCount, openTicketsCritical, kitchenHandoverSettings, handleClearCart,
     handleLogout, lockScreen, handleOpenShift, handleCloseShift, handleSaveTicketSubmit,
     refreshOfflineCounts, drawerItems, showPreferences, setShowPreferences,
     showRequestItemModal, setShowRequestItemModal, showSendBill, setShowSendBill,
@@ -299,6 +299,7 @@ export function PosShellLayout() {
               pendingPaymentForOrderId={order.pendingPaymentForOrderId}
               lastCreatedOrderId={order.lastCreatedOrderId}
               openTicketsCount={openTicketsCount}
+              openTicketsCritical={openTicketsCritical}
               attachedCustomer={cart.attachedCustomer}
               onAttachCustomer={(c) => { void handleAttachCustomer(c); }}
               onDetachCustomer={() => { void handleDetachCustomer(); }}

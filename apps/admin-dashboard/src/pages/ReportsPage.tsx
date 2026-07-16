@@ -25,7 +25,6 @@ export function ReportsPage() {
     data: reportData,
     isLoading: loading,
     error: reportError,
-    refetch: load,
   } = useQuery({
     queryKey: ['reports', tab, from, to, cashierId, shiftId, deviceId],
     queryFn: () => fetchReportData(tab, from, to, posFilters),
@@ -149,7 +148,6 @@ export function ReportsPage() {
           staffOptions={staffOptions}
           shiftOptions={shiftOptions}
           deviceOptions={deviceOptions}
-          onApply={() => { void load(); }}
         />
       )}
 

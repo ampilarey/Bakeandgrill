@@ -18,17 +18,24 @@ interface UseKdsSseOptions {
   token: string | null;
   onEvent: (event: KdsSseEvent) => void;
   enabled?: boolean;
+  /**
+   * Keep reporting connected=true briefly after the stream ends so the
+   * kitchen UI does not flicker "Polling…" on every server stream rotate.
+   */
+  disconnectGraceMs?: number;
 }
 
 export function useKdsSse({
   token,
   onEvent,
   enabled = true,
+  disconnectGraceMs = 2_500,
 }: UseKdsSseOptions): { connected: boolean } {
   const [connected, setConnected] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const onEventRef = useRef(onEvent);
   const lastEventId = useRef("");
+  const disconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     onEventRef.current = onEvent;
@@ -43,6 +50,30 @@ export function useKdsSse({
 
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
+
+    const clearDisconnectTimer = () => {
+      if (disconnectTimer.current) {
+        clearTimeout(disconnectTimer.current);
+        disconnectTimer.current = null;
+      }
+    };
+
+    const markConnected = () => {
+      clearDisconnectTimer();
+      setConnected(true);
+    };
+
+    const scheduleDisconnected = () => {
+      if (stopped) {
+        setConnected(false);
+        return;
+      }
+      clearDisconnectTimer();
+      disconnectTimer.current = setTimeout(() => {
+        disconnectTimer.current = null;
+        if (!stopped) setConnected(false);
+      }, disconnectGraceMs);
+    };
 
     async function connect(sinceId: string) {
       abortRef.current?.abort();
@@ -65,7 +96,7 @@ export function useKdsSse({
           throw new Error(`SSE connect failed: ${res.status}`);
         }
 
-        setConnected(true);
+        markConnected();
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -102,7 +133,7 @@ export function useKdsSse({
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
       } finally {
-        setConnected(false);
+        if (!stopped) scheduleDisconnected();
       }
 
       if (!stopped) {
@@ -115,9 +146,11 @@ export function useKdsSse({
     return () => {
       stopped = true;
       if (retryTimer) clearTimeout(retryTimer);
+      clearDisconnectTimer();
       abortRef.current?.abort();
+      setConnected(false);
     };
-  }, [token, enabled]);
+  }, [token, enabled, disconnectGraceMs]);
 
   return { connected };
 }

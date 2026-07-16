@@ -71,7 +71,6 @@ type ReportsFiltersProps = {
   staffOptions: { id: number; name: string }[];
   shiftOptions: { id: number; label: string }[];
   deviceOptions: { id: number; name: string }[];
-  onApply: () => void;
 };
 
 export function ReportsFilters({
@@ -89,7 +88,6 @@ export function ReportsFilters({
   staffOptions,
   shiftOptions,
   deviceOptions,
-  onApply,
 }: ReportsFiltersProps) {
   return (
     <Card style={{ marginBottom: 20 }}>
@@ -127,7 +125,6 @@ export function ReportsFilters({
               {label}
             </Btn>
           ))}
-          <Btn small onClick={onApply}>Apply</Btn>
         </div>
       </div>
     </Card>

@@ -7,6 +7,7 @@ export type DrawerItem = {
   label: string;
   icon: string;
   badge?: string;
+  badgeCritical?: boolean;
   disabled?: boolean;
   group?: "main" | "user";
 };
@@ -140,7 +141,7 @@ function Item({ item, active, onClick }: { item: DrawerItem; active: boolean; on
       <span style={{ flex: 1 }}>{item.label}</span>
       {item.badge && (
         <span style={{
-          background: "#D4813A", color: "#fff",
+          background: item.badgeCritical ? "#B91C1C" : "#D4813A", color: "#fff",
           fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 999,
         }}>{item.badge}</span>
       )}
