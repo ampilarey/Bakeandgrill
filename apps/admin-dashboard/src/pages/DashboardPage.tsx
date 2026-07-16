@@ -641,18 +641,23 @@ export function DashboardPage() {
                         const hrsOpen = (Date.now() - new Date(s.opened_at).getTime()) / 3_600_000;
                         const stale = hrsOpen >= 24;
                         return (
-                          <div key={s.id} style={{
-                            display: 'flex', justifyContent: 'space-between', fontSize: 13,
-                            color: stale ? '#92400e' : undefined,
-                          }}>
-                            <span style={{ fontWeight: 600, color: stale ? '#92400e' : '#1C1408' }}>
+                          <Link
+                            key={s.id}
+                            to={`/shifts?shift=${s.id}`}
+                            style={{
+                              display: 'flex', justifyContent: 'space-between', fontSize: 13,
+                              color: stale ? '#92400e' : undefined,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: stale ? '#92400e' : '#D4813A' }}>
                               {stale && <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
                               {s.user_name ?? 'Unknown'}
                             </span>
                             <span style={{ color: stale ? '#92400e' : '#9C8E7E' }}>
                               {s.device_name ?? 'No device'} · {elapsed(s.opened_at)}
                             </span>
-                          </div>
+                          </Link>
                         );
                       })}
                     </div>

@@ -125,7 +125,7 @@ export function CommandPalette({ open, onClose }: Props) {
               label: `Order #${o.order_number}`,
               sub: `${o.status} · MVR ${Number(o.total ?? 0).toFixed(2)}`,
               icon: '📋',
-              action: () => { navigate('/orders'); onClose(); },
+              action: () => { navigate(`/orders?order=${o.id}`); onClose(); },
             });
           });
       }

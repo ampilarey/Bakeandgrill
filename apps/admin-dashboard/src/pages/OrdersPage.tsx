@@ -384,7 +384,16 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               {order.paid_at && <Row label="Paid at" value={new Date(order.paid_at).toLocaleString()} />}
               {order.user?.name && <Row label="Cashier" value={order.user.name} />}
               {order.device?.name && <Row label="Station" value={order.device.name} />}
-              {order.shift?.id && <Row label="Shift" value={`#${order.shift.id}`} />}
+              {order.shift?.id && (
+                <Row
+                  label="Shift"
+                  value={
+                    <Link to={`/shifts?shift=${order.shift.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                      #{order.shift.id}
+                    </Link>
+                  }
+                />
+              )}
             </div>
 
             {order.type === 'delivery' && order.delivery_address_line1 && (

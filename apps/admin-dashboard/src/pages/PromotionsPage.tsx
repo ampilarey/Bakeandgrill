@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   fetchPromotions, createPromotion, updatePromotion, deletePromotion,
   type Promotion, type PromotionPayload,
@@ -287,7 +288,9 @@ export function PromotionsPage() {
                     {p.name}
                     {p.restricted_customer_id && (
                       <div style={{ fontSize: 11, color: '#059669', fontWeight: 400, marginTop: 2 }}>
-                        🔒 Personal promo
+                        <Link to={`/customers?customer=${p.restricted_customer_id}`} style={{ color: '#059669', textDecoration: 'none' }}>
+                          🔒 Personal promo
+                        </Link>
                       </div>
                     )}
                   </td>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   fetchCustomerGrowthSummary, fetchCustomerActivity,
   attachCustomerTag, detachCustomerTag, addCustomerFollowUpNote, sendCustomerSms,
@@ -9,6 +10,14 @@ import { Badge, Btn, ErrorMsg, Input, Spinner } from './SharedUI';
 import { CustomerCreditSection } from './CustomerCreditSection';
 import { CustomerDepositSection } from './CustomerDepositSection';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+
+function timelineEventPath(ev: CustomerActivityEvent): string | null {
+  if (!ev.source_id) return null;
+  if (ev.type.startsWith('order_')) return `/orders?order=${ev.source_id}`;
+  if (ev.type.startsWith('invoice_') || ev.type === 'invoice') return `/invoices?invoice=${ev.source_id}`;
+  if (ev.type === 'review' || ev.type.startsWith('review_')) return `/reviews`;
+  return null;
+}
 
 const BADGE_MAP: Record<string, { label: string; color: string }> = {
   vip: { label: 'VIP', color: 'yellow' },
@@ -265,13 +274,20 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                 {timeline.length === 0 ? (
                   <p style={{ fontSize: 13, color: '#9C8E7E' }}>No activity yet.</p>
-                ) : timeline.map((ev, idx) => (
+                ) : timeline.map((ev, idx) => {
+                  const path = timelineEventPath(ev);
+                  return (
                   <div key={`${ev.type}-${ev.source_id ?? idx}`} style={{ padding: '8px 0', borderBottom: '1px solid #F0EBE5' }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>{ev.title}</p>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
+                      {path ? (
+                        <Link to={path} style={{ color: '#D4813A', textDecoration: 'none' }}>{ev.title}</Link>
+                      ) : ev.title}
+                    </p>
                     <p style={{ margin: '2px 0', fontSize: 12, color: '#6B5D4F' }}>{ev.description}</p>
                     <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>{new Date(ev.created_at).toLocaleString()}</p>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, Badge, Btn, Modal, ModalActions,
@@ -86,7 +87,9 @@ export default function ReferralsPage() {
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     {c.customer ? (
-                      <div style={{ fontWeight: 600, fontSize: 13, color: '#1C1408' }}>{c.customer.name}</div>
+                      <Link to={`/customers?customer=${c.customer.id}`} style={{ fontWeight: 600, fontSize: 13, color: '#D4813A', textDecoration: 'none' }}>
+                        {c.customer.name}
+                      </Link>
                     ) : <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>}
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: 13, color: '#1C1408' }}>

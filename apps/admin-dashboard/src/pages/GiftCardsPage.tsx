@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, StatCard, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
@@ -155,7 +156,15 @@ export default function GiftCardsPage() {
             ) : cards.map(card => (
               <tr key={card.id}>
                 <td style={TD}><code style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em', color: '#1C1408' }}>{card.masked_code}</code></td>
-                <td style={TD}>{card.issued_to?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
+                <td style={TD}>
+                  {card.issued_to ? (
+                    <Link to={`/customers?customer=${card.issued_to.id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                      {card.issued_to.name}
+                    </Link>
+                  ) : (
+                    <span style={{ color: '#9C8E7E' }}>—</span>
+                  )}
+                </td>
                 <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
                 <td style={{ ...TD, fontWeight: 700, color: card.current_balance > 0 ? '#166534' : '#9C8E7E' }}>MVR {Number(card.current_balance).toFixed(2)}</td>
                 <td style={TD}><Badge color={STATUS_COLOR[card.status] ?? 'gray'}>{card.status}</Badge></td>

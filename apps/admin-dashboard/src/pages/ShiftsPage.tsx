@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -36,10 +37,12 @@ function AdminShiftTable({
   rows,
   showForceClose,
   onForceClose,
+  highlightId,
 }: {
   rows: ShiftHistoryRow[];
   showForceClose?: boolean;
   onForceClose?: (id: number) => void;
+  highlightId?: number | null;
 }) {
   if (rows.length === 0) return <EmptyState message="No shifts found." />;
 
@@ -48,7 +51,7 @@ function AdminShiftTable({
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            {['Cashier', 'Station', 'Opened', 'Closed', 'Opening', 'Closing', 'Variance', ...(showForceClose ? [''] : [])].map(h => (
+            {['Shift', 'Cashier', 'Station', 'Opened', 'Closed', 'Opening', 'Closing', 'Variance', ...(showForceClose ? [''] : [])].map(h => (
               <th key={h || 'actions'} style={TH}>{h}</th>
             ))}
           </tr>
@@ -56,8 +59,20 @@ function AdminShiftTable({
         <tbody>
           {rows.map((s) => {
             const stale = isStaleOpenShift(s.opened_at, s.closed_at);
+            const highlighted = highlightId != null && s.id === highlightId;
             return (
-            <tr key={s.id} style={stale ? { background: '#FEF3C7' } : undefined}>
+            <tr
+              key={s.id}
+              id={highlighted ? `shift-${s.id}` : undefined}
+              style={{
+                background: highlighted ? '#FEF8F2' : stale ? '#FEF3C7' : undefined,
+                outline: highlighted ? '2px solid #D4813A' : undefined,
+                outlineOffset: -2,
+              }}
+            >
+              <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: highlighted ? '#D4813A' : '#1C1408' }}>
+                #{s.id}
+              </td>
               <td style={{ ...TD, fontWeight: 600, color: stale ? '#92400e' : undefined }}>
                 {stale && <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
                 {s.user?.name ?? `#${s.user_id}`}
@@ -92,6 +107,11 @@ export default function ShiftsPage() {
   usePageTitle('Shifts & Cash Drawer');
   const { can } = useCurrentUserPermissions();
   const canViewAll = can('shifts.view_all_history');
+  const [searchParams] = useSearchParams();
+  const focusShiftId = useMemo(() => {
+    const n = Number(searchParams.get('shift'));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [searchParams]);
 
   const [tab, setTab] = useState<Tab>(canViewAll ? 'live' : 'history');
   const [error, setError] = useState('');
@@ -122,10 +142,40 @@ export default function ShiftsPage() {
   };
 
   useEffect(() => {
-    if (!canViewAll) return;
+    if (!canViewAll || focusShiftId) return;
     if (tab === 'live') void loadLive();
     if (tab === 'history') void loadHistory();
-  }, [tab, canViewAll]);
+  }, [tab, canViewAll, focusShiftId]);
+
+  useEffect(() => {
+    if (!canViewAll || !focusShiftId) return;
+    let cancelled = false;
+    (async () => {
+      setAdminLoading(true);
+      setError('');
+      try {
+        const [liveRes, histRes] = await Promise.all([fetchLiveShifts(), fetchShiftHistory()]);
+        if (cancelled) return;
+        const live = liveRes.shifts ?? [];
+        const hist = histRes.shifts ?? [];
+        setLiveShifts(live);
+        setHistoryShifts(hist);
+        if (live.some((s) => s.id === focusShiftId)) setTab('live');
+        else setTab('history');
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message);
+      } finally {
+        if (!cancelled) setAdminLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [focusShiftId, canViewAll]);
+
+  useEffect(() => {
+    if (!focusShiftId || adminLoading) return;
+    const el = document.getElementById(`shift-${focusShiftId}`);
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [focusShiftId, adminLoading, tab, liveShifts, historyShifts]);
 
   const handleForceClose = async () => {
     if (!forceTarget) return;
@@ -168,6 +218,7 @@ export default function ShiftsPage() {
                 <AdminShiftTable
                   rows={liveShifts}
                   showForceClose
+                  highlightId={focusShiftId}
                   onForceClose={(id) => { setForceTarget(id); setForceNotes(''); }}
                 />
               </>
@@ -178,7 +229,7 @@ export default function ShiftsPage() {
             adminLoading ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#9C8E7E' }}>Loading…</div>
             ) : (
-              <AdminShiftTable rows={historyShifts} />
+              <AdminShiftTable rows={historyShifts} highlightId={focusShiftId} />
             )
           )}
         </>

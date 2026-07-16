@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -243,7 +244,9 @@ export default function DevicesPage() {
                 <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{d.user?.name ?? d.registered_by ?? '—'}</td>
                 <td style={TD}>
                   {d.open_shift_id ? (
-                    <Badge color="green">Shift #{d.open_shift_id}</Badge>
+                    <Link to={`/shifts?shift=${d.open_shift_id}`} style={{ textDecoration: 'none' }}>
+                      <Badge color="green">Shift #{d.open_shift_id}</Badge>
+                    </Link>
                   ) : (
                     <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>
                   )}

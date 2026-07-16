@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { ExternalLink, RefreshCw, CheckCircle, XCircle, Link, Unlink, FileText, Receipt } from 'lucide-react';
 import {
   getXeroStatus, getXeroConnectUrl, disconnectXero, getXeroLogs,
@@ -8,6 +9,15 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, StatCard, TableCard, TD, TH, statColor, useConfirmDialog,
 } from '../components/SharedUI';
+
+function xeroEntityPath(entityType: string, entityId: number | null | undefined): string | null {
+  if (!entityId) return null;
+  switch (entityType) {
+    case 'invoice': return `/invoices?invoice=${entityId}`;
+    case 'expense': return `/expenses?expense=${entityId}`;
+    default: return null;
+  }
+}
 
 function StatusCard({ status }: { status: XeroStatus | null }) {
   if (!status) return null;
@@ -248,10 +258,25 @@ export default function XeroPage() {
                       <td style={TD}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                           {logEntityIcon(log.entity_type)}
-                          <span style={{ fontSize: 13, color: '#6B5D4F', textTransform: 'capitalize' }}>
-                            {log.entity_type}
-                            {log.entity_id ? ` #${log.entity_id}` : ''}
-                          </span>
+                          {(() => {
+                            const path = xeroEntityPath(log.entity_type, log.entity_id);
+                            const label = `${log.entity_type}${log.entity_id ? ` #${log.entity_id}` : ''}`;
+                            if (!path) {
+                              return (
+                                <span style={{ fontSize: 13, color: '#6B5D4F', textTransform: 'capitalize' }}>
+                                  {label}
+                                </span>
+                              );
+                            }
+                            return (
+                              <RouterLink
+                                to={path}
+                                style={{ fontSize: 13, color: '#D4813A', fontWeight: 600, textDecoration: 'none', textTransform: 'capitalize' }}
+                              >
+                                {label}
+                              </RouterLink>
+                            );
+                          })()}
                         </div>
                       </td>
                       <td style={TD}>

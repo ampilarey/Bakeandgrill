@@ -412,7 +412,13 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           ) : ar.map((customer, i) => (
             <Card key={customer.customer_id ?? i} style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{customer.customer_name ?? 'Unknown Customer'}</span>
+                {customer.customer_id ? (
+                  <Link to={`/customers?customer=${customer.customer_id}`} style={{ fontWeight: 700, fontSize: 14, color: '#D4813A', textDecoration: 'none' }}>
+                    {customer.customer_name ?? 'Unknown Customer'}
+                  </Link>
+                ) : (
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{customer.customer_name ?? 'Unknown Customer'}</span>
+                )}
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#D4813A' }}>{mvr(customer.outstanding_amount)}</span>
               </div>
               <table style={S.table}>
@@ -621,7 +627,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 <tbody>
                   {(depositExposure.top_customers ?? []).map((c) => (
                     <tr key={c.id}>
-                      <td style={{ ...S.td, fontWeight: 600 }}>{c.name}</td>
+                      <td style={{ ...S.td, fontWeight: 600 }}>
+                        <Link to={`/customers?customer=${c.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>{c.name}</Link>
+                      </td>
                       <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#047857' }}>{mvr(c.balance)}</td>
                       <td style={S.td}>{c.status}</td>
                     </tr>
@@ -675,7 +683,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 <tbody>
                   {(creditExposure.top_customers ?? []).map((c) => (
                     <tr key={c.id}>
-                      <td style={{ ...S.td, fontWeight: 600 }}>{c.name}</td>
+                      <td style={{ ...S.td, fontWeight: 600 }}>
+                        <Link to={`/customers?customer=${c.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>{c.name}</Link>
+                      </td>
                       <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{mvr(c.balance)}</td>
                       <td style={{ ...S.td, textAlign: 'right' }}>{mvr(c.limit)}</td>
                       <td style={{ ...S.td, textAlign: 'right' }}>{mvr(c.available)}</td>
@@ -783,7 +793,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               <tbody>
                 {shiftVariances.rows.map((row) => (
                   <tr key={row.id}>
-                    <td style={S.td}>{row.user_name}</td>
+                    <td style={S.td}>
+                      <Link to={`/shifts?shift=${row.id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                        {row.user_name}
+                      </Link>
+                    </td>
                     <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{row.closed_at ? new Date(row.closed_at).toLocaleString() : '—'}</td>
                     <td style={S.td}>{row.expected_cash != null ? mvr(row.expected_cash) : '—'}</td>
                     <td style={S.td}>{row.closing_cash != null ? mvr(row.closing_cash) : '—'}</td>
@@ -816,7 +830,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               <tbody>
                 {customerLtv.rows.map((row) => (
                   <tr key={row.id}>
-                    <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
+                    <td style={{ ...S.td, fontWeight: 600 }}>
+                      <Link to={`/customers?customer=${row.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>{row.name}</Link>
+                    </td>
                     <td style={S.td}>{row.order_count}</td>
                     <td style={{ ...S.td, fontWeight: 700 }}>{mvr(row.total_spent)}</td>
                     <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{row.last_order ? new Date(row.last_order).toLocaleDateString() : '—'}</td>
