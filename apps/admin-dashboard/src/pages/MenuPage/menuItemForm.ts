@@ -9,7 +9,7 @@ export const SALES_CHANNELS = [
 
 export type VariantRow = MenuVariant & { _key: string };
 
-export type ComboRow = { item_id: string; quantity: string; is_optional: boolean };
+export type ComboRow = { item_id: string; item_name?: string; quantity: string; is_optional: boolean };
 
 export type ItemForm = {
   name: string; name_dv: string; description: string; sku: string;
@@ -65,6 +65,7 @@ export function itemToForm(item: MenuItem): ItemForm {
     combo_discount_pct: item.combo_discount_pct != null ? String(item.combo_discount_pct) : '',
     combo_items: (item.combo_items ?? []).map((row) => ({
       item_id: String(row.item_id),
+      item_name: row.item?.name,
       quantity: String(row.quantity ?? 1),
       is_optional: row.is_optional ?? false,
     })),

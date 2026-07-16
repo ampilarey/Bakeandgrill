@@ -267,7 +267,6 @@ export function MenuPage() {
           title="New Menu Item"
           categories={m.categories}
           menuGroups={m.defaultMenuGroups}
-          allItems={m.items}
           onSave={m.handleCreateItem}
           onClose={() => m.setCreatingItem(false)}
         />
@@ -279,7 +278,6 @@ export function MenuPage() {
           title={`Edit: ${m.editingItem.name}`}
           categories={m.categories}
           menuGroups={m.defaultMenuGroups}
-          allItems={m.items}
           onSave={m.handleUpdateItem}
           onClose={() => m.setEditingItem(null)}
           itemId={m.editingItem.id}

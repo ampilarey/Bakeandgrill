@@ -19,6 +19,10 @@ type MenuProps = {
   value: MenuItemSelection | null;
   onChange: (v: MenuItemSelection | null) => void;
   placeholder?: string;
+  /** Hide these item ids from results (e.g. the parent combo being edited). */
+  excludeIds?: number[];
+  /** Hide other bundle/combo items from results. */
+  excludeCombos?: boolean;
 };
 
 type InventoryProps = {
@@ -33,6 +37,8 @@ type Props = MenuProps | InventoryProps;
 /** Debounced menu or inventory item picker by name. */
 export function ItemSearch(props: Props) {
   const { kind, value, onChange, placeholder } = props;
+  const excludeIds = kind === 'menu' ? (props.excludeIds ?? []) : [];
+  const excludeCombos = kind === 'menu' ? Boolean(props.excludeCombos) : false;
   const [q, setQ] = useState('');
   const [results, setResults] = useState<{ id: number; label: string; sub: string; menuItem?: MenuItem; invItem?: InventoryItem }[]>([]);
   const [searching, setSearching] = useState(false);
@@ -46,13 +52,17 @@ export function ItemSearch(props: Props) {
       setSearching(true);
       try {
         if (kind === 'menu') {
-          const res = await fetchAdminItems({ search: v.trim(), page: 1, per_page: 10 });
-          setResults((res.data ?? []).slice(0, 10).map((item) => ({
-            id: item.id,
-            label: item.name,
-            sub: `MVR ${parseFloat(String(item.base_price ?? 0)).toFixed(2)}${item.category?.name ? ` · ${item.category.name}` : ''}`,
-            menuItem: item,
-          })));
+          const res = await fetchAdminItems({ search: v.trim(), page: 1, per_page: 15 });
+          const excluded = new Set(excludeIds);
+          setResults((res.data ?? [])
+            .filter((item) => !excluded.has(item.id) && !(excludeCombos && item.is_combo))
+            .slice(0, 10)
+            .map((item) => ({
+              id: item.id,
+              label: item.name,
+              sub: `MVR ${parseFloat(String(item.base_price ?? 0)).toFixed(2)}${item.category?.name ? ` · ${item.category.name}` : ''}`,
+              menuItem: item,
+            })));
         } else {
           const res = await fetchInventoryItems({ search: v.trim(), page: 1 });
           setResults((res.data ?? []).slice(0, 10).map((item) => ({

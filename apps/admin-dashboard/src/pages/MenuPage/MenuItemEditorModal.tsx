@@ -1,12 +1,31 @@
 import { useState } from 'react';
-import type { MenuCategory, MenuGroupRow, MenuItem } from '../../api';
+import type { MenuCategory, MenuGroupRow } from '../../api';
 import { useGstBootstrap } from '../../hooks/useGstBootstrap';
 import { Btn, ErrorMsg, Input, Modal } from '../../components/Layout';
+import { ItemSearch, type MenuItemSelection } from '../../components/ItemSearch';
 import { Field, FormTextarea, ImageUploadField } from './menuFormPrimitives';
 import {
   emptyVariantRow, SALES_CHANNELS, type ItemForm, type VariantRow,
 } from './menuItemForm';
 import { PhotosTab } from './PhotosTab';
+
+function comboRowSelection(row: { item_id: string; item_name?: string }): MenuItemSelection | null {
+  if (!row.item_id) return null;
+  const id = Number(row.item_id);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const name = row.item_name || `Item #${id}`;
+  return {
+    id,
+    label: name,
+    item: {
+      id,
+      name,
+      base_price: 0,
+      is_available: true,
+      is_active: true,
+    },
+  };
+}
 
 const TAX_CODE_OPTIONS = [
   { value: 'standard_8', label: 'Standard rated (8%)' },
@@ -180,13 +199,12 @@ function VariantsEditor({
 }
 
 export function MenuItemEditorModal({
-  initial, title, categories, menuGroups, allItems, onSave, onClose, itemId,
+  initial, title, categories, menuGroups, onSave, onClose, itemId,
 }: {
   initial: ItemForm;
   title: string;
   categories: MenuCategory[];
   menuGroups: MenuGroupRow[];
-  allItems: MenuItem[];
   onSave: (f: ItemForm) => Promise<void>;
   onClose: () => void;
   itemId?: number;
@@ -320,35 +338,42 @@ export function MenuItemEditorModal({
                     </Field>
                     <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', fontWeight: 600 }}>Included items</p>
                     {form.combo_items.map((row, idx) => (
-                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 80px auto auto', gap: 8, alignItems: 'center' }}>
-                        <select
-                          value={row.item_id}
-                          onChange={(e) => {
+                      <div key={idx} style={{ border: '1px solid #E8E0D8', borderRadius: 10, padding: 10, background: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Component {idx + 1}</span>
+                          <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>Remove</Btn>
+                        </div>
+                        <ItemSearch
+                          kind="menu"
+                          value={comboRowSelection(row)}
+                          excludeIds={itemId ? [itemId] : []}
+                          excludeCombos
+                          placeholder="Search menu item…"
+                          onChange={(sel) => {
                             const next = [...form.combo_items];
-                            next[idx] = { ...next[idx], item_id: e.target.value };
+                            next[idx] = {
+                              ...next[idx],
+                              item_id: sel ? String(sel.id) : '',
+                              item_name: sel?.item.name,
+                            };
                             set('combo_items', next);
                           }}
-                          style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
-                        >
-                          <option value="">Select item…</option>
-                          {allItems.filter((it) => it.id !== itemId && !it.is_combo).map((it) => (
-                            <option key={it.id} value={String(it.id)}>{it.name}</option>
-                          ))}
-                        </select>
-                        <Input value={row.quantity} onChange={(v) => {
-                          const next = [...form.combo_items];
-                          next[idx] = { ...next[idx], quantity: v };
-                          set('combo_items', next);
-                        }} type="number" placeholder="Qty" />
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                          <input type="checkbox" checked={row.is_optional} onChange={(e) => {
+                        />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                          <Input value={row.quantity} onChange={(v) => {
                             const next = [...form.combo_items];
-                            next[idx] = { ...next[idx], is_optional: e.target.checked };
+                            next[idx] = { ...next[idx], quantity: v };
                             set('combo_items', next);
-                          }} />
-                          Optional
-                        </label>
-                        <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>×</Btn>
+                          }} type="number" placeholder="Qty" />
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
+                            <input type="checkbox" checked={row.is_optional} onChange={(e) => {
+                              const next = [...form.combo_items];
+                              next[idx] = { ...next[idx], is_optional: e.target.checked };
+                              set('combo_items', next);
+                            }} />
+                            Optional
+                          </label>
+                        </div>
                       </div>
                     ))}
                     <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false }])}>
