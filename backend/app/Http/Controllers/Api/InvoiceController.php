@@ -7,9 +7,11 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Gst\Services\GstInvoiceSequenceService;
 use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Domains\Gst\Services\GstSettingsService;
+use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Purchase;
@@ -30,6 +32,7 @@ class InvoiceController extends Controller
         private readonly GstInvoiceSequenceService $gstSequence,
         private readonly GstSettingsService $gstSettings,
         private readonly OrderTotalsCalculator $orderTotals,
+        private readonly GstTaxCalculator $gstTax,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -456,7 +459,12 @@ class InvoiceController extends Controller
                 'tax_amount' => $order->tax_amount ?? 0,
                 'tax_laar' => (int) ($order->tax_laar ?? round(($order->tax_amount ?? 0) * 100)),
                 'discount_amount' => $order->discount_amount ?? 0,
-                'discount_laar' => (int) round(($order->discount_amount ?? 0) * 100),
+                'discount_laar' => (int) (
+                    EffectiveDiscount::effectiveTotalLaar(
+                        (int) ($order->subtotal_laar ?? round((float) ($order->subtotal ?? 0) * 100)),
+                        EffectiveDiscount::partsFromOrder($order),
+                    ) ?: round((float) ($order->discount_amount ?? 0) * 100)
+                ),
                 'total' => $order->total,
                 'total_laar' => (int) ($order->total_laar ?? round($order->total * 100)),
                 'tax_rate_bp' => $order->tax_rate_bp ?: $this->gstSettings->defaultTaxRateBp(),
@@ -494,7 +502,7 @@ class InvoiceController extends Controller
 
         $paidTotalLaar = (int) $order->payments()
             ->whereIn('status', ['paid', 'completed', 'confirmed'])
-            ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+            ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as total_laar')
             ->value('total_laar');
 
         $invoiceTotalLaar = (int) ($invoice->total_laar ?? round((float) $invoice->total * 100));
@@ -668,7 +676,10 @@ class InvoiceController extends Controller
             'tax_amount' => $order->tax_amount ?? 0,
             'tax_laar' => (int) ($order->tax_laar ?? round(($order->tax_amount ?? 0) * 100)),
             'discount_amount' => $order->discount_amount ?? 0,
-            'discount_laar' => (int) round(($order->discount_amount ?? 0) * 100),
+            'discount_laar' => EffectiveDiscount::effectiveTotalLaar(
+                $subtotalLaar,
+                EffectiveDiscount::partsFromOrder($order),
+            ) ?: (int) round((float) ($order->discount_amount ?? 0) * 100),
             'total' => $total,
             'total_laar' => $totalLaar,
             'tax_rate_bp' => $order->tax_rate_bp ?: $invoice->tax_rate_bp,
@@ -681,24 +692,35 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Final safety net: if the invoice header is 0 but lines have value,
-     * set the header from the line sum so SMS / PDF never show MVR 0.00.
+     * Final safety net: if the invoice header is 0 but the order/lines have
+     * value, copy authoritative order totals (never promote pre-tax line sum
+     * to grand total — that drops GST).
      */
     private function ensureInvoiceHeaderMatchesLines(Invoice $invoice, Order $order): Invoice
     {
         $invoice->loadMissing('items');
-        $lineLaar = (int) $invoice->items->sum(fn ($i) => (int) ($i->total_laar ?? round((float) $i->total * 100)));
-        if ($lineLaar <= 0) {
-            $lineLaar = $this->orderTotals->lineItemsSubtotalLaar($order);
+        $orderTotalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
+        if ($orderTotalLaar <= 0) {
+            $order = $this->orderTotals->repairZeroTotalFromItems($order);
+            $orderTotalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
         }
 
-        if ($lineLaar > 0 && (int) ($invoice->total_laar ?? 0) <= 0) {
-            $total = round($lineLaar / 100, 2);
+        if ($orderTotalLaar > 0 && (int) ($invoice->total_laar ?? 0) <= 0) {
+            $subLaar = (int) ($order->subtotal_laar ?? round((float) ($order->subtotal ?? 0) * 100));
+            $taxLaar = (int) ($order->tax_laar ?? round((float) ($order->tax_amount ?? 0) * 100));
+            $discountLaar = EffectiveDiscount::effectiveTotalLaar(
+                $subLaar,
+                EffectiveDiscount::partsFromOrder($order),
+            );
             $invoice->update([
-                'subtotal' => $total,
-                'subtotal_laar' => $lineLaar,
-                'total' => $total,
-                'total_laar' => $lineLaar,
+                'subtotal' => round($subLaar / 100, 2),
+                'subtotal_laar' => $subLaar,
+                'tax_amount' => round($taxLaar / 100, 2),
+                'tax_laar' => $taxLaar,
+                'discount_amount' => round($discountLaar / 100, 2),
+                'discount_laar' => $discountLaar,
+                'total' => round($orderTotalLaar / 100, 2),
+                'total_laar' => $orderTotalLaar,
             ]);
             $invoice->refresh();
         }
@@ -725,7 +747,7 @@ class InvoiceController extends Controller
                 'unit_price_laar' => (int) round($price * 100),
                 'total' => $total,
                 'total_laar' => (int) round($total * 100),
-                'tax_rate_bp' => $order->tax_rate_bp ?? 0,
+                'tax_rate_bp' => $this->gstTax->resolveTaxRateBp($oi->tax_code ?? $oi->item?->tax_code ?? null),
             ]);
         }
     }

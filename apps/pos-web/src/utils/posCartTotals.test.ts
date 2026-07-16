@@ -62,8 +62,8 @@ describe("posCartTotals", () => {
     expect(cartGrandTotalMvr(sub, tax)).toBe(19.44);
   });
 
-  it("clamps absurd legacy tax_rate without tax_code to settings default", () => {
-    const items = [{ price: 5, quantity: 3, tax_rate: 100 }];
+  it("uses settings default when tax_code missing (ignores legacy tax_rate)", () => {
+    const items = [{ price: 15, quantity: 1, tax_rate: 25 }];
     const sub = cartSubtotalFromLines(items);
     const tax = cartTaxExclusiveMvr(items, sub, sub, 8);
     expect(tax).toBe(1.2);

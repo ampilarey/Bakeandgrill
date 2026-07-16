@@ -61,7 +61,7 @@ final class SettleOrderPaymentAction
             if ($allIdempotentReplay) {
                 $paidTotalLaar = (int) $order->payments()
                     ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                    ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+                    ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as total_laar')
                     ->value('total_laar');
 
                 return [$order, round($paidTotalLaar / 100, 2)];
@@ -135,7 +135,7 @@ final class SettleOrderPaymentAction
 
             $paidTotalLaar = (int) $order->payments()
                 ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+                ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as total_laar')
                 ->value('total_laar');
 
             $orderTotalLaar = $order->total_laar ?? (int) round($order->total * 100);

@@ -8,6 +8,7 @@ use App\Domains\Gst\Enums\GstAccountingBasis;
 use App\Domains\Gst\Enums\GstTaxCode;
 use App\Domains\Gst\Enums\LedgerDirection;
 use App\Domains\Gst\Enums\LedgerSourceType;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Order;
@@ -94,7 +95,9 @@ class GstLedgerPoster
             'customer_tin' => $invoice->customer_tin,
             'document_no' => $invoice->invoice_number,
             'document_date' => $issueDate->toDateString(),
-            'taxable_value_laar' => (int) ($invoice->subtotal_laar ?? round((float) $invoice->subtotal * 100)),
+            // Taxable base = post-discount (subtotal - discounts), not gross subtotal.
+            'taxable_value_laar' => max(0, (int) ($invoice->subtotal_laar ?? round((float) $invoice->subtotal * 100))
+                - (int) ($invoice->discount_laar ?? round((float) ($invoice->discount_amount ?? 0) * 100))),
             'tax_laar' => (int) ($invoice->tax_laar ?? round((float) $invoice->tax_amount * 100)),
             'total_laar' => (int) ($invoice->total_laar ?? round((float) $invoice->total * 100)),
             'rate_bp' => (int) ($invoice->tax_rate_bp ?: $this->settings->defaultTaxRateBp()),
@@ -157,9 +160,17 @@ class GstLedgerPoster
         }
 
         $refundLaar = (int) ($refund->amount_laar ?? round((float) $refund->amount * 100));
-        $ratio = min(1.0, $refundLaar / $orderTotalLaar);
-        $refundTaxLaar = (int) round($orderTaxLaar * $ratio);
-        $refundTaxableLaar = (int) round($refundLaar - $refundTaxLaar);
+        // Allocate GST against the taxable+tax portion of the order so
+        // delivery/packaging/tip fees do not dilute the refund tax share.
+        $subtotalLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
+        $parts = EffectiveDiscount::partsFromOrder($order);
+        $taxableLaar = max(0, $subtotalLaar - EffectiveDiscount::effectiveTotalLaar($subtotalLaar, $parts));
+        $taxablePlusTax = max(1, $taxableLaar + $orderTaxLaar);
+        $refundTaxLaar = (int) min(
+            $orderTaxLaar,
+            round($orderTaxLaar * min(1.0, $refundLaar / $taxablePlusTax)),
+        );
+        $refundTaxableLaar = (int) max(0, $refundLaar - $refundTaxLaar);
 
         $docNo = $creditNote?->invoice_number ?? ('REF-' . $refund->id);
 
@@ -328,9 +339,8 @@ class GstLedgerPoster
             return null;
         }
 
-        $taxableLaar = max(0, $subtotalLaar - (int) ($order->promo_discount_laar ?? 0)
-            - (int) ($order->loyalty_discount_laar ?? 0)
-            - (int) ($order->manual_discount_laar ?? 0));
+        $parts = EffectiveDiscount::partsFromOrder($order);
+        $taxableLaar = max(0, $subtotalLaar - EffectiveDiscount::effectiveTotalLaar($subtotalLaar, $parts));
 
         return $this->upsertEntry([
             'period_key' => $this->resolvePeriodKey($date, LedgerSourceType::Order->value, $order->id),

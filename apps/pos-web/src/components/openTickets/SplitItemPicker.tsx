@@ -17,7 +17,7 @@ export function SplitItemPicker({
   const totalCount = items.length;
   const allSelected = selected.size === totalCount;
   const noneSelected = selected.size === 0;
-  const splitTotal = splitSelectedItemsTotal(items, selected);
+  const splitTotal = splitSelectedItemsTotal(items, selected, ticket.total);
 
   const toggle = (id: number) => {
     setSelected((curr) => {

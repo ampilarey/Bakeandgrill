@@ -235,13 +235,8 @@ class OrderTotalsCalculator
 
     private function calculateSubtotalFromItems(Order $order): Money
     {
-        $order->loadMissing('items');
-        $totalLaar = 0;
-        foreach ($order->items as $item) {
-            $totalLaar += (int) round((float) $item->total_price * 100);
-        }
-
-        return new Money($totalLaar);
+        // Same unit×qty fallback as lineItemsSubtotalLaar — keep one path.
+        return new Money($this->lineItemsSubtotalLaar($order));
     }
 
     private function calculatePerItemTax(

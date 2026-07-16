@@ -59,7 +59,7 @@ class OrderOfflineSettlementService
                 if ($existing !== null) {
                     $paidTotalLaar = (int) $order->payments()
                         ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                        ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+                        ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as total_laar')
                         ->value('total_laar');
 
                     return [$order->fresh('payments'), round($paidTotalLaar / 100, 2)];
@@ -90,7 +90,7 @@ class OrderOfflineSettlementService
 
             $paidTotalLaar = (int) $order->payments()
                 ->whereIn('status', ['paid', 'completed', 'confirmed'])
-                ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total_laar')
+                ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as total_laar')
                 ->value('total_laar');
 
             $orderTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));

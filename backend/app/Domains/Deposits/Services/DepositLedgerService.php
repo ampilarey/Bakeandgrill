@@ -394,7 +394,7 @@ final class DepositLedgerService
         $walletPaidLaar = (int) $order->payments()
             ->where('method', 'wallet')
             ->whereIn('status', ['paid', 'completed', 'confirmed'])
-            ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as total')
+            ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as total')
             ->value('total');
 
         if ($walletPaidLaar <= 0 || !$order->customer_id) {

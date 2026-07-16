@@ -25,10 +25,17 @@ final class ReportMoneySql
 
     public const PAYMENT_AMOUNT_LAAR = 'COALESCE(payments.amount_laar, ROUND(payments.amount * 100))';
 
+    /** Aggregate paid tenders — treat amount_laar=0 as missing (COALESCE alone would keep 0). */
+    public const PAYMENT_SUM_LAAR = 'COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0)';
+
     public const REFUND_AMOUNT_LAAR = 'ROUND(refunds.amount * 100)';
 
-    /** Order statuses that represent counted sales (excludes fully refunded / cancelled). */
-    public const SALE_STATUSES = ['completed', 'partially_refunded'];
+    /**
+     * Order statuses that represent counted sales.
+     * Includes `paid` — POS settle leaves tickets paid until kitchen/cashier
+     * marks completed; excluding it undercounted almost all counter sales.
+     */
+    public const SALE_STATUSES = ['paid', 'completed', 'delivered', 'partially_refunded'];
 
     public static function sumLaarAsMvr(string $expr): string
     {

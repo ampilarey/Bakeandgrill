@@ -356,13 +356,29 @@ class OrderPaymentController extends Controller
 
     /**
      * Resolve the amount that must appear on the bill SMS / public page.
-     * Never trust a lone zeroed header when line items still have value.
+     * Prefer authoritative order/invoice grand totals (post-discount + tax).
+     * Line sums are a last-resort floor only — never a higher override.
      */
     private function resolveBillTotalMvr(Invoice $invoice, Order $order): float
     {
-        $candidates = [
-            (float) $invoice->total,
-            (float) $order->total,
+        $orderTotal = (float) $order->total;
+        if ($orderTotal <= 0) {
+            $orderTotal = round(((int) ($order->total_laar ?? 0)) / 100, 2);
+        }
+        if ($orderTotal > 0) {
+            return round($orderTotal, 2);
+        }
+
+        $invoiceTotal = (float) $invoice->total;
+        if ($invoiceTotal <= 0) {
+            $invoiceTotal = round(((int) ($invoice->total_laar ?? 0)) / 100, 2);
+        }
+        if ($invoiceTotal > 0) {
+            return round($invoiceTotal, 2);
+        }
+
+        // Last resort: line floor (pre-tax / may omit discounts) so SMS is never 0.
+        $lineFloor = max(
             (float) $invoice->items->sum(fn ($i) => (float) $i->total),
             (float) $order->items->sum(function ($i) {
                 $line = (float) ($i->total_price ?? 0);
@@ -372,15 +388,8 @@ class OrderPaymentController extends Controller
 
                 return $line;
             }),
-        ];
+        );
 
-        $best = 0.0;
-        foreach ($candidates as $amount) {
-            if ($amount > $best) {
-                $best = $amount;
-            }
-        }
-
-        return round($best, 2);
+        return round(max(0, $lineFloor), 2);
     }
 }

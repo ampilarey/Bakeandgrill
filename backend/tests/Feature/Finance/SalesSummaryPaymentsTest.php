@@ -33,7 +33,7 @@ class SalesSummaryPaymentsTest extends TestCase
         ]);
     }
 
-    public function test_sales_summary_payments_exclude_non_completed_orders(): void
+    public function test_sales_summary_includes_paid_pos_orders_and_excludes_unpaid(): void
     {
         $today = now()->toDateString();
 
@@ -53,6 +53,28 @@ class SalesSummaryPaymentsTest extends TestCase
             'method' => 'cash',
             'amount' => 10.0,
             'amount_laar' => 1000,
+            'status' => 'paid',
+            'processed_at' => now(),
+        ]);
+
+        // POS settle leaves status=paid until kitchen/cashier completes.
+        $paidPos = Order::create([
+            'order_number' => 'SUM-PAID-POS',
+            'type' => 'takeaway',
+            'status' => 'paid',
+            'payment_status' => 'paid',
+            'subtotal' => 20.0,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 20.0,
+            'total_laar' => 2000,
+            'created_at' => now(),
+        ]);
+        Payment::create([
+            'order_id' => $paidPos->id,
+            'method' => 'cash',
+            'amount' => 20.0,
+            'amount_laar' => 2000,
             'status' => 'paid',
             'processed_at' => now(),
         ]);
@@ -83,10 +105,10 @@ class SalesSummaryPaymentsTest extends TestCase
         );
 
         $response->assertOk()
-            ->assertJsonPath('totals.orders_count', 1);
+            ->assertJsonPath('totals.orders_count', 2);
 
-        $this->assertEquals(10.0, (float) $response->json('totals.total'));
-        $this->assertEquals(10.0, (float) $response->json('payments.cash'));
+        $this->assertEquals(30.0, (float) $response->json('totals.total'));
+        $this->assertEquals(30.0, (float) $response->json('payments.cash'));
 
         $this->assertArrayNotHasKey('card', $response->json('payments') ?? []);
     }

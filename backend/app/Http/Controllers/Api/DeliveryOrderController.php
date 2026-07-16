@@ -179,9 +179,12 @@ class DeliveryOrderController extends Controller
             'delivery_eta_at' => 'nullable|date|after:now',
         ]);
 
-        // Recalculate delivery fee if island changed
+        // Recalculate delivery fee if island changed (pass subtotal so free-delivery threshold applies).
         if (isset($validated['delivery_island'])) {
-            $feeLaar = $this->feeCalculator->calculateLaar($validated['delivery_island']);
+            $feeLaar = $this->feeCalculator->calculateLaar(
+                $validated['delivery_island'],
+                (int) ($order->subtotal_laar ?? (int) round((float) $order->subtotal * 100)),
+            );
             $validated['delivery_fee'] = round($feeLaar / 100, 2);
             $validated['delivery_fee_laar'] = $feeLaar;
         }

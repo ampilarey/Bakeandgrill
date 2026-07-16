@@ -5,7 +5,7 @@ import type { PosOrderType } from "../orderTypes";
 import {
   parseServiceChargePublicSettings,
   previewServiceCharge,
-  serviceChargeTaxLaar,
+  serviceChargeTaxLaarByBuckets,
   type ServiceChargePublicConfig,
 } from "@shared/utils/serviceCharge";
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from "@shared/utils/effectiveDiscount";
@@ -125,14 +125,21 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
 
   const [serviceChargeConfig, setServiceChargeConfig] = useState<ServiceChargePublicConfig | null>(null);
   const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
+  const [taxInclusive, setTaxInclusive] = useState(false);
 
   useEffect(() => {
     fetchPublicSiteSettings()
       .then((settings) => setServiceChargeConfig(parseServiceChargePublicSettings(settings)))
       .catch(() => setServiceChargeConfig(null));
     fetchGstBootstrap()
-      .then((b) => setDefaultTaxRatePercent(b.tax_rate_percent))
-      .catch(() => setDefaultTaxRatePercent(8));
+      .then((b) => {
+        setDefaultTaxRatePercent(b.tax_rate_percent);
+        setTaxInclusive(!!b.tax_inclusive);
+      })
+      .catch(() => {
+        setDefaultTaxRatePercent(8);
+        setTaxInclusive(false);
+      });
   }, []);
 
   const effectiveLineTaxRate = useCallback(
@@ -197,20 +204,9 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   );
 
   /**
-   * Tax-EXCLUSIVE per-item GST/TGST.
-   *
-   * Each item carries a snapshotted `tax_rate` (% — e.g. 8 for TGST). When a
-   * discount is applied, the backend reduces every item's taxable amount
-   * proportionally (so a 10% discount on the order also shaves 10% off
-   * the taxable base of each line). We replicate the exact same math
-   * here so the cashier sees the same Tax / Total the server will store
-   * and the customer will see on the receipt.
-   *
-   * Assumes tax-EXCLUSIVE pricing (the default — see `config/app.php`
-   * `tax_inclusive`). The receipt template already shows Subtotal + Tax,
-   * which only makes sense in exclusive mode. If the business ever flips
-   * to inclusive pricing the receipt template would already need an
-   * update — this hook would follow suit.
+   * Per-item GST/TGST mirroring OrderTotalsCalculator + GstTaxCalculator.
+   * Discounts reduce each line's taxable base proportionally.
+   * Service-charge tax uses rate buckets (not a single blended average).
    */
   const cartTax = useMemo(() => {
     if (cartSubtotal <= 0) return 0;
@@ -218,28 +214,35 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     const discountedLaar = Math.round(discountedSubtotal * 100);
     const discountRatio = subtotalLaar > 0 ? discountedLaar / subtotalLaar : 0;
     let taxLaar = 0;
-    let weightedRateSum = 0;
-    let weightedLaar = 0;
+    const buckets: Array<{ ratePercent: number; laar: number }> = [];
     for (const item of cartItems) {
       const rate = effectiveLineTaxRate(item);
       if (rate <= 0) continue;
       const lineGrossLaar = Math.round(lineUnitPrice(item) * item.quantity * 100);
       const effectiveLaar = Math.round(lineGrossLaar * discountRatio);
-      taxLaar += Math.round(effectiveLaar * rate / 100);
-      weightedRateSum += effectiveLaar * rate;
-      weightedLaar += effectiveLaar;
+      if (effectiveLaar <= 0) continue;
+      if (taxInclusive) {
+        // Extract embedded tax: amount * r / (100 + r)
+        taxLaar += Math.round((effectiveLaar * rate) / (100 + rate));
+      } else {
+        taxLaar += Math.round((effectiveLaar * rate) / 100);
+      }
+      buckets.push({ ratePercent: rate, laar: effectiveLaar });
     }
-    if (serviceChargeConfig) {
+    if (serviceChargeConfig && !taxInclusive) {
       const scPreview = previewServiceCharge(
         serviceChargeConfig,
         backendOrderType,
         discountedLaar,
       );
-      const avgRate = weightedLaar > 0 ? weightedRateSum / weightedLaar : 0;
-      taxLaar += serviceChargeTaxLaar(serviceChargeConfig, scPreview.amountLaar, avgRate);
+      taxLaar += serviceChargeTaxLaarByBuckets(
+        serviceChargeConfig,
+        scPreview.amountLaar,
+        buckets,
+      );
     }
     return taxLaar / 100;
-  }, [cartItems, cartSubtotal, discountedSubtotal, serviceChargeConfig, backendOrderType, effectiveLineTaxRate]);
+  }, [cartItems, cartSubtotal, discountedSubtotal, serviceChargeConfig, backendOrderType, effectiveLineTaxRate, taxInclusive]);
 
   const cartServiceCharge = useMemo(() => {
     if (!serviceChargeConfig) return 0;

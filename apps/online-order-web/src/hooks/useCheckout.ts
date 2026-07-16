@@ -42,7 +42,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   parseServiceChargePublicSettings,
   previewServiceCharge,
-  serviceChargeTaxLaar,
+  serviceChargeTaxLaarByBuckets,
 } from '@shared/utils/serviceCharge';
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from '@shared/utils/effectiveDiscount';
 import { estimateDeliveryFeeLaar } from '@shared/utils/deliveryFeeEstimate';
@@ -54,6 +54,7 @@ export type CartItem = {
   quantity: number;
   modifiers?: Array<{ id: number; name: string; price: number }>;
   taxRate?: number;
+  taxCode?: string | null;
 };
 
 export type OrderType = "pickup" | "delivery";
@@ -119,7 +120,13 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
     const parsed = JSON.parse(raw);
     // CartContext stores a versioned object: { version, entries: [{ item, quantity, modifiers, variantId }] }
     const entries: Array<{
-      item: { id: number; name: string; base_price: number | string; tax_rate?: number | null };
+      item: {
+        id: number;
+        name: string;
+        base_price: number | string;
+        tax_rate?: number | null;
+        tax_code?: string | null;
+      };
       quantity: number;
       modifiers?: Array<{ id: number; name: string; price: number | string }>;
       variantId?: number | null;
@@ -133,8 +140,28 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
       modifiers: (e.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: Number(m.price) })),
       variantId: e.variantId ?? null,
       taxRate:   Number(e.item?.tax_rate ?? 0),
+      taxCode:   e.item?.tax_code ?? null,
     }));
   } catch { return []; }
+}
+
+/** Mirror GstTaxCalculator / POS effectiveLineTaxRatePercent. */
+function effectiveCheckoutTaxRatePercent(
+  taxCode: string | null | undefined,
+  _legacyTaxRate: number | undefined,
+  defaultTaxRatePercent: number,
+): number {
+  const code = (taxCode ?? "").trim();
+  if (code === "zero_rated" || code === "exempt" || code === "out_of_scope") {
+    return 0;
+  }
+  if (code === "standard_8" || code === "standard" || code === "") {
+    // Missing code defaults to standard on the server at create time.
+    // Never treat tax_rate=0 as "use 8%" for an explicit zero-rated line
+    // that already set tax_code — and never trust corrupt legacy percents.
+    return defaultTaxRatePercent;
+  }
+  return 0;
 }
 
 export function useCheckout() {
@@ -370,16 +397,6 @@ export function useCheckout() {
     return () => window.clearTimeout(timer);
   }, [isAuthenticated, cart, subtotalLaar]);
 
-  // Full tax on the un-discounted subtotal (used only to derive the effective rate)
-  const fullTaxLaar = cart.reduce((sum, item) => {
-    const rate = (item.taxRate ?? 0) > 0 ? (item.taxRate ?? 0) : defaultTaxRatePercent;
-    if (rate <= 0) return sum;
-    const itemLaar =
-      Math.round(item.price * 100) * item.quantity +
-      (item.modifiers ?? []).reduce((ms, m) => ms + Math.round(m.price * 100) * item.quantity, 0);
-    return sum + Math.round(itemLaar * rate / 100);
-  }, 0);
-
   const deliveryFeeLaar  = orderType === "delivery" ? deliveryFee : 0;
   const promoDelta       = promoApplied?.discountLaar ?? 0;
 
@@ -402,8 +419,7 @@ export function useCheckout() {
       : friendReferralApplied.discountLaar)
     : 0;
 
-  // GST is on the discounted subtotal (standard Maldivian T-GST — discounts reduce
-  // the taxable amount). Use the same proportional allocation as the backend.
+  // GST on discounted subtotal — per-line allocation (matches POS / OrderTotalsCalculator).
   const discountedSubtotalLaar = calcDiscountedSubtotalLaar(subtotalLaar, {
     promo: promoDelta,
     loyalty: loyaltyDelta,
@@ -416,9 +432,21 @@ export function useCheckout() {
     [serviceChargeConfig, backendOrderType, discountedSubtotalLaar],
   );
   const serviceChargeLaar = serviceChargePreview.amountLaar;
-  const weightedTaxRatePercent = subtotalLaar > 0 ? (fullTaxLaar / subtotalLaar) * 100 : 0;
-  const itemTaxLaar = subtotalLaar > 0 ? Math.round(discountedSubtotalLaar * fullTaxLaar / subtotalLaar) : 0;
-  const scTaxLaar = serviceChargeTaxLaar(serviceChargeConfig, serviceChargeLaar, weightedTaxRatePercent);
+  const discountRatio = subtotalLaar > 0 ? discountedSubtotalLaar / subtotalLaar : 0;
+  const taxBuckets: Array<{ ratePercent: number; laar: number }> = [];
+  let itemTaxLaar = 0;
+  for (const item of cart) {
+    const rate = effectiveCheckoutTaxRatePercent(item.taxCode, item.taxRate, defaultTaxRatePercent);
+    if (rate <= 0) continue;
+    const itemLaar =
+      Math.round(item.price * 100) * item.quantity +
+      (item.modifiers ?? []).reduce((ms, m) => ms + Math.round(m.price * 100) * item.quantity, 0);
+    const effectiveLaar = Math.round(itemLaar * discountRatio);
+    if (effectiveLaar <= 0) continue;
+    itemTaxLaar += Math.round((effectiveLaar * rate) / 100);
+    taxBuckets.push({ ratePercent: rate, laar: effectiveLaar });
+  }
+  const scTaxLaar = serviceChargeTaxLaarByBuckets(serviceChargeConfig, serviceChargeLaar, taxBuckets);
   const taxLaar = itemTaxLaar + scTaxLaar;
 
   useEffect(() => {

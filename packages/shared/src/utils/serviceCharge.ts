@@ -82,3 +82,24 @@ export function serviceChargeTaxLaar(
   if (!config.taxable || serviceChargeLaar <= 0 || weightedTaxRatePercent <= 0) return 0;
   return Math.round(serviceChargeLaar * weightedTaxRatePercent / 100);
 }
+
+/**
+ * Mirror backend OrderTotalsCalculator::calculateServiceChargeTaxLaar —
+ * allocate SC across tax-rate buckets, then tax each share.
+ */
+export function serviceChargeTaxLaarByBuckets(
+  config: ServiceChargePublicConfig,
+  serviceChargeLaar: number,
+  buckets: ReadonlyArray<{ ratePercent: number; laar: number }>,
+): number {
+  if (!config.taxable || serviceChargeLaar <= 0) return 0;
+  const totalTaxableLaar = buckets.reduce((sum, b) => sum + (b.laar > 0 && b.ratePercent > 0 ? b.laar : 0), 0);
+  if (totalTaxableLaar <= 0) return 0;
+  let scTaxLaar = 0;
+  for (const b of buckets) {
+    if (b.laar <= 0 || b.ratePercent <= 0) continue;
+    const scShareLaar = Math.round((serviceChargeLaar * b.laar) / totalTaxableLaar);
+    scTaxLaar += Math.round((scShareLaar * b.ratePercent) / 100);
+  }
+  return scTaxLaar;
+}

@@ -141,7 +141,7 @@ final class PaymentAllocationService
         $orderTotalLaarPre = (int) ($order->total_laar ?? LaariConverter::toLaar($order->total));
         $alreadyPaidLaar = (int) $order->payments()
             ->whereIn('status', ['paid', 'completed', 'confirmed'])
-            ->selectRaw('COALESCE(SUM(amount_laar), SUM(ROUND(amount * 100))) as t')
+            ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as t')
             ->value('t');
         $remainingLaar = max(0, $orderTotalLaarPre - $alreadyPaidLaar);
 

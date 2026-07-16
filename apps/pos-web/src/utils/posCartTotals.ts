@@ -30,24 +30,14 @@ export function effectiveLineTaxRatePercent(
   if (code === "zero_rated" || code === "exempt" || code === "out_of_scope") {
     return 0;
   }
-  if (code === "standard_8" || code === "standard") {
+  // Server create defaults missing codes to standard_8 — never trust legacy
+  // tax_rate percents (1–30) that diverge from GstTaxCalculator.
+  if (code === "standard_8" || code === "standard" || code === "") {
     return defaultTaxRatePercent;
   }
 
-  const rate = Number(item.tax_rate ?? 0);
-  if (!Number.isFinite(rate) || rate <= 0) {
-    // No code + no rate: treat like a normal taxable POS line.
-    return defaultTaxRatePercent;
-  }
-  // Basis points mistakenly stored in the percent column (800 → 8).
-  if (rate > 100 && rate <= 10000) {
-    return rate / 100;
-  }
-  // Absurd percent (e.g. 100) — Maldives GST is single-digit; use settings.
-  if (rate > 30) {
-    return defaultTaxRatePercent;
-  }
-  return rate;
+  // Unknown code → out of scope (0%), matching GstTaxCode::tryFrom fallback.
+  return 0;
 }
 
 export function discountedSubtotalMvr(
