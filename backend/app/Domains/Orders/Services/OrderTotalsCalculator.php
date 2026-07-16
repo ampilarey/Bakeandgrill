@@ -151,6 +151,48 @@ class OrderTotalsCalculator
     }
 
     /**
+     * Sum active line totals in laari (falls back to unit × qty when
+     * total_price was never written).
+     */
+    public function lineItemsSubtotalLaar(Order $order): int
+    {
+        $order->unsetRelation('items');
+        $order->load('items');
+
+        $totalLaar = 0;
+        foreach ($order->items as $item) {
+            $line = (float) ($item->total_price ?? 0);
+            if ($line <= 0) {
+                $line = (float) ($item->unit_price ?? 0) * (float) ($item->quantity ?? 0);
+            }
+            if ($line > 0) {
+                $totalLaar += (int) round($line * 100);
+            }
+        }
+
+        return $totalLaar;
+    }
+
+    /**
+     * If the order header total is 0/null but line items still have value
+     * (seen after mid-edit relation bugs), recalculate and persist so
+     * Send Bill / public invoices cannot SMS "MVR 0.00".
+     */
+    public function repairZeroTotalFromItems(Order $order): Order
+    {
+        $lineLaar = $this->lineItemsSubtotalLaar($order);
+        $headerLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
+
+        if ($lineLaar <= 0 || $headerLaar > 0) {
+            return $order->loadMissing(['items.item', 'customer']);
+        }
+
+        $order->unsetRelation('items');
+
+        return $this->recalculateAndPersist($order);
+    }
+
+    /**
      * Recalculate all total fields from the order's current state and persist them.
      */
     public function recalculateAndPersist(Order $order): Order

@@ -189,6 +189,39 @@ class OrderSendBillTest extends TestCase
         $this->assertStringNotContainsString('MVR 0.00', $smsBodies[1]);
     }
 
+    public function test_send_bill_repairs_zero_order_total_from_line_items(): void
+    {
+        Sanctum::actingAs($this->staffUser, ['staff']);
+
+        // Corrupt header the way the mid-edit bug did, but leave priced lines.
+        $this->order->update([
+            'subtotal' => 0,
+            'total' => 0,
+            'subtotal_laar' => 0,
+            'total_laar' => 0,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+        ]);
+
+        $res = $this->postJson("/api/orders/{$this->order->id}/send-bill", ['phone' => '+9607890123'])
+            ->assertOk();
+
+        $billTotal = (float) $res->json('bill_total');
+        $this->assertGreaterThan(0.0, $billTotal, 'bill_total must be repaired from line items');
+        $this->assertGreaterThan(0.0, (float) $res->json('invoice.total'));
+
+        $this->order->refresh();
+        $this->assertGreaterThan(0.0, (float) $this->order->total);
+
+        $sms = SmsLog::where('reference_type', 'invoice')
+            ->where('reference_id', (string) $res->json('invoice.id'))
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($sms);
+        $this->assertStringNotContainsString('MVR 0.00', (string) $sms->message);
+        $this->assertStringContainsString(number_format($billTotal, 2), (string) $sms->message);
+    }
+
     public function test_sync_refuses_to_wipe_invoice_when_order_total_is_zeroed(): void
     {
         Sanctum::actingAs($this->staffUser, ['staff']);

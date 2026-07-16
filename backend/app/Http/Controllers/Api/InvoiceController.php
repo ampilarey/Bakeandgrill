@@ -9,6 +9,7 @@ use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Purchase;
@@ -28,6 +29,7 @@ class InvoiceController extends Controller
         private readonly GstLedgerPoster $gstPoster,
         private readonly GstInvoiceSequenceService $gstSequence,
         private readonly GstSettingsService $gstSettings,
+        private readonly OrderTotalsCalculator $orderTotals,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -411,9 +413,18 @@ class InvoiceController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($order->id);
 
+            // Repair header totals when lines have value but total is 0.
+            $order = $this->orderTotals->repairZeroTotalFromItems($order);
+
             $existing = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
             if ($existing) {
                 if ($this->shouldSyncSaleInvoiceFromOrder($existing, $order)) {
+                    return $this->syncSaleInvoiceFromOrder($existing, $order);
+                }
+
+                // Even when "in sync" by line shape, never leave a zeroed
+                // invoice header when the order now has a positive total.
+                if ((float) $existing->total <= 0 && (float) $order->total > 0) {
                     return $this->syncSaleInvoiceFromOrder($existing, $order);
                 }
 
@@ -452,7 +463,7 @@ class InvoiceController extends Controller
 
             $this->writeSaleInvoiceItemsFromOrder($inv, $order);
 
-            return $inv;
+            return $this->ensureInvoiceHeaderMatchesLines($inv->fresh('items'), $order);
         });
     }
 
@@ -467,12 +478,17 @@ class InvoiceController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($order->id);
 
+            $order = $this->orderTotals->repairZeroTotalFromItems($order);
+
             $existing = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
             if (!$existing) {
                 return null;
             }
 
-            if (!$this->shouldSyncSaleInvoiceFromOrder($existing, $order)) {
+            if (
+                !$this->shouldSyncSaleInvoiceFromOrder($existing, $order)
+                && !((float) $existing->total <= 0 && (float) $order->total > 0)
+            ) {
                 return $existing->loadMissing('items');
             }
 
@@ -500,12 +516,18 @@ class InvoiceController extends Controller
             return false;
         }
 
-        // Never wipe a good invoice with an empty / zeroed order snapshot.
-        // That was the Send-Bill → edit → SMS "MVR 0.00" regression.
+        // Never wipe a good invoice with an empty order snapshot.
         if ($order->items->isEmpty()) {
             return false;
         }
+
+        $lineLaar = $this->orderTotals->lineItemsSubtotalLaar($order);
         $orderTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        // Prefer line-derived value when the header is still zeroed.
+        if ($orderTotalLaar <= 0 && $lineLaar > 0) {
+            $orderTotalLaar = $lineLaar;
+        }
+
         if ($orderTotalLaar <= 0 && (int) $invoice->total_laar > 0) {
             return false;
         }
@@ -550,26 +572,68 @@ class InvoiceController extends Controller
 
     private function syncSaleInvoiceFromOrder(Invoice $invoice, Order $order): Invoice
     {
+        $order = $this->orderTotals->repairZeroTotalFromItems($order);
+
+        $total = (float) $order->total;
+        $totalLaar = (int) ($order->total_laar ?? round($total * 100));
+        if ($totalLaar <= 0) {
+            $totalLaar = $this->orderTotals->lineItemsSubtotalLaar($order);
+            $total = round($totalLaar / 100, 2);
+        }
+
+        $subtotal = (float) ($order->subtotal ?? $total);
+        $subtotalLaar = (int) ($order->subtotal_laar ?? round($subtotal * 100));
+        if ($subtotalLaar <= 0 && $totalLaar > 0) {
+            $subtotalLaar = $totalLaar;
+            $subtotal = $total;
+        }
+
         $invoice->update([
             'customer_id' => $order->customer_id ?? $invoice->customer_id,
             'recipient_name' => $order->customer?->name ?? $invoice->recipient_name,
             'recipient_phone' => $order->customer?->phone ?? $invoice->recipient_phone,
             'recipient_address' => $order->customer?->billing_address ?? $invoice->recipient_address,
-            'subtotal' => $order->subtotal ?? $order->total,
-            'subtotal_laar' => (int) ($order->subtotal_laar ?? round(($order->subtotal ?? $order->total) * 100)),
+            'subtotal' => $subtotal,
+            'subtotal_laar' => $subtotalLaar,
             'tax_amount' => $order->tax_amount ?? 0,
             'tax_laar' => (int) ($order->tax_laar ?? round(($order->tax_amount ?? 0) * 100)),
             'discount_amount' => $order->discount_amount ?? 0,
             'discount_laar' => (int) round(($order->discount_amount ?? 0) * 100),
-            'total' => $order->total,
-            'total_laar' => (int) ($order->total_laar ?? round((float) $order->total * 100)),
+            'total' => $total,
+            'total_laar' => $totalLaar,
             'tax_rate_bp' => $order->tax_rate_bp ?: $invoice->tax_rate_bp,
         ]);
 
         $invoice->items()->delete();
         $this->writeSaleInvoiceItemsFromOrder($invoice, $order);
 
-        return $invoice->fresh('items');
+        return $this->ensureInvoiceHeaderMatchesLines($invoice->fresh('items'), $order);
+    }
+
+    /**
+     * Final safety net: if the invoice header is 0 but lines have value,
+     * set the header from the line sum so SMS / PDF never show MVR 0.00.
+     */
+    private function ensureInvoiceHeaderMatchesLines(Invoice $invoice, Order $order): Invoice
+    {
+        $invoice->loadMissing('items');
+        $lineLaar = (int) $invoice->items->sum(fn ($i) => (int) ($i->total_laar ?? round((float) $i->total * 100)));
+        if ($lineLaar <= 0) {
+            $lineLaar = $this->orderTotals->lineItemsSubtotalLaar($order);
+        }
+
+        if ($lineLaar > 0 && (int) ($invoice->total_laar ?? 0) <= 0) {
+            $total = round($lineLaar / 100, 2);
+            $invoice->update([
+                'subtotal' => $total,
+                'subtotal_laar' => $lineLaar,
+                'total' => $total,
+                'total_laar' => $lineLaar,
+            ]);
+            $invoice->refresh();
+        }
+
+        return $invoice->loadMissing('items');
     }
 
     private function writeSaleInvoiceItemsFromOrder(Invoice $invoice, Order $order): void

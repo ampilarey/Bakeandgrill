@@ -33,6 +33,22 @@
     $displayTotal = $useOrderSnapshot ? (float) $invoice->order->total : (float) $invoice->total;
     $displayItems = $useOrderSnapshot ? $invoice->order->items : $invoice->items;
     $itemsAreOrderLines = $useOrderSnapshot;
+    $lineSum = (float) $displayItems->sum(function ($item) use ($itemsAreOrderLines) {
+        if ($itemsAreOrderLines) {
+            $line = (float) ($item->total_price ?? 0);
+            if ($line <= 0) {
+                $line = (float) ($item->unit_price ?? 0) * (float) ($item->quantity ?? 0);
+            }
+            return $line;
+        }
+        return (float) ($item->total ?? 0);
+    });
+    if ($displayTotal <= 0 && $lineSum > 0) {
+        $displayTotal = $lineSum;
+        if ($displaySubtotal <= 0) {
+            $displaySubtotal = $lineSum;
+        }
+    }
 @endphp
 
 @section('title', 'Invoice ' . $invoice->invoice_number . ' — ' . $siteName)

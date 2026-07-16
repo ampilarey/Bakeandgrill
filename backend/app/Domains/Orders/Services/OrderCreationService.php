@@ -370,7 +370,12 @@ class OrderCreationService
                 abort(422, "Item {$itemId} not found or unavailable");
             }
 
-            $quantity = (int) $itemPayload['quantity'];
+            // Keep fractional qty (e.g. 0.5 kg). Casting to int turned
+            // sub-1 quantities into 0 and zeroed the whole ticket.
+            $quantity = (float) $itemPayload['quantity'];
+            if ($quantity <= 0) {
+                abort(422, "Quantity must be greater than zero for item {$itemId}.");
+            }
 
             // ── Variant resolution ────────────────────────────────────────────
             $variantId = $itemPayload['variant_id'] ?? null;

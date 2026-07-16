@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderPaymentsRequest;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Receipt;
 use App\Services\AuditLogService;
@@ -268,19 +269,30 @@ class OrderPaymentController extends Controller
             $phone = $order->customer?->phone;
         }
 
-        // Creates or refreshes the unpaid sale invoice from the live order
-        // (createFromOrderInternal re-reads lines under lock so edits stick).
+        // Repair zeroed order headers from line items, then mint/sync invoice.
+        $order = app(\App\Domains\Orders\Services\OrderTotalsCalculator::class)
+            ->repairZeroTotalFromItems($order);
+
         $invoice = app(InvoiceController::class)->createFromOrderInternal($order, $request->user());
         $invoice->loadMissing('items');
-        $order->refresh();
+        $order->refresh()->loadMissing('items');
 
-        // Prefer the live order total if the invoice row is somehow still
-        // zeroed (corrupt sync from an earlier bug). Never SMS MVR 0.00
-        // when the ticket clearly has a balance.
-        $billTotal = (float) $invoice->total;
-        $orderTotal = (float) $order->total;
-        if ($billTotal <= 0 && $orderTotal > 0) {
-            $billTotal = $orderTotal;
+        $billTotal = $this->resolveBillTotalMvr($invoice, $order);
+        if ($billTotal <= 0) {
+            return response()->json([
+                'message' => 'Cannot send bill — this order has no chargeable amount. Add items and save the ticket first.',
+            ], 422);
+        }
+
+        // Persist a non-zero header on the invoice if it was still corrupted.
+        if ((float) $invoice->total <= 0) {
+            $invoice->update([
+                'subtotal' => $billTotal,
+                'subtotal_laar' => (int) round($billTotal * 100),
+                'total' => $billTotal,
+                'total_laar' => (int) round($billTotal * 100),
+            ]);
+            $invoice->refresh();
         }
 
         $link = rtrim(config('app.url'), '/') . '/invoices/' . $invoice->token;
@@ -340,5 +352,35 @@ class OrderPaymentController extends Controller
             'sms_status' => isset($smsLog) ? $smsLog->status : null,
             'bill_total' => round($billTotal, 2),
         ]);
+    }
+
+    /**
+     * Resolve the amount that must appear on the bill SMS / public page.
+     * Never trust a lone zeroed header when line items still have value.
+     */
+    private function resolveBillTotalMvr(Invoice $invoice, Order $order): float
+    {
+        $candidates = [
+            (float) $invoice->total,
+            (float) $order->total,
+            (float) $invoice->items->sum(fn ($i) => (float) $i->total),
+            (float) $order->items->sum(function ($i) {
+                $line = (float) ($i->total_price ?? 0);
+                if ($line <= 0) {
+                    $line = (float) ($i->unit_price ?? 0) * (float) ($i->quantity ?? 0);
+                }
+
+                return $line;
+            }),
+        ];
+
+        $best = 0.0;
+        foreach ($candidates as $amount) {
+            if ($amount > $best) {
+                $best = $amount;
+            }
+        }
+
+        return round($best, 2);
     }
 }
