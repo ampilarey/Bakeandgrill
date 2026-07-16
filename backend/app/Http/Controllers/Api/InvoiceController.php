@@ -37,6 +37,8 @@ class InvoiceController extends Controller
             'supplier:id,name',
             'createdBy:id,name',
             'parentInvoice:id,invoice_number',
+            'order:id,order_number',
+            'purchase:id,purchase_number',
             'items.item:id,name',
             'items.inventoryItem:id,name',
         ])
@@ -558,6 +560,8 @@ class InvoiceController extends Controller
             'supplier:id,name',
             'createdBy:id,name',
             'parentInvoice:id,invoice_number',
+            'order:id,order_number',
+            'purchase:id,purchase_number',
             'items.item:id,name',
             'items.inventoryItem:id,name',
         ]);
@@ -593,7 +597,15 @@ class InvoiceController extends Controller
             'terms' => $inv->terms,
             'pdf_path' => $inv->pdf_path,
             'order_id' => $inv->order_id,
+            'order' => $inv->order ? [
+                'id' => $inv->order->id,
+                'order_number' => $inv->order->order_number,
+            ] : null,
             'purchase_id' => $inv->purchase_id,
+            'purchase' => $inv->purchase ? [
+                'id' => $inv->purchase->id,
+                'purchase_number' => $inv->purchase->purchase_number,
+            ] : null,
             'parent_invoice_id' => $inv->parent_invoice_id,
             'parent_invoice' => $inv->parentInvoice ? ['id' => $inv->parentInvoice->id, 'invoice_number' => $inv->parentInvoice->invoice_number] : null,
             'customer' => $inv->customer ? ['id' => $inv->customer->id, 'name' => $inv->customer->name, 'phone' => $inv->customer->phone] : null,

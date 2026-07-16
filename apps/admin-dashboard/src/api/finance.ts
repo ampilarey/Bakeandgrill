@@ -37,7 +37,9 @@ export type Invoice = {
   customer: { id: number; name: string; phone: string } | null;
   supplier: { id: number; name: string } | null;
   order_id: number | null;
+  order?: { id: number; order_number: string } | null;
   purchase_id: number | null;
+  purchase?: { id: number; purchase_number: string } | null;
   created_by: string | null;
   items: InvoiceItem[];
   created_at: string;

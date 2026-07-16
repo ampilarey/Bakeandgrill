@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
   generateInvoicePdf, pushInvoiceToXero,
@@ -349,7 +350,7 @@ export function InvoicesPage() {
                 <th style={{ ...TH, width: 36 }}>
                   <input type="checkbox" checked={bulkSelected.size === invoices.length && invoices.length > 0} onChange={toggleAll} style={{ cursor: 'pointer' }} />
                 </th>
-                {['Number', 'Type', 'Status', 'Recipient', 'Total', 'Issue Date', 'Due', 'Actions'].map((h) => (
+                {['Number', 'Type', 'Status', 'Recipient', 'Source', 'Total', 'Issue Date', 'Due', 'Actions'].map((h) => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
@@ -372,6 +373,25 @@ export function InvoicesPage() {
                     />
                   </td>
                   <td style={{ ...TD, color: '#6B5D4F' }}>{inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name ?? '—'}</td>
+                  <td style={TD}>
+                    {inv.order_id ? (
+                      <Link
+                        to={`/orders?order=${inv.order_id}`}
+                        style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
+                      >
+                        Order {inv.order?.order_number ? `#${inv.order.order_number}` : `#${inv.order_id}`}
+                      </Link>
+                    ) : inv.purchase_id ? (
+                      <Link
+                        to={`/purchase-orders?search=${encodeURIComponent(inv.purchase?.purchase_number || String(inv.purchase_id))}`}
+                        style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
+                      >
+                        {inv.purchase?.purchase_number || `PO #${inv.purchase_id}`}
+                      </Link>
+                    ) : (
+                      <span style={{ color: '#C4B5A3' }}>—</span>
+                    )}
+                  </td>
                   <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>
                     MVR {parseFloat(String(inv.total ?? 0)).toFixed(2)}
                     {(inv as { balance_due?: number }).balance_due != null
@@ -420,7 +440,7 @@ export function InvoicesPage() {
               ))}
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <EmptyState message="No invoices found." />
                   </td>
                 </tr>
