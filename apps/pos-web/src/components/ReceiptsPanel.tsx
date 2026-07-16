@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createRefund, fetchReceipts, getReceiptLink, sendReceipt } from "../api";
+import { localDateYmd } from "../utils/localDate";
 import { EmptyState, PanelShell } from "./OpenTicketsPanel";
 
 export type Receipt = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
@@ -42,13 +43,14 @@ export function ReceiptsPanel({
     return () => clearTimeout(id);
   }, [q]);
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     void (async () => {
       try {
+        // Recompute on each fetch so a POS left open past midnight stays correct,
+        // and use local calendar date (not UTC) for Maldives overnight shifts.
+        const today = localDateYmd();
         const res = await fetchReceipts({
           ...(scope === "today" ? { date: today } : {}),
           ...(scope === "shift" && shiftId ? { shift_id: shiftId } : {}),
@@ -71,7 +73,7 @@ export function ReceiptsPanel({
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, debouncedQ, shiftId, today, initialOrderId]);
+  }, [scope, debouncedQ, shiftId, initialOrderId]);
 
   const selected = items.find((r) => r.id === selectedId) ?? null;
 

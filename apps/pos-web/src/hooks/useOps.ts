@@ -11,6 +11,7 @@ import {
   getCurrentShift,
   openShift,
 } from "../api";
+import { localDateYmd } from "../utils/localDate";
 
 type Shift = {
   id: number;
@@ -37,7 +38,7 @@ const emptyPurchaseLine = (): PurchaseLine => ({
 });
 
 export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateYmd();
 
   const [shift, setShift] = useState<Shift | null>(null);
   const [openingCash, setOpeningCash] = useState("");

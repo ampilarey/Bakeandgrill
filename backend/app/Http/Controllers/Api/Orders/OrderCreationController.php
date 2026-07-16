@@ -17,6 +17,7 @@ use App\Services\OrderCreationService;
 use App\Services\PermissionService;
 use App\Services\ShiftAccessService;
 use App\Support\OrderSettlement;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -92,15 +93,29 @@ class OrderCreationController extends Controller
             $query->where('device_id', (int) $request->input('device_id'));
         }
 
+        // Business-day filters in venue timezone (not raw UTC calendar day).
+        // POS "Today" sends a local YYYY-MM-DD; matching that to UTC midnight
+        // would drop overnight Maldives sales (UTC+5).
+        $businessTz = config('app.timezone', 'Indian/Maldives');
+        if ($businessTz === 'UTC') {
+            $businessTz = 'Indian/Maldives';
+        }
+
         if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->input('date'));
+            $day = Carbon::parse((string) $request->input('date'), $businessTz);
+            $query->whereBetween('created_at', [
+                $day->copy()->startOfDay()->utc(),
+                $day->copy()->endOfDay()->utc(),
+            ]);
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->input('date_from'));
+            $from = Carbon::parse((string) $request->input('date_from'), $businessTz)->startOfDay()->utc();
+            $query->where('created_at', '>=', $from);
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->input('date_to'));
+            $to = Carbon::parse((string) $request->input('date_to'), $businessTz)->endOfDay()->utc();
+            $query->where('created_at', '<=', $to);
         }
 
         // Device filter — managers/owners only. Cashiers see their own
