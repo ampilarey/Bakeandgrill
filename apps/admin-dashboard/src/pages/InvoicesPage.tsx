@@ -1,17 +1,151 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
   generateInvoicePdf, pushInvoiceToXero,
   createInvoiceFromOrder, createInvoiceFromPurchase,
   createCreditNote, updateInvoice, createInvoice,
+  fetchOrders, fetchPurchases,
   type Invoice, type ManualInvoiceLineItem,
 } from '../api';
-import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
+import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
 import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
 
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
+
+type LookupSelection = { id: number; label: string };
+
+function OrderLookup({
+  value, onChange,
+}: {
+  value: LookupSelection | null;
+  onChange: (v: LookupSelection | null) => void;
+}) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<{ id: number; label: string; sub: string }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const search = (v: string) => {
+    setQ(v);
+    if (timer.current) clearTimeout(timer.current);
+    if (!v.trim()) { setResults([]); return; }
+    timer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetchOrders({ search: v.trim(), page: 1, per_page: 8 });
+        setResults((res.data ?? []).slice(0, 8).map((o) => ({
+          id: o.id,
+          label: `#${o.order_number}`,
+          sub: `${o.customer?.name ?? o.customer_name ?? '—'} · MVR ${parseFloat(String(o.total ?? 0)).toFixed(2)} · ${o.status}`,
+        })));
+      } catch { setResults([]); }
+      finally { setSearching(false); }
+    }, 300);
+  };
+
+  if (value) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+        <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>{value.label}</span>
+        <button type="button" onClick={() => onChange(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: 18, lineHeight: 1 }} aria-label="Clear selection">×</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <Input value={q} onChange={search} placeholder="Search order number, customer, phone…" />
+      {searching && <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Searching…</div>}
+      {results.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 2, maxHeight: 240, overflowY: 'auto' }}>
+          {results.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => { onChange({ id: r.id, label: `${r.label} — ${r.sub}` }); setQ(''); setResults([]); }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #F5F0EB', fontFamily: 'inherit' }}
+            >
+              <div style={{ fontWeight: 700, color: '#1C1408' }}>{r.label}</div>
+              <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{r.sub}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PurchaseLookup({
+  value, onChange,
+}: {
+  value: LookupSelection | null;
+  onChange: (v: LookupSelection | null) => void;
+}) {
+  const [q, setQ] = useState('');
+  const [all, setAll] = useState<{ id: number; label: string; sub: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (loaded || value) return;
+    setLoading(true);
+    fetchPurchases({ page: 1 })
+      .then((res) => {
+        setAll((res.purchases?.data ?? []).map((p) => ({
+          id: p.id,
+          label: p.purchase_number,
+          sub: `${p.supplier?.name ?? 'No supplier'} · MVR ${parseFloat(String(p.total ?? 0)).toFixed(2)} · ${p.status}`,
+        })));
+        setLoaded(true);
+      })
+      .catch(() => setAll([]))
+      .finally(() => setLoading(false));
+  }, [loaded, value]);
+
+  if (value) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+        <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>{value.label}</span>
+        <button type="button" onClick={() => onChange(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: 18, lineHeight: 1 }} aria-label="Clear selection">×</button>
+      </div>
+    );
+  }
+
+  const needle = q.trim().toLowerCase();
+  const results = (needle
+    ? all.filter((p) => p.label.toLowerCase().includes(needle) || p.sub.toLowerCase().includes(needle))
+    : all
+  ).slice(0, 8);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <Input value={q} onChange={setQ} placeholder="Filter by PO number or supplier…" />
+      {loading && <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Loading purchases…</div>}
+      {!loading && results.length === 0 && (
+        <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>
+          {all.length === 0 ? 'No purchases found.' : 'No matches.'}
+        </div>
+      )}
+      {results.length > 0 && (
+        <div style={{ marginTop: 6, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 8, maxHeight: 240, overflowY: 'auto' }}>
+          {results.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => { onChange({ id: r.id, label: `${r.label} — ${r.sub}` }); setQ(''); }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #F5F0EB', fontFamily: 'inherit' }}
+            >
+              <div style={{ fontWeight: 700, color: '#1C1408' }}>{r.label}</div>
+              <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{r.sub}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function InvoicesPage() {
   usePageTitle('Invoices');
@@ -35,7 +169,7 @@ export function InvoicesPage() {
 
   // Create from order/purchase
   const [createFrom, setCreateFrom]       = useState<'order' | 'purchase' | null>(null);
-  const [createRefId, setCreateRefId]     = useState('');
+  const [createRef, setCreateRef]         = useState<LookupSelection | null>(null);
   const [creating, setCreating]           = useState(false);
 
   // Edit invoice
@@ -177,15 +311,14 @@ export function InvoicesPage() {
   };
 
   const handleCreateFrom = async () => {
-    const id = parseInt(createRefId, 10);
-    if (isNaN(id) || id <= 0) { setError('Enter a valid ID.'); return; }
+    if (!createRef || createRef.id <= 0) { setError('Select an order or purchase first.'); return; }
     setCreating(true); setError('');
     try {
       const res = createFrom === 'order'
-        ? await createInvoiceFromOrder(id)
-        : await createInvoiceFromPurchase(id);
+        ? await createInvoiceFromOrder(createRef.id)
+        : await createInvoiceFromPurchase(createRef.id);
       showToast(`Invoice ${res.invoice.invoice_number} created.`);
-      setCreateFrom(null); setCreateRefId('');
+      setCreateFrom(null); setCreateRef(null);
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setCreating(false); }
@@ -295,8 +428,8 @@ export function InvoicesPage() {
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={() => { setShowManual(true); setManualError(''); }}>+ New Invoice</Btn>
-            <Btn variant="secondary" onClick={() => { setCreateFrom('order'); setCreateRefId(''); }}>+ From Order</Btn>
-            <Btn variant="secondary" onClick={() => { setCreateFrom('purchase'); setCreateRefId(''); }}>+ From Purchase</Btn>
+            <Btn variant="secondary" onClick={() => { setCreateFrom('order'); setCreateRef(null); }}>+ From Order</Btn>
+            <Btn variant="secondary" onClick={() => { setCreateFrom('purchase'); setCreateRef(null); }}>+ From Purchase</Btn>
             <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
           </div>
         }
@@ -517,25 +650,21 @@ export function InvoicesPage() {
       {createFrom && (
         <Modal
           title={createFrom === 'order' ? 'Create Invoice from Order' : 'Create Invoice from Purchase'}
-          onClose={() => setCreateFrom(null)}
-          maxWidth={380}
+          onClose={() => { setCreateFrom(null); setCreateRef(null); }}
+          maxWidth={480}
         >
           <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
-            Enter the {createFrom === 'order' ? 'order' : 'purchase'} ID to generate an invoice from it.
+            Search and select a {createFrom === 'order' ? 'paid order' : 'purchase order'} to generate an invoice.
           </p>
           <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>
-            {createFrom === 'order' ? 'Order ID' : 'Purchase ID'} *
+            {createFrom === 'order' ? 'Order' : 'Purchase'} *
           </label>
-          <input
-            type="number" min="1"
-            value={createRefId}
-            onChange={(e) => setCreateRefId(e.target.value)}
-            placeholder="e.g. 42"
-            style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box', marginBottom: 4 }}
-          />
+          {createFrom === 'order'
+            ? <OrderLookup value={createRef} onChange={setCreateRef} />
+            : <PurchaseLookup value={createRef} onChange={setCreateRef} />}
           <ModalActions>
-            <Btn variant="ghost" onClick={() => setCreateFrom(null)}>Cancel</Btn>
-            <Btn onClick={() => void handleCreateFrom()} disabled={creating || !createRefId.trim()}>
+            <Btn variant="ghost" onClick={() => { setCreateFrom(null); setCreateRef(null); }}>Cancel</Btn>
+            <Btn onClick={() => void handleCreateFrom()} disabled={creating || !createRef}>
               {creating ? 'Creating…' : 'Create Invoice'}
             </Btn>
           </ModalActions>
