@@ -561,8 +561,10 @@ class OrderCreationService
 
     private function generateOrderNumber(): string
     {
-        $date = now()->toDateString();
-        $dateFormatted = now()->format('Ymd');
+        // Venue calendar day — must match POS "Today" (Maldives), not UTC.
+        $now = \App\Support\BusinessDay::now();
+        $date = $now->toDateString();
+        $dateFormatted = $now->format('Ymd');
 
         $sequence = DB::transaction(function () use ($date): int {
             $dailySeq = DB::table('daily_sequences')
