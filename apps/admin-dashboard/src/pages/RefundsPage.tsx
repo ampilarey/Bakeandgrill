@@ -6,6 +6,7 @@ import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
   StatCard, TableSkeleton, TableStateBar, ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
+import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
 import { useToast } from '../components/ui';
 import { fetchAdminRefunds, issueRefund, type AdminRefund } from '../api';
 
@@ -38,7 +39,7 @@ export default function RefundsPage() {
   const [statusFilter, setStatusFilter] = useState('');
 
   const [issueOpen, setIssueOpen] = useState(false);
-  const [orderId, setOrderId] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<OrderSearchSelection | null>(null);
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [issuing, setIssuing] = useState(false);
@@ -58,14 +59,30 @@ export default function RefundsPage() {
 
   useEffect(() => { void load(); }, [page, statusFilter]);
 
+  const resetIssueForm = () => {
+    setSelectedOrder(null);
+    setAmount('');
+    setReason('');
+    setIssueError('');
+  };
+
+  const handleOrderChange = (order: OrderSearchSelection | null) => {
+    setSelectedOrder(order);
+    setIssueError('');
+    if (order) {
+      setAmount(order.total > 0 ? order.total.toFixed(2) : '');
+    }
+  };
+
   const submitIssue = async () => {
-    const oId = parseInt(orderId, 10);
+    if (!selectedOrder) return;
     const amt = parseFloat(amount);
     setIssuing(true); setIssueError('');
     try {
-      await issueRefund(oId, { amount: amt, reason: reason.trim() });
-      setIssueOpen(false); setOrderId(''); setAmount(''); setReason('');
-      toast.success(`Refund of MVR ${amt.toFixed(2)} issued for order #${oId}.`);
+      await issueRefund(selectedOrder.id, { amount: amt, reason: reason.trim() });
+      setIssueOpen(false);
+      resetIssueForm();
+      toast.success(`Refund of MVR ${amt.toFixed(2)} issued for order #${selectedOrder.orderNumber}.`);
       void load();
     } catch (e) {
       const msg = (e as Error).message;
@@ -76,15 +93,14 @@ export default function RefundsPage() {
   };
 
   const handleIssueClick = () => {
-    const oId = parseInt(orderId, 10);
     const amt = parseFloat(amount);
-    if (!orderId || isNaN(oId) || oId <= 0) { setIssueError('Enter a valid order ID.'); return; }
+    if (!selectedOrder) { setIssueError('Select an order first.'); return; }
     if (!amount || isNaN(amt) || amt <= 0) { setIssueError('Enter a valid amount.'); return; }
     if (!reason.trim()) { setIssueError('A reason is required before issuing a refund.'); return; }
     setIssueError('');
     ask({
       title: 'Confirm refund',
-      message: `Issue MVR ${amt.toFixed(2)} refund for order #${oId}?\n\nReason: ${reason.trim()}`,
+      message: `Issue MVR ${amt.toFixed(2)} refund for order #${selectedOrder.orderNumber}?\n\nReason: ${reason.trim()}\n\nYou need an open shift to process refunds.`,
       confirmLabel: 'Issue refund',
       danger: true,
       onConfirm: () => void submitIssue(),
@@ -96,7 +112,7 @@ export default function RefundsPage() {
       <PageHeader
         title="Refunds"
         action={canIssueRefund ? (
-          <Btn onClick={() => { setIssueOpen(true); setIssueError(''); }}>+ Process Refund</Btn>
+          <Btn onClick={() => { resetIssueForm(); setIssueOpen(true); }}>+ Process Refund</Btn>
         ) : undefined}
       />
 
@@ -161,12 +177,12 @@ export default function RefundsPage() {
       <Pagination page={page} totalPages={lastPage} onChange={setPage} />
 
       {issueOpen && (
-        <Modal title="Process Refund" onClose={() => setIssueOpen(false)}>
+        <Modal title="Process Refund" onClose={() => { setIssueOpen(false); resetIssueForm(); }} maxWidth={480}>
           {issueError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{issueError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Order ID *</span>
-              <input type="number" placeholder="e.g. 1042" value={orderId} onChange={e => setOrderId(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Order *</span>
+              <OrderSearch value={selectedOrder} onChange={handleOrderChange} />
             </label>
             <label>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Refund Amount (MVR) *</span>
@@ -176,10 +192,13 @@ export default function RefundsPage() {
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Reason *</span>
               <textarea placeholder="Describe the reason (required)…" value={reason} onChange={e => setReason(e.target.value)} rows={3} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
             </label>
+            <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
+              Requires an open shift. Amount is capped at what was paid minus prior refunds.
+            </p>
           </div>
           <ModalActions>
-            <Btn variant="secondary" onClick={() => setIssueOpen(false)}>Cancel</Btn>
-            <Btn variant="danger" onClick={handleIssueClick} disabled={issuing}>{issuing ? 'Processing…' : 'Issue Refund'}</Btn>
+            <Btn variant="secondary" onClick={() => { setIssueOpen(false); resetIssueForm(); }}>Cancel</Btn>
+            <Btn variant="danger" onClick={handleIssueClick} disabled={issuing || !selectedOrder}>{issuing ? 'Processing…' : 'Issue Refund'}</Btn>
           </ModalActions>
         </Modal>
       )}

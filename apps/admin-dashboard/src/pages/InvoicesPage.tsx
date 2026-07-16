@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
   generateInvoicePdf, pushInvoiceToXero,
   createInvoiceFromOrder, createInvoiceFromPurchase,
   createCreditNote, updateInvoice, createInvoice,
-  fetchOrders, fetchPurchases,
+  fetchPurchases,
   type Invoice, type ManualInvoiceLineItem,
 } from '../api';
 import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
+import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
 import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
@@ -15,67 +16,6 @@ import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
 
 type LookupSelection = { id: number; label: string };
-
-function OrderLookup({
-  value, onChange,
-}: {
-  value: LookupSelection | null;
-  onChange: (v: LookupSelection | null) => void;
-}) {
-  const [q, setQ] = useState('');
-  const [results, setResults] = useState<{ id: number; label: string; sub: string }[]>([]);
-  const [searching, setSearching] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const search = (v: string) => {
-    setQ(v);
-    if (timer.current) clearTimeout(timer.current);
-    if (!v.trim()) { setResults([]); return; }
-    timer.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetchOrders({ search: v.trim(), page: 1, per_page: 8 });
-        setResults((res.data ?? []).slice(0, 8).map((o) => ({
-          id: o.id,
-          label: `#${o.order_number}`,
-          sub: `${o.customer?.name ?? o.customer_name ?? '—'} · MVR ${parseFloat(String(o.total ?? 0)).toFixed(2)} · ${o.status}`,
-        })));
-      } catch { setResults([]); }
-      finally { setSearching(false); }
-    }, 300);
-  };
-
-  if (value) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
-        <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>{value.label}</span>
-        <button type="button" onClick={() => onChange(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: 18, lineHeight: 1 }} aria-label="Clear selection">×</button>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <Input value={q} onChange={search} placeholder="Search order number, customer, phone…" />
-      {searching && <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Searching…</div>}
-      {results.length > 0 && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 2, maxHeight: 240, overflowY: 'auto' }}>
-          {results.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => { onChange({ id: r.id, label: `${r.label} — ${r.sub}` }); setQ(''); setResults([]); }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #F5F0EB', fontFamily: 'inherit' }}
-            >
-              <div style={{ fontWeight: 700, color: '#1C1408' }}>{r.label}</div>
-              <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{r.sub}</div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function PurchaseLookup({
   value, onChange,
@@ -660,7 +600,12 @@ export function InvoicesPage() {
             {createFrom === 'order' ? 'Order' : 'Purchase'} *
           </label>
           {createFrom === 'order'
-            ? <OrderLookup value={createRef} onChange={setCreateRef} />
+            ? (
+              <OrderSearch
+                value={createRef ? { id: createRef.id, label: createRef.label, orderNumber: '', total: 0 } : null}
+                onChange={(v: OrderSearchSelection | null) => setCreateRef(v ? { id: v.id, label: v.label } : null)}
+              />
+            )
             : <PurchaseLookup value={createRef} onChange={setCreateRef} />}
           <ModalActions>
             <Btn variant="ghost" onClick={() => { setCreateFrom(null); setCreateRef(null); }}>Cancel</Btn>
