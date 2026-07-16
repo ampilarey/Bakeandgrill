@@ -43,6 +43,10 @@ export async function evaluateOfflineGate(
     return { allowed: false, reason: "No cached open shift. Open a shift while online.", menu, shift, session };
   }
 
+  if (requireShift && shift?.staff_user_id !== session.staff_user_id) {
+    return { allowed: false, reason: "Cached shift belongs to a different staff user. Connect once while online.", menu, shift, session };
+  }
+
   if (requireShift && !menu?.items?.length) {
     return { allowed: false, reason: "No cached menu. Connect while online to download the menu.", menu, shift, session };
   }

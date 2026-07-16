@@ -63,6 +63,7 @@ export type CachedStaffSession = {
 export type CachedShiftRecord = {
   id: "current";
   shift_id: number;
+  staff_user_id: number | null;
   opened_at: string;
   device_identifier: string;
   cached_at: string;

@@ -97,7 +97,7 @@ if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orde
 
     // Shifts + cash drawer
     Route::get('/shifts/current', [App\Http\Controllers\Api\ShiftController::class, 'current'])
-        ->middleware('permission:pos.open_shift');
+        ->middleware('permission.any:pos.ring_sales,pos.open_shift,pos.close_shift,shifts.view_own_history');
     Route::get('/shifts/history', [App\Http\Controllers\Api\ShiftController::class, 'history'])
         ->middleware('permission:shifts.view_own_history');
     Route::get('/shifts/live', [App\Http\Controllers\Api\ShiftController::class, 'live'])

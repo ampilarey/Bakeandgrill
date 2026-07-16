@@ -103,8 +103,31 @@ export function PosRouter() {
           padding: 16, color: "#F8FAFC",
         }}>
           <div style={{ textAlign: "center" }}>
-            <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Checking shift…</p>
-            <p style={{ fontSize: 13, color: "#94A3B8", margin: "8px 0 0" }}>One moment</p>
+            <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
+              {shift.error ? "Couldn't verify shift" : "Checking shift…"}
+            </p>
+            <p style={{ fontSize: 13, color: "#94A3B8", margin: "8px 0 0", maxWidth: 360 }}>
+              {shift.error || "One moment"}
+            </p>
+            {shift.error && (
+              <button
+                type="button"
+                onClick={() => void shift.refresh()}
+                style={{
+                  marginTop: 16,
+                  minHeight: 44,
+                  padding: "0 18px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.24)",
+                  background: "#F8FAFC",
+                  color: "#1C1408",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                Retry shift check
+              </button>
+            )}
           </div>
         </div>
       );

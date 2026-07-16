@@ -25,11 +25,49 @@ export type ShiftSummary = Awaited<ReturnType<typeof getShiftSummary>>;
 /** Sync fallback — IndexedDB hydrate is async and loses the race after SW updates. */
 const LS_SHIFT_KEY = "pos_open_shift";
 
+type LocalShiftCache = Partial<ShiftRow> & {
+  staff_user_id?: number | null;
+};
+
+type CachedShiftFallback = {
+  shift_id: number;
+  opened_at: string;
+  staff_user_id?: number | null;
+};
+
+export type ShiftRefreshErrorKind = "no_shift" | "auth" | "transient";
+
+export function classifyShiftRefreshError(error: unknown): ShiftRefreshErrorKind {
+  if (error instanceof ApiRequestError) {
+    if (error.status === 404) return "no_shift";
+    if (error.status === 401 || error.status === 403) return "auth";
+  }
+
+  return "transient";
+}
+
+function currentStaffUserId(): number | null {
+  try {
+    const raw = localStorage.getItem("pos_staff_user_id");
+    if (!raw) return null;
+    const id = Number(raw);
+    return Number.isFinite(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheBelongsToCurrentStaff(cache: { staff_user_id?: number | null }): boolean {
+  const staffUserId = currentStaffUserId();
+  return staffUserId !== null && cache.staff_user_id === staffUserId;
+}
+
 function readLocalShift(): ShiftRow | null {
   try {
     const raw = localStorage.getItem(LS_SHIFT_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<ShiftRow>;
+    const parsed = JSON.parse(raw) as LocalShiftCache;
+    if (!cacheBelongsToCurrentStaff(parsed)) return null;
     if (typeof parsed.id !== "number" || typeof parsed.opened_at !== "string") return null;
     return {
       id: parsed.id,
@@ -45,10 +83,12 @@ function readLocalShift(): ShiftRow | null {
   }
 }
 
-function writeLocalShift(shift: ShiftRow): void {
+function writeLocalShift(shift: ShiftRow, staffUserId: number | null): void {
+  if (staffUserId === null) return;
   try {
     localStorage.setItem(LS_SHIFT_KEY, JSON.stringify({
       id: shift.id,
+      staff_user_id: staffUserId,
       opened_at: shift.opened_at,
       closed_at: shift.closed_at,
       opening_cash: shift.opening_cash,
@@ -70,14 +110,38 @@ function clearLocalShift(): void {
 }
 
 function persistShiftCaches(shift: ShiftRow, deviceIdentifier?: string): void {
-  writeLocalShift(shift);
+  const staffUserId = currentStaffUserId();
+  writeLocalShift(shift, staffUserId);
   void saveCachedShift({
     shift_id: shift.id,
+    staff_user_id: staffUserId,
     opened_at: shift.opened_at,
     device_identifier: deviceIdentifier
       || localStorage.getItem("pos_device_id")
       || "unknown",
   });
+}
+
+function shiftFromCachedFallback(cached: CachedShiftFallback | null): ShiftRow | null {
+  if (!cached || !cacheBelongsToCurrentStaff(cached)) return null;
+
+  return {
+    id: cached.shift_id,
+    opened_at: cached.opened_at,
+    closed_at: null,
+    opening_cash: 0,
+    closing_cash: null,
+    expected_cash: null,
+    variance: null,
+  };
+}
+
+async function restoreCachedShiftFallback(): Promise<ShiftRow | null> {
+  const local = readLocalShift();
+  if (local) return local;
+
+  const cached = await loadCachedShift();
+  return shiftFromCachedFallback(cached);
 }
 
 function clearShiftCaches(): void {
@@ -134,9 +198,11 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
   const refresh = useCallback(async () => {
     if (!isLoggedIn || !deviceApproved) return;
     const gen = ++refreshGenRef.current;
+    let authoritative = false;
     try {
       const res = await getCurrentShift();
       if (gen !== refreshGenRef.current) return;
+      authoritative = true;
       const shift = res.shift as ShiftRow | null;
       if (shift) {
         applyOpenShift(shift);
@@ -150,38 +216,31 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
       // Distinguish "no shift" (genuine null response or 404) from
       // transient network/server failures so a flaky API doesn't
       // bounce a busy cashier into the Shift Closed gate mid-service.
-      if (e instanceof ApiRequestError) {
-        if (e.status === 404) {
-          setCurrent(null);
-          setError("");
-          clearShiftCaches();
-        } else if (e.status === 401 || e.status === 403) {
-          setError(e.message);
-          setCurrent(null);
-          clearShiftCaches();
-        } else {
-          setError(e.message || "Couldn't refresh shift — retrying.");
-        }
+      const errorKind = classifyShiftRefreshError(e);
+      if (errorKind === "no_shift") {
+        authoritative = true;
+        setCurrent(null);
+        setError("");
+        clearShiftCaches();
+      } else if (errorKind === "auth") {
+        setError(e instanceof Error ? e.message : "Unable to verify shift permissions.");
+        setCurrent(null);
+        clearShiftCaches();
       } else {
-        const cached = await loadCachedShift();
-        const local = readLocalShift();
-        const fallback = local ?? (cached ? {
-          id: cached.shift_id,
-          opened_at: cached.opened_at,
-          closed_at: null,
-          opening_cash: 0,
-          closing_cash: null,
-          expected_cash: null,
-          variance: null,
-        } : null);
+        const fallback = await restoreCachedShiftFallback();
+        if (gen !== refreshGenRef.current) return;
         if (fallback) {
           setCurrent((prev) => prev ?? fallback);
         }
-        setError("Network issue — shift status may be stale.");
+        setError(e instanceof ApiRequestError
+          ? e.message || "Couldn't refresh shift. Check the server connection and retry."
+          : "Network issue — shift status may be stale. Retry when the connection is back.");
       }
     } finally {
-      if (gen === refreshGenRef.current) {
+      if (gen === refreshGenRef.current && authoritative) {
         markReady();
+      } else if (gen === refreshGenRef.current) {
+        setLoading(false);
       }
     }
   }, [isLoggedIn, deviceApproved, applyOpenShift, markReady]);
@@ -204,16 +263,9 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     if (!isLoggedIn || !deviceApproved || cacheHydratedRef.current) return;
     cacheHydratedRef.current = true;
     void loadCachedShift().then((cached) => {
-      if (!cached) return;
-      setCurrent((prev) => prev ?? {
-        id: cached.shift_id,
-        opened_at: cached.opened_at,
-        closed_at: null,
-        opening_cash: 0,
-        closing_cash: null,
-        expected_cash: null,
-        variance: null,
-      });
+      const fallback = shiftFromCachedFallback(cached);
+      if (!fallback) return;
+      setCurrent((prev) => prev ?? fallback);
       setLoading(false);
     });
   }, [isLoggedIn, deviceApproved]);
@@ -225,11 +277,20 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
       setReady(false);
       setLoading(true);
       setCurrent(null);
-      // Drop local shift hints so the next login never inherits another cashier's drawer.
-      clearShiftCaches();
+      // Keep the staff-scoped shift cache. A later login restores it only
+      // when the same staff user ID is present, so another cashier cannot
+      // inherit this drawer after a logout.
       return;
     }
     if (!deviceApproved) return;
+
+    const local = readLocalShift();
+    if (local) {
+      setCurrent((prev) => prev ?? local);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
     // Confirm with the server immediately. Do not wait on bootstrap —
     // a null bootstrap used to mark ready too early and flash Open-shift.
