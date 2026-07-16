@@ -487,7 +487,8 @@ export async function deleteUnitConversion(id: number): Promise<void> {
 // ── Inventory price history & cheapest supplier ───────────────────────────────
 
 export interface InventoryPriceHistoryEntry {
-  purchase_id: number;
+  purchase_id: number | null;
+  purchase_number?: string | null;
   supplier: string | null;
   unit_cost: number;
   quantity: number;

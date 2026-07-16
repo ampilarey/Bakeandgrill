@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -774,6 +775,7 @@ export default function InventoryPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead><tr>
                       <th style={TH}>Date</th><th style={TH}>Supplier</th>
+                      <th style={TH}>PO</th>
                       <th style={TH}>Qty</th><th style={TH}>Unit Cost</th>
                     </tr></thead>
                     <tbody>
@@ -781,6 +783,18 @@ export default function InventoryPage() {
                         <tr key={i}>
                           <td style={TD}>{h.purchase_date ?? '—'}</td>
                           <td style={TD}>{h.supplier ?? '—'}</td>
+                          <td style={TD}>
+                            {h.purchase_id ? (
+                              <Link
+                                to={`/purchase-orders?search=${encodeURIComponent(h.purchase_number || String(h.purchase_id))}`}
+                                style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
+                              >
+                                {h.purchase_number || `PO #${h.purchase_id}`}
+                              </Link>
+                            ) : (
+                              <span style={{ color: '#9C8E7E' }}>—</span>
+                            )}
+                          </td>
                           <td style={TD}>{h.quantity}</td>
                           <td style={{ ...TD, fontWeight: 600 }}>MVR {h.unit_cost.toFixed(2)}</td>
                         </tr>

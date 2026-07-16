@@ -191,6 +191,7 @@ class InventoryController extends Controller
             ->map(function ($item) {
                 return [
                     'purchase_id' => $item->purchase_id,
+                    'purchase_number' => $item->purchase?->purchase_number,
                     'supplier' => $item->purchase?->supplier?->name,
                     'unit_cost' => $item->unit_cost,
                     'quantity' => $item->quantity,
