@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Orders;
 
-use App\Domains\Kitchen\Support\KitchenHandoverSettings;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
@@ -517,11 +516,9 @@ class OrderStatusController extends Controller
                 return ['error' => 'Online order is unpaid — wait for payment confirmation before marking ready.'];
             }
 
-            if (KitchenHandoverSettings::requirePosReceivingBeforeReady()
-                && $order->kitchen_handover_status !== 'received'
-                && $order->pos_received_at === null) {
-                return ['error' => 'Receive from kitchen before marking ready.'];
-            }
+            // Receiving-before-ready is optional (Admin kitchen setting).
+            // When enabled it is a soft reminder only — cashiers in small
+            // cafés can still mark Ready from POS without waiting on KDS.
 
             $oldStatus = $order->status;
             $order->update(['status' => 'ready']);

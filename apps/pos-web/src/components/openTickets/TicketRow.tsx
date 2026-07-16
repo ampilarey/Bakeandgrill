@@ -263,50 +263,61 @@ export function TicketRow({
               </ActionButton>
             )}
             {stage === "queued" && canManageOrderStatus && (
-              <ActionButton
-                onClick={() => handleStartCooking(t)}
-                busy={busy}
-                bg="#A16207"
-                confirm
-                confirmLabel="Start cooking on kitchen display?"
-              >
-                🍳 Start cooking
-              </ActionButton>
-            )}
-            {stage === "cooking" && canManageOrderStatus && (() => {
-              const needsReceive = requirePosReceivingBeforeReady
-                && !(t as { pos_received_at?: string | null }).pos_received_at
-                && (t as { kitchen_handover_status?: string | null }).kitchen_handover_status !== "received";
-              if (needsReceive) {
-                return (
-                  <span
-                    title="Receive from kitchen first (Kitchen receiving drawer)"
-                    style={{
-                      flex: 1,
-                      textAlign: "center",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      fontSize: type.bodySm.fontSize,
-                      fontWeight: 700,
-                      color: "#B45309",
-                      background: "#FFFBEB",
-                      border: "1px dashed #FDE68A",
-                    }}
-                  >
-                    Receive from kitchen first
-                  </span>
-                );
-              }
-              return (
+              <>
+                <ActionButton
+                  onClick={() => handleStartCooking(t)}
+                  busy={busy}
+                  bg="#A16207"
+                  confirm
+                  confirmLabel="Start cooking on kitchen display?"
+                >
+                  🍳 Start cooking
+                </ActionButton>
                 <ActionButton
                   onClick={() => handleMarkReady(t)}
                   busy={busy}
                   bg="#047857"
                   confirm
-                  confirmLabel="Send 'ready' SMS?"
+                  confirmLabel="Mark ready and notify customer?"
                 >
                   ✅ Mark ready
                 </ActionButton>
+              </>
+            )}
+            {stage === "cooking" && canManageOrderStatus && (() => {
+              const needsReceive = requirePosReceivingBeforeReady
+                && !(t as { pos_received_at?: string | null }).pos_received_at
+                && (t as { kitchen_handover_status?: string | null }).kitchen_handover_status !== "received";
+              return (
+                <>
+                  {needsReceive && (
+                    <span
+                      title="Optional when kitchen handover is enabled — Mark ready still works for small cafés"
+                      style={{
+                        flex: "1 1 100%",
+                        textAlign: "center",
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        fontSize: type.bodySm.fontSize,
+                        fontWeight: 600,
+                        color: "#B45309",
+                        background: "#FFFBEB",
+                        border: "1px dashed #FDE68A",
+                      }}
+                    >
+                      Tip: receive from kitchen when food arrives
+                    </span>
+                  )}
+                  <ActionButton
+                    onClick={() => handleMarkReady(t)}
+                    busy={busy}
+                    bg="#047857"
+                    confirm
+                    confirmLabel="Mark ready and notify customer?"
+                  >
+                    ✅ Mark ready
+                  </ActionButton>
+                </>
               );
             })()}
             {stage === "ready" && isPaid && canManageOrderStatus && (

@@ -423,7 +423,7 @@ export function PosShellLayout() {
             canManageOrderStatus={canManageOrderStatus}
             canSendBill={canSendBill}
             canSendPayLink={canSendPayLink}
-            requirePosReceivingBeforeReady={kitchenHandoverSettings?.kitchen_require_pos_receiving_before_ready ?? true}
+            requirePosReceivingBeforeReady={kitchenHandoverSettings?.kitchen_require_pos_receiving_before_ready ?? false}
             cartCustomerPhone={cart.attachedCustomer?.phone ?? null}
             smsNotifications={smsNotifications}
             onClose={() => setPane(shiftOpen && canRingSales ? "sales" : canAccessOps ? "ops" : "shift_history")}

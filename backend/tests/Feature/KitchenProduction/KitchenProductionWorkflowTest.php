@@ -175,8 +175,12 @@ class KitchenProductionWorkflowTest extends TestCase
         $this->assertSame('received', $fresh->kitchen_handover_status);
     }
 
-    public function test_mark_ready_blocked_until_received_when_setting_enabled(): void
+    public function test_mark_ready_allowed_even_before_receive_when_setting_enabled(): void
     {
+        // Soft tip only — cashiers can always Mark Ready from POS.
+        SiteSetting::set('kitchen_require_pos_receiving_before_ready', 'true');
+        SiteSetting::bust();
+
         Sanctum::actingAs($this->kitchen, ['staff']);
         $order = $this->createInProgressOrder();
 
@@ -185,15 +189,6 @@ class KitchenProductionWorkflowTest extends TestCase
             ->assertOk();
 
         Sanctum::actingAs($this->cashier, ['staff']);
-
-        $this->postJson("/api/orders/{$order->id}/mark-ready")
-            ->assertStatus(422)
-            ->assertJsonPath('message', 'Receive from kitchen before marking ready.');
-
-        $batchId = KitchenProductionBatch::where('order_id', $order->id)->value('id');
-        $this->postJson("/api/kitchen-receiving/{$batchId}/receive-all")->assertOk();
-
-        Event::fake([OrderStatusChanged::class]);
 
         $this->postJson("/api/orders/{$order->id}/mark-ready")
             ->assertOk()
@@ -325,7 +320,7 @@ class KitchenProductionWorkflowTest extends TestCase
 
     public function test_kitchen_handover_settings_helper_reads_seeded_defaults(): void
     {
-        $this->assertTrue(KitchenHandoverSettings::requirePosReceivingBeforeReady());
+        $this->assertFalse(KitchenHandoverSettings::requirePosReceivingBeforeReady());
         $this->assertTrue(KitchenHandoverSettings::receiveUpdatesPreparedStock());
         $this->assertFalse(KitchenHandoverSettings::productionConsumesRecipeStock());
     }

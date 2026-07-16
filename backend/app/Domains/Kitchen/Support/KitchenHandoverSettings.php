@@ -10,7 +10,9 @@ final class KitchenHandoverSettings
 {
     public static function requirePosReceivingBeforeReady(): bool
     {
-        return self::bool('kitchen_require_pos_receiving_before_ready', true);
+        // Default off — small cafés mark Ready from POS without a kitchen receive step.
+        // Larger kitchens can re-enable this in Admin → Kitchen Production settings.
+        return self::bool('kitchen_require_pos_receiving_before_ready', false);
     }
 
     public static function receiveUpdatesPreparedStock(): bool
