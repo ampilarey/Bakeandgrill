@@ -394,8 +394,9 @@ export function OrderCart(p: Props) {
               color: clearArmed ? '#fff' : C.muted,
               background: clearArmed ? '#B91C1C' : 'transparent',
               border: 'none',
-              padding: clearArmed ? '4px 10px' : 0,
+              padding: clearArmed ? '4px 10px' : '8px 4px',
               borderRadius: clearArmed ? 999 : 0,
+              minHeight: 40,
               cursor: (p.cartItems.length === 0 || lockedReadOnly) ? 'not-allowed' : 'pointer',
               opacity: (p.cartItems.length === 0 || lockedReadOnly) ? 0.4 : 1,
             }}
@@ -499,7 +500,7 @@ export function OrderCart(p: Props) {
                 border: `1px solid ${C.border2}`, fontSize: 13, background: '#FFFFFF',
               }}
             />
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="pos-cart-delivery-row" style={{ display: 'flex', gap: 8 }}>
               <input
                 type="text"
                 placeholder="Island / area *"

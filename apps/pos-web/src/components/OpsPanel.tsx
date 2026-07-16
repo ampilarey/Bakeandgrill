@@ -498,7 +498,7 @@ function InventoryActionForm({
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           placeholder="Quantity (+/-)"
-          inputMode="none"
+          inputMode="decimal"
           style={fieldStyle}
         />
       </div>

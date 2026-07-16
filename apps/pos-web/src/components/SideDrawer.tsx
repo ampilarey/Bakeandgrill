@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { z } from "../theme";
 import { PosVersionLabel } from "./PosUpdateBanner";
 
 export type DrawerItem = {
@@ -57,7 +58,7 @@ export function SideDrawer({
         <div
           onClick={onClose}
           style={{
-            position: "fixed", inset: 0, zIndex: 700,
+            position: "fixed", inset: 0, zIndex: z.drawerBackdrop,
             background: "rgba(15,23,42,0.55)",
           }}
           aria-label="Close menu"
@@ -66,12 +67,15 @@ export function SideDrawer({
       <aside
         role="dialog"
         aria-label="Main menu"
+        className="pos-side-drawer"
         style={{
-          position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 701,
-          width: 280, background: "#0F172A", color: "#fff",
+          position: "fixed", top: 0, left: 0, bottom: 0, zIndex: z.drawerPanel,
+          width: "min(280px, calc(100vw - 48px))", background: "#0F172A", color: "#fff",
           transform: open ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 0.18s ease",
           display: "flex", flexDirection: "column",
+          paddingLeft: "env(safe-area-inset-left, 0px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         <header style={{

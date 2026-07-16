@@ -40,11 +40,15 @@ export function PosRouter() {
         <button
           onClick={() => setShowTimeClock(true)}
           style={{
-            position: "fixed", bottom: 24, right: 24, zIndex: 5,
+            position: "fixed",
+            bottom: "max(24px, env(safe-area-inset-bottom, 0px))",
+            right: "max(24px, env(safe-area-inset-right, 0px))",
+            zIndex: 5,
             padding: "12px 18px", borderRadius: 999,
             background: "#fff", border: "none", color: "#0F172A",
             fontWeight: 700, fontSize: 14, cursor: "pointer",
             boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+            touchAction: "manipulation",
           }}
         >⏰ Time Clock</button>
         )}

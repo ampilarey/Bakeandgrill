@@ -129,15 +129,20 @@ export const type = {
 export const z = {
   base: 0,
   raised: 10,
-  drawer: 30,
   banner: 40,
   modalBackdrop: 50,
   modal: 51,
   toast: 80,
+  /** Side-drawer backdrop (above toast, below charge). */
+  drawerBackdrop: 700,
+  /** Side-drawer panel. */
+  drawerPanel: 701,
   // Charge / payment overlays sit above normal modals so a payment
   // in flight is never visually overlapped by a side drawer or
   // toast. Keep ChargeOverlay and the Refund-confirm modal here.
   overlay: 900,
+  /** Open/close shift dialogs — above charge if both somehow open. */
+  shiftModal: 950,
   // Inactivity / manual lock-screen — must sit above EVERYTHING
   // else. We render it via an early-return in App.tsx today so
   // the z-index is belt-and-suspenders, but the spec is "if it
@@ -153,10 +158,10 @@ export const z = {
 // responsive ops/history panels) for backup / emergency use.
 
 export const bp = {
-  /** Phone — stacked sales layout. */
-  sm: 700,
-  /** Tablet portrait (e.g. iPad held vertically). */
-  md: 820,
+  /** Charge fullscreen + narrow tablet. */
+  sm: 820,
+  /** Phone + iPad portrait — stacked sales layout. */
+  md: 840,
   /** Tablet landscape / small desktop. */
   lg: 1100,
 } as const;

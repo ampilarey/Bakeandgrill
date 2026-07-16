@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getShiftHistory } from "../api";
+import { z } from "../theme";
 import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 
@@ -186,10 +187,12 @@ export function Overlay({ children, onEscape }: { children: React.ReactNode; onE
       role="dialog"
       aria-modal="true"
       style={{
-        position: "fixed", inset: 0, zIndex: 1000,
+        position: "fixed", inset: 0, zIndex: z.shiftModal,
         background: "rgba(15,23,42,0.55)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 16,
+        padding: "max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px))",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {children}
@@ -202,7 +205,11 @@ export function Card({ title, subtitle, children }: { title: string; subtitle?: 
     <div style={{
       background: "#fff", borderRadius: 16,
       width: "100%", maxWidth: 440,
+      maxHeight: "min(90dvh, 720px)",
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch",
       padding: 24, boxShadow: "0 24px 64px rgba(0,0,0,0.3)",
+      margin: "auto",
     }}>
       <h2 style={{ margin: 0, fontSize: 20, color: "#0F172A" }}>{title}</h2>
       {subtitle && <p style={{ margin: "6px 0 16px", fontSize: 13, color: "#64748B" }}>{subtitle}</p>}

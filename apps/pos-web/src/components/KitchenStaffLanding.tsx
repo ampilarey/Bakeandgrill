@@ -40,20 +40,24 @@ export function KitchenStaffLanding({
 
   return (
     <div
+      className="pos-app-root"
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "center",
         padding: space.l,
         background: "#F8FAFC",
         color: palette.panelInk,
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       <div
         style={{
           maxWidth: 420,
           width: "100%",
+          margin: "auto",
           background: palette.panel,
           borderRadius: radius.l,
           padding: space.xl,

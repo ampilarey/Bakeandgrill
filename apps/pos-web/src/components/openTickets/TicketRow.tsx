@@ -307,6 +307,7 @@ export function TicketRow({
             )}
             {isUnpaid && (
               <button
+                className="pos-ticket-action-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   onResume(t);
@@ -315,7 +316,7 @@ export function TicketRow({
                 style={{
                   ...btnPrimary(busy),
                   padding: `${space.s}px ${space.m}px`,
-                  minHeight: 36, fontSize: type.bodySm.fontSize,
+                  minHeight: 40, fontSize: type.bodySm.fontSize,
                 }}
               >
                 💳 Charge
@@ -339,23 +340,26 @@ export function TicketRow({
                   handleSendBill(t);
                 }}
                 disabled={busy}
-                style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}
+                className="pos-ticket-action-btn"
+                style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 40, fontSize: type.bodySm.fontSize }}
               >
                 📱 {busy ? "…" : "Send Bill SMS"}
               </button>
             )}
             <button
+              className="pos-ticket-action-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 handlePrintBill(t);
               }}
               disabled={busy}
-              style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 36, fontSize: type.bodySm.fontSize }}
+              style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 40, fontSize: type.bodySm.fontSize }}
             >
               🖨 Print Bill
             </button>
             {t.payment_status === "unpaid" && (
               <button
+                className="pos-ticket-action-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleStartMerge(t);
@@ -364,7 +368,7 @@ export function TicketRow({
                 title="Merge another open ticket into this one"
                 style={{
                   padding: `${space.s}px ${space.m}px`,
-                  minHeight: 36, fontSize: type.bodySm.fontSize,
+                  minHeight: 40, fontSize: type.bodySm.fontSize,
                   borderRadius: radius.m, fontWeight: 700,
                   background: "#fff", color: "#475569",
                   border: "1px solid #CBD5E1",
@@ -376,6 +380,7 @@ export function TicketRow({
             )}
             {t.payment_status === "unpaid" && (t.items?.length ?? 0) > 1 && (
               <button
+                className="pos-ticket-action-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   onSplit(t);
@@ -384,7 +389,7 @@ export function TicketRow({
                 title="Split items off into a new ticket"
                 style={{
                   padding: `${space.s}px ${space.m}px`,
-                  minHeight: 36, fontSize: type.bodySm.fontSize,
+                  minHeight: 40, fontSize: type.bodySm.fontSize,
                   borderRadius: radius.m, fontWeight: 700,
                   background: "#fff", color: "#475569",
                   border: "1px solid #CBD5E1",
@@ -396,6 +401,7 @@ export function TicketRow({
             )}
             {!isPaid && canVoidOrders && (
               <button
+                className="pos-ticket-action-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   onVoid(t);
@@ -404,7 +410,7 @@ export function TicketRow({
                 title="Void this ticket (returns stock, releases holds)"
                 style={{
                   padding: `${space.s}px ${space.m}px`,
-                  minHeight: 36, fontSize: type.bodySm.fontSize,
+                  minHeight: 40, fontSize: type.bodySm.fontSize,
                   borderRadius: radius.m, fontWeight: 700,
                   background: "#fff", color: palette.dangerDark,
                   border: `1px solid ${palette.dangerDark}`,

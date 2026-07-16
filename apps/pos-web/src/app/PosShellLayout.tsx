@@ -59,7 +59,7 @@ export function PosShellLayout() {
 
   return (
     <div className="pos-shell" style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       background: palette.bg,
       color: palette.panelInk,
       display: 'flex', flexDirection: 'column',
@@ -70,7 +70,8 @@ export function PosShellLayout() {
           <button
             className="pos-header-btn"
             onClick={() => setDrawerOpen(true)}
-            aria-label="Open menu"
+            aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={drawerOpen}
             style={{ fontSize: 18 }}
           >☰</button>
           <div className="pos-topbar-title-wrap">

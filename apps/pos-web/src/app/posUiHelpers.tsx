@@ -20,7 +20,7 @@ export function shouldShowStatusBanner(text: string): boolean {
 
 export function Banner({ text }: { text: string }) {
   return (
-    <div style={{
+    <div role="alert" style={{
       background: '#FEF2F2', borderRadius: 8, padding: '10px 14px',
       fontSize: 13, color: '#991B1B', border: '1px solid #FECACA', marginBottom: 6,
     }}>{text}</div>
@@ -29,7 +29,7 @@ export function Banner({ text }: { text: string }) {
 
 export function NoticeBanner({ text }: { text: string }) {
   return (
-    <div style={{
+    <div role="status" style={{
       background: '#FFFBEB', borderRadius: 8, padding: '10px 14px',
       fontSize: 13, color: '#92400E', border: '1px solid #FDE68A', marginBottom: 6,
     }}>{text}</div>

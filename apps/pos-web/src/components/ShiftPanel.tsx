@@ -70,7 +70,7 @@ export function ShiftPanel({
       subtitle={`Opened ${formatTime(shift.opened_at)}`}
       onClose={onClose}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="pos-shift-summary-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {/* Cash drawer card */}
         <Card title="Cash drawer">
           <Row label="Opening cash" value={summary.cash_drawer.opening_cash} />
@@ -163,7 +163,7 @@ function CashMovementForm({ onSubmit }: { onSubmit: Props["onCashMovement"] }) {
           >{t === "cash_in" ? "Paid in" : "Paid out"}</button>
         ))}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="pos-shift-cash-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#64748B", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Amount

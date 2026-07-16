@@ -97,14 +97,18 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
+    <div
+      className="pos-app-root"
+      style={{
+      minHeight: '100dvh',
       background: `linear-gradient(135deg, ${palette.ink} 0%, ${palette.inkSoft} 100%)`,
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'center',
       padding: space.xxl,
       fontFamily: 'inherit',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
     }}>
       <div style={{
         background: palette.panel,
@@ -114,6 +118,7 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
         boxShadow: shadow.xl,
         overflow: 'hidden',
         animation: 'pos-scale-in 200ms ease',
+        margin: 'auto',
       }}>
         {/* Hero band — keeps the brand orange visible without making
             the whole screen warm. */}
@@ -188,7 +193,9 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
               onClick={() => switchMode('pin')}
               style={{
                 flex: 1,
-                height: 40,
+                minHeight: 44,
+                height: 'auto',
+                padding: '8px 12px',
                 borderRadius: radius.s,
                 border: `1px solid ${signInMode === 'pin' ? palette.primary : palette.border}`,
                 background: signInMode === 'pin' ? palette.primaryBg : palette.panel,
@@ -204,7 +211,9 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
               onClick={() => switchMode('password')}
               style={{
                 flex: 1,
-                height: 40,
+                minHeight: 44,
+                height: 'auto',
+                padding: '8px 12px',
                 borderRadius: radius.s,
                 border: `1px solid ${signInMode === 'password' ? palette.primary : palette.border}`,
                 background: signInMode === 'password' ? palette.primaryBg : palette.panel,
@@ -337,7 +346,16 @@ export function LoginPage({ username, setUsername, pin, setPin, deviceId, authEr
           </div>
 
           <div style={{ marginTop: space.l, textAlign: 'center' }}>
-            <a href="/" style={{ ...type.caption, color: palette.panelSubtle, textDecoration: 'none' }}>
+            <a
+              href="/"
+              style={{
+                ...type.caption,
+                color: palette.panelSubtle,
+                textDecoration: 'none',
+                display: 'inline-block',
+                padding: '10px 16px',
+              }}
+            >
               ← Main website
             </a>
             <div style={{ marginTop: 8 }}>

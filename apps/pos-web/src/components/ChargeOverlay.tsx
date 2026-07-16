@@ -373,14 +373,16 @@ export function ChargeOverlay({
           </div>
 
           {/* RIGHT: tender + amount entry */}
-          <div style={{
+          <div className="pos-charge-tender" style={{
             padding: 20, display: "flex", flexDirection: "column", gap: 14,
             background: "#F8FAFC", overflow: "auto",
           }}>
             <div>
               <p style={tinyLabel}>Tender</p>
               {/* Base tenders always share one equal-width row (iPad-friendly). */}
-              <div style={{
+              <div
+                className="pos-charge-tenders"
+                style={{
                 display: "grid",
                 gridTemplateColumns: `repeat(${Math.max(baseMethods.length, 1)}, minmax(0, 1fr))`,
                 gap: 8,
@@ -588,13 +590,20 @@ export function ChargeOverlay({
               background: "#fff", border: "1px solid #CBD5E1", color: "#475569",
               fontWeight: 600, fontSize: 15, cursor: "pointer",
             }}>Cancel</button>
-            <button onClick={confirm} disabled={(!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit} style={{
+            <button
+              className="pos-charge-confirm"
+              onClick={confirm}
+              disabled={(!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit}
+              style={{
               flex: 2, padding: "14px 18px", borderRadius: 12,
               background: ((!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit) ? "#A7F3D0" : "#10B981",
               color: "#fff", border: "none",
               fontWeight: 800, fontSize: 16, letterSpacing: "0.04em",
               cursor: ((!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit) ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              flexWrap: "wrap",
+              textAlign: "center",
+              lineHeight: 1.25,
             }}>
               {submitting ? (
                 <>
@@ -626,7 +635,12 @@ export function ChargeOverlay({
                    them?"). Spell it out so the action matches
                    the actual settlement (just close the bill). */
                 ? "FINALISE — FULLY COVERED"
-                : `CONFIRM PAYMENT — MVR ${total.toFixed(2)}`}
+                : (
+                  <span className="pos-charge-confirm-label">
+                    <span>CONFIRM PAYMENT</span>
+                    <span>MVR {total.toFixed(2)}</span>
+                  </span>
+                )}
             </button>
           </div>
         </div>

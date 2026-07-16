@@ -72,7 +72,9 @@ export function LockScreen({ cashierName, onUnlock, onSwitchUser }: Props) {
   };
 
   return (
-    <div style={{
+    <div
+      className="pos-app-root"
+      style={{
       // Bug-031: when isLocked the App.tsx early-return is what
       // really covers the UI. But pin LockScreen to position:
       // fixed at z.lock (highest in the system) so even if it
@@ -81,13 +83,16 @@ export function LockScreen({ cashierName, onUnlock, onSwitchUser }: Props) {
       // toasts, etc. Defence in depth against a future refactor
       // that breaks the early-return.
       position: "fixed", inset: 0, zIndex: Z_LOCK,
-      minHeight: "100vh", background: "#0F172A",
-      display: "flex", alignItems: "center", justifyContent: "center",
+      minHeight: "100dvh", background: "#0F172A",
+      display: "flex", alignItems: "flex-start", justifyContent: "center",
       padding: 16,
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch",
     }}>
       <div style={{
         background: "#fff", borderRadius: 20, padding: 28,
         width: "100%", maxWidth: 340, textAlign: "center",
+        margin: "auto",
       }}>
         <p style={{ fontSize: 36, margin: 0 }}>🔒</p>
         <p style={{ fontWeight: 700, fontSize: 18, color: "#0F172A", margin: "8px 0 4px" }}>
