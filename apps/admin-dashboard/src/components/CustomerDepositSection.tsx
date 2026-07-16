@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   adjustCustomerDeposit,
   fetchCustomerDeposit,
@@ -377,7 +378,17 @@ export function CustomerDepositSection({ customerId }: Props) {
                     <p style={{ margin: '2px 0 0', color: '#9C8E7E', fontSize: 11 }}>
                       {row.method ? `${paymentMethodLabel(row.method)} · ` : ''}
                       Bal MVR {row.balance_after_mvr.toFixed(2)}
-                      {row.order_id ? ` · Order #${row.order_id}` : ''}
+                      {row.order_id ? (
+                        <>
+                          {' · '}
+                          <Link
+                            to={`/orders?order=${row.order_id}`}
+                            style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                          >
+                            Order {row.order_number ? `#${row.order_number}` : `#${row.order_id}`}
+                          </Link>
+                        </>
+                      ) : null}
                       {row.actor_name ? ` · ${row.actor_name}` : ''}
                       {row.created_at ? ` · ${new Date(row.created_at).toLocaleString()}` : ''}
                     </p>

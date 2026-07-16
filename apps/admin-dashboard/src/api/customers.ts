@@ -137,6 +137,7 @@ export type CustomerDepositLedgerRow = {
   balance_after_laar: number;
   balance_after_mvr: number;
   order_id?: number | null;
+  order_number?: string | null;
   payment_id?: number | null;
   refund_id?: number | null;
   reference?: string | null;

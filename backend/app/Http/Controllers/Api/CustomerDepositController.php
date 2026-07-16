@@ -26,6 +26,7 @@ class CustomerDepositController extends Controller
         $account = $this->deposits->getOrCreateAccount($customer);
 
         $ledger = CustomerDepositLedger::query()
+            ->with('order:id,order_number')
             ->where('customer_id', $customer->id)
             ->orderByDesc('created_at')
             ->limit(20)
@@ -47,7 +48,7 @@ class CustomerDepositController extends Controller
         $perPage = min(100, max(10, (int) $request->query('per_page', 25)));
 
         $paginator = CustomerDepositLedger::query()
-            ->with('actor:id,name')
+            ->with(['actor:id,name', 'order:id,order_number'])
             ->where('customer_id', $customer->id)
             ->orderByDesc('created_at')
             ->paginate($perPage);
@@ -256,6 +257,8 @@ class CustomerDepositController extends Controller
      */
     private function formatLedgerRow(CustomerDepositLedger $row, bool $includeActor = false): array
     {
+        $row->loadMissing('order:id,order_number');
+
         $data = [
             'id' => $row->id,
             'type' => $row->type,
@@ -266,6 +269,7 @@ class CustomerDepositController extends Controller
             'balance_after_laar' => $row->balance_after_laar,
             'balance_after_mvr' => round($row->balance_after_laar / 100, 2),
             'order_id' => $row->order_id,
+            'order_number' => $row->order?->order_number,
             'payment_id' => $row->payment_id,
             'refund_id' => $row->refund_id,
             'shift_id' => $row->shift_id,
