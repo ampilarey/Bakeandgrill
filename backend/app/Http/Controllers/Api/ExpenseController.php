@@ -44,8 +44,38 @@ class ExpenseController extends Controller
         if ($request->filled('recurring')) {
             $query->where('is_recurring', filter_var($request->query('recurring'), FILTER_VALIDATE_BOOLEAN));
         }
+        if ($request->filled('search')) {
+            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $request->query('search')).'%';
+            $query->where(function ($q) use ($term) {
+                $q->where('expense_number', 'like', $term)
+                    ->orWhere('description', 'like', $term)
+                    ->orWhere('notes', 'like', $term)
+                    ->orWhere('reference_number', 'like', $term)
+                    ->orWhere('supplier_invoice_no', 'like', $term)
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', $term));
+            });
+        }
 
         $paginator = $query->paginate(20);
+
+        $applyFilters = function ($q) use ($request) {
+            return $q->when($request->filled('category_id'), fn ($qq) => $qq->where('expense_category_id', $request->query('category_id')))
+                ->when($request->filled('supplier_id'), fn ($qq) => $qq->where('supplier_id', $request->query('supplier_id')))
+                ->when($request->filled('from'), fn ($qq) => $qq->whereDate('expense_date', '>=', $request->query('from')))
+                ->when($request->filled('to'), fn ($qq) => $qq->whereDate('expense_date', '<=', $request->query('to')))
+                ->when($request->filled('recurring'), fn ($qq) => $qq->where('is_recurring', filter_var($request->query('recurring'), FILTER_VALIDATE_BOOLEAN)))
+                ->when($request->filled('search'), function ($qq) use ($request) {
+                    $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $request->query('search')).'%';
+                    $qq->where(function ($inner) use ($term) {
+                        $inner->where('expense_number', 'like', $term)
+                            ->orWhere('description', 'like', $term)
+                            ->orWhere('notes', 'like', $term)
+                            ->orWhere('reference_number', 'like', $term)
+                            ->orWhere('supplier_invoice_no', 'like', $term)
+                            ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', $term));
+                    });
+                });
+        };
 
         return response()->json([
             'data' => collect($paginator->items())->map(fn ($e) => $this->format($e)),
@@ -54,13 +84,7 @@ class ExpenseController extends Controller
                 'last_page' => $paginator->lastPage(),
                 'total' => $paginator->total(),
             ],
-            'total_amount' => Expense::when($request->filled('category_id'), fn ($q) => $q->where('expense_category_id', $request->query('category_id')))
-                ->when($request->filled('supplier_id'), fn ($q) => $q->where('supplier_id', $request->query('supplier_id')))
-                ->when($request->filled('from'), fn ($q) => $q->whereDate('expense_date', '>=', $request->query('from')))
-                ->when($request->filled('to'), fn ($q) => $q->whereDate('expense_date', '<=', $request->query('to')))
-                ->when($request->filled('recurring'), fn ($q) => $q->where('is_recurring', filter_var($request->query('recurring'), FILTER_VALIDATE_BOOLEAN)))
-                ->where('status', 'approved')
-                ->sum('amount'),
+            'total_amount' => $applyFilters(Expense::query())->where('status', 'approved')->sum('amount'),
         ]);
     }
 

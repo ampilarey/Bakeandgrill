@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
 import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
@@ -89,6 +89,7 @@ function GstExpenseFields({ form, setForm, fieldStyle }: {
 
 export function ExpensesPage() {
   usePageTitle('Expenses');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [expenses, setExpenses]   = useState<Expense[]>([]);
   const [cats, setCats]           = useState<ExpenseCategory[]>([]);
   const [summary, setSummary]     = useState<{ total: number; by_category: { category: string; icon: string; total: number; count: number; pct: number }[] } | null>(null);
@@ -97,6 +98,9 @@ export function ExpensesPage() {
   const [totalAmount, setTotal]   = useState(0);
   const [from, setFrom]           = useState(monthStart());
   const [to, setTo]               = useState(today());
+  const [search, setSearch]       = useState(() => searchParams.get('search') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(() => (searchParams.get('search') ?? '').trim());
+  const autoOpenedFor = useRef<string | null>(null);
   const [showAdd, setShowAdd]     = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [saving, setSaving]       = useState(false);
@@ -130,23 +134,80 @@ export function ExpensesPage() {
     finally { setBulkLoading(false); }
   };
 
+  const handleEdit = (exp: Expense) => {
+    setEditingExpense(exp);
+    setForm({
+      expense_category_id: String(exp.category?.id ?? ''),
+      description: exp.description ?? '',
+      amount: String(exp.amount ?? ''),
+      expense_date: exp.expense_date ?? today(),
+      payment_method: exp.payment_method ?? 'cash',
+      notes: exp.notes ?? '',
+      is_input_tax_claimable: !!exp.is_input_tax_claimable,
+      supplier_tin: exp.supplier_tin ?? '',
+      supplier_invoice_no: exp.supplier_invoice_no ?? '',
+      supplier_invoice_date: exp.supplier_invoice_date ?? '',
+      amount_ex_gst: exp.amount_excluding_gst_laar != null ? String(exp.amount_excluding_gst_laar / 100) : '',
+      gst_amount: exp.gst_laar != null ? String(exp.gst_laar / 100) : '',
+      revenue_or_capital: (exp.revenue_or_capital as 'revenue' | 'capital') ?? 'revenue',
+    });
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('search') ?? '';
+    if (fromUrl === debouncedSearch) return;
+    setSearch(fromUrl);
+    setDebouncedSearch(fromUrl.trim());
+    autoOpenedFor.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    const current = searchParams.get('search') ?? '';
+    if (debouncedSearch === current) return;
+    const next = new URLSearchParams(searchParams);
+    if (debouncedSearch) next.set('search', debouncedSearch);
+    else next.delete('search');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, setSearchParams]);
+
   const load = async () => {
     setLoading(true); setError('');
     try {
+      // When searching (esp. deep links), skip date range so the expense is findable
+      const dateParams = debouncedSearch ? {} : { from, to };
       const [expRes, catRes, sumRes] = await Promise.all([
-        getExpenses({ from, to }),
+        getExpenses({ ...dateParams, search: debouncedSearch || undefined }),
         getExpenseCategories(),
         getExpenseSummary(from, to),
       ]);
-      setExpenses(expRes.data ?? []);
+      const list = expRes.data ?? [];
+      setExpenses(list);
       setTotal(expRes.total_amount);
       setCats(catRes.categories ?? []);
       setSummary(sumRes);
+      if (debouncedSearch && autoOpenedFor.current !== debouncedSearch) {
+        const needle = debouncedSearch.toLowerCase();
+        const match = list.find((e) => (e.expense_number ?? '').toLowerCase() === needle)
+          ?? (list.length === 1 ? list[0] : null);
+        if (match && !match.is_auto) {
+          handleEdit(match);
+          autoOpenedFor.current = debouncedSearch;
+        } else if (match) {
+          autoOpenedFor.current = debouncedSearch;
+        }
+      }
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [from, to]);
+  useEffect(() => { void load(); }, [from, to, debouncedSearch]);
 
   const handleAdd = async () => {
     const catId  = parseInt(form.expense_category_id, 10);
@@ -170,25 +231,6 @@ export function ExpensesPage() {
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
-  };
-
-  const handleEdit = (exp: Expense) => {
-    setEditingExpense(exp);
-    setForm({
-      expense_category_id: String(exp.category?.id ?? ''),
-      description: exp.description ?? '',
-      amount: String(exp.amount ?? ''),
-      expense_date: exp.expense_date ?? today(),
-      payment_method: exp.payment_method ?? 'cash',
-      notes: exp.notes ?? '',
-      is_input_tax_claimable: !!exp.is_input_tax_claimable,
-      supplier_tin: exp.supplier_tin ?? '',
-      supplier_invoice_no: exp.supplier_invoice_no ?? '',
-      supplier_invoice_date: exp.supplier_invoice_date ?? '',
-      amount_ex_gst: exp.amount_excluding_gst_laar != null ? String(exp.amount_excluding_gst_laar / 100) : '',
-      gst_amount: exp.gst_laar != null ? String(exp.gst_laar / 100) : '',
-      revenue_or_capital: (exp.revenue_or_capital as 'revenue' | 'capital') ?? 'revenue',
-    });
   };
 
   const handleUpdate = async () => {
@@ -295,7 +337,20 @@ export function ExpensesPage() {
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <DateInput label="From" value={from} onChange={setFrom} />
         <DateInput label="To" value={to} onChange={setTo} />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search expense #, description…"
+          style={{
+            height: 36, minWidth: 220, padding: '0 12px',
+            border: '1.5px solid #E8E0D8', borderRadius: 10,
+            fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none',
+          }}
+        />
         <Btn variant="secondary" onClick={load}>Apply</Btn>
+        {debouncedSearch && (
+          <span style={{ fontSize: 12, color: '#9C8E7E' }}>Date range paused while searching</span>
+        )}
       </div>
 
       {loading ? <Spinner /> : (

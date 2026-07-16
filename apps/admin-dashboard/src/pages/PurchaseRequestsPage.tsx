@@ -408,7 +408,10 @@ export default function PurchaseRequestsPage() {
                   {detail.expense_id ? (
                     <span>
                       Linked expense:{' '}
-                      <Link to="/expenses" style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                      <Link
+                        to={`/expenses?search=${encodeURIComponent(detail.expense?.expense_number || String(detail.expense_id))}`}
+                        style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                      >
                         {detail.expense?.expense_number || `Expense #${detail.expense_id}`}
                       </Link>
                     </span>

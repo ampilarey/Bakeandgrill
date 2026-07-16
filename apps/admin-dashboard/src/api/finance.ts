@@ -175,7 +175,9 @@ export type Expense = {
   created_at: string;
 };
 
-export async function getExpenses(params: { category_id?: number; from?: string; to?: string; status?: string; page?: number } = {}): Promise<{ data: Expense[]; meta: { total: number; current_page: number; last_page: number }; total_amount: number }> {
+export async function getExpenses(params: {
+  category_id?: number; from?: string; to?: string; status?: string; page?: number; search?: string;
+} = {}): Promise<{ data: Expense[]; meta: { total: number; current_page: number; last_page: number }; total_amount: number }> {
   const q = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
   return req(`/expenses?${q}`);
