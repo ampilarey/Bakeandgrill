@@ -32,8 +32,9 @@ final class CustomerActivityService
             'source_id' => $customer->id,
         ];
 
-        CustomerPaidOrderQuery::apply($customer->orders())
-            ->select('id', 'order_number', 'total', 'paid_at', 'type')
+        CustomerPaidOrderQuery::base()
+            ->where('customer_id', $customer->id)
+            ->select('id', 'order_number', 'total', 'paid_at', 'type', 'created_at')
             ->orderByDesc('paid_at')
             ->limit(50)
             ->get()
@@ -49,7 +50,8 @@ final class CustomerActivityService
                 ];
             });
 
-        $customer->orders()
+        Order::query()
+            ->where('customer_id', $customer->id)
             ->where('status', 'cancelled')
             ->select('id', 'order_number', 'total', 'cancelled_at', 'created_at')
             ->orderByDesc('cancelled_at')
@@ -91,7 +93,7 @@ final class CustomerActivityService
                 $events[] = [
                     'type' => 'sms',
                     'title' => 'SMS ' . $log->status,
-                    'description' => mb_substr($log->message ?? $log->type, 0, 80),
+                    'description' => mb_substr((string) ($log->message ?? $log->type ?? ''), 0, 80),
                     'amount' => null,
                     'staff' => null,
                     'created_at' => $log->created_at?->toIso8601String(),
