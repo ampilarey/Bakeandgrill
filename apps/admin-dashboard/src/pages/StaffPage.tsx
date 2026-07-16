@@ -652,6 +652,21 @@ export function StaffPage() {
     else if (tab !== 'schedules') setActiveTab('staff');
   }, [searchParams, canSchedule]);
 
+  // Deep-link: /staff?staff=<id> opens that member's edit modal once per id.
+  const openedStaffId = useRef<string | null>(null);
+  useEffect(() => {
+    const raw = searchParams.get('staff');
+    if (!raw || loading || staff.length === 0) return;
+    if (openedStaffId.current === raw) return;
+    const id = Number(raw);
+    if (!Number.isFinite(id)) return;
+    const member = staff.find((m) => m.id === id);
+    if (!member) return;
+    openedStaffId.current = raw;
+    setActiveTab('staff');
+    setEditing(member);
+  }, [searchParams, staff, loading]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return staff.filter((m) => {

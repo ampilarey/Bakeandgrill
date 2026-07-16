@@ -165,7 +165,13 @@ export default function RefundsPage() {
                   <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>MVR {parseFloat(String(r.amount ?? 0)).toFixed(2)}</td>
                   <td style={{ ...TD, color: '#6B5D4F', fontSize: 13 }}>{r.reason ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
                   <td style={TD}><Badge color={STATUS_COLOR[r.status] ?? 'gray'}>{r.status}</Badge></td>
-                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{r.user?.name ?? '—'}</td>
+                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>
+                    {r.user?.id ? (
+                      <Link to={`/staff?staff=${r.user.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                        {r.user.name}
+                      </Link>
+                    ) : (r.user?.name ?? '—')}
+                  </td>
                   <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(r.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}

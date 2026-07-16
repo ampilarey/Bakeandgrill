@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -121,7 +122,13 @@ export default function TimeClockPage() {
                   <tr><td colSpan={5}><EmptyState message="No time entries for this period." /></td></tr>
                 ) : entries.map(e => (
                   <tr key={e.id}>
-                    <td style={{ ...TD, fontWeight: 600 }}>{e.staff?.name ?? `Staff #${e.staff_id}`}</td>
+                    <td style={{ ...TD, fontWeight: 600 }}>
+                      {(e.staff?.id ?? e.staff_id) ? (
+                        <Link to={`/staff?staff=${e.staff?.id ?? e.staff_id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                          {e.staff?.name ?? `Staff #${e.staff_id}`}
+                        </Link>
+                      ) : (e.staff?.name ?? '—')}
+                    </td>
                     <td style={TD}>{new Date(e.clocked_in_at).toLocaleTimeString()} {new Date(e.clocked_in_at).toLocaleDateString()}</td>
                     <td style={TD}>{e.clocked_out_at ? `${new Date(e.clocked_out_at).toLocaleTimeString()} ${new Date(e.clocked_out_at).toLocaleDateString()}` : <span style={{ color: '#9C8E7E' }}>Still in</span>}</td>
                     <td style={{ ...TD, fontWeight: 700 }}>{fmtHours(e.hours_worked)}</td>
@@ -166,7 +173,13 @@ export default function TimeClockPage() {
                   <tr><td colSpan={3}><EmptyState message="No data for this period." /></td></tr>
                 ) : summary.map((row, i) => (
                   <tr key={row.staff?.id ?? i}>
-                    <td style={{ ...TD, fontWeight: 600 }}>{row.staff?.name ?? `Staff #${row.staff?.id ?? '?'}`}</td>
+                    <td style={{ ...TD, fontWeight: 600 }}>
+                      {row.staff?.id ? (
+                        <Link to={`/staff?staff=${row.staff.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                          {row.staff.name ?? `Staff #${row.staff.id}`}
+                        </Link>
+                      ) : (row.staff?.name ?? '—')}
+                    </td>
                     <td style={{ ...TD, fontWeight: 700 }}>{fmtHours(row.total_hours)}</td>
                     <td style={{ ...TD, color: '#6B5D4F' }}>{row.entries_count}</td>
                   </tr>

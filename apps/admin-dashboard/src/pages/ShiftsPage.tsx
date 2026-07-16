@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -75,7 +75,13 @@ function AdminShiftTable({
               </td>
               <td style={{ ...TD, fontWeight: 600, color: stale ? '#92400e' : undefined }}>
                 {stale && <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
-                {s.user?.name ?? `#${s.user_id}`}
+                {s.user_id ? (
+                  <Link to={`/staff?staff=${s.user_id}`} style={{ color: stale ? '#92400e' : '#D4813A', textDecoration: 'none' }}>
+                    {s.user?.name ?? `#${s.user_id}`}
+                  </Link>
+                ) : (
+                  s.user?.name ?? '—'
+                )}
               </td>
               <td style={TD}>{s.device?.name ?? '—'}</td>
               <td style={{ ...TD, fontSize: 12, color: stale ? '#92400e' : '#9C8E7E' }}>{new Date(s.opened_at).toLocaleString()}</td>

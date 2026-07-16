@@ -155,7 +155,7 @@ export interface AdminRefund {
   status: string;
   processed_at: string | null;
   created_at: string;
-  user?: { name: string };
+  user?: { id: number; name: string };
 }
 
 export async function fetchAdminRefunds(params?: { page?: number; status?: string }): Promise<{

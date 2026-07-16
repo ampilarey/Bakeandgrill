@@ -430,7 +430,15 @@ export function InvoicesPage() {
                       color={statColor(inv.status)}
                     />
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F' }}>{inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name ?? '—'}</td>
+                  <td style={{ ...TD, color: '#6B5D4F' }}>
+                    {inv.customer?.id ? (
+                      <Link to={`/customers?customer=${inv.customer.id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                        {inv.recipient_name ?? inv.customer.name}
+                      </Link>
+                    ) : (
+                      inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name ?? '—'
+                    )}
+                  </td>
                   <td style={TD}>
                     {inv.order_id ? (
                       <Link
