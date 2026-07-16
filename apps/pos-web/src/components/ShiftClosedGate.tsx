@@ -13,8 +13,10 @@ type Props = {
  */
 export function ShiftClosedGate({ onOpenShift, onLogout, onSwitchUser, canOpenShift = true, error }: Props) {
   return (
-    <div style={{
-      minHeight: "100vh", background: "#1C1408",
+    <div
+      className="pos-app-root"
+      style={{
+      minHeight: "100dvh", background: "#1C1408",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: 16,
     }}>

@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
       // console (via componentDidCatch above) where it's useful for
       // developers, and show staff a recovery-focused message.
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#1F2937', color: '#fff', textAlign: 'center', padding: '2rem' }}>
+        <div className="pos-app-root" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', background: '#1F2937', color: '#fff', textAlign: 'center', padding: '2rem' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Something went wrong</h1>
           <p style={{ color: '#9CA3AF', marginBottom: '1.5rem', maxWidth: 400 }}>
             The POS hit an unexpected error. Your current cart was preserved.

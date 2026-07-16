@@ -174,6 +174,7 @@ export function OrderCart(p: Props) {
   // a busy ring-up. Now first tap arms ("Tap again to clear"),
   // second tap inside 2s actually clears.
   const [clearArmed, setClearArmed] = useState(false);
+  const [pendingOrderType, setPendingOrderType] = useState<OrderType | null>(null);
   const clearTimerRef = useRef<number | null>(null);
   useEffect(
     () => () => {
@@ -419,11 +420,10 @@ export function OrderCart(p: Props) {
               key={t}
               onClick={() => {
                 if (t !== p.orderType && p.cartItems.length > 0) {
-                  const ok = window.confirm(
-                    `Switch to ${t}? Items that aren't available on ${t} may be rejected at checkout.`,
-                  );
-                  if (!ok) return;
+                  setPendingOrderType(t);
+                  return;
                 }
+                setPendingOrderType(null);
                 p.setOrderType(t);
               }}
               disabled={lockedReadOnly}
@@ -434,9 +434,9 @@ export function OrderCart(p: Props) {
                 fontSize: 11,
                 fontWeight: 700,
                 borderRadius: 6, border: 'none', cursor: lockedReadOnly ? 'not-allowed' : 'pointer',
-                background: p.orderType === t ? '#FFFFFF' : 'transparent',
-                color: p.orderType === t ? C.text : C.muted,
-                boxShadow: p.orderType === t ? '0 1px 2px rgba(15,23,42,0.08)' : 'none',
+                background: (pendingOrderType ?? p.orderType) === t ? '#FFFFFF' : 'transparent',
+                color: (pendingOrderType ?? p.orderType) === t ? C.text : C.muted,
+                boxShadow: (pendingOrderType ?? p.orderType) === t ? '0 1px 2px rgba(15,23,42,0.08)' : 'none',
                 transition: 'background 0.1s',
                 opacity: lockedReadOnly ? 0.6 : 1,
               }}
@@ -445,6 +445,53 @@ export function OrderCart(p: Props) {
             </button>
           ))}
         </div>
+
+        {pendingOrderType && pendingOrderType !== p.orderType && p.cartItems.length > 0 && (
+          <div
+            role="alert"
+            style={{
+              marginTop: 8,
+              padding: '10px 12px',
+              borderRadius: 8,
+              background: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#92400E', lineHeight: 1.4 }}>
+              Switch to {pendingOrderType}? Items that aren&apos;t available on {pendingOrderType} may be rejected at checkout.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  p.setOrderType(pendingOrderType);
+                  setPendingOrderType(null);
+                }}
+                style={{
+                  flex: 1, minHeight: 40, borderRadius: 8, border: 'none',
+                  background: C.primary ?? '#D4813A', color: '#fff',
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                }}
+              >
+                Switch
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingOrderType(null)}
+                style={{
+                  flex: 1, minHeight: 40, borderRadius: 8,
+                  border: `1px solid ${C.border2}`, background: '#fff',
+                  color: C.muted, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {dineIn && (
           <select

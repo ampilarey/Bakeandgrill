@@ -24,6 +24,7 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
   const [message, setMessage] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [detailOrder, setDetailOrder] = useState<OfflineOrderRecord | null>(null);
+  const [discardConfirmId, setDiscardConfirmId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const count = await countPendingOfflineOrders(shiftId ?? undefined);
@@ -78,11 +79,9 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
   };
 
   const handleDiscard = async (order: OfflineOrderRecord) => {
-    if (!window.confirm(`Discard offline order ${order.local_order_number}? This cannot be undone.`)) {
-      return;
-    }
     setResolvingId(order.local_order_id);
     setMessage("");
+    setDiscardConfirmId(null);
     try {
       await deleteOfflineOrder(order.local_order_id);
       await refresh();
@@ -166,7 +165,7 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
                         disabled={busy}
                         onClick={() => setDetailOrder(order)}
                         style={{
-                          minHeight: 36, padding: "0 12px", borderRadius: 8,
+                          minHeight: 44, padding: "0 12px", borderRadius: 8,
                           border: "1px solid #cbd5e1", background: "#fff", color: "#0f172a",
                           fontWeight: 600, cursor: "pointer",
                           opacity: busy ? 0.6 : 1,
@@ -179,27 +178,61 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
                         disabled={busy}
                         onClick={() => void handleRetry(order)}
                         style={{
-                          minHeight: 36, padding: "0 12px", borderRadius: 8, border: "none",
+                          minHeight: 44, padding: "0 12px", borderRadius: 8, border: "none",
                           background: "#0f172a", color: "#fff", fontWeight: 600, cursor: "pointer",
                           opacity: busy ? 0.6 : 1,
                         }}
                       >
                         Retry sync
                       </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void handleDiscard(order)}
-                        style={{
-                          minHeight: 36, padding: "0 12px", borderRadius: 8,
-                          border: "1px solid #fecaca", background: "#fff", color: "#b91c1c",
-                          fontWeight: 600, cursor: "pointer",
-                          opacity: busy ? 0.6 : 1,
-                        }}
-                      >
-                        Discard
-                      </button>
+                      {discardConfirmId === order.local_order_id ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void handleDiscard(order)}
+                            style={{
+                              minHeight: 44, padding: "0 12px", borderRadius: 8, border: "none",
+                              background: "#b91c1c", color: "#fff", fontWeight: 700, cursor: "pointer",
+                              opacity: busy ? 0.6 : 1,
+                            }}
+                          >
+                            Confirm discard
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => setDiscardConfirmId(null)}
+                            style={{
+                              minHeight: 44, padding: "0 12px", borderRadius: 8,
+                              border: "1px solid #cbd5e1", background: "#fff", color: "#64748b",
+                              fontWeight: 600, cursor: "pointer",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setDiscardConfirmId(order.local_order_id)}
+                          style={{
+                            minHeight: 44, padding: "0 12px", borderRadius: 8,
+                            border: "1px solid #fecaca", background: "#fff", color: "#b91c1c",
+                            fontWeight: 600, cursor: "pointer",
+                            opacity: busy ? 0.6 : 1,
+                          }}
+                        >
+                          Discard
+                        </button>
+                      )}
                     </div>
+                    {discardConfirmId === order.local_order_id && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
+                        Discard {order.local_order_number}? This cannot be undone.
+                      </div>
+                    )}
                   </div>
                 );
               })}

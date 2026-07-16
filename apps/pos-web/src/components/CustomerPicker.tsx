@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   fetchRecentCustomers, quickCreateCustomer, searchCustomers,
   updateCustomerFromPos, type PosCustomer,
 } from "../api";
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(query).matches : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = () => setMatches(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
+}
 
 /**
  * Customer Picker — sits at the top of the OrderCart.
@@ -69,6 +84,7 @@ type Mode = "phone" | "name";
 
 export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Props) {
   const [open, setOpen] = useState<boolean>(autoFocus ?? false);
+  const isSheet = useMediaQuery("(max-width: 840px)");
   const [mode, setMode] = useState<Mode>("phone");
 
   const [phone, setPhone] = useState("");
@@ -147,9 +163,9 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
     };
   }, [query]);
 
-  // ── Click-outside to collapse ──────────────────────────────────────
+  // ── Click-outside to collapse (inline only — sheet uses backdrop) ──
   useEffect(() => {
-    if (!open) return;
+    if (!open || isSheet) return;
     const onClick = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         // Don't auto-close if the cashier is mid-entry; only collapse
@@ -160,7 +176,7 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
-  }, [open, phone, name, nameQuery]);
+  }, [open, isSheet, phone, name, nameQuery]);
 
   // ── Focus management ───────────────────────────────────────────────
   useEffect(() => {
@@ -171,13 +187,14 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
 
   // On phones the cart panel is height-capped — scroll the picker into
   // view when it opens so the numpad and Save button aren't clipped.
+  // Sheet mode portals to body, so scrollIntoView is unnecessary.
   useEffect(() => {
-    if (!open) return;
+    if (!open || isSheet) return;
     const id = window.requestAnimationFrame(() => {
       wrapRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
     return () => window.cancelAnimationFrame(id);
-  }, [open]);
+  }, [open, isSheet]);
 
   // ── Handlers ───────────────────────────────────────────────────────
   const reset = () => {
@@ -264,12 +281,19 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
 
   // ── EXPANDED PICKER ────────────────────────────────────────────────
   const showCreate = mode === "phone" && phoneValid && !loading && results.length === 0;
+  const closePicker = () => { setOpen(false); reset(); };
 
-  return (
+  const panel = (
     <div
       ref={wrapRef}
-      className="pos-customer-picker pos-customer-picker-open"
-      style={{
+      className={`pos-customer-picker pos-customer-picker-open${isSheet ? " pos-customer-picker-sheet" : ""}`}
+      style={isSheet ? {
+        background: "#FFFFFF",
+        border: `1px solid ${C.border}`,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+      } : {
         marginBottom: 10,
         background: "#FFFFFF",
         border: `1px solid ${C.border}`,
@@ -283,16 +307,17 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "8px 12px", background: C.bg,
         borderBottom: `1px solid ${C.border}`,
+        flexShrink: 0,
       }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: C.text, letterSpacing: "0.02em" }}>
           {mode === "phone" ? "Customer phone" : "Search by name"}
         </div>
         <button
-          onClick={() => { setOpen(false); reset(); }}
+          onClick={closePicker}
           style={{
             background: "transparent", border: "none", color: C.muted,
             fontSize: 12, fontWeight: 600, cursor: "pointer",
-            padding: "4px 8px", minHeight: 32,
+            padding: "8px 12px", minHeight: 44,
           }}
         >
           Cancel
@@ -398,7 +423,9 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
           // Doubled from 260 → 420 so the 50-row customer list is
           // actually scrollable. Below 420 the list felt cramped and
           // cashiers were thumb-flicking past regulars.
-          maxHeight: 420,
+          maxHeight: isSheet ? undefined : 420,
+          flex: isSheet ? "1 1 auto" : undefined,
+          minHeight: isSheet ? 0 : undefined,
           overflow: "auto",
         }}>
           {(loading || (loadingRecents && results.length === 0 && query.length < 2)) && (
@@ -481,12 +508,51 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
       )}
 
       {error && !showCreate && (
-        <div style={{ padding: "8px 12px", fontSize: 12, color: C.danger, background: C.bg }}>
+        <div style={{ padding: "8px 12px", fontSize: 12, color: C.danger, background: C.bg, flexShrink: 0 }}>
           {error}
         </div>
       )}
     </div>
   );
+
+  if (isSheet) {
+    return (
+      <>
+        <div
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            marginBottom: 10,
+            borderRadius: 8,
+            border: `1px dashed ${C.border2}`,
+            background: C.bg,
+            color: C.muted,
+            fontSize: 13,
+            fontWeight: 600,
+            textAlign: "center",
+            boxSizing: "border-box",
+          }}
+        >
+          Selecting customer…
+        </div>
+        {typeof document !== "undefined" &&
+          createPortal(
+            <>
+              <button
+                type="button"
+                className="pos-customer-picker-backdrop"
+                aria-label="Close customer picker"
+                onClick={closePicker}
+              />
+              {panel}
+            </>,
+            document.body,
+          )}
+      </>
+    );
+  }
+
+  return panel;
 }
 
 // ── Attached chip with inline name edit ────────────────────────────────────
@@ -614,7 +680,7 @@ function AttachedCustomerChip({
                 color: hasName ? C.muted : C.primary,
                 fontSize: 12, fontWeight: 700,
                 padding: "6px 10px", borderRadius: 6,
-                cursor: "pointer", minHeight: 36,
+                cursor: "pointer", minHeight: 44,
               }}
             >
               {hasName ? "✎" : "+ Name"}
@@ -625,7 +691,7 @@ function AttachedCustomerChip({
               style={{
                 background: "transparent", border: "none", color: C.muted,
                 fontSize: 22, lineHeight: 1, cursor: "pointer",
-                padding: "4px 8px", minWidth: 36, minHeight: 36,
+                padding: "4px 8px", minWidth: 44, minHeight: 44,
               }}
             >
               ×
@@ -640,7 +706,7 @@ function AttachedCustomerChip({
                 background: C.primary, color: "#FFFFFF",
                 border: "none", fontSize: 12, fontWeight: 700,
                 padding: "8px 12px", borderRadius: 6,
-                cursor: saving ? "wait" : "pointer", minHeight: 36,
+                cursor: saving ? "wait" : "pointer", minHeight: 44,
               }}
             >
               {saving ? "…" : "Save"}
@@ -652,7 +718,7 @@ function AttachedCustomerChip({
                 background: "transparent", border: "none", color: C.muted,
                 fontSize: 12, fontWeight: 600,
                 padding: "8px 10px", borderRadius: 6,
-                cursor: "pointer", minHeight: 36,
+                cursor: "pointer", minHeight: 44,
               }}
             >
               Cancel

@@ -102,10 +102,12 @@ export function PosRouter() {
     if (shift.loading || !shift.ready) {
       return (
         <div style={{
-          minHeight: "100vh", background: "#1C1408",
+          minHeight: "100dvh", background: "#1C1408",
           display: "flex", alignItems: "center", justifyContent: "center",
           padding: 16, color: "#F8FAFC",
-        }}>
+        }}
+        className="pos-app-root"
+        >
           <div style={{ textAlign: "center" }}>
             <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
               {shift.error ? "Couldn't verify shift" : "Checking shift…"}
@@ -165,9 +167,11 @@ export function PosRouter() {
     if (!activeSessionFallback) {
     return (
       <div style={{
-        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+        minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
         padding: 24, background: "#F8FAFC", color: "#0F172A",
-      }}>
+      }}
+      className="pos-app-root"
+      >
         <div style={{
           maxWidth: 480, width: "100%", background: "#fff", borderRadius: 12,
           padding: 24, boxShadow: "0 10px 30px rgba(0,0,0,0.08)",

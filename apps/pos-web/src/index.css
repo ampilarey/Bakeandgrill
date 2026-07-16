@@ -450,6 +450,39 @@ html, body, #root {
   }
 }
 
+/* Customer picker bottom sheet (narrow / portrait ≤840px). */
+.pos-customer-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 799;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(15, 23, 42, 0.45);
+  cursor: pointer;
+}
+.pos-customer-picker-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 800;
+  max-height: min(92dvh, 720px);
+  border-radius: 16px 16px 0 0 !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.pos-customer-picker-sheet .pos-customer-picker-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Surfaces outside .pos-shell (login, lock, kitchen landing). */
 .pos-app-root {
   touch-action: manipulation;

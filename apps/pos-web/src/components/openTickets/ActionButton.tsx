@@ -73,7 +73,7 @@ export function ActionButton({
       disabled={busy}
       style={{
         padding: `${space.s}px ${space.m}px`,
-        minHeight: 36,
+        minHeight: 44,
         fontSize: type.bodySm.fontSize,
         borderRadius: radius.m,
         fontWeight: 700,

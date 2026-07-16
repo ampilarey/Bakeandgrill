@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { palette, radius, space, btnPrimary, btnSecondary, type } from "../../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel } from "../../orderTypeLabels";
 import { formatTicketAge, parkedTicketAgeLevel, PARKED_AGE_COLORS } from "../../utils/ticketAging";
@@ -55,6 +56,20 @@ export function TicketRow({
   handleStartMerge,
   handlePickMergeSource,
 }: TicketRowProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [moreOpen]);
+
   const stage = ticketStage(t.status);
   const isPaid = t.payment_status === "paid";
   const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
@@ -316,110 +331,165 @@ export function TicketRow({
                 style={{
                   ...btnPrimary(busy),
                   padding: `${space.s}px ${space.m}px`,
-                  minHeight: 40, fontSize: type.bodySm.fontSize,
+                  minHeight: 44, fontSize: type.bodySm.fontSize,
                 }}
               >
                 💳 Charge
               </button>
             )}
-            {isUnpaid && hasPhone && canSendPayLink && smsNotifications.send_pay_link && (
-              <ActionButton
-                onClick={() => handleSendPayLink(t)}
-                busy={busy}
-                bg="#1D4ED8"
-                confirm
-                confirmLabel={`Send MVR ${ticketDisplayTotal(t).toFixed(2)} link?`}
-              >
-                💳 Send pay link
-              </ActionButton>
-            )}
-            {canSendBill && smsNotifications.send_bill && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSendBill(t);
-                }}
-                disabled={busy}
-                className="pos-ticket-action-btn"
-                style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 40, fontSize: type.bodySm.fontSize }}
-              >
-                📱 {busy ? "…" : "Send Bill SMS"}
-              </button>
-            )}
-            <button
-              className="pos-ticket-action-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePrintBill(t);
-              }}
-              disabled={busy}
-              style={{ ...btnSecondary(busy), padding: `${space.s}px ${space.m}px`, minHeight: 40, fontSize: type.bodySm.fontSize }}
-            >
-              🖨 Print Bill
-            </button>
-            {t.payment_status === "unpaid" && (
-              <button
-                className="pos-ticket-action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleStartMerge(t);
-                }}
-                disabled={busy}
-                title="Merge another open ticket into this one"
-                style={{
-                  padding: `${space.s}px ${space.m}px`,
-                  minHeight: 40, fontSize: type.bodySm.fontSize,
-                  borderRadius: radius.m, fontWeight: 700,
-                  background: "#fff", color: "#475569",
-                  border: "1px solid #CBD5E1",
-                  cursor: busy ? "not-allowed" : "pointer",
-                }}
-              >
-                🔀 Merge
-              </button>
-            )}
-            {t.payment_status === "unpaid" && (t.items?.length ?? 0) > 1 && (
-              <button
-                className="pos-ticket-action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSplit(t);
-                }}
-                disabled={busy}
-                title="Split items off into a new ticket"
-                style={{
-                  padding: `${space.s}px ${space.m}px`,
-                  minHeight: 40, fontSize: type.bodySm.fontSize,
-                  borderRadius: radius.m, fontWeight: 700,
-                  background: "#fff", color: "#475569",
-                  border: "1px solid #CBD5E1",
-                  cursor: busy ? "not-allowed" : "pointer",
-                }}
-              >
-                ✂️ Split
-              </button>
-            )}
-            {!isPaid && canVoidOrders && (
-              <button
-                className="pos-ticket-action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onVoid(t);
-                }}
-                disabled={busy}
-                title="Void this ticket (returns stock, releases holds)"
-                style={{
-                  padding: `${space.s}px ${space.m}px`,
-                  minHeight: 40, fontSize: type.bodySm.fontSize,
-                  borderRadius: radius.m, fontWeight: 700,
-                  background: "#fff", color: palette.dangerDark,
-                  border: `1px solid ${palette.dangerDark}`,
-                  cursor: busy ? "not-allowed" : "pointer",
-                }}
-              >
-                🗑️ Void
-              </button>
-            )}
+            {(() => {
+              const showPayLink = isUnpaid && hasPhone && canSendPayLink && smsNotifications.send_pay_link;
+              const showBillSms = canSendBill && smsNotifications.send_bill;
+              const showMerge = t.payment_status === "unpaid";
+              const showSplit = t.payment_status === "unpaid" && (t.items?.length ?? 0) > 1;
+              const showVoid = !isPaid && canVoidOrders;
+              // Print Bill is always available — More menu is never empty.
+              const moreBtnStyle: CSSProperties = {
+                width: "100%",
+                textAlign: "left",
+                padding: "10px 12px",
+                minHeight: 44,
+                fontSize: type.bodySm.fontSize,
+                fontWeight: 700,
+                border: "none",
+                borderBottom: "1px solid #E2E8F0",
+                background: "#fff",
+                color: "#0F172A",
+                cursor: busy ? "not-allowed" : "pointer",
+              };
+              return (
+                <div ref={moreRef} style={{ position: "relative" }}>
+                  <button
+                    type="button"
+                    className="pos-ticket-action-btn"
+                    disabled={busy}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMoreOpen((v) => !v);
+                    }}
+                    style={{
+                      ...btnSecondary(busy),
+                      padding: `${space.s}px ${space.m}px`,
+                      minHeight: 44,
+                      fontSize: type.bodySm.fontSize,
+                    }}
+                    aria-expanded={moreOpen}
+                    aria-haspopup="menu"
+                  >
+                    More ▾
+                  </button>
+                  {moreOpen && (
+                    <div
+                      role="menu"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        bottom: "100%",
+                        marginBottom: 4,
+                        minWidth: 180,
+                        background: "#fff",
+                        border: "1px solid #CBD5E1",
+                        borderRadius: radius.m,
+                        boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+                        zIndex: 20,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {showPayLink && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={busy}
+                          style={moreBtnStyle}
+                          onClick={() => {
+                            setMoreOpen(false);
+                            handleSendPayLink(t);
+                          }}
+                        >
+                          💳 Send pay link
+                        </button>
+                      )}
+                      {showBillSms && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={busy}
+                          style={moreBtnStyle}
+                          onClick={() => {
+                            setMoreOpen(false);
+                            handleSendBill(t);
+                          }}
+                        >
+                          📱 Send Bill SMS
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={busy}
+                        style={moreBtnStyle}
+                        onClick={() => {
+                          setMoreOpen(false);
+                          handlePrintBill(t);
+                        }}
+                      >
+                        🖨 Print Bill
+                      </button>
+                      {showMerge && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={busy}
+                          style={moreBtnStyle}
+                          title="Merge another open ticket into this one"
+                          onClick={() => {
+                            setMoreOpen(false);
+                            handleStartMerge(t);
+                          }}
+                        >
+                          🔀 Merge
+                        </button>
+                      )}
+                      {showSplit && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={busy}
+                          style={moreBtnStyle}
+                          title="Split items off into a new ticket"
+                          onClick={() => {
+                            setMoreOpen(false);
+                            onSplit(t);
+                          }}
+                        >
+                          ✂️ Split
+                        </button>
+                      )}
+                      {showVoid && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={busy}
+                          style={{
+                            ...moreBtnStyle,
+                            color: palette.dangerDark,
+                            borderBottom: "none",
+                          }}
+                          title="Void this ticket (returns stock, releases holds)"
+                          onClick={() => {
+                            setMoreOpen(false);
+                            onVoid(t);
+                          }}
+                        >
+                          🗑️ Void
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </>
         )}
         {isMergeTarget && (
