@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useSse } from '../hooks/useSse';
 import {
   fetchOrders, fetchOrder, resumeOrder, sendOrderBill,
-  addOrderPayments,
+  addOrderPayments, issueRefund,
   getReceiptLinkForOrder, sendReceiptForOrder,
   createInvoiceFromOrder, sendInvoiceToCustomer,
   fetchDeliveryDrivers, assignDeliveryDriver,
@@ -16,8 +17,13 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   Badge, Btn, Card, EmptyState, TableStateBar,
   PageHeader, Select, Spinner, statColor,
+  ConfirmDialog, useConfirmDialog,
 } from '../components/Layout';
 import { downloadCSV } from '../utils/csvExport';
+
+const REFUNDABLE_STATUSES = new Set([
+  'paid', 'completed', 'delivered', 'partially_refunded', 'ready', 'preparing', 'in_progress',
+]);
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -80,6 +86,12 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const [copyLinkBusy, setCopyLinkBusy] = useState(false);
   const [drivers, setDrivers] = useState<DeliveryDriver[]>([]);
   const [driverAssigning, setDriverAssigning] = useState(false);
+  const [showRefund, setShowRefund] = useState(false);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [refundBusy, setRefundBusy] = useState(false);
+  const [refundError, setRefundError] = useState('');
+  const { state: refundDlg, ask: askRefundConfirm, close: closeRefundDlg } = useConfirmDialog();
   const { can } = useCurrentUserPermissions();
   const canManage = can('orders.manage');
   const canHoldResume = can('pos.hold_resume');
@@ -87,8 +99,59 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const canRecordPayment = can('pos.ring_sales');
   const canReceipts = can('orders.receipts');
   const canInvoice = can('finance.invoices');
+  const canRefund = can('orders.refund');
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const openRefundForm = () => {
+    if (!order) return;
+    setRefundAmount(parseFloat(String(order.total ?? 0)).toFixed(2));
+    setRefundReason('');
+    setRefundError('');
+    setShowRefund(true);
+    setShowPayment(false);
+  };
+
+  const submitRefund = async () => {
+    if (!order) return;
+    const amt = parseFloat(refundAmount);
+    setRefundBusy(true); setRefundError(''); setActionErr('');
+    try {
+      await issueRefund(order.id, { amount: amt, reason: refundReason.trim() });
+      showToast(`Refund of MVR ${amt.toFixed(2)} issued.`);
+      setShowRefund(false);
+      setRefundReason('');
+      reload();
+      onOrderUpdated();
+    } catch (e) {
+      const msg = (e as Error).message;
+      setRefundError(msg);
+      setActionErr(msg);
+      showToast(`Refund failed: ${msg}`);
+    } finally {
+      setRefundBusy(false);
+    }
+  };
+
+  const handleRefundClick = () => {
+    const amt = parseFloat(refundAmount);
+    if (!refundAmount || isNaN(amt) || amt <= 0) {
+      setRefundError('Enter a valid refund amount.');
+      return;
+    }
+    if (!refundReason.trim()) {
+      setRefundError('A reason is required before issuing a refund.');
+      return;
+    }
+    setRefundError('');
+    askRefundConfirm({
+      title: 'Confirm refund',
+      message: `Issue MVR ${amt.toFixed(2)} refund for order #${order?.order_number}?\n\nReason: ${refundReason.trim()}\n\nYou need an open shift to process refunds.`,
+      confirmLabel: 'Issue refund',
+      danger: true,
+      onConfirm: () => void submitRefund(),
+    });
+  };
 
   const handleAssignDriver = async (driverId: number) => {
     if (!order) return;
@@ -249,7 +312,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             </div>
 
             {/* Action buttons */}
-            {(canManage || canHoldResume || canSendBill || canRecordPayment) && (
+            {(canManage || canHoldResume || canSendBill || canRecordPayment || canRefund) && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
               {canHoldResume && order.status === 'held' && (
                 <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
@@ -262,8 +325,15 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 </Btn>
               )}
               {canRecordPayment && !['paid', 'completed', 'cancelled'].includes(order.status) && (
-                <Btn small variant="secondary" onClick={() => { setShowPayment(true); setPayRows([{ method: 'cash', amount: String(parseFloat(String(order.total ?? 0)).toFixed(2)) }]); }}>
+                <Btn small variant="secondary" onClick={() => { setShowPayment(true); setShowRefund(false); setPayRows([{ method: 'cash', amount: String(parseFloat(String(order.total ?? 0)).toFixed(2)) }]); }}>
                   💵 Record Payment
+                </Btn>
+              )}
+              {canRefund
+                && !['cancelled', 'refunded'].includes(order.status)
+                && (order.paid_at || order.payment_status === 'paid' || order.payment_status === 'partial' || REFUNDABLE_STATUSES.has(order.status)) && (
+                <Btn small variant="danger" onClick={openRefundForm}>
+                  Process Refund
                 </Btn>
               )}
             </div>
@@ -400,6 +470,43 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               </div>
             )}
 
+            {showRefund && (
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#991B1B', marginBottom: 12 }}>Process Refund</div>
+                {refundError && (
+                  <p style={{ color: '#991B1B', fontSize: 12, marginBottom: 10 }}>{refundError}</p>
+                )}
+                <label style={{ display: 'block', marginBottom: 10 }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Amount (MVR) *</span>
+                  <input
+                    type="number" min="0.01" step="0.01"
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                </label>
+                <label style={{ display: 'block', marginBottom: 12 }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Reason *</span>
+                  <textarea
+                    rows={3}
+                    placeholder="Why is this being refunded?"
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                  />
+                </label>
+                <p style={{ fontSize: 11, color: '#9C8E7E', margin: '0 0 12px' }}>
+                  Requires an open shift. Amount is capped at what was paid minus prior refunds.
+                </p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <Btn small variant="ghost" onClick={() => { setShowRefund(false); setRefundError(''); }}>Cancel</Btn>
+                  <Btn small variant="danger" disabled={refundBusy} onClick={handleRefundClick}>
+                    {refundBusy ? '…' : 'Issue Refund'}
+                  </Btn>
+                </div>
+              </div>
+            )}
+
             {showPayment && (
               <div style={{ background: '#F9F5F0', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16, marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', marginBottom: 12 }}>Record Payment</div>
@@ -457,6 +564,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
           </>
         )}
       </div>
+      <ConfirmDialog state={refundDlg} close={closeRefundDlg} />
     </div>
   );
 }
@@ -474,7 +582,8 @@ type SortKey = 'order_number' | 'total' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
 export function OrdersPage() {
-    usePageTitle('Orders');
+  usePageTitle('Orders');
+  const [searchParams, setSearchParams] = useSearchParams();
   const { can } = useCurrentUserPermissions();
   const canSendReceipt = can('orders.send_sms_bill');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -491,7 +600,26 @@ export function OrdersPage() {
   const [deviceFilter, setDeviceFilter] = useState('');
   const [staffOptions, setStaffOptions] = useState<{ id: number; name: string }[]>([]);
   const [deviceOptions, setDeviceOptions] = useState<{ id: number; name: string }[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    const raw = searchParams.get('order');
+    const id = raw ? parseInt(raw, 10) : NaN;
+    return !isNaN(id) && id > 0 ? id : null;
+  });
+
+  useEffect(() => {
+    const raw = searchParams.get('order');
+    const id = raw ? parseInt(raw, 10) : NaN;
+    if (!isNaN(id) && id > 0) setSelectedId(id);
+  }, [searchParams]);
+
+  const closeDrawer = () => {
+    setSelectedId(null);
+    if (searchParams.has('order')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('order');
+      setSearchParams(next, { replace: true });
+    }
+  };
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(25);
@@ -851,7 +979,7 @@ export function OrdersPage() {
       {selectedId && (
         <OrderDrawer
           orderId={selectedId}
-          onClose={() => setSelectedId(null)}
+          onClose={closeDrawer}
           onOrderUpdated={() => void load()}
         />
       )}

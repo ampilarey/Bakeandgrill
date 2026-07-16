@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -138,9 +139,12 @@ export default function RefundsPage() {
                 <tr key={r.id}>
                   <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{r.id}</td>
                   <td style={TD}>
-                    {r.order
-                      ? <span style={{ fontWeight: 600 }}>#{r.order.order_number}</span>
-                      : <span style={{ color: '#9C8E7E' }}>Order #{r.order_id}</span>}
+                    <Link
+                      to={`/orders?order=${r.order_id}`}
+                      style={{ fontWeight: 600, color: '#D4813A', textDecoration: 'none' }}
+                    >
+                      {r.order ? `#${r.order.order_number}` : `Order #${r.order_id}`}
+                    </Link>
                   </td>
                   <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>MVR {parseFloat(String(r.amount ?? 0)).toFixed(2)}</td>
                   <td style={{ ...TD, color: '#6B5D4F', fontSize: 13 }}>{r.reason ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
