@@ -24,6 +24,7 @@ export async function fetchStaff(): Promise<{ staff: StaffMember[]; roles: Staff
 export async function createStaff(data: {
   name: string;
   email: string;
+  phone?: string;
   role_id: number;
   pin: string;
 }): Promise<{ staff: StaffMember }> {
@@ -136,9 +137,11 @@ export async function createSchedule(data: {
 
 export async function updateSchedule(
   id: number,
-  data: Partial<{ date: string; start_time: string; end_time: string; notes: string }>,
+  data: Partial<{ staff_id: number; date: string; start_time: string; end_time: string; notes: string }>,
 ): Promise<{ schedule: StaffSchedule }> {
   const body: Record<string, unknown> = {};
+  if (data.staff_id !== undefined)   body.user_id = data.staff_id;
+  if (data.date !== undefined)       body.date = data.date;
   if (data.start_time !== undefined) body.shift_start = data.start_time;
   if (data.end_time !== undefined)   body.shift_end = data.end_time;
   if (data.notes !== undefined)      body.notes = data.notes;

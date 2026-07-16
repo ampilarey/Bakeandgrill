@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { MoreHorizontal } from 'lucide-react';
 import {
   fetchStaff, createStaff, updateStaff, resetStaffPin, deleteStaff,
   getUserPermissions, updateUserPermissions,
@@ -30,7 +31,7 @@ function RoleSelect({ value, onChange, roles }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14, minHeight: 44 }}
     >
       <option value="">— Select role —</option>
       {roles.map((r) => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
@@ -77,6 +78,61 @@ function timeAgo(iso: string | null) {
   if (m < 60) return `${m}m ago`;
   if (m < 1440) return `${Math.floor(m / 60)}h ago`;
   return new Date(iso).toLocaleDateString();
+}
+
+type MenuItem = {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+};
+
+function RowActionMenu({ items }: { items: MenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <Btn small variant="secondary" onClick={() => setOpen((v) => !v)} aria-label="More actions">
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <MoreHorizontal size={16} /> More
+        </span>
+      </Btn>
+      {open && (
+        <div style={{
+          position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 20,
+          minWidth: 180, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(28,20,8,0.12)', padding: 4,
+        }}>
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => { setOpen(false); item.onClick(); }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px',
+                border: 'none', background: 'none', cursor: 'pointer', borderRadius: 8,
+                fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+                color: item.danger ? '#DC2626' : '#1C1408', minHeight: 44,
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Create staff modal ────────────────────────────────────────────────────────
@@ -135,7 +191,7 @@ function CreateModal({ roles, onSave, onClose }: {
       </div>
       <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn onClick={handleSave} disabled={loading}>{loading ? 'Creating…' : 'Create Staff'}</Btn>
+        <Btn onClick={() => void handleSave()} disabled={loading}>{loading ? 'Creating…' : 'Create Staff'}</Btn>
       </ModalActions>
     </Modal>
   );
@@ -185,14 +241,14 @@ function EditModal({ member, roles, onSave, onClose }: {
         <Field label="Role">
           <RoleSelect value={roleId} onChange={setRoleId} roles={roles} />
         </Field>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', minHeight: 44 }}>
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           Active (can log in)
         </label>
       </div>
       <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Changes'}</Btn>
+        <Btn onClick={() => void handleSave()} disabled={loading}>{loading ? 'Saving…' : 'Save Changes'}</Btn>
       </ModalActions>
     </Modal>
   );
@@ -214,7 +270,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
   const [error, setError] = useState('');
 
   useEffect(() => {
-    getStaffNotificationPrefs(member.id).then(res => {
+    getStaffNotificationPrefs(member.id).then((res) => {
       setPrefs(res.prefs ?? {
         user_id: member.id,
         notifications_enabled: true,
@@ -225,7 +281,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
         fallback_priority: 0,
       });
       setLoading(false);
-    }).catch(e => { setError((e as Error).message); setLoading(false); });
+    }).catch((e) => { setError((e as Error).message); setLoading(false); });
   }, [member.id]);
 
   const save = async () => {
@@ -244,9 +300,12 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
 
   const toggleOrderType = (v: string) => {
     if (!prefs) return;
-    const current = prefs.order_types ?? [];
-    const next = current.includes(v) ? current.filter(t => t !== v) : [...current, v];
-    setPrefs(p => p ? { ...p, order_types: next.length ? next : null } : p);
+    // null means "all types" — first chip click starts from the full set.
+    const current = prefs.order_types ?? ORDER_TYPES.map((ot) => ot.value);
+    const next = current.includes(v) ? current.filter((t) => t !== v) : [...current, v];
+    const allValues = ORDER_TYPES.map((ot) => ot.value);
+    const isAll = next.length === 0 || (next.length === allValues.length && allValues.every((x) => next.includes(x)));
+    setPrefs((p) => (p ? { ...p, order_types: isAll ? null : next } : p));
   };
 
   if (loading) return <Modal title={`SMS Prefs — ${member.name}`} onClose={onClose}><Spinner /></Modal>;
@@ -258,43 +317,42 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!member.phone && (
             <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#92400e' }}>
-              ⚠ No phone number set for this staff member. Add a phone number in Edit to enable SMS notifications.
+              No phone number set. Add a phone in Edit to enable SMS notifications.
             </div>
           )}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
             <input type="checkbox" checked={prefs.notifications_enabled}
-              onChange={e => setPrefs(p => p ? { ...p, notifications_enabled: e.target.checked } : p)} />
+              onChange={(e) => setPrefs((p) => (p ? { ...p, notifications_enabled: e.target.checked } : p))} />
             <span><strong>Enable SMS Notifications</strong> for this staff member</span>
           </label>
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
-              Receive notifications for (blank = all types):
+              Receive notifications for:
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {ORDER_TYPES.map(ot => {
-                const active = (prefs.order_types ?? []).includes(ot.value) || prefs.order_types === null;
-                const explicit = prefs.order_types !== null;
+              <button type="button" onClick={() => setPrefs((p) => (p ? { ...p, order_types: null } : p))} style={{
+                padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
+                background: prefs.order_types === null ? '#22c55e' : '#F5F0EA',
+                color: prefs.order_types === null ? '#fff' : '#6B5D4F', border: 'none',
+              }}>All Types</button>
+              {ORDER_TYPES.map((ot) => {
+                const active = prefs.order_types === null || prefs.order_types.includes(ot.value);
                 return (
-                  <button key={ot.value} onClick={() => toggleOrderType(ot.value)} style={{
-                    padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                    background: (!explicit || active) ? '#D4813A' : '#F5F0EA',
-                    color: (!explicit || active) ? '#fff' : '#6B5D4F', border: 'none',
+                  <button key={ot.value} type="button" onClick={() => toggleOrderType(ot.value)} style={{
+                    padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
+                    background: active ? '#D4813A' : '#F5F0EA',
+                    color: active ? '#fff' : '#6B5D4F', border: 'none',
                   }}>
                     {ot.label}
                   </button>
                 );
               })}
-              <button onClick={() => setPrefs(p => p ? { ...p, order_types: null } : p)} style={{
-                padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                background: prefs.order_types === null ? '#22c55e' : '#F5F0EA',
-                color: prefs.order_types === null ? '#fff' : '#6B5D4F', border: 'none',
-              }}>All Types</button>
             </div>
           </div>
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
               <input type="checkbox" checked={prefs.is_fallback}
-                onChange={e => setPrefs(p => p ? { ...p, is_fallback: e.target.checked } : p)} />
+                onChange={(e) => setPrefs((p) => (p ? { ...p, is_fallback: e.target.checked } : p))} />
               <span><strong>Fallback recipient</strong> — receive alerts when no matching staff is on shift</span>
             </label>
           </div>
@@ -302,14 +360,14 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Fallback Priority (higher = notified first)</label>
               <Input type="number" value={String(prefs.fallback_priority)}
-                onChange={v => setPrefs(p => p ? { ...p, fallback_priority: parseInt(v) || 0 } : p)} />
+                onChange={(v) => setPrefs((p) => (p ? { ...p, fallback_priority: parseInt(v) || 0 } : p))} />
             </div>
           )}
         </div>
       )}
       <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn onClick={save} disabled={saving || !prefs}>{saving ? 'Saving…' : 'Save Prefs'}</Btn>
+        <Btn onClick={() => void save()} disabled={saving || !prefs}>{saving ? 'Saving…' : 'Save Prefs'}</Btn>
       </ModalActions>
     </Modal>
   );
@@ -349,7 +407,7 @@ function PinModal({ member, onSave, onClose }: {
       </div>
       <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Update PIN'}</Btn>
+        <Btn onClick={() => void handleSave()} disabled={loading}>{loading ? 'Saving…' : 'Update PIN'}</Btn>
       </ModalActions>
     </Modal>
   );
@@ -370,6 +428,7 @@ function groupPermissions(perms: PermissionItem[]): Record<string, PermissionIte
 
 function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: () => void }) {
   const toast = useToast();
+  const navigate = useNavigate();
   const { state: permDlg, ask: askPermConfirm, close: closePermDlg } = useConfirmDialog();
   const [perms, setPerms] = useState<PermissionItem[]>([]);
   const [overrides, setOverrides] = useState<Record<string, boolean | null>>({});
@@ -400,11 +459,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
   };
 
   const reset = (slug: string) => {
-    setOverrides((prev) => {
-      const next = { ...prev };
-      next[slug] = null;
-      return next;
-    });
+    setOverrides((prev) => ({ ...prev, [slug]: null }));
   };
 
   const resetAll = () => setOverrides({});
@@ -453,76 +508,86 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
 
   return (
     <>
-    <Modal title={`Permissions — ${member.name}`} onClose={onClose}>
-      {loading ? (
-        <Spinner />
-      ) : (
-        <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
-          {Object.entries(groups).map(([category, items]) => (
-            <div key={category} style={{ marginBottom: 20 }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                color: '#9C8E7E', textTransform: 'uppercase', marginBottom: 8,
-                paddingBottom: 4, borderBottom: '1px solid #f1ece6',
-              }}>
-                {category}
-              </div>
-              {items.map((p) => {
-                const granted = effectiveGranted(p);
-                const modified = isModified(p);
-                return (
-                  <div key={p.slug} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '6px 0', borderBottom: '1px solid #faf8f6',
+      <Modal title={`Permissions — ${member.name}`} onClose={onClose} maxWidth={720}>
+        {loading ? (
+          <Spinner />
+        ) : (
+          <>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+              Toggle overrides for this person. Role defaults still apply unless overridden.{' '}
+              <button
+                type="button"
+                onClick={() => navigate(`/settings?tab=permissions&user=${member.id}`)}
+                style={{ background: 'none', border: 'none', color: '#D4813A', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 13 }}
+              >
+                Open full permissions editor →
+              </button>
+            </p>
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+              {Object.entries(groups).map(([category, items]) => (
+                <div key={category} style={{ marginBottom: 20 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                    color: '#9C8E7E', textTransform: 'uppercase', marginBottom: 8,
+                    paddingBottom: 4, borderBottom: '1px solid #f1ece6',
                   }}>
-                    <div style={{ flex: 1 }}>
-                      <span style={{ fontSize: 14, color: '#1C1408', fontWeight: 500 }}>{p.name}</span>
-                      {' '}
-                      <span style={{
-                        fontSize: 11, padding: '1px 6px', borderRadius: 99,
-                        background: modified ? '#fef3c7' : '#f1ece6',
-                        color: modified ? '#92400e' : '#9C8E7E',
-                        fontWeight: 600,
-                      }}>
-                        {modified ? 'override' : p.source}
-                      </span>
-                    </div>
-                    {modified && (
-                      <button
-                        onClick={() => reset(p.slug)}
-                        style={{
-                          fontSize: 11, color: '#B45309', background: 'none',
-                          border: 'none', cursor: 'pointer', padding: '2px 4px',
-                          textDecoration: 'underline',
-                        }}
-                      >
-                        reset
-                      </button>
-                    )}
-                    <Toggle
-                      checked={granted}
-                      onChange={() => toggle(p.slug)}
-                    />
+                    {category}
                   </div>
-                );
-              })}
+                  {items.map((p) => {
+                    const granted = effectiveGranted(p);
+                    const modified = isModified(p);
+                    return (
+                      <div key={p.slug} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 0', borderBottom: '1px solid #faf8f6', minHeight: 44,
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: 14, color: '#1C1408', fontWeight: 500 }}>{p.name}</span>
+                          {' '}
+                          <span style={{
+                            fontSize: 11, padding: '1px 6px', borderRadius: 99,
+                            background: modified ? '#fef3c7' : '#f1ece6',
+                            color: modified ? '#92400e' : '#9C8E7E',
+                            fontWeight: 600,
+                          }}>
+                            {modified ? 'override' : p.source}
+                          </span>
+                        </div>
+                        {modified && (
+                          <button
+                            type="button"
+                            onClick={() => reset(p.slug)}
+                            style={{
+                              fontSize: 12, color: '#B45309', background: 'none',
+                              border: 'none', cursor: 'pointer', padding: '6px 8px',
+                              textDecoration: 'underline', minHeight: 36,
+                            }}
+                          >
+                            reset
+                          </button>
+                        )}
+                        <Toggle checked={granted} onChange={() => toggle(p.slug)} />
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-      <ModalActions>
-        {hasChanges && (
-          <Btn variant="ghost" onClick={resetAll} style={{ marginRight: 'auto' }}>
-            Reset all changes
-          </Btn>
+          </>
         )}
-        <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn onClick={save} disabled={saving || loading}>
-          {saving ? 'Saving…' : 'Save Permissions'}
-        </Btn>
-      </ModalActions>
-    </Modal>
-    <ConfirmDialog state={permDlg} close={closePermDlg} />
+        <ModalActions>
+          {hasChanges && (
+            <Btn variant="ghost" onClick={resetAll} style={{ marginRight: 'auto' }}>
+              Reset all changes
+            </Btn>
+          )}
+          <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+          <Btn onClick={() => void save()} disabled={saving || loading}>
+            {saving ? 'Saving…' : 'Save Permissions'}
+          </Btn>
+        </ModalActions>
+      </Modal>
+      <ConfirmDialog state={permDlg} close={closePermDlg} />
     </>
   );
 }
@@ -530,22 +595,28 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function StaffPage() {
-    usePageTitle('Staff');
+  usePageTitle('Staff');
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const toast = useToast();
   const { can } = useCurrentUserPermissions();
   const canCreateStaff = can('staff.create');
   const canUpdateStaff = can('staff.update');
   const canDeleteStaff = can('staff.delete');
   const canSchedule = can('staff.schedule');
+  const canManagePerms = can('roles_permissions.manage');
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
+
   const [activeTab, setActiveTab] = useState<'staff' | 'schedules'>(() => (
-    searchParams.get('tab') === 'schedules' ? 'schedules' : 'staff'
+    searchParams.get('tab') === 'schedules' && canSchedule ? 'schedules' : 'staff'
   ));
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<StaffMember | null>(null);
@@ -553,42 +624,71 @@ export function StaffPage() {
   const [permissionsUser, setPermissionsUser] = useState<StaffMember | null>(null);
   const [notifPrefsUser, setNotifPrefsUser] = useState<StaffMember | null>(null);
 
+  const switchTab = (tab: 'staff' | 'schedules') => {
+    setActiveTab(tab);
+    if (tab === 'schedules') {
+      setSearchParams({ tab: 'schedules' }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     try {
       const res = await fetchStaff();
       setStaff(res.staff ?? []);
       setRoles(res.roles);
+      setError('');
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { void load(); }, []);
 
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'schedules' && canSchedule) setActiveTab('schedules');
+    else if (tab !== 'schedules') setActiveTab('staff');
+  }, [searchParams, canSchedule]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return staff.filter((m) => {
+      if (statusFilter === 'active' && !m.is_active) return false;
+      if (statusFilter === 'inactive' && m.is_active) return false;
+      if (roleFilter !== 'all' && m.role !== roleFilter) return false;
+      if (!q) return true;
+      return (
+        m.name.toLowerCase().includes(q)
+        || m.email.toLowerCase().includes(q)
+        || (m.phone ?? '').toLowerCase().includes(q)
+        || roleDisplayLabel(m.role, m.role_name).toLowerCase().includes(q)
+      );
+    });
+  }, [staff, search, roleFilter, statusFilter]);
+
   const handleCreate = async (data: { name: string; email: string; phone?: string; role_id: number; pin: string }) => {
-    try {
-      await createStaff(data);
-      setCreating(false);
-      await load();
-    } catch (e) { setError((e as Error).message); }
+    await createStaff(data);
+    setCreating(false);
+    toast.success('Staff member created.');
+    await load();
   };
 
   const handleUpdate = async (data: { name: string; email: string; phone?: string | null; role_id: number; is_active: boolean }) => {
     if (!editing) return;
-    try {
-      await updateStaff(editing.id, data);
-      setEditing(null);
-      await load();
-    } catch (e) { setError((e as Error).message); }
+    await updateStaff(editing.id, data);
+    setEditing(null);
+    toast.success('Staff updated.');
+    await load();
   };
 
   const handlePinChange = async (pin: string) => {
     if (!changingPin) return;
-    try {
-      await resetStaffPin(changingPin.id, pin);
-      setChangingPin(null);
-      await load();
-    } catch (e) { setError((e as Error).message); }
+    await resetStaffPin(changingPin.id, pin);
+    setChangingPin(null);
+    toast.success('PIN updated.');
+    await load();
   };
 
   const handleDelete = (member: StaffMember) => {
@@ -598,40 +698,59 @@ export function StaffPage() {
       confirmLabel: 'Remove',
       danger: true,
       onConfirm: async () => {
-        try { await deleteStaff(member.id); await load(); }
-        catch (e) { setError((e as Error).message); }
+        try {
+          await deleteStaff(member.id);
+          toast.success('Staff removed.');
+          await load();
+        } catch (e) { setError((e as Error).message); }
       },
     });
   };
 
-  const handleToggleActive = async (member: StaffMember) => {
-    try {
-      await updateStaff(member.id, { is_active: !member.is_active });
-      await load();
-    } catch (e) { setError((e as Error).message); }
+  const handleToggleActive = (member: StaffMember) => {
+    const next = !member.is_active;
+    askConfirm({
+      title: next ? 'Enable Staff' : 'Disable Staff',
+      message: next
+        ? `Enable ${member.name} so they can log in again?`
+        : `Disable ${member.name}? They will not be able to log in.`,
+      confirmLabel: next ? 'Enable' : 'Disable',
+      danger: !next,
+      onConfirm: async () => {
+        try {
+          await updateStaff(member.id, { is_active: next });
+          toast.success(next ? 'Staff enabled.' : 'Staff disabled.');
+          await load();
+        } catch (e) { setError((e as Error).message); }
+      },
+    });
   };
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer',
-    fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
+    fontWeight: 600, fontSize: 14, fontFamily: 'inherit', minHeight: 40,
     background: active ? '#D4813A' : 'transparent',
     color: active ? '#fff' : '#6B5D4F',
   });
+
+  const filterStyle: React.CSSProperties = {
+    padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10,
+    fontSize: 13, fontFamily: 'inherit', background: '#fff', minHeight: 40,
+  };
 
   return (
     <>
       <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader
         title="Staff Management"
-        subtitle="Manage staff accounts and PINs"
+        subtitle="Accounts, PINs, permissions, SMS prefs, and weekly schedules"
         action={activeTab === 'staff' && canCreateStaff ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
       />
 
-      {/* Tab switcher — schedules tab requires staff.schedule permission */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content' }}>
-        <button style={tabStyle(activeTab === 'staff')} onClick={() => setActiveTab('staff')}>Staff</button>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
+        <button type="button" style={tabStyle(activeTab === 'staff')} onClick={() => switchTab('staff')}>Staff</button>
         {canSchedule && (
-          <button style={tabStyle(activeTab === 'schedules')} onClick={() => setActiveTab('schedules')}>Schedules</button>
+          <button type="button" style={tabStyle(activeTab === 'schedules')} onClick={() => switchTab('schedules')}>Schedules</button>
         )}
       </div>
 
@@ -639,96 +758,124 @@ export function StaffPage() {
 
       {activeTab === 'staff' && (
         <>
-      {error && <ErrorMsg message={error} />}
+          {error && <ErrorMsg message={error} />}
 
-      {loading && staff.length === 0 ? <Spinner /> :
-      staff.length === 0 ? (
-        <TableCard><EmptyState message="No staff members found." /></TableCard>
-      ) : (
-        <TableCard>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr>
-                {['Name', 'Email', 'Phone', 'Role', 'PIN', 'Status', 'Last Login', ''].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map((m) => (
-                <tr key={m.id} style={{ opacity: m.is_active ? 1 : 0.55 }}>
-                  <td style={{ ...TD, fontWeight: 700, color: '#1C1408' }}>{m.name}</td>
-                  <td style={{ ...TD, color: '#6B5D4F' }}>{m.email}</td>
-                  <td style={{ ...TD, color: '#6B5D4F', fontFamily: 'monospace', fontSize: 12 }}>
-                    {m.phone ?? <span style={{ color: '#d1d5db' }}>—</span>}
-                  </td>
-                  <td style={TD}>
-                    <Badge label={roleDisplayLabel(m.role, m.role_name)} color={roleColor(m.role)} />
-                  </td>
-                  <td style={TD}>
-                    {m.has_pin
-                      ? <span style={{ color: '#22c55e', fontSize: 13, fontWeight: 700 }}>Set ✓</span>
-                      : <span style={{ color: '#f59e0b', fontSize: 13, fontWeight: 700 }}>Not set</span>
-                    }
-                  </td>
-                  <td style={TD}>
-                    <Badge label={m.is_active ? 'Active' : 'Inactive'} color={m.is_active ? 'green' : 'gray'} />
-                  </td>
-                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {timeAgo(m.last_login_at)}
-                  </td>
-                  <td style={TD}>
-                    {/* Row-action permissions: every mutation button only renders
-                        for users who can actually perform it. Viewers see a
-                        read-only row instead of a wall of buttons that all 403. */}
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {canUpdateStaff && (
-                        <Btn small variant="secondary" onClick={() => setEditing(m)}>Edit</Btn>
-                      )}
-                      {canUpdateStaff && (
-                        <Btn small variant="ghost" onClick={() => setChangingPin(m)}>PIN</Btn>
-                      )}
-                      {canUpdateStaff && (
-                        <Btn small variant="ghost" onClick={() => handleToggleActive(m)}>
-                          {m.is_active ? 'Disable' : 'Enable'}
-                        </Btn>
-                      )}
-                      {m.role !== 'owner' && can('roles_permissions.manage') && (
-                        <>
-                          <Btn small variant="ghost" onClick={() => setPermissionsUser(m)}>Permissions</Btn>
-                          <Btn small variant="ghost" onClick={() => navigate(`/settings?tab=permissions&user=${m.id}`)}>POS perms →</Btn>
-                        </>
-                      )}
-                      {canUpdateStaff && (
-                        <Btn small variant="ghost" onClick={() => setNotifPrefsUser(m)}>SMS Prefs</Btn>
-                      )}
-                      {canDeleteStaff && (
-                        <Btn small variant="danger" onClick={() => handleDelete(m)}>Remove</Btn>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, email, phone…"
+              style={{ ...filterStyle, flex: '1 1 220px', maxWidth: 320 }}
+            />
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={filterStyle}>
+              <option value="all">All roles</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.slug}>{roleDisplayLabel(r.slug, r.name)}</option>
               ))}
-            </tbody>
-          </table>
-        </TableCard>
-      )}
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} style={filterStyle}>
+              <option value="all">All status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <span style={{ fontSize: 12, color: '#9C8E7E' }}>
+              {filtered.length} of {staff.length}
+            </span>
+            <Btn small variant="ghost" onClick={() => navigate('/time-clock')}>Time Clock →</Btn>
+          </div>
 
-      {creating && (
-        <CreateModal roles={roles} onSave={handleCreate} onClose={() => setCreating(false)} />
-      )}
-      {editing && (
-        <EditModal member={editing} roles={roles} onSave={handleUpdate} onClose={() => setEditing(null)} />
-      )}
-      {changingPin && (
-        <PinModal member={changingPin} onSave={handlePinChange} onClose={() => setChangingPin(null)} />
-      )}
-      {permissionsUser && (
-        <PermissionsModal member={permissionsUser} onClose={() => setPermissionsUser(null)} />
-      )}
-      {notifPrefsUser && (
-        <NotificationPrefsModal member={notifPrefsUser} onClose={() => setNotifPrefsUser(null)} />
-      )}
+          {loading && staff.length === 0 ? <Spinner /> :
+          filtered.length === 0 ? (
+            <TableCard>
+              <EmptyState message={staff.length === 0 ? 'No staff members found.' : 'No staff match these filters.'} />
+            </TableCard>
+          ) : (
+            <TableCard>
+              <div className="table-scroll" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 720 }}>
+                  <thead>
+                    <tr>
+                      {['Name', 'Contact', 'Role', 'PIN', 'Status', 'Last Login', ''].map((h) => (
+                        <th key={h || 'actions'} style={TH}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((m) => {
+                      const menuItems: MenuItem[] = [];
+                      if (canUpdateStaff) {
+                        menuItems.push({ label: 'Change PIN', onClick: () => setChangingPin(m) });
+                        menuItems.push({
+                          label: m.is_active ? 'Disable login' : 'Enable login',
+                          onClick: () => handleToggleActive(m),
+                          danger: m.is_active,
+                        });
+                        menuItems.push({ label: 'SMS prefs', onClick: () => setNotifPrefsUser(m) });
+                      }
+                      if (m.role !== 'owner' && canManagePerms) {
+                        menuItems.push({ label: 'Permissions', onClick: () => setPermissionsUser(m) });
+                      }
+                      if (canDeleteStaff) {
+                        menuItems.push({ label: 'Remove', onClick: () => handleDelete(m), danger: true });
+                      }
+
+                      return (
+                        <tr key={m.id} style={{ opacity: m.is_active ? 1 : 0.55 }}>
+                          <td style={{ ...TD, fontWeight: 700, color: '#1C1408' }}>{m.name}</td>
+                          <td style={{ ...TD, color: '#6B5D4F' }}>
+                            <div>{m.email}</div>
+                            <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#9C8E7E' }}>
+                              {m.phone ?? '—'}
+                            </div>
+                          </td>
+                          <td style={TD}>
+                            <Badge label={roleDisplayLabel(m.role, m.role_name)} color={roleColor(m.role)} />
+                          </td>
+                          <td style={TD}>
+                            {m.has_pin
+                              ? <span style={{ color: '#22c55e', fontSize: 13, fontWeight: 700 }}>Set</span>
+                              : <span style={{ color: '#f59e0b', fontSize: 13, fontWeight: 700 }}>Not set</span>
+                            }
+                          </td>
+                          <td style={TD}>
+                            <Badge label={m.is_active ? 'Active' : 'Inactive'} color={m.is_active ? 'green' : 'gray'} />
+                          </td>
+                          <td style={{ ...TD, color: '#9C8E7E', fontSize: 12, whiteSpace: 'nowrap' }}>
+                            {timeAgo(m.last_login_at)}
+                          </td>
+                          <td style={TD}>
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                              {canUpdateStaff && (
+                                <Btn small variant="secondary" onClick={() => setEditing(m)}>Edit</Btn>
+                              )}
+                              <RowActionMenu items={menuItems} />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </TableCard>
+          )}
+
+          {creating && (
+            <CreateModal roles={roles} onSave={handleCreate} onClose={() => setCreating(false)} />
+          )}
+          {editing && (
+            <EditModal member={editing} roles={roles} onSave={handleUpdate} onClose={() => setEditing(null)} />
+          )}
+          {changingPin && (
+            <PinModal member={changingPin} onSave={handlePinChange} onClose={() => setChangingPin(null)} />
+          )}
+          {permissionsUser && (
+            <PermissionsModal member={permissionsUser} onClose={() => setPermissionsUser(null)} />
+          )}
+          {notifPrefsUser && (
+            <NotificationPrefsModal member={notifPrefsUser} onClose={() => setNotifPrefsUser(null)} />
+          )}
         </>
       )}
     </>

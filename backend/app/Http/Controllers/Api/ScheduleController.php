@@ -20,8 +20,8 @@ class ScheduleController extends Controller
             ->orderBy('shift_start');
 
         if ($week) {
-            $start = \Carbon\Carbon::parse($week)->startOfWeek();
-            $end = $start->copy()->endOfWeek();
+            $start = \Carbon\Carbon::parse($week)->startOfWeek(\Carbon\Carbon::MONDAY);
+            $end = $start->copy()->endOfWeek(\Carbon\Carbon::SUNDAY);
             $query->whereBetween('date', [$start->toDateString(), $end->toDateString()]);
         } else {
             $query->where('date', $date);
@@ -54,12 +54,20 @@ class ScheduleController extends Controller
     {
         $schedule = StaffSchedule::findOrFail($id);
         $validated = $request->validate([
+            'user_id' => ['sometimes', 'integer', 'exists:users,id'],
+            'date' => ['sometimes', 'date'],
             'shift_start' => ['sometimes', 'date_format:H:i'],
             'shift_end' => ['sometimes', 'date_format:H:i'],
             'role_override' => ['nullable', 'string', 'max:60'],
             'notes' => ['nullable', 'string', 'max:500'],
             'is_confirmed' => ['sometimes', 'boolean'],
         ]);
+
+        if (isset($validated['shift_start'], $validated['shift_end'])
+            && $validated['shift_end'] <= $validated['shift_start']) {
+            return response()->json(['message' => 'End time must be after start time.'], 422);
+        }
+
         $schedule->update($validated);
 
         return response()->json(['schedule' => $this->format($schedule->fresh()->load('user'))]);
