@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   fetchCustomerGrowthSummary, fetchCustomerActivity,
@@ -10,6 +10,7 @@ import { Badge, Btn, ErrorMsg, Input, Spinner } from './SharedUI';
 import { CustomerCreditSection } from './CustomerCreditSection';
 import { CustomerDepositSection } from './CustomerDepositSection';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { smsCharCount } from '../utils/smsCharCount';
 
 function timelineEventPath(ev: CustomerActivityEvent): string | null {
   if (!ev.source_id) return null;
@@ -118,6 +119,8 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
       setSaving(false);
     }
   };
+
+  const smsInfo = useMemo(() => smsCharCount(smsMessage), [smsMessage]);
 
   const handleSendSms = async () => {
     if (!smsMessage.trim()) return;
@@ -257,6 +260,11 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
                     Customer has opted out of SMS — sending is blocked.
                   </p>
                 )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: smsInfo.segments > 1 || smsInfo.isUnicode ? '#ef4444' : '#9C8E7E' }}>
+                    {smsInfo.chars} chars · {smsInfo.segments} segment{smsInfo.segments !== 1 ? 's' : ''} · {smsInfo.encoding}
+                  </span>
+                </div>
                 <textarea
                   value={smsMessage}
                   onChange={(e) => setSmsMessage(e.target.value)}

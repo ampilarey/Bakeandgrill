@@ -316,6 +316,8 @@ export function DashboardPage() {
   const prevOrdersRef  = useRef<Record<number, string>>({});
   const isFirstLoadRef = useRef(true);
 
+  const viewingToday = summaryDate === today();
+
   const {
     data: summary = null,
     isLoading: summaryLoading,
@@ -324,6 +326,8 @@ export function DashboardPage() {
     queryKey: ['dashboard', 'daily-summary', summaryDate],
     queryFn: () => getDailySummary(summaryDate),
     enabled: canFinancialSummary,
+    // Keep today's KPIs fresh while the page is open (orders complete every few minutes).
+    refetchInterval: canFinancialSummary && viewingToday ? 30_000 : false,
   });
   const summaryErr = summaryQueryError?.message ?? '';
 
@@ -331,6 +335,7 @@ export function DashboardPage() {
     queryKey: ['dashboard', 'sales-summary', summaryDate],
     queryFn: () => fetchSalesSummary({ from: summaryDate, to: summaryDate }),
     enabled: canFinancialSummary,
+    refetchInterval: canFinancialSummary && viewingToday ? 30_000 : false,
   });
 
   const { data: creditExposure = null } = useQuery({
@@ -355,9 +360,22 @@ export function DashboardPage() {
   const ordersErr = ordersQueryError?.message ?? '';
 
   useEffect(() => {
-    if (!canOrders || activeOrders.length === 0 && ordersLoading) return;
+    if (!canOrders || (activeOrders.length === 0 && ordersLoading)) return;
     const changed: typeof liveEvents = [];
     const newPending: typeof liveEvents = [];
+    const currentIds = new Set(activeOrders.map((o) => o.id));
+    let leftActiveQueue = false;
+
+    // Orders that dropped off the active poll likely completed / were cancelled —
+    // refresh revenue KPIs so the dashboard doesn't sit on stale totals.
+    for (const idStr of Object.keys(prevOrdersRef.current)) {
+      const id = Number(idStr);
+      if (!currentIds.has(id)) {
+        leftActiveQueue = true;
+        delete prevOrdersRef.current[id];
+      }
+    }
+
     activeOrders.forEach((o) => {
       if (prevOrdersRef.current[o.id] === undefined) {
         if (!isFirstLoadRef.current && ['pending', 'paid'].includes(o.status)) {
@@ -378,7 +396,11 @@ export function DashboardPage() {
     if (newPending.length > 0 || changed.length > 0) {
       setLiveEvents((prev) => [...newPending, ...changed, ...prev].slice(0, 20));
     }
-  }, [activeOrders, canOrders, ordersLoading]);
+    if (leftActiveQueue || changed.length > 0) {
+      void queryClient.invalidateQueries({ queryKey: ['dashboard', 'daily-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard', 'sales-summary'] });
+    }
+  }, [activeOrders, canOrders, ordersLoading, queryClient]);
 
   const {
     data: inventoryIntel = { lowStock: [] as InventoryItem[], lowStockTotal: 0, stockRunway: [] as Array<{ id: number; name: string; days_of_stock: number | null; status: string; unit: string }>, poSuggestCount: 0 },

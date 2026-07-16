@@ -22,15 +22,26 @@ export interface SseEvent {
 interface UseSseOptions {
   /** Called for every parsed SSE event. Keep this stable (useCallback) to avoid re-subscribing. */
   onEvent: (event: SseEvent) => void;
-  /** Reconnect delay in ms after a disconnect. Default: 3000 */
+  /** Reconnect delay in ms after a disconnect. Default: 250 (server streams rotate often). */
   reconnectDelay?: number;
   /** Whether to connect at all. Default: true */
   enabled?: boolean;
+  /**
+   * How long to keep reporting `connected: true` after the stream ends while
+   * we reconnect. Server streams rotate every ~MAX_EXECUTION_SECONDS; without
+   * this grace window the UI flickers "Polling…" every few minutes.
+   */
+  disconnectGraceMs?: number;
 }
 
 export function useSse(
   path: string,
-  { onEvent, reconnectDelay = 3_000, enabled = true }: UseSseOptions,
+  {
+    onEvent,
+    reconnectDelay = 250,
+    enabled = true,
+    disconnectGraceMs = 2_500,
+  }: UseSseOptions,
 ): { connected: boolean } {
   const [connected, setConnected] = useState(false);
   const abortRef    = useRef<AbortController | null>(null);
@@ -38,15 +49,43 @@ export function useSse(
   // Persists the last received event id across reconnects so the server can
   // resume from the correct cursor rather than replaying from the beginning.
   const lastEventId = useRef('');
+  const disconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep the callback ref current without restarting the stream
   useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setConnected(false);
+      return;
+    }
 
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
+
+    const clearDisconnectTimer = () => {
+      if (disconnectTimer.current) {
+        clearTimeout(disconnectTimer.current);
+        disconnectTimer.current = null;
+      }
+    };
+
+    const markConnected = () => {
+      clearDisconnectTimer();
+      setConnected(true);
+    };
+
+    const scheduleDisconnected = () => {
+      if (stopped) {
+        setConnected(false);
+        return;
+      }
+      clearDisconnectTimer();
+      disconnectTimer.current = setTimeout(() => {
+        disconnectTimer.current = null;
+        if (!stopped) setConnected(false);
+      }, disconnectGraceMs);
+    };
 
     async function connect(sinceId: string) {
       abortRef.current?.abort();
@@ -70,7 +109,7 @@ export function useSse(
           throw new Error(`SSE connect failed: ${res.status}`);
         }
 
-        setConnected(true);
+        markConnected();
 
         const reader  = res.body.getReader();
         const decoder = new TextDecoder();
@@ -112,12 +151,12 @@ export function useSse(
         if ((err as Error).name === 'AbortError') return; // intentional close
         // Network error — schedule reconnect
       } finally {
-        setConnected(false);
+        if (!stopped) scheduleDisconnected();
       }
 
       if (!stopped) {
         // Server streams close after MAX_EXECUTION_SECONDS — reconnect quickly.
-        retryTimer = setTimeout(() => connect(lastEventId.current), 250);
+        retryTimer = setTimeout(() => connect(lastEventId.current), reconnectDelay);
       }
     }
 
@@ -126,11 +165,13 @@ export function useSse(
     return () => {
       stopped = true;
       if (retryTimer) clearTimeout(retryTimer);
+      clearDisconnectTimer();
       abortRef.current?.abort();
+      setConnected(false);
     };
   // path and reconnectDelay are stable; enabled changes intentionally restart the connection
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, reconnectDelay, enabled]);
+  }, [path, reconnectDelay, enabled, disconnectGraceMs]);
 
   return { connected };
 }
