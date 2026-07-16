@@ -67,6 +67,7 @@ export type MenuItem = {
   combo_discount_pct?: number | null;
   combo_items?: ComboItemEntry[];
   tax_rate?: number | null;
+  tax_code?: string | null;
   special?: ItemSpecialPricing;
   // Review aggregates (public API only)
   avg_rating?: number | null;
@@ -90,12 +91,12 @@ export type CartItem = {
   image_url?: string | null;
   variant_id?: number | null;
   variant_name?: string | null;
-  // Snapshot of the item's tax_rate (percentage) at the time it was added
-  // to the cart. The backend taxes per-item using this same field, so the
-  // POS uses it to compute and DISPLAY tax client-side before the order
-  // hits the server — without it, the Charge button shows the subtotal
-  // and the cashier ends up under-collecting from the customer.
+  // Legacy percent snapshot — backend GST math prefers tax_code +
+  // current settings rate (see GstTaxCalculator). Kept for display
+  // fallbacks on very old lines.
   tax_rate?: number | null;
+  /** GST tax code snapshot (standard_8 / zero_rated / exempt / out_of_scope). */
+  tax_code?: string | null;
   // Per-line kitchen notes the cashier attached from the POS chip
   // picker (e.g. ["No salt", "Extra spicy"]). Two cart lines with
   // the same item but different notes are kept separate (see

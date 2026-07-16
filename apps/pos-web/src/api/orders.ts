@@ -200,10 +200,9 @@ export async function getOrder(orderId: number): Promise<{
       variant_name?: string | null;
       unit_price: number;
       quantity: number;
-      /** Per-item tax_rate snapshot stored at order-create time. The POS
-       *  reuses this when resuming a held ticket so the cart still shows
-       *  the correct GST line. */
+      /** Legacy percent snapshot — POS GST math prefers tax_code. */
       tax_rate?: number | string | null;
+      tax_code?: string | null;
       /** Free-form kitchen note (e.g. "No salt · Extra spicy"). The
        *  POS joins selected quick-note chips with " · " before saving;
        *  on resume we split back on " · " so the chip picker shows

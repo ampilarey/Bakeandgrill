@@ -17,15 +17,37 @@ export function cartSubtotalFromLines(items: PosCartLine[]): number {
   return items.reduce((sum, item) => sum + lineUnitPrice(item) * item.quantity, 0);
 }
 
+/**
+ * Mirror backend GstTaxCalculator::resolveTaxRatePercent.
+ * Standard-rated lines use the settings default (e.g. 8%), never a
+ * corrupt legacy tax_rate like 100 that inflated the GST line.
+ */
 export function effectiveLineTaxRatePercent(
   item: PosCartLine,
   defaultTaxRatePercent: number,
 ): number {
-  const code = item.tax_code;
-  if (code === "zero_rated" || code === "exempt" || code === "out_of_scope") return 0;
+  const code = (item.tax_code ?? "").trim();
+  if (code === "zero_rated" || code === "exempt" || code === "out_of_scope") {
+    return 0;
+  }
+  if (code === "standard_8" || code === "standard") {
+    return defaultTaxRatePercent;
+  }
+
   const rate = Number(item.tax_rate ?? 0);
-  if (Number.isFinite(rate) && rate > 0) return rate;
-  return defaultTaxRatePercent;
+  if (!Number.isFinite(rate) || rate <= 0) {
+    // No code + no rate: treat like a normal taxable POS line.
+    return defaultTaxRatePercent;
+  }
+  // Basis points mistakenly stored in the percent column (800 → 8).
+  if (rate > 100 && rate <= 10000) {
+    return rate / 100;
+  }
+  // Absurd percent (e.g. 100) — Maldives GST is single-digit; use settings.
+  if (rate > 30) {
+    return defaultTaxRatePercent;
+  }
+  return rate;
 }
 
 export function discountedSubtotalMvr(

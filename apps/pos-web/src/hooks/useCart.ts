@@ -9,6 +9,7 @@ import {
   type ServiceChargePublicConfig,
 } from "@shared/utils/serviceCharge";
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from "@shared/utils/effectiveDiscount";
+import { effectiveLineTaxRatePercent } from "../utils/posCartTotals";
 import { fetchPublicSiteSettings, fetchGstBootstrap } from "../api";
 
 export type PaymentRow = {
@@ -134,13 +135,20 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       .catch(() => setDefaultTaxRatePercent(8));
   }, []);
 
-  const effectiveLineTaxRate = useCallback((item: CartItem): number => {
-    const code = (item as { tax_code?: string | null }).tax_code;
-    if (code === "zero_rated" || code === "exempt" || code === "out_of_scope") return 0;
-    const rate = Number(item.tax_rate ?? 0);
-    if (Number.isFinite(rate) && rate > 0) return rate;
-    return defaultTaxRatePercent;
-  }, [defaultTaxRatePercent]);
+  const effectiveLineTaxRate = useCallback(
+    (item: CartItem): number =>
+      effectiveLineTaxRatePercent(
+        {
+          price: item.price,
+          quantity: item.quantity,
+          tax_rate: item.tax_rate ?? undefined,
+          tax_code: item.tax_code ?? null,
+          modifiers: item.modifiers,
+        },
+        defaultTaxRatePercent,
+      ),
+    [defaultTaxRatePercent],
+  );
 
   const backendOrderType = mapPosOrderType(posOrderType);
 
@@ -322,6 +330,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
             variant_id: chosenVariant?.id ?? null,
             variant_name: chosenVariant?.name ?? null,
             tax_rate: Number.isFinite(parsedTaxRate) ? parsedTaxRate : 0,
+            tax_code: item.tax_code ?? "standard_8",
             // Notes default to empty — cashier attaches them per line
             // via the in-cart Note picker. They DO factor into the
             // cart key (see makeCartKey) so changing notes on an

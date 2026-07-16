@@ -526,7 +526,11 @@ export function usePosApp() {
   });
 
   const chargeTotal = useMemo(() => {
-    if (order.resumedOrderId !== null) {
+    // Read-only resume: trust the server total the customer was quoted.
+    // Once the cashier taps "Edit items", live cart math must win —
+    // otherwise CHARGE stays at the old total while GST redraws from
+    // the cart and the two numbers disagree.
+    if (order.resumedOrderId !== null && !order.isEditingActive) {
       return order.resumedOrderTotal ?? cart.cartTotal;
     }
     if (orderType === "Delivery" && deliveryFeeEst > 0) {
@@ -536,6 +540,7 @@ export function usePosApp() {
   }, [
     order.resumedOrderId,
     order.resumedOrderTotal,
+    order.isEditingActive,
     orderType,
     deliveryFeeEst,
     cart.cartTotal,

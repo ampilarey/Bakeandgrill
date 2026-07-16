@@ -973,6 +973,7 @@ export function useOrderCreation(params: Params) {
         price: Number(m.modifier_price ?? 0),
       })) ?? [],
       tax_rate: item.tax_rate != null ? Number(item.tax_rate) : 0,
+      tax_code: item.tax_code ?? (Number(item.tax_rate) > 0 ? "standard_8" : "out_of_scope"),
       notes: typeof item.notes === "string" && item.notes.trim().length > 0
         ? item.notes.split(" · ").map((s) => s.trim()).filter(Boolean)
         : [],

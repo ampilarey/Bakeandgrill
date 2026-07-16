@@ -47,4 +47,25 @@ describe("posCartTotals", () => {
     const tax = cartTaxExclusiveMvr(items, sub, sub, 8);
     expect(tax).toBe(0);
   });
+
+  it("uses settings rate for standard_8 even when legacy tax_rate is corrupt", () => {
+    // Real bug: item "zero" had tax_rate=100 while tax_code=standard_8.
+    // Server charged 8%; POS showed GST 15.24 on an MVR 18 ticket.
+    const items = [
+      { price: 1, quantity: 3, tax_rate: 8, tax_code: "standard_8" },
+      { price: 5, quantity: 3, tax_rate: 100, tax_code: "standard_8" },
+    ];
+    const sub = cartSubtotalFromLines(items);
+    const tax = cartTaxExclusiveMvr(items, sub, sub, 8);
+    expect(sub).toBe(18);
+    expect(tax).toBe(1.44);
+    expect(cartGrandTotalMvr(sub, tax)).toBe(19.44);
+  });
+
+  it("clamps absurd legacy tax_rate without tax_code to settings default", () => {
+    const items = [{ price: 5, quantity: 3, tax_rate: 100 }];
+    const sub = cartSubtotalFromLines(items);
+    const tax = cartTaxExclusiveMvr(items, sub, sub, 8);
+    expect(tax).toBe(1.2);
+  });
 });

@@ -120,6 +120,7 @@ class ItemController extends Controller
                 'image_url' => $item->display_image_url,
                 'base_price' => $item->base_price,
                 'tax_rate' => $item->tax_rate,
+                'tax_code' => $item->tax_code ?? 'standard_8',
                 'is_available' => $item->is_available,
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
@@ -384,6 +385,7 @@ class ItemController extends Controller
                 'image_url' => $item->display_image_url,
                 'base_price' => $item->base_price,
                 'tax_rate' => $item->tax_rate,
+                'tax_code' => $item->tax_code ?? 'standard_8',
                 'is_available' => $item->is_available,
                 'category' => $item->category ? [
                     'id' => $item->category->id,
