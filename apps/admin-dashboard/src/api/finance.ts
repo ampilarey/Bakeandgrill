@@ -922,9 +922,13 @@ export interface PriceHistory {
   unit: string;
   recorded_at: string;
   purchase_id: number | null;
+  purchase_number?: string | null;
 }
 
-export async function getSupplierPriceHistory(supplierId: number, itemId: number): Promise<{ data: PriceHistory[] }> {
+export async function getSupplierPriceHistory(supplierId: number, itemId: number): Promise<{
+  data: PriceHistory[];
+  history: PriceHistory[];
+}> {
   return req(`/suppliers/${supplierId}/price-history/${itemId}`);
 }
 

@@ -151,20 +151,26 @@ class SupplierIntelligenceController extends Controller
 
     public function priceHistory(int $supplierId, int $inventoryItemId): JsonResponse
     {
-        $history = SupplierPriceHistory::where('supplier_id', $supplierId)
+        $history = SupplierPriceHistory::with('purchase:id,purchase_number')
+            ->where('supplier_id', $supplierId)
             ->where('inventory_item_id', $inventoryItemId)
             ->orderBy('recorded_at')
             ->get();
 
+        $rows = $history->map(fn ($h) => [
+            'unit_price' => (float) $h->unit_price,
+            'unit' => $h->unit,
+            'recorded_at' => $h->recorded_at?->toDateString(),
+            'purchase_id' => $h->purchase_id,
+            'purchase_number' => $h->purchase?->purchase_number,
+        ]);
+
         return response()->json([
             'supplier_id' => $supplierId,
             'inventory_item_id' => $inventoryItemId,
-            'history' => $history->map(fn ($h) => [
-                'unit_price' => (float) $h->unit_price,
-                'unit' => $h->unit,
-                'recorded_at' => $h->recorded_at?->toDateString(),
-                'purchase_id' => $h->purchase_id,
-            ]),
+            'history' => $rows,
+            // Admin client historically expected `data`
+            'data' => $rows,
         ]);
     }
 

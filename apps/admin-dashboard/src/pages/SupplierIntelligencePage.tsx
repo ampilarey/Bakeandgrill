@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   getSupplierPerformance, rateSupplier,
   getSupplierRatings, getSupplierPerformanceSingle, refreshSupplierCache,
@@ -167,7 +168,7 @@ export function SupplierIntelligencePage() {
     setPriceLoading(true);
     try {
       const res = await getSupplierPriceHistory(drill.supplierId, item.id);
-      setPriceHistory(res.data ?? []);
+      setPriceHistory(res.data ?? res.history ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setPriceLoading(false); }
   };
@@ -486,7 +487,18 @@ export function SupplierIntelligencePage() {
                             {parseFloat(String(ph.unit_price ?? 0)).toFixed(2)}
                           </td>
                           <td style={{ ...TD, color: '#6B5D4F' }}>{ph.unit}</td>
-                          <td style={{ ...TD, color: '#9C8E7E' }}>{ph.purchase_id ? `#${ph.purchase_id}` : '—'}</td>
+                          <td style={TD}>
+                            {ph.purchase_id ? (
+                              <Link
+                                to={`/purchase-orders?search=${encodeURIComponent(ph.purchase_number || String(ph.purchase_id))}`}
+                                style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
+                              >
+                                {ph.purchase_number || `PO #${ph.purchase_id}`}
+                              </Link>
+                            ) : (
+                              <span style={{ color: '#9C8E7E' }}>—</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
