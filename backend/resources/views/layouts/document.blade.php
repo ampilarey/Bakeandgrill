@@ -363,6 +363,28 @@
         .doc-btn-primary { background: var(--amber); border-color: var(--amber); color: #fff; }
         .doc-btn-primary:hover { background: var(--amber-hover); border-color: var(--amber-hover); }
         .doc-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+        .doc-mistake-cta {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        .doc-mistake-cta__btn {
+            width: 100%;
+            background: var(--surface);
+            color: var(--text);
+            border-color: var(--border);
+        }
+        .doc-mistake-cta__btn:hover {
+            border-color: var(--amber);
+            color: var(--amber-hover, var(--amber));
+        }
+        .doc-mistake-cta__hint {
+            margin: 0.5rem 0 0;
+            font-size: 0.85rem;
+            color: var(--muted);
+            line-height: 1.4;
+        }
         .doc-badge {
             display: inline-block;
             padding: 0.25rem 0.625rem;

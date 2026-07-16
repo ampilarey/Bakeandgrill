@@ -108,14 +108,10 @@
             <a class="doc-btn" href="/order/menu">Order again</a>
         </div>
 
-        <div class="doc-mistake-cta" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border, #e5e7eb); text-align: center;">
-            <a class="doc-btn doc-btn-primary" style="width: 100%;" href="{{ $waLink }}?text={{ rawurlencode($mistakeMsg) }}" target="_blank" rel="noopener">
-                Something wrong with this order?
-            </a>
-            <p class="doc-subtitle" style="margin: 0.5rem 0 0;">
-                Message us on WhatsApp and we’ll fix it.
-            </p>
-        </div>
+        @include('partials.document-mistake-cta', [
+            'waHref' => $waLink.'?text='.rawurlencode($mistakeMsg),
+            'ctaLabel' => 'Something wrong with this order?',
+        ])
     </div>
 </div>
 @endsection
