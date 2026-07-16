@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { RotateCcw, RefreshCw } from 'lucide-react';
 import { fetchPrintJobs, retryPrintJob, type PrintJob } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -134,6 +135,7 @@ export default function PrintJobsPage() {
             <thead>
               <tr>
                 <th style={TH}>ID</th>
+                <th style={TH}>Order</th>
                 <th style={TH}>Type</th>
                 <th style={TH}>Printer</th>
                 <th style={TH}>Status</th>
@@ -148,6 +150,15 @@ export default function PrintJobsPage() {
                 <tr key={job.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
                   <td style={TD}>
                     <span style={{ fontWeight: 600, color: '#1C1408' }}>#{job.id}</span>
+                  </td>
+                  <td style={TD}>
+                    {job.order_id ? (
+                      <Link to={`/orders?order=${job.order_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 13 }}>
+                        Order #{job.order_id}
+                      </Link>
+                    ) : (
+                      <span style={{ color: '#9C8E7E', fontSize: 13 }}>—</span>
+                    )}
                   </td>
                   <td style={TD}>
                     <JobTypeIcon type={job.type} />

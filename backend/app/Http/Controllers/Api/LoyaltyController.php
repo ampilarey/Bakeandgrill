@@ -399,6 +399,7 @@ class LoyaltyController extends Controller
             'id' => $entry->id,
             'delta' => $entry->points,
             'reason' => $entry->notes ?? $entry->type,
+            'order_id' => $entry->order_id,
             'created_at' => $entry->occurred_at?->toIso8601String() ?? $entry->created_at?->toIso8601String(),
         ]);
 

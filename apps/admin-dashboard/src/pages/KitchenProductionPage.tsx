@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '../components/SharedUI';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -159,7 +160,15 @@ export default function KitchenProductionPage() {
                   {handoverRows.map((row, i) => (
                     <tr key={i}>
                       {['batch_no', 'order_number', 'kitchen_handover_status', 'submitted_at', 'pos_received_at'].map((h) => (
-                        <td key={h} style={{ padding: 6, borderBottom: '1px solid #F5F0E8' }}>{String(row[h] ?? '—')}</td>
+                        <td key={h} style={{ padding: 6, borderBottom: '1px solid #F5F0E8' }}>
+                          {h === 'order_number' && row.order_id ? (
+                            <Link to={`/orders?order=${row.order_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                              {String(row.order_number ?? '—')}
+                            </Link>
+                          ) : (
+                            String(row[h] ?? '—')
+                          )}
+                        </td>
                       ))}
                     </tr>
                   ))}
@@ -175,7 +184,9 @@ export default function KitchenProductionPage() {
           {batches.length === 0 ? <p>No batches.</p> : batches.map((b) => (
             <div key={b.id} style={{ padding: '10px 0', borderBottom: '1px solid #EDE4D4' }}>
               <strong>{b.batch_no}</strong> · {b.production_type} · {b.status}
-              {b.order?.order_number ? ` · Order ${b.order.order_number}` : ''}
+              {b.order?.order_number && b.order?.id ? (
+                <> · <Link to={`/orders?order=${b.order.id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>Order {b.order.order_number}</Link></>
+              ) : null}
             </div>
           ))}
         </Card>

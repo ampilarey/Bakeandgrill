@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, ChefHat, ClipboardList, Clock, CreditCard, DollarSign, MessageSquare, Monitor, Package, Printer, Receipt, ShoppingBag, Trash2, TrendingUp, Truck, Users } from 'lucide-react';
 import { playChime } from '../utils/audio';
 import { pushNotification } from '../utils/notifications';
@@ -95,7 +95,7 @@ function OrderCard({ order, now }: { order: Order; now: number }) {
       gap: 6,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: '#1C1408' }}>#{order.order_number}</span>
+        <Link to={`/orders?order=${order.id}`} style={{ fontWeight: 700, fontSize: 13, color: '#D4813A', textDecoration: 'none' }}>#{order.order_number}</Link>
         <span style={{
           fontSize: 11, fontWeight: 700, color, background: bg,
           borderRadius: 20, padding: '2px 9px', textTransform: 'capitalize',
@@ -794,9 +794,12 @@ export function DashboardPage() {
                     padding: '10px 16px', borderBottom: '1px solid #F3EDE4',
                     animation: 'fadeSlideIn 0.25s ease',
                   }}>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', minWidth: 70 }}>
+                    <Link
+                      to={`/orders?order=${ev.id}`}
+                      style={{ fontWeight: 700, fontSize: 13, color: '#D4813A', textDecoration: 'none', minWidth: 70 }}
+                    >
                       #{ev.order_number}
-                    </span>
+                    </Link>
                     <span style={{
                       fontSize: 11, fontWeight: 700,
                       color: STATUS_COLOR[ev.status] ?? '#6B5D4F',

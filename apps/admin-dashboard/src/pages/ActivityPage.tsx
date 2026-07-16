@@ -145,10 +145,10 @@ export default function ActivityPage() {
                     {row.model_type === 'Order' && row.model_id && (
                       <button
                         type="button"
-                        onClick={() => navigate('/orders')}
+                        onClick={() => navigate(`/orders?order=${row.model_id}`)}
                         style={{ marginLeft: 8, fontSize: 11, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
-                        View orders
+                        View order
                       </button>
                     )}
                   </td>

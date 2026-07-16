@@ -527,7 +527,7 @@ export function CustomersPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {(detail.orders ?? []).map((o) => (
                         <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '10px 12px', background: '#FAF7F3', borderRadius: 10, border: '1px solid #F0EAE3' }}>
-                          <span style={{ fontWeight: 700, color: '#1C1408' }}>#{o.order_number}</span>
+                          <Link to={`/orders?order=${o.id}`} style={{ fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>#{o.order_number}</Link>
                           <span style={{ color: '#8B7355', fontSize: 12 }}>{o.type?.replace('_', ' ')}</span>
                           <Badge color={['completed', 'paid'].includes(o.status) ? 'green' : o.status === 'cancelled' ? 'red' : 'gray'}>{o.status}</Badge>
                           <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(o.total)).toFixed(2)}</span>

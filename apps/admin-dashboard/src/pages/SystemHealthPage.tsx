@@ -170,7 +170,7 @@ export function SystemHealthPage() {
                     <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                       <button
                         type="button"
-                        onClick={() => navigate(`/orders?highlight=${o.id}`)}
+                        onClick={() => navigate(`/orders?order=${o.id}`)}
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700, color: '#D4813A', fontFamily: 'inherit' }}
                       >
                         #{o.order_number}

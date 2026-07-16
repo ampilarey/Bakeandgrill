@@ -393,6 +393,7 @@ export async function fetchWasteSummary(params: { from: string; to: string }): P
  */
 export interface PrintJob {
   id: number;
+  order_id: number | null;
   type: string;
   status: 'queued' | 'pending' | 'printed' | 'failed' | string;
   printer_name: string | null;
@@ -406,6 +407,7 @@ export interface PrintJob {
 
 type BackendPrintJobRow = {
   id: number;
+  order_id?: number | null;
   type: string;
   status: string;
   printer?: { name?: string | null } | null;
@@ -421,6 +423,7 @@ type BackendPrintJobRow = {
 function mapPrintJob(row: BackendPrintJobRow): PrintJob {
   return {
     id: row.id,
+    order_id: row.order_id ?? null,
     type: row.type,
     status: row.status as PrintJob['status'],
     printer_name: row.printer?.name ?? row.printer_name ?? null,

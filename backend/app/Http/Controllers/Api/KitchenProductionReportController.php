@@ -44,7 +44,7 @@ class KitchenProductionReportController extends Controller
             ->whereNotNull('b.order_id')
             ->whereNotNull('b.submitted_at')
             ->select([
-                'b.id', 'b.batch_no', 'o.order_number', 'b.submitted_at',
+                'b.id', 'b.batch_no', 'o.id as order_id', 'o.order_number', 'b.submitted_at',
                 'o.kitchen_done_at', 'o.pos_received_at', 'o.kitchen_handover_status',
             ])
             ->orderByDesc('b.submitted_at')

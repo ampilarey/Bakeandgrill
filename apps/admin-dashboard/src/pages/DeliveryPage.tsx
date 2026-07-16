@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchOrders, getDriverSettlementReport, type Order, type DriverSettlementReport, adminRequest } from '../api';
 import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, Spinner, StatCard, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -242,7 +243,11 @@ export function DeliveryPage() {
           <Card style={{ width: '100%', maxWidth: 480 }}>
             <div onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h2 style={{ fontWeight: 800, fontSize: 18 }}>#{selected.order_number}</h2>
+                <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>
+                  <Link to={`/orders?order=${selected.id}`} style={{ color: '#D4813A', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>
+                    #{selected.order_number}
+                  </Link>
+                </h2>
                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9C8E7E' }}>✕</button>
               </div>
               <Badge label={selected.status} color={statColor(selected.status)} />
@@ -307,7 +312,13 @@ function DeliveryCard({
   return (
     <Card style={{ border: urgent ? '2px solid #ef4444' : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-        <span style={{ fontWeight: 800, fontSize: 15, color: '#1C1408' }}>#{order.order_number}</span>
+        <Link
+          to={`/orders?order=${order.id}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{ fontWeight: 800, fontSize: 15, color: '#D4813A', textDecoration: 'none' }}
+        >
+          #{order.order_number}
+        </Link>
         <Badge label={(order.status ?? '').replace(/_/g, ' ')} color={statColor(order.status ?? '')} />
       </div>
       <p style={{ fontSize: 14, color: '#374151', marginBottom: 4 }}>

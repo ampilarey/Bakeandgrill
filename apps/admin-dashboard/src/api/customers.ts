@@ -299,7 +299,7 @@ export async function adjustLoyaltyPoints(
 
 export async function fetchLoyaltyLedger(
   customerId: number
-): Promise<{ data: Array<{ id: number; delta: number; reason: string; created_at: string }> }> {
+): Promise<{ data: Array<{ id: number; delta: number; reason: string; order_id?: number | null; created_at: string }> }> {
   return req(`/admin/loyalty/accounts/${customerId}/ledger`);
 }
 

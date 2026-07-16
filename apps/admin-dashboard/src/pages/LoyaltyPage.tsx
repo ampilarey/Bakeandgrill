@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   fetchLoyaltyAccounts, adjustLoyaltyPoints, fetchLoyaltyLedger,
   fetchLoyaltySettings, updateLoyaltySettings, updateLoyaltyTiers,
@@ -40,7 +41,7 @@ function toDatetimeLocal(value: string | null): string {
 function LedgerModal({ customerId, name, onClose }: {
   customerId: number; name: string; onClose: () => void;
 }) {
-  const [entries, setEntries] = useState<Array<{ id: number; delta: number; reason: string; created_at: string }>>([]);
+  const [entries, setEntries] = useState<Array<{ id: number; delta: number; reason: string; order_id?: number | null; created_at: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [ledgerError, setLedgerError] = useState('');
 
@@ -67,7 +68,17 @@ function LedgerModal({ customerId, name, onClose }: {
             <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F0EBE5' }}>
               <div>
                 <p style={{ fontSize: 14, color: '#1C1408', margin: 0 }}>{e.reason}</p>
-                <p style={{ fontSize: 11, color: '#9C8E7E', margin: '2px 0 0' }}>{new Date(e.created_at).toLocaleString()}</p>
+                <p style={{ fontSize: 11, color: '#9C8E7E', margin: '2px 0 0' }}>
+                  {new Date(e.created_at).toLocaleString()}
+                  {e.order_id ? (
+                    <>
+                      {' · '}
+                      <Link to={`/orders?order=${e.order_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                        Order #{e.order_id}
+                      </Link>
+                    </>
+                  ) : null}
+                </p>
               </div>
               <span style={{ fontWeight: 800, fontSize: 15, color: e.delta >= 0 ? '#22c55e' : '#ef4444' }}>
                 {e.delta >= 0 ? '+' : ''}{e.delta} pts
