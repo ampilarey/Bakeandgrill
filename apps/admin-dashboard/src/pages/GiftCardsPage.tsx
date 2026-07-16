@@ -3,6 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, StatCard, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
 } from '../components/SharedUI';
+import { CustomerSearch } from '../components/CustomerSearch';
 import { fetchGiftCards, issueGiftCard, checkGiftCardBalance, type GiftCard } from '../api';
 import { Gift, Search, Copy, Check } from 'lucide-react';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
@@ -24,7 +25,7 @@ export default function GiftCardsPage() {
   const [issueOpen, setIssueOpen] = useState(false);
   const [printCard, setPrintCard] = useState<PrintCardData | null>(null);
   const [amount, setAmount] = useState('');
-  const [customerId, setCustomerId] = useState('');
+  const [customerId, setCustomerId] = useState<number | null>(null);
   const [expiresAt, setExpiresAt] = useState('');
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState('');
@@ -60,14 +61,10 @@ export default function GiftCardsPage() {
     if (!amount || isNaN(amt) || amt <= 0) { setIssueError('Enter a valid amount.'); return; }
     setIssuing(true); setIssueError('');
     try {
-      const parsedCustomerId = customerId.trim() ? parseInt(customerId, 10) : null;
-      if (customerId.trim() && (isNaN(parsedCustomerId!) || parsedCustomerId! <= 0)) {
-        setIssueError('Customer ID must be a positive number.'); setIssuing(false); return;
-      }
-      const res = await issueGiftCard({ amount: amt, customer_id: parsedCustomerId, expires_at: expiresAt || null });
+      const res = await issueGiftCard({ amount: amt, customer_id: customerId, expires_at: expiresAt || null });
       setIssuedCard(res.gift_card);
       setCopied(false);
-      setAmount(''); setCustomerId(''); setExpiresAt('');
+      setAmount(''); setCustomerId(null); setExpiresAt('');
       void load();
     } catch (e) { setIssueError((e as Error).message); }
     finally { setIssuing(false); }
@@ -92,7 +89,7 @@ export default function GiftCardsPage() {
       {printCard && <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />}
       <PageHeader
         title="Gift Cards"
-        action={<Btn onClick={() => { setIssueOpen(true); setIssuedCard(null); setIssueError(''); }}>+ Issue Gift Card</Btn>}
+        action={<Btn onClick={() => { setIssueOpen(true); setIssuedCard(null); setIssueError(''); setCustomerId(null); }}>+ Issue Gift Card</Btn>}
       />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
@@ -214,8 +211,12 @@ export default function GiftCardsPage() {
                   <Input type="number" min="1" step="0.01" placeholder="50.00" value={amount} onChange={setAmount} />
                 </label>
                 <label>
-                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Customer ID (optional)</span>
-                  <Input type="number" min="1" placeholder="Leave blank for anonymous" value={customerId} onChange={setCustomerId} />
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Customer (optional)</span>
+                  <CustomerSearch
+                    value={customerId}
+                    onChange={(id) => setCustomerId(id)}
+                    placeholder="Search by name or phone… (leave empty for anonymous)"
+                  />
                 </label>
                 <label>
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Expiry date (optional)</span>
