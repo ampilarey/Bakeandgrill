@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, StatCard } from '../components/SharedUI';
 import { Button } from '../components/ui/Button';
@@ -193,7 +194,11 @@ export default function GstPage() {
               <tbody>
                 {taxInvoices.map((inv) => (
                   <tr key={inv.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
-                    <td style={{ padding: '8px 6px', fontWeight: 600 }}>{inv.invoice_number}</td>
+                    <td style={{ padding: '8px 6px', fontWeight: 600 }}>
+                      <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                        {inv.invoice_number}
+                      </Link>
+                    </td>
                     <td style={{ padding: '8px 6px' }}>{inv.customer_tin ?? '—'}</td>
                     <td style={{ padding: '8px 6px' }}>{inv.recipient_name ?? inv.customer?.name ?? '—'}</td>
                     <td style={{ padding: '8px 6px' }}>{inv.issue_date}</td>
@@ -224,7 +229,11 @@ export default function GstPage() {
               <tbody>
                 {creditNotes.map((inv) => (
                   <tr key={inv.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
-                    <td style={{ padding: '8px 6px', fontWeight: 600 }}>{inv.invoice_number}</td>
+                    <td style={{ padding: '8px 6px', fontWeight: 600 }}>
+                      <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                        {inv.invoice_number}
+                      </Link>
+                    </td>
                     <td style={{ padding: '8px 6px' }}>{inv.issue_date}</td>
                     <td style={{ padding: '8px 6px' }}>{mvrFromDecimal(inv.total)}</td>
                     <td style={{ padding: '8px 6px' }}>{inv.credit_note_reason ?? inv.notes ?? '—'}</td>

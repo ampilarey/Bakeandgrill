@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useSse } from '../hooks/useSse';
 import {
   fetchOrders, fetchOrder, resumeOrder, sendOrderBill,
@@ -369,7 +369,14 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               <Row label="Time" value={new Date(order.created_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })} />
               {order.table_number && <Row label="Table" value={order.table_number} />}
               {(order.customer?.name ?? order.customer_name) && (
-                <Row label="Customer" value={(order.customer?.name ?? order.customer_name)!} />
+                <Row
+                  label="Customer"
+                  value={order.customer?.id ? (
+                    <Link to={`/customers?customer=${order.customer.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                      {order.customer.name ?? order.customer_name}
+                    </Link>
+                  ) : (order.customer?.name ?? order.customer_name)!}
+                />
               )}
               {(order.customer?.phone ?? order.customer_phone) && (
                 <Row label="Phone" value={(order.customer?.phone ?? order.customer_phone)!} />
@@ -569,7 +576,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
       <span style={{ color: '#9C8E7E' }}>{label}</span>

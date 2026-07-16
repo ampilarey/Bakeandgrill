@@ -15,7 +15,7 @@ class PrintJobController extends Controller
     {
         $status = $request->query('status');
 
-        $query = PrintJob::with('printer')->orderByDesc('created_at');
+        $query = PrintJob::with(['printer', 'order:id,order_number'])->orderByDesc('created_at');
         if ($status) {
             $query->where('status', $status);
         }
@@ -40,6 +40,6 @@ class PrintJobController extends Controller
             ]);
         }
 
-        return response()->json(['job' => $job->fresh()]);
+        return response()->json(['job' => $job->fresh(['printer', 'order:id,order_number'])]);
     }
 }

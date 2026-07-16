@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   fetchCustomerCredit,
   updateCustomerCredit,
@@ -260,7 +261,9 @@ export function CustomerCreditSection({ customerId }: Props) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {openInvoices.map((inv) => (
                   <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #F0EAE3', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700 }}>{inv.invoice_number}</span>
+                    <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>
+                      {inv.invoice_number}
+                    </Link>
                     <span style={{ color: isOverdue(inv.due_date) ? '#B45309' : '#6B5D4F' }}>
                       Due {formatDueDate(inv.due_date)}
                     </span>

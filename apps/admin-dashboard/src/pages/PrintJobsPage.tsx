@@ -154,7 +154,7 @@ export default function PrintJobsPage() {
                   <td style={TD}>
                     {job.order_id ? (
                       <Link to={`/orders?order=${job.order_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 13 }}>
-                        Order #{job.order_id}
+                        #{job.order_number ?? job.order_id}
                       </Link>
                     ) : (
                       <span style={{ color: '#9C8E7E', fontSize: 13 }}>—</span>

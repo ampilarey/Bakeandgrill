@@ -13,6 +13,24 @@ import {
 import { downloadCSV } from '../utils/csvExport';
 import { today } from '../utils/dateHelpers';
 
+function auditRecordPath(modelType: string, modelId: number | null | undefined): string | null {
+  if (!modelId) return null;
+  switch (modelType) {
+    case 'Order':
+      return `/orders?order=${modelId}`;
+    case 'Invoice':
+      return `/invoices?invoice=${modelId}`;
+    case 'Expense':
+      return `/expenses?expense=${modelId}`;
+    case 'Purchase':
+      return `/purchase-orders?search=${modelId}`;
+    case 'Customer':
+      return `/customers?customer=${modelId}`;
+    default:
+      return null;
+  }
+}
+
 export default function ActivityPage() {
   usePageTitle('POS Activity');
   const navigate = useNavigate();
@@ -142,15 +160,19 @@ export default function ActivityPage() {
                   <td style={{ ...TD, fontWeight: 600 }}>{formatAuditAction(row.action)}</td>
                   <td style={TD}>
                     {row.model_type} #{row.model_id ?? '—'}
-                    {row.model_type === 'Order' && row.model_id && (
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/orders?order=${row.model_id}`)}
-                        style={{ marginLeft: 8, fontSize: 11, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
-                        View order
-                      </button>
-                    )}
+                    {(() => {
+                      const path = auditRecordPath(row.model_type, row.model_id);
+                      if (!path) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => navigate(path)}
+                          style={{ marginLeft: 8, fontSize: 11, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                          View
+                        </button>
+                      );
+                    })()}
                   </td>
                   <td style={{ ...TD, fontSize: 11, color: '#6B5D4F', maxWidth: 280 }}>
                     {detailSnippet(row)}

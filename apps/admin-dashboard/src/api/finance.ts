@@ -53,7 +53,7 @@ export interface CreditNote {
   created_at: string;
 }
 
-export async function getInvoices(params: { type?: string; status?: string; from?: string; to?: string; page?: number; per_page?: number } = {}): Promise<{ data: Invoice[]; meta: { total: number; current_page: number; last_page: number } }> {
+export async function getInvoices(params: { type?: string; status?: string; from?: string; to?: string; page?: number; per_page?: number; search?: string } = {}): Promise<{ data: Invoice[]; meta: { total: number; current_page: number; last_page: number } }> {
   const q = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => v !== undefined && q.set(k, String(v)));
   return req(`/invoices?${q}`);

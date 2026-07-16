@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
+import { getExpenses, getExpense, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
 import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
 import { ADMIN_EXPENSE_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
@@ -101,6 +101,7 @@ export function ExpensesPage() {
   const [search, setSearch]       = useState(() => searchParams.get('search') ?? '');
   const [debouncedSearch, setDebouncedSearch] = useState(() => (searchParams.get('search') ?? '').trim());
   const autoOpenedFor = useRef<string | null>(null);
+  const openedExpenseId = useRef<string | null>(null);
   const [showAdd, setShowAdd]     = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [saving, setSaving]       = useState(false);
@@ -176,6 +177,20 @@ export function ExpensesPage() {
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, setSearchParams]);
+
+  useEffect(() => {
+    const expenseId = searchParams.get('expense');
+    if (!expenseId || openedExpenseId.current === expenseId) return;
+    openedExpenseId.current = expenseId;
+    const id = Number(expenseId);
+    if (!Number.isFinite(id)) return;
+    void getExpense(id)
+      .then((res) => {
+        if (res.expense && !res.expense.is_auto) handleEdit(res.expense);
+      })
+      .catch((e: Error) => setError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -374,7 +389,7 @@ export function ExpensesPage() {
                     <th style={{ ...TH, width: 36 }}>
                       <input type="checkbox" checked={bulkSelected.size === expenses.length && expenses.length > 0} onChange={toggleAllBulk} style={{ cursor: 'pointer' }} />
                     </th>
-                    {['Date', 'Category', 'Description', 'Amount', 'PO', 'Method', 'Status', ''].map((h) => (
+                    {['Number', 'Date', 'Category', 'Description', 'Amount', 'PO', 'Method', 'Status', ''].map((h) => (
                       <th key={h} style={TH}>{h}</th>
                     ))}
                   </tr>
@@ -383,6 +398,9 @@ export function ExpensesPage() {
                   {expenses.map((exp) => (
                     <tr key={exp.id} style={{ background: bulkSelected.has(exp.id) ? '#FEF8F2' : undefined }}>
                       <td style={{ ...TD, width: 36 }}><input type="checkbox" checked={bulkSelected.has(exp.id)} onChange={() => toggleBulk(exp.id)} style={{ cursor: 'pointer' }} /></td>
+                      <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: '#1C1408', whiteSpace: 'nowrap' }}>
+                        {exp.expense_number ?? '—'}
+                      </td>
                       <td style={{ ...TD, whiteSpace: 'nowrap', color: '#9C8E7E' }}>{exp.expense_date}</td>
                       <td style={TD}>{exp.category?.icon} {exp.category?.name}</td>
                       <td style={{ ...TD, color: '#1C1408' }}>

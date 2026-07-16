@@ -390,7 +390,8 @@ class LoyaltyController extends Controller
 
     public function adminLedger(Request $request, int $customerId): JsonResponse
     {
-        $ledger = LoyaltyLedger::where('customer_id', $customerId)
+        $ledger = LoyaltyLedger::with('order:id,order_number')
+            ->where('customer_id', $customerId)
             ->orderByDesc('occurred_at')
             ->paginate(100);
 
@@ -400,6 +401,7 @@ class LoyaltyController extends Controller
             'delta' => $entry->points,
             'reason' => $entry->notes ?? $entry->type,
             'order_id' => $entry->order_id,
+            'order_number' => $entry->order?->order_number,
             'created_at' => $entry->occurred_at?->toIso8601String() ?? $entry->created_at?->toIso8601String(),
         ]);
 

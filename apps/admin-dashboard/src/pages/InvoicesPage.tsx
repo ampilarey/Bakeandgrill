@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  getInvoices, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
+  getInvoices, getInvoice, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
   generateInvoicePdf, pushInvoiceToXero,
   createInvoiceFromOrder, createInvoiceFromPurchase,
   createCreditNote, updateInvoice, createInvoice,
@@ -20,11 +20,16 @@ type LookupSelection = { id: number; label: string };
 
 export function InvoicesPage() {
   usePageTitle('Invoices');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices]     = useState<Invoice[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [typeFilter, setType]       = useState('all');
   const [statusFilter, setStatus]   = useState('all');
+  const [search, setSearch]         = useState(() => searchParams.get('search') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(() => (searchParams.get('search') ?? '').trim());
+  const autoOpenedFor = useRef<string | null>(null);
+  const openedInvoiceId = useRef<string | null>(null);
   const [selected, setSelected]           = useState<Invoice | null>(null);
   const [paying, setPaying]               = useState(false);
   const [payMethod, setPayMethod]         = useState('cash');
@@ -113,26 +118,73 @@ export function InvoicesPage() {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<{ current_page: number; last_page: number; total: number } | null>(null);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('search') ?? '';
+    if (fromUrl === debouncedSearch) return;
+    setSearch(fromUrl);
+    setDebouncedSearch(fromUrl.trim());
+    autoOpenedFor.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    const current = searchParams.get('search') ?? '';
+    if (debouncedSearch === current) return;
+    const next = new URLSearchParams(searchParams);
+    if (debouncedSearch) next.set('search', debouncedSearch);
+    else next.delete('search');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, setSearchParams]);
+
   const load = async () => {
     setLoading(true); setError('');
     try {
       const res = await getInvoices({
         type: typeFilter !== 'all' ? typeFilter : undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined,
+        search: debouncedSearch || undefined,
         page,
         per_page: 50,
       });
-      setInvoices(res.data ?? []);
+      const list = res.data ?? [];
+      setInvoices(list);
       const resMeta = (res as { meta?: typeof meta }).meta;
       setMeta(resMeta ?? null);
+      if (debouncedSearch && autoOpenedFor.current !== debouncedSearch) {
+        const needle = debouncedSearch.toLowerCase();
+        const match = list.find((inv) => inv.invoice_number.toLowerCase() === needle)
+          ?? (list.length === 1 ? list[0] : null);
+        if (match) {
+          setSelected(match);
+          autoOpenedFor.current = debouncedSearch;
+        }
+      }
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
+  // Open a specific invoice by id from ?invoice=
+  useEffect(() => {
+    const invoiceId = searchParams.get('invoice');
+    if (!invoiceId || openedInvoiceId.current === invoiceId) return;
+    openedInvoiceId.current = invoiceId;
+    const id = Number(invoiceId);
+    if (!Number.isFinite(id)) return;
+    void getInvoice(id)
+      .then((res) => { if (res.invoice) setSelected(res.invoice); })
+      .catch((e: Error) => setError(e.message));
+  }, [searchParams]);
+
   // Reset to page 1 whenever filters change so we never land on a
   // page that no longer exists for the new filter combo.
-  useEffect(() => { setPage(1); }, [typeFilter, statusFilter]);
-  useEffect(() => { void load(); }, [typeFilter, statusFilter, page]);
+  useEffect(() => { setPage(1); }, [typeFilter, statusFilter, debouncedSearch]);
+  useEffect(() => { void load(); }, [typeFilter, statusFilter, page, debouncedSearch]);
 
   const handleSent = async (id: number) => {
     try { await markInvoiceSent(id); void load(); }
@@ -314,6 +366,12 @@ export function InvoicesPage() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search invoice #, recipient…"
+          style={{ ...selectStyle, minWidth: 220 }}
+        />
         <select value={typeFilter} onChange={(e) => setType(e.target.value)} style={selectStyle}>
           <option value="all">All Types</option>
           <option value="sale">Sale</option>

@@ -41,7 +41,7 @@ function toDatetimeLocal(value: string | null): string {
 function LedgerModal({ customerId, name, onClose }: {
   customerId: number; name: string; onClose: () => void;
 }) {
-  const [entries, setEntries] = useState<Array<{ id: number; delta: number; reason: string; order_id?: number | null; created_at: string }>>([]);
+  const [entries, setEntries] = useState<Array<{ id: number; delta: number; reason: string; order_id?: number | null; order_number?: string | null; created_at: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [ledgerError, setLedgerError] = useState('');
 
@@ -74,7 +74,7 @@ function LedgerModal({ customerId, name, onClose }: {
                     <>
                       {' · '}
                       <Link to={`/orders?order=${e.order_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
-                        Order #{e.order_id}
+                        Order #{e.order_number ?? e.order_id}
                       </Link>
                     </>
                   ) : null}
@@ -422,7 +422,11 @@ function AccountsPanel() {
             <tbody>
               {accounts.map((a) => (
                 <tr key={a.id}>
-                  <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{a.customer_name ?? '—'}</td>
+                  <td style={{ ...TD, fontWeight: 600 }}>
+                    <Link to={`/customers?customer=${a.customer_id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                      {a.customer_name ?? `Customer #${a.customer_id}`}
+                    </Link>
+                  </td>
                   <td style={{ ...TD, color: '#6B5D4F' }}>{a.customer_phone}</td>
                   <td style={TD}><Badge label={a.tier} color={TIER_COLOR[a.tier] ?? 'gray'} /></td>
                   <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>{a.points_balance.toLocaleString()} pts</td>

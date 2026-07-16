@@ -31,12 +31,16 @@ class PurchaseController extends Controller
         }
 
         if ($request->filled('search')) {
-            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $request->query('search')).'%';
-            $query->where(function ($q) use ($term) {
+            $raw = (string) $request->query('search');
+            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $raw).'%';
+            $query->where(function ($q) use ($term, $raw) {
                 $q->where('purchase_number', 'like', $term)
                     ->orWhere('notes', 'like', $term)
                     ->orWhere('supplier_invoice_no', 'like', $term)
                     ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', $term));
+                if (ctype_digit($raw)) {
+                    $q->orWhere('id', (int) $raw);
+                }
             });
         }
 

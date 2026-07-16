@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchKdsOrders } from '../api';
 import type { KdsTicket } from '../api';
 import { fetchMenuGroups, fetchAdminItems } from '../api/menu';
@@ -287,7 +288,7 @@ function TicketHeader({
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
-          <span style={{ fontWeight: 800, fontSize: 16, color: '#1C1408' }}>#{ticket.order_number}</span>
+          <Link to={`/orders?order=${ticket.id}`} style={{ fontWeight: 800, fontSize: 16, color: '#D4813A', textDecoration: 'none' }}>#{ticket.order_number}</Link>
           {overdue && (
             <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#FEE2E2', padding: '2px 6px', borderRadius: 999 }}>
               OVERDUE

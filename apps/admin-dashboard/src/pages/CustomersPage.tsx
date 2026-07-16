@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   fetchAdminCustomers, getAdminCustomer, updateAdminCustomer, deleteAdminCustomer,
   changeAdminCustomerPhone, mergeAdminCustomers,
@@ -26,6 +26,8 @@ const TIER_COLOR: Record<string, string> = {
 
 export function CustomersPage() {
   usePageTitle('Customers');
+  const [searchParams] = useSearchParams();
+  const openedCustomerId = useRef<string | null>(null);
 
   const [customers, setCustomers]   = useState<AdminCustomer[]>([]);
   const [meta, setMeta]             = useState({ current_page: 1, last_page: 1, total: 0 });
@@ -124,6 +126,16 @@ export function CustomersPage() {
     } catch (e) { setError((e as Error).message); }
     finally { setDetailLoading(false); }
   };
+
+  useEffect(() => {
+    const customerId = searchParams.get('customer');
+    if (!customerId || openedCustomerId.current === customerId) return;
+    openedCustomerId.current = customerId;
+    const id = Number(customerId);
+    if (!Number.isFinite(id)) return;
+    void openDetail({ id } as AdminCustomer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const closeDetail = () => {
     setSelected(null);

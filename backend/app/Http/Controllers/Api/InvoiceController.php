@@ -62,6 +62,18 @@ class InvoiceController extends Controller
         if ($request->filled('to')) {
             $query->whereDate('issue_date', '<=', $request->query('to'));
         }
+        if ($request->filled('search')) {
+            $raw = (string) $request->query('search');
+            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $raw).'%';
+            $query->where(function ($q) use ($term, $raw) {
+                $q->where('invoice_number', 'like', $term)
+                    ->orWhere('recipient_name', 'like', $term)
+                    ->orWhere('recipient_phone', 'like', $term);
+                if (ctype_digit($raw)) {
+                    $q->orWhere('id', (int) $raw);
+                }
+            });
+        }
 
         $paginator = $query->paginate(20);
 

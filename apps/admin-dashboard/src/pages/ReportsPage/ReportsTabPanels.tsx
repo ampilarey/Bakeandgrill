@@ -1,9 +1,22 @@
+import { Link } from 'react-router-dom';
 import { Card, StatCard } from '../../components/Layout';
 import { paymentMethodLabel } from '../../lib/paymentMethods';
 import {
   BarCell, DISCOUNT_TYPE_LABELS, mvr, ORDER_TYPE_LABELS, PaymentCommissionBlock,
   pct, S, today, type ReportData, type Tab,
 } from './reportsShared';
+
+function auditTargetPath(modelType: string, modelId: number | null | undefined): string | null {
+  if (!modelId) return null;
+  switch (modelType) {
+    case 'Order': return `/orders?order=${modelId}`;
+    case 'Invoice': return `/invoices?invoice=${modelId}`;
+    case 'Expense': return `/expenses?expense=${modelId}`;
+    case 'Purchase': return `/purchase-orders?search=${modelId}`;
+    case 'Customer': return `/customers?customer=${modelId}`;
+    default: return null;
+  }
+}
 
 type ReportsTabPanelsProps = {
   tab: Tab;
@@ -367,7 +380,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 <tbody>
                   {supplier.invoices.map(inv => (
                     <tr key={inv.id}>
-                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>{inv.invoice_number}</td>
+                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>
+                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                          {inv.invoice_number}
+                        </Link>
+                      </td>
                       <td style={S.td}>{mvr(inv.amount)}</td>
                       <td style={{ ...S.td, color: inv.due_date && inv.due_date < today() ? '#ef4444' : '#6B5D4F' }}>
                         {inv.due_date ?? '—'}
@@ -407,7 +424,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 <tbody>
                   {customer.invoices.map(inv => (
                     <tr key={inv.id}>
-                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>{inv.invoice_number}</td>
+                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>
+                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                          {inv.invoice_number}
+                        </Link>
+                      </td>
                       <td style={S.td}>{mvr(inv.amount)}</td>
                       <td style={{ ...S.td, color: inv.due_date && inv.due_date < today() ? '#ef4444' : '#6B5D4F' }}>
                         {inv.due_date ?? '—'}
@@ -690,7 +711,17 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{new Date(row.created_at).toLocaleString()}</td>
                     <td style={S.td}>{row.user_name}</td>
                     <td style={S.td}>{row.action}</td>
-                    <td style={{ ...S.td, color: '#6B5D4F' }}>{row.model_type} #{row.model_id ?? '—'}</td>
+                    <td style={{ ...S.td, color: '#6B5D4F' }}>
+                      {(() => {
+                        const path = auditTargetPath(row.model_type, row.model_id);
+                        if (!path) return <>{row.model_type} #{row.model_id ?? '—'}</>;
+                        return (
+                          <Link to={path} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                            {row.model_type} #{row.model_id}
+                          </Link>
+                        );
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
