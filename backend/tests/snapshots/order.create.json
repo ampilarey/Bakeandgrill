@@ -45,6 +45,8 @@
         "service_charge_applied_to": null,
         "packaging_fee_laar": 0,
         "small_order_fee_laar": 0,
+        "delivery_fee_laar": 0,
+        "delivery_fee": "0.00",
         "total_laar": 2376,
         "items": [
             {

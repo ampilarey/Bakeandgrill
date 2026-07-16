@@ -157,8 +157,11 @@ class OrderTotalsCalculator
      */
     public function lineItemsSubtotalLaar(Order $order): int
     {
-        $order->unsetRelation('items');
-        $order->load('items');
+        // Prefer already-loaded / setRelation items (preview + unit tests).
+        // Only hit the DB when the relation was never loaded.
+        if (! $order->relationLoaded('items')) {
+            $order->load('items');
+        }
 
         $totalLaar = 0;
         foreach ($order->items as $item) {

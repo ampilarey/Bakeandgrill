@@ -54,7 +54,6 @@ export function ProfitLossPage() {
         {[7, 30, 90].map((d) => (
           <Btn key={d} small variant="secondary" onClick={() => { setFrom(daysAgo(d)); setTo(today()); }}>{d}d</Btn>
         ))}
-        <Btn small onClick={load}>Apply</Btn>
       </div>
 
       {loading ? <Spinner /> : (

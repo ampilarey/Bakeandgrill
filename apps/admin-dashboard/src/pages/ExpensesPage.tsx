@@ -362,7 +362,6 @@ export function ExpensesPage() {
             fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none',
           }}
         />
-        <Btn variant="secondary" onClick={load}>Apply</Btn>
         {debouncedSearch && (
           <span style={{ fontSize: 12, color: '#9C8E7E' }}>Date range paused while searching</span>
         )}

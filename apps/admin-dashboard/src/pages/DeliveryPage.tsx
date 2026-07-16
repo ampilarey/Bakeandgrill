@@ -182,9 +182,9 @@ export function DeliveryPage() {
               <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>To</span>
               <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8' }} />
             </label>
-            <Btn onClick={() => void loadSettlement()} variant="secondary" disabled={settlementLoading}>
-              {settlementLoading ? 'Loading…' : 'Apply'}
-            </Btn>
+            {settlementLoading && (
+              <span style={{ fontSize: 13, color: '#9C8E7E', paddingBottom: 8 }}>Loading…</span>
+            )}
           </div>
           {settlementLoading && !settlement ? (
             <Spinner />

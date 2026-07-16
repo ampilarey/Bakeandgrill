@@ -478,20 +478,22 @@ class OrderCreationService
             // POS only: deduct stock immediately upon order creation (including offline sync).
             // Online orders are handled via reserveForOrder() after the full loop.
             if (!$isOnlineOrder) {
-                if ($variant && $variant->track_stock) {
+                // Prepared/variant stock columns are whole units; order qty is float for kg lines.
+                $stockQty = max(0, (int) round($quantity));
+                if ($stockQty > 0 && $variant && $variant->track_stock) {
                     $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductVariantStock(
                         $lockedVariant ?? $variant,
-                        $quantity,
+                        $stockQty,
                         $key,
                         $order->id,
                         $user?->id,
                     );
-                } elseif ($itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
+                } elseif ($stockQty > 0 && $itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
                     $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductPreparedStock(
                         $lockedItem,
-                        $quantity,
+                        $stockQty,
                         $key,
                         $order->id,
                         $user?->id,

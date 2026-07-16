@@ -7,6 +7,7 @@
         "image_url": null,
         "base_price": "30.00",
         "tax_rate": "0.00",
+        "tax_code": "standard_8",
         "is_available": true,
         "category": {
             "id": "__VOLATILE__",

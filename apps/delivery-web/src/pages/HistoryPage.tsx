@@ -8,12 +8,14 @@ export default function HistoryPage() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [date, setDate] = useState('');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
 
   const load = useCallback(async (p = 1, d = '') => {
     setLoading(true);
+    setError('');
     try {
       const [histRes, statsRes] = await Promise.all([
         api.getHistory(p, d || undefined),
@@ -23,8 +25,11 @@ export default function HistoryPage() {
       setLastPage(histRes.meta.last_page);
       setPage(histRes.meta.current_page);
       setStats(statsRes.stats);
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load history.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void load(1, date); }, [load, date]);
@@ -43,6 +48,16 @@ export default function HistoryPage() {
 
       <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {stats && <EarningsCard stats={stats} />}
+
+        {error && (
+          <div style={{
+            background: 'var(--color-error-bg)', border: '1px solid rgba(220,38,38,0.2)',
+            borderRadius: 'var(--radius-lg)', padding: '12px 14px',
+            color: 'var(--color-error)', fontSize: '0.875rem', fontWeight: 600,
+          }}>
+            {error}
+          </div>
+        )}
 
         {/* Date filter */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -73,7 +88,7 @@ export default function HistoryPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 90 }} />)}
           </div>
-        ) : deliveries.length === 0 ? (
+        ) : error ? null : deliveries.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
             <div style={{ fontSize: '2.5rem', marginBottom: 10, opacity: 0.4 }}>📋</div>
             <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>No deliveries yet</p>
