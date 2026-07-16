@@ -29,11 +29,15 @@ export async function fetchGstBootstrap(): Promise<GstBootstrap> {
   }
 }
 
-/** Server-side delivery fee preview — matches DeliveryFeeCalculator. */
+/**
+ * Server-side delivery fee preview — matches DeliveryFeeCalculator.
+ * Returns null when the API is unreachable so callers can use a local estimate.
+ * fee_mvr === 0 means free delivery (do not treat as failure).
+ */
 export async function previewDeliveryFeeMvr(
   island: string,
   subtotalLaar: number,
-): Promise<number> {
+): Promise<number | null> {
   try {
     const params = new URLSearchParams({
       island: island.trim() || "Male",
@@ -42,8 +46,8 @@ export async function previewDeliveryFeeMvr(
     const data = await request<{ fee_mvr: number }>(
       `/ordering/delivery-fee-preview?${params}`,
     );
-    return Number.isFinite(data.fee_mvr) ? data.fee_mvr : 0;
+    return Number.isFinite(data.fee_mvr) ? data.fee_mvr : null;
   } catch {
-    return 0;
+    return null;
   }
 }

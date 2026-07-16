@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
-import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type KitchenHandoverSettings } from "../api";
+import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, countActiveOrders, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type KitchenHandoverSettings } from "../api";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "../offline/db";
 import { evaluateOfflineGate, type OfflineGateResult } from "../offline/offlineGate";
 import { startSyncEnginePolling } from "../offline/syncEngine";
@@ -303,6 +303,36 @@ export function usePosApp() {
   }, [cart]);
 
   const [deliveryFeeEst, setDeliveryFeeEst] = useState(0);
+  const [deliveryFeeSettings, setDeliveryFeeSettings] = useState<{
+    freeThresholdMvr: number;
+    defaultFeeMvr: number;
+    zoneFeesMvr: Record<string, number>;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicSiteSettings()
+      .then((settings) => {
+        if (cancelled) return;
+        let zoneFeesMvr: Record<string, number> = {};
+        try {
+          const raw = settings.delivery_zone_fees;
+          if (raw) {
+            const parsed = JSON.parse(raw) as Record<string, number>;
+            if (parsed && typeof parsed === "object") zoneFeesMvr = parsed;
+          }
+        } catch { /* keep empty — estimate uses defaults */ }
+        const free = parseFloat(settings.delivery_free_threshold ?? "");
+        const def = parseFloat(settings.delivery_default_fee ?? "");
+        setDeliveryFeeSettings({
+          freeThresholdMvr: Number.isFinite(free) && free > 0 ? free : 200,
+          defaultFeeMvr: Number.isFinite(def) && def >= 0 ? def : 30,
+          zoneFeesMvr,
+        });
+      })
+      .catch(() => { /* estimate keeps built-in defaults */ });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (orderType !== "Delivery") {
@@ -310,20 +340,19 @@ export function usePosApp() {
       return;
     }
     let cancelled = false;
-    const subtotalLaar = Math.round(cart.cartSubtotal * 100);
+    // Free-delivery threshold uses discounted merchandise (matches OrderTotalsCalculator).
+    const feeBaseMvr = cart.discountedSubtotal;
+    const feeBaseLaar = Math.round(feeBaseMvr * 100);
     const island = deliveryDetails.island.trim() || "Male";
-    const fallback = estimateDeliveryFeeMvr(island, cart.cartSubtotal);
+    const fallback = estimateDeliveryFeeMvr(island, feeBaseMvr, deliveryFeeSettings ?? undefined);
 
-    void previewDeliveryFeeMvr(island, subtotalLaar).then((fee) => {
-      if (!cancelled) {
-        setDeliveryFeeEst(fee > 0 ? fee : fallback);
-      }
-    }).catch(() => {
-      if (!cancelled) setDeliveryFeeEst(fallback);
+    void previewDeliveryFeeMvr(island, feeBaseLaar).then((fee) => {
+      // null = API failed; 0 = free delivery (valid).
+      if (!cancelled) setDeliveryFeeEst(fee ?? fallback);
     });
 
     return () => { cancelled = true; };
-  }, [orderType, deliveryDetails.island, cart.cartSubtotal]);
+  }, [orderType, deliveryDetails.island, cart.discountedSubtotal, deliveryFeeSettings]);
 
   const ops  = useOps(isLoggedIn, pane === "ops" ? "ops" : "pos");
 

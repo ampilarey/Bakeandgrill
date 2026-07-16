@@ -83,6 +83,16 @@ class GstModuleTest extends TestCase
         $this->assertSame(0, $taxLaar);
     }
 
+    public function test_empty_tax_code_defaults_to_standard_rated(): void
+    {
+        $calc = app(GstTaxCalculator::class);
+
+        $this->assertSame(GstTaxCode::Standard8, $calc->resolveTaxCode(null));
+        $this->assertSame(GstTaxCode::Standard8, $calc->resolveTaxCode(''));
+        $this->assertSame(800, $calc->calculateLineTaxLaar(10000, null, false));
+        $this->assertSame(800, $calc->calculateLineTaxLaar(10000, '', false));
+    }
+
     public function test_paid_order_posts_output_ledger_entry(): void
     {
         $category = Category::create(['name' => 'GST Food', 'slug' => 'gst-food', 'is_active' => true]);

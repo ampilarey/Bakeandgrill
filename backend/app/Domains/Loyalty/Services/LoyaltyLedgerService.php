@@ -7,6 +7,7 @@ namespace App\Domains\Loyalty\Services;
 use App\Domains\Loyalty\Repositories\LoyaltyAccountRepositoryInterface;
 use App\Domains\Loyalty\Repositories\LoyaltyHoldRepositoryInterface;
 use App\Domains\Loyalty\Repositories\LoyaltyLedgerRepositoryInterface;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\Customer;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyHold;
@@ -92,7 +93,12 @@ class LoyaltyLedgerService
 
             $discountLaar = $this->calculator->discountLaarForPoints($pointsToRedeem);
 
-            $maxDiscountLaar = (int) floor((int) ($order->total_laar ?? round((float) $order->total * 100)) * $this->calculator->maxRedeemPercent() / 100);
+            // Cap against merchandise after other discounts (not order total with delivery/fees).
+            $subLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
+            $parts = EffectiveDiscount::partsFromOrder($order);
+            $parts['loyalty'] = 0;
+            $redeemBaseLaar = max(0, $subLaar - EffectiveDiscount::effectiveTotalLaar($subLaar, $parts));
+            $maxDiscountLaar = (int) floor($redeemBaseLaar * $this->calculator->maxRedeemPercent() / 100);
             if ($discountLaar > $maxDiscountLaar) {
                 $discountLaar = $maxDiscountLaar;
                 $pointsToRedeem = $this->calculator->pointsNeededForDiscountLaar($discountLaar);

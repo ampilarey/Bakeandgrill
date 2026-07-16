@@ -47,7 +47,7 @@ class GstLedgerPoster
         }
 
         if (!in_array($order->payment_status, ['paid', 'partially_paid'], true)
-            && !in_array($order->status, ['paid', 'completed', 'partially_refunded'], true)) {
+            && !in_array($order->status, ['paid', 'completed', 'delivered', 'partially_refunded'], true)) {
             return null;
         }
 
@@ -333,14 +333,15 @@ class GstLedgerPoster
 
         $subtotalLaar = (int) ($order->subtotal_laar ?? round((float) $order->subtotal * 100));
         $taxLaar = (int) ($order->tax_laar ?? round((float) $order->tax_amount * 100));
-        $totalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+
+        $parts = EffectiveDiscount::partsFromOrder($order);
+        $taxableLaar = max(0, $subtotalLaar - EffectiveDiscount::effectiveTotalLaar($subtotalLaar, $parts));
+        // GST supply total = taxable merchandise + tax (excludes delivery/packaging/tip).
+        $totalLaar = $taxableLaar + $taxLaar;
 
         if ($totalLaar <= 0) {
             return null;
         }
-
-        $parts = EffectiveDiscount::partsFromOrder($order);
-        $taxableLaar = max(0, $subtotalLaar - EffectiveDiscount::effectiveTotalLaar($subtotalLaar, $parts));
 
         return $this->upsertEntry([
             'period_key' => $this->resolvePeriodKey($date, LedgerSourceType::Order->value, $order->id),

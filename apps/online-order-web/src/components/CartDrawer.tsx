@@ -215,7 +215,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
               <span style={{ color: 'var(--color-primary)', fontSize: '1.05rem' }}>MVR {cartTotal.toFixed(2)}</span>
             </div>
 
-            {/* Free delivery progress bar */}
+            {/* Free delivery progress — cart merchandise only; checkout confirms after discounts */}
             {cartTotal < freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
@@ -229,7 +229,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
             )}
             {cartTotal >= freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600, textAlign: 'center', padding: '0.35rem', background: 'var(--color-success-bg)', borderRadius: 8 }}>
-                🎉 You qualify for free delivery!
+                Over the free-delivery threshold — final fee confirmed at checkout
               </div>
             )}
 

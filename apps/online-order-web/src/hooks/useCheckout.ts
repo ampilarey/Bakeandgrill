@@ -411,6 +411,24 @@ export function useCheckout() {
       return;
     }
 
+    const freeThresholdMvr = (() => {
+      const n = parseFloat(String(siteSettings.delivery_free_threshold ?? ''));
+      return Number.isFinite(n) && n > 0 ? n : 200;
+    })();
+    const defaultFeeMvr = (() => {
+      const n = parseFloat(String(siteSettings.delivery_default_fee ?? ''));
+      return Number.isFinite(n) && n >= 0 ? n : 30;
+    })();
+    let zoneFeesMvr: Record<string, number> = {};
+    try {
+      const raw = siteSettings.delivery_zone_fees;
+      if (raw) {
+        const parsed = JSON.parse(String(raw)) as Record<string, number>;
+        if (parsed && typeof parsed === 'object') zoneFeesMvr = parsed;
+      }
+    } catch { /* defaults */ }
+    const estimateOpts = { freeThresholdMvr, defaultFeeMvr, zoneFeesMvr };
+
     let cancelled = false;
     const timer = window.setTimeout(() => {
       fetchDeliveryFeePreview(island, discountedSubtotalLaar)
@@ -418,7 +436,9 @@ export function useCheckout() {
           if (!cancelled) setDeliveryFee(preview.fee_laar);
         })
         .catch(() => {
-          if (!cancelled) setDeliveryFee(estimateDeliveryFeeLaar(island, discountedSubtotalLaar));
+          if (!cancelled) {
+            setDeliveryFee(estimateDeliveryFeeLaar(island, discountedSubtotalLaar, estimateOpts));
+          }
         });
     }, 250);
 
@@ -426,7 +446,7 @@ export function useCheckout() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [orderType, delivery.island, discountedSubtotalLaar]);
+  }, [orderType, delivery.island, discountedSubtotalLaar, siteSettings]);
 
   const backendOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
   const serviceChargePreview = useMemo(

@@ -17,8 +17,10 @@ class GstTaxCalculator
 
     public function resolveTaxCode(?string $taxCode): GstTaxCode
     {
+        // Empty/missing matches POS + online checkout + items.tax_code default:
+        // treat as standard-rated so lines are not silently under-taxed.
         if ($taxCode === null || $taxCode === '') {
-            return GstTaxCode::OutOfScope;
+            return GstTaxCode::Standard8;
         }
 
         return GstTaxCode::tryFrom($taxCode) ?? GstTaxCode::OutOfScope;
