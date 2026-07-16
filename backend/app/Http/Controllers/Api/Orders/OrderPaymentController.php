@@ -304,11 +304,14 @@ class OrderPaymentController extends Controller
                 $fallback,
             );
 
-            // Include total so a resend after the ticket amount changes
-            // is allowed. Same amount + same invoice still dedupes.
-            $idempotencyKey = 'invoice:bill:' . $invoice->id . ':' . (int) round($billTotal * 100);
+            // Debounce only (~45s): cashiers need to resend after edits or
+            // a failed delivery. A 24h same-total lock looked like "SMS
+            // not received" when they tapped Send Bill again.
+            $idempotencyKey = 'invoice:bill:' . $invoice->id
+                . ':' . (int) round($billTotal * 100)
+                . ':' . intdiv(now()->timestamp, 45);
 
-            app(SmsService::class)->send(new SmsMessage(
+            $smsLog = app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
                 message: $message,
                 type: 'transactional',
@@ -322,13 +325,20 @@ class OrderPaymentController extends Controller
                 'status' => 'sent',
             ]);
 
-            app(AuditLogService::class)->log('order.bill_sent', 'Order', $order->id, [], ['phone' => $phone, 'invoice_id' => $invoice->id], [], $request);
+            app(AuditLogService::class)->log('order.bill_sent', 'Order', $order->id, [], [
+                'phone' => $phone,
+                'invoice_id' => $invoice->id,
+                'sms_status' => $smsLog->status,
+                'bill_total' => $billTotal,
+            ], [], $request);
         }
 
         return response()->json([
             'order' => $order->fresh('customer'),
             'invoice' => $invoice->fresh('items'),
             'link' => $link,
+            'sms_status' => isset($smsLog) ? $smsLog->status : null,
+            'bill_total' => round($billTotal, 2),
         ]);
     }
 }
