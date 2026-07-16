@@ -105,7 +105,7 @@
         @endif
 
         <div class="doc-actions">
-            <a class="doc-btn" href="/order/menu">Order again</a>
+            <a class="doc-btn doc-btn-primary" style="flex: 1 1 100%;" href="/order/menu">Order again</a>
         </div>
 
         @include('partials.document-mistake-cta', [
