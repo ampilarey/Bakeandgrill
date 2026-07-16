@@ -413,7 +413,7 @@ class OrderCreationService
             $originalUnitPrice = $pricing->hasDiscount() ? $pricing->originalPrice : null;
             $dailySpecialId = $pricing->dailySpecialId;
 
-            if ($dailySpecialId !== null && !$this->specialPricing->canAllocateSpecialQuantity($dailySpecialId, $quantity, $order->id)) {
+            if ($dailySpecialId !== null && !$this->specialPricing->canAllocateSpecialQuantity($dailySpecialId, (int) ceil($quantity), $order->id)) {
                 $unitPrice = $catalogPrice;
                 $originalUnitPrice = null;
                 $dailySpecialId = null;
