@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, fetchAdminItems, type ItemForecast, type MenuItem } from '../api';
+import { getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, type ItemForecast } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today, daysAgo } from '../utils/dateHelpers';
 
@@ -32,9 +33,7 @@ export function ForecastPage() {
   const [to, setTo]             = useState(today());
 
   // Per-item forecast
-  const [menuItems, setMenuItems]         = useState<MenuItem[]>([]);
-  const [itemSearch, setItemSearch]       = useState('');
-  const [selectedItem, setSelectedItem]   = useState<MenuItem | null>(null);
+  const [selectedItem, setSelectedItem]   = useState<MenuItemSelection | null>(null);
   const [itemForecast, setItemForecast]   = useState<ItemForecast | null>(null);
   const [itemForecastDays, setItemForecastDays] = useState(14);
   const [itemLoading, setItemLoading]     = useState(false);
@@ -60,20 +59,14 @@ export function ForecastPage() {
 
   useEffect(() => { void load(); }, [granularity, from, to]);
 
-  // Load menu items for item-forecast selector
-  useEffect(() => {
-    fetchAdminItems({ per_page: 200 })
-      .then((res) => setMenuItems(res.data ?? []))
-      .catch((e: Error) => setError(e.message || 'Failed to load menu items.'));
-  }, []);
-
-  const handleItemForecast = async (item: MenuItem) => {
-    setSelectedItem(item);
+  const handleItemForecast = async (selection: MenuItemSelection | null) => {
+    setSelectedItem(selection);
     setItemForecast(null);
     setItemError('');
+    if (!selection) return;
     setItemLoading(true);
     try {
-      const res = await getItemForecast({ item_id: item.id, days: itemForecastDays });
+      const res = await getItemForecast({ item_id: selection.id, days: itemForecastDays });
       setItemForecast(res);
     } catch (e) { setItemError((e as Error).message); }
     finally { setItemLoading(false); }
@@ -84,10 +77,6 @@ export function ForecastPage() {
     if (selectedItem) void handleItemForecast(selectedItem);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemForecastDays]);
-
-  const filteredItems = menuItems.filter((i) =>
-    !itemSearch || i.name.toLowerCase().includes(itemSearch.toLowerCase()),
-  );
 
   const maxRevenue = trends ? Math.max(...(trends.data ?? []).map(d => d.revenue), 1) : 1;
 
@@ -189,16 +178,15 @@ export function ForecastPage() {
           <Card>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Per-Item Demand Forecast</div>
             <div style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
-              Select a menu item to see its projected daily demand.
+              Search a menu item to see its projected daily demand.
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
-              <div style={{ position: 'relative', flex: '1 1 240px' }}>
-                <input
-                  type="text"
-                  value={itemSearch}
-                  onChange={(e) => setItemSearch(e.target.value)}
+              <div style={{ flex: '1 1 280px', minWidth: 220 }}>
+                <ItemSearch
+                  kind="menu"
+                  value={selectedItem}
+                  onChange={(v) => void handleItemForecast(v)}
                   placeholder="Search menu items…"
-                  style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -212,27 +200,6 @@ export function ForecastPage() {
                 </select>
               </div>
             </div>
-
-            {/* Item list */}
-            {filteredItems.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                {filteredItems.slice(0, 30).map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => void handleItemForecast(item)}
-                    style={{
-                      padding: '6px 14px', borderRadius: 20, border: '1.5px solid',
-                      borderColor: selectedItem?.id === item.id ? '#D4813A' : '#E8E0D8',
-                      background: selectedItem?.id === item.id ? '#FFF3E8' : '#fff',
-                      color: selectedItem?.id === item.id ? '#D4813A' : '#6B5D4F',
-                      fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-            )}
 
             {itemLoading && <Spinner />}
             {itemError && <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 8 }}>{itemError}</div>}
@@ -270,7 +237,7 @@ export function ForecastPage() {
               </div>
             )}
             {!selectedItem && !itemLoading && (
-              <p style={{ color: '#9C8E7E', fontSize: 13, margin: 0 }}>Choose a menu item above to see its demand forecast.</p>
+              <p style={{ color: '#9C8E7E', fontSize: 13, margin: 0 }}>Search and select a menu item above to see its demand forecast.</p>
             )}
           </Card>
 
