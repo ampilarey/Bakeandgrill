@@ -136,9 +136,8 @@ Route::middleware(['auth:sanctum', 'driver.token'])->group(function (): void {
     Route::post('/driver/location', [App\Http\Controllers\Api\DriverLocationController::class, 'store']);
 });
 
-// ─── Driver Location for customers / staff ──────────────────────────────────
-// Throttled; accessible with customer token, staff token, or driver token
-Route::middleware(['auth:sanctum'])->group(function (): void {
+// ─── Driver Location for customers / staff / assigned driver ────────────────
+Route::middleware(['auth:sanctum', 'staff_customer_or_driver.token'])->group(function (): void {
     Route::get('/driver/deliveries/{order}/location', [App\Http\Controllers\Api\DriverLocationController::class, 'forOrder'])
         ->middleware('throttle:60,1');
 });

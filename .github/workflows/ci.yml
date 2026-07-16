@@ -216,6 +216,9 @@ jobs:
           npx tsc --noEmit -p apps/kds-web/tsconfig.json
           npx tsc --noEmit -p apps/delivery-web/tsconfig.json
 
+      - name: Admin dashboard unit tests
+        run: npm run test --workspace=apps/admin-dashboard -- --run
+
       - name: Build online-order-web
         run: npm run build --workspace=apps/online-order-web
 

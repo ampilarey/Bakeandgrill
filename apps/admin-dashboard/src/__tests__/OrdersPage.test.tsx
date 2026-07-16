@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { OrdersPage } from '../pages/OrdersPage';
+import { renderWithRouter } from './testUtils';
 
 const { heldOrder } = vi.hoisted(() => ({
   heldOrder: {
@@ -19,7 +20,7 @@ vi.mock('../hooks/useSse', () => ({
 
 vi.mock('../hooks/usePermissions', () => ({
   useCurrentUserPermissions: () => ({
-    can: (slug?: string) => slug === 'pos.hold_resume' || slug === 'orders.manage',
+    can: (slug?: string) => slug === 'pos.hold_resume' || slug === 'orders.manage' || slug === 'orders.view',
     user: null,
     loading: false,
   }),
@@ -50,7 +51,7 @@ describe('OrdersPage', () => {
   });
 
   it('removes kitchen execution and hold actions', async () => {
-    render(<OrdersPage />);
+    renderWithRouter(<OrdersPage />);
     await screen.findByText('#ORD-42');
     expect(screen.queryByRole('button', { name: /Start Preparing/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /Mark Ready/i })).toBeNull();
@@ -58,20 +59,20 @@ describe('OrdersPage', () => {
   });
 
   it('shows POS/KDS pointer and Export CSV', async () => {
-    render(<OrdersPage />);
+    renderWithRouter(<OrdersPage />);
     expect(screen.getByText(/Kitchen prep and register actions run on the/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /Export CSV/i })).toBeTruthy();
   });
 
   it('shows Resume for held order in drawer', async () => {
-    render(<OrdersPage />);
+    renderWithRouter(<OrdersPage />);
     await screen.findByText('#ORD-42');
     fireEvent.click(screen.getByRole('button', { name: /View/i }));
     expect(await screen.findByRole('button', { name: /Resume Order/i })).toBeTruthy();
   });
 
   it('shows row quick Resume for held orders', async () => {
-    render(<OrdersPage />);
+    renderWithRouter(<OrdersPage />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /▶ Resume/i })).toBeTruthy();
     });

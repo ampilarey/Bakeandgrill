@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import ShiftsPage from '../pages/ShiftsPage';
+import { renderWithRouter } from './testUtils';
 
 const mockCan = vi.fn((slug: string) => slug === 'shifts.view_all_history');
 
@@ -33,7 +34,7 @@ describe('ShiftsPage', () => {
   });
 
   it('shows oversight tabs only (no My Shift)', async () => {
-    render(<ShiftsPage />);
+    renderWithRouter(<ShiftsPage />);
     expect(screen.getByRole('button', { name: /Live Shifts/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /History/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /My Shift/i })).toBeNull();
@@ -41,18 +42,18 @@ describe('ShiftsPage', () => {
   });
 
   it('keeps Force close on Live Shifts', async () => {
-    render(<ShiftsPage />);
+    renderWithRouter(<ShiftsPage />);
     expect(await screen.findByRole('button', { name: /Force close/i })).toBeTruthy();
   });
 
   it('points staff to the POS for opening shifts', () => {
-    render(<ShiftsPage />);
+    renderWithRouter(<ShiftsPage />);
     expect(screen.getByText(/POS terminal/i)).toBeTruthy();
   });
 
   it('shows guidance when user lacks live-view permission', () => {
     mockCan.mockReturnValue(false);
-    render(<ShiftsPage />);
+    renderWithRouter(<ShiftsPage />);
     expect(screen.queryByRole('button', { name: /Live Shifts/i })).toBeNull();
     expect(screen.getByText(/manager permissions/i)).toBeTruthy();
   });

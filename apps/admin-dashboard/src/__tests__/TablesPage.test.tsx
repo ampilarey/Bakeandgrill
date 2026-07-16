@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import TablesPage from '../pages/TablesPage';
+import { renderWithRouter } from './testUtils';
 
 vi.mock('../api', () => ({
   fetchTables: vi.fn().mockResolvedValue({
@@ -25,7 +26,7 @@ describe('TablesPage', () => {
   });
 
   it('removes floor service actions', async () => {
-    render(<TablesPage />);
+    renderWithRouter(<TablesPage />);
     await screen.findByText('T5');
     expect(screen.queryByRole('button', { name: /^Open$/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Close$/i })).toBeNull();
@@ -34,18 +35,18 @@ describe('TablesPage', () => {
   });
 
   it('keeps table configuration actions', async () => {
-    render(<TablesPage />);
+    renderWithRouter(<TablesPage />);
     expect(screen.getByRole('button', { name: /\+ Add Table/i })).toBeTruthy();
     expect(await screen.findByRole('button', { name: /^Edit$/i })).toBeTruthy();
   });
 
   it('points staff to the POS for table service', () => {
-    render(<TablesPage />);
+    renderWithRouter(<TablesPage />);
     expect(screen.getByText(/POS/i)).toBeTruthy();
   });
 
   it('shows read-only order peek on occupied tables', async () => {
-    render(<TablesPage />);
+    renderWithRouter(<TablesPage />);
     expect(await screen.findByText(/#1005/)).toBeTruthy();
     expect(screen.getByText(/MVR 250\.00/)).toBeTruthy();
   });

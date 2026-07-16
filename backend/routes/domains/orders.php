@@ -133,7 +133,7 @@ if (routes_domain_section_is('orders', 'tables') && !routes_domain_loaded('order
 if (routes_domain_section_is('orders', 'delivery') && !routes_domain_loaded('orders.delivery')) {
     routes_domain_mark_loaded('orders.delivery');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'staff_or_customer.token'])->group(function () {
         Route::post('/orders/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'store']);
         Route::patch('/orders/{order}/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'update']);
     });

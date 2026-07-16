@@ -21,8 +21,8 @@ Route::get('/reservations/availability', [ReservationController::class, 'availab
 Route::post('/reservations', [ReservationController::class, 'store'])
     ->middleware('throttle:10,10');
 
-// Authenticated: list and cancel own reservations
-Route::middleware('auth:sanctum')->group(function () {
+// Authenticated customers: list and cancel own reservations
+Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::get('/reservations', [ReservationController::class, 'index']);
     Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
 });

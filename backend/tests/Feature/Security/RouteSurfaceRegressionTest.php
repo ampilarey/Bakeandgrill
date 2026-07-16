@@ -50,7 +50,10 @@ class RouteSurfaceRegressionTest extends TestCase
     public function test_online_order_routes_exist(): void
     {
         $this->assertRoute('api/customer/orders', 'GET', ['customer.token']);
-        $this->assertRoute('api/orders/{orderId}/pay/bml', 'POST');
+        $this->assertRoute('api/orders/{orderId}/pay/bml', 'POST', ['customer.token']);
+        $this->assertRoute('api/orders/{orderId}/apply-promo', 'POST', ['staff_or_customer.token']);
+        $this->assertRoute('api/orders/delivery', 'POST', ['staff_or_customer.token']);
+        $this->assertRoute('api/reservations', 'GET', ['customer.token']);
     }
 
     public function test_admin_routes_exist(): void

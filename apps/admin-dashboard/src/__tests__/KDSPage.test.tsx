@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { KDSPage } from '../pages/KDSPage';
+import { renderWithRouter } from './testUtils';
 
 vi.mock('../hooks/useSse', () => ({
   useSse: () => ({ connected: true }),
@@ -35,7 +36,7 @@ describe('KDSPage', () => {
   });
 
   it('is read-only — no kitchen execution buttons', async () => {
-    render(<KDSPage />);
+    renderWithRouter(<KDSPage />);
     await screen.findByText('#1001');
     expect(screen.queryByRole('button', { name: /Start Cooking/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /Complete/i })).toBeNull();
@@ -44,13 +45,13 @@ describe('KDSPage', () => {
   });
 
   it('keeps monitor controls', async () => {
-    render(<KDSPage />);
+    renderWithRouter(<KDSPage />);
     expect(screen.getByRole('button', { name: /Refresh/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Fullscreen/i })).toBeTruthy();
   });
 
   it('points kitchen staff to the KDS app', () => {
-    render(<KDSPage />);
+    renderWithRouter(<KDSPage />);
     expect(screen.getByText(/KDS app/i)).toBeTruthy();
     expect(screen.getByText(/\/kds/)).toBeTruthy();
   });

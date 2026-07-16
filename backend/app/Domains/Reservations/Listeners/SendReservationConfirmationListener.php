@@ -36,7 +36,7 @@ class SendReservationConfirmationListener implements ShouldQueue
                 type: 'transactional',
                 customerId: $res->customer_id,
                 referenceType: 'reservation',
-                referenceId: $res->id,
+                referenceId: (string) $res->id,
                 idempotencyKey: "reservation:confirm:{$res->id}",
             ));
         } catch (\Throwable $e) {

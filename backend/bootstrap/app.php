@@ -61,6 +61,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'customer.token' => App\Http\Middleware\EnsureCustomerToken::class,
             'staff.token' => App\Http\Middleware\EnsureStaffToken::class,
             'driver.token' => App\Http\Middleware\EnsureDriverToken::class,
+            'staff_or_customer.token' => App\Http\Middleware\EnsureStaffOrCustomerToken::class,
+            'staff_customer_or_driver.token' => App\Http\Middleware\EnsureStaffCustomerOrDriverToken::class,
         ]);
 
         // API routes must never redirect to a missing `login` named route (422/500).

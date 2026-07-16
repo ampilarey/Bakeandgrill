@@ -41,7 +41,7 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
     //   - Customer token: may only modify their own order (IDOR check)
     //   - Staff token: requires promotions.discounts permission (checked in controller)
     //   - Unauthenticated: rejected by auth:sanctum
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'staff_or_customer.token'])->group(function () {
         Route::post('/orders/{orderId}/apply-promo', [App\Http\Controllers\Api\PromotionController::class, 'applyToOrder']);
         Route::delete('/orders/{orderId}/promo/{promotionId}', [App\Http\Controllers\Api\PromotionController::class, 'removeFromOrder']);
     });

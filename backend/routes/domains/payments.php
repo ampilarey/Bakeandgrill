@@ -15,18 +15,18 @@ Route::post('/payments/bml/webhook', [App\Http\Controllers\Api\BmlWebhookControl
     ->middleware('throttle:60,1');
 
 // Initiate BML payment (customer only)
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::post('/orders/{orderId}/pay/bml', [App\Http\Controllers\Api\PaymentController::class, 'initiateOnline']);
     Route::post('/orders/{orderId}/complete-zero-balance', [App\Http\Controllers\Api\PaymentController::class, 'completeZeroBalance']);
 });
 
-// Partial Online Payment
-Route::middleware('auth:sanctum')->group(function () {
+// Partial Online Payment (customer only)
+Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::post('/payments/online/initiate-partial', [App\Http\Controllers\Api\PaymentController::class, 'initiatePartial']);
 });
 
-// Stripe Payment Gateway
-Route::middleware('auth:sanctum')->group(function () {
+// Stripe Payment Gateway (customer or staff; ownership enforced in controller)
+Route::middleware(['auth:sanctum', 'staff_or_customer.token'])->group(function () {
     Route::post('/stripe/intent', [App\Http\Controllers\Api\StripeController::class, 'createIntent']);
 });
 // Stripe webhook — public, no auth, uses raw body

@@ -31,7 +31,7 @@ describe('PaymentCommissionSettings', () => {
     render(<PaymentCommissionSettings />);
 
     await waitFor(() => {
-      expect(screen.getByText('POS card rate (%)')).toBeTruthy();
+      expect(screen.getByText('POS card / QR rate (%)')).toBeTruthy();
       expect(screen.getByText('Online / BML gateway rate (%)')).toBeTruthy();
       expect(screen.getByDisplayValue('2.5')).toBeTruthy();
       expect(screen.getByDisplayValue('3')).toBeTruthy();
