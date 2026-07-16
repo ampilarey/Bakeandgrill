@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import {
   getSupplierPerformance, rateSupplier,
   getSupplierRatings, getSupplierPerformanceSingle, refreshSupplierCache,
-  getSupplierPriceHistory, getPriceComparison, fetchInventoryItems,
+  getSupplierPriceHistory, getPriceComparison,
   fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
   type SupplierPerf, type SupplierRating, type PriceHistory, type Supplier,
 } from '../api';
 import { Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
+import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
@@ -36,7 +37,7 @@ export function SupplierIntelligencePage() {
   // Drill-down state
   // Global price comparison (not per-supplier)
   const [showCompare, setShowCompare]   = useState(false);
-  const [compareItemId, setCompareItemId] = useState<number | null>(null);
+  const [compareItem, setCompareItem]   = useState<InventoryItemSelection | null>(null);
   const [compareData, setCompareData]   = useState<{ inventory_item_id: number; prices: { supplier_id: number; supplier_name: string; unit_price: number; unit: string; recorded_at: string }[]; cheapest: { supplier_id: number; supplier_name: string; unit_price: number } | null } | null>(null);
   const [compareLoading, setCompareLoading] = useState(false);
 
@@ -46,8 +47,7 @@ export function SupplierIntelligencePage() {
   const [drillLoading, setDrillLoading] = useState(false);
   const [drillRefreshing, setDrillRefreshing] = useState(false);
   // Price history
-  const [invItems, setInvItems]         = useState<{ id: number; name: string }[]>([]);
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [priceItem, setPriceItem]       = useState<InventoryItemSelection | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [priceLoading, setPriceLoading] = useState(false);
 
@@ -119,18 +119,13 @@ export function SupplierIntelligencePage() {
 
   useEffect(() => { void load(); void loadSuppliers(); }, []);
 
-  useEffect(() => {
-    fetchInventoryItems({ page: 1 })
-      .then((res) => setInvItems((res.data ?? []).map((i) => ({ id: i.id, name: i.name }))))
-      .catch((e: Error) => setError(e.message || 'Failed to load inventory items.'));
-  }, []);
-
-  const openCompare = async (itemId: number) => {
-    setCompareItemId(itemId);
+  const openCompare = async (item: InventoryItemSelection | null) => {
+    setCompareItem(item);
     setCompareData(null);
+    if (!item) return;
     setCompareLoading(true);
     try {
-      const res = await getPriceComparison(itemId);
+      const res = await getPriceComparison(item.id);
       setCompareData(res);
     } catch (e) { setError((e as Error).message); }
     finally { setCompareLoading(false); }
@@ -141,15 +136,11 @@ export function SupplierIntelligencePage() {
     setDrillTab('ratings');
     setDrillRatings([]);
     setPriceHistory([]);
-    setSelectedItemId(null);
+    setPriceItem(null);
     setDrillLoading(true);
     try {
-      const [ratingsRes, itemsRes] = await Promise.all([
-        getSupplierRatings(sup.supplier_id),
-        fetchInventoryItems({ page: 1 }),
-      ]);
+      const ratingsRes = await getSupplierRatings(sup.supplier_id);
       setDrillRatings(ratingsRes.data);
-      setInvItems((itemsRes.data ?? []).map((i) => ({ id: i.id, name: i.name })));
     } catch (e) { setError((e as Error).message); }
     finally { setDrillLoading(false); }
   };
@@ -169,12 +160,13 @@ export function SupplierIntelligencePage() {
     finally { setDrillRefreshing(false); }
   };
 
-  const loadPriceHistory = async (itemId: number) => {
-    if (!drill) return;
-    setSelectedItemId(itemId);
+  const loadPriceHistory = async (item: InventoryItemSelection | null) => {
+    setPriceItem(item);
+    setPriceHistory([]);
+    if (!drill || !item) return;
     setPriceLoading(true);
     try {
-      const res = await getSupplierPriceHistory(drill.supplierId, itemId);
+      const res = await getSupplierPriceHistory(drill.supplierId, item.id);
       setPriceHistory(res.data ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setPriceLoading(false); }
@@ -222,7 +214,7 @@ export function SupplierIntelligencePage() {
         subtitle="Ratings, performance and price comparison"
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="secondary" onClick={() => { setShowCompare(true); setCompareItemId(null); setCompareData(null); }}>
+            <Btn variant="secondary" onClick={() => { setShowCompare(true); setCompareItem(null); setCompareData(null); }}>
               ⚖ Price Compare
             </Btn>
             <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
@@ -330,22 +322,18 @@ export function SupplierIntelligencePage() {
 
       {/* Price Comparison Modal */}
       {showCompare && (
-        <Modal title="Price Comparison by Item" onClose={() => setShowCompare(false)} maxWidth={580}>
+        <Modal title="Price Comparison by Item" onClose={() => { setShowCompare(false); setCompareItem(null); setCompareData(null); }} maxWidth={580}>
           <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 14 }}>
-            Select an inventory item to compare prices across all suppliers.
+            Search an inventory item to compare prices across all suppliers.
           </p>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Inventory Item</label>
-            <select
-              value={compareItemId ?? ''}
-              onChange={(e) => { if (e.target.value) void openCompare(Number(e.target.value)); }}
-              style={{ height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none', minWidth: 280, cursor: 'pointer' }}
-            >
-              <option value="">Choose an item…</option>
-              {invItems.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
+            <ItemSearch
+              kind="inventory"
+              value={compareItem}
+              onChange={(v) => void openCompare(v)}
+              placeholder="Search inventory by name or SKU…"
+            />
           </div>
 
           {compareLoading ? <Spinner /> : compareData ? (
@@ -389,19 +377,19 @@ export function SupplierIntelligencePage() {
                 </TableCard>
               )}
             </>
-          ) : !compareItemId ? (
-            <p style={{ color: '#9C8E7E', fontSize: 13 }}>Select an item above to see price comparison.</p>
+          ) : !compareItem ? (
+            <p style={{ color: '#9C8E7E', fontSize: 13 }}>Search and select an item above to see price comparison.</p>
           ) : null}
 
           <ModalActions>
-            <Btn variant="secondary" onClick={() => setShowCompare(false)}>Close</Btn>
+            <Btn variant="secondary" onClick={() => { setShowCompare(false); setCompareItem(null); setCompareData(null); }}>Close</Btn>
           </ModalActions>
         </Modal>
       )}
 
       {/* Drill-down Modal */}
       {drill && (
-        <Modal title={drill.supplierName} onClose={() => setDrill(null)} maxWidth={620}>
+        <Modal title={drill.supplierName} onClose={() => { setDrill(null); setPriceItem(null); setPriceHistory([]); }} maxWidth={620}>
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E8E0D8', marginBottom: 20 }}>
             {(['ratings', 'prices'] as const).map((t) => (
@@ -467,21 +455,17 @@ export function SupplierIntelligencePage() {
             <div>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>
-                  Select inventory item to see price history
+                  Search inventory item to see price history
                 </label>
-                <select
-                  value={selectedItemId ?? ''}
-                  onChange={(e) => { if (e.target.value) void loadPriceHistory(Number(e.target.value)); }}
-                  style={{ height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none', minWidth: 240, cursor: 'pointer' }}
-                >
-                  <option value="">Choose an item…</option>
-                  {invItems.map((item) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </select>
+                <ItemSearch
+                  kind="inventory"
+                  value={priceItem}
+                  onChange={(v) => void loadPriceHistory(v)}
+                  placeholder="Search inventory by name or SKU…"
+                />
               </div>
               {priceLoading ? <Spinner /> : priceHistory.length === 0 ? (
-                <EmptyState message={selectedItemId ? 'No price history for this item from this supplier.' : 'Select an item above.'} />
+                <EmptyState message={priceItem ? 'No price history for this item from this supplier.' : 'Search and select an item above.'} />
               ) : (
                 <TableCard>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
