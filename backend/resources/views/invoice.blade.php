@@ -49,6 +49,14 @@
             $displaySubtotal = $lineSum;
         }
     }
+    // Open / unpaid bills only — paid tax invoices don't need a mistake CTA.
+    $showMistakeCta = ! in_array($invoice->status, ['paid', 'void', 'cancelled'], true);
+    $waLink = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
+    $orderNumber = $invoice->order?->order_number;
+    $mistakeMsg = 'Hi Bake & Grill — I think there\'s a mistake on bill '.$invoice->invoice_number
+        .($orderNumber ? ' (order '.$orderNumber.')' : '')
+        .' for MVR '.number_format($displayTotal, 2)
+        .'. Mistake: ';
 @endphp
 
 @section('title', 'Invoice ' . $invoice->invoice_number . ' — ' . $siteName)
@@ -145,6 +153,17 @@
             <a class="doc-btn doc-btn-primary" href="{{ url('/invoices/' . $invoice->token . '/pdf') }}">Download PDF</a>
             <button type="button" class="doc-btn doc-btn-print">Print</button>
         </div>
+
+        @if ($showMistakeCta)
+            <div class="doc-actions doc-mistake-cta" style="flex-direction: column; align-items: stretch; margin-top: 0.75rem;">
+                <a class="doc-btn" href="{{ $waLink }}?text={{ rawurlencode($mistakeMsg) }}" target="_blank" rel="noopener">
+                    Something wrong with this bill?
+                </a>
+                <p class="doc-subtitle" style="margin: 0.35rem 0 0; text-align: center;">
+                    Message us on WhatsApp and we’ll fix it.
+                </p>
+            </div>
+        @endif
 
         @include('partials.document-print-footer')
     </div>

@@ -38,6 +38,13 @@
     $netTotal = max(0, (float) $order->total - $refundedTotal);
     $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
     $tz = config('app.timezone', 'Indian/Maldives');
+    $waLink = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
+    $receiptRef = $order->order_number ?? ($receipt->token ?? '');
+    $mistakeTotal = $isPaid ? $netTotal : (float) $order->total;
+    $mistakeMsg = 'Hi Bake & Grill — I think there\'s a mistake on '
+        .($isPaid ? 'receipt' : 'bill').' for order '.$receiptRef
+        .' for MVR '.number_format($mistakeTotal, 2)
+        .'. Mistake: ';
 @endphp
 
 @section('title', $siteName . ' — ' . $docTitle . ' ' . ($order->order_number ?? ''))
@@ -156,6 +163,15 @@
                 <a class="doc-btn doc-btn-primary" href="{{ url('/receipts/' . $receipt->token . '/pdf') }}">Download PDF</a>
             @endif
             <button type="button" class="doc-btn doc-btn-print">Print</button>
+        </div>
+
+        <div class="doc-actions doc-mistake-cta" style="flex-direction: column; align-items: stretch; margin-top: 0.75rem;">
+            <a class="doc-btn" href="{{ $waLink }}?text={{ rawurlencode($mistakeMsg) }}" target="_blank" rel="noopener">
+                Something wrong with this {{ $isPaid ? 'receipt' : 'bill' }}?
+            </a>
+            <p class="doc-subtitle" style="margin: 0.35rem 0 0; text-align: center;">
+                Message us on WhatsApp and we’ll fix it.
+            </p>
         </div>
 
         @if ($isPaid)

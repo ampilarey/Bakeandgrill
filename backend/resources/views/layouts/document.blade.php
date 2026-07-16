@@ -419,7 +419,7 @@
             .doc-actions .doc-btn { flex: 1 1 100%; }
         }
         @media print {
-            .doc-header, .doc-footer, .doc-header-links, .doc-actions, .doc-feedback, .doc-alert { display: none !important; }
+            .doc-header, .doc-footer, .doc-header-links, .doc-actions, .doc-mistake-cta, .doc-feedback, .doc-alert { display: none !important; }
             body { background: #fff; }
             .doc-main { max-width: 100% !important; padding: 0; }
             .doc-card {
