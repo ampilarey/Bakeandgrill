@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
@@ -58,7 +59,15 @@ function OrderPeek({ table }: { table: RestaurantTable }) {
   return (
     <div style={{ marginTop: 8, fontSize: 12, color: '#6B5D4F', lineHeight: 1.4 }}>
       {table.current_order_number != null && (
-        <div>Order <strong>#{table.current_order_number}</strong></div>
+        <div>
+          Order{' '}
+          <Link
+            to={`/orders?order=${table.current_order_id}`}
+            style={{ color: '#D4813A', fontWeight: 700, textDecoration: 'none' }}
+          >
+            #{table.current_order_number}
+          </Link>
+        </div>
       )}
       {table.current_order_total != null && (
         <div>MVR {table.current_order_total.toFixed(2)}</div>
@@ -257,10 +266,14 @@ export default function TablesPage() {
                       <div style={{ fontSize: 11, fontWeight: 700, color: textColor, textTransform: 'capitalize' }}>
                         {t.status}
                       </div>
-                      {t.current_order_number != null && (
-                        <div style={{ fontSize: 10, color: '#6B5D4F', textAlign: 'center' }}>
+                      {t.current_order_number != null && t.current_order_id != null && (
+                        <Link
+                          to={`/orders?order=${t.current_order_id}`}
+                          style={{ fontSize: 10, color: '#D4813A', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           #{t.current_order_number}
-                        </div>
+                        </Link>
                       )}
                       <button
                         type="button"

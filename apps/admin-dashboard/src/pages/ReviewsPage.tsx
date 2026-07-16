@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, TableCard, TH, TD, Badge, Btn, Pagination, EmptyState, StatCard,
@@ -126,9 +127,12 @@ export default function ReviewsPage() {
                 <td style={{ ...TD, fontSize: 12 }}>
                   {review.item ? <span style={{ fontWeight: 600, color: '#1C1408' }}>{review.item.name}</span> : null}
                   {review.order ? (
-                    <span style={{ color: '#9C8E7E', display: 'block', marginTop: 2 }}>
+                    <Link
+                      to={`/orders?order=${review.order.id}`}
+                      style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', display: 'block', marginTop: 2, fontSize: 12 }}
+                    >
                       Order #{review.order.order_number}
-                    </span>
+                    </Link>
                   ) : null}
                   {!review.item && !review.order && <span style={{ color: '#9C8E7E' }}>—</span>}
                 </td>

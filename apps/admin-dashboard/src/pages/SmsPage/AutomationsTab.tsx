@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { RotateCcw, Send, AlertTriangle, CheckCircle, Truck, Bell, UserPlus } from 'lucide-react';
 import {
   getSiteSettings, updateSiteSettings,
@@ -178,7 +179,18 @@ export function AutomationsTab() {
                 {logs.map(l => (
                   <tr key={l.id}>
                     <td style={{ ...TD, fontWeight: 600 }}>
-                      {l.order_number ? `#${l.order_number}` : '—'}
+                      {l.order_id && l.order_number ? (
+                        <Link
+                          to={`/orders?order=${l.order_id}`}
+                          style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                        >
+                          #{l.order_number}
+                        </Link>
+                      ) : l.order_number ? (
+                        `#${l.order_number}`
+                      ) : (
+                        '—'
+                      )}
                       {l.order_type && <div style={{ color: '#9C8E7E', fontSize: 11 }}>{l.order_type}</div>}
                     </td>
                     <td style={TD}><Badge label={l.event_type.replace(/_/g, ' ')} color="blue" /></td>
