@@ -281,6 +281,10 @@ class OrderPaymentController extends Controller
                 return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
             }
 
+            // Refresh so SMS amount matches any sync performed above
+            // (order edited after an earlier Send Bill).
+            $invoice->refresh();
+
             $fallback = 'Bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link;
             $message = app(CustomerSmsMessageBuilder::class)->build(
                 CustomerSmsMessageBuilder::SLUG_SEND_BILL,
@@ -292,13 +296,18 @@ class OrderPaymentController extends Controller
                 $fallback,
             );
 
+            // Include total_laar so a resend after the ticket amount
+            // changes is allowed. Same amount + same invoice still
+            // dedupes (accidental double-tap).
+            $idempotencyKey = 'invoice:bill:' . $invoice->id . ':' . (int) $invoice->total_laar;
+
             app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
                 message: $message,
                 type: 'transactional',
                 referenceType: 'invoice',
                 referenceId: (string) $invoice->id,
-                idempotencyKey: 'invoice:bill:' . $invoice->id,
+                idempotencyKey: $idempotencyKey,
             ));
 
             $invoice->update([

@@ -7,12 +7,15 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Device;
+use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\MenuGroup;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Role;
+use App\Models\SmsLog;
 use App\Models\User;
+use App\Domains\Orders\Services\OrderCreationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
@@ -139,5 +142,49 @@ class OrderSendBillTest extends TestCase
         Sanctum::actingAs($this->staffUser, ['staff']);
         $this->postJson("/api/orders/{$this->order->id}/send-bill", ['phone' => '!!!'])
             ->assertStatus(422);
+    }
+
+    public function test_send_bill_after_order_edit_refreshes_invoice_and_allows_new_sms(): void
+    {
+        Sanctum::actingAs($this->staffUser, ['staff']);
+
+        $first = $this->postJson("/api/orders/{$this->order->id}/send-bill", ['phone' => '+9607890123'])
+            ->assertOk();
+        $invoiceId = (int) $first->json('invoice.id');
+        $this->assertSame(50.0, (float) $first->json('invoice.total'));
+
+        $item = Item::where('sku', 'SB-1')->firstOrFail();
+        app(OrderCreationService::class)->replaceOrderItems($this->order->fresh(), [
+            [
+                'item_id' => $item->id,
+                'name' => $item->name,
+                'quantity' => 2,
+            ],
+        ], reprintKitchen: false);
+
+        $this->order->refresh();
+        $newTotal = (float) $this->order->total;
+        $this->assertGreaterThan(50.0, $newTotal, 'edited qty must raise the order total');
+
+        // Saving changes should already have rewritten the open invoice.
+        $invoice = Invoice::with('items')->findOrFail($invoiceId);
+        $this->assertEqualsWithDelta($newTotal, (float) $invoice->total, 0.01);
+        $this->assertSame(1, $invoice->items->count());
+        $this->assertEqualsWithDelta(2.0, (float) $invoice->items->first()->quantity, 0.001);
+
+        $second = $this->postJson("/api/orders/{$this->order->id}/send-bill", ['phone' => '+9607890123'])
+            ->assertOk();
+        $this->assertSame($invoiceId, (int) $second->json('invoice.id'), 'invoice id stays stable');
+        $this->assertEqualsWithDelta($newTotal, (float) $second->json('invoice.total'), 0.01);
+
+        $smsBodies = SmsLog::where('reference_type', 'invoice')
+            ->where('reference_id', (string) $invoiceId)
+            ->orderBy('id')
+            ->pluck('message')
+            ->all();
+
+        $this->assertCount(2, $smsBodies, 'edited total must allow a second bill SMS');
+        $this->assertStringContainsString(number_format((float) $first->json('invoice.total'), 2), $smsBodies[0]);
+        $this->assertStringContainsString(number_format($newTotal, 2), $smsBodies[1]);
     }
 }

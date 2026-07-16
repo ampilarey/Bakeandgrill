@@ -395,6 +395,11 @@ class InvoiceController extends Controller
     /**
      * Create (or return existing) a sale invoice from an order.
      * Reusable internally without wrapping in a JsonResponse.
+     *
+     * If an unpaid draft/sent invoice already exists but the order lines
+     * or totals have changed (POS "Save changes" after Send Bill), the
+     * invoice is rewritten so the public link and a resend SMS match
+     * the current ticket. Paid / tax invoices are never rewritten.
      */
     public function createFromOrderInternal(Order $order, ?User $actor, array $options = []): Invoice
     {
@@ -405,7 +410,11 @@ class InvoiceController extends Controller
 
             $existing = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
             if ($existing) {
-                return $existing;
+                if ($this->shouldSyncSaleInvoiceFromOrder($existing, $order)) {
+                    return $this->syncSaleInvoiceFromOrder($existing, $order);
+                }
+
+                return $existing->loadMissing('items');
             }
 
             $isTaxInvoice = (bool) ($options['is_tax_invoice'] ?? false);
@@ -438,25 +447,140 @@ class InvoiceController extends Controller
                 'issue_date' => now()->toDateString(),
             ]);
 
-            foreach ($order->items as $oi) {
-                $price = (float) ($oi->unit_price ?? $oi->item?->base_price ?? 0);
-                $qty = (float) $oi->quantity;
-                $total = round($price * $qty, 2);
-
-                $inv->items()->create([
-                    'item_id' => $oi->item_id,
-                    'description' => $oi->item?->name ?? 'Item',
-                    'quantity' => $qty,
-                    'unit_price' => $price,
-                    'unit_price_laar' => (int) round($price * 100),
-                    'total' => $total,
-                    'total_laar' => (int) round($total * 100),
-                    'tax_rate_bp' => $order->tax_rate_bp ?? 0,
-                ]);
-            }
+            $this->writeSaleInvoiceItemsFromOrder($inv, $order);
 
             return $inv;
         });
+    }
+
+    /**
+     * Refresh an open (unpaid) sale invoice when the linked order was edited.
+     * No-op when no invoice exists or the invoice is finalised.
+     */
+    public function syncOpenSaleInvoiceFromOrder(Order $order): ?Invoice
+    {
+        return DB::transaction(function () use ($order) {
+            $order->loadMissing(['items.item', 'customer']);
+
+            $existing = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
+            if (!$existing) {
+                return null;
+            }
+
+            if (!$this->shouldSyncSaleInvoiceFromOrder($existing, $order)) {
+                return $existing->loadMissing('items');
+            }
+
+            return $this->syncSaleInvoiceFromOrder($existing, $order);
+        });
+    }
+
+    private function shouldSyncSaleInvoiceFromOrder(Invoice $invoice, Order $order): bool
+    {
+        if ($invoice->type !== 'sale') {
+            return false;
+        }
+        // Never rewrite GST tax invoices or anything already collected against.
+        if ($invoice->is_tax_invoice) {
+            return false;
+        }
+        if (in_array($invoice->status, ['paid', 'void', 'cancelled'], true)) {
+            return false;
+        }
+        if ((int) ($invoice->amount_paid_laar ?? 0) > 0) {
+            return false;
+        }
+        // Credit notes keep a fixed snapshot of the original invoice.
+        if ($invoice->parent_invoice_id) {
+            return false;
+        }
+
+        $orderTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        if ((int) $invoice->total_laar !== $orderTotalLaar) {
+            return true;
+        }
+
+        $order->loadMissing('items');
+        $invoice->loadMissing('items');
+
+        if ($invoice->items->count() !== $order->items->count()) {
+            return true;
+        }
+
+        return $this->saleInvoiceLineTotalsDiffer($invoice, $order);
+    }
+
+    private function saleInvoiceLineTotalsDiffer(Invoice $invoice, Order $order): bool
+    {
+        $orderLines = $order->items
+            ->map(fn ($oi) => [
+                'item_id' => (int) ($oi->item_id ?? 0),
+                'qty' => round((float) $oi->quantity, 3),
+                'unit' => round((float) ($oi->unit_price ?? 0), 2),
+            ])
+            ->sortBy(fn ($r) => $r['item_id'] . ':' . $r['unit'] . ':' . $r['qty'])
+            ->values()
+            ->all();
+
+        $invoiceLines = $invoice->items
+            ->map(fn ($ii) => [
+                'item_id' => (int) ($ii->item_id ?? 0),
+                'qty' => round((float) $ii->quantity, 3),
+                'unit' => round((float) ($ii->unit_price ?? 0), 2),
+            ])
+            ->sortBy(fn ($r) => $r['item_id'] . ':' . $r['unit'] . ':' . $r['qty'])
+            ->values()
+            ->all();
+
+        return $orderLines !== $invoiceLines;
+    }
+
+    private function syncSaleInvoiceFromOrder(Invoice $invoice, Order $order): Invoice
+    {
+        $invoice->update([
+            'customer_id' => $order->customer_id ?? $invoice->customer_id,
+            'recipient_name' => $order->customer?->name ?? $invoice->recipient_name,
+            'recipient_phone' => $order->customer?->phone ?? $invoice->recipient_phone,
+            'recipient_address' => $order->customer?->billing_address ?? $invoice->recipient_address,
+            'subtotal' => $order->subtotal ?? $order->total,
+            'subtotal_laar' => (int) ($order->subtotal_laar ?? round(($order->subtotal ?? $order->total) * 100)),
+            'tax_amount' => $order->tax_amount ?? 0,
+            'tax_laar' => (int) ($order->tax_laar ?? round(($order->tax_amount ?? 0) * 100)),
+            'discount_amount' => $order->discount_amount ?? 0,
+            'discount_laar' => (int) round(($order->discount_amount ?? 0) * 100),
+            'total' => $order->total,
+            'total_laar' => (int) ($order->total_laar ?? round((float) $order->total * 100)),
+            'tax_rate_bp' => $order->tax_rate_bp ?: $invoice->tax_rate_bp,
+        ]);
+
+        $invoice->items()->delete();
+        $this->writeSaleInvoiceItemsFromOrder($invoice, $order);
+
+        return $invoice->fresh('items');
+    }
+
+    private function writeSaleInvoiceItemsFromOrder(Invoice $invoice, Order $order): void
+    {
+        foreach ($order->items as $oi) {
+            $price = (float) ($oi->unit_price ?? $oi->item?->base_price ?? 0);
+            $qty = (float) $oi->quantity;
+            $total = round((float) ($oi->total_price ?? ($price * $qty)), 2);
+            $description = trim((string) ($oi->item_name ?? $oi->item?->name ?? 'Item'));
+            if (!empty($oi->variant_name)) {
+                $description .= ' — ' . $oi->variant_name;
+            }
+
+            $invoice->items()->create([
+                'item_id' => $oi->item_id,
+                'description' => $description,
+                'quantity' => $qty,
+                'unit_price' => $price,
+                'unit_price_laar' => (int) round($price * 100),
+                'total' => $total,
+                'total_laar' => (int) round($total * 100),
+                'tax_rate_bp' => $order->tax_rate_bp ?? 0,
+            ]);
+        }
     }
 
     /**
@@ -480,7 +604,7 @@ class InvoiceController extends Controller
             type: 'transactional',
             referenceType: 'invoice',
             referenceId: (string) $invoice->id,
-            idempotencyKey: 'invoice:send:' . $invoice->id . ':' . $phone,
+            idempotencyKey: 'invoice:send:' . $invoice->id . ':' . $phone . ':' . (int) $invoice->total_laar,
         ));
 
         $invoice->update([

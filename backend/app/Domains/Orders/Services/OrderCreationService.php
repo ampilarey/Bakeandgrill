@@ -301,7 +301,28 @@ class OrderCreationService
 
             $this->addOrderItems($order, $items);
 
-            return $this->calculator->recalculateAndPersist($order);
+            // addOrderItems writes new rows to the DB but leaves the
+            // in-memory relation empty (we cleared it above). Force a
+            // reload before totals — otherwise recalculate sees zero
+            // lines and persists total = 0.
+            $order->unsetRelation('items');
+
+            $recalculated = $this->calculator->recalculateAndPersist($order);
+
+            // Keep any open draft/sent invoice in sync with the edited
+            // ticket so a previously shared /invoices/{token} link and a
+            // later "Send Bill" SMS show the new lines and total.
+            try {
+                app(\App\Http\Controllers\Api\InvoiceController::class)
+                    ->syncOpenSaleInvoiceFromOrder($recalculated);
+            } catch (\Throwable $e) {
+                logger()->warning('replaceOrderItems: invoice sync failed', [
+                    'order_id' => $recalculated->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return $recalculated;
         });
 
         if ($reprintKitchen && !in_array($updated->type, ['online_pickup', 'delivery'], true)) {
