@@ -268,8 +268,20 @@ class OrderPaymentController extends Controller
             $phone = $order->customer?->phone;
         }
 
-        // Idempotent: returns existing invoice if already minted.
+        // Creates or refreshes the unpaid sale invoice from the live order
+        // (createFromOrderInternal re-reads lines under lock so edits stick).
         $invoice = app(InvoiceController::class)->createFromOrderInternal($order, $request->user());
+        $invoice->loadMissing('items');
+        $order->refresh();
+
+        // Prefer the live order total if the invoice row is somehow still
+        // zeroed (corrupt sync from an earlier bug). Never SMS MVR 0.00
+        // when the ticket clearly has a balance.
+        $billTotal = (float) $invoice->total;
+        $orderTotal = (float) $order->total;
+        if ($billTotal <= 0 && $orderTotal > 0) {
+            $billTotal = $orderTotal;
+        }
 
         $link = rtrim(config('app.url'), '/') . '/invoices/' . $invoice->token;
 
@@ -281,25 +293,20 @@ class OrderPaymentController extends Controller
                 return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
             }
 
-            // Refresh so SMS amount matches any sync performed above
-            // (order edited after an earlier Send Bill).
-            $invoice->refresh();
-
-            $fallback = 'Bill #' . $invoice->invoice_number . ' — MVR ' . number_format((float) $invoice->total, 2) . '. View: ' . $link;
+            $fallback = 'Bill #' . $invoice->invoice_number . ' — MVR ' . number_format($billTotal, 2) . '. View: ' . $link;
             $message = app(CustomerSmsMessageBuilder::class)->build(
                 CustomerSmsMessageBuilder::SLUG_SEND_BILL,
                 [
                     'invoice_number' => (string) $invoice->invoice_number,
-                    'total' => number_format((float) $invoice->total, 2),
+                    'total' => number_format($billTotal, 2),
                     'invoice_url' => $link,
                 ],
                 $fallback,
             );
 
-            // Include total_laar so a resend after the ticket amount
-            // changes is allowed. Same amount + same invoice still
-            // dedupes (accidental double-tap).
-            $idempotencyKey = 'invoice:bill:' . $invoice->id . ':' . (int) $invoice->total_laar;
+            // Include total so a resend after the ticket amount changes
+            // is allowed. Same amount + same invoice still dedupes.
+            $idempotencyKey = 'invoice:bill:' . $invoice->id . ':' . (int) round($billTotal * 100);
 
             app(SmsService::class)->send(new SmsMessage(
                 to: $phone,

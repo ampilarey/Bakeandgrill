@@ -404,9 +404,12 @@ class InvoiceController extends Controller
     public function createFromOrderInternal(Order $order, ?User $actor, array $options = []): Invoice
     {
         return DB::transaction(function () use ($order, $actor, $options) {
-            Order::lockForUpdate()->findOrFail($order->id);
-
-            $order->loadMissing(['items.item', 'customer']);
+            // Always re-read the order + lines under lock. Callers often pass
+            // an in-memory model whose `items` relation is stale/empty
+            // (e.g. mid-edit), and loadMissing() will NOT refresh it.
+            $order = Order::with(['items.item', 'customer'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
 
             $existing = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
             if ($existing) {
@@ -460,7 +463,9 @@ class InvoiceController extends Controller
     public function syncOpenSaleInvoiceFromOrder(Order $order): ?Invoice
     {
         return DB::transaction(function () use ($order) {
-            $order->loadMissing(['items.item', 'customer']);
+            $order = Order::with(['items.item', 'customer'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
 
             $existing = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
             if (!$existing) {
@@ -495,12 +500,20 @@ class InvoiceController extends Controller
             return false;
         }
 
+        // Never wipe a good invoice with an empty / zeroed order snapshot.
+        // That was the Send-Bill → edit → SMS "MVR 0.00" regression.
+        if ($order->items->isEmpty()) {
+            return false;
+        }
         $orderTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        if ($orderTotalLaar <= 0 && (int) $invoice->total_laar > 0) {
+            return false;
+        }
+
         if ((int) $invoice->total_laar !== $orderTotalLaar) {
             return true;
         }
 
-        $order->loadMissing('items');
         $invoice->loadMissing('items');
 
         if ($invoice->items->count() !== $order->items->count()) {

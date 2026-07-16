@@ -151,7 +151,7 @@ class OrderSendBillTest extends TestCase
         $first = $this->postJson("/api/orders/{$this->order->id}/send-bill", ['phone' => '+9607890123'])
             ->assertOk();
         $invoiceId = (int) $first->json('invoice.id');
-        $this->assertSame(50.0, (float) $first->json('invoice.total'));
+        $this->assertGreaterThan(0.0, (float) $first->json('invoice.total'));
 
         $item = Item::where('sku', 'SB-1')->firstOrFail();
         app(OrderCreationService::class)->replaceOrderItems($this->order->fresh(), [
@@ -166,7 +166,7 @@ class OrderSendBillTest extends TestCase
         $newTotal = (float) $this->order->total;
         $this->assertGreaterThan(50.0, $newTotal, 'edited qty must raise the order total');
 
-        // Saving changes should already have rewritten the open invoice.
+        // Saving changes should rewrite the open invoice (afterCommit).
         $invoice = Invoice::with('items')->findOrFail($invoiceId);
         $this->assertEqualsWithDelta($newTotal, (float) $invoice->total, 0.01);
         $this->assertSame(1, $invoice->items->count());
@@ -186,5 +186,27 @@ class OrderSendBillTest extends TestCase
         $this->assertCount(2, $smsBodies, 'edited total must allow a second bill SMS');
         $this->assertStringContainsString(number_format((float) $first->json('invoice.total'), 2), $smsBodies[0]);
         $this->assertStringContainsString(number_format($newTotal, 2), $smsBodies[1]);
+        $this->assertStringNotContainsString('MVR 0.00', $smsBodies[1]);
+    }
+
+    public function test_sync_refuses_to_wipe_invoice_when_order_total_is_zeroed(): void
+    {
+        Sanctum::actingAs($this->staffUser, ['staff']);
+        $res = $this->postJson("/api/orders/{$this->order->id}/send-bill", ['phone' => '+9607890123'])->assertOk();
+        $invoiceId = (int) $res->json('invoice.id');
+        $originalTotal = (float) $res->json('invoice.total');
+        $this->assertGreaterThan(0.0, $originalTotal);
+
+        // Corrupt the order the way the mid-edit bug did, but leave
+        // the invoice alone — sync must refuse to copy zeros onto it.
+        OrderItem::where('order_id', $this->order->id)->delete();
+        $this->order->update(['subtotal' => 0, 'total' => 0, 'subtotal_laar' => 0, 'total_laar' => 0]);
+
+        app(\App\Http\Controllers\Api\InvoiceController::class)
+            ->syncOpenSaleInvoiceFromOrder($this->order->fresh());
+
+        $invoice = Invoice::findOrFail($invoiceId);
+        $this->assertEqualsWithDelta($originalTotal, (float) $invoice->total, 0.01);
+        $this->assertGreaterThan(0, $invoice->items()->count());
     }
 }

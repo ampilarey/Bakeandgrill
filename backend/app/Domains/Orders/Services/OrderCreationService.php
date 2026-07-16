@@ -307,28 +307,24 @@ class OrderCreationService
             // lines and persists total = 0.
             $order->unsetRelation('items');
 
-            $recalculated = $this->calculator->recalculateAndPersist($order);
+            return $this->calculator->recalculateAndPersist($order);
+        });
 
-            // Keep any open draft/sent invoice in sync with the edited
-            // ticket so a previously shared /invoices/{token} link and a
-            // later "Send Bill" SMS show the new lines and total.
+        // Sync open invoices + kitchen reprint after commit so both see
+        // the final persisted lines/totals (never a mid-transaction empty
+        // items relation that could rewrite the bill to MVR 0).
+        DB::afterCommit(function () use ($updated, $reprintKitchen): void {
             try {
                 app(\App\Http\Controllers\Api\InvoiceController::class)
-                    ->syncOpenSaleInvoiceFromOrder($recalculated);
+                    ->syncOpenSaleInvoiceFromOrder($updated);
             } catch (\Throwable $e) {
                 logger()->warning('replaceOrderItems: invoice sync failed', [
-                    'order_id' => $recalculated->id,
+                    'order_id' => $updated->id,
                     'error' => $e->getMessage(),
                 ]);
             }
 
-            return $recalculated;
-        });
-
-        if ($reprintKitchen && !in_array($updated->type, ['online_pickup', 'delivery'], true)) {
-            // Reprint outside the transaction so a queue/printer hiccup
-            // doesn't roll back the cashier's edit.
-            DB::afterCommit(function () use ($updated): void {
+            if ($reprintKitchen && !in_array($updated->type, ['online_pickup', 'delivery'], true)) {
                 try {
                     app(PrintJobService::class)
                         ->enqueueKitchen($updated->fresh(['items.modifiers']), 'replaceItems');
@@ -338,8 +334,8 @@ class OrderCreationService
                         'error' => $e->getMessage(),
                     ]);
                 }
-            });
-        }
+            }
+        });
 
         return $updated;
     }

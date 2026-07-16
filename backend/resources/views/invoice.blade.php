@@ -12,6 +12,27 @@
         $invoice->status === 'sent' => 'doc-badge--sent',
         default => 'doc-badge--unpaid',
     };
+    // Open (unpaid) POS bills: always show the live order lines/total.
+    // The invoice row is a snapshot that can lag after "Save changes",
+    // and customers hit the same /invoices/{token} link from SMS.
+    $orderOpen = $invoice->order
+        && !in_array($invoice->order->payment_status, ['paid'], true)
+        && !in_array($invoice->order->status, ['paid', 'completed', 'cancelled', 'refunded', 'partially_refunded'], true);
+    $useOrderSnapshot = $invoice->order
+        && !$invoice->is_tax_invoice
+        && (int) ($invoice->amount_paid_laar ?? 0) === 0
+        && !in_array($invoice->status, ['paid', 'void', 'cancelled'], true)
+        && (
+            $orderOpen
+            || ((float) $invoice->total <= 0 && (float) $invoice->order->total > 0)
+            || $invoice->items->isEmpty()
+        );
+    $displaySubtotal = $useOrderSnapshot ? (float) $invoice->order->subtotal : (float) $invoice->subtotal;
+    $displayTax = $useOrderSnapshot ? (float) ($invoice->order->tax_amount ?? 0) : (float) ($invoice->tax_amount ?? 0);
+    $displayDiscount = $useOrderSnapshot ? (float) ($invoice->order->discount_amount ?? 0) : (float) ($invoice->discount_amount ?? 0);
+    $displayTotal = $useOrderSnapshot ? (float) $invoice->order->total : (float) $invoice->total;
+    $displayItems = $useOrderSnapshot ? $invoice->order->items : $invoice->items;
+    $itemsAreOrderLines = $useOrderSnapshot;
 @endphp
 
 @section('title', 'Invoice ' . $invoice->invoice_number . ' — ' . $siteName)
@@ -61,38 +82,35 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse ($invoice->items as $item)
+                @forelse ($displayItems as $item)
                     <tr>
-                        <td>{{ $item->description ?? $item->name }}</td>
-                        <td class="qty">{{ $item->quantity ?? 1 }}</td>
-                        <td class="amount">MVR {{ number_format((float) ($item->unit_price ?? $item->amount), 2) }}</td>
-                        <td class="amount">MVR {{ number_format((float) ($item->total ?? ($item->unit_price * ($item->quantity ?? 1))), 2) }}</td>
+                        @if ($itemsAreOrderLines)
+                            <td>{{ $item->item_name }}{{ $item->variant_name ? ' — '.$item->variant_name : '' }}</td>
+                            <td class="qty">{{ $item->quantity }}</td>
+                            <td class="amount">MVR {{ number_format((float) $item->unit_price, 2) }}</td>
+                            <td class="amount">MVR {{ number_format((float) $item->total_price, 2) }}</td>
+                        @else
+                            <td>{{ $item->description ?? $item->name }}</td>
+                            <td class="qty">{{ $item->quantity ?? 1 }}</td>
+                            <td class="amount">MVR {{ number_format((float) ($item->unit_price ?? $item->amount), 2) }}</td>
+                            <td class="amount">MVR {{ number_format((float) ($item->total ?? ($item->unit_price * ($item->quantity ?? 1))), 2) }}</td>
+                        @endif
                     </tr>
                 @empty
-                    @if ($invoice->order)
-                        @foreach ($invoice->order->items as $orderItem)
-                            <tr>
-                                <td>{{ $orderItem->item_name }}</td>
-                                <td class="qty">{{ $orderItem->quantity }}</td>
-                                <td class="amount">MVR {{ number_format((float) $orderItem->unit_price, 2) }}</td>
-                                <td class="amount">MVR {{ number_format((float) $orderItem->total_price, 2) }}</td>
-                            </tr>
-                        @endforeach
-                    @endif
                 @endforelse
             </tbody>
         </table>
         </div>
 
         <div class="doc-totals">
-            <p><span>Subtotal</span><span>MVR {{ number_format((float) $invoice->subtotal, 2) }}</span></p>
-            @if ((float) ($invoice->tax_amount ?? 0) > 0)
-                <p><span>Tax</span><span>MVR {{ number_format((float) $invoice->tax_amount, 2) }}</span></p>
+            <p><span>Subtotal</span><span>MVR {{ number_format($displaySubtotal, 2) }}</span></p>
+            @if ($displayTax > 0)
+                <p><span>Tax</span><span>MVR {{ number_format($displayTax, 2) }}</span></p>
             @endif
-            @if ((float) ($invoice->discount_amount ?? 0) > 0)
-                <p><span>Discount</span><span>− MVR {{ number_format((float) $invoice->discount_amount, 2) }}</span></p>
+            @if ($displayDiscount > 0)
+                <p><span>Discount</span><span>− MVR {{ number_format($displayDiscount, 2) }}</span></p>
             @endif
-            <p class="grand"><span>Total</span><span>MVR {{ number_format((float) $invoice->total, 2) }}</span></p>
+            <p class="grand"><span>Total</span><span>MVR {{ number_format($displayTotal, 2) }}</span></p>
             @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
                 <p class="grand" style="color:#92400E;">
                     <span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span>
