@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { Link } from 'react-router-dom';
 import { getExpenses, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
 import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
 import { ADMIN_EXPENSE_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
 import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
+import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const STATUS_COLOR: Record<string, string> = { approved: 'green', pending: 'yellow', rejected: 'red' };
@@ -101,6 +103,7 @@ export function ExpensesPage() {
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const [form, setForm] = useState(emptyForm);
+  const [linkedPurchase, setLinkedPurchase] = useState<PurchaseSearchSelection | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [toast, setToast] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -154,9 +157,16 @@ export function ExpensesPage() {
     }
     setSaving(true);
     try {
-      await storeExpense({ ...form, expense_category_id: catId, amount, ...gstExpensePayload(form) });
+      await storeExpense({
+        ...form,
+        expense_category_id: catId,
+        amount,
+        ...gstExpensePayload(form),
+        purchase_id: linkedPurchase?.id,
+      });
       setShowAdd(false);
       setForm(emptyForm);
+      setLinkedPurchase(null);
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
@@ -269,8 +279,8 @@ export function ExpensesPage() {
         subtitle="Track operating costs and overheads"
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="secondary" onClick={() => downloadCSV('expenses', expenses.map((e) => ({ Date: e.expense_date, Category: e.category?.name ?? '', Description: e.description, 'Amount (MVR)': Number(e.amount ?? 0).toFixed(2), Method: paymentMethodLabel(e.payment_method), Status: e.status, Notes: e.notes ?? '' })))}>Export CSV</Btn>
-            <Btn onClick={() => setShowAdd(true)}>+ Add Expense</Btn>
+            <Btn variant="secondary" onClick={() => downloadCSV('expenses', expenses.map((e) => ({ Date: e.expense_date, Category: e.category?.name ?? '', Description: e.description, 'Amount (MVR)': Number(e.amount ?? 0).toFixed(2), PO: e.purchase?.purchase_number ?? '', Method: paymentMethodLabel(e.payment_method), Status: e.status, Notes: e.notes ?? '' })))}>Export CSV</Btn>
+            <Btn onClick={() => { setLinkedPurchase(null); setShowAdd(true); }}>+ Add Expense</Btn>
           </div>
         }
       />
@@ -309,7 +319,7 @@ export function ExpensesPage() {
                     <th style={{ ...TH, width: 36 }}>
                       <input type="checkbox" checked={bulkSelected.size === expenses.length && expenses.length > 0} onChange={toggleAllBulk} style={{ cursor: 'pointer' }} />
                     </th>
-                    {['Date', 'Category', 'Description', 'Amount', 'Method', 'Status', ''].map((h) => (
+                    {['Date', 'Category', 'Description', 'Amount', 'PO', 'Method', 'Status', ''].map((h) => (
                       <th key={h} style={TH}>{h}</th>
                     ))}
                   </tr>
@@ -327,6 +337,19 @@ export function ExpensesPage() {
                         )}
                       </td>
                       <td style={{ ...TD, fontWeight: 700, color: '#D4813A', whiteSpace: 'nowrap' }}>MVR {parseFloat(String(exp.amount ?? 0)).toFixed(2)}</td>
+                      <td style={TD}>
+                        {exp.purchase?.purchase_number || exp.purchase_id ? (
+                          <Link
+                            to="/purchase-orders"
+                            style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
+                            title="Open purchase orders"
+                          >
+                            {exp.purchase?.purchase_number || `PO #${exp.purchase_id}`}
+                          </Link>
+                        ) : (
+                          <span style={{ color: '#C4B5A3' }}>—</span>
+                        )}
+                      </td>
                       <td style={{ ...TD, color: '#6B5D4F' }}>{paymentMethodLabel(exp.payment_method)}</td>
                       <td style={TD}>
                         <Badge label={exp.status} color={STATUS_COLOR[exp.status] ?? 'gray'} />
@@ -355,7 +378,7 @@ export function ExpensesPage() {
                     </tr>
                   ))}
                   {expenses.length === 0 && (
-                    <tr><td colSpan={8}><EmptyState message="No expenses in this date range." /></td></tr>
+                    <tr><td colSpan={9}><EmptyState message="No expenses in this date range." /></td></tr>
                   )}
                 </tbody>
               </table>
@@ -421,6 +444,14 @@ export function ExpensesPage() {
               Notes
               <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }} />
             </label>
+            {editingExpense.purchase && (
+              <div style={{ fontSize: 12, color: '#6B5D4F' }}>
+                Linked PO:{' '}
+                <Link to="/purchase-orders" style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                  {editingExpense.purchase.purchase_number}
+                </Link>
+              </div>
+            )}
             <GstExpenseFields form={form} setForm={setForm} fieldStyle={fieldStyle} />
           </div>
           <ModalActions>
@@ -434,7 +465,7 @@ export function ExpensesPage() {
 
       {/* Add Expense Modal */}
       {showAdd && (
-        <Modal title="Add Expense" onClose={() => { setShowAdd(false); setError(''); }}>
+        <Modal title="Add Expense" onClose={() => { setShowAdd(false); setLinkedPurchase(null); setError(''); }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
               Category *
@@ -496,10 +527,16 @@ export function ExpensesPage() {
                 style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }}
               />
             </label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block' }}>
+              Link to purchase order (optional)
+              <div style={{ marginTop: 4 }}>
+                <PurchaseSearch value={linkedPurchase} onChange={setLinkedPurchase} />
+              </div>
+            </label>
             <GstExpenseFields form={form} setForm={setForm} fieldStyle={fieldStyle} />
           </div>
           <ModalActions>
-            <Btn variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Btn>
+            <Btn variant="ghost" onClick={() => { setShowAdd(false); setLinkedPurchase(null); }}>Cancel</Btn>
             <Btn
               onClick={handleAdd}
               disabled={saving || !form.expense_category_id || !form.description || !form.amount}

@@ -30,6 +30,16 @@ class PurchaseController extends Controller
             $query->where('status', $request->query('status'));
         }
 
+        if ($request->filled('search')) {
+            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $request->query('search')).'%';
+            $query->where(function ($q) use ($term) {
+                $q->where('purchase_number', 'like', $term)
+                    ->orWhere('notes', 'like', $term)
+                    ->orWhere('supplier_invoice_no', 'like', $term)
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', $term));
+            });
+        }
+
         return response()->json([
             'purchases' => $query->orderByDesc('purchase_date')->paginate(50),
         ]);

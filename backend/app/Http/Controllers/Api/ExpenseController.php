@@ -19,8 +19,12 @@ class ExpenseController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Expense::with(['category:id,name,icon,slug', 'supplier:id,name', 'user:id,name'])
-            ->orderByDesc('expense_date');
+        $query = Expense::with([
+            'category:id,name,icon,slug',
+            'supplier:id,name',
+            'user:id,name',
+            'purchase:id,purchase_number,total',
+        ])->orderByDesc('expense_date');
 
         if ($request->filled('category_id')) {
             $query->where('expense_category_id', $request->query('category_id'));
@@ -118,7 +122,7 @@ class ExpenseController extends Controller
         $expense = Expense::create($validated);
         $this->audit->log('expense.created', 'Expense', $expense->id, [], ['description' => $expense->description, 'amount' => $expense->amount], [], $request);
 
-        return response()->json(['expense' => $this->format($expense->load('category', 'supplier'))], 201);
+        return response()->json(['expense' => $this->format($expense->load('category', 'supplier', 'purchase'))], 201);
     }
 
     public function show(int $id): JsonResponse
@@ -285,6 +289,12 @@ class ExpenseController extends Controller
             'notes' => $e->notes,
             'category' => $e->category ? ['id' => $e->category->id, 'name' => $e->category->name, 'icon' => $e->category->icon] : null,
             'supplier' => $e->supplier ? ['id' => $e->supplier->id, 'name' => $e->supplier->name] : null,
+            'purchase_id' => $e->purchase_id,
+            'purchase' => $e->purchase ? [
+                'id' => $e->purchase->id,
+                'purchase_number' => $e->purchase->purchase_number,
+                'total' => (float) $e->purchase->total,
+            ] : null,
             'logged_by' => $e->user?->name,
             'approved_by' => $e->approvedBy?->name,
             'payment_id' => $e->payment_id,

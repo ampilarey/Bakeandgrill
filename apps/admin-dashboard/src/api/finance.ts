@@ -167,6 +167,8 @@ export type Expense = {
   revenue_or_capital?: 'revenue' | 'capital' | null;
   category: { id: number; name: string; icon: string } | null;
   supplier: { id: number; name: string } | null;
+  purchase_id?: number | null;
+  purchase?: { id: number; purchase_number: string; total?: number } | null;
   logged_by: string | null;
   payment_id?: number | null;
   is_auto?: boolean;
@@ -518,12 +520,13 @@ export interface Purchase {
   }[];
 }
 
-export async function fetchPurchases(params?: { status?: string; page?: number }): Promise<{
+export async function fetchPurchases(params?: { status?: string; page?: number; search?: string }): Promise<{
   purchases: { data: Purchase[]; current_page: number; last_page: number; total: number };
 }> {
   const qs = new URLSearchParams();
   if (params?.status) qs.set('status', params.status);
   if (params?.page) qs.set('page', String(params.page));
+  if (params?.search) qs.set('search', params.search);
   const query = qs.toString() ? `?${qs}` : '';
   return req(`/purchases${query}`);
 }

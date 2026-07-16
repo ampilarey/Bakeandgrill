@@ -4,11 +4,11 @@ import {
   generateInvoicePdf, pushInvoiceToXero,
   createInvoiceFromOrder, createInvoiceFromPurchase,
   createCreditNote, updateInvoice, createInvoice,
-  fetchPurchases,
   type Invoice, type ManualInvoiceLineItem,
 } from '../api';
-import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
+import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
+import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
 import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
@@ -16,76 +16,6 @@ import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
 
 type LookupSelection = { id: number; label: string };
-
-function PurchaseLookup({
-  value, onChange,
-}: {
-  value: LookupSelection | null;
-  onChange: (v: LookupSelection | null) => void;
-}) {
-  const [q, setQ] = useState('');
-  const [all, setAll] = useState<{ id: number; label: string; sub: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (loaded || value) return;
-    setLoading(true);
-    fetchPurchases({ page: 1 })
-      .then((res) => {
-        setAll((res.purchases?.data ?? []).map((p) => ({
-          id: p.id,
-          label: p.purchase_number,
-          sub: `${p.supplier?.name ?? 'No supplier'} · MVR ${parseFloat(String(p.total ?? 0)).toFixed(2)} · ${p.status}`,
-        })));
-        setLoaded(true);
-      })
-      .catch(() => setAll([]))
-      .finally(() => setLoading(false));
-  }, [loaded, value]);
-
-  if (value) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
-        <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>{value.label}</span>
-        <button type="button" onClick={() => onChange(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: 18, lineHeight: 1 }} aria-label="Clear selection">×</button>
-      </div>
-    );
-  }
-
-  const needle = q.trim().toLowerCase();
-  const results = (needle
-    ? all.filter((p) => p.label.toLowerCase().includes(needle) || p.sub.toLowerCase().includes(needle))
-    : all
-  ).slice(0, 8);
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <Input value={q} onChange={setQ} placeholder="Filter by PO number or supplier…" />
-      {loading && <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Loading purchases…</div>}
-      {!loading && results.length === 0 && (
-        <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>
-          {all.length === 0 ? 'No purchases found.' : 'No matches.'}
-        </div>
-      )}
-      {results.length > 0 && (
-        <div style={{ marginTop: 6, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 8, maxHeight: 240, overflowY: 'auto' }}>
-          {results.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => { onChange({ id: r.id, label: `${r.label} — ${r.sub}` }); setQ(''); }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #F5F0EB', fontFamily: 'inherit' }}
-            >
-              <div style={{ fontWeight: 700, color: '#1C1408' }}>{r.label}</div>
-              <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{r.sub}</div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function InvoicesPage() {
   usePageTitle('Invoices');
@@ -606,7 +536,12 @@ export function InvoicesPage() {
                 onChange={(v: OrderSearchSelection | null) => setCreateRef(v ? { id: v.id, label: v.label } : null)}
               />
             )
-            : <PurchaseLookup value={createRef} onChange={setCreateRef} />}
+            : (
+              <PurchaseSearch
+                value={createRef ? { id: createRef.id, label: createRef.label, purchaseNumber: '', total: 0 } : null}
+                onChange={(v: PurchaseSearchSelection | null) => setCreateRef(v ? { id: v.id, label: v.label } : null)}
+              />
+            )}
           <ModalActions>
             <Btn variant="ghost" onClick={() => { setCreateFrom(null); setCreateRef(null); }}>Cancel</Btn>
             <Btn onClick={() => void handleCreateFrom()} disabled={creating || !createRef}>
