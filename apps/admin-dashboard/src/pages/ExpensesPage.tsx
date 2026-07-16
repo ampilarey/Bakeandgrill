@@ -340,9 +340,9 @@ export function ExpensesPage() {
                       <td style={TD}>
                         {exp.purchase?.purchase_number || exp.purchase_id ? (
                           <Link
-                            to="/purchase-orders"
+                            to={`/purchase-orders?search=${encodeURIComponent(exp.purchase?.purchase_number || String(exp.purchase_id))}`}
                             style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
-                            title="Open purchase orders"
+                            title="Open purchase order"
                           >
                             {exp.purchase?.purchase_number || `PO #${exp.purchase_id}`}
                           </Link>
@@ -447,7 +447,10 @@ export function ExpensesPage() {
             {editingExpense.purchase && (
               <div style={{ fontSize: 12, color: '#6B5D4F' }}>
                 Linked PO:{' '}
-                <Link to="/purchase-orders" style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                <Link
+                  to={`/purchase-orders?search=${encodeURIComponent(editingExpense.purchase.purchase_number)}`}
+                  style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                >
                   {editingExpense.purchase.purchase_number}
                 </Link>
               </div>

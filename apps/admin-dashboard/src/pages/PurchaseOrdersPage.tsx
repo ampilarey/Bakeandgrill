@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier } from '../api';
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
@@ -32,12 +33,16 @@ const STATUS_OPTIONS = [
 
 export function PurchaseOrdersPage() {
   usePageTitle('Purchase Orders');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [purchases, setPurchases]         = useState<Purchase[]>([]);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState('');
   const [suggestions, setSuggestions]     = useState<PurchaseSuggestions | null>(null);
   const [sugLoading, setSugLoading]       = useState(false);
   const [statusFilter, setStatus]         = useState('all');
+  const [search, setSearch]               = useState(() => searchParams.get('search') ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState(() => (searchParams.get('search') ?? '').trim());
+  const autoOpenedFor = useRef<string | null>(null);
   const [detail, setDetail]               = useState<Purchase | null>(null);
   const [rejectId, setRejectId]           = useState<number | null>(null);
   const [rejectReason, setRejectReason]   = useState('');
@@ -136,11 +141,67 @@ export function PurchaseOrdersPage() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
+  const openDetail = (po: Purchase) => {
+    setDetail(po);
+    const initial: Record<number, number> = {};
+    (po.items ?? []).forEach((item) => { initial[item.id] = item.quantity - item.received_quantity; });
+    setReceiveQtys(initial);
+    setReceiveNotes('');
+    setGstForm({
+      is_input_tax_claimable: !!po.is_input_tax_claimable,
+      supplier_tin: po.supplier_tin ?? po.supplier?.tin ?? '',
+      supplier_invoice_no: po.supplier_invoice_no ?? '',
+      supplier_invoice_date: po.supplier_invoice_date ?? '',
+      amount_ex_gst: po.amount_excluding_gst_laar != null ? String(po.amount_excluding_gst_laar / 100) : '',
+      gst_amount: po.gst_laar != null ? String(po.gst_laar / 100) : '',
+      revenue_or_capital: (po.revenue_or_capital as 'revenue' | 'capital') ?? 'revenue',
+    });
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Inbound deep links (e.g. from Expenses / Purchase Requests)
+  useEffect(() => {
+    const fromUrl = searchParams.get('search') ?? '';
+    if (fromUrl === debouncedSearch) return; // already in sync (we wrote the URL)
+    setSearch(fromUrl);
+    setDebouncedSearch(fromUrl.trim());
+    autoOpenedFor.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- react to URL; compare against current debounced value
+  }, [searchParams]);
+
+  // Keep URL in sync with the active search
+  useEffect(() => {
+    const current = searchParams.get('search') ?? '';
+    if (debouncedSearch === current) return;
+    const next = new URLSearchParams(searchParams);
+    if (debouncedSearch) next.set('search', debouncedSearch);
+    else next.delete('search');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only push when debounced value changes
+  }, [debouncedSearch, setSearchParams]);
+
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetchPurchases({ status: statusFilter !== 'all' ? statusFilter : undefined });
-      setPurchases(res.purchases?.data ?? []);
+      const res = await fetchPurchases({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        search: debouncedSearch || undefined,
+      });
+      const list = res.purchases?.data ?? [];
+      setPurchases(list);
+      if (debouncedSearch && autoOpenedFor.current !== debouncedSearch) {
+        const needle = debouncedSearch.toLowerCase();
+        const match = list.find((p) => p.purchase_number.toLowerCase() === needle)
+          ?? (list.length === 1 ? list[0] : null);
+        if (match) {
+          openDetail(match);
+          autoOpenedFor.current = debouncedSearch;
+        }
+      }
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -152,7 +213,7 @@ export function PurchaseOrdersPage() {
     finally { setSugLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [statusFilter]);
+  useEffect(() => { void load(); }, [statusFilter, debouncedSearch]);
 
   const handleApprove = async (id: number) => {
     try { await approvePurchase(id); void load(); }
@@ -184,23 +245,6 @@ export function PurchaseOrdersPage() {
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setActionLoading(false); }
-  };
-
-  const openDetail = (po: Purchase) => {
-    setDetail(po);
-    const initial: Record<number, number> = {};
-    (po.items ?? []).forEach((item) => { initial[item.id] = item.quantity - item.received_quantity; });
-    setReceiveQtys(initial);
-    setReceiveNotes('');
-    setGstForm({
-      is_input_tax_claimable: !!po.is_input_tax_claimable,
-      supplier_tin: po.supplier_tin ?? po.supplier?.tin ?? '',
-      supplier_invoice_no: po.supplier_invoice_no ?? '',
-      supplier_invoice_date: po.supplier_invoice_date ?? '',
-      amount_ex_gst: po.amount_excluding_gst_laar != null ? String(po.amount_excluding_gst_laar / 100) : '',
-      gst_amount: po.gst_laar != null ? String(po.gst_laar / 100) : '',
-      revenue_or_capital: (po.revenue_or_capital as 'revenue' | 'capital') ?? 'revenue',
-    });
   };
 
   const handleReceive = async () => {
@@ -272,6 +316,16 @@ export function PurchaseOrdersPage() {
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <Select value={statusFilter} onChange={(v) => setStatus(v)} options={STATUS_OPTIONS} style={{ width: 180 }} />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search PO number or supplier…"
+          style={{
+            height: 36, minWidth: 220, padding: '0 12px',
+            border: '1.5px solid #E8E0D8', borderRadius: 10,
+            fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none',
+          }}
+        />
         <Btn variant="secondary" onClick={load}>↻ Refresh</Btn>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <Btn variant="secondary" onClick={() => void openManualPo()}>+ Create Manual PO</Btn>

@@ -396,7 +396,10 @@ export default function PurchaseRequestsPage() {
                   {detail.purchase_id ? (
                     <span>
                       Linked PO:{' '}
-                      <Link to="/purchase-orders" style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                      <Link
+                        to={`/purchase-orders?search=${encodeURIComponent(detail.purchase?.purchase_number || String(detail.purchase_id))}`}
+                        style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                      >
                         {detail.purchase?.purchase_number || `PO #${detail.purchase_id}`}
                       </Link>
                     </span>
