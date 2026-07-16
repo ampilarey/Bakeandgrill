@@ -19,6 +19,10 @@
         'completed', 'delivered' => 4,
         default => 1,
     };
+    $orderRef = $order->order_number ?? (string) $order->id;
+    $mistakeMsg = 'Hi Bake & Grill — I think there\'s a mistake on order '.$orderRef
+        .' for MVR '.number_format((float) $order->total, 2)
+        .'. Mistake: ';
 @endphp
 
 @section('title', $siteName . ' — Order #' . ($order->order_number ?? ''))
@@ -101,8 +105,16 @@
         @endif
 
         <div class="doc-actions">
-            <a class="doc-btn doc-btn-primary" href="{{ $waLink }}?text={{ rawurlencode('Hi, I need help with order #' . $order->order_number) }}" target="_blank" rel="noopener">WhatsApp us</a>
             <a class="doc-btn" href="/order/menu">Order again</a>
+        </div>
+
+        <div class="doc-mistake-cta" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border, #e5e7eb); text-align: center;">
+            <a class="doc-btn doc-btn-primary" style="width: 100%;" href="{{ $waLink }}?text={{ rawurlencode($mistakeMsg) }}" target="_blank" rel="noopener">
+                Something wrong with this order?
+            </a>
+            <p class="doc-subtitle" style="margin: 0.5rem 0 0;">
+                Message us on WhatsApp and we’ll fix it.
+            </p>
         </div>
     </div>
 </div>

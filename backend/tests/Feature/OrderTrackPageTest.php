@@ -46,6 +46,7 @@ class OrderTrackPageTest extends TestCase
             ->assertSee('BG-20260522-0099')
             ->assertSee('Being prepared')
             ->assertSee('BML Bajiya')
+            ->assertSee('Something wrong with this order?')
             ->assertDontSee('Page not found', false);
     }
 
