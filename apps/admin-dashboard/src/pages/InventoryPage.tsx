@@ -13,10 +13,10 @@ import {
   getUnitConversions, createUnitConversion, deleteUnitConversion,
   getInventoryPriceHistory, getInventoryCheapestSupplier, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
-  fetchInventoryItemDetail,
+  fetchInventoryItemDetail, fetchSuppliers,
   type InventoryItem, type InventoryCategory, type UnitConversion,
   type InventoryPriceHistoryEntry, type CheapestSupplier, type PreparedStockRow,
-  type StockMovementRow,
+  type StockMovementRow, type Supplier,
 } from '../api';
 
 const S = {
@@ -55,10 +55,11 @@ export default function InventoryPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '',
-    inventory_category_id: '', storage_location: '', notes: '',
+    inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
   });
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [ledgerItem, setLedgerItem] = useState<InventoryItem | null>(null);
   const [ledgerRows, setLedgerRows] = useState<StockMovementRow[]>([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
@@ -202,6 +203,15 @@ export default function InventoryPage() {
     try { const r = await fetchInventoryCategories(); setCats(r.categories ?? []); }
     catch (e) { setCatError((e as Error).message); }
     finally { setCatsLoading(false); }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const r = await fetchSuppliers({ active_only: true });
+      setSuppliers(r.data ?? []);
+    } catch {
+      // Non-critical for create form
+    }
   };
 
   useEffect(() => { if (tab === 'categories') void loadCats(); }, [tab]);
@@ -416,9 +426,10 @@ export default function InventoryPage() {
                 setCreateError('');
                 setCreateForm({
                   name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '',
-                  inventory_category_id: '', storage_location: '', notes: '',
+                  inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
                 });
                 if (cats.length === 0) void loadCats();
+                if (suppliers.length === 0) void loadSuppliers();
               }}>
                 + Add SKU
               </Btn>
@@ -499,6 +510,11 @@ export default function InventoryPage() {
       {/* ── Prepared Stock Tab ── */}
       {tab === 'prepared' && (
         <>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 14, lineHeight: 1.5, maxWidth: 720 }}>
+            Prepared / bake-ahead stock tracks finished menu units separately from raw SKUs.
+            Sales deduct prepared qty when stock tracking is on; recipe ingredients still deduct from raw inventory via recipes.
+            COGS uses recipe cost at sale time — baking ahead does not double-count ingredient cost when both paths are configured correctly.
+          </p>
           {preparedError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{preparedError}</p>}
           <TableCard stickyHead>
             {preparedLoading ? (
@@ -673,6 +689,17 @@ export default function InventoryPage() {
               </select>
             </label>
             <label>
+              <span style={S.label}>Preferred supplier</span>
+              <select
+                style={S.select}
+                value={createForm.preferred_supplier_id}
+                onChange={(e) => setCreateForm((f) => ({ ...f, preferred_supplier_id: e.target.value }))}
+              >
+                <option value="">None</option>
+                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+            <label>
               <span style={S.label}>Unit *</span>
               <input style={S.input} value={createForm.unit} onChange={(e) => setCreateForm((f) => ({ ...f, unit: e.target.value }))} placeholder="kg, L, pcs…" />
             </label>
@@ -710,6 +737,7 @@ export default function InventoryPage() {
                 reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,
                 unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
                 inventory_category_id: createForm.inventory_category_id ? Number(createForm.inventory_category_id) : undefined,
+                preferred_supplier_id: createForm.preferred_supplier_id ? Number(createForm.preferred_supplier_id) : undefined,
                 storage_location: createForm.storage_location.trim() || undefined,
                 notes: createForm.notes.trim() || undefined,
               }).then(() => {
