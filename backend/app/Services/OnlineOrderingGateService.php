@@ -11,12 +11,12 @@ use Carbon\Carbon;
  * Decides whether the online ordering channel is currently open.
  *
  * Three-layer evaluation (highest priority first):
- *  1. Master switch  — online_ordering_enabled = false → always closed
- *  2. Override       — online_ordering_override_until is a future datetime → force open
+ *  1. Override       — online_ordering_override_until is a future datetime → force open
+ *  2. Master switch  — online_ordering_enabled = false → closed (unless override)
  *  3. Schedule       — online_ordering_schedule defines per-day windows; if empty → always open
  *
- * POS orders are NEVER gated by this service.
- * Only customer-facing endpoints call this: online_pickup and delivery.
+ * POS / staff orders are NEVER gated by this service.
+ * Only customer-facing endpoints call this: online_pickup and customer delivery.
  */
 class OnlineOrderingGateService
 {

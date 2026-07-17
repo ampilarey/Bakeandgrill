@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: wave-b-online-gate
     content: "Wave B — global online ordering switch + schedule + override; online routes only"
-    status: pending
+    status: completed
   - id: wave-c-availability-engine
     content: "Wave C — centralized availability pipeline; optional non-breaking API reason fields"
     status: pending
@@ -71,7 +71,7 @@ This document is the **single source of truth** for Phase 1 (audit), Phase 2 (im
 ### 5. Availability summary
 
 - [`KitchenMenuResolver`](backend/app/Domains/Kitchen/Services/KitchenMenuResolver.php), `item_channel_availability`, `kitchen_menu_state`, site `delivery_accepting_orders`.
-- No single **global online ordering off + schedule** gate found in audit (Wave B).
+- Wave B gate is live — see [`docs/WAVE_B_ONLINE_ORDERING_GATE.md`](../../docs/WAVE_B_ONLINE_ORDERING_GATE.md). Audit line “no global gate” is historical.
 - Public item payloads do not expose rich **unavailable reasons** (Wave C).
 
 ### 6–9. Problems, races, risks, gaps

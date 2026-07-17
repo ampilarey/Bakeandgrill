@@ -143,6 +143,19 @@ class OnlineOrderingGateTest extends TestCase
             ]);
     }
 
+    private function postCustomerDeliveryOrder(): \Illuminate\Testing\TestResponse
+    {
+        Sanctum::actingAs($this->customer, ['customer']);
+
+        return $this->postJson('/api/orders/delivery', [
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            'delivery_address_line1' => '1st Floor, Gate Test',
+            'delivery_island' => 'male',
+            'delivery_contact_name' => 'Gate Customer',
+            'delivery_contact_phone' => '9607770099',
+        ]);
+    }
+
     // ------------------------------------------------------------------
     // Tests
     // ------------------------------------------------------------------
@@ -156,11 +169,40 @@ class OnlineOrderingGateTest extends TestCase
         $this->assertStringContainsString('Closed', $response->json('message'));
     }
 
+    public function test_master_switch_off_blocks_customer_delivery(): void
+    {
+        $this->setSetting('online_ordering_enabled', '0');
+
+        $response = $this->postCustomerDeliveryOrder();
+        $response->assertStatus(422);
+        $this->assertStringContainsString('Closed', $response->json('message'));
+    }
+
     public function test_master_switch_off_does_not_block_pos(): void
     {
         $this->setSetting('online_ordering_enabled', '0');
 
         $response = $this->postPosOrder();
+        $response->assertCreated();
+    }
+
+    public function test_master_switch_off_does_not_block_staff_delivery(): void
+    {
+        $this->setSetting('online_ordering_enabled', '0');
+        $this->setSetting('delivery_accepting_orders', '0');
+
+        $this->ensurePosApiReady($this->staffUser, 'GATE-POS-001');
+
+        $response = $this->withHeader('X-Device-Identifier', 'GATE-POS-001')
+            ->postJson('/api/orders/delivery', [
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+                'delivery_address_line1' => 'Staff phone order',
+                'delivery_island' => 'male',
+                'delivery_contact_name' => 'Walk-in',
+                'delivery_contact_phone' => '9607770099',
+                'customer_id' => $this->customer->id,
+            ]);
+
         $response->assertCreated();
     }
 
