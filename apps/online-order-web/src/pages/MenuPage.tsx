@@ -14,7 +14,7 @@ function fmtOrderingTime(iso: string | null | undefined): string {
 }
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
-import { MenuCard } from '../components/MenuCard';
+import { ProductCard } from '../components/menu/ProductCard';
 import { ItemModal } from '../components/ItemModal';
 import { CartDrawer } from '../components/CartDrawer';
 import { useCart } from '../context/CartContext';
@@ -803,7 +803,7 @@ export function MenuPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: `${group.label || gi > 0 ? '0' : '1.25rem'} var(--page-gutter) 1.25rem` }}>
                   {group.items.map((item) => (
                     <div key={item.id} className="menu-item-anim">
-                      <MenuCard
+                      <ProductCard
                         item={item}
                         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
                         onAddToCart={(it, qty, variant) => { addItem(it, qty, [], variant ?? null); showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`); }}
