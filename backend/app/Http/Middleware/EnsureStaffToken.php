@@ -11,14 +11,11 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Enforce that the authenticated user is a staff User with a staff-scoped token.
+ * Enforce that the authenticated user is a staff User.
  *
- * Two conditions must both be true:
- *   1. The resolved model is App\Models\User (not a Customer).
- *   2. The Sanctum token has the 'staff' ability (set at issuance by StaffAuthController).
- *
- * This blocks customer tokens from reaching staff-only routes even if they somehow
- * pass auth:sanctum.
+ * Accepts two auth paths:
+ *   1. Sanctum Bearer token — must carry the 'staff' ability (POS/KDS PATs).
+ *   2. Session cookie via the 'web' guard — set by admin SPA login (Sanctum stateful).
  *
  * Apply after 'auth:sanctum' in the middleware stack:
  *   Route::middleware(['auth:sanctum', 'staff.token'])->...
@@ -52,8 +49,9 @@ class EnsureStaffToken
             return response()->json(['message' => 'Forbidden — staff access only.'], 403);
         }
 
-        // Must carry the 'staff' ability on the token
-        if (!$user->tokenCan('staff')) {
+        // Token ability check only when a Bearer token was presented;
+        // session auth (admin SPA) does not carry token abilities.
+        if ($request->bearerToken() && !$user->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
 

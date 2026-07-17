@@ -9,10 +9,13 @@ import {
   type ApiRequestOptions,
 } from '@shared/api';
 
-export const ADMIN_TOKEN_KEY = 'admin_token';
+/** Legacy key — cleared on boot so old PATs are not reused after cookie migration. */
+const LEGACY_ADMIN_TOKEN_KEY = 'admin_token';
 
 export const BASE = resolveApiBaseUrl({
-  envUrl: import.meta.env.VITE_API_BASE_URL as string | undefined,
+  // Prefer same-origin `/api` so Sanctum session + CSRF cookies stay first-party
+  // (Vite proxies `/api` and `/sanctum` in local dev).
+  envUrl: (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api',
   prod: import.meta.env.PROD,
 });
 
@@ -23,9 +26,17 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   console.error('[CONFIG] VITE_API_BASE_URL is not set in production — all API calls will fail if the app is not served from the same origin as the API.');
 }
 
+// One-time cleanup after migrating off localStorage Bearer tokens.
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem(LEGACY_ADMIN_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 const { request: coreRequest, requestBlob: coreRequestBlob } = createApiClient({
   baseUrl: BASE,
-  getToken: () => localStorage.getItem(ADMIN_TOKEN_KEY),
   credentials: 'include',
 });
 
@@ -73,10 +84,6 @@ export async function req<T>(path: string, options: ApiRequestOptions = {}): Pro
 
 export async function requestBlob(path: string, options: ApiRequestOptions = {}): Promise<Blob> {
   return withCsrfRetry((opts) => coreRequestBlob(path, opts), options);
-}
-
-export function getStoredAdminToken(): string | null {
-  return localStorage.getItem(ADMIN_TOKEN_KEY);
 }
 
 export async function adminRequest<T = unknown>(

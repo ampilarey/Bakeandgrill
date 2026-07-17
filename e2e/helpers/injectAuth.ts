@@ -6,20 +6,20 @@
  */
 import { type Page, expect } from '@playwright/test';
 
-import { ADMIN_PIN, staffPinLoginBody, TEST_PHONE, TEST_PASSWORD } from '../fixtures/auth';
+import {
+  ADMIN_PASSWORD,
+  ADMIN_PHONE,
+  ADMIN_PIN,
+  staffPinLoginBody,
+  TEST_PHONE,
+  TEST_PASSWORD,
+} from '../fixtures/auth';
 import { waitForCustomerSession } from './wait';
 
 export { ADMIN_PIN, TEST_PHONE, TEST_PASSWORD };
 
-const ADMIN_API_URL   = process.env.ADMIN_API_URL   ?? 'http://localhost:8000';
-const CUSTOMER_API_URL = ADMIN_API_URL;
+// ── Admin auth (Sanctum stateful session cookie) ───────────────────────────
 
-// ── Admin auth ─────────────────────────────────────────────────────────────
-
-/**
- * Obtain a staff Sanctum token via the PIN login endpoint and store it in
- * the page's localStorage so subsequent navigations are authenticated.
- */
 async function waitForAdminAuth(page: Page): Promise<boolean> {
   const resp = await page
     .waitForResponse(
@@ -30,50 +30,58 @@ async function waitForAdminAuth(page: Page): Promise<boolean> {
   return resp !== null;
 }
 
-export async function gotoAdminWithToken(page: Page, token: string, path = '/admin/dashboard'): Promise<void> {
-  await page.addInitScript((t: string) => {
-    localStorage.setItem('admin_token', t);
-  }, token);
+/**
+ * Establish an admin web session via the page's request context (shared cookie jar),
+ * then navigate to the admin SPA.
+ */
+export async function gotoAdminAuthenticated(page: Page, path = '/admin/dashboard'): Promise<void> {
+  let ok = false;
+
+  if (ADMIN_PHONE && ADMIN_PASSWORD) {
+    const res = await page.request.post('/api/auth/staff/login', {
+      data: { phone: ADMIN_PHONE, password: ADMIN_PASSWORD },
+    });
+    ok = res.ok();
+  }
+
+  if (!ok) {
+    const res = await page.request.post('/api/auth/staff/pin-login', {
+      data: { ...staffPinLoginBody(), intent: 'admin' },
+    });
+    ok = res.ok();
+    if (!ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(`gotoAdminAuthenticated: admin login failed — ${JSON.stringify(body)}`);
+    }
+  }
+
   await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
   let authed = await waitForAdminAuth(page);
   if (!authed) {
-    await page.evaluate((t: string) => {
-      localStorage.setItem('admin_token', t);
-    }, token);
     await page.reload({ waitUntil: 'domcontentloaded' });
     authed = await waitForAdminAuth(page);
   }
 
   const body = (await page.textContent('body')) ?? '';
   if (/admin sign in|sign in →/i.test(body)) {
-    await page.evaluate((t: string) => {
-      localStorage.setItem('admin_token', t);
-    }, token);
     await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     await waitForAdminAuth(page);
   }
 }
 
+/** @deprecated Use gotoAdminAuthenticated — admin no longer uses localStorage PATs. */
+export async function gotoAdminWithToken(page: Page, _token: string, path = '/admin/dashboard'): Promise<void> {
+  await gotoAdminAuthenticated(page, path);
+}
+
 /**
- * Obtain a staff Sanctum token via the PIN login endpoint and store it in
- * the page's localStorage so subsequent navigations are authenticated.
+ * Obtain a staff Sanctum PAT via PIN (POS scope) — kept for specs that need Bearer.
+ * For admin UI navigation, prefer gotoAdminAuthenticated.
  */
 export async function injectAdminToken(page: Page, pin?: string): Promise<string> {
-  const usedPin = pin ?? ADMIN_PIN;
-
-  const response = await page.request.post('/api/auth/staff/pin-login', {
-    data: staffPinLoginBody(usedPin),
-  });
-  const data = await response.json().catch(() => ({}));
-  const token: string = data.token ?? '';
-
-  if (!token) {
-    throw new Error(`injectAdminToken: PIN login failed — ${JSON.stringify(data)}`);
-  }
-
-  await gotoAdminWithToken(page, token, '/admin/dashboard');
-  return token;
+  await gotoAdminAuthenticated(page, '/admin/dashboard');
+  return pin ?? ADMIN_PIN;
 }
 
 /**

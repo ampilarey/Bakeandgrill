@@ -1,4 +1,4 @@
-import { BASE, getStoredAdminToken, req, requestBlob } from './client';
+import { BASE, req, requestBlob } from './client';
 
 // ── Invoices ──────────────────────────────────────────────────────────────────
 
@@ -1120,8 +1120,7 @@ export function getReportCsvUrl(type: 'sales-summary' | 'sales-breakdown' | 'x-r
   const qs = new URLSearchParams();
   if (params?.from) qs.set('from', params.from);
   if (params?.to) qs.set('to', params.to);
-  const token = getStoredAdminToken() ?? '';
-  if (token) qs.set('token', token);
+  // Same-origin session cookie authenticates the download (no query token).
   return `${BASE}/reports/${type}/csv?${qs}`;
 }
 

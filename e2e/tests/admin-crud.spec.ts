@@ -9,27 +9,32 @@
  * and cleaned up without affecting real data.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { obtainStaffToken } from '../fixtures/auth';
-import { gotoAdminWithToken } from '../helpers/injectAuth';
+import { canEstablishAdminSession, obtainStaffToken } from '../fixtures/auth';
+import { gotoAdminAuthenticated } from '../helpers/injectAuth';
 import { assertNoServerError } from '../helpers/assertions';
 
 test.describe.configure({ mode: 'serial' });
 
+/** UI session probe — true when admin cookie login works. */
+let adminAuthAvailable = false;
+/** Bearer PAT for direct API cleanup helpers (POS-scoped pin/password login). */
 let sharedAdminToken = '';
+
 test.beforeAll(async ({ request }) => {
+  adminAuthAvailable = await canEstablishAdminSession(request);
   sharedAdminToken = await obtainStaffToken(request);
-  if (!sharedAdminToken) {
+  if (!adminAuthAvailable) {
     console.warn('Admin login failed — CRUD tests will skip');
   }
 });
 
-function skipIfNoToken(token: string) {
-  if (!token) test.skip(true, 'No admin token — rate limited or login failed');
+function skipIfNoToken(_token?: string) {
+  if (!adminAuthAvailable) test.skip(true, 'No admin session — rate limited or login failed');
 }
 
 async function gotoAdmin(page: Page, path: string): Promise<void> {
-  if (!sharedAdminToken) return;
-  await gotoAdminWithToken(page, sharedAdminToken, path);
+  if (!adminAuthAvailable) return;
+  await gotoAdminAuthenticated(page, path);
 }
 
 // ── Menu item CRUD ────────────────────────────────────────────────────────

@@ -6,30 +6,26 @@
  * Each test injects the token via localStorage (no further API calls).
  */
 import { test, expect, type Page } from '@playwright/test';
-import { obtainStaffToken } from '../fixtures/auth';
-import { gotoAdminWithToken } from '../helpers/injectAuth';
+import { canEstablishAdminSession } from '../fixtures/auth';
+import { gotoAdminAuthenticated } from '../helpers/injectAuth';
 import { waitForAdminPageReady } from '../helpers/wait';
 
-// Run all tests serially so we share one token and don't exhaust rate limit
 test.describe.configure({ mode: 'serial' });
 
-// ── Shared admin token (obtained once for the whole file) ──────────────────
-let sharedAdminToken = '';
+let adminAuthAvailable = false;
 test.beforeAll(async ({ request }) => {
-  sharedAdminToken = await obtainStaffToken(request);
-  if (!sharedAdminToken) {
+  adminAuthAvailable = await canEstablishAdminSession(request);
+  if (!adminAuthAvailable) {
     console.warn('Admin login failed — all admin-flow tests will skip');
   }
 });
 
-// ── Helper: inject token and navigate to a specific admin page ────────────
 async function gotoAdmin(page: Page, path = '/admin/dashboard') {
-  if (!sharedAdminToken) {
-    test.skip(true, 'Admin token not available (rate-limited or wrong PIN)');
+  if (!adminAuthAvailable) {
+    test.skip(true, 'Admin session not available (rate-limited or wrong credentials)');
     return;
   }
-  // Go to admin first (to set localStorage on the right origin), then navigate
-  await gotoAdminWithToken(page, sharedAdminToken, path);
+  await gotoAdminAuthenticated(page, path);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,7 +46,7 @@ test.describe('Admin dashboard pages load', () => {
   for (const [url, keyword] of adminPages) {
     test(`${url} loads without crash`, async ({ page }) => {
       await gotoAdmin(page, url);
-      if (!sharedAdminToken) return; // already skipped inside gotoAdmin
+      if (!adminAuthAvailable) return; // already skipped inside gotoAdmin
 
       await waitForAdminPageReady(page, keyword);
       const body = await page.textContent('body') ?? '';
@@ -63,7 +59,7 @@ test.describe('Admin dashboard pages load', () => {
 test.describe('Orders page', () => {
   test('orders list loads', async ({ page }) => {
     await gotoAdmin(page, '/admin/orders');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     const body = await page.textContent('body') ?? '';
     expect(body.toLowerCase()).toMatch(/order/);
@@ -71,7 +67,7 @@ test.describe('Orders page', () => {
 
   test('clicking an order row opens the detail drawer', async ({ page }) => {
     await gotoAdmin(page, '/admin/orders');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     const rows = page.locator('table tbody tr, [class*="order-row"]');
     const count = await rows.count();
@@ -95,7 +91,7 @@ test.describe('Orders page', () => {
 test.describe('Menu CRUD', () => {
   test('create and delete a test menu item', async ({ page }) => {
     await gotoAdmin(page, '/admin/menu');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     // Look for "Add Item" or "New Item" button
     const addBtn = page.locator('button').filter({ hasText: /add item|new item|\+ item/i }).first();
@@ -150,7 +146,7 @@ test.describe('Menu CRUD', () => {
 test.describe('Promotions CRUD', () => {
   test('create and delete a test promotion', async ({ page }) => {
     await gotoAdmin(page, '/admin/promotions');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     const addBtn = page.locator('button').filter({ hasText: /add|new|create/i }).first();
     if (!(await addBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
@@ -189,7 +185,7 @@ test.describe('Promotions CRUD', () => {
 test.describe('Settings page', () => {
   test('settings page loads without crash', async ({ page }) => {
     await gotoAdmin(page, '/admin/settings');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     const body = await page.textContent('body') ?? '';
     expect(body).not.toContain('Something went wrong');
@@ -198,7 +194,7 @@ test.describe('Settings page', () => {
 
   test('website settings tab loads CMS fields', async ({ page }) => {
     await gotoAdmin(page, '/admin/settings');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     // Click the Website Settings tab
     const websiteTab = page.locator('button, [role="tab"]').filter({ hasText: /website/i }).first();
@@ -251,7 +247,7 @@ test.describe('Admin pages — extended smoke coverage', () => {
   for (const [url, pattern] of extendedPages) {
     test(`${url} loads without crash`, async ({ page }) => {
       await gotoAdmin(page, url);
-      if (!sharedAdminToken) return;
+      if (!adminAuthAvailable) return;
 
       const body = await page.textContent('body') ?? '';
       expect(body, `${url} body was empty`).not.toBe('');
@@ -267,7 +263,7 @@ test.describe('Admin pages — extended smoke coverage', () => {
 test.describe('Dashboard data', () => {
   test('dashboard shows at least one stat card', async ({ page }) => {
     await gotoAdmin(page, '/admin/dashboard');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     // Stat cards are rendered — at least one metric value should be visible
     const body = await page.textContent('body') ?? '';
@@ -279,7 +275,7 @@ test.describe('Dashboard data', () => {
 test.describe('Finance pages', () => {
   test('/admin/invoices filter UI present', async ({ page }) => {
     await gotoAdmin(page, '/admin/invoices');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
     const body = await page.textContent('body') ?? '';
     expect(body.toLowerCase()).toMatch(/invoice/);
     // Filter dropdowns render after auth/me + invoice list load
@@ -289,14 +285,14 @@ test.describe('Finance pages', () => {
 
   test('/admin/expenses shows category and form', async ({ page }) => {
     await gotoAdmin(page, '/admin/expenses');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
     const body = await page.textContent('body') ?? '';
     expect(body.toLowerCase()).toMatch(/expense/);
   });
 
   test('/admin/profit-loss date pickers present', async ({ page }) => {
     await gotoAdmin(page, '/admin/profit-loss');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
     await expect(page.locator('input[type="date"]').first()).toBeVisible({ timeout: 15_000 });
     expect(await page.locator('input[type="date"]').count()).toBeGreaterThanOrEqual(2);
   });
@@ -306,7 +302,7 @@ test.describe('Finance pages', () => {
 test.describe('SMS page', () => {
   test('SMS recipients tab is default and renders', async ({ page }) => {
     await gotoAdmin(page, '/admin/sms');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     const body = await page.textContent('body') ?? '';
     expect(body.toLowerCase()).toMatch(/recipient|staff|contact|sms/);
@@ -314,7 +310,7 @@ test.describe('SMS page', () => {
 
   test('SMS automations tab loads toggles', async ({ page }) => {
     await gotoAdmin(page, '/admin/sms');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     const autoTab = page.locator('button').filter({ hasText: /automation/i }).first();
     if (await autoTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
@@ -330,7 +326,7 @@ test.describe('SMS page', () => {
 test.describe('Staff page', () => {
   test('staff list renders', async ({ page }) => {
     await gotoAdmin(page, '/admin/staff');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     const body = await page.textContent('body') ?? '';
     expect(body.toLowerCase()).toMatch(/staff|member|role|email/);
@@ -341,7 +337,7 @@ test.describe('Staff page', () => {
 test.describe('Customers page', () => {
   test('customer table or empty state renders', async ({ page }) => {
     await gotoAdmin(page, '/admin/customers');
-    if (!sharedAdminToken) return;
+    if (!adminAuthAvailable) return;
 
     const body = await page.textContent('body') ?? '';
     expect(body.toLowerCase()).toMatch(/customer|phone|order/);

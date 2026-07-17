@@ -21,6 +21,7 @@ export default defineConfig({
     port: 3004,
     proxy: {
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/sanctum': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
   build: {

@@ -11,10 +11,12 @@ use App\Models\User;
 use App\Services\StaffUserLookup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\TransientToken;
 
 class StaffAuthController extends Controller
 {
@@ -70,7 +72,7 @@ class StaffAuthController extends Controller
         RateLimiter::clear($rateKey);
 
         if ($forAdmin) {
-            return $this->issueAdminStaffToken($user, 'pin');
+            return $this->issueAdminStaffSession($request, $user, 'pin');
         }
 
         return $this->issuePosStaffToken($user, 'pin');
@@ -157,7 +159,7 @@ class StaffAuthController extends Controller
 
         RateLimiter::clear($rateKey);
 
-        return $this->issueAdminStaffToken($user, 'phone');
+        return $this->issueAdminStaffSession($request, $user, 'phone');
     }
 
     /**
@@ -245,11 +247,24 @@ class StaffAuthController extends Controller
     }
 
     /**
-     * Logout (revoke token).
+     * Logout — revoke Bearer PAT (if any) and clear the web session (admin SPA).
      */
     public function logout(Request $request)
     {
-        $request->user()?->currentAccessToken()?->delete();
+        $user = $request->user();
+        if ($user instanceof User) {
+            $token = $user->currentAccessToken();
+            if ($token && !($token instanceof TransientToken)) {
+                $token->delete();
+            }
+        }
+
+        Auth::guard('web')->logout();
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json([
             'message' => 'Logged out',
@@ -271,8 +286,8 @@ class StaffAuthController extends Controller
      */
     public function me(Request $request)
     {
-        if (!$request->user()?->tokenCan('staff')) {
-            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        if ($denied = $this->denyUnlessStaffActor($request)) {
+            return $denied;
         }
 
         $user = $request->user();
@@ -288,8 +303,8 @@ class StaffAuthController extends Controller
      */
     public function updatePreferences(Request $request)
     {
-        if (!$request->user()?->tokenCan('staff')) {
-            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        if ($denied = $this->denyUnlessStaffActor($request)) {
+            return $denied;
         }
 
         $validated = $request->validate([
@@ -306,6 +321,23 @@ class StaffAuthController extends Controller
             'message' => 'Preferences saved',
             'user' => $this->serializeStaffUser($user),
         ]);
+    }
+
+    /**
+     * Bearer PATs must carry the staff ability; web-session admin SPA users do not.
+     */
+    private function denyUnlessStaffActor(Request $request): ?JsonResponse
+    {
+        $user = $request->user();
+        if (!$user instanceof User) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        if ($request->bearerToken() && !$user->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+
+        return null;
     }
 
     private function passwordResetOtpCacheKey(string $identityKey): string
@@ -370,7 +402,10 @@ class StaffAuthController extends Controller
         ]);
     }
 
-    private function issueAdminStaffToken(User $user, string $errorField = 'phone'): JsonResponse
+    /**
+     * Admin SPA login — Sanctum stateful session cookie (no PAT in localStorage).
+     */
+    private function issueAdminStaffSession(Request $request, User $user, string $errorField = 'phone'): JsonResponse
     {
         $user->update(['last_login_at' => now()]);
         $user->loadMissing('role');
@@ -381,15 +416,13 @@ class StaffAuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken(
-            'staff-' . $user->id,
-            ['staff'],
-            now()->addHours((int) config('sanctum.admin_token_ttl_hours')),
-        )->plainTextToken;
+        Auth::guard('web')->login($user);
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
         return response()->json([
             'message' => 'Login successful',
-            'token' => $token,
             'user' => $this->serializeStaffUser($user),
         ]);
     }

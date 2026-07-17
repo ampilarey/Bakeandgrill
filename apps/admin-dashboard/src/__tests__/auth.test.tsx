@@ -28,7 +28,6 @@ describe('LoginPage', () => {
             </MemoryRouter>,
         );
         const btn = screen.getByRole('button', { name: /sign in/i }) as HTMLButtonElement;
-        // Submit is the only `disabled`-capable button in the form
         expect(btn.disabled).toBe(true);
 
         fireEvent.change(screen.getByPlaceholderText(/7820288 or you@example.com/i), { target: { value: '9609123456' } });
@@ -40,7 +39,7 @@ describe('LoginPage', () => {
 
     it('calls phoneLogin and invokes onLogin on success', async () => {
         const mockUser = { id: 1, name: 'Owner', email: 'o@t.com', role: { id: 1, name: 'Owner', slug: 'owner' } } as never;
-        const phoneLoginSpy = vi.spyOn(api, 'phoneLogin').mockResolvedValue({ token: 'test-token', user: mockUser });
+        const phoneLoginSpy = vi.spyOn(api, 'phoneLogin').mockResolvedValue({ user: mockUser });
         const onLogin = vi.fn();
 
         render(
@@ -54,7 +53,7 @@ describe('LoginPage', () => {
         fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
         await waitFor(() => expect(phoneLoginSpy).toHaveBeenCalledWith('9609123456', 'hunter2'));
-        expect(onLogin).toHaveBeenCalledWith('test-token', mockUser, undefined);
+        expect(onLogin).toHaveBeenCalledWith(mockUser, undefined);
     });
 
     it('surfaces the server error message on failed login', async () => {
@@ -74,15 +73,11 @@ describe('LoginPage', () => {
     });
 });
 
-describe('admin_token lifecycle', () => {
-    it('localStorage round-trips the token cleanly', () => {
-        // Smoke test for the polyfill in setup.ts — vitest 4 + jsdom 28
-        // dropped a working Storage global, which broke any test that
-        // simply called localStorage.setItem. The setup file installs
-        // a Map-backed polyfill; this test guards that contract.
-        localStorage.setItem('admin_token', 'abc123');
-        expect(localStorage.getItem('admin_token')).toBe('abc123');
-        localStorage.removeItem('admin_token');
-        expect(localStorage.getItem('admin_token')).toBeNull();
+describe('localStorage polyfill', () => {
+    it('round-trips values cleanly', () => {
+        localStorage.setItem('probe', 'abc123');
+        expect(localStorage.getItem('probe')).toBe('abc123');
+        localStorage.removeItem('probe');
+        expect(localStorage.getItem('probe')).toBeNull();
     });
 });

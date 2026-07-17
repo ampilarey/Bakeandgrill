@@ -32,10 +32,8 @@ class AdminTokenExpiryTest extends TestCase
         ]);
     }
 
-    public function test_phone_login_token_has_admin_ttl_expiry(): void
+    public function test_phone_login_establishes_web_session_without_pat(): void
     {
-        config(['sanctum.admin_token_ttl_hours' => 24]);
-
         $user = $this->createAdminUser();
 
         $response = $this->postJson('/api/auth/staff/login', [
@@ -43,21 +41,45 @@ class AdminTokenExpiryTest extends TestCase
             'password' => 'password123',
         ]);
 
-        $response->assertOk()->assertJsonStructure(['token']);
+        $response->assertOk()
+            ->assertJsonStructure(['user' => ['id', 'name', 'role']])
+            ->assertJsonMissingPath('token');
 
-        $accessToken = $user->tokens()->latest('id')->first();
-        $this->assertNotNull($accessToken);
-        $this->assertNotNull($accessToken->expires_at);
-        $this->assertTrue(
-            $accessToken->expires_at->between(now()->addHours(23), now()->addHours(25)),
-            'Admin token should expire ~24 hours after issuance',
-        );
+        $this->assertAuthenticatedAs($user, 'web');
+        $this->assertSame(0, $user->tokens()->count());
+
+        $this->getJson('/api/auth/me')
+            ->assertOk()
+            ->assertJsonPath('user.id', $user->id);
     }
 
-    public function test_admin_token_ttl_config_never_resolves_to_zero(): void
+    public function test_admin_pin_login_establishes_web_session(): void
     {
-        config(['sanctum.admin_token_ttl_hours' => max(1, (int) ('' ?: 24))]);
-        $this->assertSame(24, config('sanctum.admin_token_ttl_hours'));
+        $user = $this->createAdminUser();
+        $user->update(['pin_hash' => Hash::make('4321')]);
+
+        $this->postJson('/api/auth/staff/pin-login', [
+            'username' => 'admin@example.com',
+            'pin' => '4321',
+            'intent' => 'admin',
+        ])->assertOk()
+            ->assertJsonMissingPath('token');
+
+        $this->assertAuthenticatedAs($user, 'web');
+
+        $this->getJson('/api/auth/me')->assertOk();
+    }
+
+    public function test_admin_logout_clears_web_guard(): void
+    {
+        $user = $this->createAdminUser();
+        $this->actingAs($user, 'web');
+
+        $this->postJson('/api/auth/logout')
+            ->assertOk()
+            ->assertJson(['message' => 'Logged out']);
+
+        $this->assertGuest('web');
     }
 
     public function test_expired_staff_token_returns_401_on_protected_route(): void

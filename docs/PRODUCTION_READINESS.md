@@ -83,10 +83,10 @@ Fatal when `APP_DEBUG=true`, `APP_KEY` empty, `TRUSTED_PROXIES` unset or `*`, `S
 
 | Priority | Item | Notes |
 |----------|------|-------|
-| Medium | Admin SPA cookie auth | `admin_token` in localStorage — migrate to Sanctum stateful SPA; see `apps/admin-dashboard/src/api/client.ts` |
+| Done | Admin SPA cookie auth | Sanctum stateful `web` session — no `admin_token` in localStorage |
 | Done | Dual-purpose `auth:sanctum` routes | Hardened with `customer.token` / `staff_or_customer.token` / `staff_customer_or_driver.token` |
 | Low | `OrderController` size | Still large; continue incremental extraction |
-| Low | `symfony/yaml` CVE-2026-45133 | Composer audit — low severity transitive |
+| Done | Composer advisories | Cleared via guzzle/laravel/jwt/yaml bumps |
 | Ops | Test deploy smoke | Run on `test.bakeandgrill.mv` after pull |
 
 ---

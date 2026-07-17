@@ -92,15 +92,14 @@ export function useSse(
       const ctrl = new AbortController();
       abortRef.current = ctrl;
 
-      const token = localStorage.getItem('admin_token') ?? '';
-      const url   = `${BASE}${path}${sinceId ? `?since=${encodeURIComponent(sinceId)}` : ''}`;
+      const url = `${BASE}${path}${sinceId ? `?since=${encodeURIComponent(sinceId)}` : ''}`;
 
       try {
         const res = await fetch(url, {
           signal: ctrl.signal,
+          credentials: 'include',
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept':        'text/event-stream',
+            'Accept': 'text/event-stream',
             'Cache-Control': 'no-cache',
           },
         });

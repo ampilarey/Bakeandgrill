@@ -131,8 +131,7 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) { setChecking(false); return; }
+    // Session cookie auth — probe /auth/me; 401 means not logged in.
     getMe()
       .then((r) => {
         primeCurrentUserPermissionCache(r.user);
@@ -140,19 +139,17 @@ export default function App() {
       })
       .catch(() => {
         clearCurrentUserPermissionCache();
-        localStorage.removeItem('admin_token');
-        navigate('/login');
+        setUser(null);
       })
       .finally(() => setChecking(false));
   }, []);
 
-  // When any API call returns 401 (token expired mid-session), the shared client
+  // When any API call returns 401 (session expired mid-session), the shared client
   // dispatches an 'auth_expired' event. Handle it here so staff are immediately
   // redirected to the login page instead of being left on a broken screen.
   useEffect(() => {
     const onExpired = () => {
       clearCurrentUserPermissionCache();
-      localStorage.removeItem('admin_token');
       setUser(null);
       navigate('/login');
     };
@@ -160,7 +157,7 @@ export default function App() {
     return () => window.removeEventListener('auth_expired', onExpired);
   }, [navigate]);
 
-  const handleLogin = (_token: string, staffUser: StaffUser, returnTo?: string) => {
+  const handleLogin = (staffUser: StaffUser, returnTo?: string) => {
     clearCurrentUserPermissionCache();
     primeCurrentUserPermissionCache(staffUser);
     setUser(staffUser);
@@ -168,9 +165,8 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    try { await apiLogout(); } catch (_) { /* token already expired — still clear locally */ }
+    try { await apiLogout(); } catch (_) { /* session already gone — still clear locally */ }
     clearCurrentUserPermissionCache();
-    localStorage.removeItem('admin_token');
     setUser(null);
     navigate('/login');
   };

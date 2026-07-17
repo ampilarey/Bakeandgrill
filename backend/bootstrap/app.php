@@ -28,8 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 Illuminate\Http\Request::HEADER_X_FORWARDED_PREFIX);
         }
 
-        // Sanctum SPA cookie auth for same-origin React apps (/order, future admin cookie migration).
-        $middleware->statefulApi();
+// Sanctum SPA cookie auth for same-origin React apps (/order, /admin).
+$middleware->statefulApi();
 
         // Use app CSRF middleware (Bearer bypass) for both web and Sanctum stateful stacks.
         $middleware->replace(

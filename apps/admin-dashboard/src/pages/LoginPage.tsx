@@ -29,7 +29,7 @@ const BTN_GHOST: React.CSSProperties = {
   fontFamily: 'inherit', padding: 0,
 };
 
-export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUser, returnTo?: string) => void }) {
+export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: string) => void }) {
   const location = useLocation();
   const returnTo = (location.state as { from?: string } | null)?.from;
 
@@ -65,12 +65,10 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: StaffUse
     setLoginError('');
     setLoginLoading(true);
     try {
-      localStorage.removeItem('admin_token');
       const res = loginMode === 'pin'
         ? await pinLogin(phone.trim(), pin.trim())
         : await phoneLogin(phone.trim(), password);
-      localStorage.setItem('admin_token', res.token);
-      onLogin(res.token, res.user, returnTo);
+      onLogin(res.user, returnTo);
     } catch (err) {
       setLoginError((err as Error).message);
     } finally {

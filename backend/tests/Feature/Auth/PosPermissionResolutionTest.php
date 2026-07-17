@@ -371,6 +371,7 @@ class PosPermissionResolutionTest extends TestCase
             'phone' => '7700002',
             'password' => 'password',
         ])->assertOk()
-            ->assertJsonStructure(['token', 'user' => ['permissions']]);
+            ->assertJsonStructure(['user' => ['permissions']])
+            ->assertJsonMissingPath('token');
     }
 }

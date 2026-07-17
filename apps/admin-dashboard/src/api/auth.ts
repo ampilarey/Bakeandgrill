@@ -3,7 +3,7 @@ import { req } from './client';
 
 export type { StaffUser };
 
-export async function pinLogin(username: string, pin: string): Promise<{ token: string; user: StaffUser }> {
+export async function pinLogin(username: string, pin: string): Promise<{ user: StaffUser }> {
   return req('/auth/staff/pin-login', {
     method: 'POST',
     body: JSON.stringify({ username, pin, intent: 'admin' }),
@@ -11,7 +11,7 @@ export async function pinLogin(username: string, pin: string): Promise<{ token: 
   });
 }
 
-export async function phoneLogin(phone: string, password: string): Promise<{ token: string; user: StaffUser }> {
+export async function phoneLogin(phone: string, password: string): Promise<{ user: StaffUser }> {
   return req('/auth/staff/login', {
     method: 'POST',
     body: JSON.stringify({ phone, password }),
@@ -40,8 +40,9 @@ export async function staffPasswordResetVerify(
   });
 }
 
+/** Session probe — anonymous so a cold boot 401 does not fire auth_expired. */
 export async function getMe(): Promise<{ user: StaffUser }> {
-  return req('/auth/me');
+  return req('/auth/me', { anonymous: true });
 }
 
 export async function updateMyPreferences(data: {

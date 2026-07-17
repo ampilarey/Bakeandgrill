@@ -25,14 +25,22 @@ export function staffPinLoginBody(pin?: string) {
 let cachedStaffToken = '';
 let staffTokenInFlight: Promise<string> | null = null;
 
+/**
+ * Staff Bearer PAT for POS/KDS/API helpers.
+ * Admin phone login is session-only and must not be used here.
+ */
 async function fetchStaffToken(request: APIRequestContext): Promise<string> {
   if (ADMIN_PHONE && ADMIN_PASSWORD) {
-    const res = await request.post('/api/auth/staff/login', {
-      data: { phone: ADMIN_PHONE, password: ADMIN_PASSWORD },
+    const res = await request.post('/api/auth/staff/pos-password-login', {
+      data: {
+        username: ADMIN_PHONE,
+        password: ADMIN_PASSWORD,
+        device_identifier: 'e2e-pos',
+      },
     });
     if (res.ok()) {
       const data = (await res.json()) as { token?: string };
-      return data.token ?? '';
+      if (data.token) return data.token;
     }
   }
 
@@ -44,6 +52,21 @@ async function fetchStaffToken(request: APIRequestContext): Promise<string> {
     return data.token ?? '';
   }
   return '';
+}
+
+/** Probe whether admin SPA session login works (does not share cookies with pages). */
+export async function canEstablishAdminSession(request: APIRequestContext): Promise<boolean> {
+  if (ADMIN_PHONE && ADMIN_PASSWORD) {
+    const res = await request.post('/api/auth/staff/login', {
+      data: { phone: ADMIN_PHONE, password: ADMIN_PASSWORD },
+    });
+    if (res.ok()) return true;
+  }
+
+  const res = await request.post('/api/auth/staff/pin-login', {
+    data: { ...staffPinLoginBody(), intent: 'admin' },
+  });
+  return res.ok();
 }
 
 /** Obtain a staff token — prefers phone+password login; dedupes concurrent calls. */

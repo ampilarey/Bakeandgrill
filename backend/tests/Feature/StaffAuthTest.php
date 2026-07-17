@@ -172,7 +172,8 @@ class StaffAuthTest extends TestCase
             'pin' => '4321',
             'intent' => 'admin',
         ])->assertOk()
-            ->assertJsonStructure(['token', 'user' => ['permissions']]);
+            ->assertJsonStructure(['user' => ['permissions']])
+            ->assertJsonMissingPath('token');
     }
 
     public function test_admin_phone_login_accepts_local_phone_format(): void

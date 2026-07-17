@@ -1,25 +1,20 @@
 /**
  * Admin dashboard authentication tests.
- * Admin UI uses phone + password (not PIN numpad).
- * Token injection tests fall back to PIN API when ADMIN_PASSWORD is unset.
+ * Admin UI uses phone + password (not PIN numpad) and Sanctum session cookies.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { ADMIN_PHONE, ADMIN_PASSWORD, clearStaffTokenCache, obtainStaffToken } from '../fixtures/auth';
-import { gotoAdminWithToken } from '../helpers/injectAuth';
+import { canEstablishAdminSession } from '../fixtures/auth';
+import { gotoAdminAuthenticated } from '../helpers/injectAuth';
 
 test.describe.configure({ mode: 'serial' });
 
-let sharedAdminToken = '';
+let adminAuthAvailable = false;
 test.beforeAll(async ({ request }) => {
-  sharedAdminToken = await obtainStaffToken(request);
-  if (!sharedAdminToken) {
-    console.warn('Admin login failed in beforeAll — token-based tests will skip');
+  adminAuthAvailable = await canEstablishAdminSession(request);
+  if (!adminAuthAvailable) {
+    console.warn('Admin login failed in beforeAll — session-based tests will skip');
   }
 });
-
-async function injectAdminToken(page: Page, token: string) {
-  await gotoAdminWithToken(page, token, '/admin/dashboard');
-}
 
 async function gotoAdminLogin(page: Page) {
   await page.goto('/admin/');
@@ -46,23 +41,23 @@ test.describe('Admin login', () => {
     await expect(errorDiv).toBeVisible({ timeout: 8_000 });
   });
 
-  test('correct credentials log in via API token injection', async ({ page }) => {
-    if (!sharedAdminToken) {
-      test.skip(true, 'Admin token not available (set ADMIN_PHONE + ADMIN_PASSWORD or ADMIN_PIN)');
+  test('correct credentials log in via session cookie', async ({ page }) => {
+    if (!adminAuthAvailable) {
+      test.skip(true, 'Admin session not available (set ADMIN_PHONE + ADMIN_PASSWORD or ADMIN_PIN)');
       return;
     }
-    await injectAdminToken(page, sharedAdminToken);
+    await gotoAdminAuthenticated(page, '/admin/dashboard');
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 12_000 });
     const body = await page.textContent('body') ?? '';
     expect(body.toLowerCase()).toMatch(/dashboard|orders|revenue|sales/);
   });
 
   test('after login, sidebar nav groups are visible', async ({ page }) => {
-    if (!sharedAdminToken) {
-      test.skip(true, 'Admin token not available');
+    if (!adminAuthAvailable) {
+      test.skip(true, 'Admin session not available');
       return;
     }
-    await injectAdminToken(page, sharedAdminToken);
+    await gotoAdminAuthenticated(page, '/admin/dashboard');
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 12_000 });
     const sidebar = page.locator('nav, aside, [class*="sidebar"]').first();
     await expect(sidebar).toBeVisible({ timeout: 5_000 });
@@ -70,12 +65,12 @@ test.describe('Admin login', () => {
     expect(navText.toLowerCase()).toMatch(/orders|menu|staff|reports/);
   });
 
-  test('admin logout clears token', async ({ page }) => {
-    if (!sharedAdminToken) {
-      test.skip(true, 'Admin token not available');
+  test('admin logout clears session', async ({ page }) => {
+    if (!adminAuthAvailable) {
+      test.skip(true, 'Admin session not available');
       return;
     }
-    await injectAdminToken(page, sharedAdminToken);
+    await gotoAdminAuthenticated(page, '/admin/dashboard');
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 12_000 });
 
     const logoutBtn = page.getByRole('button', { name: /log out/i });
@@ -85,7 +80,5 @@ test.describe('Admin login', () => {
 
     const token = await page.evaluate(() => localStorage.getItem('admin_token'));
     expect(token).toBeNull();
-    clearStaffTokenCache();
-    sharedAdminToken = '';
   });
 });
