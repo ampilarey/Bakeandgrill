@@ -42,9 +42,14 @@ const PAY_METHODS = [
   { value: "other", label: "Other" },
 ];
 
+function money(n: unknown): string {
+  const v = typeof n === "number" ? n : parseFloat(String(n ?? 0));
+  return (Number.isFinite(v) ? v : 0).toFixed(2);
+}
+
 export function ExpensesPanel({ onClose }: Props) {
-  const [from, setFrom] = useState(monthStartYmd);
-  const [to, setTo] = useState(todayYmd);
+  const [from, setFrom] = useState(() => monthStartYmd());
+  const [to, setTo] = useState(() => todayYmd());
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [cats, setCats] = useState<ExpenseCategory[]>([]);
@@ -68,17 +73,18 @@ export function ExpensesPanel({ onClose }: Props) {
     try {
       const [list, catRes] = await Promise.all([
         getExpenses({ from, to, page: 1 }),
-        cats.length === 0 ? getExpenseCategories() : Promise.resolve(null),
+        getExpenseCategories(),
       ]);
       setExpenses(list.data ?? []);
-      setTotalAmount(list.total_amount ?? 0);
-      if (catRes) setCats(catRes.categories ?? []);
+      const rawTotal = list.total_amount ?? 0;
+      setTotalAmount(typeof rawTotal === "number" ? rawTotal : parseFloat(String(rawTotal)) || 0);
+      setCats(catRes.categories ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load expenses.");
     } finally {
       setLoading(false);
     }
-  }, [from, to, cats.length]);
+  }, [from, to]);
 
   useEffect(() => {
     void load();
@@ -179,7 +185,7 @@ export function ExpensesPanel({ onClose }: Props) {
           marginLeft: "auto", padding: "8px 14px", borderRadius: 10,
           background: "#FFF7ED", border: "1px solid #FDBA74", fontWeight: 800, fontSize: 14, color: "#9A3412",
         }}>
-          Approved total: MVR {totalAmount.toFixed(2)}
+          Approved total: MVR {money(totalAmount)}
         </div>
       </div>
 
@@ -221,7 +227,7 @@ export function ExpensesPanel({ onClose }: Props) {
                   </div>
                 </div>
                 <div style={{ fontWeight: 800, fontSize: 15, color: "#0F172A" }}>
-                  MVR {Number(exp.amount).toFixed(2)}
+                  MVR {money(exp.amount)}
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 800, textTransform: "uppercase",
