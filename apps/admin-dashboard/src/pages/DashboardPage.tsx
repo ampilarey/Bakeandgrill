@@ -12,6 +12,8 @@ import {
   getDailySummary,
   getInventoryForecast,
   getPurchaseSuggestions,
+  getRestockPlan,
+  getSpendHub,
   getSystemHealth,
   fetchPosOverview,
   formatAuditAction,
@@ -28,7 +30,7 @@ import {
 import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
-import { today } from '../utils/dateHelpers';
+import { monthStart, today } from '../utils/dateHelpers';
 import { showDevNavItems } from '../components/navConfig';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -437,6 +439,40 @@ export function DashboardPage() {
   });
   const { lowStock, lowStockTotal, stockRunway, poSuggestCount } = inventoryIntel;
   const lowStockErr = lowStockQueryError?.message ?? '';
+
+  const mtdFrom = monthStart();
+  const mtdTo = today();
+  const { data: spendRestock = null } = useQuery({
+    queryKey: ['dashboard', 'spend-restock', mtdFrom, mtdTo],
+    enabled: canFinancialSummary,
+    queryFn: async () => {
+      const [restock, spend] = await Promise.all([
+        getRestockPlan({ lookback_days: 30, buy_lookback_days: 90, lead_days: 3, cover_days: 14 })
+          .catch(() => null),
+        getSpendHub(mtdFrom, mtdTo).catch(() => null),
+      ]);
+      const dueSoonItems = (restock?.items ?? [])
+        .filter((i) => i.due_soon)
+        .slice(0, 5)
+        .map((i) => ({
+          id: i.id,
+          name: i.name,
+          suggested_order_qty: i.suggested_order_qty,
+          unit: i.unit,
+          open_purchase: i.open_purchase?.purchase_number ?? null,
+        }));
+      return {
+        dueSoon: restock?.totals.due_soon ?? 0,
+        withOpenPo: restock?.totals.with_open_po ?? 0,
+        dueSoonItems,
+        mtdPurchases: spend?.totals.purchases ?? 0,
+        mtdExpenses: spend?.totals.expenses_approved ?? 0,
+        mtdWaste: spend?.totals.waste_cost ?? 0,
+        mtdWithWaste: spend?.totals.total_with_waste ?? 0,
+      };
+    },
+    refetchInterval: canFinancialSummary ? 60_000 : false,
+  });
 
   const {
     data: shift = null,
@@ -885,7 +921,8 @@ export function DashboardPage() {
             <span style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Inventory Intelligence</span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => navigate('/inventory')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Inventory →</button>
-              <button type="button" onClick={() => navigate('/forecasts')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Forecasts →</button>
+              <button type="button" onClick={() => navigate('/forecasts')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Restock Plan →</button>
+              <button type="button" onClick={() => navigate('/reports')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Spend Hub →</button>
               {poSuggestCount > 0 && (
                 <button type="button" onClick={() => navigate('/purchase-orders')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {poSuggestCount} PO suggestions →
@@ -898,9 +935,89 @@ export function DashboardPage() {
             <StatCard label="Below Reorder" value={String(lowStockTotal)} accent="#ef4444" icon={Package} />
             <StatCard label="Runway Risk" value={String(stockRunway.length)} sub="≤7 days stock" accent="#f97316" icon={AlertTriangle} />
             <StatCard label="PO Suggestions" value={String(poSuggestCount)} accent="#8b5cf6" icon={TrendingUp} />
+            {spendRestock && (
+              <>
+                <StatCard
+                  label="Due Soon"
+                  value={String(spendRestock.dueSoon)}
+                  sub="Restock plan"
+                  accent={spendRestock.dueSoon > 0 ? '#c2410c' : '#22c55e'}
+                  icon={ClipboardList}
+                />
+                <StatCard
+                  label="Already on PO"
+                  value={String(spendRestock.withOpenPo)}
+                  sub="Open draft/ordered"
+                  accent="#b45309"
+                  icon={ShoppingBag}
+                />
+                <StatCard
+                  label="MTD Purchases"
+                  value={fmt(spendRestock.mtdPurchases)}
+                  sub="Received POs"
+                  accent="#D4813A"
+                  icon={Package}
+                />
+                <StatCard
+                  label="MTD Waste"
+                  value={fmt(spendRestock.mtdWaste)}
+                  sub={`Expenses ${fmt(spendRestock.mtdExpenses)}`}
+                  accent="#ef4444"
+                  icon={Trash2}
+                />
+              </>
+            )}
           </div>
 
           {lowStockErr && <ErrorMsg message={lowStockErr} />}
+
+          {spendRestock && spendRestock.dueSoonItems.length > 0 && (
+            <Card style={{ marginBottom: 12, padding: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#9a3412' }}>Restock due soon</p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/forecasts')}
+                  style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Open Restock Plan →
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {spendRestock.dueSoonItems.map((item) => (
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13, flexWrap: 'wrap' }}>
+                    <Link to={`/inventory?item=${item.id}`} style={{ fontWeight: 600, color: '#1C1408', textDecoration: 'none' }}>{item.name}</Link>
+                    <span style={{ color: '#6B5D4F' }}>
+                      Order {item.suggested_order_qty} {item.unit}
+                      {item.open_purchase ? (
+                        <>
+                          {' · '}
+                          <Link
+                            to={`/purchase-orders?search=${encodeURIComponent(item.open_purchase)}`}
+                            style={{ color: '#b45309', fontWeight: 700, textDecoration: 'none' }}
+                          >
+                            On {item.open_purchase}
+                          </Link>
+                        </>
+                      ) : null}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {spendRestock && spendRestock.dueSoonItems.length === 0 && (spendRestock.mtdWithWaste > 0 || spendRestock.mtdPurchases > 0) && (
+            <Card style={{ marginBottom: 12, padding: 14 }}>
+              <p style={{ margin: 0, fontSize: 12, color: '#6B5D4F' }}>
+                Month to date: purchases {fmt(spendRestock.mtdPurchases)} · expenses {fmt(spendRestock.mtdExpenses)} · waste {fmt(spendRestock.mtdWaste)} · with waste {fmt(spendRestock.mtdWithWaste)}
+                {' · '}
+                <button type="button" onClick={() => navigate('/reports')} style={{ fontSize: 12, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                  Spend Hub →
+                </button>
+              </p>
+            </Card>
+          )}
 
           {stockRunway.length > 0 && (
             <Card style={{ marginBottom: 12, padding: 14 }}>
