@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: wave-c-availability-engine
     content: "Wave C — centralized availability pipeline; optional non-breaking API reason fields"
-    status: pending
+    status: completed
   - id: wave-d-customer-unify
     content: "Wave D — optional POS customer linkage; unified history"
     status: pending
@@ -72,7 +72,7 @@ This document is the **single source of truth** for Phase 1 (audit), Phase 2 (im
 
 - [`KitchenMenuResolver`](backend/app/Domains/Kitchen/Services/KitchenMenuResolver.php), `item_channel_availability`, `kitchen_menu_state`, site `delivery_accepting_orders`.
 - Wave B gate is live — see [`docs/WAVE_B_ONLINE_ORDERING_GATE.md`](../../docs/WAVE_B_ONLINE_ORDERING_GATE.md). Audit line “no global gate” is historical.
-- Public item payloads do not expose rich **unavailable reasons** (Wave C).
+- Wave C availability aliases are live — see [`docs/WAVE_C_AVAILABILITY.md`](../../docs/WAVE_C_AVAILABILITY.md).
 
 ### 6–9. Problems, races, risks, gaps
 

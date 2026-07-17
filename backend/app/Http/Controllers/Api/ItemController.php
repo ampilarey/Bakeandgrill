@@ -12,6 +12,7 @@ use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
+use App\Services\AvailabilityResult;
 use App\Services\ItemAvailabilityService;
 use App\Services\RecipeCostCalculator;
 use App\Services\SpecialPricingService;
@@ -242,20 +243,19 @@ class ItemController extends Controller
                 }
 
                 if ($isPosView) {
-                    $data['availability'] = [
-                        'available' => $item->is_available && $item->is_active,
-                        'reason_code' => $item->is_available ? null : 'item_unavailable',
-                        'reason_message' => $item->is_available ? null : 'This item is currently unavailable.',
-                        'available_stock' => null,
-                    ];
+                    $posAllowed = $item->is_available && $item->is_active;
+                    $posResult = $posAllowed
+                        ? AvailabilityResult::available()
+                        : AvailabilityResult::unavailable(
+                            'item_unavailable',
+                            'This item is currently unavailable.',
+                        );
+                    $data = $availability->withPublicAliases($data, $posResult);
                 } else {
-                    $result = $availability->check($item, $channel);
-                    $data['availability'] = [
-                        'available' => $result->allowed,
-                        'reason_code' => $result->reasonCode,
-                        'reason_message' => $result->message ?: null,
-                        'available_stock' => $result->availableStock,
-                    ];
+                    $data = $availability->withPublicAliases(
+                        $data,
+                        $availability->check($item, $channel),
+                    );
                 }
             }
 
@@ -359,8 +359,12 @@ class ItemController extends Controller
      * Display a specific item (PUBLIC - no recipe data)
      * For staff access with recipe data, use showWithRecipe
      */
-    public function show(Request $request, KitchenMenuResolver $kitchenMenuResolver, $id)
-    {
+    public function show(
+        Request $request,
+        KitchenMenuResolver $kitchenMenuResolver,
+        ItemAvailabilityService $availability,
+        $id,
+    ) {
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
 
@@ -368,6 +372,7 @@ class ItemController extends Controller
             ->where('is_active', true)
             ->findOrFail($id);
 
+        $channel = 'online_pickup';
         if (!$isAdmin) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
             if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
@@ -376,42 +381,49 @@ class ItemController extends Controller
         }
 
         // PUBLIC RESPONSE: Only customer-facing data, NO recipe/cost internals
-        return response()->json([
-            'item' => [
-                'id' => $item->id,
-                'name' => $item->name,
-                'name_dv' => $item->name_dv,
-                'description' => $item->description,
-                'image_url' => $item->display_image_url,
-                'base_price' => $item->base_price,
-                'tax_rate' => $item->tax_rate,
-                'tax_code' => $item->tax_code ?? 'standard_8',
-                'is_available' => $item->is_available,
-                'category' => $item->category ? [
-                    'id' => $item->category->id,
-                    'name' => $item->category->name,
-                    'name_dv' => $item->category->name_dv,
-                ] : null,
-                'has_variants' => $item->has_variants,
-                'variants' => $item->variants
-                    ->where('is_active', true)
-                    ->sortBy('sort_order')
-                    ->map(fn ($v) => [
-                        'id' => $v->id,
-                        'name' => $v->name,
-                        'name_dv' => $v->name_dv,
-                        'price' => $v->price,
-                        'is_active' => $v->is_active,
-                        'sort_order' => $v->sort_order,
-                    ])
-                    ->values(),
-                'modifiers' => $item->modifiers->map(fn ($m) => [
-                    'id' => $m->id,
-                    'name' => $m->name,
-                    'price' => $m->price,
-                ]),
-            ],
-        ]);
+        $payload = [
+            'id' => $item->id,
+            'name' => $item->name,
+            'name_dv' => $item->name_dv,
+            'description' => $item->description,
+            'image_url' => $item->display_image_url,
+            'base_price' => $item->base_price,
+            'tax_rate' => $item->tax_rate,
+            'tax_code' => $item->tax_code ?? 'standard_8',
+            'is_available' => $item->is_available,
+            'category' => $item->category ? [
+                'id' => $item->category->id,
+                'name' => $item->category->name,
+                'name_dv' => $item->category->name_dv,
+            ] : null,
+            'has_variants' => $item->has_variants,
+            'variants' => $item->variants
+                ->where('is_active', true)
+                ->sortBy('sort_order')
+                ->map(fn ($v) => [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'name_dv' => $v->name_dv,
+                    'price' => $v->price,
+                    'is_active' => $v->is_active,
+                    'sort_order' => $v->sort_order,
+                ])
+                ->values(),
+            'modifiers' => $item->modifiers->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'price' => $m->price,
+            ]),
+        ];
+
+        if (!$isAdmin) {
+            $payload = $availability->withPublicAliases(
+                $payload,
+                $availability->check($item, $channel),
+            );
+        }
+
+        return response()->json(['item' => $payload]);
     }
 
     /**

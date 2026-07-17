@@ -55,6 +55,17 @@ export type MenuItem = {
   stock_quantity?: number | null;
   is_active?: boolean;
   is_available?: boolean;
+  /** Wave C — optional public aliases from GET /api/items */
+  available_now?: boolean;
+  unavailable_reason?: string | null;
+  available_from?: string | null;
+  availability?: {
+    available: boolean;
+    reason_code?: string | null;
+    reason_message?: string | null;
+    available_stock?: number | null;
+    available_from?: string | null;
+  };
   modifiers?: Modifier[];
   // Dietary & nutritional info
   dietary_tags?: string[] | null;

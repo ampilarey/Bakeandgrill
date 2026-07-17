@@ -6,9 +6,11 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Item;
+use App\Models\ItemChannelAvailability;
 use App\Models\MenuGroup;
 use App\Models\SiteSetting;
 use App\Services\ItemAvailabilityService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -139,6 +141,73 @@ class ItemAvailabilityServiceTest extends TestCase
         $this->assertArrayHasKey('availability', $first);
         $this->assertArrayHasKey('available', $first['availability']);
         $this->assertArrayHasKey('reason_code', $first['availability']);
+        $this->assertArrayHasKey('available_from', $first['availability']);
+        $this->assertArrayHasKey('available_now', $first);
+        $this->assertTrue($first['available_now']);
+        $this->assertNull($first['unavailable_reason']);
+        $this->assertNull($first['available_from']);
+    }
+
+    public function test_public_item_show_includes_wave_c_aliases(): void
+    {
+        $response = $this->getJson('/api/items/'.$this->item->id.'?channel=online_pickup');
+        $response->assertOk();
+
+        $item = $response->json('item');
+        $this->assertTrue($item['available_now']);
+        $this->assertNull($item['unavailable_reason']);
+        $this->assertArrayHasKey('availability', $item);
+        $this->assertTrue($item['availability']['available']);
+    }
+
+    public function test_future_channel_valid_from_sets_available_from(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 0, 0, config('app.timezone', 'UTC')));
+        $from = Carbon::create(2026, 6, 16, 10, 0, 0, config('app.timezone', 'UTC'));
+
+        try {
+            ItemChannelAvailability::query()
+                ->where('item_id', $this->item->id)
+                ->where('channel', 'online_pickup')
+                ->update(['valid_from' => $from, 'is_enabled' => true]);
+
+            $result = $this->service()->check($this->item->fresh(), 'online_pickup');
+            $this->assertFalse($result->allowed);
+            $this->assertSame('channel_unavailable', $result->reasonCode);
+            $this->assertNotNull($result->availableFrom);
+            $this->assertTrue(Carbon::parse($result->availableFrom)->equalTo($from));
+
+            $response = $this->getJson('/api/items?channel=online_pickup');
+            $response->assertOk();
+            // Item may be filtered from list by scopeItemsForChannel — check show when visible
+            // or assert via service payload shape through annotate.
+            $payload = $this->service()->withPublicAliases([], $result);
+            $this->assertFalse($payload['available_now']);
+            $this->assertSame('channel_unavailable', $payload['unavailable_reason']);
+            $this->assertNotNull($payload['available_from']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_ordering_closed_with_schedule_sets_available_from(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 30, 0, config('app.timezone', 'UTC')));
+        $dayKey = 'mon'; // 2026-06-15 is Monday
+
+        try {
+            $this->setSetting('online_ordering_enabled', '1');
+            $this->setSetting('online_ordering_schedule', json_encode([
+                $dayKey => ['open' => '18:00', 'close' => '22:00'],
+            ]));
+
+            $result = $this->service()->check($this->item, 'online_pickup');
+            $this->assertFalse($result->allowed);
+            $this->assertSame('ordering_closed', $result->reasonCode);
+            $this->assertNotNull($result->availableFrom);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_admin_items_api_does_not_include_availability_field(): void
