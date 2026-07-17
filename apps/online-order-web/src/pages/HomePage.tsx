@@ -37,14 +37,14 @@ export function HomePage() {
   const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const [, setDeliveryAvailable] = useState<boolean>(true);
-  const [lastOrder, setLastOrder] = useState<Order | null>(null);
-  const [reordering, setReordering] = useState(false);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [reorderingId, setReorderingId] = useState<number | null>(null);
   const [featuredReviews, setFeaturedReviews] = useState<FeaturedReview[]>([]);
   const [corpForm, setCorpForm] = useState({ contact_name: '', phone: '', company: '', headcount: '', notes: '' });
   const [corpSubmitting, setCorpSubmitting] = useState(false);
   const [corpMessage, setCorpMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const { settings: s, trustItems, heroSlides, homepageCategories, text } = useSiteSettingsContext();
-  const { isAuthenticated, authReady } = useAuth();
+  const { isAuthenticated, authReady, customerName } = useAuth();
   const reorderFetched = useRef(false);
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
@@ -86,15 +86,46 @@ export function HomePage() {
     }).catch(() => { /* non-blocking */ });
   }, []);
 
-  // Load last order for returning customers (non-blocking)
+  // Load recent completed orders for returning customers (non-blocking)
   useEffect(() => {
     if (reorderFetched.current || !authReady || !isAuthenticated) return;
     reorderFetched.current = true;
     fetchCustomerOrders().then(({ data }) => {
-      const completed = (data ?? []).find((o) => ['completed', 'delivered', 'paid'].includes(o.status));
-      if (completed) setLastOrder(completed);
+      const completed = (data ?? [])
+        .filter((o) => ['completed', 'delivered', 'paid'].includes(o.status))
+        .slice(0, 3);
+      setRecentOrders(completed);
     }).catch(() => { /* non-blocking */ });
   }, [authReady, isAuthenticated]);
+
+  const handleReorder = async (order: Order) => {
+    if (!isAuthenticated) { navigate('/account'); return; }
+    setReorderingId(order.id);
+    try {
+      const payload = await getReorderPayload(order.id);
+      clearCart();
+      for (const line of payload.items) {
+        const fakeItem = {
+          id: line.item_id,
+          name: line.item_name,
+          base_price: line.unit_price,
+          has_variants: false,
+          is_available: true,
+        } as Item;
+        const mods = (line.modifiers ?? []).map((m) => ({
+          id: m.id,
+          name: m.name,
+          price: m.price ?? 0,
+        }));
+        addItem(fakeItem, line.quantity, mods, null);
+      }
+      navigate('/checkout');
+    } catch {
+      navigate('/menu');
+    } finally {
+      setReorderingId(null);
+    }
+  };
 
   const statusBadge =
     isOpen !== null ? (
@@ -162,55 +193,53 @@ export function HomePage() {
       />
 
       {/* ── "Your usual" returning-customer block ──────────────────────────── */}
-      {lastOrder && (
+      {recentOrders.length > 0 && (
         <section style={{ background: 'var(--color-surface-alt)', borderBottom: '1px solid var(--color-border)', padding: '1.25rem var(--page-gutter)' }}>
-          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)', margin: '0 0 0.2rem' }}>
-                Welcome back!
-              </p>
-              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-dark)', margin: 0 }}>
-                Order #{lastOrder.order_number}
-                {lastOrder.items && lastOrder.items.length > 0 && (
-                  <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                    {' — '}{lastOrder.items.slice(0, 3).map((i) => i.item_name).join(', ')}
-                    {lastOrder.items.length > 3 ? ` +${lastOrder.items.length - 3} more` : ''}
-                  </span>
-                )}
-              </p>
+          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)', margin: '0 0 0.75rem' }}>
+              {customerName ? `Welcome back, ${customerName}!` : 'Welcome back!'}
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+              {recentOrders.map((order) => {
+                const busy = reorderingId === order.id;
+                return (
+                  <div
+                    key={order.id}
+                    style={{
+                      flex: '0 0 auto', minWidth: 220, maxWidth: 280,
+                      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                      borderRadius: 12, padding: '0.85rem 1rem',
+                      display: 'flex', flexDirection: 'column', gap: '0.5rem',
+                    }}
+                  >
+                    <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-dark)', margin: 0 }}>
+                      Order #{order.order_number}
+                    </p>
+                    {order.items && order.items.length > 0 && (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.35 }}>
+                        {order.items.slice(0, 3).map((i) => i.item_name).join(', ')}
+                        {order.items.length > 3 ? ` +${order.items.length - 3} more` : ''}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy || reorderingId !== null}
+                      onClick={() => void handleReorder(order)}
+                      style={{
+                        marginTop: 'auto', padding: '0.55rem 1rem',
+                        background: 'var(--color-primary)', color: '#fff',
+                        border: 'none', borderRadius: 10,
+                        fontSize: '0.85rem', fontWeight: 700,
+                        cursor: busy ? 'wait' : 'pointer',
+                        fontFamily: 'inherit', opacity: reorderingId !== null && !busy ? 0.55 : busy ? 0.75 : 1,
+                      }}
+                    >
+                      {busy ? 'Adding…' : 'Order again'}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-            <button
-              type="button"
-              disabled={reordering}
-              onClick={async () => {
-                if (!isAuthenticated) { navigate('/account'); return; }
-                setReordering(true);
-                try {
-                  const payload = await getReorderPayload(lastOrder.id);
-                  clearCart();
-                  for (const i of payload.items) {
-                    const fakeItem = { id: i.item_id, name: i.item_name, base_price: i.unit_price, has_variants: false, is_available: true } as any;
-                    addItem(fakeItem, i.quantity, [], null);
-                  }
-                  navigate('/checkout');
-                } catch {
-                  navigate('/menu');
-                } finally {
-                  setReordering(false);
-                }
-              }}
-              style={{
-                padding: '0.65rem 1.5rem',
-                background: 'var(--color-primary)', color: '#fff',
-                border: 'none', borderRadius: '10px',
-                fontSize: '0.9rem', fontWeight: 700,
-                cursor: reordering ? 'wait' : 'pointer',
-                fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
-                opacity: reordering ? 0.7 : 1,
-              }}
-            >
-              {reordering ? 'Adding…' : '🔁 Reorder'}
-            </button>
           </div>
         </section>
       )}

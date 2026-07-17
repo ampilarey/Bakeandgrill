@@ -48,3 +48,13 @@ if [[ "$fail" -ne 0 ]]; then
 fi
 
 echo "=== All smoke checks passed ==="
+echo
+echo "Manual ops checklist (after git pull + migrate on server):"
+echo "  [ ] POS Ops → Receive: select inventory SKU, status received, stock increases"
+echo "  [ ] POS Ops → Waste: logs via waste-logs (not adjust-as-waste)"
+echo "  [ ] Admin → Inventory → 📜 ledger shows movements"
+echo "  [ ] Admin → Reports → Inventory valuation"
+echo "  [ ] Admin → System Health loads without error"
+echo "  [ ] Online: logged-in home shows Order again (with modifiers)"
+echo "  [ ] POS Active orders: aged tickets tint warn/critical"
+echo "  [ ] POS Sync panel: failed + conflict rows have Retry/Discard"

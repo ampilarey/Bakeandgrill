@@ -181,6 +181,7 @@ export function useCheckout() {
   const [loyaltyTierProgress, setLoyaltyTierProgress] = useState<LoyaltyTierProgress | null>(null);
   const [loyaltyRates, setLoyaltyRates] = useState<LoyaltyRatesConfig>(DEFAULT_LOYALTY_RATES);
   const [earnRatePerMvr, setEarnRatePerMvr] = useState(1);
+  const [tierMultiplier, setTierMultiplier] = useState(1);
   const [loyaltyProgramMessage, setLoyaltyProgramMessage] = useState('');
   const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
 
@@ -319,6 +320,7 @@ export function useCheckout() {
       if (!cancelled && r.rates) {
         setLoyaltyRates(ratesFromApi(r.rates));
         setEarnRatePerMvr(r.rates.earn_per_mvr ?? 1);
+        setTierMultiplier(r.rates.tier_multiplier ?? 1);
       }
       if (!cancelled && r.tier_progress) {
         setLoyaltyTierProgress(r.tier_progress);
@@ -489,8 +491,8 @@ export function useCheckout() {
   const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;
 
   const earnPreviewPoints = useMemo(
-    () => estimateEarnPointsForSubtotalMvr(discountedSubtotalLaar / 100, earnRatePerMvr),
-    [discountedSubtotalLaar, earnRatePerMvr],
+    () => estimateEarnPointsForSubtotalMvr(discountedSubtotalLaar / 100, earnRatePerMvr, tierMultiplier),
+    [discountedSubtotalLaar, earnRatePerMvr, tierMultiplier],
   );
 
   useEffect(() => {

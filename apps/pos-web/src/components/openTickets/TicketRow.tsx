@@ -171,8 +171,18 @@ export function TicketRow({
       style={{
         padding: space.m,
         borderRadius: radius.l,
-        background: isMergeTarget ? "#EFF6FF" : palette.panel,
-        border: `1px solid ${isMergeTarget ? "#93C5FD" : palette.border}`,
+        background: isMergeTarget
+          ? "#EFF6FF"
+          : ageLevel !== "ok"
+            ? ageStyle.bg
+            : palette.panel,
+        border: `1px solid ${
+          isMergeTarget
+            ? "#93C5FD"
+            : ageLevel !== "ok"
+              ? ageStyle.border
+              : palette.border
+        }`,
         display: "flex",
         flexDirection: "column",
         gap: space.s,

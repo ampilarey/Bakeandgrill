@@ -43,6 +43,10 @@ class LoyaltyController extends Controller
             (string) $account->tier,
         );
 
+        $tierMultiplier = $this->settings->tiersEnabled()
+            ? $this->settings->tierMultiplier((string) $account->tier)
+            : 1.0;
+
         return response()->json([
             'account' => [
                 'points_balance' => $account->points_balance,
@@ -55,6 +59,7 @@ class LoyaltyController extends Controller
             'program' => $this->settings->publicRates(),
             'rates' => [
                 'earn_per_mvr' => $this->calculator->earnRatePerMvr(),
+                'tier_multiplier' => $tierMultiplier,
                 'redeem_rate_points_per_mvr' => $this->settings->redeemRatePointsPerMvr(),
                 'discount_per_point_laar' => $this->calculator->discountLaarForPoints(1),
                 'min_redeem_points' => $this->calculator->minRedeemPoints(),

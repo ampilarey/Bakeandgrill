@@ -53,6 +53,8 @@ export type LoyaltyProgramPublic = {
 
 export type LoyaltyRates = {
   earn_per_mvr: number;
+  /** Applied after base earn (matches PointsCalculator). Defaults to 1 when tiers off. */
+  tier_multiplier?: number;
   redeem_rate_points_per_mvr: number;
   discount_per_point_laar: number;
   min_redeem_points: number;

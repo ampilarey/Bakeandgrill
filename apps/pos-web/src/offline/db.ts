@@ -280,6 +280,11 @@ export async function getConflictOfflineOrders(shiftId?: number): Promise<Offlin
   return conflicts.filter((o: OfflineOrderRecord) => o.shift_id === shiftId);
 }
 
+export async function getFailedOfflineOrders(shiftId?: number): Promise<OfflineOrderRecord[]> {
+  const pending = await getPendingOfflineOrders(shiftId);
+  return pending.filter((o) => o.status === "failed");
+}
+
 export async function deleteOfflineOrder(localOrderId: string): Promise<void> {
   const db = await getOfflineDb();
   await db.delete("offline_orders", localOrderId);

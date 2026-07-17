@@ -74,9 +74,12 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
     });
   };
 
+  const [tierMultiplier, setTierMultiplier] = useState(1);
+
   useEffect(() => {
     if (!isAuthenticated || cart.length === 0) {
       setEarnRatePerMvr(1);
+      setTierMultiplier(1);
       return;
     }
     let cancelled = false;
@@ -84,6 +87,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
       .then((res) => {
         if (!cancelled && (res.program?.enabled ?? true)) {
           setEarnRatePerMvr(res.rates?.earn_per_mvr ?? 1);
+          setTierMultiplier(res.rates?.tier_multiplier ?? 1);
         }
       })
       .catch(() => { /* non-fatal */ });
@@ -92,8 +96,8 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
 
   const earnPreviewPoints = useMemo(() => {
     if (!isAuthenticated || cart.length === 0) return 0;
-    return estimateEarnPointsForSubtotalMvr(cartTotal, earnRatePerMvr);
-  }, [isAuthenticated, cart.length, cartTotal, earnRatePerMvr]);
+    return estimateEarnPointsForSubtotalMvr(cartTotal, earnRatePerMvr, tierMultiplier);
+  }, [isAuthenticated, cart.length, cartTotal, earnRatePerMvr, tierMultiplier]);
 
   useEffect(() => {
     if (cart.length === 0) {

@@ -3,6 +3,7 @@ import {
   countPendingOfflineOrders,
   deleteOfflineOrder,
   getConflictOfflineOrders,
+  getFailedOfflineOrders,
   getSyncLog,
   retryOfflineOrder,
   type OfflineOrderRecord,
@@ -16,9 +17,148 @@ type Props = {
   onClose: () => void;
 };
 
+function ProblemOrderCard({
+  order,
+  busy,
+  discardConfirmId,
+  onView,
+  onRetry,
+  onAskDiscard,
+  onConfirmDiscard,
+  onCancelDiscard,
+}: {
+  order: OfflineOrderRecord;
+  busy: boolean;
+  discardConfirmId: string | null;
+  onView: () => void;
+  onRetry: () => void;
+  onAskDiscard: () => void;
+  onConfirmDiscard: () => void;
+  onCancelDiscard: () => void;
+}) {
+  return (
+    <div
+      style={{
+        border: "1px solid #fecaca",
+        background: "#fef2f2",
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 13,
+      }}
+    >
+      <div style={{ fontWeight: 700 }}>{order.local_order_number}</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+        {order.status === "failed" && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: "#7f1d1d", background: "#fee2e2",
+            border: "1px solid #fecaca", borderRadius: 999, padding: "2px 8px",
+          }}>
+            Failed
+          </span>
+        )}
+        {order.inventory_conflict && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7",
+            border: "1px solid #fcd34d", borderRadius: 999, padding: "2px 8px",
+          }}>
+            Inventory conflict
+          </span>
+        )}
+        <span style={{ color: "#64748b", fontSize: 13 }}>
+          MVR {order.payment.amount.toFixed(2)} · {order.items.length} items
+        </span>
+      </div>
+      <ul style={{ margin: "8px 0 0", paddingLeft: 18, color: "#334155", lineHeight: 1.5 }}>
+        {order.items.map((line, idx) => (
+          <li key={`${line.item_id}-${idx}`}>
+            {line.quantity}× {line.name ?? `Item #${line.item_id}`}
+            {line.modifiers?.length ? ` (+${line.modifiers.length} mods)` : ""}
+          </li>
+        ))}
+      </ul>
+      {order.last_error && (
+        <div style={{ color: "#b91c1c", marginTop: 6, lineHeight: 1.4 }}>{order.last_error}</div>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onView}
+          style={{
+            minHeight: 44, padding: "0 12px", borderRadius: 8,
+            border: "1px solid #cbd5e1", background: "#fff", color: "#0f172a",
+            fontWeight: 600, cursor: "pointer", opacity: busy ? 0.6 : 1,
+          }}
+        >
+          View details
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onRetry}
+          style={{
+            minHeight: 44, padding: "0 12px", borderRadius: 8, border: "none",
+            background: "#0f172a", color: "#fff", fontWeight: 600, cursor: "pointer",
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          Retry sync
+        </button>
+        {discardConfirmId === order.local_order_id ? (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onConfirmDiscard}
+              style={{
+                minHeight: 44, padding: "0 12px", borderRadius: 8, border: "none",
+                background: "#b91c1c", color: "#fff", fontWeight: 700, cursor: "pointer",
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              Confirm discard
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onCancelDiscard}
+              style={{
+                minHeight: 44, padding: "0 12px", borderRadius: 8,
+                border: "1px solid #cbd5e1", background: "#fff", color: "#64748b",
+                fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onAskDiscard}
+            style={{
+              minHeight: 44, padding: "0 12px", borderRadius: 8,
+              border: "1px solid #fecaca", background: "#fff", color: "#b91c1c",
+              fontWeight: 600, cursor: "pointer", opacity: busy ? 0.6 : 1,
+            }}
+          >
+            Discard
+          </button>
+        )}
+      </div>
+      {discardConfirmId === order.local_order_id && (
+        <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
+          Discard {order.local_order_number}? This cannot be undone.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function OfflineSyncPanel({ shiftId, onClose }: Props) {
   const [pending, setPending] = useState(0);
   const [conflicts, setConflicts] = useState<OfflineOrderRecord[]>([]);
+  const [failed, setFailed] = useState<OfflineOrderRecord[]>([]);
   const [log, setLog] = useState<SyncLogRecord | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState("");
@@ -29,9 +169,11 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
   const refresh = useCallback(async () => {
     const count = await countPendingOfflineOrders(shiftId ?? undefined);
     const conflictRows = await getConflictOfflineOrders(shiftId ?? undefined);
+    const failedRows = await getFailedOfflineOrders(shiftId ?? undefined);
     const syncLog = await getSyncLog();
     setPending(count);
     setConflicts(conflictRows);
+    setFailed(failedRows);
     setLog(syncLog);
   }, [shiftId]);
 
@@ -111,9 +253,15 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
         <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
           <div><strong>Pending:</strong> {pending}</div>
           <div><strong>Conflicts:</strong> {conflicts.length}</div>
+          <div><strong>Failed:</strong> {failed.length}</div>
           <div><strong>Last sync:</strong> {log?.last_success_at ? new Date(log.last_success_at).toLocaleString() : "Never"}</div>
           {log?.last_error && (
             <div style={{ color: "#b91c1c", fontSize: 13 }}>{log.last_error}</div>
+          )}
+          {(conflicts.length > 0 || failed.length > 0) && (
+            <div style={{ color: "#92400e", fontSize: 12, lineHeight: 1.4 }}>
+              Conflicts and failed orders need Retry or Discard below. Sync now only processes pending queue items.
+            </div>
           )}
         </div>
 
@@ -121,121 +269,40 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
           <div style={{ marginTop: 16 }}>
             <h3 style={{ margin: "0 0 8px", fontSize: 14, color: "#0f172a" }}>Conflicts — resolve manually</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {conflicts.map((order) => {
-                const busy = resolvingId === order.local_order_id;
-                return (
-                  <div
-                    key={order.local_order_id}
-                    style={{
-                      border: "1px solid #fecaca",
-                      background: "#fef2f2",
-                      borderRadius: 8,
-                      padding: 12,
-                      fontSize: 13,
-                    }}
-                  >
-                    <div style={{ fontWeight: 700 }}>{order.local_order_number}</div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                      {order.inventory_conflict && (
-                        <span style={{
-                          fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7",
-                          border: "1px solid #fcd34d", borderRadius: 999, padding: "2px 8px",
-                        }}>
-                          Inventory conflict
-                        </span>
-                      )}
-                      <span style={{ color: "#64748b", fontSize: 13 }}>
-                        MVR {order.payment.amount.toFixed(2)} · {order.items.length} items
-                      </span>
-                    </div>
-                    <ul style={{ margin: "8px 0 0", paddingLeft: 18, color: "#334155", lineHeight: 1.5 }}>
-                      {order.items.map((line, idx) => (
-                        <li key={`${line.item_id}-${idx}`}>
-                          {line.quantity}× {line.name ?? `Item #${line.item_id}`}
-                          {line.modifiers?.length ? ` (+${line.modifiers.length} mods)` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                    {order.last_error && (
-                      <div style={{ color: "#b91c1c", marginTop: 6, lineHeight: 1.4 }}>{order.last_error}</div>
-                    )}
-                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => setDetailOrder(order)}
-                        style={{
-                          minHeight: 44, padding: "0 12px", borderRadius: 8,
-                          border: "1px solid #cbd5e1", background: "#fff", color: "#0f172a",
-                          fontWeight: 600, cursor: "pointer",
-                          opacity: busy ? 0.6 : 1,
-                        }}
-                      >
-                        View details
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void handleRetry(order)}
-                        style={{
-                          minHeight: 44, padding: "0 12px", borderRadius: 8, border: "none",
-                          background: "#0f172a", color: "#fff", fontWeight: 600, cursor: "pointer",
-                          opacity: busy ? 0.6 : 1,
-                        }}
-                      >
-                        Retry sync
-                      </button>
-                      {discardConfirmId === order.local_order_id ? (
-                        <>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => void handleDiscard(order)}
-                            style={{
-                              minHeight: 44, padding: "0 12px", borderRadius: 8, border: "none",
-                              background: "#b91c1c", color: "#fff", fontWeight: 700, cursor: "pointer",
-                              opacity: busy ? 0.6 : 1,
-                            }}
-                          >
-                            Confirm discard
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => setDiscardConfirmId(null)}
-                            style={{
-                              minHeight: 44, padding: "0 12px", borderRadius: 8,
-                              border: "1px solid #cbd5e1", background: "#fff", color: "#64748b",
-                              fontWeight: 600, cursor: "pointer",
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => setDiscardConfirmId(order.local_order_id)}
-                          style={{
-                            minHeight: 44, padding: "0 12px", borderRadius: 8,
-                            border: "1px solid #fecaca", background: "#fff", color: "#b91c1c",
-                            fontWeight: 600, cursor: "pointer",
-                            opacity: busy ? 0.6 : 1,
-                          }}
-                        >
-                          Discard
-                        </button>
-                      )}
-                    </div>
-                    {discardConfirmId === order.local_order_id && (
-                      <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
-                        Discard {order.local_order_number}? This cannot be undone.
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {conflicts.map((order) => (
+                <ProblemOrderCard
+                  key={order.local_order_id}
+                  order={order}
+                  busy={resolvingId === order.local_order_id}
+                  discardConfirmId={discardConfirmId}
+                  onView={() => setDetailOrder(order)}
+                  onRetry={() => void handleRetry(order)}
+                  onAskDiscard={() => setDiscardConfirmId(order.local_order_id)}
+                  onConfirmDiscard={() => void handleDiscard(order)}
+                  onCancelDiscard={() => setDiscardConfirmId(null)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {failed.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 14, color: "#0f172a" }}>Failed — retry or discard</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {failed.map((order) => (
+                <ProblemOrderCard
+                  key={order.local_order_id}
+                  order={order}
+                  busy={resolvingId === order.local_order_id}
+                  discardConfirmId={discardConfirmId}
+                  onView={() => setDetailOrder(order)}
+                  onRetry={() => void handleRetry(order)}
+                  onAskDiscard={() => setDiscardConfirmId(order.local_order_id)}
+                  onConfirmDiscard={() => void handleDiscard(order)}
+                  onCancelDiscard={() => setDiscardConfirmId(null)}
+                />
+              ))}
             </div>
           </div>
         )}
