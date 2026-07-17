@@ -69,8 +69,10 @@ export function ForecastPage() {
   const [applyingRop, setApplyingRop] = useState(false);
   const [applyingPreferred, setApplyingPreferred] = useState(false);
   const [savingLeadId, setSavingLeadId] = useState<number | null>(null);
+  const [savingCoverId, setSavingCoverId] = useState<number | null>(null);
   const [resolvingAlertId, setResolvingAlertId] = useState<number | null>(null);
   const [leadDrafts, setLeadDrafts] = useState<Record<number, string>>({});
+  const [coverDrafts, setCoverDrafts] = useState<Record<number, string>>({});
   const [qtyDrafts, setQtyDrafts] = useState<Record<number, string>>({});
   const [dismissAlertsOnPo, setDismissAlertsOnPo] = useState(true);
   const [restockToast, setRestockToast] = useState('');
@@ -207,7 +209,7 @@ export function ForecastPage() {
   const allReadySelected = readyRestock.length > 0
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
   const restockBusy = creatingPos || applyingRop || applyingPreferred
-    || settingPreferredId != null || savingLeadId != null || resolvingAlertId != null;
+    || settingPreferredId != null || savingLeadId != null || savingCoverId != null || resolvingAlertId != null;
 
   const filteredRestockItems = (() => {
     if (!restock) return [];
@@ -236,6 +238,8 @@ export function ForecastPage() {
       'Next order': i.suggested_next_order_date ?? '',
       'Lead days': i.lead_days,
       'Lead source': i.lead_days_source,
+      'Cover days': i.cover_days,
+      'Cover source': i.cover_days_source,
       'Order qty': orderQty(i),
       'Suggested qty': i.suggested_order_qty,
       ROP: i.reorder_point,
@@ -411,6 +415,9 @@ export function ForecastPage() {
   const leadDraftValue = (item: RestockPlanItem) =>
     leadDrafts[item.id] ?? String(item.lead_days ?? restock?.lead_days ?? 3);
 
+  const coverDraftValue = (item: RestockPlanItem) =>
+    coverDrafts[item.id] ?? String(item.cover_days ?? restock?.cover_days ?? 14);
+
   const saveLeadDays = async (item: RestockPlanItem) => {
     if (!canManageInventory) {
       setError('You need inventory.manage permission to set lead days.');
@@ -457,6 +464,55 @@ export function ForecastPage() {
       setError((e as Error).message);
     } finally {
       setSavingLeadId(null);
+    }
+  };
+
+  const saveCoverDays = async (item: RestockPlanItem) => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to set cover days.');
+      return;
+    }
+    const raw = coverDraftValue(item).trim();
+    if (raw === '') {
+      setSavingCoverId(item.id);
+      setError('');
+      try {
+        await updateInventoryItem(item.id, { cover_days: null });
+        setCoverDrafts((d) => {
+          const next = { ...d };
+          delete next[item.id];
+          return next;
+        });
+        setRestockToast(`${item.name}: cover days cleared (uses plan default)`);
+        await refreshRestock();
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setSavingCoverId(null);
+      }
+      return;
+    }
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 90) {
+      setError('Cover days must be an integer from 1 to 90 (or blank for default).');
+      return;
+    }
+    setSavingCoverId(item.id);
+    setError('');
+    setRestockToast('');
+    try {
+      await updateInventoryItem(item.id, { cover_days: n });
+      setCoverDrafts((d) => {
+        const next = { ...d };
+        delete next[item.id];
+        return next;
+      });
+      setRestockToast(`${item.name}: cover days → ${n}`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingCoverId(null);
     }
   };
 
@@ -878,7 +934,7 @@ export function ForecastPage() {
                           />
                         ) : null}
                       </th>
-                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Lead', 'Order qty', 'ROP', 'Supplier', 'Why'].map((h) => (
+                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Lead', 'Cover', 'Order qty', 'ROP', 'Supplier', 'Why'].map((h) => (
                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
@@ -1012,6 +1068,50 @@ export function ForecastPage() {
                               {item.lead_days}d
                               <div style={{ fontSize: 10, color: '#9C8E7E' }}>
                                 {item.lead_days_source === 'item' ? 'item' : 'default'}
+                              </div>
+                            </>
+                          )}
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F', minWidth: 96 }}>
+                          {canManageInventory ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={90}
+                                  step={1}
+                                  value={coverDraftValue(item)}
+                                  disabled={restockBusy}
+                                  onChange={(e) => setCoverDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
+                                  aria-label={`Cover days for ${item.name}`}
+                                  style={{
+                                    width: 52, height: 28, padding: '0 6px', borderRadius: 6,
+                                    border: '1px solid #E8E0D8', fontSize: 12, fontFamily: 'inherit',
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => void saveCoverDays(item)}
+                                  style={{
+                                    padding: '2px 6px', borderRadius: 6, border: '1px solid #E8E0D8',
+                                    background: '#F8F6F3', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                                    fontFamily: 'inherit', color: '#1C1408',
+                                  }}
+                                >
+                                  {savingCoverId === item.id ? '…' : 'Save'}
+                                </button>
+                              </div>
+                              <div style={{ fontSize: 10, color: '#9C8E7E' }}>
+                                {item.cover_days_source === 'item' ? 'item' : `default ${restock.cover_days}d`}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {item.cover_days}d
+                              <div style={{ fontSize: 10, color: '#9C8E7E' }}>
+                                {item.cover_days_source === 'item' ? 'item' : 'default'}
                               </div>
                             </>
                           )}

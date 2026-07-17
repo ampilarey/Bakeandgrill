@@ -54,7 +54,7 @@ export default function InventoryPage() {
   const [quickAdjusting, setQuickAdjusting] = useState<Record<number, boolean>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
-    name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', unit_cost: '',
+    name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '',
     inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
   });
   const [createSaving, setCreateSaving] = useState(false);
@@ -425,7 +425,7 @@ export default function InventoryPage() {
                 setCreateOpen(true);
                 setCreateError('');
                 setCreateForm({
-                  name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', unit_cost: '',
+                  name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '',
                   inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
                 });
                 if (cats.length === 0) void loadCats();
@@ -725,6 +725,19 @@ export default function InventoryPage() {
               />
             </label>
             <label>
+              <span style={S.label}>Cover days (order horizon)</span>
+              <input
+                type="number"
+                min="1"
+                max="90"
+                step="1"
+                style={S.input}
+                value={createForm.cover_days}
+                onChange={(e) => setCreateForm((f) => ({ ...f, cover_days: e.target.value }))}
+                placeholder="Default 14 on Restock Plan"
+              />
+            </label>
+            <label>
               <span style={S.label}>Unit cost (MVR)</span>
               <input type="number" min="0" step="any" style={S.input} value={createForm.unit_cost} onChange={(e) => setCreateForm((f) => ({ ...f, unit_cost: e.target.value }))} />
             </label>
@@ -752,6 +765,11 @@ export default function InventoryPage() {
                   if (createForm.lead_days === '') return undefined;
                   const n = parseInt(createForm.lead_days, 10);
                   return Number.isFinite(n) ? Math.min(30, Math.max(0, n)) : undefined;
+                })(),
+                cover_days: (() => {
+                  if (createForm.cover_days === '') return undefined;
+                  const n = parseInt(createForm.cover_days, 10);
+                  return Number.isFinite(n) ? Math.min(90, Math.max(1, n)) : undefined;
                 })(),
                 unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
                 inventory_category_id: createForm.inventory_category_id ? Number(createForm.inventory_category_id) : undefined,

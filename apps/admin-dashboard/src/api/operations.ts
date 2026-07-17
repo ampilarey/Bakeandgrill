@@ -534,6 +534,7 @@ export async function createInventoryItem(data: {
   current_stock?: number;
   reorder_point?: number;
   lead_days?: number | null;
+  cover_days?: number | null;
   unit_cost?: number;
   is_active?: boolean;
   inventory_category_id?: number;
@@ -556,6 +557,7 @@ export async function updateInventoryItem(
     sku: string | null;
     reorder_point: number | null;
     lead_days: number | null;
+    cover_days: number | null;
     unit_cost: number | null;
     inventory_category_id: number | null;
     preferred_supplier_id: number | null;

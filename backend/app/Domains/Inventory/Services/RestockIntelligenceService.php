@@ -75,6 +75,12 @@ final class RestockIntelligenceService
                 : $leadDays;
             $leadSource = $itemLeadSet ? 'item' : 'default';
 
+            $itemCoverSet = $item->cover_days !== null;
+            $effectiveCover = $itemCoverSet
+                ? min(max((int) $item->cover_days, 1), 90)
+                : $coverDays;
+            $coverSource = $itemCoverSet ? 'item' : 'default';
+
             $suggestedRop = $dailyRate > 0
                 ? round($dailyRate * max(1, $effectiveLead) * 1.5, 2)
                 : null;
@@ -84,7 +90,7 @@ final class RestockIntelligenceService
                 $rop,
                 $reorderQty,
                 $dailyRate,
-                $coverDays,
+                $effectiveCover,
             );
 
             $nextOrder = $this->suggestedNextOrderDate(
@@ -172,6 +178,8 @@ final class RestockIntelligenceService
                 'due_soon' => $dueSoonFlag,
                 'lead_days' => $effectiveLead,
                 'lead_days_source' => $leadSource,
+                'cover_days' => $effectiveCover,
+                'cover_days_source' => $coverSource,
                 'unit_cost' => $unitCost > 0 ? round($unitCost, 4) : null,
                 'last_purchase_price' => $lastPurchasePrice > 0 ? round($lastPurchasePrice, 4) : null,
                 'price_change_pct' => $priceChange['pct'],

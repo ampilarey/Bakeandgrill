@@ -23,6 +23,7 @@ class StoreInventoryItemRequest extends FormRequest
             'reorder_point' => 'nullable|numeric|min:0',
             'reorder_quantity' => 'nullable|numeric|min:0',
             'lead_days' => 'nullable|integer|min:0|max:30',
+            'cover_days' => 'nullable|integer|min:1|max:90',
             'unit_cost' => 'nullable|numeric|min:0',
             'last_purchase_price' => 'nullable|numeric|min:0',
             'expiry_date' => 'nullable|date',

@@ -490,6 +490,67 @@ class RestockIntelligenceTest extends TestCase
         );
     }
 
+    public function test_restock_plan_uses_per_item_cover_days_for_order_qty(): void
+    {
+        $owner = $this->makeOwner();
+
+        $short = InventoryItem::create([
+            'name' => 'Flour',
+            'sku' => 'FLR-COVER',
+            'unit' => 'kg',
+            'current_stock' => 0,
+            'reorder_point' => 1,
+            'unit_cost' => 5,
+            'cover_days' => null,
+            'is_active' => true,
+        ]);
+        $long = InventoryItem::create([
+            'name' => 'Sugar',
+            'sku' => 'SGR-COVER',
+            'unit' => 'kg',
+            'current_stock' => 0,
+            'reorder_point' => 1,
+            'unit_cost' => 5,
+            'cover_days' => 30,
+            'is_active' => true,
+        ]);
+
+        foreach ([$short, $long] as $i => $item) {
+            StockMovement::create([
+                'idempotency_key' => 'test-cover-deduct-'.$i,
+                'inventory_item_id' => $item->id,
+                'user_id' => $owner->id,
+                'type' => 'deduction',
+                'quantity' => -30,
+                'balance_after' => 0,
+                'unit_cost' => 1,
+                'reference_type' => 'order',
+                'reference_id' => 200 + $i,
+                'notes' => 'test',
+            ]);
+        }
+
+        $response = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30&cover_days=14',
+            $this->staffHeaders($owner),
+        );
+        $response->assertOk();
+
+        $byName = collect($response->json('items'))->keyBy('name');
+        $this->assertSame('default', $byName['Flour']['cover_days_source']);
+        $this->assertSame(14, (int) $byName['Flour']['cover_days']);
+        $this->assertSame('item', $byName['Sugar']['cover_days_source']);
+        $this->assertSame(30, (int) $byName['Sugar']['cover_days']);
+
+        // Same daily usage (~1/day), stock 0: longer cover ⇒ larger usage-based order qty
+        $this->assertGreaterThan(
+            (float) $byName['Flour']['suggested_order_qty'],
+            (float) $byName['Sugar']['suggested_order_qty'],
+        );
+        $this->assertSame('usage_cover', $byName['Flour']['reason']);
+        $this->assertSame('usage_cover', $byName['Sugar']['reason']);
+    }
+
     public function test_restock_plan_includes_open_reorder_alert_and_resolve(): void
     {
         $owner = $this->makeOwner();

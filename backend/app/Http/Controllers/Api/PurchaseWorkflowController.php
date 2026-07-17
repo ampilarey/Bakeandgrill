@@ -245,7 +245,10 @@ class PurchaseWorkflowController extends Controller
             $reorderQty = (float) ($item->reorder_quantity ?? 0);
             $consumed = (float) ($usageByItem[$item->id] ?? 0);
             $dailyRate = $lookbackDays > 0 ? $consumed / $lookbackDays : 0.0;
-            $qtyInfo = $this->restock->suggestedOrderQuantity($stock, $rop, $reorderQty, $dailyRate, $coverDays);
+            $effectiveCover = $item->cover_days !== null
+                ? min(max((int) $item->cover_days, 1), 90)
+                : $coverDays;
+            $qtyInfo = $this->restock->suggestedOrderQuantity($stock, $rop, $reorderQty, $dailyRate, $effectiveCover);
 
             $suggestedSupplier = null;
             if ($item->preferred_supplier_id && $item->preferredSupplier) {

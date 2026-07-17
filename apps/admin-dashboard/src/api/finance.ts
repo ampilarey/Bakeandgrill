@@ -775,6 +775,9 @@ export type RestockPlanItem = {
   /** Effective lead days used for due-soon + suggested ROP. */
   lead_days: number;
   lead_days_source: 'item' | 'default';
+  /** Effective cover days used for usage-based order qty. */
+  cover_days: number;
+  cover_days_source: 'item' | 'default';
   unit_cost: number | null;
   last_purchase_price: number | null;
   /** Percent vs last purchase; null when no baseline. */
