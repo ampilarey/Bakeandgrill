@@ -73,7 +73,9 @@ class ReceiptPageTest extends TestCase
             ->assertOk()
             ->assertSee('BG-20260527-0002')
             ->assertSee('Delivery')
-            ->assertSee('Delivery fee');
+            ->assertSee('Delivery fee')
+            ->assertSee('Something wrong with this bill?')
+            ->assertSee('wa.me', false);
     }
 
     public function test_pay_page_renders_for_unpaid_delivery_order(): void
@@ -99,6 +101,7 @@ class ReceiptPageTest extends TestCase
         $this->get('/receipts/' . $receipt->token)
             ->assertOk()
             ->assertSee('Payment confirmed')
+            ->assertSee('Something wrong with this receipt?')
             ->assertSee('doc-card-body', false)
             ->assertSee('doc-masthead', false);
     }

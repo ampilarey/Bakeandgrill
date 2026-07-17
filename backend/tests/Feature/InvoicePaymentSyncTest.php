@@ -97,6 +97,11 @@ class InvoicePaymentSyncTest extends TestCase
         $this->assertSame(0, (int) $invoice->amount_paid_laar);
         $this->assertGreaterThan(0, $invoice->balanceDueLaar());
 
+        $this->get('/invoices/'.$token)
+            ->assertOk()
+            ->assertSee('Something wrong with this bill?')
+            ->assertSee('wa.me', false);
+
         $this->postJson("/api/orders/{$this->order->id}/payments", [
             'payments' => [['method' => 'cash', 'amount' => 40]],
         ])->assertOk();
@@ -109,6 +114,7 @@ class InvoicePaymentSyncTest extends TestCase
         $page = $this->get('/invoices/'.$token)->assertOk();
         $page->assertDontSee('Balance due');
         $page->assertSee('PAID', false);
+        $page->assertDontSee('Something wrong with this bill?');
     }
 
     public function test_public_invoice_page_heals_stale_unpaid_invoice_when_order_already_paid(): void

@@ -49,9 +49,16 @@
             $displaySubtotal = $lineSum;
         }
     }
-    // Always offer a WhatsApp path (customers keep the SMS bill link after paying).
-    $showMistakeCta = ! in_array($invoice->status, ['void', 'cancelled'], true);
+    // Unpaid / open bills only — paid customers use the receipt page CTA instead.
+    $showMistakeCta = ! in_array($invoice->status, ['paid', 'void', 'cancelled'], true);
     $waLink = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
+    if ($waLink === '' || $waLink === null) {
+        $phoneDigits = preg_replace('/\D+/', '', (string) \App\Models\SiteSetting::get('business_phone', '9609120011'));
+        if ($phoneDigits !== '' && ! str_starts_with($phoneDigits, '960')) {
+            $phoneDigits = '960'.$phoneDigits;
+        }
+        $waLink = $phoneDigits !== '' ? 'https://wa.me/'.$phoneDigits : 'https://wa.me/9609120011';
+    }
     $orderNumber = $invoice->order?->order_number;
     $mistakeMsg = 'Hi Bake & Grill — I think there\'s a mistake on bill '.$invoice->invoice_number
         .($orderNumber ? ' (order '.$orderNumber.')' : '')

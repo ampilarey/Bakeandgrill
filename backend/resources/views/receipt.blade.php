@@ -39,6 +39,13 @@
     $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
     $tz = config('app.timezone', 'Indian/Maldives');
     $waLink = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
+    if ($waLink === '' || $waLink === null) {
+        $phoneDigits = preg_replace('/\D+/', '', (string) \App\Models\SiteSetting::get('business_phone', '9609120011'));
+        if ($phoneDigits !== '' && ! str_starts_with($phoneDigits, '960')) {
+            $phoneDigits = '960'.$phoneDigits;
+        }
+        $waLink = $phoneDigits !== '' ? 'https://wa.me/'.$phoneDigits : 'https://wa.me/9609120011';
+    }
     $receiptRef = $order->order_number ?? ($receipt->token ?? '');
     $mistakeTotal = $isPaid ? $netTotal : (float) $order->total;
     $mistakeMsg = 'Hi Bake & Grill — I think there\'s a mistake on '
