@@ -71,6 +71,7 @@ export function ForecastPage() {
   const [savingLeadId, setSavingLeadId] = useState<number | null>(null);
   const [resolvingAlertId, setResolvingAlertId] = useState<number | null>(null);
   const [leadDrafts, setLeadDrafts] = useState<Record<number, string>>({});
+  const [dismissAlertsOnPo, setDismissAlertsOnPo] = useState(true);
   const [restockToast, setRestockToast] = useState('');
   const [createdPoNumbers, setCreatedPoNumbers] = useState<string[]>([]);
   const [selectedRestockIds, setSelectedRestockIds] = useState<Set<number>>(new Set());
@@ -178,6 +179,7 @@ export function ForecastPage() {
   const selectableRestock = restock?.items.filter(canSelectRestock) ?? [];
   const selectedRestockItems = eligibleRestock.filter((i) => selectedRestockIds.has(i.id));
   const selectedWithOpenPo = selectedRestockItems.filter((i) => !!i.open_purchase);
+  const selectedWithAlerts = selectedRestockItems.filter((i) => !!i.open_alert);
   const selectedRopItems = (restock?.items ?? []).filter((i) => selectedRestockIds.has(i.id) && canApplyRop(i));
   const cheapestRestock = restock?.items.filter(canSetPreferred) ?? [];
   const selectedPreferredItems = cheapestRestock.filter((i) => selectedRestockIds.has(i.id));
@@ -317,10 +319,12 @@ export function ForecastPage() {
     setCreatedPoNumbers([]);
     try {
       const created: string[] = [];
+      let resolvedAlerts = 0;
       for (const [supplierId, items] of bySupplier) {
         const res = await createPurchaseFromSuggest({
           supplier_id: supplierId,
           notes: 'Auto-generated from restock plan (due soon)',
+          resolve_reorder_alerts: dismissAlertsOnPo,
           items: items.map((i) => ({
             inventory_item_id: i.id,
             quantity: i.suggested_order_qty,
@@ -328,6 +332,7 @@ export function ForecastPage() {
           })),
         });
         created.push(res.purchase.purchase_number ?? `PO #${res.purchase.id}`);
+        resolvedAlerts += res.resolved_alerts ?? 0;
       }
       const createdIds = new Set(selectedRestockItems.map((i) => i.id));
       setSelectedRestockIds((prev) => new Set([...prev].filter((id) => !createdIds.has(id))));
@@ -335,7 +340,10 @@ export function ForecastPage() {
       setRestockToast(
         `Created ${created.length} draft PO${created.length === 1 ? '' : 's'}`
         + ` · ${selectedRestockItems.length} line${selectedRestockItems.length === 1 ? '' : 's'}`
-        + ` · est. MVR ${restockPreviewTotal.toFixed(2)}`,
+        + ` · est. MVR ${restockPreviewTotal.toFixed(2)}`
+        + (resolvedAlerts > 0
+          ? ` · dismissed ${resolvedAlerts} alert${resolvedAlerts === 1 ? '' : 's'}`
+          : ''),
       );
       await refreshRestock();
     } catch (e) {
@@ -749,6 +757,9 @@ export function ForecastPage() {
                   {selectedRopItems.length > 0 && (
                     <> · <strong>{selectedRopItems.length}</strong> with ROP change</>
                   )}
+                  {selectedWithAlerts.length > 0 && (
+                    <> · <strong style={{ color: '#991b1b' }}>{selectedWithAlerts.length} with open alert</strong></>
+                  )}
                   {restockPreviewBySupplier.length > 0 && (
                     <div style={{ marginTop: 6, fontSize: 12, color: '#c2410c' }}>
                       {restockPreviewBySupplier.map((g) => (
@@ -758,6 +769,19 @@ export function ForecastPage() {
                       ))}
                     </div>
                   )}
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 8, marginTop: 8,
+                    fontSize: 12, fontWeight: 600, color: '#9a3412', cursor: 'pointer',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={dismissAlertsOnPo}
+                      disabled={restockBusy}
+                      onChange={(e) => setDismissAlertsOnPo(e.target.checked)}
+                    />
+                    Dismiss open reorder alerts for these lines
+                    {selectedWithAlerts.length > 0 ? ` (${selectedWithAlerts.length})` : ''}
+                  </label>
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>

@@ -676,7 +676,9 @@ export async function createPurchaseFromSuggest(data: {
   items: { inventory_item_id: number; quantity: number; unit_cost: number }[];
   expected_delivery_date?: string;
   notes?: string;
-}): Promise<{ purchase: Purchase }> {
+  /** When true, dismisses open reorder alerts for the PO line items. */
+  resolve_reorder_alerts?: boolean;
+}): Promise<{ purchase: Purchase; resolved_alerts?: number }> {
   return req('/purchases/from-suggest', { method: 'POST', body: JSON.stringify(data) });
 }
 

@@ -471,6 +471,25 @@ final class RestockIntelligenceService
     }
 
     /**
+     * Resolve open reorder alerts for the given inventory items.
+     *
+     * @param  list<int>  $itemIds
+     * @return int Number of alerts newly resolved
+     */
+    public function resolveOpenAlertsForItems(array $itemIds): int
+    {
+        $itemIds = array_values(array_unique(array_map('intval', $itemIds)));
+        if ($itemIds === []) {
+            return 0;
+        }
+
+        return InventoryReorderAlert::query()
+            ->whereIn('inventory_item_id', $itemIds)
+            ->whereNull('resolved_at')
+            ->update(['resolved_at' => now()]);
+    }
+
+    /**
      * Usage-aware order qty for PO suggest (falls back to 2×ROP formula).
      *
      * @return array{qty: float, reason: string}

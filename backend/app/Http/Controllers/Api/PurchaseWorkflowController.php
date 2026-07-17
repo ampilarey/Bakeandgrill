@@ -322,6 +322,7 @@ class PurchaseWorkflowController extends Controller
             'items.*.inventory_item_id' => ['required', 'integer', 'exists:inventory_items,id'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.001'],
             'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
+            'resolve_reorder_alerts' => ['sometimes', 'boolean'],
         ]);
 
         $purchase = DB::transaction(function () use ($validated, $request) {
@@ -357,7 +358,19 @@ class PurchaseWorkflowController extends Controller
             return $po;
         });
 
-        return response()->json(['purchase' => $purchase->load(['items.inventoryItem', 'supplier'])], 201);
+        $resolvedAlerts = 0;
+        if ($request->boolean('resolve_reorder_alerts')) {
+            $itemIds = array_map(
+                static fn (array $line): int => (int) $line['inventory_item_id'],
+                $validated['items'],
+            );
+            $resolvedAlerts = $this->restock->resolveOpenAlertsForItems($itemIds);
+        }
+
+        return response()->json([
+            'purchase' => $purchase->load(['items.inventoryItem', 'supplier']),
+            'resolved_alerts' => $resolvedAlerts,
+        ], 201);
     }
 
     private function generatePO(): string
