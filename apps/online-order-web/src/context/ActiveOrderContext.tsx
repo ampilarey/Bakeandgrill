@@ -39,6 +39,17 @@ export function isActiveOrderStatus(status: string): boolean {
   return ACTIVE.has(status);
 }
 
+/** Keep state identity stable when id+status unchanged (avoids effect loops). */
+export function sameActiveOrder(
+  prev: Order | null | undefined,
+  next: Order | null,
+): boolean {
+  if (prev === undefined) return false;
+  if (prev === null && next === null) return true;
+  if (prev === null || next === null) return false;
+  return prev.id === next.id && prev.status === next.status;
+}
+
 type ActiveOrderContextValue = {
   order: Order | null | undefined;
   activeOrder: Order | null;
@@ -53,6 +64,8 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [order, setOrder] = useState<Order | null | undefined>(undefined);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** True after the first successful/failed resolve (not undefined). */
+  const loadedRef = useRef(false);
 
   const skip =
     !isAuthenticated ||
@@ -60,8 +73,14 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
     location.pathname.startsWith('/checkout') ||
     location.pathname.startsWith('/orders/');
 
+  const applyOrder = useCallback((next: Order | null) => {
+    loadedRef.current = true;
+    setOrder((prev) => (sameActiveOrder(prev, next) ? prev : next));
+  }, []);
+
   useEffect(() => {
     if (skip) {
+      loadedRef.current = true;
       setOrder(null);
       return;
     }
@@ -73,10 +92,10 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
         .then((res) => {
           const orders = normalizeOrders(res);
           const active = orders.find((o) => ACTIVE.has(o.status));
-          setOrder(active ?? null);
+          applyOrder(active ?? null);
         })
         .catch((err) => {
-          if (err.name !== 'AbortError') setOrder(null);
+          if (err.name !== 'AbortError') applyOrder(null);
         });
     };
 
@@ -87,28 +106,24 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
       controller.abort();
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isAuthenticated, authReady, skip]);
+  }, [isAuthenticated, authReady, skip, applyOrder]);
 
-  const reloadOnNav = useCallback(() => {
-    if (!isAuthenticated || !authReady) return undefined;
+  // Reload once per navigation — do NOT depend on `order` (new object identity
+  // every response would self-trigger a fetch loop).
+  useEffect(() => {
+    if (skip || !loadedRef.current) return;
     const controller = new AbortController();
     fetchCustomerOrders(controller.signal)
       .then((res) => {
         const orders = normalizeOrders(res);
         const active = orders.find((o) => ACTIVE.has(o.status));
-        setOrder(active ?? null);
+        applyOrder(active ?? null);
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') setOrder(null);
+        if (err.name !== 'AbortError') applyOrder(null);
       });
-    return controller;
-  }, [isAuthenticated, authReady]);
-
-  useEffect(() => {
-    if (skip || order === undefined) return;
-    const controller = reloadOnNav();
-    return () => controller?.abort();
-  }, [location.pathname, skip, order, reloadOnNav]);
+    return () => controller.abort();
+  }, [location.pathname, skip, applyOrder]);
 
   const activeOrder =
     order && isActiveOrderStatus(order.status) ? order : null;

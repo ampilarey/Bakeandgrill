@@ -7,7 +7,6 @@ import { ShellNavProvider, useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useCart } from '../../context/CartContext';
 import { getCustomerMe } from '../../api';
-import { AnalyticsTracker } from '../AnalyticsTracker';
 import { ActiveOrderCapsule } from './ActiveOrderCapsule';
 import { BottomNav } from './BottomNav';
 import { FloatingCartBar } from './FloatingCartBar';
@@ -50,8 +49,7 @@ function AppShellChrome() {
 
   return (
     <div className={shellClass}>
-      {/* Hard gate: AnalyticsTracker stays mounted in AppShell */}
-      <AnalyticsTracker settings={s} />
+      {/* AnalyticsTracker stays in SiteSettingsProvider (single mount). */}
 
       <a href="#main-content" className="skip-link">
         {t('common.skip_content')}
