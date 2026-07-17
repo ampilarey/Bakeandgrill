@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, setSalesChannel, type SalesChannel } from "../api/menu";
+import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, type SalesChannel } from "../api/menu";
 import { useCart } from "../context/CartContext";
+import { useOrderMode } from "../context/OrderModeContext";
 import {
   applyPromoCode,
   validatePromoCode,
@@ -204,7 +205,7 @@ export function useCheckout() {
     return () => window.removeEventListener("auth_expired", expire);
   }, []);
 
-  const [orderType, setOrderType]   = useState<OrderType>("pickup");
+  const { mode: orderType, setMode: setOrderType } = useOrderMode();
   const [pickupSlotAt, setPickupSlotAt] = useState<string | null>(null);
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
@@ -260,9 +261,11 @@ export function useCheckout() {
 
   const hasMounted = useRef(false);
 
+  // Channel persistence lives in OrderModeContext (setMode → setSalesChannel).
+  // fetchItems may emit sales_channel_change on delivery→pickup fallback; context
+  // snaps mode authoritatively, then this effect re-runs with the new orderType.
   useEffect(() => {
     const ch: SalesChannel = orderType === "delivery" ? "delivery" : "online_pickup";
-    setSalesChannel(ch);
     let cancelled = false;
     fetchItems(ch)
       .then((res) => {
@@ -276,7 +279,7 @@ export function useCheckout() {
     return () => {
       cancelled = true;
     };
-  }, [orderType, pruneCartToAllowedItemIds]);
+  }, [orderType, pruneCartToAllowedItemIds, refreshPricesFromMenu]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

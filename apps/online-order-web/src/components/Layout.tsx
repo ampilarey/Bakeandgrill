@@ -8,6 +8,7 @@ import { PrayerBar } from './PrayerBar';
 import { OrderStatusBar } from './OrderStatusBar';
 import { WhatsAppIcon, ViberIcon, HomeIcon, MenuIcon, CartIcon, PreOrderIcon, ClockIcon, PhoneIcon, MoreIcon } from './icons';
 import { getCustomerMe } from '../api';
+import { useTheme } from '../hooks/useTheme';
 
 
 export function Layout() {
@@ -16,6 +17,7 @@ export function Layout() {
   useLanguage(); // keep provider active for t() calls in child pages
   const cartCount = cart.reduce((s, e) => s + e.quantity, 0);
   const { settings: s, footerLinks, text } = useSiteSettingsContext();
+  const { darkMode, setDarkMode } = useTheme();
 
   const siteName   = s.site_name        || 'Bake & Grill';
   const siteTagline= s.site_tagline     || 'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.';
@@ -40,7 +42,6 @@ export function Layout() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [mobMoreOpen, setMobMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
   // If authenticated but name is missing, hydrate from API
   useEffect(() => {
@@ -63,11 +64,6 @@ export function Layout() {
     }
     return () => { cancelled = true; };
   }, [isAuthenticated, customerName, authReady, setAuth, clearAuth]);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = darkMode ? 'dark' : '';
-    try { localStorage.setItem('theme', darkMode ? 'dark' : 'light'); } catch { /* private mode / quota */ }
-  }, [darkMode]);
 
   // Close "More" dropdown when clicking outside
   useEffect(() => {
