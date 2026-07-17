@@ -33,6 +33,11 @@ class CheckReorderPoints extends Command
         $notifyNames = [];
 
         foreach ($items as $item) {
+            // Permanently excluded from Restock Plan — no new alerts / SMS.
+            if ($item->restock_excluded) {
+                continue;
+            }
+
             $existing = InventoryReorderAlert::query()
                 ->where('inventory_item_id', $item->id)
                 ->whereNull('resolved_at')

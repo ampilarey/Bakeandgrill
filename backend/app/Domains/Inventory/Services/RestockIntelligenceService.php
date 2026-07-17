@@ -22,7 +22,7 @@ final class RestockIntelligenceService
      *     buy_lookback_days: int,
      *     lead_days: int,
      *     cover_days: int,
-     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int, open_alerts: int, snoozed: int},
+     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int, open_alerts: int, snoozed: int, excluded: int},
      *     items: list<array<string, mixed>>
      * }
      */
@@ -59,6 +59,7 @@ final class RestockIntelligenceService
         $priceUp = 0;
         $withOpenAlert = 0;
         $snoozedCount = 0;
+        $excludedCount = 0;
 
         foreach ($items as $item) {
             $stock = (float) ($item->current_stock ?? 0);
@@ -108,21 +109,24 @@ final class RestockIntelligenceService
 
             $snoozeUntil = $item->restock_snoozed_until;
             $isSnoozed = $snoozeUntil !== null && $snoozeUntil->copy()->startOfDay()->gte($today);
-            // Snoozed SKUs stay on the plan but drop out of due-soon / draft-PO urgency.
-            $dueSoonFlag = $wouldBeDueSoon && ! $isSnoozed;
+            $isExcluded = (bool) $item->restock_excluded;
+            // Snoozed / excluded SKUs drop out of due-soon / draft-PO urgency.
+            $dueSoonFlag = $wouldBeDueSoon && ! $isSnoozed && ! $isExcluded;
 
             // Keep the plan focused: items with usage, buy history, or below ROP.
             if ($dailyRate <= 0 && $buy === null && ! ($rop > 0 && $stock <= $rop)) {
                 continue;
             }
 
-            if ($isSnoozed) {
+            if ($isExcluded) {
+                $excludedCount++;
+            } elseif ($isSnoozed) {
                 $snoozedCount++;
             }
             if ($dueSoonFlag) {
                 $dueSoon++;
             }
-            if ($rop > 0 && $stock <= $rop) {
+            if ($rop > 0 && $stock <= $rop && ! $isExcluded) {
                 $belowRop++;
             }
 
@@ -154,17 +158,17 @@ final class RestockIntelligenceService
                 $unitCost > 0 ? $unitCost : null,
                 $lastPurchasePrice > 0 ? $lastPurchasePrice : null,
             );
-            if ($priceChange['direction'] === 'up') {
+            if ($priceChange['direction'] === 'up' && ! $isExcluded) {
                 $priceUp++;
             }
 
             $openPurchase = $openPoByItem[$item->id] ?? null;
-            if ($openPurchase !== null) {
+            if ($openPurchase !== null && ! $isExcluded) {
                 $withOpenPo++;
             }
 
             $openAlert = $openAlertByItem[$item->id] ?? null;
-            if ($openAlert !== null) {
+            if ($openAlert !== null && ! $isExcluded) {
                 $withOpenAlert++;
             }
 
@@ -186,8 +190,9 @@ final class RestockIntelligenceService
                 'reason' => $qtyInfo['reason'],
                 'due_soon' => $dueSoonFlag,
                 'would_be_due_soon' => $wouldBeDueSoon,
-                'snoozed' => $isSnoozed,
+                'snoozed' => $isSnoozed && ! $isExcluded,
                 'restock_snoozed_until' => $snoozeUntil?->toDateString(),
+                'excluded' => $isExcluded,
                 'lead_days' => $effectiveLead,
                 'lead_days_source' => $leadSource,
                 'cover_days' => $effectiveCover,
@@ -227,6 +232,7 @@ final class RestockIntelligenceService
                 'price_up' => $priceUp,
                 'open_alerts' => $withOpenAlert,
                 'snoozed' => $snoozedCount,
+                'excluded' => $excludedCount,
             ],
             'items' => $rows,
         ];

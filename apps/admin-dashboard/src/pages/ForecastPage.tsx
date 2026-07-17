@@ -13,7 +13,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { today, daysAgo, daysFromToday } from '../utils/dateHelpers';
 import { downloadCSV } from '../utils/csvExport';
 
-type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts' | 'snoozed';
+type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts' | 'snoozed' | 'excluded';
 
 function priceChangeBadge(item: RestockPlanItem): { label: string; color: string; bg: string } | null {
   if (item.price_change == null || item.price_change_pct == null) return null;
@@ -124,7 +124,7 @@ export function ForecastPage() {
     item.suggested_supplier?.source === 'cheapest' && !!item.suggested_supplier.id;
 
   const canSelectRestock = (item: RestockPlanItem) =>
-    canDraftPo(item) || canApplyRop(item) || canSetPreferred(item);
+    !item.excluded && (canDraftPo(item) || canApplyRop(item) || canSetPreferred(item));
 
   const defaultSelectDueSoon = (plan: RestockPlan) => {
     setSelectedRestockIds(new Set(plan.items.filter(readyForNewPo).map((i) => i.id)));
@@ -205,7 +205,7 @@ export function ForecastPage() {
   const selectedWithOpenPo = selectedRestockItems.filter((i) => !!i.open_purchase);
   const selectedWithAlerts = selectedRestockItems.filter((i) => !!i.open_alert);
   const selectedRopItems = (restock?.items ?? []).filter((i) => selectedRestockIds.has(i.id) && canApplyRop(i));
-  const cheapestRestock = restock?.items.filter(canSetPreferred) ?? [];
+  const cheapestRestock = restock?.items.filter((i) => !i.excluded && canSetPreferred(i)) ?? [];
   const selectedPreferredItems = cheapestRestock.filter((i) => selectedRestockIds.has(i.id));
   const allReadySelected = readyRestock.length > 0
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
@@ -213,26 +213,31 @@ export function ForecastPage() {
     || settingPreferredId != null || savingLeadId != null || savingCoverId != null
     || resolvingAlertId != null || snoozingId != null;
 
+  const activeRestockItems = restock?.items.filter((i) => !i.excluded) ?? [];
+
   const filteredRestockItems = (() => {
     if (!restock) return [];
-    if (restockFilter === 'price_up') return restock.items.filter((i) => i.price_change === 'up');
-    if (restockFilter === 'alerts') return restock.items.filter((i) => !!i.open_alert);
-    if (restockFilter === 'snoozed') return restock.items.filter((i) => i.snoozed);
-    if (restockFilter === 'all') return restock.items;
-    return restock.items.filter((i) => i.due_soon).slice(0, 40);
+    if (restockFilter === 'excluded') return restock.items.filter((i) => i.excluded);
+    if (restockFilter === 'price_up') return activeRestockItems.filter((i) => i.price_change === 'up');
+    if (restockFilter === 'alerts') return activeRestockItems.filter((i) => !!i.open_alert);
+    if (restockFilter === 'snoozed') return activeRestockItems.filter((i) => i.snoozed);
+    if (restockFilter === 'all') return activeRestockItems;
+    return activeRestockItems.filter((i) => i.due_soon).slice(0, 40);
   })();
 
   const exportRestockCsv = () => {
     if (!restock) return;
     const rows = (restockFilter === 'due_soon'
-      ? restock.items.filter((i) => i.due_soon)
+      ? activeRestockItems.filter((i) => i.due_soon)
       : restockFilter === 'price_up'
-        ? restock.items.filter((i) => i.price_change === 'up')
+        ? activeRestockItems.filter((i) => i.price_change === 'up')
         : restockFilter === 'alerts'
-          ? restock.items.filter((i) => !!i.open_alert)
+          ? activeRestockItems.filter((i) => !!i.open_alert)
           : restockFilter === 'snoozed'
-            ? restock.items.filter((i) => i.snoozed)
-            : restock.items
+            ? activeRestockItems.filter((i) => i.snoozed)
+            : restockFilter === 'excluded'
+              ? restock.items.filter((i) => i.excluded)
+              : activeRestockItems
     ).map((i) => ({
       Item: i.name,
       Category: i.category ?? '',
@@ -243,6 +248,7 @@ export function ForecastPage() {
       'Next order': i.suggested_next_order_date ?? '',
       Snoozed: i.snoozed ? 'yes' : '',
       'Snoozed until': i.restock_snoozed_until ?? '',
+      Excluded: i.excluded ? 'yes' : '',
       'Lead days': i.lead_days,
       'Lead source': i.lead_days_source,
       'Cover days': i.cover_days,
@@ -299,6 +305,36 @@ export function ForecastPage() {
     try {
       await updateInventoryItem(item.id, { restock_snoozed_until: null });
       setRestockToast(`${item.name}: snooze cleared`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSnoozingId(null);
+    }
+  };
+
+  const setRestockExcluded = async (item: RestockPlanItem, excluded: boolean) => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to exclude restock items.');
+      return;
+    }
+    setSnoozingId(item.id);
+    setError('');
+    setRestockToast('');
+    try {
+      await updateInventoryItem(item.id, {
+        restock_excluded: excluded,
+        ...(excluded ? { restock_snoozed_until: null } : {}),
+      });
+      setSelectedRestockIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+      setRestockToast(excluded
+        ? `${item.name}: excluded from Restock Plan`
+        : `${item.name}: included in Restock Plan again`);
+      if (excluded) setRestockFilter('excluded');
       await refreshRestock();
     } catch (e) {
       setError((e as Error).message);
@@ -949,7 +985,7 @@ export function ForecastPage() {
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <StatCard label="Tracked items" value={String(restock.totals.items_count)} accent="#6B5D4F" />
+                <StatCard label="Tracked items" value={String(activeRestockItems.length)} accent="#6B5D4F" />
                 <StatCard label="Due soon" value={String(restock.totals.due_soon)} accent="#f97316" />
                 <StatCard label="Below ROP" value={String(restock.totals.below_rop)} accent="#ef4444" />
                 <StatCard label="Ready for PO" value={String(readyRestock.length)} accent="#16a34a" />
@@ -965,6 +1001,9 @@ export function ForecastPage() {
                 {(restock.totals.snoozed ?? 0) > 0 && (
                   <StatCard label="Snoozed" value={String(restock.totals.snoozed)} accent="#6B5D4F" />
                 )}
+                {(restock.totals.excluded ?? 0) > 0 && (
+                  <StatCard label="Excluded" value={String(restock.totals.excluded)} accent="#6B7280" />
+                )}
                 {cheapestRestock.length > 0 && (
                   <StatCard label="No preferred yet" value={String(cheapestRestock.length)} accent="#6B5D4F" />
                 )}
@@ -972,10 +1011,11 @@ export function ForecastPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
                 {([
                   { id: 'due_soon' as const, label: `Due soon (${restock.totals.due_soon})` },
-                  { id: 'all' as const, label: `All (${restock.totals.items_count})` },
+                  { id: 'all' as const, label: `All (${activeRestockItems.length})` },
                   { id: 'price_up' as const, label: `Price up (${restock.totals.price_up ?? 0})` },
                   { id: 'alerts' as const, label: `Alerts (${restock.totals.open_alerts ?? 0})` },
                   { id: 'snoozed' as const, label: `Snoozed (${restock.totals.snoozed ?? 0})` },
+                  { id: 'excluded' as const, label: `Excluded (${restock.totals.excluded ?? 0})` },
                 ]).map((f) => (
                   <button
                     key={f.id}
@@ -1020,13 +1060,15 @@ export function ForecastPage() {
                         key={item.id}
                         style={{
                           borderBottom: '1px solid #F8F6F3',
-                          background: item.snoozed
+                          background: item.excluded
                             ? '#F3F4F6'
-                            : item.price_change === 'up'
-                              ? '#FEF2F2'
-                              : item.due_soon
-                                ? '#FFFBEB'
-                                : undefined,
+                            : item.snoozed
+                              ? '#F3F4F6'
+                              : item.price_change === 'up'
+                                ? '#FEF2F2'
+                                : item.due_soon
+                                  ? '#FFFBEB'
+                                  : undefined,
                         }}
                       >
                         <td style={{ padding: '8px 12px' }}>
@@ -1042,7 +1084,33 @@ export function ForecastPage() {
                         <td style={{ padding: '8px 12px', fontWeight: 600 }}>
                           <Link to={`/inventory?item=${item.id}`} style={{ color: '#1C1408', textDecoration: 'none' }}>{item.name}</Link>
                           <div style={{ fontSize: 11, color: '#9C8E7E' }}>{item.category ?? '—'}</div>
-                          {item.snoozed && (
+                          {item.excluded && (
+                            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                              <span
+                                style={{
+                                  fontSize: 11, fontWeight: 700, color: '#4B5563',
+                                  background: '#E5E7EB', padding: '2px 6px', borderRadius: 6,
+                                }}
+                              >
+                                Excluded
+                              </span>
+                              {canManageInventory && (
+                                <button
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => void setRestockExcluded(item, false)}
+                                  style={{
+                                    fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                                    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
+                                    borderRadius: 6, padding: '2px 6px',
+                                  }}
+                                >
+                                  {snoozingId === item.id ? '…' : 'Include'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {!item.excluded && item.snoozed && (
                             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                               <span
                                 style={{
@@ -1068,7 +1136,7 @@ export function ForecastPage() {
                               )}
                             </div>
                           )}
-                          {!item.snoozed && canManageInventory && (item.due_soon || item.would_be_due_soon) && (
+                          {!item.excluded && !item.snoozed && canManageInventory && (item.due_soon || item.would_be_due_soon) && (
                             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                               {[7, 14, 30].map((d) => (
                                 <button
@@ -1086,9 +1154,22 @@ export function ForecastPage() {
                                   {snoozingId === item.id ? '…' : `${d}d`}
                                 </button>
                               ))}
+                              <button
+                                type="button"
+                                disabled={restockBusy}
+                                onClick={() => void setRestockExcluded(item, true)}
+                                title="Hide permanently from Restock Plan (no alerts/SMS)"
+                                style={{
+                                  fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                                  border: '1px solid #E8E0D8', background: '#F8F6F3', color: '#6B7280',
+                                  borderRadius: 6, padding: '2px 6px',
+                                }}
+                              >
+                                {snoozingId === item.id ? '…' : 'Exclude'}
+                              </button>
                             </div>
                           )}
-                          {item.open_purchase && (
+                          {!item.excluded && item.open_purchase && (
                             <div style={{ marginTop: 4 }}>
                               <Link
                                 to={`/purchase-orders?search=${encodeURIComponent(item.open_purchase.purchase_number)}`}
@@ -1365,6 +1446,9 @@ export function ForecastPage() {
                     )}
                     {restockFilter === 'snoozed' && (restock.totals.snoozed ?? 0) === 0 && (
                       <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No snoozed items. Use 7d / 14d / 30d on a due-soon row to hide it temporarily.</td></tr>
+                    )}
+                    {restockFilter === 'excluded' && (restock.totals.excluded ?? 0) === 0 && (
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No excluded items. Use Exclude on a due-soon row to hide it permanently.</td></tr>
                     )}
                   </tbody>
                 </table>

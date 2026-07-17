@@ -778,6 +778,8 @@ export type RestockPlanItem = {
   would_be_due_soon?: boolean;
   snoozed: boolean;
   restock_snoozed_until: string | null;
+  /** Permanently hidden from due-soon / draft PO urgency. */
+  excluded: boolean;
   /** Effective lead days used for due-soon + suggested ROP. */
   lead_days: number;
   lead_days_source: 'item' | 'default';
@@ -808,6 +810,7 @@ export type RestockPlan = {
     price_up?: number;
     open_alerts?: number;
     snoozed?: number;
+    excluded?: number;
   };
   items: RestockPlanItem[];
 };

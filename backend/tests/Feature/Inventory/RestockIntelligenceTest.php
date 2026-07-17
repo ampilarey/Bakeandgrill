@@ -600,6 +600,48 @@ class RestockIntelligenceTest extends TestCase
         $this->assertSame('usage_cover', $byName['Sugar']['reason']);
     }
 
+    public function test_restock_plan_exclude_removes_item_from_due_soon(): void
+    {
+        $owner = $this->makeOwner();
+        $item = InventoryItem::create([
+            'name' => 'Decorations',
+            'sku' => 'DEC-EXCL',
+            'unit' => 'pcs',
+            'current_stock' => 0,
+            'reorder_point' => 5,
+            'unit_cost' => 1,
+            'restock_excluded' => true,
+            'is_active' => true,
+        ]);
+
+        StockMovement::create([
+            'idempotency_key' => 'test-exclude-deduct',
+            'inventory_item_id' => $item->id,
+            'user_id' => $owner->id,
+            'type' => 'deduction',
+            'quantity' => -30,
+            'balance_after' => 0,
+            'unit_cost' => 1,
+            'reference_type' => 'order',
+            'reference_id' => 302,
+            'notes' => 'test',
+        ]);
+
+        $response = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30',
+            $this->staffHeaders($owner),
+        );
+        $response->assertOk();
+
+        $row = collect($response->json('items'))->firstWhere('name', 'Decorations');
+        $this->assertNotNull($row);
+        $this->assertTrue($row['excluded']);
+        $this->assertFalse($row['due_soon']);
+        $this->assertTrue($row['would_be_due_soon']);
+        $this->assertSame(1, (int) $response->json('totals.excluded'));
+        $this->assertSame(0, (int) $response->json('totals.due_soon'));
+    }
+
     public function test_restock_plan_snooze_removes_item_from_due_soon(): void
     {
         $owner = $this->makeOwner();

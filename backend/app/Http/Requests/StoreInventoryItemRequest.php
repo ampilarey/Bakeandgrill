@@ -25,6 +25,7 @@ class StoreInventoryItemRequest extends FormRequest
             'lead_days' => 'nullable|integer|min:0|max:30',
             'cover_days' => 'nullable|integer|min:1|max:90',
             'restock_snoozed_until' => 'nullable|date',
+            'restock_excluded' => 'nullable|boolean',
             'unit_cost' => 'nullable|numeric|min:0',
             'last_purchase_price' => 'nullable|numeric|min:0',
             'expiry_date' => 'nullable|date',

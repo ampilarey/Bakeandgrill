@@ -91,4 +91,28 @@ class CheckReorderPointsSmsTest extends TestCase
             'reference_type' => 'inventory_reorder_alert',
         ]);
     }
+
+    public function test_check_reorder_skips_alerts_for_excluded_items(): void
+    {
+        $this->makeOwner(['phone' => '9607771234']);
+        SiteSetting::set('ops_inventory_reorder_alert_sms', '1');
+
+        InventoryItem::create([
+            'name' => 'Party Picks',
+            'sku' => 'PP-EXCL',
+            'unit' => 'pcs',
+            'current_stock' => 0,
+            'reorder_point' => 5,
+            'unit_cost' => 1,
+            'restock_excluded' => true,
+            'is_active' => true,
+        ]);
+
+        Artisan::call('inventory:check-reorder');
+
+        $this->assertSame(0, InventoryReorderAlert::query()->whereNull('resolved_at')->count());
+        $this->assertDatabaseMissing('sms_logs', [
+            'reference_type' => 'inventory_reorder_alert',
+        ]);
+    }
 }
