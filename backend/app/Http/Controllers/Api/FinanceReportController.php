@@ -287,6 +287,175 @@ class FinanceReportController extends Controller
     }
 
     // ──────────────────────────────────────────────────────────
+    // Spend hub — purchases (stock/COGS) vs expenses (opex)
+    // ──────────────────────────────────────────────────────────
+
+    public function spendHub(Request $request): JsonResponse
+    {
+        [$from, $to] = $this->parseRange($request);
+        $fromDate = $from->toDateString();
+        $toDate = $to->toDateString();
+
+        $purchasesTotal = (float) Purchase::query()
+            ->whereDate('purchase_date', '>=', $fromDate)
+            ->whereDate('purchase_date', '<=', $toDate)
+            ->whereIn('status', ['received', 'partial'])
+            ->sum('total');
+
+        $poCount = (int) Purchase::query()
+            ->whereDate('purchase_date', '>=', $fromDate)
+            ->whereDate('purchase_date', '<=', $toDate)
+            ->whereIn('status', ['received', 'partial'])
+            ->count();
+
+        $bySupplier = Purchase::query()
+            ->leftJoin('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
+            ->whereDate('purchases.purchase_date', '>=', $fromDate)
+            ->whereDate('purchases.purchase_date', '<=', $toDate)
+            ->whereIn('purchases.status', ['received', 'partial'])
+            ->selectRaw('purchases.supplier_id, COALESCE(suppliers.name, ?) as supplier_name, COUNT(*) as po_count, SUM(purchases.total) as total', ['Unknown'])
+            ->groupBy('purchases.supplier_id', 'suppliers.name')
+            ->orderByDesc('total')
+            ->limit(25)
+            ->get()
+            ->map(fn ($r) => [
+                'supplier_id' => $r->supplier_id ? (int) $r->supplier_id : null,
+                'supplier_name' => (string) $r->supplier_name,
+                'po_count' => (int) $r->po_count,
+                'total' => round((float) $r->total, 2),
+            ])
+            ->values()
+            ->all();
+
+        $topItems = DB::table('purchase_items')
+            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+            ->leftJoin('inventory_items', 'inventory_items.id', '=', 'purchase_items.inventory_item_id')
+            ->whereRaw('DATE(purchases.purchase_date) BETWEEN ? AND ?', [$fromDate, $toDate])
+            ->whereIn('purchases.status', ['received', 'partial'])
+            ->where('purchase_items.received_quantity', '>', 0)
+            ->selectRaw('purchase_items.inventory_item_id')
+            ->selectRaw('COALESCE(inventory_items.name, ?) as item_name', ['Unknown item'])
+            ->selectRaw('COALESCE(inventory_items.unit, ?) as unit', [''])
+            ->selectRaw('SUM(purchase_items.received_quantity) as qty')
+            ->selectRaw('SUM(purchase_items.received_quantity * purchase_items.unit_cost) as spend')
+            ->groupBy('purchase_items.inventory_item_id', 'inventory_items.name', 'inventory_items.unit')
+            ->orderByDesc('spend')
+            ->limit(15)
+            ->get()
+            ->map(fn ($r) => [
+                'inventory_item_id' => $r->inventory_item_id ? (int) $r->inventory_item_id : null,
+                'item_name' => (string) $r->item_name,
+                'unit' => (string) $r->unit,
+                'qty' => round((float) $r->qty, 3),
+                'spend' => round((float) $r->spend, 2),
+            ])
+            ->values()
+            ->all();
+
+        $expensesApproved = (float) Expense::query()
+            ->whereDate('expense_date', '>=', $fromDate)
+            ->whereDate('expense_date', '<=', $toDate)
+            ->where('status', 'approved')
+            ->sum('amount');
+
+        $expensesPending = (float) Expense::query()
+            ->whereDate('expense_date', '>=', $fromDate)
+            ->whereDate('expense_date', '<=', $toDate)
+            ->where('status', 'pending')
+            ->sum('amount');
+
+        $expensesRejected = (float) Expense::query()
+            ->whereDate('expense_date', '>=', $fromDate)
+            ->whereDate('expense_date', '<=', $toDate)
+            ->where('status', 'rejected')
+            ->sum('amount');
+
+        $byCategory = Expense::query()
+            ->whereDate('expense_date', '>=', $fromDate)
+            ->whereDate('expense_date', '<=', $toDate)
+            ->where('status', 'approved')
+            ->selectRaw('expense_category_id, SUM(amount) as total, COUNT(*) as count')
+            ->with('category:id,name,icon')
+            ->groupBy('expense_category_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($e) => [
+                'category' => $e->category?->name ?? 'Unknown',
+                'icon' => $e->category?->icon,
+                'total' => round((float) $e->total, 2),
+                'count' => (int) $e->count,
+            ])
+            ->values()
+            ->all();
+
+        $linkedToPo = (int) Expense::query()
+            ->whereDate('expense_date', '>=', $fromDate)
+            ->whereDate('expense_date', '<=', $toDate)
+            ->whereNotNull('purchase_id')
+            ->count();
+
+        $expenseByDay = Expense::query()
+            ->whereDate('expense_date', '>=', $fromDate)
+            ->whereDate('expense_date', '<=', $toDate)
+            ->where('status', 'approved')
+            ->selectRaw('DATE(expense_date) as date, SUM(amount) as amount')
+            ->groupByRaw('DATE(expense_date)')
+            ->pluck('amount', 'date');
+
+        $purchaseByDay = Purchase::query()
+            ->whereDate('purchase_date', '>=', $fromDate)
+            ->whereDate('purchase_date', '<=', $toDate)
+            ->whereIn('status', ['received', 'partial'])
+            ->selectRaw('DATE(purchase_date) as date, SUM(total) as amount')
+            ->groupByRaw('DATE(purchase_date)')
+            ->pluck('amount', 'date');
+
+        $daily = [];
+        $cursor = $from->copy()->startOfDay();
+        $end = $to->copy()->startOfDay();
+        while ($cursor->lte($end)) {
+            $key = $cursor->toDateString();
+            $p = round((float) ($purchaseByDay[$key] ?? 0), 2);
+            $e = round((float) ($expenseByDay[$key] ?? 0), 2);
+            $daily[] = [
+                'date' => $key,
+                'purchases' => $p,
+                'expenses' => $e,
+                'total' => round($p + $e, 2),
+            ];
+            $cursor->addDay();
+        }
+
+        return response()->json([
+            'from' => $fromDate,
+            'to' => $toDate,
+            'note' => 'Purchases feed inventory and COGS. Expenses are operating costs. Linking an expense to a PO is reference only — stock buys should not be logged again as expenses.',
+            'totals' => [
+                'purchases' => round($purchasesTotal, 2),
+                'expenses_approved' => round($expensesApproved, 2),
+                'expenses_pending' => round($expensesPending, 2),
+                'expenses_rejected' => round($expensesRejected, 2),
+                'combined_outflow' => round($purchasesTotal + $expensesApproved, 2),
+                'po_count' => $poCount,
+                'expenses_linked_to_po' => $linkedToPo,
+            ],
+            'purchases' => [
+                'by_supplier' => $bySupplier,
+                'top_items' => $topItems,
+            ],
+            'expenses' => [
+                'by_category' => $byCategory,
+                'by_status' => [
+                    'approved' => round($expensesApproved, 2),
+                    'pending' => round($expensesPending, 2),
+                    'rejected' => round($expensesRejected, 2),
+                ],
+            ],
+            'daily' => $daily,
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────
     // Accounts payable
     // ──────────────────────────────────────────────────────────
 

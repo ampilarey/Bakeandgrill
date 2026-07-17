@@ -32,6 +32,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
   const taxReport = reportData?.taxReport ?? null;
   const inventory = reportData?.inventory ?? null;
   const spendByItem = reportData?.spendByItem ?? null;
+  const spendHub = reportData?.spendHub ?? null;
   const ap = reportData?.ap ?? null;
   const ar = reportData?.ar ?? null;
   const promoReport = reportData?.promoReport ?? null;
@@ -245,6 +246,113 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* ── Spend Hub ── */}
+      {!loading && tab === 'Spend Hub' && spendHub && (
+        <>
+          <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 16px', lineHeight: 1.45 }}>{spendHub.note}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Purchases (COGS)" value={mvr(spendHub.totals.purchases)} accent="#D4813A" />
+            <StatCard label="Expenses approved" value={mvr(spendHub.totals.expenses_approved)} accent="#ef4444" />
+            <StatCard label="Expenses pending" value={mvr(spendHub.totals.expenses_pending)} accent="#f59e0b" />
+            <StatCard label="Combined outflow" value={mvr(spendHub.totals.combined_outflow)} accent="#1C1408" />
+            <StatCard label="POs received" value={String(spendHub.totals.po_count)} accent="#6B5D4F" />
+            <StatCard label="Expenses linked to PO" value={String(spendHub.totals.expenses_linked_to_po)} accent="#9C8E7E" />
+          </div>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+            <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>Purchase Orders →</Link>
+            <Link to="/expenses" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>Expenses →</Link>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <Card>
+              <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Purchases by supplier</p>
+              {spendHub.purchases.by_supplier.length === 0 ? (
+                <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No received purchases in range.</p>
+              ) : (
+                <table style={S.table}>
+                  <thead><tr><th style={S.th}>Supplier</th><th style={S.th}>POs</th><th style={S.th}>Spend</th></tr></thead>
+                  <tbody>
+                    {spendHub.purchases.by_supplier.map((row) => (
+                      <tr key={row.supplier_id ?? row.supplier_name}>
+                        <td style={S.td}>{row.supplier_name}</td>
+                        <td style={S.td}>{row.po_count}</td>
+                        <td style={{ ...S.td, fontWeight: 600 }}>{mvr(row.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+            <Card>
+              <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Expenses by category</p>
+              {spendHub.expenses.by_category.length === 0 ? (
+                <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No approved expenses in range.</p>
+              ) : (
+                <table style={S.table}>
+                  <thead><tr><th style={S.th}>Category</th><th style={S.th}>Count</th><th style={S.th}>Total</th></tr></thead>
+                  <tbody>
+                    {spendHub.expenses.by_category.map((row) => (
+                      <tr key={row.category}>
+                        <td style={S.td}>{row.icon ? `${row.icon} ` : ''}{row.category}</td>
+                        <td style={S.td}>{row.count}</td>
+                        <td style={{ ...S.td, fontWeight: 600 }}>{mvr(row.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+          </div>
+          <Card style={{ marginBottom: 20 }}>
+            <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 8px' }}>Top purchase items</p>
+            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 12px' }}>
+              For full cheapest/last cost detail see Inventory → Spend by Item.
+            </p>
+            {spendHub.purchases.top_items.length === 0 ? (
+              <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No received line items.</p>
+            ) : (
+              <table style={S.table}>
+                <thead><tr><th style={S.th}>Item</th><th style={S.th}>Qty</th><th style={S.th}>Spend</th></tr></thead>
+                <tbody>
+                  {spendHub.purchases.top_items.map((row) => (
+                    <tr key={row.inventory_item_id ?? row.item_name}>
+                      <td style={S.td}>
+                        {row.inventory_item_id ? (
+                          <Link to={`/inventory?item=${row.inventory_item_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>{row.item_name}</Link>
+                        ) : row.item_name}
+                      </td>
+                      <td style={S.td}>{row.qty} {row.unit}</td>
+                      <td style={{ ...S.td, fontWeight: 600 }}>{mvr(row.spend)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+          <Card>
+            <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Daily outflow</p>
+            {spendHub.daily.every((d) => d.total === 0) ? (
+              <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No outflow in this range.</p>
+            ) : (
+              <div style={{ maxHeight: 320, overflow: 'auto' }}>
+                <table style={S.table}>
+                  <thead><tr><th style={S.th}>Date</th><th style={S.th}>Purchases</th><th style={S.th}>Expenses</th><th style={S.th}>Total</th></tr></thead>
+                  <tbody>
+                    {spendHub.daily.filter((d) => d.total > 0).map((d) => (
+                      <tr key={d.date}>
+                        <td style={S.td}>{d.date}</td>
+                        <td style={S.td}>{mvr(d.purchases)}</td>
+                        <td style={S.td}>{mvr(d.expenses)}</td>
+                        <td style={{ ...S.td, fontWeight: 700 }}>{mvr(d.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
         </>

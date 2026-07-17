@@ -251,6 +251,34 @@ export async function getDailySummary(date: string): Promise<{ date: string; rev
   return req(`/reports/finance/daily-summary?date=${date}`);
 }
 
+export type SpendHubReport = {
+  from: string;
+  to: string;
+  note: string;
+  totals: {
+    purchases: number;
+    expenses_approved: number;
+    expenses_pending: number;
+    expenses_rejected: number;
+    combined_outflow: number;
+    po_count: number;
+    expenses_linked_to_po: number;
+  };
+  purchases: {
+    by_supplier: { supplier_id: number | null; supplier_name: string; po_count: number; total: number }[];
+    top_items: { inventory_item_id: number | null; item_name: string; unit: string; qty: number; spend: number }[];
+  };
+  expenses: {
+    by_category: { category: string; icon: string | null; total: number; count: number }[];
+    by_status: { approved: number; pending: number; rejected: number };
+  };
+  daily: { date: string; purchases: number; expenses: number; total: number }[];
+};
+
+export async function getSpendHub(from: string, to: string): Promise<SpendHubReport> {
+  return req(`/reports/finance/spend-hub?from=${from}&to=${to}`);
+}
+
 // ── Reports ───────────────────────────────────────────────────────────────────
 
 export type PaymentCommissionChannel = {

@@ -5,14 +5,14 @@ import {
   getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport, getDepositExposureReport, getDepositActivityReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
   getCashierPerformanceReport, getProductMarginsReport, getCustomerCohortsReport, getStockDiscrepancyReport,
-  getHourlySalesReport, getStationPerformanceReport, getSpendByItem,
+  getHourlySalesReport, getStationPerformanceReport, getSpendByItem, getSpendHub,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
   type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport, type DepositExposureReport, type DepositActivityReport,
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
   type CashierPerformanceReport, type ProductMarginsReport, type CustomerCohortsReport, type StockDiscrepancyReport,
-  type HourlySalesReport, type StationPerformanceReport, type SpendByItemReport,
+  type HourlySalesReport, type StationPerformanceReport, type SpendByItemReport, type SpendHubReport,
   type PaymentCommissionSummary,
 } from '../../api';
 import { localISO, today, daysAgo } from '../../utils/dateHelpers';
@@ -81,7 +81,7 @@ export const REPORT_SECTIONS = [
   {
     id: 'finance',
     label: 'Finance',
-    tabs: ['X / Z Report', 'Tax', 'Accounts Payable', 'Accounts Receivable', 'Credit Exposure', 'Deposit Exposure', 'Deposit Activity'],
+    tabs: ['Spend Hub', 'X / Z Report', 'Tax', 'Accounts Payable', 'Accounts Receivable', 'Credit Exposure', 'Deposit Exposure', 'Deposit Activity'],
   },
   {
     id: 'operations',
@@ -114,6 +114,7 @@ export type ReportData = {
   taxReport?: TaxReport;
   inventory?: InventoryValuation;
   spendByItem?: SpendByItemReport;
+  spendHub?: SpendHubReport;
   ap?: AccountsPayable[];
   ar?: AccountsReceivable[];
   promoReport?: PromotionReportItem[];
@@ -161,6 +162,7 @@ export async function fetchReportData(
   }
   if (tab === 'Inventory') result.inventory = await getInventoryValuation();
   if (tab === 'Spend by Item') result.spendByItem = await getSpendByItem({ from, to });
+  if (tab === 'Spend Hub') result.spendHub = await getSpendHub(from, to);
   if (tab === 'Accounts Payable') result.ap = (await getAccountsPayable()).data;
   if (tab === 'Accounts Receivable') result.ar = (await getAccountsReceivable()).data;
   if (tab === 'Promotions') result.promoReport = (await getPromotionReport({ from, to })).report;
@@ -232,5 +234,5 @@ export function BarCell({ value, max }: { value: number; max: number }) {
 }
 
 export function tabNeedsDate(tab: Tab): boolean {
-  return tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Spend by Item' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Customer Cohorts' || tab === 'Hourly Sales' || tab === 'Station Performance' || tab === 'Deposit Activity';
+  return tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Spend by Item' || tab === 'Spend Hub' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Customer Cohorts' || tab === 'Hourly Sales' || tab === 'Station Performance' || tab === 'Deposit Activity';
 }

@@ -60,6 +60,7 @@ Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('rep
         Route::get('/export/ledger.csv', [App\Http\Controllers\Api\GstReportController::class, 'exportLedger']);
     });
     Route::get('/daily-summary', [App\Http\Controllers\Api\FinanceReportController::class, 'dailySummary']);
+    Route::get('/spend-hub', [App\Http\Controllers\Api\FinanceReportController::class, 'spendHub']);
     Route::get('/accounts-payable', [App\Http\Controllers\Api\FinanceReportController::class, 'accountsPayable']);
     Route::get('/accounts-receivable', [App\Http\Controllers\Api\FinanceReportController::class, 'accountsReceivable']);
 });
