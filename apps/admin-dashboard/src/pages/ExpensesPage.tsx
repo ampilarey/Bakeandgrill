@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getExpenses, getExpense, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary, uploadExpenseReceipt, approveExpense, pushExpenseToXero, type Expense, type ExpenseCategory } from '../api';
+import {
+  getExpenses, getExpense, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary,
+  uploadExpenseReceipt, approveExpense, pushExpenseToXero,
+  getPurchaseAutoExpenseSettings, updatePurchaseAutoExpenseSettings,
+  type Expense, type ExpenseCategory,
+} from '../api';
+import { Toggle } from '../components/ui';
 import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
 import { ADMIN_EXPENSE_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
@@ -115,6 +121,8 @@ export function ExpensesPage() {
   const [receiptExpenseId, setReceiptExpenseId] = useState<number | null>(null);
   const [bulkSelected, setBulkSelected] = useState<Set<number>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [autoNonStock, setAutoNonStock] = useState(false);
+  const [autoNonStockSaving, setAutoNonStockSaving] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -223,6 +231,28 @@ export function ExpensesPage() {
   };
 
   useEffect(() => { void load(); }, [from, to, debouncedSearch]);
+
+  useEffect(() => {
+    void getPurchaseAutoExpenseSettings()
+      .then((res) => setAutoNonStock(!!res.settings?.auto_expense_non_stock_purchases))
+      .catch(() => { /* optional setting — ignore if unavailable */ });
+  }, []);
+
+  const handleAutoNonStockToggle = async (checked: boolean) => {
+    setAutoNonStockSaving(true);
+    setError('');
+    try {
+      const res = await updatePurchaseAutoExpenseSettings({ auto_expense_non_stock_purchases: checked });
+      setAutoNonStock(!!res.settings.auto_expense_non_stock_purchases);
+      showToast(checked
+        ? 'Auto-expense for non-stock PO lines is ON (pending approval).'
+        : 'Auto-expense for non-stock PO lines is OFF.');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setAutoNonStockSaving(false);
+    }
+  };
 
   const handleAdd = async () => {
     const catId  = parseInt(form.expense_category_id, 10);
@@ -341,7 +371,7 @@ export function ExpensesPage() {
           </div>
         }
       />
-      <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 16px', lineHeight: 1.45 }}>
+      <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px', lineHeight: 1.45 }}>
         Use Expenses for non-stock operating costs (utilities, rent, packaging, services). Stock purchases belong in{' '}
         <Link to="/purchase-orders" style={{ color: '#D4813A', fontWeight: 600 }}>Purchase Orders</Link>
         {' '}so they flow into inventory and COGS — linking a PO here is optional reference only, not a second cost entry.
@@ -349,6 +379,24 @@ export function ExpensesPage() {
         <Link to="/reports" style={{ color: '#D4813A', fontWeight: 600 }}>Reports → Spend Hub</Link>
         {' '}for purchases + expenses together.
       </p>
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+        background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 12, padding: '12px 14px', marginBottom: 16,
+      }}>
+        <div style={{ flex: '1 1 240px' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Auto-expense non-stock PO lines</div>
+          <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 4, lineHeight: 1.4 }}>
+            Off by default. When on, receiving PO lines without an inventory item creates a pending expense
+            linked to that PO. Stock/inventory lines are never auto-expensed.
+          </div>
+        </div>
+        <Toggle
+          checked={autoNonStock}
+          disabled={autoNonStockSaving}
+          onChange={handleAutoNonStockToggle}
+          label={autoNonStock ? 'On' : 'Off'}
+        />
+      </div>
       {toast && (
         <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {toast}

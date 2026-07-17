@@ -34,11 +34,14 @@ Route::middleware(['auth:sanctum', 'permission:finance.expenses'])->prefix('expe
     Route::post('/', [App\Http\Controllers\Api\ExpenseController::class, 'store']);
     Route::get('/categories', [App\Http\Controllers\Api\ExpenseController::class, 'categories']);
     Route::get('/summary', [App\Http\Controllers\Api\ExpenseController::class, 'summary']);
-    Route::get('/{id}', [App\Http\Controllers\Api\ExpenseController::class, 'show']);
-    Route::patch('/{id}', [App\Http\Controllers\Api\ExpenseController::class, 'update']);
-    Route::delete('/{id}', [App\Http\Controllers\Api\ExpenseController::class, 'destroy']);
-    Route::post('/{id}/receipt', [App\Http\Controllers\Api\ExpenseController::class, 'uploadReceipt']);
-    Route::post('/{id}/approve', [App\Http\Controllers\Api\ExpenseController::class, 'approve']);
+    // Static path before /{id}
+    Route::get('/settings/purchase-auto', [App\Http\Controllers\Api\PurchaseExpenseSettingsController::class, 'show']);
+    Route::patch('/settings/purchase-auto', [App\Http\Controllers\Api\PurchaseExpenseSettingsController::class, 'update']);
+    Route::get('/{id}', [App\Http\Controllers\Api\ExpenseController::class, 'show'])->whereNumber('id');
+    Route::patch('/{id}', [App\Http\Controllers\Api\ExpenseController::class, 'update'])->whereNumber('id');
+    Route::delete('/{id}', [App\Http\Controllers\Api\ExpenseController::class, 'destroy'])->whereNumber('id');
+    Route::post('/{id}/receipt', [App\Http\Controllers\Api\ExpenseController::class, 'uploadReceipt'])->whereNumber('id');
+    Route::post('/{id}/approve', [App\Http\Controllers\Api\ExpenseController::class, 'approve'])->whereNumber('id');
 });
 
 // ─── Finance Reports ───────────────────────────────────────────────────────

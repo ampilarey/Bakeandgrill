@@ -209,6 +209,20 @@ export async function getExpenseSummary(from: string, to: string): Promise<{ tot
   return req(`/expenses/summary?from=${from}&to=${to}`);
 }
 
+export type PurchaseAutoExpenseSettings = {
+  auto_expense_non_stock_purchases: boolean;
+};
+
+export async function getPurchaseAutoExpenseSettings(): Promise<{ settings: PurchaseAutoExpenseSettings }> {
+  return req('/expenses/settings/purchase-auto');
+}
+
+export async function updatePurchaseAutoExpenseSettings(
+  data: Partial<PurchaseAutoExpenseSettings>,
+): Promise<{ settings: PurchaseAutoExpenseSettings; message: string }> {
+  return req('/expenses/settings/purchase-auto', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 export async function uploadExpenseReceipt(id: number, file: File): Promise<{ expense: Expense }> {
   const form = new FormData();
   form.append('receipt', file);

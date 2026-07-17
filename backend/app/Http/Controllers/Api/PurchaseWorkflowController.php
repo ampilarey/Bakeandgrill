@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Domains\Inventory\Services\RestockIntelligenceService;
 use App\Models\InventoryItem;
@@ -22,6 +23,7 @@ class PurchaseWorkflowController extends Controller
     public function __construct(
         private readonly AuditLogService $audit,
         private readonly RestockIntelligenceService $restock,
+        private readonly NonStockPurchaseExpenseService $nonStockExpense,
     ) {}
 
     // ──────────────────────────────────────────────────────────
@@ -195,9 +197,15 @@ class PurchaseWorkflowController extends Controller
             $purchase->save();
         });
 
-        app(GstLedgerPoster::class)->postPurchaseInput($purchase->fresh(), $request->user()?->id);
+        $purchase = $purchase->fresh(['items.inventoryItem', 'supplier']);
+        $autoExpense = $this->nonStockExpense->syncForPurchase($purchase, $request->user());
 
-        return response()->json(['purchase' => $purchase->fresh(['items.inventoryItem', 'supplier'])]);
+        app(GstLedgerPoster::class)->postPurchaseInput($purchase, $request->user()?->id);
+
+        return response()->json([
+            'purchase' => $purchase,
+            'auto_expense' => $autoExpense,
+        ]);
     }
 
     // ──────────────────────────────────────────────────────────

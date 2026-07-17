@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Gst\Services\GstInputTaxValidator;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ImportPurchaseRequest;
@@ -251,14 +252,16 @@ class PurchaseController extends Controller
 
                 $newQty = (float) $itemPayload['quantity'];
                 $lineStockIn = $shouldStockIn && $inventoryItem !== null;
+                // Non-stock lines on a received PO are marked complete (no inventory movement).
+                $lineReceived = $lineStockIn || ($shouldStockIn && $inventoryItem === null);
                 $purchaseItem = PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'inventory_item_id' => $inventoryItem?->id,
                     'quantity' => $newQty,
                     'unit_cost' => $itemPayload['unit_cost'],
                     'total_cost' => $lineTotal,
-                    'received_quantity' => $lineStockIn ? $newQty : 0,
-                    'receive_status' => $lineStockIn ? 'complete' : 'pending',
+                    'received_quantity' => $lineReceived ? $newQty : 0,
+                    'receive_status' => $lineReceived ? 'complete' : 'pending',
                 ]);
 
                 if ($lineStockIn) {
@@ -317,7 +320,10 @@ class PurchaseController extends Controller
                 'gst_laar' => $gstLaar,
             ]);
 
-            return $purchase->load(['supplier', 'items.inventoryItem', 'receipts']);
+            $purchase = $purchase->load(['supplier', 'items.inventoryItem', 'receipts']);
+            app(NonStockPurchaseExpenseService::class)->syncForPurchase($purchase, $request->user());
+
+            return $purchase->fresh(['supplier', 'items.inventoryItem', 'receipts']);
         });
     }
 }
