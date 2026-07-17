@@ -53,7 +53,9 @@ class StockReservationService
     }
 
     /**
-     * Reserve stock when added to cart
+     * Reserve stock when added to cart (session hold).
+     *
+     * @deprecated Not used in production paths. Online checkout uses {@see reserveForOrder()}.
      */
     public function reserveStock(int $itemId, int $quantity, string $sessionId): bool
     {
@@ -101,7 +103,10 @@ class StockReservationService
     public function reserveForOrder(Order $order): void
     {
         $ttl = (int) config('ordering.payment_pending_ttl_minutes', 30);
-        $order->loadMissing('items.item', 'items.variant');
+        // Always reload lines — callers may have cleared the in-memory relation
+        // (e.g. replaceOrderItems) so loadMissing would reserve nothing.
+        $order->unsetRelation('items');
+        $order->load(['items.item', 'items.variant']);
 
         foreach ($order->items as $orderItem) {
             $item = $orderItem->item;
@@ -195,7 +200,8 @@ class StockReservationService
      */
     public function convertToDeduction(Order $order, ?int $userId = null): void
     {
-        $order->loadMissing('items.item', 'items.variant');
+        $order->unsetRelation('items');
+        $order->load(['items.item', 'items.variant']);
         $stockService = app(StockManagementService::class);
 
         DB::transaction(function () use ($order, $userId, $stockService): void {
@@ -284,6 +290,8 @@ class StockReservationService
 
     /**
      * Clear all reservations for a session.
+     *
+     * @deprecated Not used in production paths. Use {@see releaseForOrder()} for checkout holds.
      */
     public function clearSessionReservations(string $sessionId): void
     {

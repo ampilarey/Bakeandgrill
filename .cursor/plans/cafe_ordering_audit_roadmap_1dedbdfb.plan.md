@@ -7,10 +7,10 @@ todos:
     status: completed
   - id: wave-a-precoding-map
     content: "Wave A pre-coding — document where check/deduct/cancel/refund/payment run; identify double-deduct risks"
-    status: pending
+    status: completed
   - id: wave-a-implement
     content: "Wave A — prepared stock reserve/deduct/release per policy; wire StockReservationService; idempotency; tests"
-    status: pending
+    status: completed
   - id: wave-b-online-gate
     content: "Wave B — global online ordering switch + schedule + override; online routes only"
     status: pending
@@ -39,10 +39,10 @@ This document is the **single source of truth** for Phase 1 (audit), Phase 2 (im
 
 ### Re-verification note (latest check)
 
-- [`StockManagementService::deductStock`](backend/app/Services/StockManagementService.php) — **no callers** outside the class file.
-- [`StockReservationService::reserveStock`](backend/app/Services/StockReservationService.php) — **no callers** outside the class file.
+- [`StockManagementService::deductStock`](backend/app/Services/StockManagementService.php) — **no callers** (deprecated; live path is `deductPreparedStock`).
+- [`StockReservationService::reserveStock`](backend/app/Services/StockReservationService.php) — **no callers** (deprecated; live path is `reserveForOrder`).
 
-So the critical gaps below remain **confirmed**.
+**Wave A close-out (2026-07-17):** Prepared stock policy is live. See [`docs/WAVE_A_PREPARED_STOCK_MAP.md`](../../docs/WAVE_A_PREPARED_STOCK_MAP.md). Phase 1 “check only / no deduction” notes below are **historical**.
 
 ### 1. Architecture summary
 

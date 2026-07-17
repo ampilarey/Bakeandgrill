@@ -236,10 +236,11 @@ class OrderCreationService
         $updated = DB::transaction(function () use ($order, $items): Order {
             // Restore POS-deducted stock BEFORE soft-deleting the old lines,
             // otherwise the subsequent addOrderItems re-deducts and we leak
-            // inventory on every "Save changes" tap. Online orders only
-            // RESERVE stock (released elsewhere by ReleasePreparedStockOnCancelListener
-            // when the order is cancelled, never on edit) so we skip them
-            // here — mirroring the POS-vs-online split in addOrderItems.
+            // inventory on every "Save changes" tap.
+            //
+            // Online orders only RESERVE: release holds for this order before
+            // re-add so removed lines do not leave orphan reservations until TTL.
+            // (HTTP blocks edits on payment_pending; this keeps the service safe.)
             //
             // Idempotency key derived from the OLD order_item id so a
             // repeated edit of the same line can't double-restore. The
@@ -284,6 +285,8 @@ class OrderCreationService
                         null,
                     );
                 }
+            } else {
+                app(StockReservationService::class)->releaseForOrder((int) $order->id);
             }
 
             // Soft-delete current modifiers + items. We don't hard-delete

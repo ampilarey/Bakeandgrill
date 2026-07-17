@@ -20,6 +20,7 @@ use App\Models\Role;
 use App\Models\Shift;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\OrderCreationService;
 use App\Services\StockReservationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -869,5 +870,38 @@ class PreparedStockTest extends TestCase
             0,
             DB::table('stock_reservations')->where('item_id', $item->id)->count(),
         );
+    }
+
+    /**
+     * Service-level: replacing online lines must drop old reservations and
+     * hold the new qty (HTTP blocks payment_pending edits; path stays safe).
+     */
+    public function test_replace_online_order_items_refreshes_reservations(): void
+    {
+        $itemA = $this->makePreparedItem(10, 'ITEM-A');
+        $itemB = $this->makePreparedItem(10, 'ITEM-B');
+
+        Sanctum::actingAs($this->customer, ['customer']);
+        $response = $this->postJson('/api/customer/orders', $this->onlineOrderPayload($itemA, 3));
+        $response->assertCreated();
+        $orderId = (int) $response->json('order.id');
+
+        $this->assertSame(3, (int) DB::table('stock_reservations')
+            ->where('order_id', $orderId)->where('item_id', $itemA->id)->value('quantity'));
+
+        $order = Order::findOrFail($orderId);
+        // Simulate a caller that cleared the relation (replaceOrderItems does this).
+        $order->setRelation('items', collect());
+
+        app(OrderCreationService::class)->replaceOrderItems($order, [
+            ['item_id' => $itemB->id, 'name' => $itemB->name, 'quantity' => 2],
+        ], false);
+
+        $this->assertSame(0, (int) DB::table('stock_reservations')
+            ->where('order_id', $orderId)->where('item_id', $itemA->id)->count());
+        $this->assertSame(2, (int) DB::table('stock_reservations')
+            ->where('order_id', $orderId)->where('item_id', $itemB->id)->value('quantity'));
+        $this->assertSame(10, $itemA->fresh()->stock_quantity);
+        $this->assertSame(10, $itemB->fresh()->stock_quantity);
     }
 }

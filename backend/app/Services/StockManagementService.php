@@ -17,7 +17,9 @@ use Illuminate\Support\Facades\DB;
 class StockManagementService
 {
     /**
-     * Check if item has sufficient stock for quantity
+     * Check if item has sufficient stock for quantity.
+     *
+     * @deprecated Unused. Order creation uses StockReservationService::getAvailableStock().
      */
     public function checkStock(Item $item, int $quantity): bool
     {
@@ -36,7 +38,9 @@ class StockManagementService
     }
 
     /**
-     * Deduct stock when order is placed
+     * Deduct stock when order is placed (non-idempotent).
+     *
+     * @deprecated Unused. Prefer deductPreparedStock() with an idempotency key.
      */
     public function deductStock(Item $item, int $quantity): void
     {
