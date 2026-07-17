@@ -464,6 +464,7 @@ export function DashboardPage() {
       return {
         dueSoon: restock?.totals.due_soon ?? 0,
         withOpenPo: restock?.totals.with_open_po ?? 0,
+        openAlerts: restock?.totals.open_alerts ?? 0,
         dueSoonItems,
         mtdPurchases: spend?.totals.purchases ?? 0,
         mtdExpenses: spend?.totals.expenses_approved ?? 0,
@@ -951,6 +952,15 @@ export function DashboardPage() {
                   accent="#b45309"
                   icon={ShoppingBag}
                 />
+                {(spendRestock.openAlerts ?? 0) > 0 && (
+                  <StatCard
+                    label="Reorder Alerts"
+                    value={String(spendRestock.openAlerts)}
+                    sub="Open below-ROP alerts"
+                    accent="#dc2626"
+                    icon={AlertTriangle}
+                  />
+                )}
                 <StatCard
                   label="MTD Purchases"
                   value={fmt(spendRestock.mtdPurchases)}

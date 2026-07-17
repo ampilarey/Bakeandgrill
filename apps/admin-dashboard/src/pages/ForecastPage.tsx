@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, getRestockPlan,
   createPurchaseFromSuggest, applySuggestedReorderPoints, applySuggestedPreferredSuppliers,
-  updateInventoryItem,
+  updateInventoryItem, resolveReorderAlert,
   type ItemForecast, type RestockPlan, type RestockPlanItem,
 } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
@@ -13,7 +13,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { today, daysAgo } from '../utils/dateHelpers';
 import { downloadCSV } from '../utils/csvExport';
 
-type RestockFilter = 'due_soon' | 'all' | 'price_up';
+type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts';
 
 function priceChangeBadge(item: RestockPlanItem): { label: string; color: string; bg: string } | null {
   if (item.price_change == null || item.price_change_pct == null) return null;
@@ -69,6 +69,7 @@ export function ForecastPage() {
   const [applyingRop, setApplyingRop] = useState(false);
   const [applyingPreferred, setApplyingPreferred] = useState(false);
   const [savingLeadId, setSavingLeadId] = useState<number | null>(null);
+  const [resolvingAlertId, setResolvingAlertId] = useState<number | null>(null);
   const [leadDrafts, setLeadDrafts] = useState<Record<number, string>>({});
   const [restockToast, setRestockToast] = useState('');
   const [createdPoNumbers, setCreatedPoNumbers] = useState<string[]>([]);
@@ -183,11 +184,12 @@ export function ForecastPage() {
   const allReadySelected = readyRestock.length > 0
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
   const restockBusy = creatingPos || applyingRop || applyingPreferred
-    || settingPreferredId != null || savingLeadId != null;
+    || settingPreferredId != null || savingLeadId != null || resolvingAlertId != null;
 
   const filteredRestockItems = (() => {
     if (!restock) return [];
     if (restockFilter === 'price_up') return restock.items.filter((i) => i.price_change === 'up');
+    if (restockFilter === 'alerts') return restock.items.filter((i) => !!i.open_alert);
     if (restockFilter === 'all') return restock.items;
     return restock.items.filter((i) => i.due_soon).slice(0, 40);
   })();
@@ -198,7 +200,9 @@ export function ForecastPage() {
       ? restock.items.filter((i) => i.due_soon)
       : restockFilter === 'price_up'
         ? restock.items.filter((i) => i.price_change === 'up')
-        : restock.items
+        : restockFilter === 'alerts'
+          ? restock.items.filter((i) => !!i.open_alert)
+          : restock.items
     ).map((i) => ({
       Item: i.name,
       Category: i.category ?? '',
@@ -218,9 +222,37 @@ export function ForecastPage() {
       'Price change %': i.price_change_pct ?? '',
       'Price direction': i.price_change ?? '',
       'Open PO': i.open_purchase?.purchase_number ?? '',
+      'Open alert': i.open_alert ? `#${i.open_alert.id}` : '',
       Why: REASON_LABEL[i.reason] ?? i.reason,
     }));
     downloadCSV(`restock-plan-${restockFilter}`, rows);
+  };
+
+  const dismissReorderAlert = async (item: RestockPlanItem) => {
+    if (!item.open_alert) return;
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to dismiss reorder alerts.');
+      return;
+    }
+    const ok = window.confirm(
+      `Dismiss reorder alert for ${item.name}?\n\n`
+      + 'This only acknowledges the alert — stock levels are unchanged. '
+      + 'A new alert will be created again if the item stays at or below ROP.',
+    );
+    if (!ok) return;
+
+    setResolvingAlertId(item.open_alert.id);
+    setError('');
+    setRestockToast('');
+    try {
+      await resolveReorderAlert(item.open_alert.id);
+      setRestockToast(`Dismissed reorder alert for ${item.name}`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setResolvingAlertId(null);
+    }
   };
 
   const restockPreviewBySupplier = (() => {
@@ -739,6 +771,9 @@ export function ForecastPage() {
                 {(restock.totals.price_up ?? 0) > 0 && (
                   <StatCard label="Price up vs last" value={String(restock.totals.price_up)} accent="#b91c1c" />
                 )}
+                {(restock.totals.open_alerts ?? 0) > 0 && (
+                  <StatCard label="Open alerts" value={String(restock.totals.open_alerts)} accent="#dc2626" />
+                )}
                 {cheapestRestock.length > 0 && (
                   <StatCard label="No preferred yet" value={String(cheapestRestock.length)} accent="#6B5D4F" />
                 )}
@@ -748,6 +783,7 @@ export function ForecastPage() {
                   { id: 'due_soon' as const, label: `Due soon (${restock.totals.due_soon})` },
                   { id: 'all' as const, label: `All (${restock.totals.items_count})` },
                   { id: 'price_up' as const, label: `Price up (${restock.totals.price_up ?? 0})` },
+                  { id: 'alerts' as const, label: `Alerts (${restock.totals.open_alerts ?? 0})` },
                 ]).map((f) => (
                   <button
                     key={f.id}
@@ -820,6 +856,35 @@ export function ForecastPage() {
                               >
                                 On {item.open_purchase.purchase_number}
                               </Link>
+                            </div>
+                          )}
+                          {item.open_alert && (
+                            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                              <span
+                                title={item.open_alert.created_at
+                                  ? `Alert since ${new Date(item.open_alert.created_at).toLocaleString()}`
+                                  : 'Open reorder alert'}
+                                style={{
+                                  fontSize: 11, fontWeight: 700, color: '#991b1b',
+                                  background: '#fee2e2', padding: '2px 6px', borderRadius: 6,
+                                }}
+                              >
+                                Reorder alert
+                              </span>
+                              {canManageInventory && (
+                                <button
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => void dismissReorderAlert(item)}
+                                  style={{
+                                    fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                                    border: '1px solid #fecaca', background: '#fff', color: '#991b1b',
+                                    borderRadius: 6, padding: '2px 6px',
+                                  }}
+                                >
+                                  {resolvingAlertId === item.open_alert.id ? '…' : 'Dismiss'}
+                                </button>
+                              )}
                             </div>
                           )}
                         </td>
@@ -970,6 +1035,9 @@ export function ForecastPage() {
                     )}
                     {restockFilter === 'price_up' && (restock.totals.price_up ?? 0) === 0 && (
                       <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No items priced above last purchase (≥1%).</td></tr>
+                    )}
+                    {restockFilter === 'alerts' && (restock.totals.open_alerts ?? 0) === 0 && (
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No open reorder alerts. Scheduler creates them when stock hits ROP.</td></tr>
                     )}
                   </tbody>
                 </table>

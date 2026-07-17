@@ -12,10 +12,12 @@ use App\Http\Requests\StockCountRequest;
 use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\UpdateInventoryItemRequest;
 use App\Models\InventoryItem;
+use App\Models\InventoryReorderAlert;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
 use App\Models\Supplier;
 use App\Services\AuditLogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -251,6 +253,28 @@ class InventoryController extends Controller
                 'name' => $supplier->name,
                 'min_cost' => (float) $record->min_cost,
             ] : null,
+        ]);
+    }
+
+    /**
+     * Acknowledge / dismiss an open reorder alert (does not change stock).
+     */
+    public function resolveReorderAlert(int $id): JsonResponse
+    {
+        $alert = InventoryReorderAlert::query()->findOrFail($id);
+
+        if ($alert->resolved_at !== null) {
+            return response()->json([
+                'alert' => $alert,
+                'message' => 'Alert was already resolved.',
+            ]);
+        }
+
+        $alert->update(['resolved_at' => now()]);
+
+        return response()->json([
+            'alert' => $alert->fresh(),
+            'message' => 'Reorder alert resolved.',
         ]);
     }
 }

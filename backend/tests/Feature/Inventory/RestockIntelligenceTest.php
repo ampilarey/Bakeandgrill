@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Inventory;
 
 use App\Models\InventoryItem;
+use App\Models\InventoryReorderAlert;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
@@ -447,5 +448,45 @@ class RestockIntelligenceTest extends TestCase
             (float) $byName['Yeast']['suggested_reorder_point'],
             (float) $byName['Olive Oil']['suggested_reorder_point'],
         );
+    }
+
+    public function test_restock_plan_includes_open_reorder_alert_and_resolve(): void
+    {
+        $owner = $this->makeOwner();
+        $item = InventoryItem::create([
+            'name' => 'Salt',
+            'sku' => 'SLT-ALERT',
+            'unit' => 'kg',
+            'current_stock' => 2,
+            'reorder_point' => 10,
+            'unit_cost' => 1,
+            'is_active' => true,
+        ]);
+
+        $alert = InventoryReorderAlert::create([
+            'inventory_item_id' => $item->id,
+            'current_stock' => 2,
+            'reorder_point' => 10,
+        ]);
+
+        $plan = $this->getJson('/api/forecasts/restock?lookback_days=30', $this->staffHeaders($owner));
+        $plan->assertOk()
+            ->assertJsonPath('totals.open_alerts', 1)
+            ->assertJsonPath('items.0.name', 'Salt')
+            ->assertJsonPath('items.0.open_alert.id', $alert->id);
+
+        $resolve = $this->postJson(
+            "/api/inventory/reorder-alerts/{$alert->id}/resolve",
+            [],
+            $this->staffHeaders($owner),
+        );
+        $resolve->assertOk();
+
+        $this->assertNotNull($alert->fresh()->resolved_at);
+
+        $after = $this->getJson('/api/forecasts/restock?lookback_days=30', $this->staffHeaders($owner));
+        $after->assertOk()
+            ->assertJsonPath('totals.open_alerts', 0)
+            ->assertJsonPath('items.0.open_alert', null);
     }
 }

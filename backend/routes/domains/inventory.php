@@ -32,6 +32,9 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
     Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount'])->middleware('permission:inventory.manage');
     Route::patch('/inventory/{id}', [InventoryController::class, 'update'])->middleware('permission:inventory.manage');
     Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust'])->middleware('permission:inventory.manage');
+    Route::post('/inventory/reorder-alerts/{id}/resolve', [InventoryController::class, 'resolveReorderAlert'])
+        ->middleware('permission:inventory.manage')
+        ->whereNumber('id');
 
     Route::middleware('permission:menu.prepared_stock')->group(function () {
         Route::get('/prepared-stock', [App\Http\Controllers\Api\PreparedStockController::class, 'index']);

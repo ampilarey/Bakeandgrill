@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Inventory\Services;
 
 use App\Models\InventoryItem;
+use App\Models\InventoryReorderAlert;
 use App\Models\SupplierPriceHistory;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ final class RestockIntelligenceService
      *     buy_lookback_days: int,
      *     lead_days: int,
      *     cover_days: int,
-     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int},
+     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int, open_alerts: int},
      *     items: list<array<string, mixed>>
      * }
      */
@@ -49,12 +50,14 @@ final class RestockIntelligenceService
         $itemIds = $items->pluck('id')->all();
         $cheapestByItem = $this->cheapestSupplierByItem($itemIds);
         $openPoByItem = $this->openPurchaseByItem($itemIds);
+        $openAlertByItem = $this->openAlertByItem($itemIds);
 
         $rows = [];
         $dueSoon = 0;
         $belowRop = 0;
         $withOpenPo = 0;
         $priceUp = 0;
+        $withOpenAlert = 0;
 
         foreach ($items as $item) {
             $stock = (float) ($item->current_stock ?? 0);
@@ -145,6 +148,11 @@ final class RestockIntelligenceService
                 $withOpenPo++;
             }
 
+            $openAlert = $openAlertByItem[$item->id] ?? null;
+            if ($openAlert !== null) {
+                $withOpenAlert++;
+            }
+
             $rows[] = [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -170,6 +178,7 @@ final class RestockIntelligenceService
                 'price_change' => $priceChange['direction'],
                 'suggested_supplier' => $supplier,
                 'open_purchase' => $openPurchase,
+                'open_alert' => $openAlert,
             ];
         }
 
@@ -196,9 +205,45 @@ final class RestockIntelligenceService
                 'below_rop' => $belowRop,
                 'with_open_po' => $withOpenPo,
                 'price_up' => $priceUp,
+                'open_alerts' => $withOpenAlert,
             ],
             'items' => $rows,
         ];
+    }
+
+    /**
+     * Open (unresolved) reorder alerts keyed by inventory item id.
+     *
+     * @param  list<int|string>  $itemIds
+     * @return array<int, array{id: int, current_stock: float, reorder_point: float, created_at: string|null}>
+     */
+    private function openAlertByItem(array $itemIds): array
+    {
+        if ($itemIds === []) {
+            return [];
+        }
+
+        $rows = InventoryReorderAlert::query()
+            ->whereIn('inventory_item_id', $itemIds)
+            ->whereNull('resolved_at')
+            ->orderByDesc('id')
+            ->get(['id', 'inventory_item_id', 'current_stock', 'reorder_point', 'created_at']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $itemId = (int) $row->inventory_item_id;
+            if (isset($out[$itemId])) {
+                continue;
+            }
+            $out[$itemId] = [
+                'id' => (int) $row->id,
+                'current_stock' => (float) $row->current_stock,
+                'reorder_point' => (float) $row->reorder_point,
+                'created_at' => $row->created_at?->toIso8601String(),
+            ];
+        }
+
+        return $out;
     }
 
     /**

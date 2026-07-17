@@ -571,6 +571,10 @@ export async function updateInventoryItem(
   return { item: mapInventoryRow(res.item) };
 }
 
+export async function resolveReorderAlert(id: number): Promise<{ message: string }> {
+  return req(`/inventory/reorder-alerts/${id}/resolve`, { method: 'POST' });
+}
+
 export type StockMovementRow = {
   id: number;
   type: string;

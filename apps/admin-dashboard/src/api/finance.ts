@@ -746,6 +746,13 @@ export type RestockOpenPurchase = {
   quantity: number;
 };
 
+export type RestockOpenAlert = {
+  id: number;
+  current_stock: number;
+  reorder_point: number;
+  created_at: string | null;
+};
+
 export type RestockPlanItem = {
   id: number;
   name: string;
@@ -774,6 +781,7 @@ export type RestockPlanItem = {
   price_change: 'up' | 'down' | 'flat' | null;
   suggested_supplier: { id: number; name: string; price: number; source?: string } | null;
   open_purchase: RestockOpenPurchase | null;
+  open_alert: RestockOpenAlert | null;
 };
 
 export type RestockPlan = {
@@ -787,6 +795,7 @@ export type RestockPlan = {
     below_rop: number;
     with_open_po?: number;
     price_up?: number;
+    open_alerts?: number;
   };
   items: RestockPlanItem[];
 };
