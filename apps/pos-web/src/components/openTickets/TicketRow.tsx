@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { palette, radius, space, btnPrimary, btnSecondary, type } from "../../theme";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { palette, radius, space, btnPrimary, btnSecondary, type, z } from "../../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel } from "../../orderTypeLabels";
 import {
   formatTicketAge,
@@ -64,16 +64,71 @@ export function TicketRow({
 }: TicketRowProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const [moreMenuStyle, setMoreMenuStyle] = useState<CSSProperties | null>(null);
+
+  const closeMore = () => {
+    setMoreOpen(false);
+    setMoreMenuStyle(null);
+  };
+
+  const placeMoreMenu = () => {
+    const btn = moreBtnRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const menuWidth = 200;
+    const pad = 8;
+    const estimatedHeight = moreMenuRef.current?.offsetHeight
+      || (moreMenuRef.current?.childElementCount ?? 4) * 44;
+    const spaceBelow = window.innerHeight - r.bottom - pad;
+    const spaceAbove = r.top - pad;
+    const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+    let left = r.right - menuWidth;
+    left = Math.max(pad, Math.min(left, window.innerWidth - menuWidth - pad));
+    setMoreMenuStyle({
+      position: "fixed",
+      left,
+      top: openUp ? undefined : r.bottom + 4,
+      bottom: openUp ? window.innerHeight - r.top + 4 : undefined,
+      minWidth: menuWidth,
+      maxHeight: Math.max(160, openUp ? spaceAbove : spaceBelow),
+      overflowY: "auto",
+      background: "#fff",
+      border: "1px solid #CBD5E1",
+      borderRadius: radius.m,
+      boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+      zIndex: z.modal,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!moreOpen) return;
+    placeMoreMenu();
+  }, [moreOpen]);
 
   useEffect(() => {
     if (!moreOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
+    const onDoc = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (moreRef.current?.contains(target) || moreMenuRef.current?.contains(target)) {
+        return;
       }
+      closeMore();
     };
+    const onReposition = () => placeMoreMenu();
+    const onScrollClose = () => closeMore();
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("touchstart", onDoc, { passive: true });
+    window.addEventListener("resize", onReposition);
+    // Scroll containers (Active Orders list) move the button — close rather than chase.
+    window.addEventListener("scroll", onScrollClose, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("touchstart", onDoc);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onScrollClose, true);
+    };
   }, [moreOpen]);
 
   const stage = ticketStage(t.status);
@@ -374,12 +429,17 @@ export function TicketRow({
               return (
                 <div ref={moreRef} style={{ position: "relative" }}>
                   <button
+                    ref={moreBtnRef}
                     type="button"
                     className="pos-ticket-action-btn"
                     disabled={busy}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMoreOpen((v) => !v);
+                      if (moreOpen) {
+                        closeMore();
+                      } else {
+                        setMoreOpen(true);
+                      }
                     }}
                     style={{
                       ...btnSecondary(busy),
@@ -392,23 +452,12 @@ export function TicketRow({
                   >
                     More ▾
                   </button>
-                  {moreOpen && (
+                  {moreOpen && moreMenuStyle && (
                     <div
+                      ref={moreMenuRef}
                       role="menu"
                       onClick={(e) => e.stopPropagation()}
-                      style={{
-                        position: "absolute",
-                        right: 0,
-                        bottom: "100%",
-                        marginBottom: 4,
-                        minWidth: 180,
-                        background: "#fff",
-                        border: "1px solid #CBD5E1",
-                        borderRadius: radius.m,
-                        boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
-                        zIndex: 20,
-                        overflow: "hidden",
-                      }}
+                      style={moreMenuStyle}
                     >
                       {showPayLink && (
                         <button
@@ -417,7 +466,7 @@ export function TicketRow({
                           disabled={busy}
                           style={moreBtnStyle}
                           onClick={() => {
-                            setMoreOpen(false);
+                            closeMore();
                             handleSendPayLink(t);
                           }}
                         >
@@ -431,7 +480,7 @@ export function TicketRow({
                           disabled={busy}
                           style={moreBtnStyle}
                           onClick={() => {
-                            setMoreOpen(false);
+                            closeMore();
                             handleSendBill(t);
                           }}
                         >
@@ -444,7 +493,7 @@ export function TicketRow({
                         disabled={busy}
                         style={moreBtnStyle}
                         onClick={() => {
-                          setMoreOpen(false);
+                          closeMore();
                           handlePrintBill(t);
                         }}
                       >
@@ -458,7 +507,7 @@ export function TicketRow({
                           style={moreBtnStyle}
                           title="Merge another open ticket into this one"
                           onClick={() => {
-                            setMoreOpen(false);
+                            closeMore();
                             handleStartMerge(t);
                           }}
                         >
@@ -473,7 +522,7 @@ export function TicketRow({
                           style={moreBtnStyle}
                           title="Split items off into a new ticket"
                           onClick={() => {
-                            setMoreOpen(false);
+                            closeMore();
                             onSplit(t);
                           }}
                         >
@@ -492,7 +541,7 @@ export function TicketRow({
                           }}
                           title="Void this ticket (returns stock, releases holds)"
                           onClick={() => {
-                            setMoreOpen(false);
+                            closeMore();
                             onVoid(t);
                           }}
                         >
