@@ -71,6 +71,7 @@ export function ForecastPage() {
   const [savingLeadId, setSavingLeadId] = useState<number | null>(null);
   const [resolvingAlertId, setResolvingAlertId] = useState<number | null>(null);
   const [leadDrafts, setLeadDrafts] = useState<Record<number, string>>({});
+  const [qtyDrafts, setQtyDrafts] = useState<Record<number, string>>({});
   const [dismissAlertsOnPo, setDismissAlertsOnPo] = useState(true);
   const [restockToast, setRestockToast] = useState('');
   const [createdPoNumbers, setCreatedPoNumbers] = useState<string[]>([]);
@@ -83,9 +84,29 @@ export function ForecastPage() {
   const [itemLoading, setItemLoading]     = useState(false);
   const [itemError, setItemError]         = useState('');
 
+  /** Effective order qty (local override or API suggestion). */
+  const orderQty = (item: RestockPlanItem): number => {
+    const draft = qtyDrafts[item.id];
+    if (draft !== undefined) {
+      const n = parseFloat(draft);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    }
+    return item.suggested_order_qty > 0 ? item.suggested_order_qty : 0;
+  };
+
+  const orderQtyDraftValue = (item: RestockPlanItem): string =>
+    qtyDrafts[item.id] ?? String(item.suggested_order_qty);
+
+  const qtyIsEdited = (item: RestockPlanItem): boolean => {
+    if (qtyDrafts[item.id] === undefined) return false;
+    const n = parseFloat(qtyDrafts[item.id]);
+    if (!Number.isFinite(n)) return true;
+    return Math.abs(n - item.suggested_order_qty) >= 0.001;
+  };
+
   const canDraftPo = (item: RestockPlanItem) =>
     item.due_soon
-    && item.suggested_order_qty > 0
+    && orderQty(item) > 0
     && !!item.suggested_supplier?.id
     && (item.unit_cost ?? item.suggested_supplier?.price ?? 0) > 0;
 
@@ -215,7 +236,8 @@ export function ForecastPage() {
       'Next order': i.suggested_next_order_date ?? '',
       'Lead days': i.lead_days,
       'Lead source': i.lead_days_source,
-      'Order qty': i.suggested_order_qty,
+      'Order qty': orderQty(i),
+      'Suggested qty': i.suggested_order_qty,
       ROP: i.reorder_point,
       'Suggested ROP': i.suggested_reorder_point ?? '',
       Supplier: i.suggested_supplier?.name ?? '',
@@ -261,7 +283,7 @@ export function ForecastPage() {
     const map = new Map<number, { name: string; lines: number; total: number }>();
     for (const item of selectedRestockItems) {
       const sid = item.suggested_supplier!.id;
-      const cost = (item.unit_cost ?? item.suggested_supplier?.price ?? 0) * item.suggested_order_qty;
+      const cost = (item.unit_cost ?? item.suggested_supplier?.price ?? 0) * orderQty(item);
       const cur = map.get(sid) ?? { name: item.suggested_supplier!.name, lines: 0, total: 0 };
       cur.lines += 1;
       cur.total += cost;
@@ -270,6 +292,7 @@ export function ForecastPage() {
     return [...map.entries()].map(([id, v]) => ({ supplier_id: id, ...v }));
   })();
   const restockPreviewTotal = restockPreviewBySupplier.reduce((s, g) => s + g.total, 0);
+  const selectedQtyEdited = selectedRestockItems.filter(qtyIsEdited).length;
 
   const toggleRestockSelect = (id: number, checked: boolean) => {
     setSelectedRestockIds((prev) => {
@@ -291,7 +314,13 @@ export function ForecastPage() {
   const createDraftPosFromRestock = async () => {
     if (!restock) return;
     if (selectedRestockItems.length === 0) {
-      setError('Select at least one due-soon item with a supplier and unit cost.');
+      setError('Select at least one due-soon item with a supplier, unit cost, and order qty > 0.');
+      return;
+    }
+
+    const badQty = selectedRestockItems.filter((i) => orderQty(i) <= 0);
+    if (badQty.length > 0) {
+      setError(`Fix order qty for: ${badQty.slice(0, 3).map((i) => i.name).join(', ')}`);
       return;
     }
 
@@ -327,7 +356,7 @@ export function ForecastPage() {
           resolve_reorder_alerts: dismissAlertsOnPo,
           items: items.map((i) => ({
             inventory_item_id: i.id,
-            quantity: i.suggested_order_qty,
+            quantity: orderQty(i),
             unit_cost: i.unit_cost ?? i.suggested_supplier?.price ?? 0,
           })),
         });
@@ -336,6 +365,11 @@ export function ForecastPage() {
       }
       const createdIds = new Set(selectedRestockItems.map((i) => i.id));
       setSelectedRestockIds((prev) => new Set([...prev].filter((id) => !createdIds.has(id))));
+      setQtyDrafts((prev) => {
+        const next = { ...prev };
+        for (const id of createdIds) delete next[id];
+        return next;
+      });
       setCreatedPoNumbers(created);
       setRestockToast(
         `Created ${created.length} draft PO${created.length === 1 ? '' : 's'}`
@@ -760,6 +794,9 @@ export function ForecastPage() {
                   {selectedWithAlerts.length > 0 && (
                     <> · <strong style={{ color: '#991b1b' }}>{selectedWithAlerts.length} with open alert</strong></>
                   )}
+                  {selectedQtyEdited > 0 && (
+                    <> · <strong>{selectedQtyEdited} qty edited</strong></>
+                  )}
                   {restockPreviewBySupplier.length > 0 && (
                     <div style={{ marginTop: 6, fontSize: 12, color: '#c2410c' }}>
                       {restockPreviewBySupplier.map((g) => (
@@ -979,8 +1016,44 @@ export function ForecastPage() {
                             </>
                           )}
                         </td>
-                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#16a34a' }}>
-                          {item.suggested_order_qty} {item.unit}
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F', minWidth: 110 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              type="number"
+                              min={0.001}
+                              step="any"
+                              value={orderQtyDraftValue(item)}
+                              disabled={restockBusy}
+                              onChange={(e) => setQtyDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
+                              aria-label={`Order qty for ${item.name}`}
+                              style={{
+                                width: 72, height: 28, padding: '0 6px', borderRadius: 6,
+                                border: qtyIsEdited(item) ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+                                fontSize: 12, fontFamily: 'inherit', fontWeight: 700,
+                                color: '#16a34a', background: qtyIsEdited(item) ? '#FFF7ED' : '#fff',
+                              }}
+                            />
+                            <span style={{ color: '#9C8E7E' }}>{item.unit}</span>
+                          </div>
+                          {qtyIsEdited(item) && (
+                            <button
+                              type="button"
+                              disabled={restockBusy}
+                              onClick={() => setQtyDrafts((d) => {
+                                const next = { ...d };
+                                delete next[item.id];
+                                return next;
+                              })}
+                              style={{
+                                marginTop: 3, padding: 0, border: 'none', background: 'none',
+                                fontSize: 10, fontWeight: 700, color: '#D4813A', cursor: 'pointer',
+                                fontFamily: 'inherit',
+                              }}
+                              title={`Reset to suggested ${item.suggested_order_qty}`}
+                            >
+                              Reset ({item.suggested_order_qty})
+                            </button>
+                          )}
                         </td>
                         <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F' }}>
                           {item.suggested_reorder_point != null ? (
