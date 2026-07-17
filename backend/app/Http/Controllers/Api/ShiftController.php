@@ -418,17 +418,26 @@ class ShiftController extends Controller
             $expectedCash = $cash['expected'];
             $closingCash = (float) $request->input('closing_cash');
             $variance = $closingCash - $expectedCash;
+            $notes = trim((string) ($request->input('notes') ?? ''));
+
+            if (abs($variance) >= 0.005 && $notes === '') {
+                return ['error' => 'Notes are required when cash variance is not zero.'];
+            }
 
             $shift->update([
                 'closed_at' => now(),
                 'closing_cash' => $closingCash,
                 'expected_cash' => $expectedCash,
                 'variance' => $variance,
-                'notes' => $request->input('notes') ?? $shift->notes,
+                'notes' => $notes !== '' ? $notes : $shift->notes,
             ]);
 
             return $shift;
         });
+
+        if (is_array($shift) && isset($shift['error'])) {
+            return response()->json(['message' => $shift['error']], 422);
+        }
 
         if ($shift === null) {
             return response()->json(['message' => 'Shift already closed.'], 422);

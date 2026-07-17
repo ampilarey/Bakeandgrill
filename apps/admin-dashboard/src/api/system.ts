@@ -9,12 +9,19 @@ export interface SystemHealthDetailed {
   print_proxy_ok: boolean | null;
   print_proxy_status: 'ok' | 'unreachable' | 'not_configured' | string;
   queue_depth: number;
+  disk?: {
+    ok: boolean | null;
+    free_percent: number | null;
+    free_gb: number | null;
+    path: string;
+  };
   checked_at: string;
   recent_failed_jobs: Array<{
     id: number;
     uuid: string;
     connection: string;
     queue: string;
+    exception_snippet?: string;
     failed_at: string;
   }>;
   recent_webhook_failures: Array<{
@@ -46,4 +53,12 @@ export interface SystemHealthDetailed {
 
 export async function getSystemHealthDetailed(): Promise<SystemHealthDetailed> {
   return req('/admin/system/health/detailed');
+}
+
+export async function retryFailedJob(uuid: string): Promise<{ message: string }> {
+  return req(`/admin/system/health/failed-jobs/${encodeURIComponent(uuid)}/retry`, { method: 'POST' });
+}
+
+export async function forgetFailedJob(uuid: string): Promise<{ message: string }> {
+  return req(`/admin/system/health/failed-jobs/${encodeURIComponent(uuid)}`, { method: 'DELETE' });
 }

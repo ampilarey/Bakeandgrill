@@ -32,6 +32,11 @@ type Props = {
   tables: RestaurantTable[];
   selectedTableId: number | null;
   setSelectedTableId: (id: number | null) => void;
+  /** Refresh floor status after open/close/merge. */
+  onRefreshTables?: () => void | Promise<void>;
+  onOpenTable?: (id: number) => Promise<void>;
+  onCloseTable?: (id: number) => Promise<void>;
+  onMergeTables?: (sourceId: number, targetId: number) => Promise<void>;
 
   cartItems: CartItem[];
   setCartItems: (items: CartItem[]) => void;
@@ -496,20 +501,32 @@ export function OrderCart(p: Props) {
         )}
 
         {dineIn && (
-          <select
-            value={p.selectedTableId ?? ""}
-            onChange={(e) => p.setSelectedTableId(e.target.value ? Number(e.target.value) : null)}
-            style={{
-              marginTop: 10, width: '100%', padding: '10px 12px',
-              borderRadius: 8, border: `1px solid ${C.border2}`,
-              fontSize: 13, background: '#FFFFFF', color: C.text,
-            }}
-          >
-            <option value="">Select table</option>
-            {p.tables.map((t) => (
-              <option key={t.id} value={t.id}>{t.name} ({t.status})</option>
-            ))}
-          </select>
+          <div style={{ marginTop: 10 }}>
+            <select
+              value={p.selectedTableId ?? ""}
+              onChange={(e) => p.setSelectedTableId(e.target.value ? Number(e.target.value) : null)}
+              style={{
+                width: '100%', padding: '10px 12px',
+                borderRadius: 8, border: `1px solid ${C.border2}`,
+                fontSize: 13, background: '#FFFFFF', color: C.text,
+              }}
+            >
+              <option value="">Select table</option>
+              {p.tables.map((t) => (
+                <option key={t.id} value={t.id}>{t.name} ({t.status})</option>
+              ))}
+            </select>
+            {p.selectedTableId != null && (p.onOpenTable || p.onCloseTable || p.onMergeTables) && (
+              <TableFloorActions
+                tables={p.tables}
+                selectedTableId={p.selectedTableId}
+                onOpenTable={p.onOpenTable}
+                onCloseTable={p.onCloseTable}
+                onMergeTables={p.onMergeTables}
+                onRefreshTables={p.onRefreshTables}
+              />
+            )}
+          </div>
         )}
 
         {isDelivery && !onlineFulfillment && (
@@ -1240,6 +1257,99 @@ function CartLine({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function TableFloorActions({
+  tables,
+  selectedTableId,
+  onOpenTable,
+  onCloseTable,
+  onMergeTables,
+  onRefreshTables,
+}: {
+  tables: RestaurantTable[];
+  selectedTableId: number;
+  onOpenTable?: (id: number) => Promise<void>;
+  onCloseTable?: (id: number) => Promise<void>;
+  onMergeTables?: (sourceId: number, targetId: number) => Promise<void>;
+  onRefreshTables?: () => void | Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [mergeTargetId, setMergeTargetId] = useState<number | "">("");
+  const selected = tables.find((t) => t.id === selectedTableId);
+  const mergeTargets = tables.filter((t) => t.id !== selectedTableId && t.status === "occupied");
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    setErr("");
+    try {
+      await fn();
+      await onRefreshTables?.();
+    } catch (e) {
+      setErr((e as Error).message || "Table action failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!selected) return null;
+
+  return (
+    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {selected.status === "available" && onOpenTable && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(() => onOpenTable(selected.id))}
+            style={{ ...smallBtn(busy), flex: "none", color: "#15803d", borderColor: "#BBF7D0" }}
+          >
+            Open check
+          </button>
+        )}
+        {selected.status === "occupied" && onCloseTable && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(() => onCloseTable(selected.id))}
+            style={{ ...smallBtn(busy), flex: "none" }}
+          >
+            Close table
+          </button>
+        )}
+      </div>
+      {selected.status === "occupied" && onMergeTables && mergeTargets.length > 0 && (
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <select
+            value={mergeTargetId}
+            onChange={(e) => setMergeTargetId(e.target.value ? Number(e.target.value) : "")}
+            style={{
+              flex: 1, padding: "8px 10px", borderRadius: 8,
+              border: `1px solid ${C.border2}`, fontSize: 12, background: "#fff",
+            }}
+          >
+            <option value="">Merge into…</option>
+            {mergeTargets.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={busy || mergeTargetId === ""}
+            onClick={() => {
+              if (mergeTargetId === "") return;
+              void run(() => onMergeTables(selected.id, mergeTargetId));
+            }}
+            style={{ ...smallBtn(busy || mergeTargetId === ""), flex: "none" }}
+          >
+            Merge
+          </button>
+        </div>
+      )}
+      {err && <div style={{ fontSize: 11, color: "#B91C1C" }}>{err}</div>}
     </div>
   );
 }

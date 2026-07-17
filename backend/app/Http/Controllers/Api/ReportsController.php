@@ -194,6 +194,13 @@ class ReportsController extends Controller
         return response()->json($this->reports->voidsByStaff($from, $to));
     }
 
+    public function voidsByReason(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($this->reports->voidsByReason($from, $to));
+    }
+
     public function refundsByReason(Request $request)
     {
         [$from, $to] = $this->parseRange($request);

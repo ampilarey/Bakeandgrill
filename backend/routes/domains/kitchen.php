@@ -26,6 +26,7 @@ if (routes_domain_section_is_or_unset('kitchen', 'kds', 'kds') && !routes_domain
     // browser.
     Route::get('/kds/orders', [KdsController::class, 'index'])->middleware('permission:kds.view');
     Route::get('/kds/menu-groups', [KdsController::class, 'menuGroups'])->middleware('permission:kds.view');
+    Route::get('/kds/activity', [KdsController::class, 'recentActivity'])->middleware('permission:kds.view');
     Route::post('/kds/items/{id}/86', [KdsController::class, 'toggleItemAvailability'])
         ->middleware('permission:kds.manage_availability');
     Route::post('/kds/orders/{id}/start', [KdsController::class, 'start'])

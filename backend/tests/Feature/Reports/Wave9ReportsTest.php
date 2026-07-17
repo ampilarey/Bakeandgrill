@@ -75,6 +75,28 @@ class Wave9ReportsTest extends TestCase
             ->assertJsonPath('rows.0.type', 'inventory_negative');
     }
 
+    public function test_voids_by_reason_report(): void
+    {
+        $owner = $this->makeOwner();
+        $this->actingAs($owner);
+
+        Order::factory()->create([
+            'status' => 'cancelled',
+            'cancellation_reason' => 'Customer changed mind',
+            'cancelled_at' => now(),
+        ]);
+        Order::factory()->create([
+            'status' => 'cancelled',
+            'cancellation_reason' => null,
+            'cancelled_at' => now(),
+        ]);
+
+        $this->getJson('/api/reports/voids-by-reason?from=' . now()->toDateString() . '&to=' . now()->toDateString())
+            ->assertOk()
+            ->assertJsonFragment(['reason' => 'Customer changed mind', 'voids_count' => 1])
+            ->assertJsonFragment(['reason' => 'Unspecified', 'voids_count' => 1]);
+    }
+
     public function test_ops_alerts_settings(): void
     {
         $owner = $this->makeOwner();

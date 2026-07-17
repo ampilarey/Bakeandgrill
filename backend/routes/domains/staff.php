@@ -173,6 +173,11 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])
         ->get('/admin/system/health/detailed', [App\Http\Controllers\Api\SystemHealthController::class, 'detailed']);
 
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
+        Route::post('/admin/system/health/failed-jobs/{uuid}/retry', [App\Http\Controllers\Api\SystemHealthController::class, 'retryFailedJob']);
+        Route::delete('/admin/system/health/failed-jobs/{uuid}', [App\Http\Controllers\Api\SystemHealthController::class, 'forgetFailedJob']);
+    });
+
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->prefix('admin/pos')->group(function () {
         Route::get('/maintenance-preview', [App\Http\Controllers\Api\PosAdminController::class, 'maintenancePreview']);
         Route::post('/cleanup-stale-tickets', [App\Http\Controllers\Api\PosAdminController::class, 'cleanupStaleTickets']);

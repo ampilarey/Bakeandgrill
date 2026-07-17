@@ -104,6 +104,9 @@ class SchedulerRunTracker
             'insights:compute-item-pairs',
             'ops:alert-delivery-delays',
             'marketing:send-tier-milestones',
+            'backup:clean',
+            'backup:run',
+            'backup:monitor',
             'scheduler:heartbeat',
         ];
     }

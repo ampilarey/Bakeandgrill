@@ -479,6 +479,37 @@ class ReportsService
     }
 
     /**
+     * Void/cancel counts grouped by cancellation reason.
+     *
+     * @return array{from: string, to: string, rows: list<array{reason: string, voids_count: int}>}
+     */
+    public function voidsByReason(Carbon $from, Carbon $to): array
+    {
+        $rows = Order::query()
+            ->where('status', 'cancelled')
+            ->where(function ($q) use ($from, $to) {
+                $q->whereBetween('cancelled_at', [$from, $to])
+                    ->orWhere(function ($q2) use ($from, $to) {
+                        $q2->whereNull('cancelled_at')
+                            ->whereBetween('updated_at', [$from, $to]);
+                    });
+            })
+            ->selectRaw("COALESCE(NULLIF(TRIM(cancellation_reason), ''), 'Unspecified') as reason, COUNT(*) as voids_count")
+            ->groupByRaw("COALESCE(NULLIF(TRIM(cancellation_reason), ''), 'Unspecified')")
+            ->orderByDesc('voids_count')
+            ->get();
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'rows' => $rows->map(fn ($row) => [
+                'reason' => (string) $row->reason,
+                'voids_count' => (int) $row->voids_count,
+            ])->values()->all(),
+        ];
+    }
+
+    /**
      * Refund totals grouped by reason.
      *
      * @return array{from: string, to: string, rows: list<array{reason: string, refunds_count: int, amount: float}>}

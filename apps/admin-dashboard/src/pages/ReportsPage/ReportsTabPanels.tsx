@@ -40,6 +40,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
   const deliveryZones = reportData?.deliveryZones ?? null;
   const discountsReport = reportData?.discountsReport ?? null;
   const voidsReport = reportData?.voidsReport ?? null;
+  const voidsByReason = reportData?.voidsByReason ?? null;
   const refundsReport = reportData?.refundsReport ?? null;
   const creditExposure = reportData?.creditExposure ?? null;
   const depositExposure = reportData?.depositExposure ?? null;
@@ -779,32 +780,57 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
         </>
       )}
 
-      {/* ── Voids by staff ── */}
+      {/* ── Voids by staff + reason ── */}
       {!loading && tab === 'Voids' && voidsReport && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Total Voids" value={String((voidsReport.rows ?? []).reduce((s, r) => s + r.voids_count, 0))} accent="#ef4444" />
             <StatCard label="Staff Involved" value={String((voidsReport.rows ?? []).length)} accent="#6B5D4F" />
+            <StatCard label="Reasons" value={String((voidsByReason?.rows ?? []).length)} accent="#D4813A" />
           </div>
           {(voidsReport.rows ?? []).length === 0 ? (
             <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No voids in this period.</p></Card>
           ) : (
-            <Card>
-              <table style={S.table}>
-                <thead><tr>
-                  <th style={S.th}>Staff</th>
-                  <th style={{ ...S.th, textAlign: 'right' }}>Voids</th>
-                </tr></thead>
-                <tbody>
-                  {(voidsReport.rows ?? []).map((row, i) => (
-                    <tr key={row.user_id ?? `sys-${i}`}>
-                      <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
-                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{row.voids_count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+              <Card>
+                <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: '#1C1408' }}>By staff</p>
+                <table style={S.table}>
+                  <thead><tr>
+                    <th style={S.th}>Staff</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Voids</th>
+                  </tr></thead>
+                  <tbody>
+                    {(voidsReport.rows ?? []).map((row, i) => (
+                      <tr key={row.user_id ?? `sys-${i}`}>
+                        <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
+                        <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{row.voids_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+              <Card>
+                <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: '#1C1408' }}>By reason</p>
+                {(voidsByReason?.rows ?? []).length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '24px 0', color: '#9C8E7E', fontSize: 13 }}>No reason data.</p>
+                ) : (
+                  <table style={S.table}>
+                    <thead><tr>
+                      <th style={S.th}>Reason</th>
+                      <th style={{ ...S.th, textAlign: 'right' }}>Voids</th>
+                    </tr></thead>
+                    <tbody>
+                      {(voidsByReason?.rows ?? []).map((row) => (
+                        <tr key={row.reason}>
+                          <td style={{ ...S.td, fontWeight: 600 }}>{row.reason}</td>
+                          <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{row.voids_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </Card>
+            </div>
           )}
         </>
       )}

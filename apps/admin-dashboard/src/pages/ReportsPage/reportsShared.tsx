@@ -2,14 +2,14 @@ import {
   fetchSalesSummary, getSalesBreakdown, getXReport, getZReport, getTaxReport,
   getInventoryValuation, getAccountsPayable, getAccountsReceivable,
   getPromotionReport, getLoyaltyReport, getDeliveryZonesReport,
-  getDiscountsByTypeReport, getVoidsByStaffReport, getRefundsByReasonReport, getCreditExposureReport, getDepositExposureReport, getDepositActivityReport,
+  getDiscountsByTypeReport, getVoidsByStaffReport, getVoidsByReasonReport, getRefundsByReasonReport, getCreditExposureReport, getDepositExposureReport, getDepositActivityReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
   getCashierPerformanceReport, getProductMarginsReport, getCustomerCohortsReport, getStockDiscrepancyReport,
   getHourlySalesReport, getStationPerformanceReport, getSpendByItem, getSpendHub,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
   type PromotionReportItem, type LoyaltyReport, type DeliveryZonesReport,
-  type DiscountsByTypeReport, type VoidsByStaffReport, type RefundsByReasonReport, type CreditExposureReport, type DepositExposureReport, type DepositActivityReport,
+  type DiscountsByTypeReport, type VoidsByStaffReport, type VoidsByReasonReport, type RefundsByReasonReport, type CreditExposureReport, type DepositExposureReport, type DepositActivityReport,
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
   type CashierPerformanceReport, type ProductMarginsReport, type CustomerCohortsReport, type StockDiscrepancyReport,
   type HourlySalesReport, type StationPerformanceReport, type SpendByItemReport, type SpendHubReport,
@@ -134,6 +134,7 @@ export type ReportData = {
   deliveryZones?: DeliveryZonesReport;
   discountsReport?: DiscountsByTypeReport;
   voidsReport?: VoidsByStaffReport;
+  voidsByReason?: VoidsByReasonReport;
   refundsReport?: RefundsByReasonReport;
   creditExposure?: CreditExposureReport;
   depositExposure?: DepositExposureReport;
@@ -180,7 +181,14 @@ export async function fetchReportData(
   if (tab === 'Promotions') result.promoReport = (await getPromotionReport({ from, to })).report;
   if (tab === 'Loyalty') result.loyaltyReport = (await getLoyaltyReport({ from, to })).report;
   if (tab === 'Discounts') result.discountsReport = await getDiscountsByTypeReport({ from, to });
-  if (tab === 'Voids') result.voidsReport = await getVoidsByStaffReport({ from, to });
+  if (tab === 'Voids') {
+    const [byStaff, byReason] = await Promise.all([
+      getVoidsByStaffReport({ from, to }),
+      getVoidsByReasonReport({ from, to }),
+    ]);
+    result.voidsReport = byStaff;
+    result.voidsByReason = byReason;
+  }
   if (tab === 'Refunds') result.refundsReport = await getRefundsByReasonReport({ from, to });
   if (tab === 'Credit Exposure') result.creditExposure = await getCreditExposureReport();
   if (tab === 'Deposit Exposure') result.depositExposure = await getDepositExposureReport();

@@ -4,28 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\Order;
+use App\Domains\Kitchen\Services\WaitTimeEstimator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 
 class WaitTimeController extends Controller
 {
+    public function __construct(private readonly WaitTimeEstimator $estimator) {}
+
     /**
      * Returns the estimated current wait time in minutes,
-     * based on orders in the kitchen queue (pending/preparing).
+     * based on open kitchen tickets and item prep times.
      */
     public function estimate(): JsonResponse
     {
-        $activeOrders = Order::whereIn('status', ['pending', 'paid', 'preparing'])
-            ->where('created_at', '>=', now()->subHours(2))
-            ->count();
-
-        // Base: 5 min per order in queue, minimum 5, maximum 45
-        $estimated = min(45, max(5, $activeOrders * 5));
+        $result = $this->estimator->estimate();
 
         return response()->json([
-            'wait_minutes' => $estimated,
-            'queue_depth' => $activeOrders,
+            'wait_minutes' => $result['wait_minutes'],
+            'queue_depth' => $result['queue_depth'],
         ]);
     }
 }

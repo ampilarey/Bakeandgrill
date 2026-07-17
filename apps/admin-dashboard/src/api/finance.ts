@@ -1282,6 +1282,17 @@ export async function getVoidsByStaffReport(params: { from: string; to: string }
   return req(`/reports/voids-by-staff?${qs}`);
 }
 
+export interface VoidsByReasonReport {
+  from: string;
+  to: string;
+  rows: { reason: string; voids_count: number }[];
+}
+
+export async function getVoidsByReasonReport(params: { from: string; to: string }): Promise<VoidsByReasonReport> {
+  const qs = new URLSearchParams(params);
+  return req(`/reports/voids-by-reason?${qs}`);
+}
+
 export interface RefundsByReasonReport {
   from: string;
   to: string;

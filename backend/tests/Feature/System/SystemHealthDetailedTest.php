@@ -122,8 +122,34 @@ class SystemHealthDetailedTest extends TestCase
 
         $response = $this->getJson('/api/admin/system/health/detailed')->assertOk();
 
-        $this->assertSame('ok', $response->json('status'));
-        $this->assertSame(0, $response->json('failed_jobs_24h'));
-        $this->assertSame('not_configured', $response->json('print_proxy_status'));
+        $data = $response->json();
+        $this->assertSame(0, $data['failed_jobs_24h']);
+        $this->assertSame('not_configured', $data['print_proxy_status']);
+        $this->assertArrayHasKey('disk', $data);
+        // Disk may already be low on the host — only assert ok when disk is healthy.
+        if (($data['disk']['ok'] ?? null) !== false) {
+            $this->assertSame('ok', $data['status']);
+        }
+    }
+
+    public function test_forget_failed_job(): void
+    {
+        $this->actingOwner();
+
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        DB::table('failed_jobs')->insert([
+            'uuid' => $uuid,
+            'connection' => 'redis',
+            'queue' => 'default',
+            'payload' => '{}',
+            'exception' => 'boom',
+            'failed_at' => now(),
+        ]);
+
+        $this->deleteJson("/api/admin/system/health/failed-jobs/{$uuid}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Failed job discarded.');
+
+        $this->assertDatabaseMissing('failed_jobs', ['uuid' => $uuid]);
     }
 }

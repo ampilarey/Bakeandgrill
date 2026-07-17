@@ -26,6 +26,7 @@ import { RequestItemModal } from '../components/RequestItemModal';
 import { MyPurchaseRequestsPanel } from '../components/MyPurchaseRequestsPanel';
 import { AssignedBuyingListPanel } from '../components/AssignedBuyingListPanel';
 import { POS_BUILD_INFO } from '../posBuildInfo';
+import { closeTable, mergeTables, openTable } from '../api';
 import { palette } from '../theme';
 import { validateDeliveryDetails, type PosOrderType } from '../orderTypes';
 import type { CartItem } from '../types';
@@ -77,7 +78,7 @@ export function PosShellLayout() {
     selectedTableId, setSelectedTableId, quickNotes, smsNotifications, notePickerKey,
     setNotePickerKey, menu, cart, deliveryFeeEst, ops, filteredItems, refreshOpenTickets,
     order, chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshAll,
-    isRefreshingAll, openTicketsCount, openTicketsCritical, kitchenHandoverSettings, handleClearCart,
+    refreshTables, isRefreshingAll, openTicketsCount, openTicketsCritical, kitchenHandoverSettings, handleClearCart,
     handleLogout, lockScreen, handleOpenShift, handleCloseShift, handleSaveTicketSubmit,
     refreshOfflineCounts, drawerItems, showPreferences, setShowPreferences,
     showRequestItemModal, setShowRequestItemModal, showSendBill, setShowSendBill,
@@ -305,6 +306,10 @@ export function PosShellLayout() {
               tables={tables}
               selectedTableId={selectedTableId}
               setSelectedTableId={setSelectedTableId}
+              onRefreshTables={refreshTables}
+              onOpenTable={(id) => openTable(id).then(() => undefined)}
+              onCloseTable={(id) => closeTable(id).then(() => undefined)}
+              onMergeTables={(sourceId, targetId) => mergeTables(sourceId, targetId).then(() => undefined)}
               cartItems={cart.cartItems}
               setCartItems={cart.setCartItems}
               cartSubtotal={cart.cartSubtotal}

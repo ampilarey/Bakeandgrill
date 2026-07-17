@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CheckCircle2, MessageSquare, Printer, RefreshCw, Server, Webhook } from 'lucide-react';
-import { getSystemHealthDetailed, type SystemHealthDetailed } from '../api';
+import { Activity, AlertTriangle, CheckCircle2, HardDrive, MessageSquare, Printer, RefreshCw, Server, Webhook } from 'lucide-react';
+import {
+  forgetFailedJob,
+  getSystemHealthDetailed,
+  retryFailedJob,
+  type SystemHealthDetailed,
+} from '../api';
 import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -23,6 +28,8 @@ export function SystemHealthPage() {
   const [data, setData] = useState<SystemHealthDetailed | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  const [jobBusy, setJobBusy] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -31,6 +38,35 @@ export function SystemHealthPage() {
       .then(setData)
       .catch((e: Error) => setErr(e.message))
       .finally(() => setLoading(false));
+  };
+
+  const handleRetry = async (uuid: string) => {
+    setJobBusy(uuid);
+    setActionMsg('');
+    try {
+      await retryFailedJob(uuid);
+      setActionMsg('Job queued for retry.');
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setJobBusy(null);
+    }
+  };
+
+  const handleForget = async (uuid: string) => {
+    if (!window.confirm('Discard this failed job permanently?')) return;
+    setJobBusy(uuid);
+    setActionMsg('');
+    try {
+      await forgetFailedJob(uuid);
+      setActionMsg('Failed job discarded.');
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setJobBusy(null);
+    }
   };
 
   useEffect(() => {
@@ -64,6 +100,9 @@ export function SystemHealthPage() {
       />
 
       {err && <ErrorMsg message={err} />}
+      {actionMsg && (
+        <p style={{ color: '#15803d', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{actionMsg}</p>
+      )}
       {loading && !data && <Spinner />}
 
       {data && (
@@ -159,6 +198,25 @@ export function SystemHealthPage() {
               accent={data.queue_depth > 50 ? '#f59e0b' : '#0ea5e9'}
               icon={Server}
             />
+            <StatCard
+              label="Disk free"
+              value={
+                data.disk?.free_percent != null
+                  ? `${data.disk.free_percent}%`
+                  : '—'
+              }
+              sub={
+                data.disk?.free_gb != null
+                  ? `${data.disk.free_gb} GB free`
+                  : 'Unavailable'
+              }
+              accent={
+                data.disk?.ok === false ? '#ef4444'
+                  : data.disk?.ok === true ? '#22c55e'
+                    : '#9C8E7E'
+              }
+              icon={HardDrive}
+            />
           </div>
 
           {data.stuck_payment_pending_orders.length > 0 && (
@@ -206,11 +264,44 @@ export function SystemHealthPage() {
             <>
               <SectionLabel>Recent failed queue jobs</SectionLabel>
               <Card>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {data.recent_failed_jobs.map((j) => (
-                    <div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                      <span style={{ fontWeight: 600 }}>{j.queue} · {j.connection}</span>
-                      <span style={{ color: '#9C8E7E' }}>{fmtTime(j.failed_at)}</span>
+                    <div key={j.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600 }}>{j.queue} · {j.connection}</span>
+                        <span style={{ color: '#9C8E7E' }}>{fmtTime(j.failed_at)}</span>
+                      </div>
+                      {j.exception_snippet && (
+                        <div style={{ color: '#6B5D4F', fontSize: 12, fontFamily: 'monospace' }}>
+                          {j.exception_snippet}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          disabled={jobBusy === j.uuid}
+                          onClick={() => void handleRetry(j.uuid)}
+                          style={{
+                            padding: '5px 10px', borderRadius: 8, border: '1px solid #E8E0D8',
+                            background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                            color: '#D4813A', fontFamily: 'inherit',
+                          }}
+                        >
+                          {jobBusy === j.uuid ? '…' : 'Retry'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={jobBusy === j.uuid}
+                          onClick={() => void handleForget(j.uuid)}
+                          style={{
+                            padding: '5px 10px', borderRadius: 8, border: '1px solid #FECACA',
+                            background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                            color: '#B91C1C', fontFamily: 'inherit',
+                          }}
+                        >
+                          Discard
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

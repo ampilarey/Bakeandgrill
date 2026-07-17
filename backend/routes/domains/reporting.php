@@ -29,6 +29,7 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         Route::get('/reports/delivery-zones', [ReportsController::class, 'deliveryZones']);
         Route::get('/reports/discounts-by-type', [ReportsController::class, 'discountsByType']);
         Route::get('/reports/voids-by-staff', [ReportsController::class, 'voidsByStaff']);
+        Route::get('/reports/voids-by-reason', [ReportsController::class, 'voidsByReason']);
         Route::get('/reports/refunds-by-reason', [ReportsController::class, 'refundsByReason']);
         Route::get('/reports/credit-exposure', [ReportsController::class, 'creditExposure']);
         Route::get('/reports/deposit-exposure', [ReportsController::class, 'depositExposure']);

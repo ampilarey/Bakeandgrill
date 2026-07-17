@@ -125,3 +125,21 @@ export async function lookupBarcode(barcode: string): Promise<Item | null> {
 export async function fetchTables(): Promise<{ tables: RestaurantTable[] }> {
   return request<{ tables: RestaurantTable[] }>("/tables");
 }
+
+export async function openTable(id: number): Promise<{ table: RestaurantTable }> {
+  return request<{ table: RestaurantTable }>(`/tables/${id}/open`, { method: "POST" });
+}
+
+export async function closeTable(id: number): Promise<{ table: RestaurantTable }> {
+  return request<{ table: RestaurantTable }>(`/tables/${id}/close`, { method: "POST" });
+}
+
+export async function mergeTables(
+  sourceTableId: number,
+  targetTableId: number,
+): Promise<{ target_table: RestaurantTable }> {
+  return request<{ target_table: RestaurantTable }>("/tables/merge", {
+    method: "POST",
+    body: JSON.stringify({ source_table_id: sourceTableId, target_table_id: targetTableId }),
+  });
+}

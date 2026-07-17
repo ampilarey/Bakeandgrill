@@ -77,17 +77,66 @@ class KdsController extends Controller
         return response()->json(['data' => $groups]);
     }
 
-    public function toggleItemAvailability(int $itemId): JsonResponse
+    public function toggleItemAvailability(Request $request, int $itemId): JsonResponse
     {
         $item = Item::findOrFail($itemId);
-        $item->update(['is_available' => !$item->is_available]);
+        $wasAvailable = (bool) $item->is_available;
+        $item->update(['is_available' => ! $wasAvailable]);
+        $nowAvailable = (bool) $item->is_available;
+
+        app(AuditLogService::class)->log(
+            $nowAvailable ? 'item.un86' : 'item.86',
+            'Item',
+            $item->id,
+            ['is_available' => $wasAvailable],
+            ['is_available' => $nowAvailable],
+            ['source' => 'kds', 'item_name' => $item->name],
+            $request,
+        );
 
         return response()->json([
-            'message' => 'Item availability updated',
+            'message' => $nowAvailable ? 'Item restored to menu' : 'Item marked 86 (sold out)',
             'item' => [
                 'id' => $item->id,
-                'is_available' => (bool) $item->is_available,
+                'is_available' => $nowAvailable,
             ],
+        ]);
+    }
+
+    /**
+     * Recent kitchen fire / start / done / 86 activity for the KDS audit strip.
+     */
+    public function recentActivity(): JsonResponse
+    {
+        $actions = [
+            'order.fired_to_kitchen',
+            'order.started',
+            'order.ready',
+            'order.completed',
+            'order.recalled',
+            'kitchen.print_ticket',
+            'item.86',
+            'item.un86',
+        ];
+
+        $rows = \App\Models\AuditLog::query()
+            ->with('user:id,name')
+            ->whereIn('action', $actions)
+            ->orderByDesc('id')
+            ->limit(25)
+            ->get(['id', 'user_id', 'action', 'model_type', 'model_id', 'new_values', 'meta', 'created_at']);
+
+        return response()->json([
+            'activity' => $rows->map(fn ($row) => [
+                'id' => $row->id,
+                'action' => $row->action,
+                'model_type' => $row->model_type,
+                'model_id' => $row->model_id,
+                'user_name' => $row->user?->name ?? 'System',
+                'meta' => $row->meta,
+                'new_values' => $row->new_values,
+                'created_at' => $row->created_at?->toIso8601String(),
+            ])->values()->all(),
         ]);
     }
 
@@ -130,6 +179,7 @@ class KdsController extends Controller
                     'status' => $line->status,
                     'menu_group_id' => $line->item?->menu_group_id,
                     'prep_time_minutes' => $line->item?->prep_time_minutes,
+                    'is_available' => $line->item?->is_available,
                     'modifiers' => $line->modifiers->map(fn ($m) => [
                         'id' => $m->id,
                         'modifier_name' => $m->modifier_name,

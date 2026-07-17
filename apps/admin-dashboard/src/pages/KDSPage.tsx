@@ -80,9 +80,9 @@ export function KDSPage() {
       setError('');
 
       const newIds = incoming
-        .filter((t) => ['pending', 'paid'].includes(t.status) && !prevPendingIdsRef.current.has(t.id))
+        .filter((t) => ['pending', 'paid', 'partial'].includes(t.status) && !prevPendingIdsRef.current.has(t.id))
         .map((t) => t.id);
-      const nextSet = new Set(incoming.filter((t) => ['pending', 'paid'].includes(t.status)).map((t) => t.id));
+      const nextSet = new Set(incoming.filter((t) => ['pending', 'paid', 'partial'].includes(t.status)).map((t) => t.id));
       prevPendingIdsRef.current = nextSet;
 
       if (!isFirstKdsLoad.current && newIds.length > 0) {
@@ -140,7 +140,7 @@ export function KDSPage() {
     }));
   }, [tickets, stationFilter, itemGroupMap]);
 
-  const pending = filteredTickets.filter((t) => ['pending', 'paid'].includes(t.status));
+  const pending = filteredTickets.filter((t) => ['pending', 'paid', 'partial'].includes(t.status));
   const cooking = filteredTickets.filter((t) => ['in_progress', 'preparing'].includes(t.status));
   const ready   = filteredTickets.filter((t) => t.status === 'ready');
 

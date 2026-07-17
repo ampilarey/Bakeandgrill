@@ -59,12 +59,13 @@ class SystemHealthService
             ->where('failed_at', '>=', $since24h)
             ->orderByDesc('failed_at')
             ->limit(10)
-            ->get(['id', 'uuid', 'connection', 'queue', 'failed_at'])
+            ->get(['id', 'uuid', 'connection', 'queue', 'exception', 'failed_at'])
             ->map(fn ($row) => [
                 'id' => (int) $row->id,
                 'uuid' => $row->uuid,
                 'connection' => $row->connection,
                 'queue' => $row->queue,
+                'exception_snippet' => $this->exceptionSnippet((string) $row->exception),
                 'failed_at' => $row->failed_at,
             ])
             ->values()
@@ -102,8 +103,13 @@ class SystemHealthService
             ->values()
             ->all();
 
+        $disk = $this->diskHealth();
+
         $issues = $failedJobs24h + $webhookFailures24h + $paymentPendingStuck + $smsFailed24h;
         if ($printProxy['status'] === 'unreachable') {
+            $issues++;
+        }
+        if ($disk['ok'] === false) {
             $issues++;
         }
 
@@ -116,6 +122,7 @@ class SystemHealthService
             'print_proxy_ok' => $printProxy['ok'],
             'print_proxy_status' => $printProxy['status'],
             'queue_depth' => $queueDepth,
+            'disk' => $disk,
             'checked_at' => now()->toIso8601String(),
             'recent_failed_jobs' => $recentFailedJobs,
             'recent_webhook_failures' => $recentWebhookFailures,
@@ -123,6 +130,30 @@ class SystemHealthService
             'scheduler_last_runs' => $this->schedulerRuns->getLastRuns(),
             'alert_inbox' => $this->opsAlerts->inbox(),
         ];
+    }
+
+    public function retryFailedJob(string $uuid): bool
+    {
+        $exists = DB::table('failed_jobs')->where('uuid', $uuid)->exists();
+        if (! $exists) {
+            return false;
+        }
+
+        \Illuminate\Support\Facades\Artisan::call('queue:retry', ['id' => [$uuid]]);
+
+        return true;
+    }
+
+    public function forgetFailedJob(string $uuid): bool
+    {
+        $exists = DB::table('failed_jobs')->where('uuid', $uuid)->exists();
+        if (! $exists) {
+            return false;
+        }
+
+        \Illuminate\Support\Facades\Artisan::call('queue:forget', ['id' => $uuid]);
+
+        return true;
     }
 
     /**
@@ -146,5 +177,48 @@ class SystemHealthService
         } catch (\Throwable) {
             return ['ok' => false, 'status' => 'unreachable'];
         }
+    }
+
+    /**
+     * @return array{ok: bool|null, free_percent: float|null, free_gb: float|null, path: string}
+     */
+    private function diskHealth(): array
+    {
+        $path = (string) (config('backup.backup.destination.disks.0')
+            ? storage_path('app')
+            : storage_path('app'));
+
+        if (! is_dir($path)) {
+            $path = base_path();
+        }
+
+        $free = @disk_free_space($path);
+        $total = @disk_total_space($path);
+
+        if ($free === false || $total === false || $total <= 0) {
+            return [
+                'ok' => null,
+                'free_percent' => null,
+                'free_gb' => null,
+                'path' => $path,
+            ];
+        }
+
+        $freePercent = round(($free / $total) * 100, 1);
+        $freeGb = round($free / (1024 ** 3), 2);
+
+        return [
+            'ok' => $freePercent >= 10.0,
+            'free_percent' => $freePercent,
+            'free_gb' => $freeGb,
+            'path' => $path,
+        ];
+    }
+
+    private function exceptionSnippet(string $exception): string
+    {
+        $line = strtok($exception, "\n") ?: $exception;
+
+        return mb_substr($line, 0, 160);
     }
 }

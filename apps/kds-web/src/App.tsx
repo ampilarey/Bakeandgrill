@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bumpOrder,
+  fetchKdsActivity,
   fetchKdsOrders,
   fetchKdsMenuGroups,
   fetchMe,
@@ -12,6 +13,7 @@ import {
   staffLogin,
   startOrder,
   markOrderItemCooked,
+  type KdsActivityRow,
   type KdsMenuGroup,
   type KdsOrder,
   type KdsStaffUser,
@@ -68,6 +70,7 @@ function App() {
   const [eightySixing, setEightySixing] = useState<number | null>(null);
   const [prOverlay, setPrOverlay] = useState<null | "request" | "my" | "buying">(null);
   const [viewMode, setViewMode] = useState<"board" | "production">("board");
+  const [activity, setActivity] = useState<KdsActivityRow[]>([]);
 
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
   const isFirstLoadRef = useRef(true);
@@ -98,12 +101,14 @@ function App() {
 
   const load = useCallback(async (authToken: string) => {
     try {
-      const [data, groups] = await Promise.all([
+      const [data, groups, activityRows] = await Promise.all([
         fetchKdsOrders(authToken),
         fetchKdsMenuGroups(authToken).catch(() => [] as KdsMenuGroup[]),
+        fetchKdsActivity(authToken).catch(() => [] as KdsActivityRow[]),
       ]);
       setOrders(data);
       setMenuGroups(groups);
+      setActivity(activityRows);
       setErrorMessage("");
 
       const pendingLike = data.filter((o) =>
@@ -202,12 +207,14 @@ function App() {
 
   void clockTick;
 
-  const handle86 = (itemId: number) => {
+  const handle86 = (itemId: number, currentlyAvailable: boolean) => {
     if (!token) return;
     setEightySixing(itemId);
     markItem86(token, itemId)
       .then(() => void load(token))
-      .catch(() => setErrorMessage("Failed to mark item sold out."))
+      .catch(() => setErrorMessage(
+        currentlyAvailable ? "Failed to mark item sold out." : "Failed to restore item.",
+      ))
       .finally(() => setEightySixing(null));
   };
 
@@ -531,14 +538,17 @@ function App() {
               {item.item_id && can86 ? (
                 <button
                   type="button"
-                  onClick={() => handle86(item.item_id!)}
+                  onClick={() => handle86(item.item_id!, item.is_available !== false)}
                   disabled={eightySixing === item.item_id}
                   style={{
                     fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6,
-                    border: "1px solid #FECACA", background: "#FEF2F2", color: "#991B1B", cursor: "pointer", flexShrink: 0,
+                    border: item.is_available === false ? "1px solid #BBF7D0" : "1px solid #FECACA",
+                    background: item.is_available === false ? "#F0FDF4" : "#FEF2F2",
+                    color: item.is_available === false ? "#15803D" : "#991B1B",
+                    cursor: "pointer", flexShrink: 0,
                   }}
                 >
-                  {eightySixing === item.item_id ? "…" : "86"}
+                  {eightySixing === item.item_id ? "…" : item.is_available === false ? "Restore" : "86"}
                 </button>
               ) : null}
               </div>
@@ -756,6 +766,37 @@ function App() {
           </div>
         ))}
       </div>
+
+      {activity.length > 0 && (
+        <div style={{
+          margin: "0 16px 4px",
+          padding: "10px 12px",
+          background: "#fff",
+          border: "1px solid #EDE4D4",
+          borderRadius: 12,
+          maxHeight: 96,
+          overflowY: "auto",
+        }}>
+          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "#8B7355", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Kitchen activity
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {activity.slice(0, 8).map((row) => (
+              <div key={row.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, color: "#2A1E0C" }}>
+                <span>
+                  <strong>{row.user_name}</strong>
+                  {" · "}
+                  {row.action.replace(/^order\.|^item\.|^kitchen\./, "").replace(/_/g, " ")}
+                  {row.model_id != null ? ` #${row.model_id}` : ""}
+                </span>
+                <span style={{ color: "#8B7355", flexShrink: 0 }}>
+                  {row.created_at ? formatTime(row.created_at) : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <main className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 md:p-6 lg:grid-cols-3">
         {viewMode === "production" && token ? (

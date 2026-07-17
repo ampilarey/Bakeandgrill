@@ -60,6 +60,10 @@ export function CloseShiftModal({
       setErr("Enter the cash you counted in the drawer.");
       return;
     }
+    if (variance != null && Math.abs(variance) >= 0.005 && !notes.trim()) {
+      setErr("Enter a reason for the cash variance before closing.");
+      return;
+    }
     setBusy(true);
     try { await onConfirm(closing, notes.trim() || undefined); }
     catch (e) { setErr((e as Error).message || "Could not close shift."); }
@@ -141,15 +145,22 @@ export function CloseShiftModal({
           </div>
         )}
 
-        <Field label="Notes (optional)">
+        <Field label={variance != null && Math.abs(variance) >= 0.005 ? "Variance reason (required)" : "Notes (optional)"}>
           <input
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. Found MVR 10 on floor"
+            onChange={(e) => { setNotes(e.target.value); setErr(""); }}
+            placeholder={
+              variance != null && Math.abs(variance) >= 0.005
+                ? "e.g. Short change / found cash on floor"
+                : "e.g. Found MVR 10 on floor"
+            }
             style={{
               width: "100%", boxSizing: "border-box",
               padding: "12px 14px", borderRadius: 10,
-              border: "1px solid #CBD5E1", fontSize: 14, background: "#fff",
+              border: variance != null && Math.abs(variance) >= 0.005 && !notes.trim()
+                ? "1.5px solid #F87171"
+                : "1px solid #CBD5E1",
+              fontSize: 14, background: "#fff",
             }}
           />
         </Field>

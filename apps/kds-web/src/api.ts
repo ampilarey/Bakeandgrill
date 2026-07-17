@@ -13,10 +13,22 @@ export type KdsOrderItem = {
   status?: string;
   menu_group_id?: number | null;
   prep_time_minutes?: number | null;
+  is_available?: boolean | null;
   modifiers?: Array<{
     id: number;
     modifier_name: string;
   }>;
+};
+
+export type KdsActivityRow = {
+  id: number;
+  action: string;
+  model_type: string;
+  model_id: number | null;
+  user_name: string;
+  meta?: Record<string, unknown> | null;
+  new_values?: Record<string, unknown> | null;
+  created_at: string | null;
 };
 
 export type KdsOrder = {
@@ -185,11 +197,19 @@ export async function recallOrder(token: string, orderId: number): Promise<void>
   });
 }
 
-export async function markItem86(token: string, itemId: number): Promise<void> {
-  await request<void>(`/kds/items/${itemId}/86`, {
+export async function markItem86(token: string, itemId: number): Promise<{ is_available: boolean }> {
+  const data = await request<{ item: { is_available: boolean } }>(`/kds/items/${itemId}/86`, {
     method: 'POST',
     headers: authHeaders(token),
   });
+  return { is_available: !!data.item?.is_available };
+}
+
+export async function fetchKdsActivity(token: string): Promise<KdsActivityRow[]> {
+  const data = await request<{ activity: KdsActivityRow[] }>('/kds/activity', {
+    headers: authHeaders(token),
+  });
+  return data.activity ?? [];
 }
 
 export function hasKdsPermission(permissions: string[], slug: string): boolean {

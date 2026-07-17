@@ -137,25 +137,23 @@ function withoutPinnedItems(items: NavItem[]): NavItem[] {
   return items.filter((i) => !PINNED_PATHS.has(i.to));
 }
 
-/** Hide go-live checklist in production builds; route remains reachable by URL. */
+/** @deprecated Checklist is always in System nav (permission-gated). Kept for Dashboard CTA. */
 export function showDevNavItems(): boolean {
-  return import.meta.env.DEV;
+  return true;
 }
 
-export function getNavGroups(includeDevItems = showDevNavItems()): NavGroup[] {
-  let groups = NAV_GROUPS.map((g) => ({ ...g, items: withoutPinnedItems(g.items) }));
-  if (includeDevItems) {
-    groups = groups.map((g) =>
-      g.id === 'system-team'
-        ? { ...g, items: [...g.items, CHECKLIST_NAV_ITEM] }
-        : g,
-    );
-  }
-  return groups;
+export function getNavGroups(_includeDevItems = true): NavGroup[] {
+  return NAV_GROUPS.map((g) => {
+    const items = withoutPinnedItems(g.items);
+    if (g.id === 'system-team') {
+      return { ...g, items: [...items, CHECKLIST_NAV_ITEM] };
+    }
+    return { ...g, items };
+  });
 }
 
-export function getAllNavItems(includeDevItems = showDevNavItems()): NavItem[] {
-  return [...PINNED_NAV_ITEMS, ...getNavGroups(includeDevItems).flatMap((g) => g.items)];
+export function getAllNavItems(_includeDevItems = true): NavItem[] {
+  return [...PINNED_NAV_ITEMS, ...getNavGroups().flatMap((g) => g.items)];
 }
 
 /** Longest-prefix match so /delivery-settings does not match /delivery */

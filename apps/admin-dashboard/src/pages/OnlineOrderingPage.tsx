@@ -40,6 +40,7 @@ const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
 
 const PAGE_SECTIONS = [
   { id: 'gates', label: 'Gates & Schedule' },
+  { id: 'pickup', label: 'Pickup Slots' },
   { id: 'fees', label: 'Fees' },
 ] as const;
 
@@ -194,7 +195,9 @@ const REASON_LABELS: Record<string, string> = {
 export default function OnlineOrderingPage() {
   usePageTitle('Ordering Control');
   const [searchParams, setSearchParams] = useSearchParams();
-  const section: PageSection = searchParams.get('section') === 'fees' ? 'fees' : 'gates';
+  const sectionParam = searchParams.get('section');
+  const section: PageSection =
+    sectionParam === 'fees' || sectionParam === 'pickup' ? sectionParam : 'gates';
 
   const setSection = (next: PageSection) => {
     if (next === 'gates') {
@@ -218,6 +221,11 @@ export default function OnlineOrderingPage() {
 
   const [feeSettings, setFeeSettings] = useState<PackagingFeeSettings | null>(null);
   const [feeSaving, setFeeSaving] = useState(false);
+
+  const [pickupEnabled, setPickupEnabled] = useState(true);
+  const [pickupMinutes, setPickupMinutes] = useState('30');
+  const [pickupCapacity, setPickupCapacity] = useState('8');
+  const [pickupSaving, setPickupSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -245,13 +253,47 @@ export default function OnlineOrderingPage() {
 
   useEffect(() => {
     getSiteSettings().then(({ settings }) => {
-      const raw = Object.values(settings).flat().find((s: any) => s.key === 'online_ordering_schedule')?.value ?? '';
+      const flat = Object.values(settings).flat() as Array<{ key: string; value: string }>;
+      const byKey = (k: string) => flat.find((s) => s.key === k)?.value;
+      const raw = byKey('online_ordering_schedule') ?? '';
       if (raw) setSchedule(parseSchedule(raw));
+      const enabled = byKey('pickup_slots_enabled');
+      if (enabled !== undefined) setPickupEnabled(enabled === '1' || enabled === 'true');
+      const minutes = byKey('pickup_slot_minutes');
+      if (minutes) setPickupMinutes(minutes);
+      const capacity = byKey('pickup_slot_capacity');
+      if (capacity) setPickupCapacity(capacity);
     }).finally(() => setScheduleLoading(false));
     getPackagingFeeSettings()
       .then(({ settings }) => setFeeSettings(settings))
       .catch(() => { /* optional */ });
   }, []);
+
+  const savePickupSlots = async () => {
+    const minutes = parseInt(pickupMinutes, 10);
+    const capacity = parseInt(pickupCapacity, 10);
+    if (!Number.isFinite(minutes) || minutes < 5 || minutes > 240) {
+      showToast('Slot length must be 5–240 minutes.', 'err');
+      return;
+    }
+    if (!Number.isFinite(capacity) || capacity < 1 || capacity > 200) {
+      showToast('Slot capacity must be 1–200.', 'err');
+      return;
+    }
+    setPickupSaving(true);
+    try {
+      await updateSiteSettings({
+        pickup_slots_enabled: pickupEnabled ? '1' : '0',
+        pickup_slot_minutes: String(minutes),
+        pickup_slot_capacity: String(capacity),
+      });
+      showToast('Pickup slots saved.');
+    } catch {
+      showToast('Failed to save pickup slots.', 'err');
+    } finally {
+      setPickupSaving(false);
+    }
+  };
 
   const saveFeeSettings = async () => {
     if (!feeSettings) return;
@@ -654,6 +696,56 @@ export default function OnlineOrderingPage() {
         </div>
       </div>
       </>)}
+
+      {section === 'pickup' && (
+        <div style={S.card}>
+          <p style={S.sectionTitle}>Pickup time slots</p>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 14, lineHeight: 1.5 }}>
+            When enabled, online pickup checkout offers timed windows. Capacity limits how many
+            orders can book each slot. POS dine-in is unaffected.
+          </p>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
+            <input
+              type="checkbox"
+              checked={pickupEnabled}
+              onChange={(e) => setPickupEnabled(e.target.checked)}
+            />
+            Enable pickup slots
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            <div>
+              <label style={S.label}>Slot length (minutes)</label>
+              <input
+                style={S.input}
+                type="number"
+                min={5}
+                max={240}
+                value={pickupMinutes}
+                onChange={(e) => setPickupMinutes(e.target.value)}
+                disabled={!pickupEnabled}
+              />
+            </div>
+            <div>
+              <label style={S.label}>Orders per slot</label>
+              <input
+                style={S.input}
+                type="number"
+                min={1}
+                max={200}
+                value={pickupCapacity}
+                onChange={(e) => setPickupCapacity(e.target.value)}
+                disabled={!pickupEnabled}
+              />
+            </div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <button type="button" style={S.btnPrimary} onClick={() => void savePickupSlots()} disabled={pickupSaving}>
+              <Save size={14} />
+              {pickupSaving ? 'Saving…' : 'Save pickup slots'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {section === 'fees' && (<>
       {feeSettings && (
