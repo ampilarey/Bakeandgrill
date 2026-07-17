@@ -26,6 +26,7 @@ import {
 } from './AccountPage/accountShared';
 import { useAccountAddresses } from './AccountPage/useAccountAddresses';
 import { useAccountProfile } from './AccountPage/useAccountProfile';
+import { AccountChromeBlocks } from './AccountPage/AccountChromeBlocks';
 
 export function AccountPage() {
   usePageTitle('My Account');
@@ -215,14 +216,16 @@ export function AccountPage() {
 
   if (!isAuthenticated) {
     return (
-      <div style={{ maxWidth: 480, margin: '0 auto', padding: '2rem var(--page-gutter)' }}>
-        <div style={{ marginBottom: '1.5rem' }}>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '2rem var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>My Account</h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.375rem 0 0' }}>
             Log in to view and manage your account.
           </p>
         </div>
         <AuthBlock onSuccess={handleAuthSuccess} />
+        {/* Hard gate: theme/language + temp links survive header removal for signed-out users */}
+        <AccountChromeBlocks />
       </div>
     );
   }
@@ -236,6 +239,8 @@ export function AccountPage() {
           Hi, {customerName ?? customer?.name ?? 'there'}
         </p>
       </div>
+
+      <AccountChromeBlocks />
 
       {/* Tab navigation */}
       <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>

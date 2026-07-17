@@ -1976,6 +1976,72 @@ textarea.field-input {
   padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 0.5rem);
 }
 
+.app-shell--with-cart .app-shell__main {
+  padding-bottom: calc(
+    var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 1.25rem
+  );
+}
+
+.app-shell--hide-nav .app-shell__main {
+  padding-bottom: 0.5rem;
+}
+
+.active-order-capsule {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 16px);
+  width: calc(100% - 2 * var(--page-gutter));
+  max-width: calc(var(--shell-max) - 2 * var(--page-gutter));
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--color-primary-light);
+  color: var(--color-text);
+  border: 1px solid rgba(212, 129, 58, 0.28);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-float);
+  z-index: calc(var(--z-pay-bar) - 1);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.app-shell:not(.app-shell--with-cart) .active-order-capsule {
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 8px);
+}
+
+.active-order-capsule__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-order-capsule__sep {
+  margin: 0 0.35rem;
+  color: var(--color-text-muted);
+}
+
+.active-order-capsule__chevron {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.bottom-nav__badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-mobile-nav-bg);
+}
+
 .bottom-nav {
   position: fixed;
   left: 50%;

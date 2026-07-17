@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 type SkeletonProps = {
   width?: string | number;
@@ -7,7 +8,7 @@ type SkeletonProps = {
   radius?: string;
   className?: string;
   style?: CSSProperties;
-  /** Accessible label for pending content. */
+  /** Prefer passing t('common.loading') at call sites. */
   label?: string;
 };
 
@@ -18,8 +19,11 @@ export function Skeleton({
   radius,
   className,
   style,
-  label = 'Loading',
+  label,
 }: SkeletonProps) {
+  const { t } = useLanguage();
+  const resolvedLabel = label ?? t('common.loading');
+
   return (
     <span
       className={`skeleton-block${className ? ` ${className}` : ''}`}
@@ -30,7 +34,7 @@ export function Skeleton({
         ...style,
       }}
       role="status"
-      aria-label={label}
+      aria-label={resolvedLabel}
     />
   );
 }

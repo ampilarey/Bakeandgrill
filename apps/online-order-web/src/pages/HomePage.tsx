@@ -7,8 +7,10 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { HeroCarousel } from '../components/HeroCarousel';
+import { PrayerBar } from '../components/PrayerBar';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct: number | null | undefined): boolean {
   if (!badge || !discountPct || discountPct <= 0) return false;
@@ -45,6 +47,7 @@ export function HomePage() {
   const [corpMessage, setCorpMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const { settings: s, trustItems, heroSlides, homepageCategories, text } = useSiteSettingsContext();
   const { isAuthenticated, authReady, customerName } = useAuth();
+  const { t } = useLanguage();
   const reorderFetched = useRef(false);
 
   const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
@@ -180,8 +183,46 @@ export function HomePage() {
     </section>
   );
 
+  const greetingTitle = customerName
+    ? t('home.greeting_named').replace('{name}', customerName)
+    : t('home.greeting_hello');
+
   return (
     <div>
+
+      {/* Phase 2: basic greeting + PrayerBar (full banner polish in Phase 4) */}
+      <section
+        style={{
+          padding: '1.25rem var(--page-gutter) 0.5rem',
+          maxWidth: 'var(--layout-max)',
+          margin: '0 auto',
+        }}
+      >
+        <h1
+          style={{
+            margin: 0,
+            fontSize: '1.5rem',
+            fontWeight: 800,
+            color: 'var(--color-dark)',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {greetingTitle}
+        </h1>
+        <p
+          style={{
+            margin: '0.35rem 0 0',
+            fontSize: '0.9375rem',
+            color: 'var(--color-text-muted)',
+          }}
+        >
+          {t('home.greeting_sub')}
+        </p>
+      </section>
+
+      <div style={{ padding: '0.75rem var(--page-gutter) 1rem', maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
+        <PrayerBar />
+      </div>
 
       {/* Online ordering status — shown inside hero top-right corner always */}
 

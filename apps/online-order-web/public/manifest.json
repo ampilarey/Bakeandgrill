@@ -41,7 +41,7 @@
     {
       "name": "My Orders",
       "short_name": "Orders",
-      "url": "/order/account",
+      "url": "/order/order-history",
       "description": "View past orders and receipts"
     }
   ],

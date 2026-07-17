@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 export type AccordionItemProps = {
   id: string;
@@ -8,7 +9,7 @@ export type AccordionItemProps = {
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
-  /** Accessible label for the change/expand control when collapsed. */
+  /** Pass t('common.change') at call sites when overriding. */
   changeLabel?: string;
 };
 
@@ -22,8 +23,10 @@ export function AccordionItem({
   open,
   onToggle,
   children,
-  changeLabel = 'Change',
+  changeLabel,
 }: AccordionItemProps) {
+  const { t } = useLanguage();
+  const label = changeLabel ?? t('common.change');
   const panelId = `${id}-panel`;
   const triggerId = `${id}-trigger`;
 
@@ -46,7 +49,7 @@ export function AccordionItem({
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {!open && (
             <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-              {changeLabel}
+              {label}
             </span>
           )}
           <span className="accordion__chevron" aria-hidden="true">▾</span>
