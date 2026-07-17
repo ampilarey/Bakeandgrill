@@ -134,7 +134,11 @@ export function ForecastPage() {
     item.suggested_supplier?.source === 'cheapest' && !!item.suggested_supplier.id;
 
   const canSelectRestock = (item: RestockPlanItem) =>
-    !item.excluded && (canDraftPo(item) || canApplyRop(item) || canSetPreferred(item));
+    item.excluded
+    || item.snoozed
+    || canDraftPo(item)
+    || canApplyRop(item)
+    || canSetPreferred(item);
 
   const defaultSelectDueSoon = (plan: RestockPlan) => {
     setSelectedRestockIds(new Set(plan.items.filter(readyForNewPo).map((i) => i.id)));
@@ -217,6 +221,11 @@ export function ForecastPage() {
   const selectedRopItems = (restock?.items ?? []).filter((i) => selectedRestockIds.has(i.id) && canApplyRop(i));
   const cheapestRestock = restock?.items.filter((i) => !i.excluded && canSetPreferred(i)) ?? [];
   const selectedPreferredItems = cheapestRestock.filter((i) => selectedRestockIds.has(i.id));
+  const selectedAnyRestock = (restock?.items ?? []).filter((i) => selectedRestockIds.has(i.id));
+  const selectedSnoozeable = selectedAnyRestock.filter((i) => !i.excluded && !i.snoozed);
+  const selectedWakeable = selectedAnyRestock.filter((i) => i.snoozed && !i.excluded);
+  const selectedExcludable = selectedAnyRestock.filter((i) => !i.excluded);
+  const selectedIncludable = selectedAnyRestock.filter((i) => i.excluded);
   const allReadySelected = readyRestock.length > 0
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
   const restockBusy = creatingPos || applyingRop || applyingPreferred
@@ -430,6 +439,130 @@ export function ForecastPage() {
         ? `${item.name}: excluded from Restock Plan`
         : `${item.name}: included in Restock Plan again`);
       if (excluded) setRestockFilter('excluded');
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSnoozingId(null);
+    }
+  };
+
+  const clearSelectedIds = (ids: number[]) => {
+    setSelectedRestockIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  };
+
+  const snoozeSelectedRestock = async (days: number) => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to snooze restock items.');
+      return;
+    }
+    if (selectedSnoozeable.length === 0) {
+      setError('Select active (not snoozed/excluded) items to snooze.');
+      return;
+    }
+    setSnoozingId(-1);
+    setError('');
+    setRestockToast('');
+    const until = daysFromToday(days);
+    try {
+      for (const item of selectedSnoozeable) {
+        await updateInventoryItem(item.id, { restock_snoozed_until: until });
+      }
+      clearSelectedIds(selectedSnoozeable.map((i) => i.id));
+      setRestockToast(`Snoozed ${selectedSnoozeable.length} item${selectedSnoozeable.length === 1 ? '' : 's'} until ${until}`);
+      setRestockFilter('snoozed');
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSnoozingId(null);
+    }
+  };
+
+  const wakeSelectedRestock = async () => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to clear snooze.');
+      return;
+    }
+    if (selectedWakeable.length === 0) {
+      setError('Select snoozed items to wake.');
+      return;
+    }
+    setSnoozingId(-1);
+    setError('');
+    setRestockToast('');
+    try {
+      for (const item of selectedWakeable) {
+        await updateInventoryItem(item.id, { restock_snoozed_until: null });
+      }
+      clearSelectedIds(selectedWakeable.map((i) => i.id));
+      setRestockToast(`Woke ${selectedWakeable.length} item${selectedWakeable.length === 1 ? '' : 's'}`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSnoozingId(null);
+    }
+  };
+
+  const excludeSelectedRestock = async () => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to exclude restock items.');
+      return;
+    }
+    if (selectedExcludable.length === 0) {
+      setError('Select items to exclude.');
+      return;
+    }
+    const ok = window.confirm(
+      `Exclude ${selectedExcludable.length} item${selectedExcludable.length === 1 ? '' : 's'} from Restock Plan?\n\n`
+      + 'They leave due-soon, draft POs, and new reorder alerts/SMS until you Include them again.',
+    );
+    if (!ok) return;
+    setSnoozingId(-1);
+    setError('');
+    setRestockToast('');
+    try {
+      for (const item of selectedExcludable) {
+        await updateInventoryItem(item.id, {
+          restock_excluded: true,
+          restock_snoozed_until: null,
+        });
+      }
+      clearSelectedIds(selectedExcludable.map((i) => i.id));
+      setRestockToast(`Excluded ${selectedExcludable.length} item${selectedExcludable.length === 1 ? '' : 's'}`);
+      setRestockFilter('excluded');
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSnoozingId(null);
+    }
+  };
+
+  const includeSelectedRestock = async () => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to include restock items.');
+      return;
+    }
+    if (selectedIncludable.length === 0) {
+      setError('Select excluded items to include again.');
+      return;
+    }
+    setSnoozingId(-1);
+    setError('');
+    setRestockToast('');
+    try {
+      for (const item of selectedIncludable) {
+        await updateInventoryItem(item.id, { restock_excluded: false });
+      }
+      clearSelectedIds(selectedIncludable.map((i) => i.id));
+      setRestockToast(`Included ${selectedIncludable.length} item${selectedIncludable.length === 1 ? '' : 's'}`);
+      setRestockFilter('due_soon');
       await refreshRestock();
     } catch (e) {
       setError((e as Error).message);
@@ -1033,6 +1166,72 @@ export function ForecastPage() {
                   </Link>
                 </div>
               </div>
+              {canManageInventory && selectedAnyRestock.length > 0 && (
+                <div style={{
+                  marginBottom: 12, padding: '10px 12px', borderRadius: 8,
+                  background: '#F8F6F3', border: '1px solid #E8E0D8', fontSize: 13, color: '#6B5D4F',
+                  display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+                }}>
+                  <strong style={{ color: '#1C1408' }}>{selectedAnyRestock.length} selected</strong>
+                  {selectedSnoozeable.length > 0 && [7, 14, 30].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      disabled={restockBusy}
+                      onClick={() => void snoozeSelectedRestock(d)}
+                      style={{
+                        padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'inherit', color: '#6B5D4F',
+                      }}
+                    >
+                      {snoozingId === -1 ? '…' : `Snooze ${d}d (${selectedSnoozeable.length})`}
+                    </button>
+                  ))}
+                  {selectedWakeable.length > 0 && (
+                    <button
+                      type="button"
+                      disabled={restockBusy}
+                      onClick={() => void wakeSelectedRestock()}
+                      style={{
+                        padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'inherit', color: '#374151',
+                      }}
+                    >
+                      {snoozingId === -1 ? '…' : `Wake (${selectedWakeable.length})`}
+                    </button>
+                  )}
+                  {selectedExcludable.length > 0 && (
+                    <button
+                      type="button"
+                      disabled={restockBusy}
+                      onClick={() => void excludeSelectedRestock()}
+                      style={{
+                        padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'inherit', color: '#6B7280',
+                      }}
+                    >
+                      {snoozingId === -1 ? '…' : `Exclude (${selectedExcludable.length})`}
+                    </button>
+                  )}
+                  {selectedIncludable.length > 0 && (
+                    <button
+                      type="button"
+                      disabled={restockBusy}
+                      onClick={() => void includeSelectedRestock()}
+                      style={{
+                        padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'inherit', color: '#16a34a',
+                      }}
+                    >
+                      {snoozingId === -1 ? '…' : `Include (${selectedIncludable.length})`}
+                    </button>
+                  )}
+                </div>
+              )}
               {selectedRestockItems.length > 0 && (
                 <div style={{
                   marginBottom: 12, padding: '10px 12px', borderRadius: 8,
