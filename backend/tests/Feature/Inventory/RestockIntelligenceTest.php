@@ -600,6 +600,48 @@ class RestockIntelligenceTest extends TestCase
         $this->assertSame('usage_cover', $byName['Sugar']['reason']);
     }
 
+    public function test_restock_plan_snooze_removes_item_from_due_soon(): void
+    {
+        $owner = $this->makeOwner();
+        $item = InventoryItem::create([
+            'name' => 'Butter',
+            'sku' => 'BTR-SNOOZE',
+            'unit' => 'kg',
+            'current_stock' => 0,
+            'reorder_point' => 5,
+            'unit_cost' => 8,
+            'restock_snoozed_until' => now()->addDays(14)->toDateString(),
+            'is_active' => true,
+        ]);
+
+        StockMovement::create([
+            'idempotency_key' => 'test-snooze-deduct',
+            'inventory_item_id' => $item->id,
+            'user_id' => $owner->id,
+            'type' => 'deduction',
+            'quantity' => -30,
+            'balance_after' => 0,
+            'unit_cost' => 1,
+            'reference_type' => 'order',
+            'reference_id' => 301,
+            'notes' => 'test',
+        ]);
+
+        $response = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30',
+            $this->staffHeaders($owner),
+        );
+        $response->assertOk();
+
+        $row = collect($response->json('items'))->firstWhere('name', 'Butter');
+        $this->assertNotNull($row);
+        $this->assertTrue($row['snoozed']);
+        $this->assertFalse($row['due_soon']);
+        $this->assertTrue($row['would_be_due_soon']);
+        $this->assertSame(1, (int) $response->json('totals.snoozed'));
+        $this->assertSame(0, (int) $response->json('totals.due_soon'));
+    }
+
     public function test_restock_plan_includes_open_reorder_alert_and_resolve(): void
     {
         $owner = $this->makeOwner();

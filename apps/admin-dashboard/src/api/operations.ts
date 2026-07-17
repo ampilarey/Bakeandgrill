@@ -558,6 +558,7 @@ export async function updateInventoryItem(
     reorder_point: number | null;
     lead_days: number | null;
     cover_days: number | null;
+    restock_snoozed_until: string | null;
     unit_cost: number | null;
     inventory_category_id: number | null;
     preferred_supplier_id: number | null;

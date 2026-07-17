@@ -774,6 +774,10 @@ export type RestockPlanItem = {
   suggested_reorder_point: number | null;
   reason: string;
   due_soon: boolean;
+  /** True when urgency would apply if not snoozed. */
+  would_be_due_soon?: boolean;
+  snoozed: boolean;
+  restock_snoozed_until: string | null;
   /** Effective lead days used for due-soon + suggested ROP. */
   lead_days: number;
   lead_days_source: 'item' | 'default';
@@ -803,6 +807,7 @@ export type RestockPlan = {
     with_open_po?: number;
     price_up?: number;
     open_alerts?: number;
+    snoozed?: number;
   };
   items: RestockPlanItem[];
 };

@@ -22,7 +22,7 @@ final class RestockIntelligenceService
      *     buy_lookback_days: int,
      *     lead_days: int,
      *     cover_days: int,
-     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int, open_alerts: int},
+     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int, open_alerts: int, snoozed: int},
      *     items: list<array<string, mixed>>
      * }
      */
@@ -58,6 +58,7 @@ final class RestockIntelligenceService
         $withOpenPo = 0;
         $priceUp = 0;
         $withOpenAlert = 0;
+        $snoozedCount = 0;
 
         foreach ($items as $item) {
             $stock = (float) ($item->current_stock ?? 0);
@@ -103,13 +104,21 @@ final class RestockIntelligenceService
             );
 
             $due = $nextOrder !== null && Carbon::parse($nextOrder)->lte($today->copy()->addDays($effectiveLead));
-            $dueSoonFlag = $due || in_array($status, ['out_of_stock', 'critical', 'low'], true);
+            $wouldBeDueSoon = $due || in_array($status, ['out_of_stock', 'critical', 'low'], true);
+
+            $snoozeUntil = $item->restock_snoozed_until;
+            $isSnoozed = $snoozeUntil !== null && $snoozeUntil->copy()->startOfDay()->gte($today);
+            // Snoozed SKUs stay on the plan but drop out of due-soon / draft-PO urgency.
+            $dueSoonFlag = $wouldBeDueSoon && ! $isSnoozed;
 
             // Keep the plan focused: items with usage, buy history, or below ROP.
             if ($dailyRate <= 0 && $buy === null && ! ($rop > 0 && $stock <= $rop)) {
                 continue;
             }
 
+            if ($isSnoozed) {
+                $snoozedCount++;
+            }
             if ($dueSoonFlag) {
                 $dueSoon++;
             }
@@ -176,6 +185,9 @@ final class RestockIntelligenceService
                 'suggested_reorder_point' => $suggestedRop,
                 'reason' => $qtyInfo['reason'],
                 'due_soon' => $dueSoonFlag,
+                'would_be_due_soon' => $wouldBeDueSoon,
+                'snoozed' => $isSnoozed,
+                'restock_snoozed_until' => $snoozeUntil?->toDateString(),
                 'lead_days' => $effectiveLead,
                 'lead_days_source' => $leadSource,
                 'cover_days' => $effectiveCover,
@@ -214,6 +226,7 @@ final class RestockIntelligenceService
                 'with_open_po' => $withOpenPo,
                 'price_up' => $priceUp,
                 'open_alerts' => $withOpenAlert,
+                'snoozed' => $snoozedCount,
             ],
             'items' => $rows,
         ];

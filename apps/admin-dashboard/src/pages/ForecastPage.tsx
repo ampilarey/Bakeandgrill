@@ -13,7 +13,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { today, daysAgo, daysFromToday } from '../utils/dateHelpers';
 import { downloadCSV } from '../utils/csvExport';
 
-type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts';
+type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts' | 'snoozed';
 
 function priceChangeBadge(item: RestockPlanItem): { label: string; color: string; bg: string } | null {
   if (item.price_change == null || item.price_change_pct == null) return null;
@@ -71,6 +71,7 @@ export function ForecastPage() {
   const [savingLeadId, setSavingLeadId] = useState<number | null>(null);
   const [savingCoverId, setSavingCoverId] = useState<number | null>(null);
   const [resolvingAlertId, setResolvingAlertId] = useState<number | null>(null);
+  const [snoozingId, setSnoozingId] = useState<number | null>(null);
   const [leadDrafts, setLeadDrafts] = useState<Record<number, string>>({});
   const [coverDrafts, setCoverDrafts] = useState<Record<number, string>>({});
   const [qtyDrafts, setQtyDrafts] = useState<Record<number, string>>({});
@@ -209,12 +210,14 @@ export function ForecastPage() {
   const allReadySelected = readyRestock.length > 0
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
   const restockBusy = creatingPos || applyingRop || applyingPreferred
-    || settingPreferredId != null || savingLeadId != null || savingCoverId != null || resolvingAlertId != null;
+    || settingPreferredId != null || savingLeadId != null || savingCoverId != null
+    || resolvingAlertId != null || snoozingId != null;
 
   const filteredRestockItems = (() => {
     if (!restock) return [];
     if (restockFilter === 'price_up') return restock.items.filter((i) => i.price_change === 'up');
     if (restockFilter === 'alerts') return restock.items.filter((i) => !!i.open_alert);
+    if (restockFilter === 'snoozed') return restock.items.filter((i) => i.snoozed);
     if (restockFilter === 'all') return restock.items;
     return restock.items.filter((i) => i.due_soon).slice(0, 40);
   })();
@@ -227,7 +230,9 @@ export function ForecastPage() {
         ? restock.items.filter((i) => i.price_change === 'up')
         : restockFilter === 'alerts'
           ? restock.items.filter((i) => !!i.open_alert)
-          : restock.items
+          : restockFilter === 'snoozed'
+            ? restock.items.filter((i) => i.snoozed)
+            : restock.items
     ).map((i) => ({
       Item: i.name,
       Category: i.category ?? '',
@@ -236,6 +241,8 @@ export function ForecastPage() {
       'Days left': i.days_of_stock ?? '',
       Status: i.status,
       'Next order': i.suggested_next_order_date ?? '',
+      Snoozed: i.snoozed ? 'yes' : '',
+      'Snoozed until': i.restock_snoozed_until ?? '',
       'Lead days': i.lead_days,
       'Lead source': i.lead_days_source,
       'Cover days': i.cover_days,
@@ -254,6 +261,50 @@ export function ForecastPage() {
       Why: REASON_LABEL[i.reason] ?? i.reason,
     }));
     downloadCSV(`restock-plan-${restockFilter}`, rows);
+  };
+
+  const snoozeRestockItem = async (item: RestockPlanItem, days: number) => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to snooze restock items.');
+      return;
+    }
+    setSnoozingId(item.id);
+    setError('');
+    setRestockToast('');
+    try {
+      const until = daysFromToday(days);
+      await updateInventoryItem(item.id, { restock_snoozed_until: until });
+      setSelectedRestockIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+      setRestockToast(`${item.name}: snoozed until ${until}`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSnoozingId(null);
+    }
+  };
+
+  const clearRestockSnooze = async (item: RestockPlanItem) => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to clear snooze.');
+      return;
+    }
+    setSnoozingId(item.id);
+    setError('');
+    setRestockToast('');
+    try {
+      await updateInventoryItem(item.id, { restock_snoozed_until: null });
+      setRestockToast(`${item.name}: snooze cleared`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSnoozingId(null);
+    }
   };
 
   const dismissReorderAlert = async (item: RestockPlanItem) => {
@@ -911,6 +962,9 @@ export function ForecastPage() {
                 {(restock.totals.open_alerts ?? 0) > 0 && (
                   <StatCard label="Open alerts" value={String(restock.totals.open_alerts)} accent="#dc2626" />
                 )}
+                {(restock.totals.snoozed ?? 0) > 0 && (
+                  <StatCard label="Snoozed" value={String(restock.totals.snoozed)} accent="#6B5D4F" />
+                )}
                 {cheapestRestock.length > 0 && (
                   <StatCard label="No preferred yet" value={String(cheapestRestock.length)} accent="#6B5D4F" />
                 )}
@@ -921,6 +975,7 @@ export function ForecastPage() {
                   { id: 'all' as const, label: `All (${restock.totals.items_count})` },
                   { id: 'price_up' as const, label: `Price up (${restock.totals.price_up ?? 0})` },
                   { id: 'alerts' as const, label: `Alerts (${restock.totals.open_alerts ?? 0})` },
+                  { id: 'snoozed' as const, label: `Snoozed (${restock.totals.snoozed ?? 0})` },
                 ]).map((f) => (
                   <button
                     key={f.id}
@@ -965,7 +1020,13 @@ export function ForecastPage() {
                         key={item.id}
                         style={{
                           borderBottom: '1px solid #F8F6F3',
-                          background: item.price_change === 'up' ? '#FEF2F2' : item.due_soon ? '#FFFBEB' : undefined,
+                          background: item.snoozed
+                            ? '#F3F4F6'
+                            : item.price_change === 'up'
+                              ? '#FEF2F2'
+                              : item.due_soon
+                                ? '#FFFBEB'
+                                : undefined,
                         }}
                       >
                         <td style={{ padding: '8px 12px' }}>
@@ -981,6 +1042,52 @@ export function ForecastPage() {
                         <td style={{ padding: '8px 12px', fontWeight: 600 }}>
                           <Link to={`/inventory?item=${item.id}`} style={{ color: '#1C1408', textDecoration: 'none' }}>{item.name}</Link>
                           <div style={{ fontSize: 11, color: '#9C8E7E' }}>{item.category ?? '—'}</div>
+                          {item.snoozed && (
+                            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                              <span
+                                style={{
+                                  fontSize: 11, fontWeight: 700, color: '#4B5563',
+                                  background: '#E5E7EB', padding: '2px 6px', borderRadius: 6,
+                                }}
+                              >
+                                Snoozed{item.restock_snoozed_until ? ` → ${String(item.restock_snoozed_until).slice(0, 10)}` : ''}
+                              </span>
+                              {canManageInventory && (
+                                <button
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => void clearRestockSnooze(item)}
+                                  style={{
+                                    fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                                    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
+                                    borderRadius: 6, padding: '2px 6px',
+                                  }}
+                                >
+                                  {snoozingId === item.id ? '…' : 'Wake'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {!item.snoozed && canManageInventory && (item.due_soon || item.would_be_due_soon) && (
+                            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                              {[7, 14, 30].map((d) => (
+                                <button
+                                  key={d}
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => void snoozeRestockItem(item, d)}
+                                  title={`Hide from due-soon until ${daysFromToday(d)}`}
+                                  style={{
+                                    fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                                    border: '1px solid #E8E0D8', background: '#F8F6F3', color: '#6B5D4F',
+                                    borderRadius: 6, padding: '2px 6px',
+                                  }}
+                                >
+                                  {snoozingId === item.id ? '…' : `${d}d`}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           {item.open_purchase && (
                             <div style={{ marginTop: 4 }}>
                               <Link
@@ -1255,6 +1362,9 @@ export function ForecastPage() {
                     )}
                     {restockFilter === 'alerts' && (restock.totals.open_alerts ?? 0) === 0 && (
                       <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No open reorder alerts. Scheduler creates them when stock hits ROP.</td></tr>
+                    )}
+                    {restockFilter === 'snoozed' && (restock.totals.snoozed ?? 0) === 0 && (
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No snoozed items. Use 7d / 14d / 30d on a due-soon row to hide it temporarily.</td></tr>
                     )}
                   </tbody>
                 </table>
