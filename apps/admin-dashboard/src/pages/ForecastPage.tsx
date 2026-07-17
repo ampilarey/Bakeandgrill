@@ -46,6 +46,7 @@ export function ForecastPage() {
   const [showAllRestock, setShowAllRestock] = useState(false);
   const [creatingPos, setCreatingPos] = useState(false);
   const [restockToast, setRestockToast] = useState('');
+  const [selectedRestockIds, setSelectedRestockIds] = useState<Set<number>>(new Set());
 
   // Per-item forecast
   const [selectedItem, setSelectedItem]   = useState<MenuItemSelection | null>(null);
@@ -53,6 +54,16 @@ export function ForecastPage() {
   const [itemForecastDays, setItemForecastDays] = useState(14);
   const [itemLoading, setItemLoading]     = useState(false);
   const [itemError, setItemError]         = useState('');
+
+  const canDraftPo = (item: RestockPlanItem) =>
+    item.due_soon
+    && item.suggested_order_qty > 0
+    && !!item.suggested_supplier?.id
+    && (item.unit_cost ?? item.suggested_supplier?.price ?? 0) > 0;
+
+  const defaultSelectDueSoon = (plan: RestockPlan) => {
+    setSelectedRestockIds(new Set(plan.items.filter(canDraftPo).map((i) => i.id)));
+  };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -69,8 +80,12 @@ export function ForecastPage() {
     else errs.push(`Revenue forecast: ${(f.reason as Error).message}`);
     if (i.status === 'fulfilled') setInv(i.value);
     else errs.push(`Inventory forecast: ${(i.reason as Error).message}`);
-    if (r.status === 'fulfilled') setRestock(r.value);
-    else errs.push(`Restock plan: ${(r.reason as Error).message}`);
+    if (r.status === 'fulfilled') {
+      setRestock(r.value);
+      defaultSelectDueSoon(r.value);
+    } else {
+      errs.push(`Restock plan: ${(r.reason as Error).message}`);
+    }
     if (errs.length) setError(errs.join(' | '));
     setLoading(false);
   };
@@ -98,18 +113,51 @@ export function ForecastPage() {
 
   const maxRevenue = trends ? Math.max(...(trends.data ?? []).map(d => d.revenue), 1) : 1;
 
+  const eligibleRestock = restock?.items.filter(canDraftPo) ?? [];
+  const selectedRestockItems = eligibleRestock.filter((i) => selectedRestockIds.has(i.id));
+  const allEligibleSelected = eligibleRestock.length > 0
+    && eligibleRestock.every((i) => selectedRestockIds.has(i.id));
+
+  const restockPreviewBySupplier = (() => {
+    const map = new Map<number, { name: string; lines: number; total: number }>();
+    for (const item of selectedRestockItems) {
+      const sid = item.suggested_supplier!.id;
+      const cost = (item.unit_cost ?? item.suggested_supplier?.price ?? 0) * item.suggested_order_qty;
+      const cur = map.get(sid) ?? { name: item.suggested_supplier!.name, lines: 0, total: 0 };
+      cur.lines += 1;
+      cur.total += cost;
+      map.set(sid, cur);
+    }
+    return [...map.entries()].map(([id, v]) => ({ supplier_id: id, ...v }));
+  })();
+  const restockPreviewTotal = restockPreviewBySupplier.reduce((s, g) => s + g.total, 0);
+
+  const toggleRestockSelect = (id: number, checked: boolean) => {
+    setSelectedRestockIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllEligible = () => {
+    if (allEligibleSelected) {
+      setSelectedRestockIds(new Set());
+    } else {
+      setSelectedRestockIds(new Set(eligibleRestock.map((i) => i.id)));
+    }
+  };
+
   const createDraftPosFromRestock = async () => {
     if (!restock) return;
-    const due = restock.items.filter((i) => i.due_soon && i.suggested_order_qty > 0);
-    const withSupplier = due.filter((i) => i.suggested_supplier?.id && (i.unit_cost ?? 0) > 0);
-    const skipped = due.length - withSupplier.length;
-    if (withSupplier.length === 0) {
-      setError('No due-soon items have a supplier and unit cost. Set preferred supplier or record a purchase first.');
+    if (selectedRestockItems.length === 0) {
+      setError('Select at least one due-soon item with a supplier and unit cost.');
       return;
     }
 
     const bySupplier = new Map<number, RestockPlanItem[]>();
-    for (const item of withSupplier) {
+    for (const item of selectedRestockItems) {
       const sid = item.suggested_supplier!.id;
       const list = bySupplier.get(sid) ?? [];
       list.push(item);
@@ -133,9 +181,12 @@ export function ForecastPage() {
         });
         created.push(res.purchase.purchase_number ?? `PO #${res.purchase.id}`);
       }
+      const createdIds = new Set(selectedRestockItems.map((i) => i.id));
+      setSelectedRestockIds((prev) => new Set([...prev].filter((id) => !createdIds.has(id))));
       setRestockToast(
         `Created ${created.length} draft PO${created.length === 1 ? '' : 's'}: ${created.join(', ')}`
-        + (skipped > 0 ? ` · skipped ${skipped} item${skipped === 1 ? '' : 's'} without supplier/cost` : ''),
+        + ` · ${selectedRestockItems.length} line${selectedRestockItems.length === 1 ? '' : 's'}`
+        + ` · est. MVR ${restockPreviewTotal.toFixed(2)}`,
       );
     } catch (e) {
       setError((e as Error).message);
@@ -316,13 +367,15 @@ export function ForecastPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  {restock.totals.due_soon > 0 && (
+                  {eligibleRestock.length > 0 && (
                     <Btn
                       small
-                      disabled={creatingPos}
+                      disabled={creatingPos || selectedRestockItems.length === 0}
                       onClick={() => void createDraftPosFromRestock()}
                     >
-                      {creatingPos ? 'Creating…' : 'Create draft POs for due soon'}
+                      {creatingPos
+                        ? 'Creating…'
+                        : `Create draft POs (${selectedRestockItems.length})`}
                     </Btn>
                   )}
                   <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>
@@ -339,15 +392,47 @@ export function ForecastPage() {
                   <Link to="/purchase-orders" style={{ color: '#047857' }}>Review drafts →</Link>
                 </div>
               )}
+              {selectedRestockItems.length > 0 && (
+                <div style={{
+                  marginBottom: 12, padding: '10px 12px', borderRadius: 8,
+                  background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: 13, color: '#9a3412',
+                }}>
+                  <strong>{selectedRestockItems.length}</strong> selected ·{' '}
+                  <strong>{restockPreviewBySupplier.length}</strong> draft PO
+                  {restockPreviewBySupplier.length === 1 ? '' : 's'} · est.{' '}
+                  <strong>MVR {restockPreviewTotal.toFixed(2)}</strong>
+                  {restockPreviewBySupplier.length > 0 && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: '#c2410c' }}>
+                      {restockPreviewBySupplier.map((g) => (
+                        <span key={g.supplier_id} style={{ marginRight: 12 }}>
+                          {g.name}: {g.lines} line{g.lines === 1 ? '' : 's'} · MVR {g.total.toFixed(2)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                 <StatCard label="Tracked items" value={String(restock.totals.items_count)} accent="#6B5D4F" />
                 <StatCard label="Due soon" value={String(restock.totals.due_soon)} accent="#f97316" />
                 <StatCard label="Below ROP" value={String(restock.totals.below_rop)} accent="#ef4444" />
+                <StatCard label="Ready for PO" value={String(eligibleRestock.length)} accent="#16a34a" />
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #F0EBE5' }}>
+                      <th style={{ padding: '8px 12px', width: 36 }}>
+                        {eligibleRestock.length > 0 ? (
+                          <input
+                            type="checkbox"
+                            checked={allEligibleSelected}
+                            onChange={toggleSelectAllEligible}
+                            title={allEligibleSelected ? 'Deselect all' : 'Select all ready items'}
+                            aria-label="Select all ready items"
+                          />
+                        ) : null}
+                      </th>
                       {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Order qty', 'Supplier', 'Why'].map((h) => (
                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
@@ -356,6 +441,16 @@ export function ForecastPage() {
                   <tbody>
                     {(showAllRestock ? restock.items : restock.items.filter((i) => i.due_soon).slice(0, 40)).map((item) => (
                       <tr key={item.id} style={{ borderBottom: '1px solid #F8F6F3', background: item.due_soon ? '#FFFBEB' : undefined }}>
+                        <td style={{ padding: '8px 12px' }}>
+                          {canDraftPo(item) ? (
+                            <input
+                              type="checkbox"
+                              checked={selectedRestockIds.has(item.id)}
+                              onChange={(e) => toggleRestockSelect(item.id, e.target.checked)}
+                              aria-label={`Select ${item.name}`}
+                            />
+                          ) : null}
+                        </td>
                         <td style={{ padding: '8px 12px', fontWeight: 600 }}>
                           <Link to={`/inventory?item=${item.id}`} style={{ color: '#1C1408', textDecoration: 'none' }}>{item.name}</Link>
                           <div style={{ fontSize: 11, color: '#9C8E7E' }}>{item.category ?? '—'}</div>
@@ -403,19 +498,24 @@ export function ForecastPage() {
                       </tr>
                     ))}
                     {restock.items.length === 0 && (
-                      <tr><td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
+                      <tr><td colSpan={9} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
                     )}
                     {!showAllRestock && restock.items.filter((i) => i.due_soon).length === 0 && restock.items.length > 0 && (
-                      <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — show all tracked items below.</td></tr>
+                      <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — show all tracked items below.</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
               {restock.items.length > 0 && (
-                <div style={{ marginTop: 12 }}>
+                <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Btn small variant="secondary" onClick={() => setShowAllRestock((v) => !v)}>
                     {showAllRestock ? 'Show due soon only' : `Show all ${restock.items.length} tracked items`}
                   </Btn>
+                  {eligibleRestock.length > 0 && (
+                    <Btn small variant="ghost" onClick={toggleSelectAllEligible}>
+                      {allEligibleSelected ? 'Clear selection' : `Select all ${eligibleRestock.length} ready`}
+                    </Btn>
+                  )}
                 </div>
               )}
             </Card>
