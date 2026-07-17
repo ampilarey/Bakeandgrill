@@ -12,6 +12,12 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { today, daysAgo, daysFromToday } from '../utils/dateHelpers';
 import { downloadCSV } from '../utils/csvExport';
+import {
+  DEFAULT_RESTOCK_PARAMS,
+  readRestockDefaults,
+  writeRestockDefaults,
+  type RestockPlanDefaults,
+} from '../utils/restockDefaults';
 
 type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts' | 'snoozed' | 'excluded';
 
@@ -65,6 +71,13 @@ export function ForecastPage() {
   const [from, setFrom]         = useState(daysAgo(29));
   const [to, setTo]             = useState(today());
   const [restockFilter, setRestockFilter] = useState<RestockFilter>('due_soon');
+  const [restockParams, setRestockParams] = useState<RestockPlanDefaults>(() => readRestockDefaults());
+  const [restockParamDrafts, setRestockParamDrafts] = useState(() => ({
+    lookback_days: String(readRestockDefaults().lookback_days),
+    buy_lookback_days: String(readRestockDefaults().buy_lookback_days),
+    lead_days: String(readRestockDefaults().lead_days),
+    cover_days: String(readRestockDefaults().cover_days),
+  }));
   const [creatingPos, setCreatingPos] = useState(false);
   const [applyingRop, setApplyingRop] = useState(false);
   const [applyingPreferred, setApplyingPreferred] = useState(false);
@@ -144,13 +157,20 @@ export function ForecastPage() {
     setSelectedRestockIds(new Set(plan.items.filter(readyForNewPo).map((i) => i.id)));
   };
 
+  const restockQueryParams = (): RestockPlanDefaults => ({
+    lookback_days: restockParams.lookback_days,
+    buy_lookback_days: restockParams.buy_lookback_days,
+    lead_days: restockParams.lead_days,
+    cover_days: restockParams.cover_days,
+  });
+
   const load = async () => {
     setLoading(true); setError('');
     const [t, f, i, r] = await Promise.allSettled([
       getSalesTrends({ granularity, from, to }),
       getRevenueForecast(8, 4),
       getInventoryForecast(),
-      getRestockPlan({ lookback_days: 30, buy_lookback_days: 90, lead_days: 3, cover_days: 14 }),
+      getRestockPlan(restockQueryParams()),
     ]);
     const errs: string[] = [];
     if (t.status === 'fulfilled') setTrends(t.value);
@@ -169,7 +189,7 @@ export function ForecastPage() {
     setLoading(false);
   };
 
-  useEffect(() => { void load(); }, [granularity, from, to]);
+  useEffect(() => { void load(); }, [granularity, from, to, restockParams]);
 
   // Deep link: /forecasts?section=restock
   useEffect(() => {
@@ -183,12 +203,32 @@ export function ForecastPage() {
 
   const refreshRestock = async () => {
     try {
-      const plan = await getRestockPlan({ lookback_days: 30, buy_lookback_days: 90, lead_days: 3, cover_days: 14 });
+      const plan = await getRestockPlan(restockQueryParams());
       setRestock(plan);
       defaultSelectDueSoon(plan);
     } catch {
       // Keep existing plan if refresh fails
     }
+  };
+
+  const applyRestockDefaults = () => {
+    const next: RestockPlanDefaults = {
+      lookback_days: Math.min(180, Math.max(7, parseInt(restockParamDrafts.lookback_days, 10) || DEFAULT_RESTOCK_PARAMS.lookback_days)),
+      buy_lookback_days: Math.min(365, Math.max(30, parseInt(restockParamDrafts.buy_lookback_days, 10) || DEFAULT_RESTOCK_PARAMS.buy_lookback_days)),
+      lead_days: Math.min(60, Math.max(1, parseInt(restockParamDrafts.lead_days, 10) || DEFAULT_RESTOCK_PARAMS.lead_days)),
+      cover_days: Math.min(90, Math.max(3, parseInt(restockParamDrafts.cover_days, 10) || DEFAULT_RESTOCK_PARAMS.cover_days)),
+    };
+    writeRestockDefaults(next);
+    setRestockParamDrafts({
+      lookback_days: String(next.lookback_days),
+      buy_lookback_days: String(next.buy_lookback_days),
+      lead_days: String(next.lead_days),
+      cover_days: String(next.cover_days),
+    });
+    setRestockParams(next);
+    setRestockToast(
+      `Restock defaults: usage ${next.lookback_days}d · buys ${next.buy_lookback_days}d · lead ${next.lead_days}d · cover ${next.cover_days}d`,
+    );
   };
 
   const handleItemForecast = async (selection: MenuItemSelection | null) => {
@@ -226,8 +266,6 @@ export function ForecastPage() {
   const selectedWakeable = selectedAnyRestock.filter((i) => i.snoozed && !i.excluded);
   const selectedExcludable = selectedAnyRestock.filter((i) => !i.excluded);
   const selectedIncludable = selectedAnyRestock.filter((i) => i.excluded);
-  const allReadySelected = readyRestock.length > 0
-    && readyRestock.every((i) => selectedRestockIds.has(i.id));
   const restockBusy = creatingPos || applyingRop || applyingPreferred
     || settingPreferredId != null || savingLeadId != null || savingCoverId != null
     || savingQtyId != null || resolvingAlertId != null || snoozingId != null;
@@ -243,6 +281,10 @@ export function ForecastPage() {
     if (restockFilter === 'all') return activeRestockItems;
     return activeRestockItems.filter((i) => i.due_soon).slice(0, 40);
   })();
+
+  const selectableInFilter = filteredRestockItems.filter(canSelectRestock);
+  const allFilterSelected = selectableInFilter.length > 0
+    && selectableInFilter.every((i) => selectedRestockIds.has(i.id));
 
   const exportRestockCsv = () => {
     if (!restock) return;
@@ -633,11 +675,19 @@ export function ForecastPage() {
     });
   };
 
-  const toggleSelectAllEligible = () => {
-    if (allReadySelected) {
-      setSelectedRestockIds(new Set());
+  const toggleSelectAllInFilter = () => {
+    if (allFilterSelected) {
+      setSelectedRestockIds((prev) => {
+        const next = new Set(prev);
+        for (const item of selectableInFilter) next.delete(item.id);
+        return next;
+      });
     } else {
-      setSelectedRestockIds(new Set(readyRestock.map((i) => i.id)));
+      setSelectedRestockIds((prev) => {
+        const next = new Set(prev);
+        for (const item of selectableInFilter) next.add(item.id);
+        return next;
+      });
     }
   };
 
@@ -868,10 +918,7 @@ export function ForecastPage() {
     try {
       const res = await applySuggestedReorderPoints({
         item_ids: selectedRopItems.map((i) => i.id),
-        lookback_days: 30,
-        buy_lookback_days: 90,
-        lead_days: 3,
-        cover_days: 14,
+        ...restockQueryParams(),
       });
       setRestockToast(
         `Updated ROP on ${res.updated_count} item${res.updated_count === 1 ? '' : 's'}`
@@ -909,10 +956,7 @@ export function ForecastPage() {
     try {
       const res = await applySuggestedPreferredSuppliers({
         item_ids: targets.map((i) => i.id),
-        lookback_days: 30,
-        buy_lookback_days: 90,
-        lead_days: 3,
-        cover_days: 14,
+        ...restockQueryParams(),
       });
       setRestockToast(
         `Set preferred on ${res.updated_count} item${res.updated_count === 1 ? '' : 's'}`
@@ -1166,6 +1210,41 @@ export function ForecastPage() {
                   </Link>
                 </div>
               </div>
+              <div style={{
+                marginBottom: 12, padding: '10px 12px', borderRadius: 8,
+                background: '#F8F6F3', border: '1px solid #E8E0D8',
+                display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end',
+              }}>
+                {([
+                  { key: 'lookback_days' as const, label: 'Usage lookback', min: 7, max: 180, suffix: 'd' },
+                  { key: 'buy_lookback_days' as const, label: 'Buy lookback', min: 30, max: 365, suffix: 'd' },
+                  { key: 'lead_days' as const, label: 'Default lead', min: 1, max: 60, suffix: 'd' },
+                  { key: 'cover_days' as const, label: 'Default cover', min: 3, max: 90, suffix: 'd' },
+                ]).map((f) => (
+                  <label key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, fontWeight: 700, color: '#6B5D4F' }}>
+                    {f.label}
+                    <input
+                      type="number"
+                      min={f.min}
+                      max={f.max}
+                      value={restockParamDrafts[f.key]}
+                      disabled={restockBusy || loading}
+                      onChange={(e) => setRestockParamDrafts((d) => ({ ...d, [f.key]: e.target.value }))}
+                      style={{
+                        width: 72, padding: '6px 8px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        fontSize: 13, fontFamily: 'inherit', color: '#1C1408',
+                      }}
+                    />
+                  </label>
+                ))}
+                <Btn small variant="secondary" disabled={restockBusy || loading} onClick={applyRestockDefaults}>
+                  Apply defaults
+                </Btn>
+                <span style={{ fontSize: 11, color: '#9C8E7E', alignSelf: 'center' }}>
+                  Active: usage {restockParams.lookback_days}d · buys {restockParams.buy_lookback_days}d · lead {restockParams.lead_days}d · cover {restockParams.cover_days}d
+                  {' '}(saved in this browser)
+                </span>
+              </div>
               {canManageInventory && selectedAnyRestock.length > 0 && (
                 <div style={{
                   marginBottom: 12, padding: '10px 12px', borderRadius: 8,
@@ -1347,13 +1426,13 @@ export function ForecastPage() {
                   <thead>
                     <tr style={{ borderBottom: '2px solid #F0EBE5' }}>
                       <th style={{ padding: '8px 12px', width: 36 }}>
-                        {readyRestock.length > 0 ? (
+                        {selectableInFilter.length > 0 ? (
                           <input
                             type="checkbox"
-                            checked={allReadySelected}
-                            onChange={toggleSelectAllEligible}
-                            title={allReadySelected ? 'Deselect all' : 'Select all ready for new PO'}
-                            aria-label="Select all ready for new PO"
+                            checked={allFilterSelected}
+                            onChange={toggleSelectAllInFilter}
+                            title={allFilterSelected ? 'Deselect filter' : 'Select all in current filter'}
+                            aria-label="Select all in current filter"
                           />
                         ) : null}
                       </th>
@@ -1804,9 +1883,20 @@ export function ForecastPage() {
               </div>
               {restock.items.length > 0 && (
                 <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {selectableInFilter.length > 0 && (
+                    <Btn small variant="ghost" onClick={toggleSelectAllInFilter}>
+                      {allFilterSelected
+                        ? 'Clear filter selection'
+                        : `Select all ${selectableInFilter.length} in filter`}
+                    </Btn>
+                  )}
                   {readyRestock.length > 0 && (
-                    <Btn small variant="ghost" onClick={toggleSelectAllEligible}>
-                      {allReadySelected ? 'Clear selection' : `Select all ${readyRestock.length} ready for new PO`}
+                    <Btn
+                      small
+                      variant="ghost"
+                      onClick={() => setSelectedRestockIds(new Set(readyRestock.map((i) => i.id)))}
+                    >
+                      Select all {readyRestock.length} ready for new PO
                     </Btn>
                   )}
                   {selectableRestock.some(canApplyRop) && (

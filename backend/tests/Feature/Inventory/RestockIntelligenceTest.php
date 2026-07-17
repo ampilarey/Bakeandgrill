@@ -688,6 +688,38 @@ class RestockIntelligenceTest extends TestCase
         $this->assertSame(0, (int) $response->json('totals.due_soon'));
     }
 
+    public function test_excluding_item_resolves_open_reorder_alerts(): void
+    {
+        $owner = $this->makeOwner();
+        $item = InventoryItem::create([
+            'name' => 'Oil',
+            'sku' => 'OIL-EXCL-ALERT',
+            'unit' => 'L',
+            'current_stock' => 2,
+            'reorder_point' => 10,
+            'unit_cost' => 3,
+            'restock_excluded' => false,
+            'is_active' => true,
+        ]);
+        $alert = InventoryReorderAlert::create([
+            'inventory_item_id' => $item->id,
+            'current_stock' => 2,
+            'reorder_point' => 10,
+        ]);
+
+        $response = $this->patchJson(
+            "/api/inventory/{$item->id}",
+            ['restock_excluded' => true],
+            $this->staffHeaders($owner),
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('resolved_alerts', 1)
+            ->assertJsonPath('item.restock_excluded', true);
+
+        $this->assertNotNull($alert->fresh()->resolved_at);
+    }
+
     public function test_restock_plan_snooze_removes_item_from_due_soon(): void
     {
         $owner = $this->makeOwner();

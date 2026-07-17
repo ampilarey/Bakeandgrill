@@ -31,6 +31,7 @@ import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, Ta
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { monthStart, today } from '../utils/dateHelpers';
+import { readRestockDefaults } from '../utils/restockDefaults';
 import { showDevNavItems } from '../components/navConfig';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -447,7 +448,7 @@ export function DashboardPage() {
     enabled: canFinancialSummary,
     queryFn: async () => {
       const [restock, spend] = await Promise.all([
-        getRestockPlan({ lookback_days: 30, buy_lookback_days: 90, lead_days: 3, cover_days: 14 })
+        getRestockPlan(readRestockDefaults())
           .catch(() => null),
         getSpendHub(mtdFrom, mtdTo).catch(() => null),
       ]);

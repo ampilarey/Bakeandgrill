@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Inventory\DTOs\StockLevelChangedData;
 use App\Domains\Inventory\Events\StockLevelChanged;
+use App\Domains\Inventory\Services\RestockIntelligenceService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AdjustInventoryRequest;
 use App\Http\Requests\StockCountRequest;
@@ -23,6 +24,10 @@ use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
 {
+    public function __construct(
+        private readonly RestockIntelligenceService $restock,
+    ) {}
+
     public function index(Request $request)
     {
         $query = InventoryItem::query()->with('category:id,name');
@@ -84,9 +89,18 @@ class InventoryController extends Controller
     public function update(UpdateInventoryItemRequest $request, $id)
     {
         $item = InventoryItem::findOrFail($id);
+        $wasExcluded = (bool) $item->restock_excluded;
         $item->update($request->validated());
 
-        return response()->json(['item' => $item]);
+        $resolvedAlerts = 0;
+        if (! $wasExcluded && (bool) $item->restock_excluded) {
+            $resolvedAlerts = $this->restock->resolveOpenAlertsForItems([(int) $item->id]);
+        }
+
+        return response()->json([
+            'item' => $item,
+            'resolved_alerts' => $resolvedAlerts,
+        ]);
     }
 
     public function adjust(AdjustInventoryRequest $request, $id)
