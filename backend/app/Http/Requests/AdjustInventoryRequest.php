@@ -20,6 +20,7 @@ class AdjustInventoryRequest extends FormRequest
             'type' => 'required|string|in:adjustment,waste,correction',
             'unit_cost' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
+            'idempotency_key' => 'nullable|string|max:128',
         ];
     }
 }

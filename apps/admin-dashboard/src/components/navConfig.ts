@@ -67,7 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/purchase-requests',     icon: ClipboardPen,  label: 'Purchase Requests', permission: 'purchase_requests.view_all', description: 'Staff buying tasks' },
       { to: '/purchase-orders',       icon: Package,       label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
       { to: '/supplier-intelligence', icon: Factory,       label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
-      { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'menu.manage',         description: 'Log waste & shrinkage' },
+      { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'inventory.manage',    description: 'Log waste & shrinkage' },
       // Table booking setup — operational config, not CRM outreach
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.view',   description: 'Table bookings' },
       { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online hours, fees & overrides' },

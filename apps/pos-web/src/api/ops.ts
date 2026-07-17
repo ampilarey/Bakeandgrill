@@ -7,10 +7,24 @@ export async function fetchInventory(): Promise<{
       name: string;
       current_stock: number | null;
       unit: string;
+      reorder_point?: number | null;
     }>;
   };
 }> {
-  return request("/inventory");
+  return request("/inventory?active_only=1");
+}
+
+export async function createWasteLog(payload: {
+  inventory_item_id: number;
+  quantity: number;
+  reason: "spoilage" | "over_prep" | "drop" | "expired" | "quality" | "other";
+  notes?: string;
+  unit?: string;
+}): Promise<void> {
+  await request("/waste-logs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function adjustInventory(
@@ -66,9 +80,10 @@ export async function createSupplier(payload: {
 export async function createPurchase(payload: {
   supplier_id?: number | null;
   purchase_date: string;
+  status?: string;
   items: Array<{
-    inventory_item_id?: number | null;
-    name: string;
+    inventory_item_id: number;
+    name?: string;
     quantity: number;
     unit_cost: number;
   }>;

@@ -5,6 +5,7 @@ import {
   createCashMovement,
   createPurchase,
   createRefund,
+  createWasteLog,
   fetchInventory,
   fetchRefunds,
   fetchSuppliers,
@@ -25,13 +26,17 @@ type Shift = {
 
 export type PurchaseLine = {
   key: string;
+  inventoryItemId: number | null;
   name: string;
   quantity: string;
   unitCost: string;
 };
 
+export type WasteReason = "spoilage" | "over_prep" | "drop" | "expired" | "quality" | "other";
+
 const emptyPurchaseLine = (): PurchaseLine => ({
   key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  inventoryItemId: null,
   name: "",
   quantity: "",
   unitCost: "",
@@ -67,12 +72,13 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     if (clearTimerRef.current !== null) window.clearTimeout(clearTimerRef.current);
   }, []);
   const [inventoryItems, setInventoryItems] = useState<
-    Array<{ id: number; name: string; current_stock: number | null; unit: string }>
+    Array<{ id: number; name: string; current_stock: number | null; unit: string; reorder_point?: number | null }>
   >([]);
   const [adjustItemId, setAdjustItemId] = useState<number | null>(null);
   const [adjustType, setAdjustType] = useState<"adjustment" | "waste" | "correction">("adjustment");
   const [adjustQuantity, setAdjustQuantity] = useState("");
   const [adjustNotes, setAdjustNotes] = useState("");
+  const [wasteReason, setWasteReason] = useState<WasteReason>("spoilage");
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string }>>([]);
   const [purchaseSupplierId, setPurchaseSupplierId] = useState<number | null>(null);
   const [purchaseDate, setPurchaseDate] = useState(today);
@@ -151,45 +157,81 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const handleAdjustInventory = () => {
     if (!adjustItemId) return;
     const quantity = Number.parseFloat(adjustQuantity);
-    if (!Number.isFinite(quantity)) { setOpsMessage("Enter a valid adjustment quantity."); return; }
-    adjustInventory(adjustItemId, { quantity, type: adjustType, notes: adjustNotes || undefined })
-      .then(() => { setAdjustQuantity(""); setAdjustNotes(""); return fetchInventory(); })
+    if (!Number.isFinite(quantity) || quantity === 0) { setOpsMessage("Enter a valid adjustment quantity."); return; }
+    adjustInventory(adjustItemId, { quantity, type: "adjustment", notes: adjustNotes || undefined })
+      .then(() => { setAdjustQuantity(""); setAdjustNotes(""); setOpsMessage("Stock adjusted."); return fetchInventory(); })
       .then((r) => setInventoryItems(r.items.data))
       .catch(() => setOpsMessage("Unable to adjust inventory."));
   };
 
+  const handleRecordWaste = () => {
+    if (!adjustItemId) return;
+    const quantity = Number.parseFloat(adjustQuantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setOpsMessage("Enter how much you're wasting (positive number).");
+      return;
+    }
+    const item = inventoryItems.find((i) => i.id === adjustItemId);
+    createWasteLog({
+      inventory_item_id: adjustItemId,
+      quantity,
+      reason: wasteReason,
+      notes: adjustNotes || undefined,
+      unit: item?.unit,
+    })
+      .then(() => {
+        setAdjustQuantity("");
+        setAdjustNotes("");
+        setOpsMessage("Waste recorded.");
+        return fetchInventory();
+      })
+      .then((r) => setInventoryItems(r.items.data))
+      .catch(() => setOpsMessage("Unable to record waste."));
+  };
+
   const handleCreatePurchase = () => {
     const items = purchaseLines
-      .map((line) => ({
-        name: line.name.trim(),
-        quantity: Number.parseFloat(line.quantity),
-        unit_cost: Number.parseFloat(line.unitCost),
-      }))
+      .map((line) => {
+        const inv = inventoryItems.find((i) => i.id === line.inventoryItemId);
+        return {
+          inventory_item_id: line.inventoryItemId,
+          name: inv?.name ?? line.name.trim(),
+          quantity: Number.parseFloat(line.quantity),
+          unit_cost: Number.parseFloat(line.unitCost),
+        };
+      })
       .filter(
         (line) =>
-          line.name !== ""
+          line.inventory_item_id != null
           && Number.isFinite(line.quantity)
           && line.quantity > 0
           && Number.isFinite(line.unit_cost)
           && line.unit_cost >= 0,
-      );
+      ) as Array<{
+        inventory_item_id: number;
+        name: string;
+        quantity: number;
+        unit_cost: number;
+      }>;
 
     if (items.length === 0) {
-      setOpsMessage("Add at least one purchase line with name, quantity, and unit cost.");
+      setOpsMessage("Add at least one line with an inventory item, quantity, and unit cost.");
       return;
     }
 
     createPurchase({
       supplier_id: purchaseSupplierId ?? undefined,
       purchase_date: purchaseDate,
+      status: "received",
       items,
     })
       .then(() => {
         setPurchaseLines([emptyPurchaseLine()]);
+        setOpsMessage("Purchase recorded — stock updated.");
         return fetchInventory();
       })
       .then((r) => setInventoryItems(r.items.data))
-      .catch(() => setOpsMessage("Unable to record purchase."));
+      .catch(() => setOpsMessage("Unable to record purchase. Check item links and try again."));
   };
 
   const addPurchaseLine = () => {
@@ -226,13 +268,14 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     cashMoveReason, setCashMoveReason, opsMessage, inventoryItems,
     adjustItemId, setAdjustItemId, adjustType, setAdjustType,
     adjustQuantity, setAdjustQuantity, adjustNotes, setAdjustNotes,
+    wasteReason, setWasteReason,
     suppliers, purchaseSupplierId, setPurchaseSupplierId, purchaseDate, setPurchaseDate,
     purchaseLines, addPurchaseLine, removePurchaseLine, updatePurchaseLine,
     refundOrderId, setRefundOrderId,
     refundAmount, setRefundAmount, refundReason, setRefundReason,
     refundStatusFilter, setRefundStatusFilter, refunds,
     handleOpenShift, handleCloseShift, handleCashMovement,
-    handleAdjustInventory, handleCreatePurchase,
+    handleAdjustInventory, handleRecordWaste, handleCreatePurchase,
     handleCreateRefund,
     setOpsMessage,
   };

@@ -27,7 +27,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/purchase-requests', permission: 'purchase_requests.view_all' },
   { to: '/purchase-orders', permission: 'suppliers.purchases' },
   { to: '/supplier-intelligence', permission: 'suppliers.view' },
-  { to: '/waste-logs', permission: 'menu.manage' },
+  { to: '/waste-logs', permission: 'inventory.manage' },
   { to: '/reservations', permission: 'reservations.view' },
   { to: '/online-ordering', permission: 'settings.update' },
   { to: '/delivery-settings', permission: 'settings.update' },

@@ -86,6 +86,7 @@ class PurchaseWorkflowController extends Controller
             foreach ($validated['items'] as $line) {
                 $pItem = PurchaseItem::where('id', $line['purchase_item_id'])
                     ->where('purchase_id', $purchase->id)
+                    ->lockForUpdate()
                     ->firstOrFail();
 
                 $incomingQty = (float) $line['received_quantity'];
@@ -98,6 +99,14 @@ class PurchaseWorkflowController extends Controller
                     continue;
                 }
 
+                // Already fully received (e.g. stocked via purchase-request verify) — skip.
+                if (
+                    in_array((string) $pItem->receive_status, ['complete', 'rejected'], true)
+                    && (float) ($pItem->received_quantity ?? 0) >= (float) $pItem->quantity
+                ) {
+                    continue;
+                }
+
                 $pItem->received_quantity = ($pItem->received_quantity ?? 0) + $incomingQty;
 
                 if ($pItem->received_quantity >= $pItem->quantity) {
@@ -107,9 +116,17 @@ class PurchaseWorkflowController extends Controller
                 }
                 $pItem->save();
 
-                // Update inventory stock and WAC
-                if ($pItem->inventoryItem && $incomingQty > 0) {
-                    $invItem = $pItem->inventoryItem;
+                if ($pItem->inventory_item_id && $incomingQty > 0) {
+                    $invItem = InventoryItem::lockForUpdate()->find($pItem->inventory_item_id);
+                    if (! $invItem) {
+                        continue;
+                    }
+
+                    $idempotencyKey = 'purchase:'.$purchase->id.':item:'.$pItem->id.':to:'.round((float) $pItem->received_quantity, 4);
+                    if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+                        continue;
+                    }
+
                     $oldStock = max(0, (float) ($invItem->current_stock ?? 0));
                     $oldCost = (float) ($invItem->unit_cost ?? 0);
                     $newCost = (float) $pItem->unit_cost;
@@ -126,6 +143,7 @@ class PurchaseWorkflowController extends Controller
                     $invItem->save();
 
                     StockMovement::create([
+                        'idempotency_key' => $idempotencyKey,
                         'inventory_item_id' => $invItem->id,
                         'user_id' => $request->user()?->id,
                         'type' => 'purchase',

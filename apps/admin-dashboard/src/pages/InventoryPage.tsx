@@ -33,6 +33,8 @@ export default function InventoryPage() {
   usePageTitle('Inventory');
   const { can } = useCurrentUserPermissions();
   const canManage = can('inventory.manage');
+  const canPrepared = can('menu.prepared_stock') || canManage;
+  const canCategories = can('inventory.categories') || canManage;
   const [tab, setTab] = useState<'stock' | 'prepared' | 'categories' | 'conversions' | 'stock-count'>('stock');
 
   // ── Stock tab ──────────────────────────────────────────────────────────────
@@ -349,12 +351,16 @@ export default function InventoryPage() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
         <button style={S.tab(tab === 'stock')} onClick={() => setTab('stock')}>Stock</button>
-        <button style={S.tab(tab === 'prepared')} onClick={() => setTab('prepared')}>Prepared Stock</button>
+        {canPrepared && (
+          <button style={S.tab(tab === 'prepared')} onClick={() => setTab('prepared')}>Prepared Stock</button>
+        )}
+        {canCategories && (
+          <button style={S.tab(tab === 'categories')} onClick={() => setTab('categories')}>Categories</button>
+        )}
         {canManage && (
           <>
-        <button style={S.tab(tab === 'categories')} onClick={() => setTab('categories')}>Categories</button>
-        <button style={S.tab(tab === 'conversions')} onClick={() => setTab('conversions')}>Unit Conversions</button>
-        <button style={S.tab(tab === 'stock-count')} onClick={() => setTab('stock-count')}>Stock Count</button>
+            <button style={S.tab(tab === 'conversions')} onClick={() => setTab('conversions')}>Unit Conversions</button>
+            <button style={S.tab(tab === 'stock-count')} onClick={() => setTab('stock-count')}>Stock Count</button>
           </>
         )}
       </div>
@@ -484,7 +490,7 @@ export default function InventoryPage() {
                         <td style={{ ...TD, color: isLow ? '#ef4444' : '#1C1408', fontWeight: 700 }}>{row.stock}</td>
                         <td style={{ ...TD, color: '#9C8E7E' }}>{row.low_stock_threshold}</td>
                         <td style={TD}>
-                          {canManage ? (
+                          {canPrepared ? (
                             <Btn small onClick={() => { setPrepAdjust(row); setPrepDelta(''); setPrepNotes(''); setPrepAdjError(''); }}>
                               Adjust
                             </Btn>

@@ -91,74 +91,12 @@ class PurchaseController extends Controller
     }
 
     /**
-     * Partial receive: update received_quantity per item and auto-update inventory.
-     * Body: { "items": [{ "purchase_item_id": 1, "received_quantity": 5 }, …] }
+     * @deprecated Use PurchaseWorkflowController::receive (POST /purchases/{id}/receive).
+     * Kept as a thin delegate so any lingering clients hit the same stock-in path.
      */
     public function receive(Request $request, $id)
     {
-        $purchase = Purchase::with('items.inventoryItem')->findOrFail($id);
-
-        $validated = $request->validate([
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.purchase_item_id' => ['required', 'integer'],
-            'items.*.received_quantity' => ['required', 'numeric', 'min:0'],
-        ]);
-
-        DB::transaction(function () use ($purchase, $validated, $request) {
-            $purchaseItemIds = $purchase->items->pluck('id')->all();
-            $allFullyReceived = true;
-
-            foreach ($validated['items'] as $row) {
-                $purchaseItem = $purchase->items->firstWhere('id', $row['purchase_item_id']);
-                if (!$purchaseItem || !in_array($purchaseItem->id, $purchaseItemIds)) {
-                    continue;
-                }
-
-                $oldReceived = (float) ($purchaseItem->received_quantity ?? 0);
-                $newReceived = (float) $row['received_quantity'];
-                $delta = $newReceived - $oldReceived;
-
-                $purchaseItem->update([
-                    'received_quantity' => $newReceived,
-                    'received_at' => now(),
-                ]);
-
-                // Adjust inventory stock for the delta
-                if ($delta != 0 && $purchaseItem->inventory_item_id) {
-                    $invItem = $purchaseItem->inventoryItem;
-                    if ($invItem) {
-                        DB::table('inventory_items')
-                            ->where('id', $invItem->id)
-                            ->increment('current_stock', $delta);
-
-                        $invItem->refresh();
-
-                        StockMovement::create([
-                            'inventory_item_id' => $invItem->id,
-                            'user_id' => $request->user()?->id,
-                            'type' => 'purchase',
-                            'quantity' => $delta,
-                            'balance_after' => $invItem->current_stock,
-                            'unit_cost' => $purchaseItem->unit_price ?? null,
-                            'reference_type' => 'purchase',
-                            'reference_id' => $purchase->id,
-                            'notes' => "Partial receive for PO #{$purchase->id}",
-                        ]);
-                    }
-                }
-
-                if ((float) $purchaseItem->quantity > $newReceived) {
-                    $allFullyReceived = false;
-                }
-            }
-
-            $status = $allFullyReceived ? 'received' : 'partially_received';
-            $purchase->update(['status' => $status]);
-        });
-
-        $purchase->load('items');
-
-        return response()->json(['purchase' => $purchase]);
+        return app(PurchaseWorkflowController::class)->receive($request, (int) $id);
     }
 
     public function uploadReceipt(StorePurchaseReceiptRequest $request, $id)
@@ -244,6 +182,7 @@ class PurchaseController extends Controller
         $purchase = $this->createFromPayload([
             'supplier_id' => $supplierId,
             'purchase_date' => $purchaseDate,
+            // CSV import with inventory links stocks immediately; unmatched lines skip stock-in.
             'status' => 'received',
             'notes' => $notes,
             'items' => $rows,
@@ -282,11 +221,16 @@ class PurchaseController extends Controller
                 'revenue_or_capital', 'taxable_activity_no',
             ]));
 
+            // Default draft so admin POs don't stock until receive. POS quick-receive
+            // passes status=received explicitly.
+            $status = $validated['status'] ?? 'draft';
+            $shouldStockIn = $status === 'received';
+
             $purchase = Purchase::create(array_merge([
                 'purchase_number' => $this->generatePurchaseNumber(),
                 'supplier_id' => $validated['supplier_id'] ?? null,
                 'user_id' => $request->user()?->id,
-                'status' => $validated['status'] ?? 'received',
+                'status' => $status,
                 'subtotal' => 0,
                 'tax_amount' => 0,
                 'total' => 0,
@@ -301,50 +245,55 @@ class PurchaseController extends Controller
                 $subtotal += $lineTotal;
 
                 $inventoryItem = null;
-                if (!empty($itemPayload['inventory_item_id'])) {
-                    $inventoryItem = InventoryItem::find($itemPayload['inventory_item_id']);
+                if (! empty($itemPayload['inventory_item_id'])) {
+                    $inventoryItem = InventoryItem::lockForUpdate()->find($itemPayload['inventory_item_id']);
                 }
 
-                PurchaseItem::create([
+                $newQty = (float) $itemPayload['quantity'];
+                $lineStockIn = $shouldStockIn && $inventoryItem !== null;
+                $purchaseItem = PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'inventory_item_id' => $inventoryItem?->id,
-                    'quantity' => $itemPayload['quantity'],
+                    'quantity' => $newQty,
                     'unit_cost' => $itemPayload['unit_cost'],
                     'total_cost' => $lineTotal,
+                    'received_quantity' => $lineStockIn ? $newQty : 0,
+                    'receive_status' => $lineStockIn ? 'complete' : 'pending',
                 ]);
 
-                if ($inventoryItem) {
-                    $oldStock = max(0, ($inventoryItem->current_stock ?? 0));
+                if ($lineStockIn) {
+                    $oldStock = max(0, (float) ($inventoryItem->current_stock ?? 0));
                     $oldCost = (float) ($inventoryItem->unit_cost ?? 0);
-                    $newQty = (float) $itemPayload['quantity'];
                     $newCost = (float) $itemPayload['unit_cost'];
 
-                    $inventoryItem->current_stock = $oldStock + $newQty;
-                    $inventoryItem->last_purchase_price = $newCost;
+                    $idempotencyKey = 'purchase:'.$purchase->id.':item:'.$purchaseItem->id;
+                    if (! StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+                        $inventoryItem->current_stock = $oldStock + $newQty;
+                        $inventoryItem->last_purchase_price = $newCost;
 
-                    // Weighted average cost
-                    $totalStock = $oldStock + $newQty;
-                    if ($totalStock > 0) {
-                        $inventoryItem->unit_cost = round(
-                            ($oldStock * $oldCost + $newQty * $newCost) / $totalStock,
-                            4,
-                        );
+                        $totalStock = $oldStock + $newQty;
+                        if ($totalStock > 0) {
+                            $inventoryItem->unit_cost = round(
+                                ($oldStock * $oldCost + $newQty * $newCost) / $totalStock,
+                                4,
+                            );
+                        }
+                        $inventoryItem->save();
+
+                        StockMovement::create([
+                            'idempotency_key' => $idempotencyKey,
+                            'inventory_item_id' => $inventoryItem->id,
+                            'user_id' => $request->user()?->id,
+                            'type' => 'purchase',
+                            'quantity' => $newQty,
+                            'balance_after' => $inventoryItem->current_stock,
+                            'unit_cost' => $itemPayload['unit_cost'],
+                            'reference_type' => 'purchase',
+                            'reference_id' => $purchase->id,
+                            'notes' => $validated['notes'] ?? null,
+                        ]);
                     }
-                    $inventoryItem->save();
 
-                    StockMovement::create([
-                        'inventory_item_id' => $inventoryItem->id,
-                        'user_id' => $request->user()?->id,
-                        'type' => 'purchase',
-                        'quantity' => $itemPayload['quantity'],
-                        'balance_after' => $inventoryItem->current_stock,
-                        'unit_cost' => $itemPayload['unit_cost'],
-                        'reference_type' => 'purchase',
-                        'reference_id' => $purchase->id,
-                        'notes' => $validated['notes'] ?? null,
-                    ]);
-
-                    // Record supplier price history for intelligence
                     if ($purchase->supplier_id) {
                         SupplierPriceHistory::create([
                             'supplier_id' => $purchase->supplier_id,

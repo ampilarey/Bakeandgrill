@@ -16,7 +16,8 @@ class StorePurchaseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'supplier_id' => 'required|integer|exists:suppliers,id',
+            // Optional for POS walk-in receive; admin POs usually set a supplier.
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
             'purchase_date' => 'required|date',
@@ -33,8 +34,9 @@ class StorePurchaseRequest extends FormRequest
             'revenue_or_capital' => 'nullable|in:revenue,capital',
             'taxable_activity_no' => 'nullable|string|max:30',
             'items' => 'required|array|min:1',
-            'items.*.inventory_item_id' => 'nullable|integer|exists:inventory_items,id',
-            'items.*.name' => 'required|string|max:255',
+            // Required so POS/admin immediate receives actually update stock.
+            'items.*.inventory_item_id' => 'required|integer|exists:inventory_items,id',
+            'items.*.name' => 'nullable|string|max:255',
             'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.unit_cost' => 'required|numeric|min:0',
         ];

@@ -71,12 +71,15 @@ class InventoryConfigController extends Controller
             ['factor' => $v['factor']],
         );
 
+        app(\App\Services\UnitConversionService::class)->bustCache();
+
         return response()->json(['conversion' => $uc], 201);
     }
 
     public function destroyConversion(int $id)
     {
         UnitConversion::findOrFail($id)->delete();
+        app(\App\Services\UnitConversionService::class)->bustCache();
 
         return response()->json(['message' => 'Deleted.']);
     }

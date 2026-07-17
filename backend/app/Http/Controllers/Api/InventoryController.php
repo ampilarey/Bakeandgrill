@@ -23,18 +23,22 @@ class InventoryController extends Controller
 {
     public function index(Request $request)
     {
-        // SECURITY: Staff only
-        if (!$request->user()->tokenCan('staff')) {
-            return response()->json(['message' => 'Forbidden - staff access only'], 403);
-        }
+        $query = InventoryItem::query()->with('category:id,name');
 
-        $query = InventoryItem::query();
-
-        if ($request->has('active_only')) {
+        if ($request->boolean('active_only')) {
             $query->where('is_active', true);
         }
 
-        if ($request->has('search')) {
+        if ($request->filled('category_id')) {
+            $query->where('inventory_category_id', (int) $request->query('category_id'));
+        }
+
+        if ($request->boolean('low_stock') || $request->query('low_stock') === '1') {
+            $query->whereNotNull('reorder_point')
+                ->whereColumn('current_stock', '<=', 'reorder_point');
+        }
+
+        if ($request->filled('search')) {
             $request->validate(['search' => 'sometimes|string|max:100']);
             $search = substr((string) $request->query('search', ''), 0, 100);
             $query->where(function ($q) use ($search) {
@@ -90,7 +94,7 @@ class InventoryController extends Controller
                 reason: 'adjustment',
             )));
 
-            $movement = StockMovement::create([
+            $movementPayload = [
                 'inventory_item_id' => $item->id,
                 'user_id' => $request->user()?->id,
                 'type' => $validated['type'],
@@ -100,7 +104,15 @@ class InventoryController extends Controller
                 'reference_type' => 'manual',
                 'reference_id' => null,
                 'notes' => $validated['notes'] ?? null,
-            ]);
+            ];
+            if (! empty($validated['idempotency_key'])) {
+                if (StockMovement::where('idempotency_key', $validated['idempotency_key'])->exists()) {
+                    return [$item->fresh(), StockMovement::where('idempotency_key', $validated['idempotency_key'])->first()];
+                }
+                $movementPayload['idempotency_key'] = $validated['idempotency_key'];
+            }
+
+            $movement = StockMovement::create($movementPayload);
 
             app(AuditLogService::class)->log(
                 'inventory.adjusted',

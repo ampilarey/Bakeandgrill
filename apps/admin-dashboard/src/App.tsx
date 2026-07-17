@@ -353,7 +353,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="waste-logs" element={
-                  <PermissionGuard user={user} permission="menu.manage">
+                  <PermissionGuard user={user} permission="inventory.manage">
                     <WasteLogsPage />
                   </PermissionGuard>
                 } />

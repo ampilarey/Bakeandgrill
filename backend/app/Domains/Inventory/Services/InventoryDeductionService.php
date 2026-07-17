@@ -6,12 +6,19 @@ namespace App\Domains\Inventory\Services;
 
 use App\Domains\Inventory\DTOs\StockLevelChangedData;
 use App\Domains\Inventory\Events\StockLevelChanged;
+use App\Models\InventoryItem;
 use App\Models\Order;
+use App\Models\RecipeItem;
 use App\Models\StockMovement;
+use App\Services\UnitConversionService;
 use Illuminate\Support\Facades\DB;
 
 class InventoryDeductionService
 {
+    public function __construct(
+        private readonly UnitConversionService $unitConversions,
+    ) {}
+
     /**
      * Reverse a previous deductForOrder() — restores recipe-level
      * inventory when an order is refunded. Idempotent: uses a
@@ -56,7 +63,12 @@ class InventoryDeductionService
                         continue;
                     }
 
-                    $restoreQuantity = (($perUnitQuantity * (float) $orderItem->quantity) / $yieldQuantity) * $ratio;
+                    $restoreQuantity = $this->quantityInInventoryUnit(
+                        $recipeItem,
+                        $inventoryItem,
+                        (float) $orderItem->quantity,
+                        $yieldQuantity,
+                    ) * $ratio;
                     if ($restoreQuantity <= 0) {
                         continue;
                     }
@@ -155,7 +167,12 @@ class InventoryDeductionService
                         continue;
                     }
 
-                    $neededQuantity = ($perUnitQuantity * (float) $orderItem->quantity) / $yieldQuantity;
+                    $neededQuantity = $this->quantityInInventoryUnit(
+                        $recipeItem,
+                        $inventoryItem,
+                        (float) $orderItem->quantity,
+                        $yieldQuantity,
+                    );
                     if ($neededQuantity <= 0) {
                         continue;
                     }
@@ -223,5 +240,21 @@ class InventoryDeductionService
         });
 
         return $hadConflict;
+    }
+
+    /**
+     * Recipe line qty → inventory base unit (applies unit_conversions when set).
+     */
+    private function quantityInInventoryUnit(
+        RecipeItem $recipeItem,
+        InventoryItem $inventoryItem,
+        float $orderQty,
+        float $yieldQuantity,
+    ): float {
+        $perUnit = (float) $recipeItem->quantity;
+        $needed = ($perUnit * $orderQty) / max(1.0, $yieldQuantity);
+        $fromUnit = $recipeItem->unit ?: $inventoryItem->unit;
+
+        return $this->unitConversions->convert($needed, $fromUnit, $inventoryItem->unit);
     }
 }

@@ -119,20 +119,44 @@ final class PurchaseRequestVerificationService
                 'purchase_date' => now()->toDateString(),
             ]);
 
+            $allAlreadyStocked = true;
+            $anyLine = false;
+
             foreach ($pr->items as $line) {
                 if (!$line->inventory_item_id) {
                     continue;
                 }
+                $anyLine = true;
                 $qty = (float) ($line->actual_qty ?? $line->approved_qty ?? $line->requested_qty);
                 $unitCost = ($line->actual_unit_cost_laar ?? 0) / 100;
+
+                // Verify already applied stock via applyStockIn — mark PO line complete
+                // so PurchaseWorkflowController::receive does not double-count.
+                $alreadyStocked = $line->status === 'received'
+                    || StockMovement::query()
+                        ->where('reference_type', 'purchase_request')
+                        ->where('reference_id', $pr->id)
+                        ->where('inventory_item_id', $line->inventory_item_id)
+                        ->exists();
+
+                if (! $alreadyStocked) {
+                    $allAlreadyStocked = false;
+                }
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'inventory_item_id' => $line->inventory_item_id,
                     'quantity' => $qty,
                     'unit_cost' => $unitCost,
                     'total_cost' => round($qty * $unitCost, 2),
-                    'receive_status' => 'pending',
+                    'received_quantity' => $alreadyStocked ? $qty : 0,
+                    'receive_status' => $alreadyStocked ? 'complete' : 'pending',
+                    'received_at' => $alreadyStocked ? now() : null,
                 ]);
+            }
+
+            if ($anyLine && $allAlreadyStocked) {
+                $purchase->update(['status' => 'received']);
             }
 
             $pr->update(['purchase_id' => $purchase->id]);
@@ -190,6 +214,11 @@ final class PurchaseRequestVerificationService
             return;
         }
 
+        $idempotencyKey = 'purchase_request:'.$item->purchase_request_id.':item:'.$item->id;
+        if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+            return;
+        }
+
         $unitCostLaar = $item->actual_unit_cost_laar ?? 0;
         $newCost = $unitCostLaar / 100;
         $oldStock = max(0, (float) ($invItem->current_stock ?? 0));
@@ -208,6 +237,7 @@ final class PurchaseRequestVerificationService
         $invItem->save();
 
         StockMovement::create([
+            'idempotency_key' => $idempotencyKey,
             'inventory_item_id' => $invItem->id,
             'user_id' => $user->id,
             'type' => 'purchase',

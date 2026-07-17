@@ -7,24 +7,18 @@ namespace App\Domains\Inventory\Listeners;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Services\InventoryDeductionService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Deducts recipe inventory when an order is fully paid.
  *
- * Queued so POS /payments responses are not blocked on row locks /
- * recipe walks. Idempotent via StockMovement idempotency keys.
+ * Runs synchronously after the payment transaction commits so raw
+ * ingredient stock stays correct even when the queue worker is down.
+ * Idempotent via StockMovement idempotency keys.
  */
-class DeductInventoryListener implements ShouldQueue
+class DeductInventoryListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(
         private OrderRepositoryInterface $orders,

@@ -37,9 +37,8 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onReq
   const { permissions, onRequestItem, ...ops } = props;
   const [tab, setTab] = useState<Tab>("inventory");
 
-  const lowStockThreshold = 5;
   const lowStockCount = useMemo(
-    () => ops.inventoryItems.filter((i) => (i.current_stock ?? 0) <= lowStockThreshold).length,
+    () => ops.inventoryItems.filter((i) => isInventoryLow(i)).length,
     [ops.inventoryItems],
   );
 
@@ -117,7 +116,7 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onReq
         flex: 1, overflow: "auto", padding: 20,
         display: "flex", flexDirection: "column", gap: 16,
       }}>
-        {activeTab === "inventory"  && <InventoryTab ops={ops} lowStockThreshold={lowStockThreshold} onRequestItem={onRequestItem} />}
+        {activeTab === "inventory"  && <InventoryTab ops={ops} onRequestItem={onRequestItem} />}
         {activeTab === "prepared"   && <PreparedStockTab setOpsMessage={ops.setOpsMessage} />}
         {activeTab === "refunds"    && <RefundsTab ops={ops} />}
       </div>
@@ -324,7 +323,15 @@ function PreparedStockTab({ setOpsMessage }: { setOpsMessage: (msg: string) => v
 // Inventory tab
 // ────────────────────────────────────────────────────────────────────
 
-function InventoryTab({ ops, lowStockThreshold, onRequestItem }: { ops: OpsState; lowStockThreshold: number; onRequestItem?: () => void }) {
+function isInventoryLow(it: { current_stock: number | null; reorder_point?: number | null }): boolean {
+  const stock = it.current_stock ?? 0;
+  if (it.reorder_point != null && Number.isFinite(Number(it.reorder_point))) {
+    return stock <= Number(it.reorder_point);
+  }
+  return stock <= 5;
+}
+
+function InventoryTab({ ops, onRequestItem }: { ops: OpsState; onRequestItem?: () => void }) {
   const [search, setSearch] = useState("");
   const [lowOnly, setLowOnly] = useState(false);
   const [activeForm, setActiveForm] = useState<"adjust" | "waste" | "receive" | null>(null);
@@ -332,11 +339,11 @@ function InventoryTab({ ops, lowStockThreshold, onRequestItem }: { ops: OpsState
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return ops.inventoryItems.filter((it) => {
-      if (lowOnly && (it.current_stock ?? 0) > lowStockThreshold) return false;
+      if (lowOnly && !isInventoryLow(it)) return false;
       if (q && !it.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [ops.inventoryItems, search, lowOnly, lowStockThreshold]);
+  }, [ops.inventoryItems, search, lowOnly]);
 
   return (
     <>
@@ -397,20 +404,9 @@ function InventoryTab({ ops, lowStockThreshold, onRequestItem }: { ops: OpsState
         />
       )}
       {activeForm === "waste" && (
-        <InventoryActionForm
-          title="Record waste"
-          help="Use a negative number — what you're throwing away. Notes help finance reconcile later."
-          items={ops.inventoryItems}
-          itemId={ops.adjustItemId}
-          setItemId={ops.setAdjustItemId}
-          quantity={ops.adjustQuantity}
-          setQuantity={ops.setAdjustQuantity}
-          notes={ops.adjustNotes}
-          setNotes={ops.setAdjustNotes}
-          onSubmit={() => { ops.setAdjustType("waste"); ops.handleAdjustInventory(); setActiveForm(null); }}
-          onCancel={() => setActiveForm(null)}
-          submitLabel="Record waste"
-          submitColor={C.danger}
+        <WasteForm
+          ops={ops}
+          onDone={() => setActiveForm(null)}
         />
       )}
       {activeForm === "receive" && (
@@ -438,7 +434,7 @@ function InventoryTab({ ops, lowStockThreshold, onRequestItem }: { ops: OpsState
         ) : (
           filtered.map((it) => {
             const stock = it.current_stock ?? 0;
-            const low = stock <= lowStockThreshold;
+            const low = isInventoryLow(it);
             const empty = stock <= 0;
             return (
               <div key={it.id} style={{
@@ -522,9 +518,76 @@ function InventoryActionForm({
   );
 }
 
+function WasteForm({ ops, onDone }: { ops: OpsState; onDone: () => void }) {
+  const reasons: Array<{ value: typeof ops.wasteReason; label: string }> = [
+    { value: "spoilage", label: "Spoilage" },
+    { value: "over_prep", label: "Over-prep" },
+    { value: "drop", label: "Dropped" },
+    { value: "expired", label: "Expired" },
+    { value: "quality", label: "Quality" },
+    { value: "other", label: "Other" },
+  ];
+
+  return (
+    <FormCard
+      title="Record waste"
+      help="Enter a positive quantity. This writes a waste log for finance and removes stock."
+      onCancel={onDone}
+    >
+      <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+        <select
+          value={ops.adjustItemId ?? ""}
+          onChange={(e) => ops.setAdjustItemId(e.target.value ? Number(e.target.value) : null)}
+          style={fieldStyle}
+        >
+          <option value="">Select item…</option>
+          {ops.inventoryItems.map((it) => (
+            <option key={it.id} value={it.id}>{it.name} ({it.current_stock ?? 0} {it.unit})</option>
+          ))}
+        </select>
+        <input
+          value={ops.adjustQuantity}
+          onChange={(e) => ops.setAdjustQuantity(e.target.value)}
+          placeholder="Qty wasted"
+          inputMode="decimal"
+          style={fieldStyle}
+        />
+      </div>
+      <select
+        value={ops.wasteReason}
+        onChange={(e) => ops.setWasteReason(e.target.value as typeof ops.wasteReason)}
+        style={{ ...fieldStyle, marginTop: 10 }}
+      >
+        {reasons.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+      </select>
+      <input
+        value={ops.adjustNotes}
+        onChange={(e) => ops.setAdjustNotes(e.target.value)}
+        placeholder="Notes (optional)"
+        style={{ ...fieldStyle, marginTop: 10 }}
+      />
+      <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+        <SecondaryBtn onClick={onDone}>Cancel</SecondaryBtn>
+        <button
+          onClick={() => { ops.handleRecordWaste(); onDone(); }}
+          disabled={!ops.adjustItemId}
+          style={{
+            padding: "10px 18px", borderRadius: 8, border: "none",
+            background: !ops.adjustItemId ? "#CBD5E1" : C.danger,
+            color: "#fff", fontWeight: 700, fontSize: 13,
+            cursor: !ops.adjustItemId ? "not-allowed" : "pointer",
+          }}
+        >
+          Record waste
+        </button>
+      </div>
+    </FormCard>
+  );
+}
+
 function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => void }) {
   return (
-    <FormCard title="Receive stock" help="Add one or more lines — flour, oil, packaging, etc. — in a single purchase receipt." onCancel={onDone}>
+    <FormCard title="Receive stock" help="Pick inventory SKUs — stock on hand updates immediately when you save." onCancel={onDone}>
       <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 10 }}>
         <select
           value={ops.purchaseSupplierId ?? ""}
@@ -543,18 +606,29 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-        {ops.purchaseLines.map((line, index) => (
+        {ops.purchaseLines.map((line) => (
           <div
             key={line.key}
             className="pos-ops-grid"
             style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 8, alignItems: "center" }}
           >
-            <input
-              value={line.name}
-              onChange={(e) => ops.updatePurchaseLine(line.key, { name: e.target.value })}
-              placeholder={index === 0 ? "Item name" : "Another item"}
+            <select
+              value={line.inventoryItemId ?? ""}
+              onChange={(e) => {
+                const id = e.target.value ? Number(e.target.value) : null;
+                const inv = ops.inventoryItems.find((i) => i.id === id);
+                ops.updatePurchaseLine(line.key, {
+                  inventoryItemId: id,
+                  name: inv?.name ?? "",
+                });
+              }}
               style={fieldStyle}
-            />
+            >
+              <option value="">Select inventory item…</option>
+              {ops.inventoryItems.map((it) => (
+                <option key={it.id} value={it.id}>{it.name} ({it.unit})</option>
+              ))}
+            </select>
             <input
               value={line.quantity}
               onChange={(e) => ops.updatePurchaseLine(line.key, { quantity: e.target.value })}

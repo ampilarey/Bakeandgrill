@@ -13,6 +13,7 @@ class RecipeItem extends Model
         'recipe_id',
         'inventory_item_id',
         'quantity',
+        'unit',
     ];
 
     public function recipe(): BelongsTo

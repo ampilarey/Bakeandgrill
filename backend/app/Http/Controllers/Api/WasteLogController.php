@@ -7,8 +7,10 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Inventory\DTOs\StockLevelChangedData;
 use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Models\InventoryItem;
+use App\Models\Item;
 use App\Models\StockMovement;
 use App\Models\WasteLog;
+use App\Services\StockManagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -71,7 +73,7 @@ class WasteLogController extends Controller
 
             $wasteLog = WasteLog::create($validated);
 
-            // Deduct from inventory stock and record movement
+            // Deduct from raw inventory stock and record movement
             if ($wasteLog->inventory_item_id) {
                 $invItem = InventoryItem::lockForUpdate()->find($wasteLog->inventory_item_id);
                 if ($invItem) {
@@ -84,6 +86,7 @@ class WasteLogController extends Controller
                     $invItem->refresh();
 
                     StockMovement::create([
+                        'idempotency_key' => 'waste_log:'.$wasteLog->id.':inv',
                         'inventory_item_id' => $invItem->id,
                         'user_id' => $validated['user_id'],
                         'type' => 'waste',
@@ -107,7 +110,31 @@ class WasteLogController extends Controller
                 }
             }
 
-            return $wasteLog;
+            // Menu-item waste: decrement prepared stock when the item tracks it
+            if ($wasteLog->item_id && empty($wasteLog->inventory_item_id)) {
+                $menuItem = Item::query()->find($wasteLog->item_id);
+                if (
+                    $menuItem
+                    && $menuItem->track_stock
+                    && $menuItem->availability_type === 'stock_based'
+                ) {
+                    $qty = (int) max(1, (int) round((float) $validated['quantity']));
+                    app(StockManagementService::class)->adjustItemPreparedStock(
+                        $menuItem,
+                        -$qty,
+                        (int) $validated['user_id'],
+                        'waste_log:'.$wasteLog->id.':prepared',
+                        'Waste: '.$validated['reason'],
+                    );
+                    if (empty($validated['cost_estimate'])) {
+                        $wasteLog->update([
+                            'cost_estimate' => round((float) ($menuItem->cost ?? 0) * $qty, 2),
+                        ]);
+                    }
+                }
+            }
+
+            return $wasteLog->fresh(['item', 'inventoryItem', 'user']);
         });
 
         return response()->json(['waste_log' => $this->format($wasteLog)], 201);
