@@ -133,6 +133,13 @@ class OrderStatusMachineTest extends TestCase
         $this->assertTrue($machine->isAllowed('payment_pending', 'paid'));
         $this->assertTrue($machine->isAllowed('payment_pending', 'cancelled'));
         $this->assertTrue($machine->isAllowed('completed', 'refunded'));
+        $this->assertTrue($machine->isAllowed('ready', 'out_for_delivery'));
+        $this->assertTrue($machine->isAllowed('out_for_delivery', 'picked_up'));
+        $this->assertTrue($machine->isAllowed('picked_up', 'on_the_way'));
+        $this->assertTrue($machine->isAllowed('on_the_way', 'delivered'));
+        $this->assertTrue($machine->isAllowed('in_progress', 'paid'));
+        $this->assertTrue($machine->isAllowed('ready', 'paid'));
+        $this->assertTrue($machine->isAllowed('pending', 'payment_pending'));
     }
 
     public function test_invalid_transitions_are_blocked(): void
@@ -171,6 +178,18 @@ class OrderStatusMachineTest extends TestCase
 
         $this->assertEmpty($machine->nextStates('cancelled'));
         $this->assertEmpty($machine->nextStates('refunded'));
+    }
+
+    public function test_transition_service_blocks_illegal_and_allows_legal(): void
+    {
+        $order = $this->createOrderWithStatus('pending');
+        $service = app(\App\Services\OrderStatusTransitionService::class);
+
+        $service->transition($order, 'in_progress');
+        $this->assertSame('in_progress', $order->fresh()->status);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $service->transition($order->fresh(), 'payment_pending');
     }
 
     // ------------------------------------------------------------------

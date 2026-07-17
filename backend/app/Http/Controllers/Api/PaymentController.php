@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Payments\Services\PaymentService;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\OrderStatusTransitionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -60,8 +61,8 @@ class PaymentController extends Controller
 
         // Hold the order in payment_pending until BML webhook confirms.
         // Kitchen (KDS/admin) should not see it until payment is confirmed.
-        if (!in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
-            $order->update(['status' => 'payment_pending']);
+        if (! in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
+            app(OrderStatusTransitionService::class)->transition($order, 'payment_pending');
         }
 
         return response()->json([
@@ -126,8 +127,8 @@ class PaymentController extends Controller
 
         // Hold the order in payment_pending until BML webhook confirms payment,
         // so it does not appear in KDS/kitchen queue before payment is received.
-        if (!in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
-            $order->update(['status' => 'payment_pending']);
+        if (! in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
+            app(OrderStatusTransitionService::class)->transition($order, 'payment_pending');
         }
 
         return response()->json([

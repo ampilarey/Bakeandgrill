@@ -102,12 +102,21 @@ class DeliveryDriverController extends Controller
 
         $driverId = $validated['driver_id'] ?? null;
 
-        $order->update([
-            'delivery_driver_id' => $driverId,
-            'driver_assigned_at' => $driverId ? now() : null,
-            // Automatically update status when a driver is assigned to out_for_delivery
-            'status' => $driverId && $order->status === 'ready' ? 'out_for_delivery' : $order->status,
-        ]);
+        if ($driverId && $order->status === 'ready') {
+            $order = app(\App\Services\OrderStatusTransitionService::class)->transition(
+                $order,
+                'out_for_delivery',
+                [
+                    'delivery_driver_id' => $driverId,
+                    'driver_assigned_at' => now(),
+                ],
+            );
+        } else {
+            $order->update([
+                'delivery_driver_id' => $driverId,
+                'driver_assigned_at' => $driverId ? now() : null,
+            ]);
+        }
 
         $order->load('deliveryDriver');
 

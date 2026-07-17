@@ -48,7 +48,7 @@ class CancelStaleOrders extends Command
                     return; // Already processed by a concurrent run
                 }
 
-                $order->update(['status' => 'cancelled']);
+                app(\App\Services\OrderStatusTransitionService::class)->transition($order, 'cancelled');
 
                 // Release prepared stock reservations (belt-and-suspenders —
                 // OrderCancelled listener also fires, but inline release ensures

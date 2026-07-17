@@ -7,18 +7,8 @@ namespace App\Domains\Orders\StateMachine;
 use App\Domains\Shared\Support\StateMachine;
 
 /**
- * Order status state machine.
- *
- * Statuses:
- *   payment_pending — online order created, awaiting BML payment (customer on redirect)
- *   pending         — payment confirmed; order visible to kitchen
- *   in_progress     — kitchen is working on it
- *   held            — temporarily held (POS)
- *   partial         — partially paid
- *   paid            — fully paid (triggers promo/loyalty consumption, inventory deduction)
- *   completed       — fully paid AND kitchen bumped (or online fulfilled)
- *   cancelled       — cancelled before payment
- *   refunded        — refund issued after completion
+ * @deprecated Not wired in production. Use App\Services\OrderStatusMachine
+ *             and OrderStatusTransitionService. Kept for reference / future parity only.
  */
 class OrderStateMachine extends StateMachine
 {

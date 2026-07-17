@@ -24,7 +24,7 @@ class OrderOfflineSettlementService
 
     public function __construct(
         private AuditLogService $audit,
-        private OrderStatusMachine $machine,
+        private OrderStatusTransitionService $statusTransitions,
     ) {}
 
     /**
@@ -48,8 +48,7 @@ class OrderOfflineSettlementService
             }
 
             if ($order->status === 'held') {
-                $this->machine->assertTransitionAllowed($order, 'pending');
-                $order->update(['status' => 'pending', 'held_at' => null]);
+                $this->statusTransitions->transition($order, 'pending', ['held_at' => null]);
                 $order->refresh();
             }
 
@@ -97,8 +96,7 @@ class OrderOfflineSettlementService
             $paidTotal = round($paidTotalLaar / 100, 2);
 
             if ($paidTotalLaar >= $orderTotalLaar) {
-                $order->update([
-                    'status' => 'paid',
+                $this->statusTransitions->transition($order, 'paid', [
                     'paid_at' => now(),
                     'payment_status' => 'paid',
                 ]);
@@ -119,8 +117,7 @@ class OrderOfflineSettlementService
                     }, 'OrderPaid');
                 });
             } else {
-                $order->update([
-                    'status' => 'partial',
+                $this->statusTransitions->transition($order, 'partial', [
                     'payment_status' => 'partial',
                 ]);
 

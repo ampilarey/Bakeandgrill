@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: wave-f-order-status
     content: "Wave F — single safe status transition path + compatibility"
-    status: pending
+    status: completed
 isProject: false
 ---
 

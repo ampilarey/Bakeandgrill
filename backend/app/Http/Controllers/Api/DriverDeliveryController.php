@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DeliveryDriver;
 use App\Models\Order;
+use App\Services\OrderStatusTransitionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -119,15 +120,14 @@ class DriverDeliveryController extends Controller
             ], 422);
         }
 
-        $updateData = ['status' => $newStatus];
-
+        $extra = [];
         if ($newStatus === 'picked_up') {
-            $updateData['picked_up_at'] = now();
+            $extra['picked_up_at'] = now();
         } elseif ($newStatus === 'delivered') {
-            $updateData['delivered_at'] = now();
+            $extra['delivered_at'] = now();
         }
 
-        $order->update($updateData);
+        $order = app(OrderStatusTransitionService::class)->transition($order, $newStatus, $extra);
 
         return response()->json([
             'delivery' => [

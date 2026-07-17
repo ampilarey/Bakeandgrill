@@ -28,6 +28,11 @@ class OrderStateMachineParityTest extends TestCase
         ['in_progress', 'ready'],
         ['ready', 'completed'],
         ['paid', 'completed'],
+        ['ready', 'out_for_delivery'],
+        ['out_for_delivery', 'picked_up'],
+        ['on_the_way', 'delivered'],
+        ['in_progress', 'paid'],
+        ['pending', 'payment_pending'],
     ];
 
     public function test_legacy_machine_allows_production_critical_transitions(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Orders\Repositories;
 
 use App\Models\Order;
+use App\Services\OrderStatusTransitionService;
 
 class EloquentOrderRepository implements OrderRepositoryInterface
 {
@@ -27,13 +28,13 @@ class EloquentOrderRepository implements OrderRepositoryInterface
     /** @param array<string, mixed> $extra */
     public function updateStatus(int $id, string $status, array $extra = []): bool
     {
-        // Use model-level update (not query-builder) so OrderObserver::updated()
-        // fires and dispatches OrderStatusChanged for downstream listeners (SMS, KDS push, etc.).
         $order = Order::find($id);
-        if (!$order) {
+        if (! $order) {
             return false;
         }
 
-        return $order->update(array_merge(['status' => $status], $extra));
+        app(OrderStatusTransitionService::class)->transition($order, $status, $extra);
+
+        return true;
     }
 }

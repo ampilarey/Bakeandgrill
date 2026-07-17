@@ -15,7 +15,7 @@ use App\Models\Payment;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\AuditLogService;
-use App\Services\OrderStatusMachine;
+use App\Services\OrderStatusTransitionService;
 use App\Services\PermissionService;
 use App\Support\DeferAfterResponse;
 use Illuminate\Http\Request;
@@ -28,7 +28,7 @@ final class SettleOrderPaymentAction
         private readonly CustomerCreditService $creditService,
         private readonly CustomerDepositService $depositService,
         private readonly PermissionService $permissions,
-        private readonly OrderStatusMachine $statusMachine,
+        private readonly OrderStatusTransitionService $statusTransitions,
         private readonly PaymentCommissionService $commission,
         private readonly AuditLogService $audit,
     ) {}
@@ -83,8 +83,7 @@ final class SettleOrderPaymentAction
             $this->allocation->assertTenderPermissions($collector, $paymentRows, $this->permissions);
 
             if ($order->status === 'held') {
-                $this->statusMachine->assertTransitionAllowed($order, 'pending');
-                $order->update(['status' => 'pending', 'held_at' => null]);
+                $this->statusTransitions->transition($order, 'pending', ['held_at' => null]);
                 $order->refresh();
             }
 
@@ -142,8 +141,7 @@ final class SettleOrderPaymentAction
             $paidTotal = round($paidTotalLaar / 100, 2);
 
             if ($paidTotalLaar >= $orderTotalLaar) {
-                $order->update([
-                    'status' => 'paid',
+                $this->statusTransitions->transition($order, 'paid', [
                     'paid_at' => now(),
                     'payment_status' => 'paid',
                 ]);
@@ -156,8 +154,7 @@ final class SettleOrderPaymentAction
                     }, 'OrderPaid');
                 });
             } else {
-                $order->update([
-                    'status' => 'partial',
+                $this->statusTransitions->transition($order, 'partial', [
                     'payment_status' => 'partial',
                 ]);
 

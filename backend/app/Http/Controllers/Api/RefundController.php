@@ -12,6 +12,7 @@ use App\Http\Requests\StoreRefundRequest;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Services\AuditLogService;
+use App\Services\OrderStatusTransitionService;
 use App\Services\ShiftAccessService;
 use App\Services\StockManagementService;
 use App\Services\StockReservationService;
@@ -129,12 +130,13 @@ class RefundController extends Controller
             // Partial refunds now flip the order to `partially_refunded` instead
             // of leaving it as `paid`. Reports + receipt summaries downstream
             // can short-circuit on this status to render the right thing.
+            $transitions = app(OrderStatusTransitionService::class);
             if ($isFullRefund) {
-                $order->update(['status' => 'refunded']);
+                $transitions->transition($order, 'refunded');
             } elseif ($amountLaar > 0) {
                 // Don't override a more terminal state (cancelled / refunded).
-                if (!in_array($order->status, ['cancelled', 'refunded'], true)) {
-                    $order->update(['status' => 'partially_refunded']);
+                if (! in_array($order->status, ['cancelled', 'refunded'], true)) {
+                    $transitions->transition($order, 'partially_refunded');
                 }
             }
 

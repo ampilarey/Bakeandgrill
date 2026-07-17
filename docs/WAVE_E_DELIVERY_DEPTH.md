@@ -47,4 +47,4 @@ Online master gate (Wave B) runs first on customer delivery create. Staff POS de
 - ETA / dispatch engine
 - Zone-aware menu filtering (menu uses gate without area — intentional)
 
-**Next wave:** F — single safe order status transition path.
+**Next wave:** F — order status transitions — see [`WAVE_F_ORDER_STATUS.md`](./WAVE_F_ORDER_STATUS.md).
