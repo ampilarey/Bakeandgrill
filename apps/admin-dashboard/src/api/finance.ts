@@ -675,6 +675,8 @@ export async function createPurchaseFromSuggest(data: {
   supplier_id: number;
   items: { inventory_item_id: number; quantity: number; unit_cost: number }[];
   expected_delivery_date?: string;
+  /** Used when expected_delivery_date is omitted; default lead for items without lead_days. */
+  default_lead_days?: number;
   notes?: string;
   /** When true, dismisses open reorder alerts for the PO line items. */
   resolve_reorder_alerts?: boolean;

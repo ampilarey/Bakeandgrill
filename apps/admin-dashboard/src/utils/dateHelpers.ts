@@ -14,6 +14,13 @@ export function daysAgo(n: number): string {
   return localISO(d);
 }
 
+/** Local calendar date n days ahead of today (YYYY-MM-DD). */
+export function daysFromToday(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return localISO(d);
+}
+
 export function monthStart(): string {
   const d = new Date();
   d.setDate(1);

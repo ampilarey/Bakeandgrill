@@ -131,11 +131,60 @@ class RestockIntelligenceTest extends TestCase
             ->assertJsonPath('purchase.notes', 'Auto-generated from restock plan (due soon)')
             ->assertJsonPath('resolved_alerts', 0);
 
+        // No per-item lead → default 3 days
+        $this->assertSame(
+            now()->addDays(3)->toDateString(),
+            Purchase::find($response->json('purchase.id'))?->expected_delivery_date?->toDateString(),
+        );
+
         $this->assertDatabaseHas('purchase_items', [
             'purchase_id' => $response->json('purchase.id'),
             'inventory_item_id' => $flour->id,
             'quantity' => 40,
         ]);
+    }
+
+    public function test_create_from_suggest_expected_delivery_uses_max_item_lead_days(): void
+    {
+        $owner = $this->makeOwner();
+        $supplier = Supplier::create(['name' => 'Island Foods', 'is_active' => true]);
+        $short = InventoryItem::create([
+            'name' => 'Salt',
+            'sku' => 'SLT-ETA',
+            'unit' => 'kg',
+            'current_stock' => 1,
+            'reorder_point' => 5,
+            'unit_cost' => 2,
+            'lead_days' => 2,
+            'preferred_supplier_id' => $supplier->id,
+            'is_active' => true,
+        ]);
+        $long = InventoryItem::create([
+            'name' => 'Olive Oil',
+            'sku' => 'OIL-ETA',
+            'unit' => 'L',
+            'current_stock' => 1,
+            'reorder_point' => 5,
+            'unit_cost' => 40,
+            'lead_days' => 10,
+            'preferred_supplier_id' => $supplier->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/purchases/from-suggest', [
+            'supplier_id' => $supplier->id,
+            'notes' => 'ETA from lead days',
+            'items' => [
+                ['inventory_item_id' => $short->id, 'quantity' => 10, 'unit_cost' => 2],
+                ['inventory_item_id' => $long->id, 'quantity' => 5, 'unit_cost' => 40],
+            ],
+        ], $this->staffHeaders($owner));
+
+        $response->assertCreated();
+        $this->assertSame(
+            now()->addDays(10)->toDateString(),
+            Purchase::find($response->json('purchase.id'))?->expected_delivery_date?->toDateString(),
+        );
     }
 
     public function test_create_from_suggest_can_resolve_open_reorder_alerts(): void

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { localISO, today, daysAgo, monthStart } from '../utils/dateHelpers';
+import { localISO, today, daysAgo, daysFromToday, monthStart } from '../utils/dateHelpers';
 
 describe('dateHelpers', () => {
   afterEach(() => {
@@ -18,6 +18,13 @@ describe('dateHelpers', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-08T12:00:00.000Z'));
     expect(daysAgo(7)).toBe(localISO(new Date(Date.now() - 7 * 86400000)));
+  });
+
+  it('daysFromToday adds calendar days in local time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-08T12:00:00.000Z'));
+    expect(daysFromToday(3)).toBe(localISO(new Date(Date.now() + 3 * 86400000)));
+    expect(daysFromToday(0)).toBe(today());
   });
 
   it('monthStart returns first day of current month', () => {

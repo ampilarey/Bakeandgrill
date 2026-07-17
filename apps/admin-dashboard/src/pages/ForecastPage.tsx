@@ -10,7 +10,7 @@ import { Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard } from '../component
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
-import { today, daysAgo } from '../utils/dateHelpers';
+import { today, daysAgo, daysFromToday } from '../utils/dateHelpers';
 import { downloadCSV } from '../utils/csvExport';
 
 type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts';
@@ -284,16 +284,27 @@ export function ForecastPage() {
   };
 
   const restockPreviewBySupplier = (() => {
-    const map = new Map<number, { name: string; lines: number; total: number }>();
+    const map = new Map<number, { name: string; lines: number; total: number; maxLead: number }>();
     for (const item of selectedRestockItems) {
       const sid = item.suggested_supplier!.id;
       const cost = (item.unit_cost ?? item.suggested_supplier?.price ?? 0) * orderQty(item);
-      const cur = map.get(sid) ?? { name: item.suggested_supplier!.name, lines: 0, total: 0 };
+      const lead = item.lead_days ?? restock?.lead_days ?? 3;
+      const cur = map.get(sid) ?? {
+        name: item.suggested_supplier!.name, lines: 0, total: 0, maxLead: lead,
+      };
       cur.lines += 1;
       cur.total += cost;
+      cur.maxLead = Math.max(cur.maxLead, lead);
       map.set(sid, cur);
     }
-    return [...map.entries()].map(([id, v]) => ({ supplier_id: id, ...v }));
+    return [...map.entries()].map(([id, v]) => ({
+      supplier_id: id,
+      name: v.name,
+      lines: v.lines,
+      total: v.total,
+      maxLead: v.maxLead,
+      expected_delivery_date: daysFromToday(v.maxLead),
+    }));
   })();
   const restockPreviewTotal = restockPreviewBySupplier.reduce((s, g) => s + g.total, 0);
   const selectedQtyEdited = selectedRestockItems.filter(qtyIsEdited).length;
@@ -354,9 +365,15 @@ export function ForecastPage() {
       const created: string[] = [];
       let resolvedAlerts = 0;
       for (const [supplierId, items] of bySupplier) {
+        const maxLead = items.reduce(
+          (m, i) => Math.max(m, i.lead_days ?? restock.lead_days ?? 3),
+          0,
+        );
         const res = await createPurchaseFromSuggest({
           supplier_id: supplierId,
           notes: 'Auto-generated from restock plan (due soon)',
+          expected_delivery_date: daysFromToday(maxLead),
+          default_lead_days: restock.lead_days ?? 3,
           resolve_reorder_alerts: dismissAlertsOnPo,
           items: items.map((i) => ({
             inventory_item_id: i.id,
@@ -364,7 +381,9 @@ export function ForecastPage() {
             unit_cost: i.unit_cost ?? i.suggested_supplier?.price ?? 0,
           })),
         });
-        created.push(res.purchase.purchase_number ?? `PO #${res.purchase.id}`);
+        const etaRaw = res.purchase.expected_delivery_date;
+        const eta = etaRaw ? ` · ETA ${String(etaRaw).slice(0, 10)}` : '';
+        created.push((res.purchase.purchase_number ?? `PO #${res.purchase.id}`) + eta);
         resolvedAlerts += res.resolved_alerts ?? 0;
       }
       const createdIds = new Set(selectedRestockItems.map((i) => i.id));
@@ -858,6 +877,7 @@ export function ForecastPage() {
                       {restockPreviewBySupplier.map((g) => (
                         <span key={g.supplier_id} style={{ marginRight: 12 }}>
                           {g.name}: {g.lines} line{g.lines === 1 ? '' : 's'} · MVR {g.total.toFixed(2)}
+                          {' '}· ETA {g.expected_delivery_date} ({g.maxLead}d lead)
                         </span>
                       ))}
                     </div>

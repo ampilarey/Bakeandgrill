@@ -320,6 +320,7 @@ class PurchaseWorkflowController extends Controller
         $validated = $request->validate([
             'supplier_id' => ['required', 'integer', 'exists:suppliers,id'],
             'expected_delivery_date' => ['nullable', 'date'],
+            'default_lead_days' => ['nullable', 'integer', 'min:0', 'max:30'],
             'notes' => ['nullable', 'string', 'max:500'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.inventory_item_id' => ['required', 'integer', 'exists:inventory_items,id'],
@@ -328,7 +329,17 @@ class PurchaseWorkflowController extends Controller
             'resolve_reorder_alerts' => ['sometimes', 'boolean'],
         ]);
 
-        $purchase = DB::transaction(function () use ($validated, $request) {
+        $itemIds = array_map(
+            static fn (array $line): int => (int) $line['inventory_item_id'],
+            $validated['items'],
+        );
+        $expectedDelivery = $validated['expected_delivery_date']
+            ?? $this->expectedDeliveryFromLeadDays(
+                $itemIds,
+                (int) ($validated['default_lead_days'] ?? 3),
+            );
+
+        $purchase = DB::transaction(function () use ($validated, $request, $expectedDelivery) {
             $subtotal = 0.0;
 
             $po = Purchase::create([
@@ -339,7 +350,7 @@ class PurchaseWorkflowController extends Controller
                 'subtotal' => 0,
                 'total' => 0,
                 'purchase_date' => now()->toDateString(),
-                'expected_delivery_date' => $validated['expected_delivery_date'] ?? null,
+                'expected_delivery_date' => $expectedDelivery,
                 'notes' => $validated['notes'] ?? 'Auto-generated from low-stock suggestion',
             ]);
 
@@ -363,10 +374,6 @@ class PurchaseWorkflowController extends Controller
 
         $resolvedAlerts = 0;
         if ($request->boolean('resolve_reorder_alerts')) {
-            $itemIds = array_map(
-                static fn (array $line): int => (int) $line['inventory_item_id'],
-                $validated['items'],
-            );
             $resolvedAlerts = $this->restock->resolveOpenAlertsForItems($itemIds);
         }
 
@@ -374,6 +381,31 @@ class PurchaseWorkflowController extends Controller
             'purchase' => $purchase->load(['items.inventoryItem', 'supplier']),
             'resolved_alerts' => $resolvedAlerts,
         ], 201);
+    }
+
+    /**
+     * PO-level ETA = today + max lead among lines (per-item lead_days, else default).
+     *
+     * @param  list<int>  $itemIds
+     */
+    private function expectedDeliveryFromLeadDays(array $itemIds, int $defaultLeadDays = 3): string
+    {
+        $defaultLeadDays = min(max($defaultLeadDays, 0), 30);
+        $leads = InventoryItem::query()
+            ->whereIn('id', $itemIds)
+            ->pluck('lead_days', 'id');
+
+        $maxLead = null;
+        foreach ($itemIds as $id) {
+            $raw = $leads[$id] ?? null;
+            $lead = $raw !== null
+                ? min(max((int) $raw, 0), 30)
+                : $defaultLeadDays;
+            $maxLead = $maxLead === null ? $lead : max($maxLead, $lead);
+        }
+        $maxLead ??= $defaultLeadDays;
+
+        return now()->startOfDay()->addDays($maxLead)->toDateString();
     }
 
     private function generatePO(): string
