@@ -317,6 +317,7 @@ class PurchaseWorkflowController extends Controller
         $validated = $request->validate([
             'supplier_id' => ['required', 'integer', 'exists:suppliers,id'],
             'expected_delivery_date' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:500'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.inventory_item_id' => ['required', 'integer', 'exists:inventory_items,id'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.001'],
@@ -335,7 +336,7 @@ class PurchaseWorkflowController extends Controller
                 'total' => 0,
                 'purchase_date' => now()->toDateString(),
                 'expected_delivery_date' => $validated['expected_delivery_date'] ?? null,
-                'notes' => 'Auto-generated from low-stock suggestion',
+                'notes' => $validated['notes'] ?? 'Auto-generated from low-stock suggestion',
             ]);
 
             foreach ($validated['items'] as $line) {

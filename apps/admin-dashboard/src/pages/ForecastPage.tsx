@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, getRestockPlan,
-  type ItemForecast, type RestockPlan,
+  createPurchaseFromSuggest,
+  type ItemForecast, type RestockPlan, type RestockPlanItem,
 } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
@@ -43,6 +44,8 @@ export function ForecastPage() {
   const [from, setFrom]         = useState(daysAgo(29));
   const [to, setTo]             = useState(today());
   const [showAllRestock, setShowAllRestock] = useState(false);
+  const [creatingPos, setCreatingPos] = useState(false);
+  const [restockToast, setRestockToast] = useState('');
 
   // Per-item forecast
   const [selectedItem, setSelectedItem]   = useState<MenuItemSelection | null>(null);
@@ -94,6 +97,52 @@ export function ForecastPage() {
   }, [itemForecastDays]);
 
   const maxRevenue = trends ? Math.max(...(trends.data ?? []).map(d => d.revenue), 1) : 1;
+
+  const createDraftPosFromRestock = async () => {
+    if (!restock) return;
+    const due = restock.items.filter((i) => i.due_soon && i.suggested_order_qty > 0);
+    const withSupplier = due.filter((i) => i.suggested_supplier?.id && (i.unit_cost ?? 0) > 0);
+    const skipped = due.length - withSupplier.length;
+    if (withSupplier.length === 0) {
+      setError('No due-soon items have a supplier and unit cost. Set preferred supplier or record a purchase first.');
+      return;
+    }
+
+    const bySupplier = new Map<number, RestockPlanItem[]>();
+    for (const item of withSupplier) {
+      const sid = item.suggested_supplier!.id;
+      const list = bySupplier.get(sid) ?? [];
+      list.push(item);
+      bySupplier.set(sid, list);
+    }
+
+    setCreatingPos(true);
+    setError('');
+    setRestockToast('');
+    try {
+      const created: string[] = [];
+      for (const [supplierId, items] of bySupplier) {
+        const res = await createPurchaseFromSuggest({
+          supplier_id: supplierId,
+          notes: 'Auto-generated from restock plan (due soon)',
+          items: items.map((i) => ({
+            inventory_item_id: i.id,
+            quantity: i.suggested_order_qty,
+            unit_cost: i.unit_cost ?? i.suggested_supplier?.price ?? 0,
+          })),
+        });
+        created.push(res.purchase.purchase_number ?? `PO #${res.purchase.id}`);
+      }
+      setRestockToast(
+        `Created ${created.length} draft PO${created.length === 1 ? '' : 's'}: ${created.join(', ')}`
+        + (skipped > 0 ? ` · skipped ${skipped} item${skipped === 1 ? '' : 's'} without supplier/cost` : ''),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCreatingPos(false);
+    }
+  };
 
   return (
     <>
@@ -266,10 +315,30 @@ export function ForecastPage() {
                     Combines usage runway, buy cadence, and reorder points. Suggested ROP is advisory only — not written to inventory.
                   </div>
                 </div>
-                <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>
-                  Open Purchase Orders →
-                </Link>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {restock.totals.due_soon > 0 && (
+                    <Btn
+                      small
+                      disabled={creatingPos}
+                      onClick={() => void createDraftPosFromRestock()}
+                    >
+                      {creatingPos ? 'Creating…' : 'Create draft POs for due soon'}
+                    </Btn>
+                  )}
+                  <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>
+                    Open Purchase Orders →
+                  </Link>
+                </div>
               </div>
+              {restockToast && (
+                <div style={{
+                  marginBottom: 12, padding: '10px 12px', borderRadius: 8,
+                  background: '#ecfdf5', color: '#065f46', fontSize: 13, fontWeight: 600,
+                }}>
+                  {restockToast}{' '}
+                  <Link to="/purchase-orders" style={{ color: '#047857' }}>Review drafts →</Link>
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                 <StatCard label="Tracked items" value={String(restock.totals.items_count)} accent="#6B5D4F" />
                 <StatCard label="Due soon" value={String(restock.totals.due_soon)} accent="#f97316" />
@@ -279,7 +348,7 @@ export function ForecastPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #F0EBE5' }}>
-                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Order qty', 'Why'].map((h) => (
+                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Order qty', 'Supplier', 'Why'].map((h) => (
                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
@@ -318,15 +387,26 @@ export function ForecastPage() {
                           {item.suggested_order_qty} {item.unit}
                         </td>
                         <td style={{ padding: '8px 12px', color: '#6B5D4F', fontSize: 12 }}>
+                          {item.suggested_supplier ? (
+                            <>
+                              <div style={{ fontWeight: 600, color: '#1C1408' }}>{item.suggested_supplier.name}</div>
+                              <div style={{ fontSize: 11, color: '#9C8E7E' }}>
+                                {item.unit_cost != null ? `MVR ${item.unit_cost.toFixed(2)}` : '—'}
+                                {item.suggested_supplier.source ? ` · ${item.suggested_supplier.source}` : ''}
+                              </div>
+                            </>
+                          ) : '—'}
+                        </td>
+                        <td style={{ padding: '8px 12px', color: '#6B5D4F', fontSize: 12 }}>
                           {REASON_LABEL[item.reason] ?? item.reason}
                         </td>
                       </tr>
                     ))}
                     {restock.items.length === 0 && (
-                      <tr><td colSpan={7} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
+                      <tr><td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
                     )}
                     {!showAllRestock && restock.items.filter((i) => i.due_soon).length === 0 && restock.items.length > 0 && (
-                      <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — show all tracked items below.</td></tr>
+                      <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — show all tracked items below.</td></tr>
                     )}
                   </tbody>
                 </table>

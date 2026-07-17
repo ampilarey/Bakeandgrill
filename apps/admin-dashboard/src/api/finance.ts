@@ -661,7 +661,7 @@ export async function receivePurchase(id: number, data: {
 export async function createPurchaseFromSuggest(data: {
   supplier_id: number;
   items: { inventory_item_id: number; quantity: number; unit_cost: number }[];
-  expected_delivery?: string;
+  expected_delivery_date?: string;
   notes?: string;
 }): Promise<{ purchase: Purchase }> {
   return req('/purchases/from-suggest', { method: 'POST', body: JSON.stringify(data) });
@@ -743,6 +743,8 @@ export type RestockPlanItem = {
   suggested_reorder_point: number | null;
   reason: string;
   due_soon: boolean;
+  unit_cost: number | null;
+  suggested_supplier: { id: number; name: string; price: number; source?: string } | null;
 };
 
 export type RestockPlan = {

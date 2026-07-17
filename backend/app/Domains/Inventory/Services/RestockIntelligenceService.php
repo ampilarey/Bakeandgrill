@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Inventory\Services;
 
 use App\Models\InventoryItem;
+use App\Models\SupplierPriceHistory;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -41,9 +42,11 @@ final class RestockIntelligenceService
 
         $items = InventoryItem::query()
             ->where('is_active', true)
-            ->with('category:id,name')
+            ->with(['category:id,name', 'preferredSupplier:id,name'])
             ->orderBy('name')
             ->get();
+
+        $cheapestByItem = $this->cheapestSupplierByItem($items->pluck('id')->all());
 
         $rows = [];
         $dueSoon = 0;
@@ -95,6 +98,30 @@ final class RestockIntelligenceService
                 $belowRop++;
             }
 
+            $supplier = null;
+            if ($item->preferred_supplier_id && $item->preferredSupplier) {
+                $prefPrice = $cheapestByItem[$item->id][$item->preferred_supplier_id]['price']
+                    ?? (float) ($item->last_purchase_price ?? 0);
+                $supplier = [
+                    'id' => (int) $item->preferred_supplier_id,
+                    'name' => $item->preferredSupplier->name,
+                    'price' => (float) $prefPrice,
+                    'source' => 'preferred',
+                ];
+            } elseif (isset($cheapestByItem[$item->id])) {
+                $best = collect($cheapestByItem[$item->id])->sortBy('price')->first();
+                if ($best) {
+                    $supplier = [
+                        'id' => (int) $best['supplier_id'],
+                        'name' => (string) $best['supplier_name'],
+                        'price' => (float) $best['price'],
+                        'source' => 'cheapest',
+                    ];
+                }
+            }
+
+            $unitCost = (float) ($supplier['price'] ?? $item->last_purchase_price ?? $item->unit_cost ?? 0);
+
             $rows[] = [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -112,6 +139,8 @@ final class RestockIntelligenceService
                 'suggested_reorder_point' => $suggestedRop,
                 'reason' => $qtyInfo['reason'],
                 'due_soon' => $dueSoonFlag,
+                'unit_cost' => $unitCost > 0 ? round($unitCost, 4) : null,
+                'suggested_supplier' => $supplier,
             ];
         }
 
@@ -267,6 +296,38 @@ final class RestockIntelligenceService
                 'avg_buy_qty' => count($events) > 0 ? round($qtySum / count($events), 2) : 0.0,
                 'last_purchase_date' => $last['date'] ?? null,
                 'last_buy_qty' => isset($last) ? round((float) $last['qty'], 2) : null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<int|string>  $itemIds
+     * @return array<int, array<int, array{supplier_id: int, supplier_name: string, price: float}>>
+     */
+    private function cheapestSupplierByItem(array $itemIds): array
+    {
+        if ($itemIds === []) {
+            return [];
+        }
+
+        $rows = SupplierPriceHistory::query()
+            ->join('suppliers', 'suppliers.id', '=', 'supplier_price_history.supplier_id')
+            ->whereIn('supplier_price_history.inventory_item_id', $itemIds)
+            ->whereNull('suppliers.deleted_at')
+            ->selectRaw('supplier_price_history.inventory_item_id, supplier_price_history.supplier_id, suppliers.name as supplier_name, MIN(supplier_price_history.unit_price) as min_price')
+            ->groupBy('supplier_price_history.inventory_item_id', 'supplier_price_history.supplier_id', 'suppliers.name')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $itemId = (int) $row->inventory_item_id;
+            $supplierId = (int) $row->supplier_id;
+            $out[$itemId][$supplierId] = [
+                'supplier_id' => $supplierId,
+                'supplier_name' => (string) $row->supplier_name,
+                'price' => (float) $row->min_price,
             ];
         }
 

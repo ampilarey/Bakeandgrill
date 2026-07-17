@@ -29,6 +29,8 @@ class RestockIntelligenceTest extends TestCase
             'reorder_point' => 20,
             'reorder_quantity' => 40,
             'unit_cost' => 5,
+            'last_purchase_price' => 4,
+            'preferred_supplier_id' => $supplier->id,
             'is_active' => true,
         ]);
 
@@ -89,6 +91,48 @@ class RestockIntelligenceTest extends TestCase
         $this->assertGreaterThan(0, (float) $response->json('items.0.daily_usage_rate'));
         $this->assertNotNull($response->json('items.0.suggested_next_order_date'));
         $this->assertGreaterThan(0, (float) $response->json('items.0.suggested_order_qty'));
+        $this->assertSame($supplier->id, (int) $response->json('items.0.suggested_supplier.id'));
+        $this->assertSame('preferred', $response->json('items.0.suggested_supplier.source'));
+        $this->assertGreaterThan(0, (float) $response->json('items.0.unit_cost'));
+    }
+
+    public function test_create_draft_po_from_restock_supplier_group(): void
+    {
+        $owner = $this->makeOwner();
+        $supplier = Supplier::create(['name' => 'Mill Co', 'is_active' => true]);
+        $flour = InventoryItem::create([
+            'name' => 'Flour',
+            'sku' => 'FLR-PO',
+            'unit' => 'kg',
+            'current_stock' => 5,
+            'reorder_point' => 20,
+            'unit_cost' => 4,
+            'preferred_supplier_id' => $supplier->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/purchases/from-suggest', [
+            'supplier_id' => $supplier->id,
+            'notes' => 'Auto-generated from restock plan (due soon)',
+            'items' => [
+                [
+                    'inventory_item_id' => $flour->id,
+                    'quantity' => 40,
+                    'unit_cost' => 4,
+                ],
+            ],
+        ], $this->staffHeaders($owner));
+
+        $response->assertCreated()
+            ->assertJsonPath('purchase.status', 'draft')
+            ->assertJsonPath('purchase.supplier_id', $supplier->id)
+            ->assertJsonPath('purchase.notes', 'Auto-generated from restock plan (due soon)');
+
+        $this->assertDatabaseHas('purchase_items', [
+            'purchase_id' => $response->json('purchase.id'),
+            'inventory_item_id' => $flour->id,
+            'quantity' => 40,
+        ]);
     }
 
     public function test_auto_suggest_uses_usage_cover_when_higher(): void
