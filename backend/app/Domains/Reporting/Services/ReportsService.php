@@ -18,8 +18,10 @@ use App\Models\Item;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\PurchaseItem;
 use App\Models\Refund;
 use App\Models\Shift;
+use App\Models\SupplierPriceHistory;
 use App\Models\User;
 use App\Services\RecipeCostCalculator;
 use Carbon\Carbon;
@@ -1179,6 +1181,161 @@ class ReportsService
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'cohorts' => $cohorts,
+        ];
+    }
+
+    /**
+     * Spend by inventory item from received purchase lines in a date range.
+     * Used for cheapest-shop / purchase spend analysis (not opex Expenses).
+     *
+     * @return array{
+     *     from: string,
+     *     to: string,
+     *     totals: array{items_count: int, qty_received: float, total_spend: float},
+     *     rows: list<array{
+     *         inventory_item_id: int,
+     *         item_name: string,
+     *         unit: string|null,
+     *         qty_received: float,
+     *         total_spend: float,
+     *         avg_unit_cost: float,
+     *         last_unit_cost: float,
+     *         last_supplier: string|null,
+     *         cheapest_unit_cost: float|null,
+     *         cheapest_supplier: string|null,
+     *         receipts_count: int
+     *     }>
+     * }
+     */
+    public function spendByItem(Carbon $from, Carbon $to): array
+    {
+        $fromDate = $from->toDateString();
+        $toDate = $to->toDateString();
+
+        $lines = PurchaseItem::query()
+            ->with([
+                'inventoryItem:id,name,unit',
+                'purchase:id,supplier_id,purchase_date,actual_delivery_date,status',
+                'purchase.supplier:id,name',
+            ])
+            ->whereNotNull('inventory_item_id')
+            ->where('received_quantity', '>', 0)
+            ->whereHas('purchase', function ($q) use ($fromDate, $toDate) {
+                $q->whereIn('status', ['received', 'partial'])
+                    // DATE() keeps timezone-safe comparison for date columns across drivers.
+                    ->whereRaw(
+                        'DATE(COALESCE(actual_delivery_date, purchase_date)) BETWEEN ? AND ?',
+                        [$fromDate, $toDate],
+                    );
+            })
+            ->get();
+
+        /** @var array<int, array<string, mixed>> $byItem */
+        $byItem = [];
+
+        foreach ($lines as $line) {
+            $itemId = (int) $line->inventory_item_id;
+            $qty = (float) $line->received_quantity;
+            $unitCost = (float) $line->unit_cost;
+            $spend = round($qty * $unitCost, 2);
+            $supplierName = $line->purchase?->supplier?->name;
+            $eventDate = (string) (
+                $line->purchase?->actual_delivery_date?->toDateString()
+                ?? $line->purchase?->purchase_date?->toDateString()
+                ?? ''
+            );
+
+            if (! isset($byItem[$itemId])) {
+                $byItem[$itemId] = [
+                    'inventory_item_id' => $itemId,
+                    'item_name' => $line->inventoryItem?->name ?? ('Item #'.$itemId),
+                    'unit' => $line->inventoryItem?->unit,
+                    'qty_received' => 0.0,
+                    'total_spend' => 0.0,
+                    'receipts_count' => 0,
+                    'last_unit_cost' => $unitCost,
+                    'last_supplier' => $supplierName,
+                    'last_date' => $eventDate,
+                    'cheapest_unit_cost' => $unitCost,
+                    'cheapest_supplier' => $supplierName,
+                ];
+            }
+
+            $row = &$byItem[$itemId];
+            $row['qty_received'] += $qty;
+            $row['total_spend'] += $spend;
+            $row['receipts_count']++;
+
+            if ($eventDate >= ($row['last_date'] ?? '')) {
+                $row['last_date'] = $eventDate;
+                $row['last_unit_cost'] = $unitCost;
+                $row['last_supplier'] = $supplierName;
+            }
+            if ($unitCost < (float) $row['cheapest_unit_cost']) {
+                $row['cheapest_unit_cost'] = $unitCost;
+                $row['cheapest_supplier'] = $supplierName;
+            }
+            unset($row);
+        }
+
+        // Enrich cheapest from price history in the same window (covers create-as-received + receive paths).
+        $itemIds = array_keys($byItem);
+        if ($itemIds !== []) {
+            $history = SupplierPriceHistory::query()
+                ->with('supplier:id,name')
+                ->whereIn('inventory_item_id', $itemIds)
+                ->whereBetween('recorded_at', [$fromDate, $toDate])
+                ->orderBy('unit_price')
+                ->get()
+                ->groupBy('inventory_item_id');
+
+            foreach ($history as $itemId => $rows) {
+                $best = $rows->first();
+                if (! $best || ! isset($byItem[(int) $itemId])) {
+                    continue;
+                }
+                $histPrice = (float) $best->unit_price;
+                if ($histPrice < (float) $byItem[(int) $itemId]['cheapest_unit_cost']) {
+                    $byItem[(int) $itemId]['cheapest_unit_cost'] = $histPrice;
+                    $byItem[(int) $itemId]['cheapest_supplier'] = $best->supplier?->name;
+                }
+            }
+        }
+
+        $rows = collect($byItem)
+            ->map(function (array $row): array {
+                $qty = (float) $row['qty_received'];
+                $spend = round((float) $row['total_spend'], 2);
+
+                return [
+                    'inventory_item_id' => $row['inventory_item_id'],
+                    'item_name' => $row['item_name'],
+                    'unit' => $row['unit'],
+                    'qty_received' => round($qty, 3),
+                    'total_spend' => $spend,
+                    'avg_unit_cost' => $qty > 0 ? round($spend / $qty, 4) : 0.0,
+                    'last_unit_cost' => round((float) $row['last_unit_cost'], 4),
+                    'last_supplier' => $row['last_supplier'],
+                    'cheapest_unit_cost' => isset($row['cheapest_unit_cost'])
+                        ? round((float) $row['cheapest_unit_cost'], 4)
+                        : null,
+                    'cheapest_supplier' => $row['cheapest_supplier'],
+                    'receipts_count' => (int) $row['receipts_count'],
+                ];
+            })
+            ->sortByDesc('total_spend')
+            ->values()
+            ->all();
+
+        return [
+            'from' => $fromDate,
+            'to' => $toDate,
+            'totals' => [
+                'items_count' => count($rows),
+                'qty_received' => round(collect($rows)->sum('qty_received'), 3),
+                'total_spend' => round(collect($rows)->sum('total_spend'), 2),
+            ],
+            'rows' => $rows,
         ];
     }
 }

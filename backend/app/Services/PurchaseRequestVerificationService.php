@@ -12,6 +12,7 @@ use App\Models\PurchaseItem;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\StockMovement;
+use App\Models\SupplierPriceHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -248,5 +249,16 @@ final class PurchaseRequestVerificationService
             'reference_id' => $item->purchase_request_id,
             'notes' => 'Verified from purchase request item #' . $item->id,
         ]);
+
+        if ($item->supplier_id && $newCost > 0) {
+            SupplierPriceHistory::create([
+                'supplier_id' => $item->supplier_id,
+                'inventory_item_id' => $invItem->id,
+                'purchase_id' => null,
+                'unit_price' => $newCost,
+                'unit' => $invItem->unit,
+                'recorded_at' => now()->toDateString(),
+            ]);
+        }
     }
 }

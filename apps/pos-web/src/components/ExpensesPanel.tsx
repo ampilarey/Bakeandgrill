@@ -159,6 +159,10 @@ export function ExpensesPanel({ onClose }: Props) {
       subtitle="Log operating costs (owner / finance)"
       onClose={onClose}
     >
+      <p style={{ fontSize: 12, color: "#64748B", margin: "0 0 12px", lineHeight: 1.45 }}>
+        For stock buys (flour, meat, etc.) use Purchase Orders / receive stock — not Expenses.
+        Expenses here are non-stock opex so they are not double-counted in P&L.
+      </p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
         <button
           type="button"

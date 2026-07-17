@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SupplierPriceHistory extends Model
 {
+    protected $table = 'supplier_price_history';
+
     protected $fillable = [
         'supplier_id', 'inventory_item_id', 'purchase_id', 'unit_price', 'unit', 'recorded_at',
     ];

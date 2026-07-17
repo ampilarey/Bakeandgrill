@@ -35,6 +35,7 @@ export function ReportsPage() {
   const breakdown = reportData?.breakdown ?? null;
   const taxReport = reportData?.taxReport ?? null;
   const inventory = reportData?.inventory ?? null;
+  const spendByItem = reportData?.spendByItem ?? null;
   const ap = reportData?.ap ?? null;
   const ar = reportData?.ar ?? null;
   const promoReport = reportData?.promoReport ?? null;
@@ -60,6 +61,19 @@ export function ReportsPage() {
         Qty: i.quantity,
         'Unit cost': i.cost_per_unit,
         Value: i.total_value,
+      })));
+    } else if (tab === 'Spend by Item' && spendByItem) {
+      downloadCSV('spend-by-item', spendByItem.rows.map((r) => ({
+        Item: r.item_name,
+        Unit: r.unit ?? '',
+        'Qty received': r.qty_received,
+        'Total spend': r.total_spend,
+        'Avg unit cost': r.avg_unit_cost,
+        'Last unit cost': r.last_unit_cost,
+        'Last supplier': r.last_supplier ?? '',
+        'Cheapest unit cost': r.cheapest_unit_cost ?? '',
+        'Cheapest supplier': r.cheapest_supplier ?? '',
+        Receipts: r.receipts_count,
       })));
     } else if (tab === 'Accounts Payable' && ap) {
       downloadCSV('accounts-payable', ap.map(s => ({ Supplier: s.supplier_name, 'Outstanding (MVR)': mvr(s.outstanding_amount), 'Open Invoices': s.invoices.length })));
@@ -104,6 +118,7 @@ export function ReportsPage() {
 
   const canExport = (tab === 'Summary' && summary) || (tab === 'Breakdown' && breakdown) ||
     (tab === 'Tax' && taxReport) || (tab === 'Inventory' && inventory) ||
+    (tab === 'Spend by Item' && spendByItem) ||
     (tab === 'Accounts Payable' && ap) || (tab === 'Accounts Receivable' && ar) ||
     (tab === 'Promotions' && promoReport) || (tab === 'Loyalty' && loyaltyReport) ||
     (tab === 'Discounts' && discountsReport) || (tab === 'Voids' && voidsReport) ||

@@ -9,6 +9,7 @@ use App\Models\InventoryItem;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
+use App\Models\SupplierPriceHistory;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -154,6 +155,20 @@ class PurchaseWorkflowController extends Controller
                         'reference_id' => $purchase->id,
                         'notes' => 'Partial receiving',
                     ]);
+
+                    if ($purchase->supplier_id) {
+                        SupplierPriceHistory::create([
+                            'supplier_id' => $purchase->supplier_id,
+                            'inventory_item_id' => $invItem->id,
+                            'purchase_id' => $purchase->id,
+                            'unit_price' => $newCost,
+                            'unit' => $invItem->unit,
+                            'recorded_at' => $validated['actual_delivery_date']
+                                ?? $purchase->actual_delivery_date
+                                ?? $purchase->purchase_date
+                                ?? now()->toDateString(),
+                        ]);
+                    }
                 }
             }
 

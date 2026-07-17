@@ -25,6 +25,7 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         Route::get('/reports/x-report', [ReportsController::class, 'xReport']);
         Route::get('/reports/z-report', [ReportsController::class, 'zReport']);
         Route::get('/reports/inventory-valuation', [ReportsController::class, 'inventoryValuation']);
+        Route::get('/reports/spend-by-item', [ReportsController::class, 'spendByItem']);
         Route::get('/reports/delivery-zones', [ReportsController::class, 'deliveryZones']);
         Route::get('/reports/discounts-by-type', [ReportsController::class, 'discountsByType']);
         Route::get('/reports/voids-by-staff', [ReportsController::class, 'voidsByStaff']);

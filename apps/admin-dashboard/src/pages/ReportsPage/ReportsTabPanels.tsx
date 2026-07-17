@@ -31,6 +31,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
   const zReport = reportData?.zReport ?? null;
   const taxReport = reportData?.taxReport ?? null;
   const inventory = reportData?.inventory ?? null;
+  const spendByItem = reportData?.spendByItem ?? null;
   const ap = reportData?.ap ?? null;
   const ar = reportData?.ar ?? null;
   const promoReport = reportData?.promoReport ?? null;
@@ -380,6 +381,63 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                         <td style={S.td}>{mvr(row.cost_per_unit)}</td>
                         <td style={{ ...S.td, fontWeight: 600, color: row.total_value < 0 ? '#ef4444' : undefined }}>
                           {mvr(row.total_value)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* ── Spend by Item ── */}
+      {!loading && tab === 'Spend by Item' && spendByItem && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Items purchased" value={String(spendByItem.totals.items_count)} accent="#D4813A" />
+            <StatCard label="Qty received" value={spendByItem.totals.qty_received.toLocaleString(undefined, { maximumFractionDigits: 2 })} accent="#6B5D4F" />
+            <StatCard label="Total spend" value={mvr(spendByItem.totals.total_spend)} accent="#ef4444" />
+          </div>
+          <Card>
+            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 8px' }}>Purchase spend by inventory item</p>
+            <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
+              From received / partially received purchase orders in the selected dates. Compare last vs cheapest unit cost to shop smarter.
+            </p>
+            {spendByItem.rows.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>No received purchase lines in this range.</p>
+            ) : (
+              <div style={{ maxHeight: 420, overflow: 'auto' }}>
+                <table style={S.table}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Item</th>
+                      <th style={S.th}>Qty</th>
+                      <th style={S.th}>Spend</th>
+                      <th style={S.th}>Avg cost</th>
+                      <th style={S.th}>Last</th>
+                      <th style={S.th}>Cheapest</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {spendByItem.rows.map((row) => (
+                      <tr key={row.inventory_item_id}>
+                        <td style={S.td}>
+                          <Link to={`/inventory?item=${row.inventory_item_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                            {row.item_name}
+                          </Link>
+                        </td>
+                        <td style={S.td}>{row.qty_received} {row.unit ?? ''}</td>
+                        <td style={{ ...S.td, fontWeight: 600 }}>{mvr(row.total_spend)}</td>
+                        <td style={S.td}>{mvr(row.avg_unit_cost)}</td>
+                        <td style={S.td}>
+                          {mvr(row.last_unit_cost)}
+                          {row.last_supplier ? <span style={{ display: 'block', fontSize: 11, color: '#9C8E7E' }}>{row.last_supplier}</span> : null}
+                        </td>
+                        <td style={S.td}>
+                          {row.cheapest_unit_cost != null ? mvr(row.cheapest_unit_cost) : '—'}
+                          {row.cheapest_supplier ? <span style={{ display: 'block', fontSize: 11, color: '#9C8E7E' }}>{row.cheapest_supplier}</span> : null}
                         </td>
                       </tr>
                     ))}

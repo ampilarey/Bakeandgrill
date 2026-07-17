@@ -392,6 +392,54 @@ export async function getInventoryValuation(): Promise<InventoryValuation> {
   };
 }
 
+export type SpendByItemRow = {
+  inventory_item_id: number;
+  item_name: string;
+  unit: string | null;
+  qty_received: number;
+  total_spend: number;
+  avg_unit_cost: number;
+  last_unit_cost: number;
+  last_supplier: string | null;
+  cheapest_unit_cost: number | null;
+  cheapest_supplier: string | null;
+  receipts_count: number;
+};
+
+export type SpendByItemReport = {
+  from: string;
+  to: string;
+  totals: { items_count: number; qty_received: number; total_spend: number };
+  rows: SpendByItemRow[];
+};
+
+export async function getSpendByItem(params: { from: string; to: string }): Promise<SpendByItemReport> {
+  const qs = new URLSearchParams({ from: params.from, to: params.to });
+  const res = await req<SpendByItemReport>(`/reports/spend-by-item?${qs}`);
+  return {
+    from: res.from,
+    to: res.to,
+    totals: {
+      items_count: Number(res.totals?.items_count ?? 0),
+      qty_received: Number(res.totals?.qty_received ?? 0),
+      total_spend: Number(res.totals?.total_spend ?? 0),
+    },
+    rows: (res.rows ?? []).map((r) => ({
+      inventory_item_id: r.inventory_item_id,
+      item_name: r.item_name,
+      unit: r.unit,
+      qty_received: Number(r.qty_received ?? 0),
+      total_spend: Number(r.total_spend ?? 0),
+      avg_unit_cost: Number(r.avg_unit_cost ?? 0),
+      last_unit_cost: Number(r.last_unit_cost ?? 0),
+      last_supplier: r.last_supplier,
+      cheapest_unit_cost: r.cheapest_unit_cost == null ? null : Number(r.cheapest_unit_cost),
+      cheapest_supplier: r.cheapest_supplier,
+      receipts_count: Number(r.receipts_count ?? 0),
+    })),
+  };
+}
+
 export interface TaxReport {
   from: string;
   to: string;

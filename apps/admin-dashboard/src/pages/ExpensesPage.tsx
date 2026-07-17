@@ -341,6 +341,11 @@ export function ExpensesPage() {
           </div>
         }
       />
+      <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 16px', lineHeight: 1.45 }}>
+        Use Expenses for non-stock operating costs (utilities, rent, packaging, services). Stock purchases belong in{' '}
+        <Link to="/purchase-orders" style={{ color: '#D4813A', fontWeight: 600 }}>Purchase Orders</Link>
+        {' '}so they flow into inventory and COGS — linking a PO here is optional reference only, not a second cost entry.
+      </p>
       {toast && (
         <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {toast}
