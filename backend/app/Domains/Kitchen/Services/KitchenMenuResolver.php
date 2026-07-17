@@ -39,7 +39,9 @@ final class KitchenMenuResolver
 
     public function isDeliveryServiceAccepting(): bool
     {
-        return $this->deliveryGate->isDeliveryOpen();
+        // Skip capacity — used for menu/channel visibility and mid-create asserts.
+        // Capacity is enforced once in DeliveryOrderController::assertDeliveryOpen.
+        return $this->deliveryGate->isDeliveryOpen(null, null, checkCapacity: false);
     }
 
     public function deliveryUnavailableMessage(): string

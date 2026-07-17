@@ -65,9 +65,14 @@ export interface DeliveryGateStatus {
   message: string | null;
   accepting_flag: boolean;
   schedule_active: boolean;
+  delivery_schedule?: Record<string, unknown> | null;
   next_delivery_window: string | null;
   override_active: boolean;
   override_until: string | null;
+  max_active_orders?: number;
+  active_delivery_orders?: number;
+  capacity_enforced?: boolean;
+  zones_enforced?: boolean;
 }
 
 export async function getDeliveryStatus(): Promise<DeliveryGateStatus> {
@@ -91,6 +96,15 @@ export async function updateDeliverySchedule(
 
 export async function setDeliveryOverride(until: string | null): Promise<{ override_until: string | null; delivery_status: DeliveryGateStatus }> {
   return req('/admin/ordering/delivery-override', { method: 'POST', body: JSON.stringify({ override_until: until }) });
+}
+
+export async function updateDeliveryCapacity(
+  maxActiveOrders: number,
+): Promise<{ max_active_orders: number; delivery_status: DeliveryGateStatus }> {
+  return req('/admin/ordering/delivery-capacity', {
+    method: 'POST',
+    body: JSON.stringify({ max_active_orders: maxActiveOrders }),
+  });
 }
 
 export interface DeliveryFeeSettings {

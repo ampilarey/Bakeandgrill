@@ -154,6 +154,24 @@ class OnlineOrderingController extends Controller
     }
 
     /**
+     * Cap concurrent open delivery orders (0 = unlimited).
+     * Body: { "max_active_orders": 12 }
+     */
+    public function updateDeliveryCapacity(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'max_active_orders' => ['required', 'integer', 'min:0', 'max:500'],
+        ]);
+
+        SiteSetting::set('delivery_max_active_orders', (string) $validated['max_active_orders']);
+
+        return response()->json([
+            'max_active_orders' => $validated['max_active_orders'],
+            'delivery_status' => $this->deliveryGate->status(),
+        ]);
+    }
+
+    /**
      * Set or clear the force-open override.
      * Body: { "override_until": "2026-04-18T23:59:00" }  — set
      *       { "override_until": null }                    — clear

@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\MenuGroup;
+use App\Models\Order;
 use App\Models\SiteSetting;
 use App\Services\DeliveryGateService;
 use Carbon\Carbon;
@@ -66,6 +67,8 @@ class DeliveryGateTest extends TestCase
         $this->setSetting('delivery_accepting_orders', '1');
         $this->setSetting('delivery_schedule', null);
         $this->setSetting('delivery_zones', null);
+        $this->setSetting('delivery_max_active_orders', '0');
+        $this->setSetting('delivery_override_until', null);
     }
 
     private function setSetting(string $key, ?string $value): void
@@ -181,11 +184,16 @@ class DeliveryGateTest extends TestCase
         $response = $this->getJson('/api/ordering/delivery-status');
         $response->assertOk()->assertJsonStructure([
             'delivery_open',
+            'accepting',
+            'zone_eligible',
             'message',
             'accepting_flag',
             'schedule_active',
             'zones_enforced',
             'next_delivery_window',
+            'max_active_orders',
+            'active_delivery_orders',
+            'capacity_enforced',
         ]);
     }
 
@@ -196,8 +204,73 @@ class DeliveryGateTest extends TestCase
         $open = $this->getJson('/api/ordering/delivery-status?area=male');
         $closed = $this->getJson('/api/ordering/delivery-status?area=hulhumale');
 
-        $open->assertOk()->assertJsonPath('delivery_open', true);
-        $closed->assertOk()->assertJsonPath('delivery_open', false);
+        $open->assertOk()
+            ->assertJsonPath('delivery_open', true)
+            ->assertJsonPath('zone_eligible', true)
+            ->assertJsonPath('accepting', true);
+        $closed->assertOk()
+            ->assertJsonPath('delivery_open', false)
+            ->assertJsonPath('zone_eligible', false)
+            ->assertJsonPath('reason', 'zone');
+    }
+
+    public function test_capacity_blocks_when_at_max_active_orders(): void
+    {
+        $this->setSetting('delivery_max_active_orders', '1');
+
+        Order::create([
+            'order_number' => 'DEL-CAP-1',
+            'type' => 'delivery',
+            'status' => 'preparing',
+            'payment_status' => 'paid',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 40,
+            'total' => 40,
+        ]);
+
+        $response = $this->postDeliveryOrder();
+        $response->assertStatus(422);
+        $this->assertStringContainsString('capacity', strtolower($response->json('message')));
+    }
+
+    public function test_capacity_allows_when_under_max(): void
+    {
+        $this->setSetting('delivery_max_active_orders', '2');
+
+        Order::create([
+            'order_number' => 'DEL-CAP-2',
+            'type' => 'delivery',
+            'status' => 'preparing',
+            'payment_status' => 'paid',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 40,
+            'total' => 40,
+        ]);
+
+        $response = $this->postDeliveryOrder();
+        $response->assertCreated();
+    }
+
+    public function test_override_bypasses_capacity(): void
+    {
+        $this->setSetting('delivery_max_active_orders', '1');
+        $this->setSetting(
+            'delivery_override_until',
+            now()->addHour()->toIso8601String(),
+        );
+
+        Order::create([
+            'order_number' => 'DEL-CAP-OV',
+            'type' => 'delivery',
+            'status' => 'preparing',
+            'payment_status' => 'paid',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 40,
+            'total' => 40,
+        ]);
+
+        $response = $this->postDeliveryOrder();
+        $response->assertCreated();
     }
 
     public function test_service_schedule_and_zone_logic_directly(): void

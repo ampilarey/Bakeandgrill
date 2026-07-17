@@ -8,6 +8,7 @@ import {
   toggleDelivery,
   setDeliveryOverride,
   updateDeliverySchedule,
+  updateDeliveryCapacity,
   getDeliveryFeeSettings,
   updateDeliveryFeeSettings,
   getOpsAlertsSettings,
@@ -35,6 +36,39 @@ type Schedule = Record<DayKey, DaySchedule>;
 const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
   DAYS.map(({ key }) => [key, { enabled: true, windows: [{ open: '11:00', close: '22:00' }] }]),
 ) as Schedule;
+
+function hydrateSchedule(raw: unknown): Schedule {
+  const base = structuredClone(DEFAULT_SCHEDULE);
+  if (!raw || typeof raw !== 'object') return base;
+  const obj = raw as Record<string, unknown>;
+  for (const { key } of DAYS) {
+    const v = obj[key];
+    if (!v || typeof v !== 'object') continue;
+    if (Array.isArray(v)) {
+      const windows = v
+        .filter((w): w is TimeWindow => !!w && typeof w === 'object' && 'open' in w && 'close' in w)
+        .map((w) => ({ open: String(w.open), close: String(w.close) }));
+      if (windows.length) base[key] = { enabled: true, windows };
+      continue;
+    }
+    const day = v as Record<string, unknown>;
+    if (Array.isArray(day.windows)) {
+      const windows = day.windows
+        .filter((w): w is TimeWindow => !!w && typeof w === 'object' && 'open' in w && 'close' in w)
+        .map((w) => ({ open: String(w.open), close: String(w.close) }));
+      base[key] = {
+        enabled: day.enabled !== false,
+        windows: windows.length ? windows : [{ open: '11:00', close: '22:00' }],
+      };
+    } else if (day.open && day.close) {
+      base[key] = {
+        enabled: day.enabled !== false,
+        windows: [{ open: String(day.open), close: String(day.close) }],
+      };
+    }
+  }
+  return base;
+}
 
 const S = {
   card: {
@@ -133,6 +167,8 @@ export default function DeliverySettingsPage() {
   const [schedule, setSchedule]         = useState<Schedule>(DEFAULT_SCHEDULE);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleSaving, setScheduleSaving]   = useState(false);
+  const [maxActiveOrders, setMaxActiveOrders] = useState('0');
+  const [capacitySaving, setCapacitySaving] = useState(false);
 
   const [feeSettings, setFeeSettings] = useState<DeliveryFeeSettings | null>(null);
   const [defaultFee, setDefaultFee] = useState('30');
@@ -165,6 +201,10 @@ export default function DeliverySettingsPage() {
           })),
         );
         setScheduleEnabled(s.schedule_active);
+        setMaxActiveOrders(String(s.max_active_orders ?? 0));
+        if (s.delivery_schedule) {
+          setSchedule(hydrateSchedule(s.delivery_schedule));
+        }
         if (s.override_until) {
           const d = new Date(s.override_until);
           const pad = (n: number) => String(n).padStart(2, '0');
@@ -236,6 +276,21 @@ export default function DeliverySettingsPage() {
       showToast('Failed to clear override.', 'err');
     } finally {
       setSavingOverride(false);
+    }
+  };
+
+  const saveCapacity = async () => {
+    const n = Math.max(0, Math.min(500, parseInt(maxActiveOrders, 10) || 0));
+    setCapacitySaving(true);
+    try {
+      const res = await updateDeliveryCapacity(n);
+      setStatus(res.delivery_status);
+      setMaxActiveOrders(String(res.max_active_orders));
+      showToast(n > 0 ? `Delivery capacity set to ${n} open orders.` : 'Delivery capacity limit cleared.');
+    } catch {
+      showToast('Failed to save capacity.', 'err');
+    } finally {
+      setCapacitySaving(false);
     }
   };
 
@@ -468,6 +523,41 @@ export default function DeliverySettingsPage() {
             Refresh
           </button>
         </div>
+      </div>
+
+      {/* Capacity */}
+      <div style={S.card}>
+        <p style={S.sectionTitle}>Capacity</p>
+        <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12, lineHeight: 1.5 }}>
+          Limit concurrent open delivery tickets (pending through out for delivery).
+          Set <strong>0</strong> for unlimited. Staff phone-in delivery still bypasses this gate.
+        </p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div>
+            <label style={S.label} htmlFor="max-active-orders">Max active orders</label>
+            <input
+              id="max-active-orders"
+              type="number"
+              min={0}
+              max={500}
+              value={maxActiveOrders}
+              onChange={(e) => setMaxActiveOrders(e.target.value)}
+              style={{ ...S.input, width: 120 }}
+            />
+          </div>
+          <button type="button" style={S.btnPrimary} onClick={() => void saveCapacity()} disabled={capacitySaving}>
+            <Save size={14} />
+            {capacitySaving ? 'Saving…' : 'Save capacity'}
+          </button>
+        </div>
+        {status && (
+          <p style={S.reasonNote}>
+            Currently open: {status.active_delivery_orders ?? 0}
+            {status.capacity_enforced
+              ? ` / max ${status.max_active_orders}`
+              : ' (no limit)'}
+          </p>
+        )}
       </div>
 
       {/* Master switch */}

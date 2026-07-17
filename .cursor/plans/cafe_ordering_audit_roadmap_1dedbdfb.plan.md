@@ -22,7 +22,7 @@ todos:
     status: completed
   - id: wave-e-delivery-depth
     content: "Wave E — delivery hours + rider/capacity + zones in pipeline"
-    status: pending
+    status: completed
   - id: wave-f-order-status
     content: "Wave F — single safe status transition path + compatibility"
     status: pending

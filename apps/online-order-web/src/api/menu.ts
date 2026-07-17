@@ -61,11 +61,23 @@ export interface DeliveryZoneStatus {
   zone_eligible: boolean | null;
   message: string | null;
   reason: string | null;
+  delivery_open?: boolean;
 }
 
 export async function fetchDeliveryZoneStatus(area: string): Promise<DeliveryZoneStatus> {
   const qs = new URLSearchParams({ area });
-  return request<DeliveryZoneStatus>(`${ENDPOINTS.ORDERING_DELIVERY_STATUS}?${qs}`);
+  const raw = await request<DeliveryZoneStatus & {
+    delivery_open?: boolean;
+    accepting_flag?: boolean;
+  }>(`${ENDPOINTS.ORDERING_DELIVERY_STATUS}?${qs}`);
+
+  return {
+    accepting: raw.accepting ?? raw.delivery_open ?? raw.accepting_flag ?? false,
+    zone_eligible: raw.zone_eligible ?? null,
+    message: raw.message ?? null,
+    reason: raw.reason ?? null,
+    delivery_open: raw.delivery_open,
+  };
 }
 
 export type DeliveryFeePreview = {

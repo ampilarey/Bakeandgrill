@@ -44,4 +44,4 @@ Contract: unified history = FK present. Unlinked POS tickets stay anonymous.
 - Portal UI icons may not distinguish `dine_in` vs `online_pickup` (API `type` is correct).
 - Offline sync carries `customer_id` when present on queued tickets.
 
-**Next wave:** E — delivery hours, rider/capacity, zones in pipeline.
+**Next wave:** E — delivery hours / zones / capacity — see [`WAVE_E_DELIVERY_DEPTH.md`](./WAVE_E_DELIVERY_DEPTH.md).
