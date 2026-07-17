@@ -4,6 +4,8 @@
 
 **Amendment over v1:** the Prayer Time bar is **not** reduced to a compact chip. It remains a full-width banner directly below the Home greeting (§12). This is a mandatory, brand-defining feature.
 
+**v2.1 (implementer-review rulings).** The implementing engineer's pre-build review raised 12 ambiguities and several gaps; the architect's rulings are folded into the affected sections below and marked *(v2.1)*. Headline rulings: deep links stay id-only (`?item=<id>`); PWA "My Orders" shortcut retargets to `/order-history` in Phase 2; the header-mounted PrayerBar moves to Home in Phase 2 (never absent); the `fetchItems` delivery→pickup fallback is authoritative for the mode toggle; checkout uses 6 accordions (time merged into the mode-specific section); ActiveOrderCapsule fully replaces OrderStatusBar; per-card prep times are omitted (global ETA only); all new strings go through `t()` (EN + Dhivehi).
+
 ---
 
 ## Context (from v1)
@@ -197,11 +199,11 @@ Hierarchy rules: tabs are peers and keep independent scroll positions; standalon
 
 **Top navigation.** No global sticky header. Each surface owns its top area: Home = greeting header; Menu = sticky order-mode header (§14.1); tab pages = `PageHeader` (title, optional right slot); standalone pages = `BrandedHeader`/`PageHeader` with back arrow. The announcement banner (server-driven) renders above everything in AppShell, dismissible per session as today.
 
-**Bottom navigation.** 5 items (Home `/`, Menu `/menu`, Orders `/order-history`, Rewards `/rewards`, Account `/account`). Fixed, height `--bottom-nav-height` + `--safe-bottom` padding; icon 24px + 11px label; active = `--color-primary` icon/label + dot indicator, inactive = `--color-text-muted`; `aria-current="page"`; badge on Orders when an order is active. Hidden on: `/checkout`, `/orders/:id`, `/track/:token`, and while a full-height sheet is open (`hideNav` context flag) or the on-screen keyboard is up in the search overlay. Visible at all viewport widths (desktop keeps the app column, §25).
+**Bottom navigation.** 5 items (Home `/`, Menu `/menu`, Orders `/order-history`, Rewards `/rewards`, Account `/account`). Fixed, height `--bottom-nav-height` + `--safe-bottom` padding; icon 24px + 11px label; active = `--color-primary` icon/label + dot indicator, inactive = `--color-text-muted`; `aria-current="page"`; badge on Orders when an order is active. Hidden on: `/checkout`, `/orders/:id`, `/track/:token`, and while a full-height sheet or the search overlay is open (`hideNav` context flag). Visible at all viewport widths (desktop keeps the app column, §25). *(v2.1)* No desktop top nav returns in any phase; the in-app logo never links out to the marketing site (external/marketing links live only in BrandFooter and About).
 
 **Back behaviour.** Android back / browser back pops the topmost layer first: open sheet or overlay closes (sheets push a history entry via `history.pushState` so hardware back closes them, matching current modal behaviour where present); otherwise navigate back within the stack; tab roots fall through to Home; Home lets the browser exit. In-page back arrows mirror this. Leaving Checkout with entered-but-unsubmitted state keeps state in `useCheckout`; the cart is never cleared by navigation (only by successful order or explicit clear, as today).
 
-**Deep links (all preserved).** `/menu?category=<slug>` scrolls to that section; `/menu?item=<id|slug>` opens the Item sheet; `/menu?openCart=1` opens the Cart sheet; `/track/:token` works logged-out; `/orders/:id` prompts auth via existing flow; PWA shortcuts ("Order Now" → `/menu`, "My Orders" → `/account`) keep working.
+**Deep links (all preserved, existing semantics).** *(v2.1)* `/menu?category=<slug>` scrolls to that section — slug matching stays exactly today's rule (category **name** lowercased/hyphenated, MenuPage:193; there is no slug field). `/menu?item=<id>` opens the Item sheet — **numeric id only**, as today (MenuPage:190–203); slug support is out of scope. `/menu?openCart=1` opens the Cart sheet. `/track/:token` works logged-out; `/orders/:id` prompts auth via existing flow. PWA shortcuts: "Order Now" → `/menu` unchanged; **"My Orders" retargets from `/account` to `/order-history`** in Phase 2 (a `manifest.json` edit — frontend file, allowed).
 
 **Modal/sheet navigation.** One sheet at a time; opening Item-edit from Cart swaps Cart→Item and returns to Cart on save/close. Sheets: backdrop tap, swipe-down on drag handle, Escape, and hardware back all close. Focus is trapped and restored to the invoking element (§26).
 
@@ -235,8 +237,8 @@ Hierarchy rules: tabs are peers and keep independent scroll positions; standalon
 │ └────────────────────────────────────┘ │
 │ ┌─────────────────┐┌─────────────────┐ │
 │ │   DELIVERY      ││    PICKUP       │ │  ModeEntryCards: set mode →
-│ │   [own photo]   ││   [own photo]   │ │  navigate /menu
-│ └─────────────────┘└─────────────────┘ │
+│ │   [own photo]   ││   [own photo]   │ │  navigate /menu; images = static
+│ └─────────────────┘└─────────────────┘ │  public/images/mode-*.jpg (v2.1)
 │ Today's specials            See all →  │  SpecialsCarousel (horizontal)
 │ [card] [card] [card] ▸▸                │
 │ Order again                            │  ReorderStrip (authed, existing
@@ -254,7 +256,7 @@ Hierarchy rules: tabs are peers and keep independent scroll positions; standalon
 
 ### 11.2 Component hierarchy
 
-`HomePage` → `GreetingHeader` (uses `useAuth`, `OpeningStatusBadge`) → `PrayerBar` (full banner) → `StatChipsRow` → `PromoCarousel` → `ModeEntryCards` (uses `OrderModeContext`) → `SpecialsCarousel` → `ReorderStrip` → corporate block → `BrandFooter`. All existing data effects on HomePage (`fetchItems`, `fetchOnlineOrderingStatus`, `fetchActiveSpecials`, `fetchFeaturedReviews`, `fetchCustomerOrders`, corporate form) are kept.
+`HomePage` → `GreetingHeader` (uses `useAuth`, `OpeningStatusBadge`) → `PrayerBar` (full banner) → `StatChipsRow` → `PromoCarousel` → `ModeEntryCards` (uses `OrderModeContext`) → `SpecialsCarousel` → `ReorderStrip` → corporate block → `BrandFooter`. All existing data effects on HomePage (`fetchItems`, `fetchOnlineOrderingStatus`, `fetchActiveSpecials`, `fetchFeaturedReviews`, `fetchCustomerOrders`, corporate form) are kept. *(v2.1)* ModeEntryCards imagery = static files under `public/images/` (e.g. `mode-delivery.jpg`, `mode-pickup.jpg`) with cream-placeholder fallback until real photos are supplied; the corporate block keeps its current markup/logic, wrapped in a card (restyle only).
 
 ### 11.3 Spacing & rules
 
@@ -307,7 +309,7 @@ Expanded:
 
 ### 12.3 Placement elsewhere & a11y
 
-`#prayer-strip-root` portal target stays in AppShell so the existing portal keeps working; the full banner also renders on the Account page. It is **not** shown inside the Menu sticky header (space contested) — the Menu keeps the ordering-status strip which already carries prayer-pause messaging. The banner is a `<section aria-label="Prayer times">`; the expand control is a `<button aria-expanded>`; the countdown has `aria-live="off"` (announced only on prayer change, not every second).
+*(v2.1)* Today PrayerBar is mounted in the global header (Layout.tsx:242) and HomePage does not mount it. When Phase 2 deletes the header, **the same commit mounts PrayerBar on Home below the greeting** (basic placement; §12 styling lands in Phase 4) so prayer times are never absent between phases. Exactly **one instance per screen**: Home and Account — no double-mounts. `#prayer-strip-root` portal target stays in AppShell so the existing portal keeps working; the full banner also renders on the Account page. It is **not** shown inside the Menu sticky header (space contested) — the Menu keeps the ordering-status strip which already carries prayer-pause messaging. The banner is a `<section aria-label="Prayer times">`; the expand control is a `<button aria-expanded>`; the countdown has `aria-live="off"` (announced only on prayer change, not every second).
 
 ## 13. Promotion System
 
@@ -335,7 +337,8 @@ All promotional surfaces are fed by **existing** admin-driven data: `heroSlides`
 
 - Sticky at top (`--menu-header-height`), `--color-bg` with bottom hairline on scroll.
 - **OrderModeToggle:** two segments, selected = `--color-primary` fill/white text, 120ms slide. Reads/writes `OrderModeContext` (§30 step 1). On switch: refetch via `fetchItems(mode === 'delivery' ? 'delivery' : 'online_pickup')` (channel passed explicitly), prune cart with existing `pruneCartToAllowedItemIds`, toast listing removed items ("2 items unavailable for delivery were removed"). Delivery segment disabled (with existing message) when `deliveryBlocked`.
-- **Address row:** delivery → default saved address (`fetchCustomerAddresses`, authed) or "Set your address ▸" (→ checkout address section); pickup → business address from settings ("Pickup from: Bake & Grill, Malé"). Never blocks browsing.
+- **Delivery-empty fallback** *(v2.1)*: `fetchItems` itself silently falls back to pickup when the delivery channel has zero items — it sets `online_pickup` and emits `sales_channel_change` (menu.ts:162–169). `OrderModeContext` **treats that event as authoritative**: the toggle snaps to Pickup and the existing `deliveryFallback` notice explains why. The toggle must never fight the event (no snap-back loop).
+- **Address row** *(v2.1)*: delivery → default saved address (`fetchCustomerAddresses`; default = is-default flag, else first saved) or "Set your address ▸"; tap → Account ▸ Addresses when authed, Account (login) when signed out. The row is informational — Checkout remains the authoritative address selection + zone validation step, and browsing is never blocked. Pickup → business address from settings ("Pickup from: Bake & Grill, Malé").
 - **Row 3 (conditional):** existing ordering-status strip (closed / pickup-only / prayer pause) and deliveryFallback notice — logic unchanged.
 
 ### 14.2 Category rail
@@ -379,7 +382,7 @@ Search button expands to the overlay (§22), reusing existing `searchQuery` stat
 - **Badges** (existing set: bestseller/new/spicy/mto/combo/sale): max 2 visible, using existing badge colour classes.
 - **Availability / Sold out:** card stays in place; image + text at 45% opacity **but** a solid "Sold out" pill (white text on `--color-text-muted`, AA-compliant — deliberately better than ZUS's washed-out treatment); quick-add hidden; card still opens the sheet in read-only mode; existing "back soon" message shown when the API provides one.
 - **Quick add [+]:** 44px target; only for items with no required variants/modifiers (same rule the current MenuCard uses); tap = existing add-to-cart + fly-to-cart micro-animation (§24) + toast. Items needing configuration always open the sheet.
-- **Preparation time:** where the existing wait-time/ETA data provides per-item or global prep minutes, show "~15 min" caption; omit when absent (never invent).
+- **Preparation time** *(v2.1)*: only a global wait estimate exists today (`getWaitTimeEstimate`, MenuPage ~160–167) — it stays in the menu header area as today. **Per-card prep times are omitted** (no per-item data; never invent).
 - **Promotion:** sale badge + dual pricing from existing sale fields; no new promo maths in the client.
 
 ## 16. Product Detail (Item Sheet)
@@ -427,13 +430,16 @@ Standalone route; no bottom nav; `BrandedHeader` = back arrow + "Checkout". **Al
 
 ### 18.1 Accordion sequence (one open at a time; errors force-open)
 
+*(v2.1: six accordions — time is merged into the mode-specific section, mirroring the existing section consts so no extra restructuring is needed.)*
+
 1. Order type — collapsed: "Pickup · ASAP" / "Delivery"
-2. Pickup slot **or** Delivery address + island/zone (existing zone check on island blur; existing gate-closed banner above all sections)
-3. Time (slot picker / ASAP)
-4. Contact details (or AuthBlock, §18.6)
-5. Promo / Loyalty / Gift card / Referral — collapsed shows applied value ("PROMO10 · −MVR 15.00")
-6. Special instructions
-7. Payment method (existing options; BML gateway)
+2. **Pickup time (slot/ASAP)** or **Delivery address + island/zone + time** — one mode-specific accordion wrapping the existing `sectionPickupSlot` / `sectionDelivery` consts as-is (existing zone check on island blur; existing gate-closed banner above all sections)
+3. Contact details (or AuthBlock, §18.6)
+4. Promo / Loyalty / Gift card / Referral — collapsed shows applied value ("PROMO10 · −MVR 15.00")
+5. Special instructions
+6. Payment method (existing options; BML gateway)
+
+*(v2.1)* Error force-open mapping: derive from the existing `useCheckout` error keys — each existing validation error is mapped to its accordion id; the mapping table is documented in the Phase 5 PR description and reviewed there.
 
 Each collapsed row: title + chosen value + "Change" (44px target). Terms checkbox sits above the pay bar (existing requirement). Order summary (CartSummary with server-fetched fees preview) renders above the pay bar on mobile and as a side column ≥900px via CSS only (the `isMobile` JS branch is deleted).
 
@@ -457,7 +463,7 @@ Focused, ZUS-login-inspired layout: centred logo (settings `logo`), "Enter your 
 
 - **Orders tab (`/order-history`, restyled OrderHistoryPage):** `PageHeader` "Orders"; active orders pinned on top as rich cards (order #, type icon, status pill, ETA, total, "Track" CTA); past orders as compact cards (date, first items summary, total, status, "View" + "Reorder"). Reorder uses the existing revalidating flow (unavailable items and price changes handled by existing logic + toast). Signed-out → AuthBlock teaser. Empty → `EmptyState` "No orders yet — see the menu".
 - **Tracking (`/orders/:id`, `/track/:token` — routes, polling, and status model unchanged):** restyled vertical timeline from the existing `STEPS` (pending → preparing → ready/out-for-delivery → completed, with existing paid/in_progress normalisation); current step pulses (§24); big status illustration/photo area; delivery orders keep the existing live driver map block; action row: call/WhatsApp/Viber, directions (pickup), receipt.
-- **Active-order capsule:** AppShell-level pill above the floating cart bar on Home/Orders ("Order #123 · Preparing · ~12 min ▸" → tracking); data source = existing OrderStatusBar logic, unchanged.
+- **Active-order capsule** *(v2.1)*: AppShell-level pill above the floating cart bar on Home/Orders ("Order #123 · Preparing · ~12 min ▸" → tracking). It **fully replaces `OrderStatusBar`** (verified: OrderStatusBar is an active-order widget — fetches customer orders and surfaces the active one — not the open/closed strip). Same fetch/status logic, one component; OrderStatusBar is deleted in Phase 7 once unreferenced.
 - **Receipt/invoice:** existing order-detail data rendered as a clean itemised list (items, modifiers, fees, GST, discounts, total, payment state) — print/share via the browser; **no new invoice backend**.
 
 ## 20. Rewards (layout only — zero business-logic changes)
@@ -499,7 +505,7 @@ Rows: 56px min height, icon + label + chevron/toggle, hairline separators.
 
 ## 22. Search
 
-Full-screen overlay from the Menu header (not a route; hardware-back closes it). Auto-focused input with clear [×] and Cancel; bottom nav hidden while keyboard is up.
+Full-screen overlay from the Menu header (not a route; hardware-back closes it). Auto-focused input with clear [×] and Cancel. *(v2.1)* The overlay is full-screen and sets `hideNav`, so it covers the bottom nav by construction — **no on-screen-keyboard detection is needed or attempted** (visual-viewport heuristics are unreliable on iOS).
 
 - **Idle state:** popular items (existing bestseller badge holders, first 6) and category shortcut chips. **Recent searches** only if a recents mechanism already exists — otherwise omitted (do not add new storage without approval; a session-only in-memory recents list is acceptable as pure presentation).
 - **Results:** live client-side filtering via the existing `filteredItems` memo (name/description, existing matching rules — no new search API); grouped "Items" (standard ProductCards — identical add/sheet behaviour) and "Categories" (chips that close search and scroll the rail).
@@ -616,7 +622,7 @@ AppShell
 ├── BottomNav
 └── #prayer-strip-root (portal target)
 
-Standalone (no AppShell chrome): CheckoutPage → BrandedHeader → Accordion×7(+AuthBlock)
+Standalone (no AppShell chrome): CheckoutPage → BrandedHeader → Accordion×6(+AuthBlock)
                                  → CartSummary → StickyCtaBar
                                  OrderStatusPage → BrandedHeader → Timeline → Map → Actions
 ```
@@ -636,13 +642,20 @@ Budgets (mid-range Android, Fast-3G, Lighthouse mobile): Menu interactive < 3.5s
 
 ## 30. Migration Strategy (v1 implementation phases, preserved & extended)
 
-Direct redesign on branch `claude/zus-coffee-app-redesign-f79hfx` (no feature flag; rationale in Context). Extract-then-swap per phase; every commit builds (`tsc && vite build`) and leaves the app fully usable. `main` stays the working UI until merge; rollback = revert/redeploy.
+Direct redesign on branch `claude/zus-coffee-app-redesign-f79hfx` (no feature flag; rationale in Context). Extract-then-swap per phase; every commit builds (`tsc && vite build`) and leaves the app fully usable. `main` stays the working UI until merge; rollback = revert/redeploy. *(v2.1)* **Every new user-facing string goes through the existing `t()` i18n layer (EN + Dhivehi)** — BottomNav labels, empty/error states, Rewards, toasts, all of it; untranslated hardcoded strings fail review.
 
 ### Phase 1 — Foundation (ships green, old UI unaffected)
 `src/index.css`: add §8 tokens + new classes (`.app-shell`, `.bottom-nav`, `.float-cart-bar`, `.cat-rail`, `.stat-chip`, `.sheet`, `.section-accent`); **do not delete old classes** (`order-mob-*`, `cat-sheet-*`, footer) until Phase 7. New `OrderModeContext` (init from `getSalesChannel()`; `setMode` → `setSalesChannel`; listens to `sales_channel_change`), provider in `main.tsx`. `useCheckout.ts`: swap line-207 state for `useOrderMode()` — hook return shape unchanged ⇒ CheckoutPage needs zero changes; keep fetch/prune effect, drop only the duplicate `setSalesChannel` call (~line 265); `deliveryBlocked` guard now updates shared mode (desired). Primitives: Sheet, StickyCtaBar, Accordion, PageHeader, Skeleton, EmptyState, ErrorState; `useTheme` extracted. Amber-contrast audit (§26).
 
 ### Phase 2 — App shell
-Rewrite Layout.tsx → AppShell + BottomNav + FloatingCartBar + ActiveOrderCapsule + `#prayer-strip-root`; delete global header/footer (links rehome in Phase 6 — until then, keep a temporary links block on Account so nothing is unreachable); add `/rewards` (lazy, minimal); old page bodies render inside the new shell (self-contained ⇒ still work, just chromeless). **Bump sw.js cache in this commit.**
+Rewrite Layout.tsx → AppShell + BottomNav + FloatingCartBar + ActiveOrderCapsule + `#prayer-strip-root`; delete global header/footer; add `/rewards` (lazy, minimal); old page bodies render inside the new shell (self-contained ⇒ still work, just chromeless). **Bump sw.js cache in this commit.**
+
+*(v2.1 — hard gates for this phase, since the header/footer carry live functionality):*
+- **Temporary Account links block** (minimum set): Pre-Order, Reservations, Hours, Contact, About, Privacy, legal/footer links, Order history. No orphaned route at any commit.
+- **Dark-mode toggle + language switcher move to Account in this phase** (not Phase 6) — the header that hosts them is deleted here.
+- **PrayerBar mounts on Home** (below greeting, basic placement) in the same commit that removes the header instance (§12.3).
+- **`AnalyticsTracker` stays mounted** in AppShell (route-change tracking must not silently die with Layout).
+- **Retarget manifest "My Orders" shortcut** to `/order/order-history`; set a document title for `/rewards` via the existing per-page title mechanism.
 
 ### Phase 3 — Menu (largest; 3–4 commits: extract → extract → swap)
 Extract ProductCard / ItemSheet (modifier state moves in; edit props) / CartSheet / CategoryRail / MenuSectionHeader while old layout still renders. Add `CartContext.updateEntry` + unit tests (preselect, variant switch, merge-with-identical-line). Then swap the MenuPage body: sticky mode header, sectioned render + scroll-spy (§14.3), deep links (`?category=`, `?item=`, `?openCart=1`) preserved, filters → flat grid mode.
@@ -661,7 +674,7 @@ PreOrder/Reservations/About/Contact/Hours/Privacy wrapped in PageHeader; delete 
 
 ## 31. QA Checklist (screen-by-screen; run per phase and fully before merge)
 
-**Global (every screen):** builds (`tsc && vite build`); vitest green (`App.test.tsx`, `checkoutTotals.test.ts`, new OrderModeContext / updateEntry / scroll-spy-reducer tests); 320/360/390/430/768/desktop widths — no horizontal scroll; dark mode; EN + ދިވެހި; reduced-motion; keyboard-only pass; screen-reader smoke (VoiceOver/TalkBack); content never hidden behind nav/cart bar; safe-area on notched iPhone (installed PWA).
+**Global (every screen):** builds (`tsc && vite build`); vitest green (`App.test.tsx`, `checkoutTotals.test.ts`, new OrderModeContext / updateEntry / scroll-spy-reducer tests — plus Layout/AppShell smoke updates budgeted in Phase 2); 320/360/390/430/768/desktop widths — no horizontal scroll; dark mode; EN + ދިވެހި (all new strings via `t()`); reduced-motion; keyboard-only pass; screen-reader smoke (VoiceOver/TalkBack); content never hidden behind nav/cart bar; safe-area on notched iPhone (installed PWA); `AnalyticsTracker` route events still fire after the shell swap.
 
 - **Home:** all sections render per §11 order; prayer banner below greeting, expandable, offline-cached; stat chips reflect real data & degrade; carousel autoplay/pause/reduced-motion; mode cards set mode then land on Menu; reorder works; corporate form submits.
 - **Menu:** mode toggle switches channel, refetches, prunes with toast; disabled-delivery state; address row per mode/auth; rail syncs both directions (tap-scroll & scroll-spy) incl. rapid taps; deep links `?category=` `?item=` `?openCart=1`; filters/search → flat grid + dimmed rail + clear; sold-out per §15; quick-add only on no-mandatory items; skeletons; error retry; empty channel state.
