@@ -921,8 +921,8 @@ export function DashboardPage() {
             <span style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Inventory Intelligence</span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => navigate('/inventory')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Inventory →</button>
-              <button type="button" onClick={() => navigate('/forecasts')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Restock Plan →</button>
-              <button type="button" onClick={() => navigate('/reports')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Spend Hub →</button>
+              <button type="button" onClick={() => navigate('/forecasts?section=restock')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Restock Plan →</button>
+              <button type="button" onClick={() => navigate('/reports?tab=Spend%20Hub')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Spend Hub →</button>
               {poSuggestCount > 0 && (
                 <button type="button" onClick={() => navigate('/purchase-orders')} style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {poSuggestCount} PO suggestions →
@@ -977,7 +977,7 @@ export function DashboardPage() {
                 <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#9a3412' }}>Restock due soon</p>
                 <button
                   type="button"
-                  onClick={() => navigate('/forecasts')}
+                  onClick={() => navigate('/forecasts?section=restock')}
                   style={{ fontSize: 11, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Open Restock Plan →
@@ -1012,7 +1012,7 @@ export function DashboardPage() {
               <p style={{ margin: 0, fontSize: 12, color: '#6B5D4F' }}>
                 Month to date: purchases {fmt(spendRestock.mtdPurchases)} · expenses {fmt(spendRestock.mtdExpenses)} · waste {fmt(spendRestock.mtdWaste)} · with waste {fmt(spendRestock.mtdWithWaste)}
                 {' · '}
-                <button type="button" onClick={() => navigate('/reports')} style={{ fontSize: 12, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                <button type="button" onClick={() => navigate('/reports?tab=Spend%20Hub')} style={{ fontSize: 12, fontWeight: 700, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
                   Spend Hub →
                 </button>
               </p>

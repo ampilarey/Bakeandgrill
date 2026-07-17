@@ -1,19 +1,35 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Btn, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { downloadCSV } from '../utils/csvExport';
 import { ReportsTabPanels } from './ReportsPage/ReportsTabPanels';
 import {
-  DISCOUNT_TYPE_LABELS, fetchReportData, mvr, REPORT_SECTIONS,
+  DISCOUNT_TYPE_LABELS, fetchReportData, mvr, parseReportTab, REPORT_SECTIONS,
   S, sectionForTab, type Tab,
 } from './ReportsPage/reportsShared';
 import { ReportsFilters, useReportsFilters } from './ReportsPage/useReportsFilters';
 
 export function ReportsPage() {
   usePageTitle('Reports');
-  const [tab, setTab] = useState<Tab>('Summary');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTabState] = useState<Tab>(() => parseReportTab(searchParams.get('tab')) ?? 'Summary');
   const currentSection = sectionForTab(tab);
+
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    const params = new URLSearchParams(searchParams);
+    if (next === 'Summary') params.delete('tab');
+    else params.set('tab', next);
+    setSearchParams(params, { replace: true });
+  };
+
+  useEffect(() => {
+    const fromUrl = parseReportTab(searchParams.get('tab'));
+    if (fromUrl && fromUrl !== tab) setTabState(fromUrl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- sync URL → state only
+  }, [searchParams]);
 
   const {
     from, setFrom, to, setTo,

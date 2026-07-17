@@ -376,7 +376,7 @@ export function ExpensesPage() {
         <Link to="/purchase-orders" style={{ color: '#D4813A', fontWeight: 600 }}>Purchase Orders</Link>
         {' '}so they flow into inventory and COGS — linking a PO here is optional reference only, not a second cost entry.
         {' '}See{' '}
-        <Link to="/reports" style={{ color: '#D4813A', fontWeight: 600 }}>Reports → Spend Hub</Link>
+        <Link to="/reports?tab=Spend%20Hub" style={{ color: '#D4813A', fontWeight: 600 }}>Reports → Spend Hub</Link>
         {' '}for purchases + expenses together.
       </p>
       <div style={{

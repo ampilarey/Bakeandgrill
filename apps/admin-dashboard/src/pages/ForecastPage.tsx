@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, getRestockPlan,
   createPurchaseFromSuggest, applySuggestedReorderPoints,
@@ -34,6 +34,8 @@ const STATUS_BG: Record<string, string> = {
 
 export function ForecastPage() {
     usePageTitle('Forecasts');
+  const [searchParams] = useSearchParams();
+  const restockSectionRef = useRef<HTMLDivElement>(null);
   const [trends, setTrends]     = useState<{ total_revenue: number; total_orders: number; data: { period: string; revenue: number; orders: number; growth_pct: number | null }[] } | null>(null);
   const [forecast, setForecast] = useState<{ weighted_moving_avg: number; growth_rate_pct: number; forecast: { week_start: string; projected_revenue: number }[] } | null>(null);
   const [invForecast, setInv]   = useState<{ items: { id: number; name: string; unit: string; category: string; current_stock: number; daily_usage_rate: number; days_of_stock: number | null; status: string }[] } | null>(null);
@@ -102,6 +104,16 @@ export function ForecastPage() {
   };
 
   useEffect(() => { void load(); }, [granularity, from, to]);
+
+  // Deep link: /forecasts?section=restock
+  useEffect(() => {
+    const section = (searchParams.get('section') ?? '').toLowerCase();
+    if (section !== 'restock' || loading || !restock) return;
+    const t = window.setTimeout(() => {
+      restockSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [searchParams, loading, restock]);
 
   const refreshRestock = async () => {
     try {
@@ -456,6 +468,7 @@ export function ForecastPage() {
 
           {/* Restock plan — usage + buy frequency */}
           {restock && (
+            <div ref={restockSectionRef} id="restock-plan">
             <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
                 <div>
@@ -669,6 +682,7 @@ export function ForecastPage() {
                 </div>
               )}
             </Card>
+            </div>
           )}
 
           {/* Inventory runway */}

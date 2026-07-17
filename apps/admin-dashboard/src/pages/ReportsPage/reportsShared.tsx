@@ -106,6 +106,18 @@ export function sectionForTab(t: Tab) {
   return REPORT_SECTIONS.find((s) => (s.tabs as readonly string[]).includes(t)) ?? REPORT_SECTIONS[0];
 }
 
+/** Resolve ?tab= from URL (exact label, case-insensitive, or slug like spend-hub). */
+export function parseReportTab(raw: string | null | undefined): Tab | null {
+  if (!raw) return null;
+  const decoded = decodeURIComponent(raw).trim();
+  if (!decoded) return null;
+  const allTabs = REPORT_SECTIONS.flatMap((s) => s.tabs) as readonly Tab[];
+  const exact = allTabs.find((t) => t === decoded || t.toLowerCase() === decoded.toLowerCase());
+  if (exact) return exact;
+  const slug = decoded.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return allTabs.find((t) => t.toLowerCase() === slug) ?? null;
+}
+
 export type ReportData = {
   summary?: SalesSummary;
   breakdown?: SalesBreakdown;
