@@ -111,7 +111,8 @@ Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('for
     Route::get('/restock', [App\Http\Controllers\Api\ForecastController::class, 'restockIntelligence']);
 });
 
-// Applying suggested ROPs mutates inventory — requires inventory.manage
+// Applying suggested ROPs / preferred suppliers mutates inventory — requires inventory.manage
 Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->prefix('forecasts')->group(function () {
     Route::post('/restock/apply-rop', [App\Http\Controllers\Api\ForecastController::class, 'applySuggestedReorderPoints']);
+    Route::post('/restock/apply-preferred', [App\Http\Controllers\Api\ForecastController::class, 'applySuggestedPreferredSuppliers']);
 });

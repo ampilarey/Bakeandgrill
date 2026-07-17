@@ -339,6 +339,85 @@ final class RestockIntelligenceService
     }
 
     /**
+     * Opt-in: promote restock "cheapest" supplier suggestions to preferred_supplier_id.
+     *
+     * @param  list<int>  $itemIds
+     * @return array{
+     *     updated_count: int,
+     *     skipped_count: int,
+     *     updated: list<array{id: int, name: string, supplier_id: int, supplier_name: string}>,
+     *     skipped: list<array{id: int, reason: string}>
+     * }
+     */
+    public function applySuggestedPreferredSuppliers(
+        array $itemIds,
+        int $lookbackDays = 30,
+        int $buyLookbackDays = 90,
+        int $leadDays = 3,
+        int $coverDays = 14,
+    ): array {
+        $itemIds = array_values(array_unique(array_map('intval', $itemIds)));
+        $plan = $this->restockPlan($lookbackDays, $buyLookbackDays, $leadDays, $coverDays);
+        /** @var array<int, array<string, mixed>> $byId */
+        $byId = [];
+        foreach ($plan['items'] as $row) {
+            $byId[(int) $row['id']] = $row;
+        }
+
+        $updated = [];
+        $skipped = [];
+
+        DB::transaction(function () use ($itemIds, $byId, &$updated, &$skipped): void {
+            foreach ($itemIds as $id) {
+                $row = $byId[$id] ?? null;
+                $supplier = is_array($row['suggested_supplier'] ?? null) ? $row['suggested_supplier'] : null;
+                if ($row === null || $supplier === null || empty($supplier['id'])) {
+                    $skipped[] = ['id' => $id, 'reason' => 'no_suggestion'];
+
+                    continue;
+                }
+
+                if (($supplier['source'] ?? null) !== 'cheapest') {
+                    $skipped[] = ['id' => $id, 'reason' => 'not_cheapest_suggestion'];
+
+                    continue;
+                }
+
+                $supplierId = (int) $supplier['id'];
+                $item = InventoryItem::query()->lockForUpdate()->find($id);
+                if ($item === null) {
+                    $skipped[] = ['id' => $id, 'reason' => 'not_found'];
+
+                    continue;
+                }
+
+                if ((int) ($item->preferred_supplier_id ?? 0) === $supplierId) {
+                    $skipped[] = ['id' => $id, 'reason' => 'unchanged'];
+
+                    continue;
+                }
+
+                $item->preferred_supplier_id = $supplierId;
+                $item->save();
+
+                $updated[] = [
+                    'id' => $id,
+                    'name' => (string) $item->name,
+                    'supplier_id' => $supplierId,
+                    'supplier_name' => (string) ($supplier['name'] ?? ''),
+                ];
+            }
+        });
+
+        return [
+            'updated_count' => count($updated),
+            'skipped_count' => count($skipped),
+            'updated' => $updated,
+            'skipped' => $skipped,
+        ];
+    }
+
+    /**
      * Usage-aware order qty for PO suggest (falls back to 2×ROP formula).
      *
      * @return array{qty: float, reason: string}

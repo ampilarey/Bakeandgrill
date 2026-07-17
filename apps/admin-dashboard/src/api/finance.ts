@@ -820,6 +820,23 @@ export async function applySuggestedReorderPoints(data: {
   return req('/forecasts/restock/apply-rop', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export type ApplySuggestedPreferredResult = {
+  updated_count: number;
+  skipped_count: number;
+  updated: { id: number; name: string; supplier_id: number; supplier_name: string }[];
+  skipped: { id: number; reason: string }[];
+};
+
+export async function applySuggestedPreferredSuppliers(data: {
+  item_ids: number[];
+  lookback_days?: number;
+  buy_lookback_days?: number;
+  lead_days?: number;
+  cover_days?: number;
+}): Promise<ApplySuggestedPreferredResult> {
+  return req('/forecasts/restock/apply-preferred', { method: 'POST', body: JSON.stringify(data) });
+}
+
 export type DeliveryZoneReportRow = {
   zone: string;
   orders_count: number;

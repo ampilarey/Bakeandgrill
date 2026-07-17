@@ -339,4 +339,54 @@ class RestockIntelligenceTest extends TestCase
         $this->assertEqualsWithDelta(25.0, (float) $response->json('items.0.price_change_pct'), 0.1);
         $this->assertEqualsWithDelta(10.0, (float) $response->json('items.0.unit_cost'), 0.01);
     }
+
+    public function test_apply_suggested_preferred_promotes_cheapest_supplier(): void
+    {
+        $owner = $this->makeOwner();
+        $supplier = Supplier::create(['name' => 'Bulk Foods', 'is_active' => true]);
+        $item = InventoryItem::create([
+            'name' => 'Rice',
+            'sku' => 'RCE-PREF',
+            'unit' => 'kg',
+            'current_stock' => 3,
+            'reorder_point' => 20,
+            'unit_cost' => 5,
+            'last_purchase_price' => 5,
+            'preferred_supplier_id' => null,
+            'is_active' => true,
+        ]);
+
+        SupplierPriceHistory::create([
+            'supplier_id' => $supplier->id,
+            'inventory_item_id' => $item->id,
+            'unit_price' => 5.5,
+            'unit' => 'kg',
+            'recorded_at' => now()->toDateString(),
+        ]);
+
+        $plan = $this->getJson('/api/forecasts/restock?lookback_days=30', $this->staffHeaders($owner));
+        $plan->assertOk()
+            ->assertJsonPath('items.0.suggested_supplier.source', 'cheapest')
+            ->assertJsonPath('items.0.suggested_supplier.id', $supplier->id);
+
+        $response = $this->postJson('/api/forecasts/restock/apply-preferred', [
+            'item_ids' => [$item->id],
+            'lookback_days' => 30,
+        ], $this->staffHeaders($owner));
+
+        $response->assertOk()
+            ->assertJsonPath('updated_count', 1)
+            ->assertJsonPath('updated.0.supplier_id', $supplier->id);
+
+        $this->assertSame($supplier->id, (int) $item->fresh()->preferred_supplier_id);
+
+        $again = $this->postJson('/api/forecasts/restock/apply-preferred', [
+            'item_ids' => [$item->id],
+            'lookback_days' => 30,
+        ], $this->staffHeaders($owner));
+
+        $again->assertOk()
+            ->assertJsonPath('updated_count', 0)
+            ->assertJsonPath('skipped.0.reason', 'not_cheapest_suggestion');
+    }
 }

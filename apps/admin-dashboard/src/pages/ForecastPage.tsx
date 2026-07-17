@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, getRestockPlan,
-  createPurchaseFromSuggest, applySuggestedReorderPoints, updateInventoryItem,
+  createPurchaseFromSuggest, applySuggestedReorderPoints, applySuggestedPreferredSuppliers,
+  updateInventoryItem,
   type ItemForecast, type RestockPlan, type RestockPlanItem,
 } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
@@ -66,6 +67,7 @@ export function ForecastPage() {
   const [restockFilter, setRestockFilter] = useState<RestockFilter>('due_soon');
   const [creatingPos, setCreatingPos] = useState(false);
   const [applyingRop, setApplyingRop] = useState(false);
+  const [applyingPreferred, setApplyingPreferred] = useState(false);
   const [restockToast, setRestockToast] = useState('');
   const [createdPoNumbers, setCreatedPoNumbers] = useState<string[]>([]);
   const [selectedRestockIds, setSelectedRestockIds] = useState<Set<number>>(new Set());
@@ -90,7 +92,11 @@ export function ForecastPage() {
     item.suggested_reorder_point != null
     && Math.abs(item.suggested_reorder_point - item.reorder_point) >= 0.001;
 
-  const canSelectRestock = (item: RestockPlanItem) => canDraftPo(item) || canApplyRop(item);
+  const canSetPreferred = (item: RestockPlanItem) =>
+    item.suggested_supplier?.source === 'cheapest' && !!item.suggested_supplier.id;
+
+  const canSelectRestock = (item: RestockPlanItem) =>
+    canDraftPo(item) || canApplyRop(item) || canSetPreferred(item);
 
   const defaultSelectDueSoon = (plan: RestockPlan) => {
     setSelectedRestockIds(new Set(plan.items.filter(readyForNewPo).map((i) => i.id)));
@@ -170,8 +176,11 @@ export function ForecastPage() {
   const selectedRestockItems = eligibleRestock.filter((i) => selectedRestockIds.has(i.id));
   const selectedWithOpenPo = selectedRestockItems.filter((i) => !!i.open_purchase);
   const selectedRopItems = (restock?.items ?? []).filter((i) => selectedRestockIds.has(i.id) && canApplyRop(i));
+  const cheapestRestock = restock?.items.filter(canSetPreferred) ?? [];
+  const selectedPreferredItems = cheapestRestock.filter((i) => selectedRestockIds.has(i.id));
   const allReadySelected = readyRestock.length > 0
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
+  const restockBusy = creatingPos || applyingRop || applyingPreferred || settingPreferredId != null;
 
   const filteredRestockItems = (() => {
     if (!restock) return [];
@@ -352,6 +361,47 @@ export function ForecastPage() {
       setError((e as Error).message);
     } finally {
       setApplyingRop(false);
+    }
+  };
+
+  const applyPreferredFromRestock = async () => {
+    const targets = selectedPreferredItems.length > 0 ? selectedPreferredItems : cheapestRestock;
+    if (targets.length === 0) {
+      setError('No items with a cheapest-supplier suggestion to promote.');
+      return;
+    }
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to set preferred suppliers.');
+      return;
+    }
+    const ok = window.confirm(
+      `Set preferred supplier for ${targets.length} item${targets.length === 1 ? '' : 's'} `
+      + `using each row’s cheapest suggestion?\n\n`
+      + 'Only rows without a preferred supplier (source: cheapest) are updated.',
+    );
+    if (!ok) return;
+
+    setApplyingPreferred(true);
+    setError('');
+    setRestockToast('');
+    setCreatedPoNumbers([]);
+    try {
+      const res = await applySuggestedPreferredSuppliers({
+        item_ids: targets.map((i) => i.id),
+        lookback_days: 30,
+        buy_lookback_days: 90,
+        lead_days: 3,
+        cover_days: 14,
+      });
+      setRestockToast(
+        `Set preferred on ${res.updated_count} item${res.updated_count === 1 ? '' : 's'}`
+        + (res.skipped_count > 0 ? ` · skipped ${res.skipped_count}` : ''),
+      );
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setApplyingPreferred(false);
     }
   };
 
@@ -553,11 +603,25 @@ export function ForecastPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {canManageInventory && cheapestRestock.length > 0 && (
+                    <Btn
+                      small
+                      variant="secondary"
+                      disabled={restockBusy}
+                      onClick={() => void applyPreferredFromRestock()}
+                    >
+                      {applyingPreferred
+                        ? 'Saving…'
+                        : selectedPreferredItems.length > 0
+                          ? `Set preferred (${selectedPreferredItems.length})`
+                          : `Set preferred (${cheapestRestock.length} cheapest)`}
+                    </Btn>
+                  )}
                   {selectableRestock.some(canApplyRop) && (
                     <Btn
                       small
                       variant="secondary"
-                      disabled={applyingRop || selectedRopItems.length === 0 || creatingPos}
+                      disabled={applyingRop || selectedRopItems.length === 0 || creatingPos || applyingPreferred}
                       onClick={() => void applyRopFromRestock()}
                     >
                       {applyingRop
@@ -568,7 +632,7 @@ export function ForecastPage() {
                   {eligibleRestock.length > 0 && (
                     <Btn
                       small
-                      disabled={creatingPos || applyingRop || selectedRestockItems.length === 0}
+                      disabled={restockBusy || selectedRestockItems.length === 0}
                       onClick={() => void createDraftPosFromRestock()}
                     >
                       {creatingPos
@@ -617,6 +681,9 @@ export function ForecastPage() {
                 )}
                 {(restock.totals.price_up ?? 0) > 0 && (
                   <StatCard label="Price up vs last" value={String(restock.totals.price_up)} accent="#b91c1c" />
+                )}
+                {cheapestRestock.length > 0 && (
+                  <StatCard label="No preferred yet" value={String(cheapestRestock.length)} accent="#6B5D4F" />
                 )}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
@@ -775,7 +842,7 @@ export function ForecastPage() {
                               {canManageInventory && item.suggested_supplier.source === 'cheapest' && (
                                 <button
                                   type="button"
-                                  disabled={settingPreferredId === item.id || creatingPos || applyingRop}
+                                  disabled={restockBusy}
                                   onClick={() => void setPreferredFromSuggestion(item)}
                                   style={{
                                     marginTop: 4, padding: '2px 8px', borderRadius: 6, border: '1px solid #E8E0D8',
@@ -822,6 +889,15 @@ export function ForecastPage() {
                       ))}
                     >
                       Select all with ROP change
+                    </Btn>
+                  )}
+                  {cheapestRestock.length > 0 && (
+                    <Btn
+                      small
+                      variant="ghost"
+                      onClick={() => setSelectedRestockIds(new Set(cheapestRestock.map((i) => i.id)))}
+                    >
+                      Select all {cheapestRestock.length} cheapest (no preferred)
                     </Btn>
                   )}
                 </div>
