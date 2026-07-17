@@ -75,12 +75,15 @@ export function SideDrawer({
           transform: open ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 0.18s ease",
           display: "flex", flexDirection: "column",
+          paddingTop: "env(safe-area-inset-top, 0px)",
           paddingLeft: "env(safe-area-inset-left, 0px)",
+          paddingRight: "env(safe-area-inset-right, 0px)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         <header style={{
           padding: "18px 20px", borderBottom: "1px solid #1E293B",
+          flexShrink: 0,
         }}>
           <div style={{ fontWeight: 800, fontSize: 16 }}>{cashierName ?? "Cashier"}</div>
           {shiftLabel && (
