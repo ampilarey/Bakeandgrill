@@ -89,7 +89,7 @@ This document is the **single source of truth** for Phase 1 (audit), Phase 2 (im
 - **C**: One availability engine; optional `available_now`, `unavailable_reason`, `available_from` (non-breaking).
 - **D**: Optional POS customer attachment; unified history when FK present.
 - **E**: Delivery hours, rider, capacity, zones in pipeline.
-- **F**: One safe order status transition path; preserve external compatibility.
+- **F**: One safe order status transition path; preserve external compatibility — **live**; see [`docs/WAVE_F_ORDER_STATUS.md`](../../docs/WAVE_F_ORDER_STATUS.md).
 
 ---
 
