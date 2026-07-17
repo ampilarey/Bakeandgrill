@@ -63,6 +63,10 @@ const TRANSLATIONS: Translations = {
   "account.link_terms": { en: "Terms & Conditions", dv: "Terms & Conditions" },
   "account.link_refund": { en: "Refund Policy", dv: "Refund Policy" },
   "account.prayer_times": { en: "Prayer times", dv: "Prayer times" },
+  "mode.pickup": { en: "Pickup", dv: "Pickup" },
+  "mode.delivery": { en: "Delivery", dv: "Delivery" },
+  "menu.categories": { en: "Categories", dv: "Categories" },
+  "menu.clear_filters": { en: "Clear filters", dv: "Clear filters" },
   "a11y.announcement": { en: "Site announcement", dv: "Site announcement" },
 };
 
