@@ -1,0 +1,32 @@
+---
+description: Always give TEST pull command after pushing to main
+alwaysApply: true
+---
+
+# Pull command after every push
+
+Whenever you successfully `git push` to `origin/main` (or tell the user a commit is pushed), **always end with a ready-to-paste TEST deploy command** for cPanel / sg-s2. Do not wait for the user to ask "Pull?".
+
+## Default: TEST only
+
+Never include production unless the user explicitly asked to deploy live / main site.
+
+## Choose full vs quick
+
+- **Full deploy** — new migrations, composer.lock / PHP deps, or other backend install steps:
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart && git log -1 --oneline
+```
+
+- **Quick pull** — admin UI / Blade / small PHP-only fixes with no new migrations:
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart && git log -1 --oneline
+```
+
+## Format
+
+After the push summary, add a short line like:
+
+> **TEST pull** (full/quick — one reason):
+
+then the fenced command block. Mention the expected tip commit hash when known.

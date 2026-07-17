@@ -190,6 +190,7 @@ export async function updatePackagingFeeSettings(
 
 export type OpsAlertsSettings = {
   delivery_delay_alert_sms: boolean;
+  inventory_reorder_alert_sms: boolean;
 };
 
 export async function getOpsAlertsSettings(): Promise<{ settings: OpsAlertsSettings }> {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Operations\Services;
 
 use App\Models\InventoryItem;
+use App\Models\InventoryReorderAlert;
 use App\Models\Item;
 use App\Models\KitchenProductionBatch;
 use App\Models\KitchenProductionVariance;
@@ -20,6 +21,7 @@ final class OpsAlertsService
     {
         return [
             'delivery_delay_alert_sms' => $this->bool('ops_delivery_delay_alert_sms', false),
+            'inventory_reorder_alert_sms' => $this->bool('ops_inventory_reorder_alert_sms', false),
         ];
     }
 
@@ -30,6 +32,14 @@ final class OpsAlertsService
             SiteSetting::set(
                 'ops_delivery_delay_alert_sms',
                 filter_var($input['delivery_delay_alert_sms'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
+            );
+            SiteSetting::bust();
+        }
+
+        if (array_key_exists('inventory_reorder_alert_sms', $input)) {
+            SiteSetting::set(
+                'ops_inventory_reorder_alert_sms',
+                filter_var($input['inventory_reorder_alert_sms'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
             );
             SiteSetting::bust();
         }
@@ -86,6 +96,17 @@ final class OpsAlertsService
                 'count' => $negativeInventory,
                 'message' => "{$negativeInventory} inventory SKU(s) with negative on-hand quantity",
                 'link' => '/inventory',
+            ];
+        }
+
+        $openReorderAlerts = InventoryReorderAlert::query()->whereNull('resolved_at')->count();
+        if ($openReorderAlerts > 0) {
+            $alerts[] = [
+                'type' => 'inventory_reorder',
+                'severity' => 'warning',
+                'count' => $openReorderAlerts,
+                'message' => "{$openReorderAlerts} inventory SKU(s) at or below reorder point",
+                'link' => '/forecasts?section=restock',
             ];
         }
 

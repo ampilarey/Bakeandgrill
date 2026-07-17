@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\SmsService;
 use App\Models\InventoryItem;
 use App\Models\InventoryReorderAlert;
+use App\Models\SiteSetting;
+use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class CheckReorderPoints extends Command
 {
@@ -14,8 +19,9 @@ class CheckReorderPoints extends Command
 
     protected $description = 'Create reorder alerts for raw inventory items at or below their reorder point';
 
-    public function handle(): int
+    public function handle(SmsService $sms): int
     {
+        $today = now()->startOfDay();
         $items = InventoryItem::query()
             ->where('is_active', true)
             ->whereNotNull('reorder_point')
@@ -23,6 +29,8 @@ class CheckReorderPoints extends Command
             ->get();
 
         $created = 0;
+        /** @var list<string> $notifyNames */
+        $notifyNames = [];
 
         foreach ($items as $item) {
             $existing = InventoryReorderAlert::query()
@@ -46,6 +54,12 @@ class CheckReorderPoints extends Command
             ]);
             $created++;
             $this->line("  Alert created: {$item->name} (stock: {$item->current_stock} {$item->unit}, reorder at: {$item->reorder_point})");
+
+            $snoozeUntil = $item->restock_snoozed_until;
+            $isSnoozed = $snoozeUntil !== null && $snoozeUntil->copy()->startOfDay()->gte($today);
+            if (! $isSnoozed) {
+                $notifyNames[] = (string) $item->name;
+            }
         }
 
         $resolved = 0;
@@ -68,6 +82,75 @@ class CheckReorderPoints extends Command
             $this->info("Created {$created} new reorder alert(s). {$items->count()} item(s) at or below reorder point. Resolved {$resolved}.");
         }
 
-        return 0;
+        if ($notifyNames !== []) {
+            $this->maybeSendReorderSms($sms, $notifyNames);
+        }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @param  list<string>  $itemNames
+     */
+    private function maybeSendReorderSms(SmsService $sms, array $itemNames): void
+    {
+        if (! filter_var(SiteSetting::get('ops_inventory_reorder_alert_sms', '0'), FILTER_VALIDATE_BOOLEAN)) {
+            return;
+        }
+
+        $count = count($itemNames);
+        $preview = collect($itemNames)->take(3)->implode(', ');
+        if ($count > 3) {
+            $preview .= ' +'.($count - 3).' more';
+        }
+
+        $message = "Bake & Grill: {$count} inventory item(s) hit reorder point"
+            .($preview !== '' ? " ({$preview})" : '')
+            .'. Check Forecasts → Restock.';
+
+        $phones = User::query()
+            ->where('is_active', true)
+            ->whereHas('role', fn ($q) => $q->whereIn('slug', ['owner', 'manager']))
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->pluck('phone')
+            ->map(fn ($p) => trim((string) $p))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($phones->isEmpty()) {
+            $fallback = trim((string) SiteSetting::get('business_phone', ''));
+            if ($fallback !== '') {
+                $phones = collect([$fallback]);
+            }
+        }
+
+        if ($phones->isEmpty()) {
+            $this->warn('Reorder SMS enabled but no owner/manager phone or business_phone set.');
+
+            return;
+        }
+
+        $dateKey = now()->toDateString();
+        foreach ($phones as $phone) {
+            try {
+                $sms->send(new SmsMessage(
+                    to: $phone,
+                    message: $message,
+                    type: 'system',
+                    referenceType: 'inventory_reorder_alert',
+                    referenceId: $dateKey,
+                    idempotencyKey: 'inventory-reorder-digest:'.$dateKey.':'.$phone,
+                ));
+            } catch (\Throwable $e) {
+                Log::error('Failed to send inventory reorder SMS', [
+                    'phone' => $phone,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $this->info('Reorder alert SMS sent to '.$phones->count().' recipient(s).');
     }
 }

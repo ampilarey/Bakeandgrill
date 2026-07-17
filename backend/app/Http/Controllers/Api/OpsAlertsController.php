@@ -20,6 +20,7 @@ class OpsAlertsController extends Controller
     {
         $validated = $request->validate([
             'delivery_delay_alert_sms' => 'sometimes|boolean',
+            'inventory_reorder_alert_sms' => 'sometimes|boolean',
         ]);
 
         return response()->json([

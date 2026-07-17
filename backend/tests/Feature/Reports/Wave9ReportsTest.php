@@ -80,10 +80,15 @@ class Wave9ReportsTest extends TestCase
         $owner = $this->makeOwner();
         $this->actingAs($owner);
 
-        $this->patchJson('/api/admin/ops/alerts', ['delivery_delay_alert_sms' => true])
+        $this->patchJson('/api/admin/ops/alerts', [
+            'delivery_delay_alert_sms' => true,
+            'inventory_reorder_alert_sms' => true,
+        ])
             ->assertOk()
-            ->assertJsonPath('settings.delivery_delay_alert_sms', true);
+            ->assertJsonPath('settings.delivery_delay_alert_sms', true)
+            ->assertJsonPath('settings.inventory_reorder_alert_sms', true);
 
         $this->assertSame('1', SiteSetting::get('ops_delivery_delay_alert_sms'));
+        $this->assertSame('1', SiteSetting::get('ops_inventory_reorder_alert_sms'));
     }
 }

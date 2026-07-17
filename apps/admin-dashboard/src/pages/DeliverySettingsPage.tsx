@@ -690,6 +690,38 @@ export default function DeliverySettingsPage() {
         <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9C8575', lineHeight: 1.5 }}>
           Uses the business phone from Website Settings. Runs hourly via scheduler; also appears in System Health alert inbox.
         </p>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#3D2B1F', marginTop: 14 }}>
+          <button
+            type="button"
+            style={S.toggleTrack(opsAlerts?.inventory_reorder_alert_sms ?? false)}
+            onClick={() => {
+              if (!opsAlerts || opsSaving) return;
+              void (async () => {
+                setOpsSaving(true);
+                try {
+                  const res = await updateOpsAlertsSettings({
+                    inventory_reorder_alert_sms: !opsAlerts.inventory_reorder_alert_sms,
+                  });
+                  setOpsAlerts(res.settings);
+                  showToast('Alert settings saved.');
+                } catch {
+                  showToast('Failed to save alert settings.', 'err');
+                } finally {
+                  setOpsSaving(false);
+                }
+              })();
+            }}
+            role="switch"
+            aria-checked={opsAlerts?.inventory_reorder_alert_sms ?? false}
+            aria-label="Inventory reorder SMS alert"
+          >
+            <span style={S.toggleThumb(opsAlerts?.inventory_reorder_alert_sms ?? false)} />
+          </button>
+          SMS owners/managers when inventory hits reorder point
+        </label>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9C8575', lineHeight: 1.5 }}>
+          Daily digest when new reorder alerts are created (skips snoozed SKUs). Falls back to business phone if staff have no phone.
+        </p>
       </div>
 
       <div style={{
