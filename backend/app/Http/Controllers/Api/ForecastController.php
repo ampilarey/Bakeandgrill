@@ -254,6 +254,29 @@ class ForecastController extends Controller
         ));
     }
 
+    /**
+     * Opt-in: write suggested reorder points from restock plan onto inventory items.
+     */
+    public function applySuggestedReorderPoints(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'item_ids' => ['required', 'array', 'min:1'],
+            'item_ids.*' => ['integer', 'exists:inventory_items,id'],
+            'lookback_days' => ['nullable', 'integer', 'min:7', 'max:180'],
+            'buy_lookback_days' => ['nullable', 'integer', 'min:30', 'max:365'],
+            'lead_days' => ['nullable', 'integer', 'min:0', 'max:30'],
+            'cover_days' => ['nullable', 'integer', 'min:1', 'max:90'],
+        ]);
+
+        return response()->json($this->restock->applySuggestedReorderPoints(
+            $validated['item_ids'],
+            (int) ($validated['lookback_days'] ?? 30),
+            (int) ($validated['buy_lookback_days'] ?? 90),
+            (int) ($validated['lead_days'] ?? 3),
+            (int) ($validated['cover_days'] ?? 14),
+        ));
+    }
+
     // ──────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────

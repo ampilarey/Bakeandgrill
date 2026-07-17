@@ -771,6 +771,23 @@ export async function getRestockPlan(params: {
   return req(`/forecasts/restock${qs ? `?${qs}` : ''}`);
 }
 
+export type ApplySuggestedRopResult = {
+  updated_count: number;
+  skipped_count: number;
+  updated: { id: number; name: string; from: number; to: number }[];
+  skipped: { id: number; reason: string }[];
+};
+
+export async function applySuggestedReorderPoints(data: {
+  item_ids: number[];
+  lookback_days?: number;
+  buy_lookback_days?: number;
+  lead_days?: number;
+  cover_days?: number;
+}): Promise<ApplySuggestedRopResult> {
+  return req('/forecasts/restock/apply-rop', { method: 'POST', body: JSON.stringify(data) });
+}
+
 export type DeliveryZoneReportRow = {
   zone: string;
   orders_count: number;

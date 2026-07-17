@@ -179,4 +179,68 @@ class RestockIntelligenceTest extends TestCase
     {
         $this->getJson('/api/forecasts/restock')->assertStatus(401);
     }
+
+    public function test_apply_suggested_rop_updates_inventory(): void
+    {
+        $owner = $this->makeOwner();
+
+        $item = InventoryItem::create([
+            'name' => 'Butter',
+            'sku' => 'BTR-ROP',
+            'unit' => 'kg',
+            'current_stock' => 8,
+            'reorder_point' => 1,
+            'unit_cost' => 10,
+            'is_active' => true,
+        ]);
+
+        // ~2 kg/day → suggested ROP = 2 * lead(3) * 1.5 = 9
+        StockMovement::create([
+            'idempotency_key' => 'test-deduct-butter-rop',
+            'inventory_item_id' => $item->id,
+            'user_id' => $owner->id,
+            'type' => 'deduction',
+            'quantity' => -60,
+            'balance_after' => 8,
+            'unit_cost' => 10,
+            'reference_type' => 'order',
+            'reference_id' => 9,
+            'notes' => 'test',
+        ]);
+
+        $plan = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30&lead_days=3',
+            $this->staffHeaders($owner),
+        );
+        $plan->assertOk();
+        $suggested = (float) $plan->json('items.0.suggested_reorder_point');
+        $this->assertGreaterThan(1, $suggested);
+
+        $response = $this->postJson('/api/forecasts/restock/apply-rop', [
+            'item_ids' => [$item->id],
+            'lookback_days' => 30,
+            'lead_days' => 3,
+        ], $this->staffHeaders($owner));
+
+        $response->assertOk()
+            ->assertJsonPath('updated_count', 1)
+            ->assertJsonPath('updated.0.id', $item->id);
+
+        $this->assertEqualsWithDelta(
+            $suggested,
+            (float) $item->fresh()->reorder_point,
+            0.01,
+        );
+
+        // Second apply should skip as unchanged
+        $again = $this->postJson('/api/forecasts/restock/apply-rop', [
+            'item_ids' => [$item->id],
+            'lookback_days' => 30,
+            'lead_days' => 3,
+        ], $this->staffHeaders($owner));
+
+        $again->assertOk()
+            ->assertJsonPath('updated_count', 0)
+            ->assertJsonPath('skipped.0.reason', 'unchanged');
+    }
 }

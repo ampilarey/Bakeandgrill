@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, getRestockPlan,
-  createPurchaseFromSuggest,
+  createPurchaseFromSuggest, applySuggestedReorderPoints,
   type ItemForecast, type RestockPlan, type RestockPlanItem,
 } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
@@ -45,6 +45,7 @@ export function ForecastPage() {
   const [to, setTo]             = useState(today());
   const [showAllRestock, setShowAllRestock] = useState(false);
   const [creatingPos, setCreatingPos] = useState(false);
+  const [applyingRop, setApplyingRop] = useState(false);
   const [restockToast, setRestockToast] = useState('');
   const [selectedRestockIds, setSelectedRestockIds] = useState<Set<number>>(new Set());
 
@@ -60,6 +61,12 @@ export function ForecastPage() {
     && item.suggested_order_qty > 0
     && !!item.suggested_supplier?.id
     && (item.unit_cost ?? item.suggested_supplier?.price ?? 0) > 0;
+
+  const canApplyRop = (item: RestockPlanItem) =>
+    item.suggested_reorder_point != null
+    && Math.abs(item.suggested_reorder_point - item.reorder_point) >= 0.001;
+
+  const canSelectRestock = (item: RestockPlanItem) => canDraftPo(item) || canApplyRop(item);
 
   const defaultSelectDueSoon = (plan: RestockPlan) => {
     setSelectedRestockIds(new Set(plan.items.filter(canDraftPo).map((i) => i.id)));
@@ -114,7 +121,9 @@ export function ForecastPage() {
   const maxRevenue = trends ? Math.max(...(trends.data ?? []).map(d => d.revenue), 1) : 1;
 
   const eligibleRestock = restock?.items.filter(canDraftPo) ?? [];
+  const selectableRestock = restock?.items.filter(canSelectRestock) ?? [];
   const selectedRestockItems = eligibleRestock.filter((i) => selectedRestockIds.has(i.id));
+  const selectedRopItems = (restock?.items ?? []).filter((i) => selectedRestockIds.has(i.id) && canApplyRop(i));
   const allEligibleSelected = eligibleRestock.length > 0
     && eligibleRestock.every((i) => selectedRestockIds.has(i.id));
 
@@ -192,6 +201,40 @@ export function ForecastPage() {
       setError((e as Error).message);
     } finally {
       setCreatingPos(false);
+    }
+  };
+
+  const applyRopFromRestock = async () => {
+    if (selectedRopItems.length === 0) {
+      setError('Select at least one item with a suggested reorder point that differs from the current ROP.');
+      return;
+    }
+    const ok = window.confirm(
+      `Apply suggested reorder points to ${selectedRopItems.length} item${selectedRopItems.length === 1 ? '' : 's'}?\n\n`
+      + 'This updates inventory reorder points. You can edit them later on the Inventory page.',
+    );
+    if (!ok) return;
+
+    setApplyingRop(true);
+    setError('');
+    setRestockToast('');
+    try {
+      const res = await applySuggestedReorderPoints({
+        item_ids: selectedRopItems.map((i) => i.id),
+        lookback_days: 30,
+        buy_lookback_days: 90,
+        lead_days: 3,
+        cover_days: 14,
+      });
+      setRestockToast(
+        `Updated ROP on ${res.updated_count} item${res.updated_count === 1 ? '' : 's'}`
+        + (res.skipped_count > 0 ? ` · skipped ${res.skipped_count}` : ''),
+      );
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setApplyingRop(false);
     }
   };
 
@@ -363,14 +406,26 @@ export function ForecastPage() {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>Restock Plan</div>
                   <div style={{ fontSize: 13, color: '#6B5D4F', marginTop: 4 }}>
-                    Combines usage runway, buy cadence, and reorder points. Suggested ROP is advisory only — not written to inventory.
+                    Combines usage runway, buy cadence, and reorder points. Suggested ROP stays advisory until you apply it.
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {selectableRestock.some(canApplyRop) && (
+                    <Btn
+                      small
+                      variant="secondary"
+                      disabled={applyingRop || selectedRopItems.length === 0 || creatingPos}
+                      onClick={() => void applyRopFromRestock()}
+                    >
+                      {applyingRop
+                        ? 'Applying…'
+                        : `Apply suggested ROPs (${selectedRopItems.length})`}
+                    </Btn>
+                  )}
                   {eligibleRestock.length > 0 && (
                     <Btn
                       small
-                      disabled={creatingPos || selectedRestockItems.length === 0}
+                      disabled={creatingPos || applyingRop || selectedRestockItems.length === 0}
                       onClick={() => void createDraftPosFromRestock()}
                     >
                       {creatingPos
@@ -390,6 +445,8 @@ export function ForecastPage() {
                 }}>
                   {restockToast}{' '}
                   <Link to="/purchase-orders" style={{ color: '#047857' }}>Review drafts →</Link>
+                  {' · '}
+                  <Link to="/inventory" style={{ color: '#047857' }}>Inventory →</Link>
                 </div>
               )}
               {selectedRestockItems.length > 0 && (
@@ -397,10 +454,13 @@ export function ForecastPage() {
                   marginBottom: 12, padding: '10px 12px', borderRadius: 8,
                   background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: 13, color: '#9a3412',
                 }}>
-                  <strong>{selectedRestockItems.length}</strong> selected ·{' '}
+                  <strong>{selectedRestockItems.length}</strong> for draft POs ·{' '}
                   <strong>{restockPreviewBySupplier.length}</strong> draft PO
                   {restockPreviewBySupplier.length === 1 ? '' : 's'} · est.{' '}
                   <strong>MVR {restockPreviewTotal.toFixed(2)}</strong>
+                  {selectedRopItems.length > 0 && (
+                    <> · <strong>{selectedRopItems.length}</strong> with ROP change</>
+                  )}
                   {restockPreviewBySupplier.length > 0 && (
                     <div style={{ marginTop: 6, fontSize: 12, color: '#c2410c' }}>
                       {restockPreviewBySupplier.map((g) => (
@@ -433,7 +493,7 @@ export function ForecastPage() {
                           />
                         ) : null}
                       </th>
-                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Order qty', 'Supplier', 'Why'].map((h) => (
+                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Order qty', 'ROP', 'Supplier', 'Why'].map((h) => (
                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
@@ -442,7 +502,7 @@ export function ForecastPage() {
                     {(showAllRestock ? restock.items : restock.items.filter((i) => i.due_soon).slice(0, 40)).map((item) => (
                       <tr key={item.id} style={{ borderBottom: '1px solid #F8F6F3', background: item.due_soon ? '#FFFBEB' : undefined }}>
                         <td style={{ padding: '8px 12px' }}>
-                          {canDraftPo(item) ? (
+                          {canSelectRestock(item) ? (
                             <input
                               type="checkbox"
                               checked={selectedRestockIds.has(item.id)}
@@ -481,6 +541,21 @@ export function ForecastPage() {
                         <td style={{ padding: '8px 12px', fontWeight: 700, color: '#16a34a' }}>
                           {item.suggested_order_qty} {item.unit}
                         </td>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F' }}>
+                          {item.suggested_reorder_point != null ? (
+                            <>
+                              <div>{item.reorder_point}</div>
+                              <div style={{
+                                fontWeight: 700,
+                                color: canApplyRop(item) ? '#c2410c' : '#16a34a',
+                              }}>
+                                → {item.suggested_reorder_point}
+                              </div>
+                            </>
+                          ) : (
+                            <>{item.reorder_point || '—'}</>
+                          )}
+                        </td>
                         <td style={{ padding: '8px 12px', color: '#6B5D4F', fontSize: 12 }}>
                           {item.suggested_supplier ? (
                             <>
@@ -498,10 +573,10 @@ export function ForecastPage() {
                       </tr>
                     ))}
                     {restock.items.length === 0 && (
-                      <tr><td colSpan={9} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
+                      <tr><td colSpan={10} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
                     )}
                     {!showAllRestock && restock.items.filter((i) => i.due_soon).length === 0 && restock.items.length > 0 && (
-                      <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — show all tracked items below.</td></tr>
+                      <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — show all tracked items below.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -513,7 +588,18 @@ export function ForecastPage() {
                   </Btn>
                   {eligibleRestock.length > 0 && (
                     <Btn small variant="ghost" onClick={toggleSelectAllEligible}>
-                      {allEligibleSelected ? 'Clear selection' : `Select all ${eligibleRestock.length} ready`}
+                      {allEligibleSelected ? 'Clear selection' : `Select all ${eligibleRestock.length} ready for PO`}
+                    </Btn>
+                  )}
+                  {selectableRestock.some(canApplyRop) && (
+                    <Btn
+                      small
+                      variant="ghost"
+                      onClick={() => setSelectedRestockIds(new Set(
+                        restock.items.filter(canApplyRop).map((i) => i.id),
+                      ))}
+                    >
+                      Select all with ROP change
                     </Btn>
                   )}
                 </div>

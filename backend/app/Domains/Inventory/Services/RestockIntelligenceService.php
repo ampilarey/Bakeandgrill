@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Combines usage runway, buy frequency, and ROP to suggest restock timing/qty.
- * Does not mutate inventory_items.reorder_point — suggestions only.
+ * Suggested ROP is advisory until applySuggestedReorderPoints() is called explicitly.
  */
 final class RestockIntelligenceService
 {
@@ -167,6 +167,85 @@ final class RestockIntelligenceService
                 'below_rop' => $belowRop,
             ],
             'items' => $rows,
+        ];
+    }
+
+    /**
+     * Write suggested reorder points onto inventory items (explicit opt-in).
+     *
+     * @param  list<int>  $itemIds
+     * @return array{
+     *     updated_count: int,
+     *     skipped_count: int,
+     *     updated: list<array{id: int, name: string, from: float, to: float}>,
+     *     skipped: list<array{id: int, reason: string}>
+     * }
+     */
+    public function applySuggestedReorderPoints(
+        array $itemIds,
+        int $lookbackDays = 30,
+        int $buyLookbackDays = 90,
+        int $leadDays = 3,
+        int $coverDays = 14,
+    ): array {
+        $itemIds = array_values(array_unique(array_map('intval', $itemIds)));
+        $plan = $this->restockPlan($lookbackDays, $buyLookbackDays, $leadDays, $coverDays);
+        /** @var array<int, array<string, mixed>> $byId */
+        $byId = [];
+        foreach ($plan['items'] as $row) {
+            $byId[(int) $row['id']] = $row;
+        }
+
+        $updated = [];
+        $skipped = [];
+
+        DB::transaction(function () use ($itemIds, $byId, &$updated, &$skipped): void {
+            foreach ($itemIds as $id) {
+                $row = $byId[$id] ?? null;
+                if ($row === null || $row['suggested_reorder_point'] === null) {
+                    $skipped[] = ['id' => $id, 'reason' => 'no_suggestion'];
+
+                    continue;
+                }
+
+                $newRop = round((float) $row['suggested_reorder_point'], 2);
+                if ($newRop < 0) {
+                    $skipped[] = ['id' => $id, 'reason' => 'invalid_suggestion'];
+
+                    continue;
+                }
+
+                $item = InventoryItem::query()->lockForUpdate()->find($id);
+                if ($item === null) {
+                    $skipped[] = ['id' => $id, 'reason' => 'not_found'];
+
+                    continue;
+                }
+
+                $oldRop = round((float) ($item->reorder_point ?? 0), 2);
+                if (abs($oldRop - $newRop) < 0.001) {
+                    $skipped[] = ['id' => $id, 'reason' => 'unchanged'];
+
+                    continue;
+                }
+
+                $item->reorder_point = $newRop;
+                $item->save();
+
+                $updated[] = [
+                    'id' => $id,
+                    'name' => (string) $item->name,
+                    'from' => $oldRop,
+                    'to' => $newRop,
+                ];
+            }
+        });
+
+        return [
+            'updated_count' => count($updated),
+            'skipped_count' => count($skipped),
+            'updated' => $updated,
+            'skipped' => $skipped,
         ];
     }
 
