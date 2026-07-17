@@ -14,14 +14,49 @@ export type CartEntry = {
   originalPrice?: number | null;
 };
 
+export type UpdateEntryInput = {
+  quantity: number;
+  modifiers?: Modifier[];
+  variant?: Variant | null;
+  /** Defaults to the line's existing item. */
+  item?: Item;
+};
+
 interface CartContextValue {
   cart: CartEntry[];
   cartTotal: number;
   addItem: (item: Item, quantity: number, modifiers?: Modifier[], variant?: Variant | null) => void;
   updateQuantity: (index: number, quantity: number) => void;
+  /**
+   * Edit a cart line in place (Item sheet edit mode). Merges into an identical
+   * existing line when item+variant+modifiers match another index.
+   */
+  updateEntry: (index: number, data: UpdateEntryInput) => void;
   clearCart: () => void;
   pruneCartToAllowedItemIds: (allowedIds: Set<number>) => void;
   refreshPricesFromMenu: (items: Item[]) => void;
+}
+
+/** Stable key for merge identity (item + variant + sorted modifier ids). */
+export function cartLineKey(
+  itemId: number,
+  variantId: number | null | undefined,
+  modifiers: Modifier[],
+): string {
+  const modKey = [...modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',');
+  return `${itemId}|${variantId ?? ''}|${modKey}`;
+}
+
+function priceSnapshot(item: Item, variant?: Variant | null) {
+  const unitPrice = variant
+    ? Number(variant.effective_price ?? variant.price)
+    : Number(item.special?.effective_price ?? item.base_price);
+  const originalPrice = variant
+    ? (variant.effective_price != null && variant.original_price != null
+      ? Number(variant.original_price)
+      : null)
+    : (item.special?.original_price != null ? Number(item.special.original_price) : null);
+  return { unitPrice, originalPrice };
 }
 
 const CART_VERSION = 4;
@@ -101,14 +136,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = useCallback((item: Item, quantity: number, modifiers: Modifier[] = [], variant?: Variant | null) => {
     if (quantity < 1) return;
     setCart((prev) => {
-      const modKey = [...modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',');
       const variantId = variant?.id ?? null;
-
+      const key = cartLineKey(item.id, variantId, modifiers);
       const idx = prev.findIndex(
-        (e) =>
-          e.item.id === item.id &&
-          (e.variantId ?? null) === variantId &&
-          [...e.modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',') === modKey,
+        (e) => cartLineKey(e.item.id, e.variantId, e.modifiers) === key,
       );
 
       if (idx >= 0) {
@@ -117,12 +148,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return next;
       }
 
-      const unitPrice = variant
-        ? Number(variant.effective_price ?? variant.price)
-        : Number(item.special?.effective_price ?? item.base_price);
-      const originalPrice = variant
-        ? (variant.effective_price != null && variant.original_price != null ? Number(variant.original_price) : null)
-        : (item.special?.original_price != null ? Number(item.special.original_price) : null);
+      const { unitPrice, originalPrice } = priceSnapshot(item, variant);
 
       return [
         ...prev,
@@ -144,6 +170,70 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (quantity <= 0) return prev.filter((_, i) => i !== index);
       const next = [...prev];
       next[index] = { ...next[index], quantity };
+      return next;
+    });
+  }, []);
+
+  const updateEntry = useCallback((index: number, data: UpdateEntryInput) => {
+    if (data.quantity < 1) {
+      setCart((prev) => prev.filter((_, i) => i !== index));
+      return;
+    }
+    setCart((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const current = prev[index];
+      const item = data.item ?? current.item;
+      const modifiers = data.modifiers ?? current.modifiers;
+      const variant =
+        data.variant === undefined
+          ? (current.variantId != null
+            ? ({
+                id: current.variantId,
+                name: current.variantName ?? '',
+                price: current.variantPrice ?? item.base_price,
+                effective_price: current.variantPrice ?? item.base_price,
+                original_price: current.originalPrice ?? undefined,
+                is_active: true,
+              } as Variant)
+            : null)
+          : data.variant;
+      const variantId = variant?.id ?? null;
+      const { unitPrice, originalPrice } = priceSnapshot(item, variant);
+      const key = cartLineKey(item.id, variantId, modifiers);
+
+      const mergeIdx = prev.findIndex(
+        (e, i) => i !== index && cartLineKey(e.item.id, e.variantId, e.modifiers) === key,
+      );
+
+      const updated: CartEntry = {
+        item,
+        quantity: data.quantity,
+        modifiers,
+        variantId,
+        variantName: variant?.name ?? null,
+        variantPrice: unitPrice,
+        originalPrice,
+      };
+
+      if (mergeIdx >= 0) {
+        const next = prev.filter((_, i) => i !== index);
+        const adjustedMerge = mergeIdx > index ? mergeIdx - 1 : mergeIdx;
+        next[adjustedMerge] = {
+          ...next[adjustedMerge],
+          quantity: next[adjustedMerge].quantity + data.quantity,
+          // Keep freshest price/item snapshot on the surviving line
+          item,
+          variantId,
+          variantName: variant?.name ?? null,
+          variantPrice: unitPrice,
+          originalPrice,
+          modifiers,
+        };
+        return next;
+      }
+
+      const next = [...prev];
+      next[index] = updated;
       return next;
     });
   }, []);
@@ -193,7 +283,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <CartContext.Provider value={{ cart, cartTotal, addItem, updateQuantity, clearCart, pruneCartToAllowedItemIds, refreshPricesFromMenu }}>
+    <CartContext.Provider value={{ cart, cartTotal, addItem, updateQuantity, updateEntry, clearCart, pruneCartToAllowedItemIds, refreshPricesFromMenu }}>
       {children}
     </CartContext.Provider>
   );
