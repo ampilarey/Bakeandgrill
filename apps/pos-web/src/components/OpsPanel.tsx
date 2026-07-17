@@ -107,7 +107,8 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onReq
           margin: "8px 4px 0", padding: "0 8px",
           fontSize: 11, lineHeight: 1.45, color: C.muted,
         }}>
-          Suppliers, Reports, and SMS marketing are in the <strong style={{ color: C.text }}>Admin dashboard</strong>.
+          Suppliers, full Reports, and SMS marketing are in the <strong style={{ color: C.text }}>Admin dashboard</strong>.
+          Day sales (if you have access) is under <strong style={{ color: C.text }}>Sales report</strong> in the menu.
         </p>
       </nav>
 

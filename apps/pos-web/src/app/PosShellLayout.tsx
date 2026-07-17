@@ -12,6 +12,7 @@ import { KitchenReceivingPanel } from '../components/KitchenReceivingPanel';
 import { ReceiptsPanel } from '../components/ReceiptsPanel';
 import { ShiftPanel } from '../components/ShiftPanel';
 import { ShiftHistoryPanel } from '../components/ShiftHistoryPanel';
+import { SalesReportPanel } from '../components/SalesReportPanel';
 import { PosPreferencesModal } from '../components/PosPreferencesModal';
 import { SideDrawer } from '../components/SideDrawer';
 import { ChargeOverlay } from '../components/ChargeOverlay';
@@ -34,7 +35,7 @@ export function PosShellLayout() {
   const {
     isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, deviceId,
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
-    canViewActiveOrders, canViewShiftHistory, canAccessOps, canVoidOrders,
+    canViewActiveOrders, canViewShiftHistory, canViewReports, canAccessOps, canVoidOrders,
     canManageOrderStatus, canSendBill, canSendPayLink, canRefund, canCreatePurchaseRequest,
     canLockScreen, canPayCash,
     canPayCard, canPaySplit, canUseCredit, canUseWallet, canApplyDiscount, canUseRewards,
@@ -466,6 +467,12 @@ export function PosShellLayout() {
 
         {pane === 'shift_history' && (
           <ShiftHistoryPanel onClose={() => setPane(canAccessOps ? "ops" : "shift")} />
+        )}
+
+        {pane === 'sales_report' && canViewReports && (
+          <SalesReportPanel
+            onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift")}
+          />
         )}
 
         {pane === 'ops' && (

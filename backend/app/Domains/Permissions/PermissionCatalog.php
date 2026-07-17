@@ -318,7 +318,8 @@ final class PermissionCatalog
             'loyalty.view', 'loyalty.redeem',
             'promotions.view', 'promotions.discounts', 'promotions.apply_promo_code', 'promotions.gift_cards',
             'shifts.view_own_history',
-            'reports.view', 'reports.basic',
+            // reports.view / reports.basic intentionally omitted — owner/manager
+            // defaults only; grant per-user when a cashier needs POS/Admin reports.
             'dashboard.view',
             'inventory.view', 'suppliers.view', 'delivery.view', 'reservations.view',
             'menu.view',

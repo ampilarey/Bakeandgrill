@@ -4,6 +4,7 @@ export type Pane =
   | "shift"
   | "open_tickets"
   | "shift_history"
+  | "sales_report"
   | "ops"
   | "my_requests"
   | "buying_list"
