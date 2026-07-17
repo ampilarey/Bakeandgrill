@@ -6,6 +6,7 @@ export type Pane =
   | "shift_history"
   | "sales_report"
   | "ops"
+  | "expenses"
   | "my_requests"
   | "buying_list"
   | "kitchen_receiving";

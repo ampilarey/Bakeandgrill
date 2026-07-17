@@ -67,6 +67,8 @@ export function usePosApp() {
   const canViewReports = hasPosPermission(staffPermissions, "reports.view")
     || hasPosPermission(staffPermissions, "reports.basic")
     || hasPosPermission(staffPermissions, "reports.sales");
+  /** Owner + anyone granted finance.expenses (same gate as Admin → Expenses). */
+  const canManageExpenses = hasPosPermission(staffPermissions, "finance.expenses");
   const canCashInOut = hasPosPermission(staffPermissions, "payments.cash_in_out");
   const canLockScreen = hasPosPermission(staffPermissions, "pos.lock_screen");
   const canOpsInventory = hasPosPermission(staffPermissions, "inventory.manage");
@@ -1018,6 +1020,7 @@ export function usePosApp() {
     if (canViewShiftHistory) main.push({ id: "shift_history", label: "Shift History", icon: "📚", group: "main" });
     if (canViewReports) main.push({ id: "sales_report", label: "Sales reports", icon: "📊", group: "main" });
     if (canAccessOps) main.push({ id: "ops", label: "Operations", icon: "🛠", group: "main" });
+    if (canManageExpenses) main.push({ id: "expenses", label: "Expenses", icon: "💸", group: "main" });
     if (canCreatePurchaseRequest) main.push({ id: "request_item", label: "Request items", icon: "🛒", group: "main" });
     if (canViewOwnPurchaseRequests) main.push({ id: "my_requests", label: "My requests", icon: "📋", group: "main" });
     if (canBuyAssigned) main.push({ id: "buying_list", label: "Buying list", icon: "✅", group: "main" });
@@ -1040,7 +1043,7 @@ export function usePosApp() {
     return [...main, ...user];
   }, [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports, canAccessOps,
-    canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
+    canManageExpenses, canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
     canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount, openTicketsCritical,
   ]);
 
@@ -1052,12 +1055,13 @@ export function usePosApp() {
     shift_history: canViewShiftHistory,
     sales_report: canViewReports,
     ops: canAccessOps,
+    expenses: canManageExpenses,
     my_requests: canViewOwnPurchaseRequests,
     buying_list: canBuyAssigned,
     kitchen_receiving: canKitchenReceive && shiftOpen,
   }), [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports,
-    canAccessOps, canOpenShift, canCloseShift, shiftOpen,
+    canAccessOps, canManageExpenses, canOpenShift, canCloseShift, shiftOpen,
     canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
   ]);
 
@@ -1070,7 +1074,8 @@ export function usePosApp() {
   return {
     isLoggedIn, username, setUsername, pin, setPin, cashierName, staffPermissions,
     canVoidOrders, canOpenShift, canCloseShift, canRingSales, canHoldResume,
-    canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canCashInOut, canLockScreen,
+    canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
+    canCashInOut, canLockScreen,
     canOpsInventory, canOpsPreparedStock,
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
     canUseRewards, canRefund, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,

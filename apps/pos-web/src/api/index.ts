@@ -5,6 +5,7 @@ export type { SalesSummary } from "@shared/types";
 
 export * from "./auth";
 export * from "./customers";
+export * from "./expenses";
 export * from "./gst";
 export * from "./kitchen";
 export * from "./loyalty";
