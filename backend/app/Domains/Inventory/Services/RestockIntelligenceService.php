@@ -21,7 +21,7 @@ final class RestockIntelligenceService
      *     buy_lookback_days: int,
      *     lead_days: int,
      *     cover_days: int,
-     *     totals: array{items_count: int, due_soon: int, below_rop: int},
+     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int},
      *     items: list<array<string, mixed>>
      * }
      */
@@ -46,11 +46,14 @@ final class RestockIntelligenceService
             ->orderBy('name')
             ->get();
 
-        $cheapestByItem = $this->cheapestSupplierByItem($items->pluck('id')->all());
+        $itemIds = $items->pluck('id')->all();
+        $cheapestByItem = $this->cheapestSupplierByItem($itemIds);
+        $openPoByItem = $this->openPurchaseByItem($itemIds);
 
         $rows = [];
         $dueSoon = 0;
         $belowRop = 0;
+        $withOpenPo = 0;
 
         foreach ($items as $item) {
             $stock = (float) ($item->current_stock ?? 0);
@@ -121,6 +124,10 @@ final class RestockIntelligenceService
             }
 
             $unitCost = (float) ($supplier['price'] ?? $item->last_purchase_price ?? $item->unit_cost ?? 0);
+            $openPurchase = $openPoByItem[$item->id] ?? null;
+            if ($openPurchase !== null) {
+                $withOpenPo++;
+            }
 
             $rows[] = [
                 'id' => $item->id,
@@ -141,6 +148,7 @@ final class RestockIntelligenceService
                 'due_soon' => $dueSoonFlag,
                 'unit_cost' => $unitCost > 0 ? round($unitCost, 4) : null,
                 'suggested_supplier' => $supplier,
+                'open_purchase' => $openPurchase,
             ];
         }
 
@@ -165,9 +173,53 @@ final class RestockIntelligenceService
                 'items_count' => count($rows),
                 'due_soon' => $dueSoon,
                 'below_rop' => $belowRop,
+                'with_open_po' => $withOpenPo,
             ],
             'items' => $rows,
         ];
+    }
+
+    /**
+     * Latest open (draft/ordered/partial) PO line per inventory item, if any.
+     *
+     * @param  list<int|string>  $itemIds
+     * @return array<int, array{id: int, purchase_number: string, status: string, quantity: float}>
+     */
+    private function openPurchaseByItem(array $itemIds): array
+    {
+        if ($itemIds === []) {
+            return [];
+        }
+
+        $rows = DB::table('purchase_items')
+            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+            ->whereIn('purchase_items.inventory_item_id', $itemIds)
+            ->whereIn('purchases.status', ['draft', 'ordered', 'partial'])
+            ->orderByDesc('purchases.id')
+            ->select([
+                'purchase_items.inventory_item_id',
+                'purchases.id as purchase_id',
+                'purchases.purchase_number',
+                'purchases.status',
+                'purchase_items.quantity',
+            ])
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $itemId = (int) $row->inventory_item_id;
+            if (isset($out[$itemId])) {
+                continue; // already have newest PO for this item
+            }
+            $out[$itemId] = [
+                'id' => (int) $row->purchase_id,
+                'purchase_number' => (string) $row->purchase_number,
+                'status' => (string) $row->status,
+                'quantity' => (float) $row->quantity,
+            ];
+        }
+
+        return $out;
     }
 
     /**

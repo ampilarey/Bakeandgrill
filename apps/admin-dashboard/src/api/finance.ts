@@ -726,6 +726,13 @@ export type RestockBuyFrequency = {
   last_buy_qty: number | null;
 };
 
+export type RestockOpenPurchase = {
+  id: number;
+  purchase_number: string;
+  status: string;
+  quantity: number;
+};
+
 export type RestockPlanItem = {
   id: number;
   name: string;
@@ -745,6 +752,7 @@ export type RestockPlanItem = {
   due_soon: boolean;
   unit_cost: number | null;
   suggested_supplier: { id: number; name: string; price: number; source?: string } | null;
+  open_purchase: RestockOpenPurchase | null;
 };
 
 export type RestockPlan = {
@@ -752,7 +760,7 @@ export type RestockPlan = {
   buy_lookback_days: number;
   lead_days: number;
   cover_days: number;
-  totals: { items_count: number; due_soon: number; below_rop: number };
+  totals: { items_count: number; due_soon: number; below_rop: number; with_open_po?: number };
   items: RestockPlanItem[];
 };
 

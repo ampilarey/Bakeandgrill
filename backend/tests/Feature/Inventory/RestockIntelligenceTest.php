@@ -180,6 +180,63 @@ class RestockIntelligenceTest extends TestCase
         $this->getJson('/api/forecasts/restock')->assertStatus(401);
     }
 
+    public function test_restock_plan_flags_open_purchase_orders(): void
+    {
+        $owner = $this->makeOwner();
+        $supplier = Supplier::create(['name' => 'Mill Co', 'is_active' => true]);
+        $flour = InventoryItem::create([
+            'name' => 'Flour Open',
+            'sku' => 'FLR-OPEN',
+            'unit' => 'kg',
+            'current_stock' => 5,
+            'reorder_point' => 20,
+            'unit_cost' => 4,
+            'is_active' => true,
+        ]);
+
+        StockMovement::create([
+            'idempotency_key' => 'test-deduct-flour-open',
+            'inventory_item_id' => $flour->id,
+            'user_id' => $owner->id,
+            'type' => 'deduction',
+            'quantity' => -40,
+            'balance_after' => 5,
+            'unit_cost' => 4,
+            'reference_type' => 'order',
+            'reference_id' => 11,
+            'notes' => 'test',
+        ]);
+
+        $po = Purchase::create([
+            'purchase_number' => 'PO-OPEN-1',
+            'supplier_id' => $supplier->id,
+            'user_id' => $owner->id,
+            'status' => 'draft',
+            'subtotal' => 160,
+            'tax_amount' => 0,
+            'total' => 160,
+            'purchase_date' => now()->toDateString(),
+        ]);
+        PurchaseItem::create([
+            'purchase_id' => $po->id,
+            'inventory_item_id' => $flour->id,
+            'quantity' => 40,
+            'unit_cost' => 4,
+            'total_cost' => 160,
+        ]);
+
+        $response = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30',
+            $this->staffHeaders($owner),
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('items.0.name', 'Flour Open')
+            ->assertJsonPath('items.0.open_purchase.purchase_number', 'PO-OPEN-1')
+            ->assertJsonPath('items.0.open_purchase.status', 'draft')
+            ->assertJsonPath('totals.with_open_po', 1);
+    }
+
     public function test_apply_suggested_rop_updates_inventory(): void
     {
         $owner = $this->makeOwner();
