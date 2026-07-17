@@ -764,6 +764,11 @@ export type RestockPlanItem = {
   reason: string;
   due_soon: boolean;
   unit_cost: number | null;
+  last_purchase_price: number | null;
+  /** Percent vs last purchase; null when no baseline. */
+  price_change_pct: number | null;
+  /** up | down | flat | null */
+  price_change: 'up' | 'down' | 'flat' | null;
   suggested_supplier: { id: number; name: string; price: number; source?: string } | null;
   open_purchase: RestockOpenPurchase | null;
 };
@@ -773,7 +778,13 @@ export type RestockPlan = {
   buy_lookback_days: number;
   lead_days: number;
   cover_days: number;
-  totals: { items_count: number; due_soon: number; below_rop: number; with_open_po?: number };
+  totals: {
+    items_count: number;
+    due_soon: number;
+    below_rop: number;
+    with_open_po?: number;
+    price_up?: number;
+  };
   items: RestockPlanItem[];
 };
 

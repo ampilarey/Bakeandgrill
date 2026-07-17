@@ -9,6 +9,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
 use App\Models\Supplier;
+use App\Models\SupplierPriceHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -299,5 +300,43 @@ class RestockIntelligenceTest extends TestCase
         $again->assertOk()
             ->assertJsonPath('updated_count', 0)
             ->assertJsonPath('skipped.0.reason', 'unchanged');
+    }
+
+    public function test_restock_plan_flags_price_increase_vs_last_purchase(): void
+    {
+        $owner = $this->makeOwner();
+        $supplier = Supplier::create(['name' => 'Spice Co', 'is_active' => true]);
+        $item = InventoryItem::create([
+            'name' => 'Chili',
+            'sku' => 'CHL-PRICE',
+            'unit' => 'kg',
+            'current_stock' => 2,
+            'reorder_point' => 10,
+            'unit_cost' => 8,
+            'last_purchase_price' => 8,
+            'is_active' => true,
+        ]);
+
+        SupplierPriceHistory::create([
+            'supplier_id' => $supplier->id,
+            'inventory_item_id' => $item->id,
+            'unit_price' => 10,
+            'unit' => 'kg',
+            'recorded_at' => now()->toDateString(),
+        ]);
+
+        $response = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30&lead_days=3',
+            $this->staffHeaders($owner),
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('items.0.name', 'Chili')
+            ->assertJsonPath('items.0.price_change', 'up')
+            ->assertJsonPath('items.0.last_purchase_price', 8)
+            ->assertJsonPath('totals.price_up', 1);
+
+        $this->assertEqualsWithDelta(25.0, (float) $response->json('items.0.price_change_pct'), 0.1);
+        $this->assertEqualsWithDelta(10.0, (float) $response->json('items.0.unit_cost'), 0.01);
     }
 }

@@ -10,6 +10,20 @@ import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { today, daysAgo } from '../utils/dateHelpers';
+import { downloadCSV } from '../utils/csvExport';
+
+type RestockFilter = 'due_soon' | 'all' | 'price_up';
+
+function priceChangeBadge(item: RestockPlanItem): { label: string; color: string; bg: string } | null {
+  if (item.price_change == null || item.price_change_pct == null) return null;
+  if (item.price_change === 'up') {
+    return { label: `↑ ${item.price_change_pct}%`, color: '#b91c1c', bg: '#fee2e2' };
+  }
+  if (item.price_change === 'down') {
+    return { label: `↓ ${Math.abs(item.price_change_pct)}%`, color: '#15803d', bg: '#dcfce7' };
+  }
+  return { label: 'same', color: '#6B5D4F', bg: '#F0EBE5' };
+}
 
 const REASON_LABEL: Record<string, string> = {
   usage_cover: 'Usage cover',
@@ -49,7 +63,7 @@ export function ForecastPage() {
   const [granularity, setGran]  = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [from, setFrom]         = useState(daysAgo(29));
   const [to, setTo]             = useState(today());
-  const [showAllRestock, setShowAllRestock] = useState(false);
+  const [restockFilter, setRestockFilter] = useState<RestockFilter>('due_soon');
   const [creatingPos, setCreatingPos] = useState(false);
   const [applyingRop, setApplyingRop] = useState(false);
   const [restockToast, setRestockToast] = useState('');
@@ -158,6 +172,42 @@ export function ForecastPage() {
   const selectedRopItems = (restock?.items ?? []).filter((i) => selectedRestockIds.has(i.id) && canApplyRop(i));
   const allReadySelected = readyRestock.length > 0
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
+
+  const filteredRestockItems = (() => {
+    if (!restock) return [];
+    if (restockFilter === 'price_up') return restock.items.filter((i) => i.price_change === 'up');
+    if (restockFilter === 'all') return restock.items;
+    return restock.items.filter((i) => i.due_soon).slice(0, 40);
+  })();
+
+  const exportRestockCsv = () => {
+    if (!restock) return;
+    const rows = (restockFilter === 'due_soon'
+      ? restock.items.filter((i) => i.due_soon)
+      : restockFilter === 'price_up'
+        ? restock.items.filter((i) => i.price_change === 'up')
+        : restock.items
+    ).map((i) => ({
+      Item: i.name,
+      Category: i.category ?? '',
+      Stock: i.current_stock,
+      Unit: i.unit,
+      'Days left': i.days_of_stock ?? '',
+      Status: i.status,
+      'Next order': i.suggested_next_order_date ?? '',
+      'Order qty': i.suggested_order_qty,
+      ROP: i.reorder_point,
+      'Suggested ROP': i.suggested_reorder_point ?? '',
+      Supplier: i.suggested_supplier?.name ?? '',
+      'Unit cost': i.unit_cost ?? '',
+      'Last purchase': i.last_purchase_price ?? '',
+      'Price change %': i.price_change_pct ?? '',
+      'Price direction': i.price_change ?? '',
+      'Open PO': i.open_purchase?.purchase_number ?? '',
+      Why: REASON_LABEL[i.reason] ?? i.reason,
+    }));
+    downloadCSV(`restock-plan-${restockFilter}`, rows);
+  };
 
   const restockPreviewBySupplier = (() => {
     const map = new Map<number, { name: string; lines: number; total: number }>();
@@ -565,6 +615,32 @@ export function ForecastPage() {
                 {(restock.totals.with_open_po ?? 0) > 0 && (
                   <StatCard label="Already on PO" value={String(restock.totals.with_open_po)} accent="#b45309" />
                 )}
+                {(restock.totals.price_up ?? 0) > 0 && (
+                  <StatCard label="Price up vs last" value={String(restock.totals.price_up)} accent="#b91c1c" />
+                )}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+                {([
+                  { id: 'due_soon' as const, label: `Due soon (${restock.totals.due_soon})` },
+                  { id: 'all' as const, label: `All (${restock.totals.items_count})` },
+                  { id: 'price_up' as const, label: `Price up (${restock.totals.price_up ?? 0})` },
+                ]).map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setRestockFilter(f.id)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
+                      cursor: 'pointer',
+                      border: restockFilter === f.id ? '1px solid #D4813A' : '1px solid #E8E0D8',
+                      background: restockFilter === f.id ? '#FFF7ED' : '#F8F6F3',
+                      color: restockFilter === f.id ? '#c2410c' : '#6B5D4F',
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+                <Btn small variant="secondary" onClick={exportRestockCsv}>Export CSV</Btn>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -587,8 +663,14 @@ export function ForecastPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(showAllRestock ? restock.items : restock.items.filter((i) => i.due_soon).slice(0, 40)).map((item) => (
-                      <tr key={item.id} style={{ borderBottom: '1px solid #F8F6F3', background: item.due_soon ? '#FFFBEB' : undefined }}>
+                    {filteredRestockItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        style={{
+                          borderBottom: '1px solid #F8F6F3',
+                          background: item.price_change === 'up' ? '#FEF2F2' : item.due_soon ? '#FFFBEB' : undefined,
+                        }}
+                      >
                         <td style={{ padding: '8px 12px' }}>
                           {canSelectRestock(item) ? (
                             <input
@@ -662,10 +744,34 @@ export function ForecastPage() {
                           {item.suggested_supplier ? (
                             <>
                               <div style={{ fontWeight: 600, color: '#1C1408' }}>{item.suggested_supplier.name}</div>
-                              <div style={{ fontSize: 11, color: '#9C8E7E' }}>
-                                {item.unit_cost != null ? `MVR ${item.unit_cost.toFixed(2)}` : '—'}
-                                {item.suggested_supplier.source ? ` · ${item.suggested_supplier.source}` : ''}
+                              <div style={{ fontSize: 11, color: '#9C8E7E', display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                                <span>
+                                  {item.unit_cost != null ? `MVR ${item.unit_cost.toFixed(2)}` : '—'}
+                                  {item.suggested_supplier.source ? ` · ${item.suggested_supplier.source}` : ''}
+                                </span>
+                                {(() => {
+                                  const badge = priceChangeBadge(item);
+                                  if (!badge) return null;
+                                  return (
+                                    <span
+                                      title={item.last_purchase_price != null
+                                        ? `Last purchase MVR ${item.last_purchase_price.toFixed(2)}`
+                                        : undefined}
+                                      style={{
+                                        padding: '1px 6px', borderRadius: 10, fontSize: 10, fontWeight: 800,
+                                        background: badge.bg, color: badge.color,
+                                      }}
+                                    >
+                                      {badge.label}
+                                    </span>
+                                  );
+                                })()}
                               </div>
+                              {item.last_purchase_price != null && item.price_change && item.price_change !== 'flat' && (
+                                <div style={{ fontSize: 10, color: '#9C8E7E', marginTop: 2 }}>
+                                  was MVR {item.last_purchase_price.toFixed(2)}
+                                </div>
+                              )}
                               {canManageInventory && item.suggested_supplier.source === 'cheapest' && (
                                 <button
                                   type="button"
@@ -691,17 +797,17 @@ export function ForecastPage() {
                     {restock.items.length === 0 && (
                       <tr><td colSpan={10} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
                     )}
-                    {!showAllRestock && restock.items.filter((i) => i.due_soon).length === 0 && restock.items.length > 0 && (
-                      <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — show all tracked items below.</td></tr>
+                    {restockFilter === 'due_soon' && restock.totals.due_soon === 0 && restock.items.length > 0 && (
+                      <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — switch to All tracked items.</td></tr>
+                    )}
+                    {restockFilter === 'price_up' && (restock.totals.price_up ?? 0) === 0 && (
+                      <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No items priced above last purchase (≥1%).</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
               {restock.items.length > 0 && (
                 <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <Btn small variant="secondary" onClick={() => setShowAllRestock((v) => !v)}>
-                    {showAllRestock ? 'Show due soon only' : `Show all ${restock.items.length} tracked items`}
-                  </Btn>
                   {readyRestock.length > 0 && (
                     <Btn small variant="ghost" onClick={toggleSelectAllEligible}>
                       {allReadySelected ? 'Clear selection' : `Select all ${readyRestock.length} ready for new PO`}

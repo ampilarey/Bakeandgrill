@@ -21,7 +21,7 @@ final class RestockIntelligenceService
      *     buy_lookback_days: int,
      *     lead_days: int,
      *     cover_days: int,
-     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int},
+     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int},
      *     items: list<array<string, mixed>>
      * }
      */
@@ -54,6 +54,7 @@ final class RestockIntelligenceService
         $dueSoon = 0;
         $belowRop = 0;
         $withOpenPo = 0;
+        $priceUp = 0;
 
         foreach ($items as $item) {
             $stock = (float) ($item->current_stock ?? 0);
@@ -124,6 +125,15 @@ final class RestockIntelligenceService
             }
 
             $unitCost = (float) ($supplier['price'] ?? $item->last_purchase_price ?? $item->unit_cost ?? 0);
+            $lastPurchasePrice = (float) ($item->last_purchase_price ?? 0);
+            $priceChange = $this->priceChangeVsLast(
+                $unitCost > 0 ? $unitCost : null,
+                $lastPurchasePrice > 0 ? $lastPurchasePrice : null,
+            );
+            if ($priceChange['direction'] === 'up') {
+                $priceUp++;
+            }
+
             $openPurchase = $openPoByItem[$item->id] ?? null;
             if ($openPurchase !== null) {
                 $withOpenPo++;
@@ -147,6 +157,9 @@ final class RestockIntelligenceService
                 'reason' => $qtyInfo['reason'],
                 'due_soon' => $dueSoonFlag,
                 'unit_cost' => $unitCost > 0 ? round($unitCost, 4) : null,
+                'last_purchase_price' => $lastPurchasePrice > 0 ? round($lastPurchasePrice, 4) : null,
+                'price_change_pct' => $priceChange['pct'],
+                'price_change' => $priceChange['direction'],
                 'suggested_supplier' => $supplier,
                 'open_purchase' => $openPurchase,
             ];
@@ -174,8 +187,32 @@ final class RestockIntelligenceService
                 'due_soon' => $dueSoon,
                 'below_rop' => $belowRop,
                 'with_open_po' => $withOpenPo,
+                'price_up' => $priceUp,
             ],
             'items' => $rows,
+        ];
+    }
+
+    /**
+     * Compare suggested buy price to last received purchase price.
+     *
+     * @return array{direction: 'up'|'down'|'flat'|null, pct: float|null}
+     */
+    private function priceChangeVsLast(?float $suggested, ?float $last): array
+    {
+        if ($suggested === null || $suggested <= 0 || $last === null || $last <= 0) {
+            return ['direction' => null, 'pct' => null];
+        }
+
+        $pct = round((($suggested - $last) / $last) * 100, 1);
+        // Ignore sub-1% noise from rounding / minor variance.
+        if (abs($pct) < 1.0) {
+            return ['direction' => 'flat', 'pct' => 0.0];
+        }
+
+        return [
+            'direction' => $pct > 0 ? 'up' : 'down',
+            'pct' => $pct,
         ];
     }
 
