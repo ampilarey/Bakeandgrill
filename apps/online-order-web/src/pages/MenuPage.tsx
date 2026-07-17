@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, getMyFavourites, toggleFavourite, getWaitTimeEstimate, API_ORIGIN } from '../api';
 import type { Category, Item, Modifier, DailySpecial } from '../api';
@@ -15,8 +14,10 @@ function fmtOrderingTime(iso: string | null | undefined): string {
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
-import { ItemModal } from '../components/ItemModal';
+import { ItemSheet } from '../components/ItemSheet';
+import { CartSheet } from '../components/CartSheet';
 import { CartDrawer } from '../components/CartDrawer';
+import { SearchOverlay } from '../components/SearchOverlay';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
@@ -24,6 +25,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { OrderModeToggle } from '../components/OrderModeToggle';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
+import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { pickActiveSectionId } from '../utils/scrollSpy';
 
 function isItemOnSale(item: Item): boolean {
@@ -45,8 +47,6 @@ function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct
   if (!badge || !discountPct || discountPct <= 0) return false;
   return !badge.includes(`${discountPct}%`);
 }
-
-type SaleFilter = 'all' | 'discount' | 'special';
 
 function slugifyCategoryName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, '-');
@@ -99,6 +99,7 @@ export function MenuPage() {
   const [nextDeliveryWindow, setNextDeliveryWindow] = useState<string | null>(null);
 
   const [cartVisible, setCartVisible] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   const cartRef = useRef(cart);
@@ -243,13 +244,6 @@ export function MenuPage() {
     next.delete('openCart');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (!cartVisible) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [cartVisible]);
 
   const filteredItems = useMemo(() => {
     let list = items;
@@ -476,149 +470,50 @@ export function MenuPage() {
         }}
       >
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <OrderModeToggle deliveryBlocked={isOpen === true && !deliveryAvailable} />
-          <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '180px' }}>
-            <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.875rem', pointerEvents: 'none', opacity: 0.4 }}>🔍</span>
-            <input
-              type="text"
-              placeholder={t('menu.search')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%', height: 'var(--input-height)',
-                padding: '0 0.875rem 0 2.25rem',
-                border: '1.5px solid var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                fontSize: '0.9rem', outline: 'none',
-                fontFamily: 'inherit', background: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                transition: 'border-color 0.15s', boxSizing: 'border-box',
-              }}
-              onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; }}
-              onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; }}
-              aria-label="Search menu items"
-            />
+          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+            <OrderModeToggle deliveryBlocked={isOpen === true && !deliveryAvailable} />
           </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label={t('menu.search_aria')}
             style={{
-              height: 'var(--input-height)',
-              padding: '0 0.875rem',
+              minWidth: 44,
+              minHeight: 44,
+              padding: '0 0.9rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
               border: '1.5px solid var(--color-border)',
               borderRadius: 'var(--radius-lg)',
+              background: searchQuery.trim() ? 'var(--color-primary-light)' : 'var(--color-surface)',
+              color: searchQuery.trim() ? 'var(--color-primary)' : 'var(--color-text)',
+              fontFamily: 'inherit',
+              fontWeight: 700,
               fontSize: '0.875rem',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text)',
-              fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
             }}
-            aria-label="Sort items"
           >
-            <option value="name">Sort: A–Z</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-          </select>
-          {filtersActive && (
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              style={{
-                height: 'var(--input-height)',
-                padding: '0 0.875rem',
-                border: '1.5px solid var(--color-primary)',
-                borderRadius: 999,
-                background: 'var(--color-primary-light)',
-                color: 'var(--color-primary)',
-                fontFamily: 'inherit',
-                fontWeight: 700,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {t('menu.clear_filters')}
-            </button>
-          )}
+            {t('menu.open_search')}
+            {searchQuery.trim() ? ` · "${searchQuery.trim()}"` : ''}
+          </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
-          {(discountCount > 0 || specialCount > 0) && ([
-            { id: 'all' as SaleFilter, label: 'All items' },
-            ...(discountCount > 0 ? [{ id: 'discount' as SaleFilter, label: `% Off (${discountCount})` }] : []),
-            ...(specialCount > 0 ? [{ id: 'special' as SaleFilter, label: `Specials (${specialCount})` }] : []),
-          ]).map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setSaleFilter(opt.id)}
-              style={{
-                height: 'var(--input-height)',
-                padding: '0 1rem',
-                border: saleFilter === opt.id ? '2px solid #dc2626' : '1.5px solid var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                fontSize: '0.875rem',
-                fontWeight: 700,
-                background: saleFilter === opt.id && opt.id !== 'all'
-                  ? 'linear-gradient(135deg, #dc2626, #ea580c)'
-                  : saleFilter === opt.id
-                    ? 'var(--color-primary-light)'
-                    : 'var(--color-surface)',
-                color: saleFilter === opt.id && opt.id !== 'all' ? '#fff' : saleFilter === opt.id ? 'var(--color-primary)' : 'var(--color-text)',
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-              aria-pressed={saleFilter === opt.id}
-            >
-              {opt.label}
-            </button>
-          ))}
-          {availableDietaryFilters.length > 0 && (
-            <>
-              <button
-                type="button"
-                onClick={() => setDietaryFilter(null)}
-                style={{
-                  height: 'var(--input-height)',
-                  padding: '0 1rem',
-                  border: dietaryFilter === null ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
-                  borderRadius: 'var(--radius-lg)',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  background: dietaryFilter === null ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                  color: dietaryFilter === null ? 'var(--color-primary)' : 'var(--color-text)',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-                aria-pressed={dietaryFilter === null}
-              >
-                All diets
-              </button>
-              {availableDietaryFilters.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setDietaryFilter(dietaryFilter === opt.id ? null : opt.id)}
-                  style={{
-                    height: 'var(--input-height)',
-                    padding: '0 1rem',
-                    border: dietaryFilter === opt.id ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
-                    borderRadius: 'var(--radius-lg)',
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    background: dietaryFilter === opt.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                    color: dietaryFilter === opt.id ? 'var(--color-primary)' : 'var(--color-text)',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    whiteSpace: 'nowrap',
-                  }}
-                  aria-pressed={dietaryFilter === opt.id}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </>
-          )}
-        </div>
+        <FilterChipsRow
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          saleFilter={saleFilter}
+          onSaleFilterChange={setSaleFilter}
+          dietaryFilter={dietaryFilter}
+          onDietaryFilterChange={setDietaryFilter}
+          dietaryOptions={[...availableDietaryFilters]}
+          discountCount={discountCount}
+          specialCount={specialCount}
+          filtersActive={filtersActive}
+          onClear={handleClearFilters}
+        />
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem' }}>
           {isOpen !== null && (
@@ -760,7 +655,9 @@ export function MenuPage() {
             <div className="empty-state">
               <div className="empty-state-icon">🔍</div>
               <p className="empty-state-title">
-                {searchQuery ? `No results for "${searchQuery}"` : 'Nothing here yet'}
+                {searchQuery.trim()
+                  ? t('menu.no_results').replace('{q}', searchQuery.trim())
+                  : 'Nothing here yet'}
               </p>
               <p className="empty-state-sub">
                 {filtersActive ? 'Try clearing filters or using a different search term.' : 'Check back soon.'}
@@ -834,46 +731,32 @@ export function MenuPage() {
         </aside>
       </div>
 
-      {/* ── Mobile cart bottom sheet (portal → body; open via header/bottom Cart → ?openCart=1) ── */}
-      {cartVisible && typeof document !== 'undefined' && createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('cart.title')}
-          style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number, background: 'rgba(0,0,0,0.45)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setCartVisible(false); }}
-        >
-          <div
-            style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0,
-              background: 'var(--color-surface)',
-              borderRadius: '20px 20px 0 0',
-              padding: '1.25rem var(--page-gutter)',
-              paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
-              maxHeight: '85vh', overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-            }}
-            className="animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                {t('cart.title')}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCartVisible(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--color-text-muted)', padding: '0.25rem', lineHeight: 1 }}
-                aria-label="Close cart"
-              >
-                ✕
-              </button>
-            </div>
-            <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} compact />
-          </div>
-        </div>,
-        document.body,
-      )}
+      <CartSheet
+        open={cartVisible}
+        onClose={() => setCartVisible(false)}
+        isOpen={isOpen ?? true}
+        closedMessage={closedMessage}
+      />
+
+      <SearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+        items={items}
+        categories={categories}
+        onSelectItem={(it, qty) => handleSelectItem(it, qty)}
+        onAddToCart={(it, qty, variant) => {
+          addItem(it, qty, [], variant ?? null);
+          showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`);
+        }}
+        onSelectCategory={(categoryId) => {
+          setSearchQuery('');
+          handleSelectCategory(categoryId);
+        }}
+        favouriteIds={favouriteIds}
+        onToggleFavourite={handleToggleFavourite}
+      />
 
       {/* ── Back to top FAB ─────────────────────────────────────── */}
       <button
@@ -884,9 +767,9 @@ export function MenuPage() {
         ↑
       </button>
 
-      {/* ── Item modifier modal ──────────────────────────────────── */}
       {selectedItem && (
-        <ItemModal
+        <ItemSheet
+          open
           item={selectedItem}
           qty={selectedQty}
           selectedModifiers={selectedModifiers}

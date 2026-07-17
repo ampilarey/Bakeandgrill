@@ -67,6 +67,18 @@ const TRANSLATIONS: Translations = {
   "mode.delivery": { en: "Delivery", dv: "Delivery" },
   "menu.categories": { en: "Categories", dv: "Categories" },
   "menu.clear_filters": { en: "Clear filters", dv: "Clear filters" },
+  "common.cancel": { en: "Cancel", dv: "Cancel" },
+  "common.clear": { en: "Clear", dv: "Clear" },
+  "menu.search_aria": { en: "Search menu", dv: "Search menu" },
+  "menu.search_results_count": { en: "{n} results", dv: "{n} results" },
+  "menu.popular": { en: "Popular", dv: "Popular" },
+  "menu.no_results": { en: "No results for '{q}'", dv: "No results for '{q}'" },
+  "menu.sort_price_low": { en: "Price ↑", dv: "Price ↑" },
+  "menu.sort_price_high": { en: "Price ↓", dv: "Price ↓" },
+  "menu.filter_all": { en: "All items", dv: "All items" },
+  "menu.filter_specials": { en: "Specials", dv: "Specials" },
+  "menu.filter_all_diets": { en: "All diets", dv: "All diets" },
+  "menu.open_search": { en: "Search", dv: "Search" },
   "a11y.announcement": { en: "Site announcement", dv: "Site announcement" },
 };
 

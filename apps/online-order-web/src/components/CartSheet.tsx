@@ -1,6 +1,5 @@
 /**
- * Cart bottom sheet host (Phase 3 PR2 extract). Reuses CartDrawer body logic;
- * MenuPage still opens the legacy mobile sheet until PR3/PR4 wiring.
+ * Cart bottom sheet host (Phase 3 PR2 extract). Reuses CartDrawer body logic.
  */
 import { useLanguage } from '../context/LanguageContext';
 import { CartDrawer } from './CartDrawer';
