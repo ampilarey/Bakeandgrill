@@ -1,7 +1,12 @@
 import { palette, radius, space, shadow, type } from "../../theme";
 
-export function PanelShell({ title, subtitle, onClose, children }: {
-  title: string; subtitle?: string; onClose: () => void; children: React.ReactNode;
+export function PanelShell({ title, subtitle, onClose, children, backMode }: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  /** When true, the header action is a back chevron instead of close. */
+  backMode?: boolean;
 }) {
   return (
     <div style={{
@@ -23,25 +28,54 @@ export function PanelShell({ title, subtitle, onClose, children }: {
         alignItems: "center",
         gap: space.m,
       }}>
-        <div>
-          <div style={{ ...type.subtitle, color: palette.panelInk }}>{title}</div>
-          {subtitle && <div style={{ ...type.caption, color: palette.panelMuted, marginTop: 2 }}>{subtitle}</div>}
+        <div style={{ display: "flex", alignItems: "center", gap: space.s, minWidth: 0 }}>
+          {backMode && (
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: "none",
+                border: "none",
+                color: palette.panelInk,
+                fontSize: 22,
+                cursor: "pointer",
+                lineHeight: 1,
+                padding: 6,
+                minHeight: 44,
+                minWidth: 44,
+                borderRadius: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+              aria-label="Back"
+            >
+              ‹
+            </button>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ ...type.subtitle, color: palette.panelInk }}>{title}</div>
+            {subtitle && <div style={{ ...type.caption, color: palette.panelMuted, marginTop: 2 }}>{subtitle}</div>}
+          </div>
         </div>
-        <button onClick={onClose} style={{
-          background: "none",
-          border: "none",
-          color: palette.panelMuted,
-          fontSize: 26,
-          cursor: "pointer",
-          lineHeight: 1,
-          padding: 6,
-          minHeight: 44,
-          minWidth: 44,
-          borderRadius: 8,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }} aria-label="Close panel">×</button>
+        {!backMode && (
+          <button onClick={onClose} style={{
+            background: "none",
+            border: "none",
+            color: palette.panelMuted,
+            fontSize: 26,
+            cursor: "pointer",
+            lineHeight: 1,
+            padding: 6,
+            minHeight: 44,
+            minWidth: 44,
+            borderRadius: 8,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }} aria-label="Close panel">×</button>
+        )}
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: space.l }}>
         {children}

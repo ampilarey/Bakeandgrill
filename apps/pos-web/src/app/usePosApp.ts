@@ -1016,7 +1016,7 @@ export function usePosApp() {
       main.push({ id: "shift", label: shiftOpen ? "Current Shift" : "Shift", icon: "💰", group: "main" });
     }
     if (canViewShiftHistory) main.push({ id: "shift_history", label: "Shift History", icon: "📚", group: "main" });
-    if (canViewReports) main.push({ id: "sales_report", label: "Sales report", icon: "📊", group: "main" });
+    if (canViewReports) main.push({ id: "sales_report", label: "Sales reports", icon: "📊", group: "main" });
     if (canAccessOps) main.push({ id: "ops", label: "Operations", icon: "🛠", group: "main" });
     if (canCreatePurchaseRequest) main.push({ id: "request_item", label: "Request items", icon: "🛒", group: "main" });
     if (canViewOwnPurchaseRequests) main.push({ id: "my_requests", label: "My requests", icon: "📋", group: "main" });

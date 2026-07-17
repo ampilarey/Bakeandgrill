@@ -35,7 +35,7 @@ export function PosShellLayout() {
   const {
     isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, deviceId,
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
-    canViewActiveOrders, canViewShiftHistory, canViewReports, canAccessOps, canVoidOrders,
+    canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canAccessOps, canVoidOrders,
     canManageOrderStatus, canSendBill, canSendPayLink, canRefund, canCreatePurchaseRequest,
     canLockScreen, canPayCash,
     canPayCard, canPaySplit, canUseCredit, canUseWallet, canApplyDiscount, canUseRewards,
@@ -472,6 +472,12 @@ export function PosShellLayout() {
         {pane === 'sales_report' && canViewReports && (
           <SalesReportPanel
             onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift")}
+            onOpenReceipts={
+              canViewReceipts && shiftOpen ? () => setPane("receipts") : undefined
+            }
+            onOpenShiftHistory={
+              canViewShiftHistory ? () => setPane("shift_history") : undefined
+            }
           />
         )}
 

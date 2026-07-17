@@ -114,3 +114,60 @@ export async function getSalesSummary(params: {
   if (params.to) query.set("to", params.to);
   return request(`/reports/sales-summary?${query.toString()}`);
 }
+
+/** Raw backend shape from GET /reports/sales-breakdown */
+export type SalesBreakdownReport = {
+  from: string;
+  to: string;
+  items: Array<{
+    item_id: number | null;
+    item_name: string;
+    quantity: number | string;
+    total: number | string;
+  }>;
+  categories: Array<{
+    category_id: number;
+    category_name: string;
+    quantity: number | string;
+    total: number | string;
+  }>;
+  employees: Array<{
+    user_id: number | null;
+    name: string | null;
+    orders_count: number;
+    total: number;
+  }>;
+};
+
+export async function getSalesBreakdown(params: {
+  from?: string;
+  to?: string;
+  limit?: number;
+}): Promise<SalesBreakdownReport> {
+  const query = new URLSearchParams();
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  if (params.limit) query.set("limit", String(params.limit));
+  return request(`/reports/sales-breakdown?${query.toString()}`);
+}
+
+export type DiscountsByTypeReport = {
+  from: string;
+  to: string;
+  total_applied: number;
+  rows: Array<{
+    type: string;
+    amount: number;
+    orders_count: number;
+  }>;
+};
+
+export async function getDiscountsByType(params: {
+  from?: string;
+  to?: string;
+}): Promise<DiscountsByTypeReport> {
+  const query = new URLSearchParams();
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  return request(`/reports/discounts-by-type?${query.toString()}`);
+}
