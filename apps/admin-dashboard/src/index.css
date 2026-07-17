@@ -480,9 +480,13 @@ a { text-decoration: none; color: inherit; }
     min-height: 40px;
   }
 
-  /* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus */
+  /* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height */
   input, select, textarea {
     font-size: 16px !important;
+    min-height: 44px;
+  }
+  textarea {
+    min-height: 88px;
   }
 
   /* Table horizontal scroll on mobile (explicit wrapper class) */

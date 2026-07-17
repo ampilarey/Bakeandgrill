@@ -126,7 +126,7 @@ function WebhookForm({
         <div style={{
           border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 12px',
           maxHeight: 220, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px',
-        }}>
+        }} data-responsive-grid>
           {allEvents.map((ev) => (
             <label key={ev} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12 }}>
               <input type="checkbox" checked={events.includes(ev)} onChange={() => toggle(ev)} />

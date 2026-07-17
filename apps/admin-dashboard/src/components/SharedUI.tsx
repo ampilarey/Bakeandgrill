@@ -218,7 +218,7 @@ export function Input({ label, id, style, onChange, ...rest }: InputProps) {
         {...rest}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         style={{
-          height: 36, padding: '0 0.75rem',
+          minHeight: 44, height: 44, padding: '0 0.75rem',
           border: '1.5px solid #E8E0D8', borderRadius: 10,
           fontSize: '0.9rem', fontFamily: 'inherit',
           background: '#fff', color: '#1C1408',
@@ -247,7 +247,7 @@ export function Select({ options, value, onChange, label, style, ...rest }: Sele
         onChange={(e) => onChange(e.target.value)}
         {...rest}
         style={{
-          height: 36, padding: '0 0.75rem',
+          minHeight: 44, height: 44, padding: '0 0.75rem',
           border: '1.5px solid #E8E0D8', borderRadius: 10,
           fontSize: '0.875rem', fontFamily: 'inherit',
           background: '#fff', color: '#1C1408',
@@ -324,9 +324,10 @@ export function Modal({
           <button
             onClick={onClose}
             aria-label="Close"
+            className="icon-button"
             style={{
               background: '#F8F6F3', border: 'none', borderRadius: 8,
-              width: 32, height: 32, cursor: 'pointer', color: '#6B5D4F',
+              width: 40, height: 40, minHeight: 40, cursor: 'pointer', color: '#6B5D4F',
               fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >✕</button>

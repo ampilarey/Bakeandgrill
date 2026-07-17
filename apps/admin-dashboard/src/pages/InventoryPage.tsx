@@ -768,7 +768,7 @@ export default function InventoryPage() {
       {tab === 'conversions' && (
         <div>
           {convError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{convError}</p>}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end', marginBottom: 20, background: '#F9F5F0', padding: 16, borderRadius: 12 }}>
+          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end', marginBottom: 20, background: '#F9F5F0', padding: 16, borderRadius: 12 }}>
             {(['from_unit', 'to_unit', 'factor'] as const).map((k) => (
               <div key={k}>
                 <label style={S.label}>{k === 'from_unit' ? 'From Unit' : k === 'to_unit' ? 'To Unit' : 'Factor'}</label>
