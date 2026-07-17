@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, getRestockPlan,
-  createPurchaseFromSuggest, applySuggestedReorderPoints,
+  createPurchaseFromSuggest, applySuggestedReorderPoints, updateInventoryItem,
   type ItemForecast, type RestockPlan, type RestockPlanItem,
 } from '../api';
 import { Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { today, daysAgo } from '../utils/dateHelpers';
 
 const REASON_LABEL: Record<string, string> = {
@@ -34,8 +35,11 @@ const STATUS_BG: Record<string, string> = {
 
 export function ForecastPage() {
     usePageTitle('Forecasts');
+  const { can } = useCurrentUserPermissions();
+  const canManageInventory = can('inventory.manage');
   const [searchParams] = useSearchParams();
   const restockSectionRef = useRef<HTMLDivElement>(null);
+  const [settingPreferredId, setSettingPreferredId] = useState<number | null>(null);
   const [trends, setTrends]     = useState<{ total_revenue: number; total_orders: number; data: { period: string; revenue: number; orders: number; growth_pct: number | null }[] } | null>(null);
   const [forecast, setForecast] = useState<{ weighted_moving_avg: number; growth_rate_pct: number; forecast: { week_start: string; projected_revenue: number }[] } | null>(null);
   const [invForecast, setInv]   = useState<{ items: { id: number; name: string; unit: string; category: string; current_stock: number; daily_usage_rate: number; days_of_stock: number | null; status: string }[] } | null>(null);
@@ -242,6 +246,27 @@ export function ForecastPage() {
       setError((e as Error).message);
     } finally {
       setCreatingPos(false);
+    }
+  };
+
+  const setPreferredFromSuggestion = async (item: RestockPlanItem) => {
+    if (!item.suggested_supplier?.id) return;
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to set a preferred supplier.');
+      return;
+    }
+    setSettingPreferredId(item.id);
+    setError('');
+    setRestockToast('');
+    setCreatedPoNumbers([]);
+    try {
+      await updateInventoryItem(item.id, { preferred_supplier_id: item.suggested_supplier.id });
+      setRestockToast(`Preferred supplier for ${item.name} → ${item.suggested_supplier.name}`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSettingPreferredId(null);
     }
   };
 
@@ -641,6 +666,20 @@ export function ForecastPage() {
                                 {item.unit_cost != null ? `MVR ${item.unit_cost.toFixed(2)}` : '—'}
                                 {item.suggested_supplier.source ? ` · ${item.suggested_supplier.source}` : ''}
                               </div>
+                              {canManageInventory && item.suggested_supplier.source === 'cheapest' && (
+                                <button
+                                  type="button"
+                                  disabled={settingPreferredId === item.id || creatingPos || applyingRop}
+                                  onClick={() => void setPreferredFromSuggestion(item)}
+                                  style={{
+                                    marginTop: 4, padding: '2px 8px', borderRadius: 6, border: '1px solid #E8E0D8',
+                                    background: '#F8F6F3', color: '#1C1408', fontSize: 11, fontWeight: 700,
+                                    cursor: settingPreferredId === item.id ? 'wait' : 'pointer', fontFamily: 'inherit',
+                                  }}
+                                >
+                                  {settingPreferredId === item.id ? 'Saving…' : 'Set preferred'}
+                                </button>
+                              )}
                             </>
                           ) : '—'}
                         </td>
