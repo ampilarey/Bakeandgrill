@@ -389,4 +389,63 @@ class RestockIntelligenceTest extends TestCase
             ->assertJsonPath('updated_count', 0)
             ->assertJsonPath('skipped.0.reason', 'not_cheapest_suggestion');
     }
+
+    public function test_restock_plan_uses_per_item_lead_days_for_suggested_rop(): void
+    {
+        $owner = $this->makeOwner();
+
+        $short = InventoryItem::create([
+            'name' => 'Yeast',
+            'sku' => 'YST-LEAD',
+            'unit' => 'kg',
+            'current_stock' => 10,
+            'reorder_point' => 5,
+            'unit_cost' => 20,
+            'lead_days' => null,
+            'is_active' => true,
+        ]);
+        $long = InventoryItem::create([
+            'name' => 'Olive Oil',
+            'sku' => 'OIL-LEAD',
+            'unit' => 'L',
+            'current_stock' => 10,
+            'reorder_point' => 5,
+            'unit_cost' => 40,
+            'lead_days' => 10,
+            'is_active' => true,
+        ]);
+
+        foreach ([$short, $long] as $i => $item) {
+            StockMovement::create([
+                'idempotency_key' => 'test-lead-deduct-'.$i,
+                'inventory_item_id' => $item->id,
+                'user_id' => $owner->id,
+                'type' => 'deduction',
+                'quantity' => -30,
+                'balance_after' => 10,
+                'unit_cost' => 1,
+                'reference_type' => 'order',
+                'reference_id' => 100 + $i,
+                'notes' => 'test',
+            ]);
+        }
+
+        $response = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30&lead_days=3',
+            $this->staffHeaders($owner),
+        );
+        $response->assertOk();
+
+        $byName = collect($response->json('items'))->keyBy('name');
+        $this->assertSame('default', $byName['Yeast']['lead_days_source']);
+        $this->assertSame(3, (int) $byName['Yeast']['lead_days']);
+        $this->assertSame('item', $byName['Olive Oil']['lead_days_source']);
+        $this->assertSame(10, (int) $byName['Olive Oil']['lead_days']);
+
+        // Same daily usage (~1/day): ROP = rate * max(1, lead) * 1.5 → longer lead ⇒ higher ROP
+        $this->assertGreaterThan(
+            (float) $byName['Yeast']['suggested_reorder_point'],
+            (float) $byName['Olive Oil']['suggested_reorder_point'],
+        );
+    }
 }

@@ -68,6 +68,8 @@ export function ForecastPage() {
   const [creatingPos, setCreatingPos] = useState(false);
   const [applyingRop, setApplyingRop] = useState(false);
   const [applyingPreferred, setApplyingPreferred] = useState(false);
+  const [savingLeadId, setSavingLeadId] = useState<number | null>(null);
+  const [leadDrafts, setLeadDrafts] = useState<Record<number, string>>({});
   const [restockToast, setRestockToast] = useState('');
   const [createdPoNumbers, setCreatedPoNumbers] = useState<string[]>([]);
   const [selectedRestockIds, setSelectedRestockIds] = useState<Set<number>>(new Set());
@@ -180,7 +182,8 @@ export function ForecastPage() {
   const selectedPreferredItems = cheapestRestock.filter((i) => selectedRestockIds.has(i.id));
   const allReadySelected = readyRestock.length > 0
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
-  const restockBusy = creatingPos || applyingRop || applyingPreferred || settingPreferredId != null;
+  const restockBusy = creatingPos || applyingRop || applyingPreferred
+    || settingPreferredId != null || savingLeadId != null;
 
   const filteredRestockItems = (() => {
     if (!restock) return [];
@@ -204,6 +207,8 @@ export function ForecastPage() {
       'Days left': i.days_of_stock ?? '',
       Status: i.status,
       'Next order': i.suggested_next_order_date ?? '',
+      'Lead days': i.lead_days,
+      'Lead source': i.lead_days_source,
       'Order qty': i.suggested_order_qty,
       ROP: i.reorder_point,
       'Suggested ROP': i.suggested_reorder_point ?? '',
@@ -326,6 +331,58 @@ export function ForecastPage() {
       setError((e as Error).message);
     } finally {
       setSettingPreferredId(null);
+    }
+  };
+
+  const leadDraftValue = (item: RestockPlanItem) =>
+    leadDrafts[item.id] ?? String(item.lead_days ?? restock?.lead_days ?? 3);
+
+  const saveLeadDays = async (item: RestockPlanItem) => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to set lead days.');
+      return;
+    }
+    const raw = leadDraftValue(item).trim();
+    if (raw === '') {
+      setSavingLeadId(item.id);
+      setError('');
+      try {
+        await updateInventoryItem(item.id, { lead_days: null });
+        setLeadDrafts((d) => {
+          const next = { ...d };
+          delete next[item.id];
+          return next;
+        });
+        setRestockToast(`${item.name}: lead days cleared (uses plan default)`);
+        await refreshRestock();
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setSavingLeadId(null);
+      }
+      return;
+    }
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 0 || n > 30) {
+      setError('Lead days must be an integer from 0 to 30 (or blank for default).');
+      return;
+    }
+    setSavingLeadId(item.id);
+    setError('');
+    setRestockToast('');
+    try {
+      await updateInventoryItem(item.id, { lead_days: n });
+      setLeadDrafts((d) => {
+        const next = { ...d };
+        delete next[item.id];
+        return next;
+      });
+      setRestockToast(`${item.name}: lead days → ${n}`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingLeadId(null);
     }
   };
 
@@ -724,7 +781,7 @@ export function ForecastPage() {
                           />
                         ) : null}
                       </th>
-                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Order qty', 'ROP', 'Supplier', 'Why'].map((h) => (
+                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Lead', 'Order qty', 'ROP', 'Supplier', 'Why'].map((h) => (
                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
@@ -788,6 +845,50 @@ export function ForecastPage() {
                         </td>
                         <td style={{ padding: '8px 12px', fontWeight: item.due_soon ? 700 : 500, color: item.due_soon ? '#c2410c' : '#1C1408' }}>
                           {item.suggested_next_order_date ?? '—'}
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F', minWidth: 96 }}>
+                          {canManageInventory ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={30}
+                                  step={1}
+                                  value={leadDraftValue(item)}
+                                  disabled={restockBusy}
+                                  onChange={(e) => setLeadDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
+                                  aria-label={`Lead days for ${item.name}`}
+                                  style={{
+                                    width: 52, height: 28, padding: '0 6px', borderRadius: 6,
+                                    border: '1px solid #E8E0D8', fontSize: 12, fontFamily: 'inherit',
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => void saveLeadDays(item)}
+                                  style={{
+                                    padding: '2px 6px', borderRadius: 6, border: '1px solid #E8E0D8',
+                                    background: '#F8F6F3', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                                    fontFamily: 'inherit', color: '#1C1408',
+                                  }}
+                                >
+                                  {savingLeadId === item.id ? '…' : 'Save'}
+                                </button>
+                              </div>
+                              <div style={{ fontSize: 10, color: '#9C8E7E' }}>
+                                {item.lead_days_source === 'item' ? 'item' : `default ${restock.lead_days}d`}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {item.lead_days}d
+                              <div style={{ fontSize: 10, color: '#9C8E7E' }}>
+                                {item.lead_days_source === 'item' ? 'item' : 'default'}
+                              </div>
+                            </>
+                          )}
                         </td>
                         <td style={{ padding: '8px 12px', fontWeight: 700, color: '#16a34a' }}>
                           {item.suggested_order_qty} {item.unit}
@@ -862,13 +963,13 @@ export function ForecastPage() {
                       </tr>
                     ))}
                     {restock.items.length === 0 && (
-                      <tr><td colSpan={10} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
                     )}
                     {restockFilter === 'due_soon' && restock.totals.due_soon === 0 && restock.items.length > 0 && (
-                      <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — switch to All tracked items.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — switch to All tracked items.</td></tr>
                     )}
                     {restockFilter === 'price_up' && (restock.totals.price_up ?? 0) === 0 && (
-                      <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No items priced above last purchase (≥1%).</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No items priced above last purchase (≥1%).</td></tr>
                     )}
                   </tbody>
                 </table>

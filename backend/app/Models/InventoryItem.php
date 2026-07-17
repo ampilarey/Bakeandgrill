@@ -12,6 +12,7 @@ class InventoryItem extends Model
 {
     protected $fillable = [
         'name', 'sku', 'unit', 'current_stock', 'reorder_point', 'reorder_quantity',
+        'lead_days',
         'unit_cost', 'last_purchase_price', 'expiry_date', 'is_active',
         'inventory_category_id', 'preferred_supplier_id', 'storage_location', 'notes',
     ];
@@ -23,6 +24,7 @@ class InventoryItem extends Model
         'unit_cost' => 'decimal:4',
         'reorder_point' => 'float',
         'reorder_quantity' => 'float',
+        'lead_days' => 'integer',
     ];
 
     public function stockMovements(): HasMany

@@ -66,8 +66,14 @@ final class RestockIntelligenceService
             $status = $this->stockStatus($stock, $rop, $daysLeft);
 
             $buy = $buyByItem[$item->id] ?? null;
+            $itemLeadSet = $item->lead_days !== null;
+            $effectiveLead = $itemLeadSet
+                ? min(max((int) $item->lead_days, 0), 30)
+                : $leadDays;
+            $leadSource = $itemLeadSet ? 'item' : 'default';
+
             $suggestedRop = $dailyRate > 0
-                ? round($dailyRate * max(1, $leadDays) * 1.5, 2)
+                ? round($dailyRate * max(1, $effectiveLead) * 1.5, 2)
                 : null;
 
             $qtyInfo = $this->suggestedOrderQuantity(
@@ -81,13 +87,13 @@ final class RestockIntelligenceService
             $nextOrder = $this->suggestedNextOrderDate(
                 $today,
                 $daysLeft,
-                $leadDays,
+                $effectiveLead,
                 $buy['last_purchase_date'] ?? null,
                 $buy['avg_days_between'] ?? null,
                 $stock <= $rop,
             );
 
-            $due = $nextOrder !== null && Carbon::parse($nextOrder)->lte($today->copy()->addDays($leadDays));
+            $due = $nextOrder !== null && Carbon::parse($nextOrder)->lte($today->copy()->addDays($effectiveLead));
             $dueSoonFlag = $due || in_array($status, ['out_of_stock', 'critical', 'low'], true);
 
             // Keep the plan focused: items with usage, buy history, or below ROP.
@@ -156,6 +162,8 @@ final class RestockIntelligenceService
                 'suggested_reorder_point' => $suggestedRop,
                 'reason' => $qtyInfo['reason'],
                 'due_soon' => $dueSoonFlag,
+                'lead_days' => $effectiveLead,
+                'lead_days_source' => $leadSource,
                 'unit_cost' => $unitCost > 0 ? round($unitCost, 4) : null,
                 'last_purchase_price' => $lastPurchasePrice > 0 ? round($lastPurchasePrice, 4) : null,
                 'price_change_pct' => $priceChange['pct'],

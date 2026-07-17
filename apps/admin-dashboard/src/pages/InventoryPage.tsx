@@ -54,7 +54,7 @@ export default function InventoryPage() {
   const [quickAdjusting, setQuickAdjusting] = useState<Record<number, boolean>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
-    name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '',
+    name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', unit_cost: '',
     inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
   });
   const [createSaving, setCreateSaving] = useState(false);
@@ -425,7 +425,7 @@ export default function InventoryPage() {
                 setCreateOpen(true);
                 setCreateError('');
                 setCreateForm({
-                  name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '',
+                  name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', unit_cost: '',
                   inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
                 });
                 if (cats.length === 0) void loadCats();
@@ -712,6 +712,19 @@ export default function InventoryPage() {
               <input type="number" min="0" step="any" style={S.input} value={createForm.reorder_point} onChange={(e) => setCreateForm((f) => ({ ...f, reorder_point: e.target.value }))} />
             </label>
             <label>
+              <span style={S.label}>Supplier lead days</span>
+              <input
+                type="number"
+                min="0"
+                max="30"
+                step="1"
+                style={S.input}
+                value={createForm.lead_days}
+                onChange={(e) => setCreateForm((f) => ({ ...f, lead_days: e.target.value }))}
+                placeholder="Default 3 on Restock Plan"
+              />
+            </label>
+            <label>
               <span style={S.label}>Unit cost (MVR)</span>
               <input type="number" min="0" step="any" style={S.input} value={createForm.unit_cost} onChange={(e) => setCreateForm((f) => ({ ...f, unit_cost: e.target.value }))} />
             </label>
@@ -735,6 +748,11 @@ export default function InventoryPage() {
                 unit: createForm.unit.trim(),
                 current_stock: createForm.current_stock ? parseFloat(createForm.current_stock) : undefined,
                 reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,
+                lead_days: (() => {
+                  if (createForm.lead_days === '') return undefined;
+                  const n = parseInt(createForm.lead_days, 10);
+                  return Number.isFinite(n) ? Math.min(30, Math.max(0, n)) : undefined;
+                })(),
                 unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
                 inventory_category_id: createForm.inventory_category_id ? Number(createForm.inventory_category_id) : undefined,
                 preferred_supplier_id: createForm.preferred_supplier_id ? Number(createForm.preferred_supplier_id) : undefined,
