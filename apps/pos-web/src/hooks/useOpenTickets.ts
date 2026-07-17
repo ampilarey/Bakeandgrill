@@ -18,6 +18,7 @@ import {
   ticketStage,
   type TicketStage,
 } from "../utils/openTicketUtils";
+import { compareTicketsByAge } from "../utils/ticketAging";
 
 export type { OpenTicket, TicketStage };
 
@@ -345,38 +346,41 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
 
   const filteredTickets = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return tickets.filter((t) => {
-      if (activeFilter === "all") {
-        // no chip-level filter
-      } else if (activeFilter.startsWith("stage:")) {
-        const want = activeFilter.slice(6) as TicketStage;
-        if (ticketStage(t.status) !== want) return false;
-      } else if (activeFilter.startsWith("type:")) {
-        const want = activeFilter.slice(5);
-        if (t.type !== want) return false;
-      } else if (activeFilter === "payment:paid") {
-        if (t.payment_status !== "paid") return false;
-      } else if (activeFilter === "payment:unpaid") {
-        if (t.payment_status === "paid") return false;
-      }
-      if (q.length > 0) {
-        const tableHay = t.table
-          ? `${t.table.name ?? ""} ${t.table.location ?? ""}`
-          : "";
-        const haystack = [
-          t.order_number,
-          t.ticket_name ?? "",
-          t.ticket_note ?? "",
-          t.customer?.name ?? "",
-          t.customer?.phone ?? "",
-          tableHay,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
+    return tickets
+      .filter((t) => {
+        if (activeFilter === "all") {
+          // no chip-level filter
+        } else if (activeFilter.startsWith("stage:")) {
+          const want = activeFilter.slice(6) as TicketStage;
+          if (ticketStage(t.status) !== want) return false;
+        } else if (activeFilter.startsWith("type:")) {
+          const want = activeFilter.slice(5);
+          if (t.type !== want) return false;
+        } else if (activeFilter === "payment:paid") {
+          if (t.payment_status !== "paid") return false;
+        } else if (activeFilter === "payment:unpaid") {
+          if (t.payment_status === "paid") return false;
+        }
+        if (q.length > 0) {
+          const tableHay = t.table
+            ? `${t.table.name ?? ""} ${t.table.location ?? ""}`
+            : "";
+          const haystack = [
+            t.order_number,
+            t.ticket_name ?? "",
+            t.ticket_note ?? "",
+            t.customer?.name ?? "",
+            t.customer?.phone ?? "",
+            tableHay,
+          ]
+            .join(" ")
+            .toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      })
+      .slice()
+      .sort((a, b) => compareTicketsByAge(a, b, ticketStage));
   }, [tickets, activeFilter, search]);
 
   const searchScopedTickets = useMemo(() => {

@@ -14,11 +14,35 @@ export function formatTicketAge(iso: string | null | undefined): string {
 
 export type TicketAgeLevel = "ok" | "warn" | "critical";
 
+const AGE_LEVEL_RANK: Record<TicketAgeLevel, number> = {
+  critical: 0,
+  warn: 1,
+  ok: 2,
+};
+
 type AgeFields = {
   held_at?: string | null;
   fired_at?: string | null;
   created_at?: string | null;
+  status?: string;
 };
+
+/** Sort critical → warn → ok, then older first within the same level. */
+export function compareTicketsByAge(
+  a: AgeFields & { status: string },
+  b: AgeFields & { status: string },
+  stageOf: (status: string) => TicketStage,
+): number {
+  const stageA = stageOf(a.status);
+  const stageB = stageOf(b.status);
+  const levelA = ticketAgeLevel(ticketAgeAnchor(a, stageA), stageA);
+  const levelB = ticketAgeLevel(ticketAgeAnchor(b, stageB), stageB);
+  const rankDiff = AGE_LEVEL_RANK[levelA] - AGE_LEVEL_RANK[levelB];
+  if (rankDiff !== 0) return rankDiff;
+  const tA = Date.parse(ticketAgeAnchor(a, stageA) ?? "") || 0;
+  const tB = Date.parse(ticketAgeAnchor(b, stageB) ?? "") || 0;
+  return tA - tB; // older first
+}
 
 /** Prefer hold time for parked tickets; fire time for kitchen stages. */
 export function ticketAgeAnchor(ticket: AgeFields, stage: TicketStage): string | null {

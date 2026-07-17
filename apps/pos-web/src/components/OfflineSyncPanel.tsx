@@ -15,6 +15,8 @@ import { ConflictResolveModal } from "./ConflictResolveModal";
 type Props = {
   shiftId: number | null;
   onClose: () => void;
+  /** Load order into the main cart for fix-and-recharge; caller should remove from sync queue. */
+  onEditInCart?: (order: OfflineOrderRecord) => void | Promise<void>;
 };
 
 function ProblemOrderCard({
@@ -23,6 +25,7 @@ function ProblemOrderCard({
   discardConfirmId,
   onView,
   onRetry,
+  onEditInCart,
   onAskDiscard,
   onConfirmDiscard,
   onCancelDiscard,
@@ -32,6 +35,7 @@ function ProblemOrderCard({
   discardConfirmId: string | null;
   onView: () => void;
   onRetry: () => void;
+  onEditInCart?: () => void;
   onAskDiscard: () => void;
   onConfirmDiscard: () => void;
   onCancelDiscard: () => void;
@@ -104,6 +108,20 @@ function ProblemOrderCard({
         >
           Retry sync
         </button>
+        {onEditInCart && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onEditInCart}
+            style={{
+              minHeight: 44, padding: "0 12px", borderRadius: 8,
+              border: "1px solid #93c5fd", background: "#eff6ff", color: "#1d4ed8",
+              fontWeight: 600, cursor: "pointer", opacity: busy ? 0.6 : 1,
+            }}
+          >
+            Edit in cart
+          </button>
+        )}
         {discardConfirmId === order.local_order_id ? (
           <>
             <button
@@ -155,7 +173,7 @@ function ProblemOrderCard({
   );
 }
 
-export function OfflineSyncPanel({ shiftId, onClose }: Props) {
+export function OfflineSyncPanel({ shiftId, onClose, onEditInCart }: Props) {
   const [pending, setPending] = useState(0);
   const [conflicts, setConflicts] = useState<OfflineOrderRecord[]>([]);
   const [failed, setFailed] = useState<OfflineOrderRecord[]>([]);
@@ -235,6 +253,22 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
     }
   };
 
+  const handleEditInCart = async (order: OfflineOrderRecord) => {
+    if (!onEditInCart) return;
+    setResolvingId(order.local_order_id);
+    setMessage("");
+    setDetailOrder(null);
+    try {
+      await onEditInCart(order);
+      await deleteOfflineOrder(order.local_order_id);
+      await refresh();
+      onClose();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Could not load into cart.");
+      setResolvingId(null);
+    }
+  };
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 850, background: "rgba(15,23,42,0.45)",
@@ -277,6 +311,7 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
                   discardConfirmId={discardConfirmId}
                   onView={() => setDetailOrder(order)}
                   onRetry={() => void handleRetry(order)}
+                  onEditInCart={onEditInCart ? () => void handleEditInCart(order) : undefined}
                   onAskDiscard={() => setDiscardConfirmId(order.local_order_id)}
                   onConfirmDiscard={() => void handleDiscard(order)}
                   onCancelDiscard={() => setDiscardConfirmId(null)}
@@ -298,6 +333,7 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
                   discardConfirmId={discardConfirmId}
                   onView={() => setDetailOrder(order)}
                   onRetry={() => void handleRetry(order)}
+                  onEditInCart={onEditInCart ? () => void handleEditInCart(order) : undefined}
                   onAskDiscard={() => setDiscardConfirmId(order.local_order_id)}
                   onConfirmDiscard={() => void handleDiscard(order)}
                   onCancelDiscard={() => setDiscardConfirmId(null)}
@@ -350,6 +386,7 @@ export function OfflineSyncPanel({ shiftId, onClose }: Props) {
           onDiscard={() => {
             void handleDiscard(detailOrder).then(() => setDetailOrder(null));
           }}
+          onEditInCart={onEditInCart ? () => void handleEditInCart(detailOrder) : undefined}
         />
       )}
     </div>

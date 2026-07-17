@@ -1,5 +1,7 @@
 # Feature Roadmap Audit
 
+> **Status (2026-07-17):** Historical. Waves 1–5 features listed below (system health, packaging fees, delivery zones, abandoned cart, KDS SSE/sound, offline sync UI, homepage reorder, loyalty earn preview, etc.) are implemented in the repo. Do not treat “Missing” rows as a live backlog without re-checking code. Prefer new product requests over re-implementing this audit.
+
 **Bake & Grill — Repo-aware feature audit**  
 **Generated:** 2026-05-29  
 **Method:** Code inspection of backend routes, domains, models, migrations, tests, and all React apps. Existing markdown audits were cross-checked against code; several are partially stale (see §5 and [FEATURE_IMPLEMENTATION_WAVES.md](./FEATURE_IMPLEMENTATION_WAVES.md)).

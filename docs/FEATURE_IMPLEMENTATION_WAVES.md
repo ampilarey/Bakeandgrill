@@ -1,5 +1,7 @@
 # Feature Implementation Waves
 
+> **Status (2026-07-17):** Historical sequencing doc. Planned waves are largely shipped; use for context only. Confirm against current `apps/` + `backend/` before building anything listed as “new.”
+
 **Bake & Grill — Safe implementation sequencing**  
 **Generated:** 2026-05-29  
 **Companion doc:** [FEATURE_ROADMAP_AUDIT.md](./FEATURE_ROADMAP_AUDIT.md)

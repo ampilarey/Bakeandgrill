@@ -17,6 +17,7 @@ import { PosPreferencesModal } from '../components/PosPreferencesModal';
 import { SideDrawer } from '../components/SideDrawer';
 import { ChargeOverlay } from '../components/ChargeOverlay';
 import { OfflineSyncPanel } from '../components/OfflineSyncPanel';
+import type { OfflineOrderRecord } from '../offline/db';
 import { ReceiptActionsBanner } from '../components/ReceiptActionsBanner';
 import { PosUpdateBanner } from '../components/PosUpdateBanner';
 import { OnlineOrderToasts } from '../components/OnlineOrderToasts';
@@ -25,10 +26,37 @@ import { MyPurchaseRequestsPanel } from '../components/MyPurchaseRequestsPanel';
 import { AssignedBuyingListPanel } from '../components/AssignedBuyingListPanel';
 import { POS_BUILD_INFO } from '../posBuildInfo';
 import { palette } from '../theme';
-import { validateDeliveryDetails } from '../orderTypes';
+import { validateDeliveryDetails, type PosOrderType } from '../orderTypes';
+import type { CartItem } from '../types';
 import { usePosAppContext } from './PosAppProvider';
 import { paneTitle, Banner, NoticeBanner, shouldShowStatusBanner } from './posUiHelpers';
 import type { Pane } from './types';
+
+function offlineTypeToPos(type: string): PosOrderType {
+  if (type === 'dine_in') return 'Dine-in';
+  if (type === 'online_pickup') return 'Pickup';
+  if (type === 'delivery') return 'Delivery';
+  return 'Takeaway';
+}
+
+function offlineOrderToCartItems(order: OfflineOrderRecord): CartItem[] {
+  return order.items.map((line) => ({
+    id: line.item_id,
+    name: line.name ?? `Item #${line.item_id}`,
+    price: Number(line.unit_price ?? 0),
+    quantity: Number(line.quantity ?? 0),
+    variant_id: line.variant_id ?? null,
+    variant_name: null,
+    modifiers: (line.modifiers ?? []).map((m) => ({
+      id: m.modifier_id,
+      name: m.name ?? `Mod #${m.modifier_id}`,
+      price: Number(m.price ?? 0),
+    })),
+    notes: line.notes
+      ? line.notes.split(' · ').map((s) => s.trim()).filter(Boolean)
+      : [],
+  }));
+}
 
 export function PosShellLayout() {
   const app = usePosAppContext();
@@ -674,6 +702,33 @@ export function PosShellLayout() {
           shiftId={shift.current?.id ?? null}
           onClose={() => {
             setShowOfflineSyncPanel(false);
+            void refreshOfflineCounts();
+          }}
+          onEditInCart={(offlineOrder) => {
+            handleClearCart();
+            cart.setCartItems(offlineOrderToCartItems(offlineOrder));
+            setOrderType(offlineTypeToPos(offlineOrder.type));
+            if (offlineOrder.restaurant_table_id != null) {
+              setSelectedTableId(offlineOrder.restaurant_table_id);
+            }
+            if (offlineOrder.discount_amount != null && offlineOrder.discount_amount > 0) {
+              cart.setDiscountAmount(String(offlineOrder.discount_amount));
+            }
+            const payMethod = offlineOrder.payment.method === 'bank_transfer'
+              ? 'cash'
+              : offlineOrder.payment.method === 'qr'
+                ? 'qr'
+                : offlineOrder.payment.method === 'card'
+                  ? 'card'
+                  : 'cash';
+            cart.setPayments([{
+              id: crypto.randomUUID(),
+              method: payMethod,
+              amount: offlineOrder.payment.amount > 0
+                ? offlineOrder.payment.amount.toFixed(2)
+                : '',
+            }]);
+            setPane('sales');
             void refreshOfflineCounts();
           }}
         />

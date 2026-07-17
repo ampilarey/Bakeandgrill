@@ -7,9 +7,10 @@ type Props = {
   onRetry: () => void;
   onDiscard: () => void;
   onClose: () => void;
+  onEditInCart?: () => void;
 };
 
-export function ConflictResolveModal({ order, busy, onRetry, onDiscard, onClose }: Props) {
+export function ConflictResolveModal({ order, busy, onRetry, onDiscard, onClose, onEditInCart }: Props) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   return (
@@ -69,6 +70,21 @@ export function ConflictResolveModal({ order, busy, onRetry, onDiscard, onClose 
           >
             Retry sync
           </button>
+          {onEditInCart && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onEditInCart}
+              style={{
+                flex: 1, minHeight: 44, borderRadius: 8,
+                border: "1px solid #93c5fd", background: "#eff6ff", color: "#1d4ed8",
+                fontWeight: 700, cursor: "pointer",
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              Edit in cart
+            </button>
+          )}
           {confirmDiscard ? (
             <>
               <button
