@@ -70,6 +70,7 @@ export function ForecastPage() {
   const [applyingPreferred, setApplyingPreferred] = useState(false);
   const [savingLeadId, setSavingLeadId] = useState<number | null>(null);
   const [savingCoverId, setSavingCoverId] = useState<number | null>(null);
+  const [savingQtyId, setSavingQtyId] = useState<number | null>(null);
   const [resolvingAlertId, setResolvingAlertId] = useState<number | null>(null);
   const [snoozingId, setSnoozingId] = useState<number | null>(null);
   const [leadDrafts, setLeadDrafts] = useState<Record<number, string>>({});
@@ -87,25 +88,34 @@ export function ForecastPage() {
   const [itemLoading, setItemLoading]     = useState(false);
   const [itemError, setItemError]         = useState('');
 
-  /** Effective order qty (local override or API suggestion). */
+  /** Saved pack size wins over plan suggestion for draft POs; local draft wins over both. */
+  const qtyBaseline = (item: RestockPlanItem): number =>
+    item.reorder_quantity != null && item.reorder_quantity > 0
+      ? item.reorder_quantity
+      : (item.suggested_order_qty > 0 ? item.suggested_order_qty : 0);
+
+  /** Effective order qty (local override, saved reorder_quantity, or plan suggestion). */
   const orderQty = (item: RestockPlanItem): number => {
     const draft = qtyDrafts[item.id];
     if (draft !== undefined) {
       const n = parseFloat(draft);
       return Number.isFinite(n) && n > 0 ? n : 0;
     }
-    return item.suggested_order_qty > 0 ? item.suggested_order_qty : 0;
+    return qtyBaseline(item);
   };
 
   const orderQtyDraftValue = (item: RestockPlanItem): string =>
-    qtyDrafts[item.id] ?? String(item.suggested_order_qty);
+    qtyDrafts[item.id] ?? String(qtyBaseline(item));
 
   const qtyIsEdited = (item: RestockPlanItem): boolean => {
     if (qtyDrafts[item.id] === undefined) return false;
     const n = parseFloat(qtyDrafts[item.id]);
     if (!Number.isFinite(n)) return true;
-    return Math.abs(n - item.suggested_order_qty) >= 0.001;
+    return Math.abs(n - qtyBaseline(item)) >= 0.001;
   };
+
+  const qtyHasSavedPack = (item: RestockPlanItem): boolean =>
+    item.reorder_quantity != null && item.reorder_quantity > 0;
 
   const canDraftPo = (item: RestockPlanItem) =>
     item.due_soon
@@ -211,7 +221,7 @@ export function ForecastPage() {
     && readyRestock.every((i) => selectedRestockIds.has(i.id));
   const restockBusy = creatingPos || applyingRop || applyingPreferred
     || settingPreferredId != null || savingLeadId != null || savingCoverId != null
-    || resolvingAlertId != null || snoozingId != null;
+    || savingQtyId != null || resolvingAlertId != null || snoozingId != null;
 
   const activeRestockItems = restock?.items.filter((i) => !i.excluded) ?? [];
 
@@ -254,6 +264,7 @@ export function ForecastPage() {
       'Cover days': i.cover_days,
       'Cover source': i.cover_days_source,
       'Order qty': orderQty(i),
+      'Saved pack qty': i.reorder_quantity ?? '',
       'Suggested qty': i.suggested_order_qty,
       ROP: i.reorder_point,
       'Suggested ROP': i.suggested_reorder_point ?? '',
@@ -310,6 +321,90 @@ export function ForecastPage() {
       setError((e as Error).message);
     } finally {
       setSnoozingId(null);
+    }
+  };
+
+  const saveOrderQty = async (item: RestockPlanItem) => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to save order qty.');
+      return;
+    }
+    const n = orderQty(item);
+    if (!(n > 0)) {
+      setError('Order qty must be greater than 0 to save.');
+      return;
+    }
+    setSavingQtyId(item.id);
+    setError('');
+    setRestockToast('');
+    try {
+      await updateInventoryItem(item.id, { reorder_quantity: n });
+      setQtyDrafts((d) => {
+        const next = { ...d };
+        delete next[item.id];
+        return next;
+      });
+      setRestockToast(`${item.name}: saved pack qty → ${n}`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingQtyId(null);
+    }
+  };
+
+  const clearOrderQty = async (item: RestockPlanItem) => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to clear saved pack qty.');
+      return;
+    }
+    setSavingQtyId(item.id);
+    setError('');
+    setRestockToast('');
+    try {
+      await updateInventoryItem(item.id, { reorder_quantity: null });
+      setQtyDrafts((d) => {
+        const next = { ...d };
+        delete next[item.id];
+        return next;
+      });
+      setRestockToast(`${item.name}: cleared saved pack qty (uses plan suggestion)`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingQtyId(null);
+    }
+  };
+
+  const saveSelectedOrderQtys = async () => {
+    const targets = selectedRestockItems.filter((i) => orderQty(i) > 0 && (
+      qtyIsEdited(i)
+      || i.reorder_quantity == null
+      || Math.abs(orderQty(i) - (i.reorder_quantity ?? 0)) >= 0.001
+    ));
+    if (targets.length === 0) {
+      setError('Select items with an order qty to save as pack size.');
+      return;
+    }
+    setSavingQtyId(-1);
+    setError('');
+    setRestockToast('');
+    try {
+      for (const item of targets) {
+        await updateInventoryItem(item.id, { reorder_quantity: orderQty(item) });
+      }
+      setQtyDrafts((d) => {
+        const next = { ...d };
+        for (const item of targets) delete next[item.id];
+        return next;
+      });
+      setRestockToast(`Saved pack qty on ${targets.length} item${targets.length === 1 ? '' : 's'}`);
+      await refreshRestock();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingQtyId(null);
     }
   };
 
@@ -959,6 +1054,20 @@ export function ForecastPage() {
                   {selectedQtyEdited > 0 && (
                     <> · <strong>{selectedQtyEdited} qty edited</strong></>
                   )}
+                  {canManageInventory && selectedRestockItems.length > 0 && (
+                    <button
+                      type="button"
+                      disabled={restockBusy}
+                      onClick={() => void saveSelectedOrderQtys()}
+                      style={{
+                        marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: '1px solid #FED7AA',
+                        background: '#fff', color: '#c2410c', fontSize: 11, fontWeight: 700,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      {savingQtyId === -1 ? 'Saving…' : 'Save pack qtys'}
+                    </button>
+                  )}
                   {restockPreviewBySupplier.length > 0 && (
                     <div style={{ marginTop: 6, fontSize: 12, color: '#c2410c' }}>
                       {restockPreviewBySupplier.map((g) => (
@@ -1331,36 +1440,77 @@ export function ForecastPage() {
                               min={0.001}
                               step="any"
                               value={orderQtyDraftValue(item)}
-                              disabled={restockBusy}
+                              disabled={restockBusy || item.excluded}
                               onChange={(e) => setQtyDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
                               aria-label={`Order qty for ${item.name}`}
                               style={{
                                 width: 72, height: 28, padding: '0 6px', borderRadius: 6,
-                                border: qtyIsEdited(item) ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+                                border: qtyIsEdited(item) || qtyHasSavedPack(item) ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
                                 fontSize: 12, fontFamily: 'inherit', fontWeight: 700,
-                                color: '#16a34a', background: qtyIsEdited(item) ? '#FFF7ED' : '#fff',
+                                color: '#16a34a',
+                                background: qtyIsEdited(item) ? '#FFF7ED' : qtyHasSavedPack(item) ? '#FFFBEB' : '#fff',
                               }}
                             />
                             <span style={{ color: '#9C8E7E' }}>{item.unit}</span>
                           </div>
-                          {qtyIsEdited(item) && (
-                            <button
-                              type="button"
-                              disabled={restockBusy}
-                              onClick={() => setQtyDrafts((d) => {
-                                const next = { ...d };
-                                delete next[item.id];
-                                return next;
-                              })}
-                              style={{
-                                marginTop: 3, padding: 0, border: 'none', background: 'none',
-                                fontSize: 10, fontWeight: 700, color: '#D4813A', cursor: 'pointer',
-                                fontFamily: 'inherit',
-                              }}
-                              title={`Reset to suggested ${item.suggested_order_qty}`}
-                            >
-                              Reset ({item.suggested_order_qty})
-                            </button>
+                          {canManageInventory && !item.excluded && (
+                            <div style={{ marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                              {(qtyIsEdited(item) || !qtyHasSavedPack(item)) && orderQty(item) > 0 && (
+                                <button
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => void saveOrderQty(item)}
+                                  style={{
+                                    padding: 0, border: 'none', background: 'none',
+                                    fontSize: 10, fontWeight: 700, color: '#16a34a', cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                  }}
+                                  title="Save as inventory reorder quantity (pack size)"
+                                >
+                                  {savingQtyId === item.id ? '…' : 'Save pack'}
+                                </button>
+                              )}
+                              {qtyIsEdited(item) && (
+                                <button
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => setQtyDrafts((d) => {
+                                    const next = { ...d };
+                                    delete next[item.id];
+                                    return next;
+                                  })}
+                                  style={{
+                                    padding: 0, border: 'none', background: 'none',
+                                    fontSize: 10, fontWeight: 700, color: '#D4813A', cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                  }}
+                                  title={`Reset to ${qtyBaseline(item)}`}
+                                >
+                                  Reset
+                                </button>
+                              )}
+                              {qtyHasSavedPack(item) && !qtyIsEdited(item) && (
+                                <button
+                                  type="button"
+                                  disabled={restockBusy}
+                                  onClick={() => void clearOrderQty(item)}
+                                  style={{
+                                    padding: 0, border: 'none', background: 'none',
+                                    fontSize: 10, fontWeight: 700, color: '#9C8E7E', cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                  }}
+                                  title="Clear saved pack qty — use plan suggestion"
+                                >
+                                  Clear saved
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {qtyHasSavedPack(item)
+                            && Math.abs(item.suggested_order_qty - (item.reorder_quantity ?? 0)) >= 0.001 && (
+                            <div style={{ fontSize: 10, color: '#9C8E7E', marginTop: 2 }}>
+                              plan suggests {item.suggested_order_qty}
+                            </div>
                           )}
                         </td>
                         <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F' }}>

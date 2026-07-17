@@ -600,6 +600,52 @@ class RestockIntelligenceTest extends TestCase
         $this->assertSame('usage_cover', $byName['Sugar']['reason']);
     }
 
+    public function test_can_persist_reorder_quantity_from_inventory_update(): void
+    {
+        $owner = $this->makeOwner();
+        $item = InventoryItem::create([
+            'name' => 'Rice',
+            'sku' => 'RCE-QTY',
+            'unit' => 'kg',
+            'current_stock' => 0,
+            'reorder_point' => 1,
+            'reorder_quantity' => null,
+            'unit_cost' => 3,
+            'is_active' => true,
+        ]);
+
+        StockMovement::create([
+            'idempotency_key' => 'test-qty-deduct',
+            'inventory_item_id' => $item->id,
+            'user_id' => $owner->id,
+            'type' => 'deduction',
+            'quantity' => -30,
+            'balance_after' => 0,
+            'unit_cost' => 1,
+            'reference_type' => 'order',
+            'reference_id' => 303,
+            'notes' => 'test',
+        ]);
+
+        $this->patchJson(
+            "/api/inventory/{$item->id}",
+            ['reorder_quantity' => 50],
+            $this->staffHeaders($owner),
+        )->assertOk();
+
+        $response = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30&cover_days=14',
+            $this->staffHeaders($owner),
+        );
+        $response->assertOk();
+
+        $row = collect($response->json('items'))->firstWhere('name', 'Rice');
+        $this->assertNotNull($row);
+        $this->assertSame(50.0, (float) $row['reorder_quantity']);
+        $this->assertSame(50.0, (float) $row['suggested_order_qty']);
+        $this->assertSame('reorder_quantity', $row['reason']);
+    }
+
     public function test_restock_plan_exclude_removes_item_from_due_soon(): void
     {
         $owner = $this->makeOwner();
