@@ -81,7 +81,9 @@ export function ReportsPage() {
         Date: d.date,
         Purchases: d.purchases,
         Expenses: d.expenses,
-        Total: d.total,
+        Waste: d.waste ?? 0,
+        'Cash total': d.total,
+        'With waste': d.total_with_waste ?? d.total,
       })));
     } else if (tab === 'Accounts Payable' && ap) {
       downloadCSV('accounts-payable', ap.map(s => ({ Supplier: s.supplier_name, 'Outstanding (MVR)': mvr(s.outstanding_amount), 'Open Invoices': s.invoices.length })));

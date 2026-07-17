@@ -259,13 +259,16 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <StatCard label="Purchases (COGS)" value={mvr(spendHub.totals.purchases)} accent="#D4813A" />
             <StatCard label="Expenses approved" value={mvr(spendHub.totals.expenses_approved)} accent="#ef4444" />
             <StatCard label="Expenses pending" value={mvr(spendHub.totals.expenses_pending)} accent="#f59e0b" />
+            <StatCard label="Waste (shrinkage)" value={mvr(spendHub.totals.waste_cost ?? 0)} accent="#b45309" />
             <StatCard label="Combined outflow" value={mvr(spendHub.totals.combined_outflow)} accent="#1C1408" />
+            <StatCard label="With waste" value={mvr(spendHub.totals.total_with_waste ?? spendHub.totals.combined_outflow)} accent="#7c2d12" />
             <StatCard label="POs received" value={String(spendHub.totals.po_count)} accent="#6B5D4F" />
-            <StatCard label="Expenses linked to PO" value={String(spendHub.totals.expenses_linked_to_po)} accent="#9C8E7E" />
+            <StatCard label="Waste logs" value={String(spendHub.totals.waste_count ?? 0)} accent="#9C8E7E" />
           </div>
           <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
             <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>Purchase Orders →</Link>
             <Link to="/expenses" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>Expenses →</Link>
+            <Link to="/waste-logs" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>Waste Tracking →</Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
             <Card>
@@ -306,6 +309,25 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 </table>
               )}
             </Card>
+            <Card>
+              <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Waste by reason</p>
+              {(spendHub.waste?.by_reason ?? []).length === 0 ? (
+                <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No waste logged in range.</p>
+              ) : (
+                <table style={S.table}>
+                  <thead><tr><th style={S.th}>Reason</th><th style={S.th}>Logs</th><th style={S.th}>Cost</th></tr></thead>
+                  <tbody>
+                    {spendHub.waste.by_reason.map((row) => (
+                      <tr key={row.reason}>
+                        <td style={S.td}>{row.reason.replace(/_/g, ' ')}</td>
+                        <td style={S.td}>{row.count}</td>
+                        <td style={{ ...S.td, fontWeight: 600 }}>{mvr(row.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
           </div>
           <Card style={{ marginBottom: 20 }}>
             <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 8px' }}>Top purchase items</p>
@@ -334,20 +356,31 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             )}
           </Card>
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Daily outflow</p>
-            {spendHub.daily.every((d) => d.total === 0) ? (
-              <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No outflow in this range.</p>
+            <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Daily outflow + waste</p>
+            {spendHub.daily.every((d) => (d.total_with_waste ?? d.total) === 0) ? (
+              <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No outflow or waste in this range.</p>
             ) : (
               <div style={{ maxHeight: 320, overflow: 'auto' }}>
                 <table style={S.table}>
-                  <thead><tr><th style={S.th}>Date</th><th style={S.th}>Purchases</th><th style={S.th}>Expenses</th><th style={S.th}>Total</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Date</th>
+                      <th style={S.th}>Purchases</th>
+                      <th style={S.th}>Expenses</th>
+                      <th style={S.th}>Waste</th>
+                      <th style={S.th}>Cash total</th>
+                      <th style={S.th}>With waste</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {spendHub.daily.filter((d) => d.total > 0).map((d) => (
+                    {spendHub.daily.filter((d) => (d.total_with_waste ?? d.total) > 0).map((d) => (
                       <tr key={d.date}>
                         <td style={S.td}>{d.date}</td>
                         <td style={S.td}>{mvr(d.purchases)}</td>
                         <td style={S.td}>{mvr(d.expenses)}</td>
-                        <td style={{ ...S.td, fontWeight: 700 }}>{mvr(d.total)}</td>
+                        <td style={S.td}>{mvr(d.waste ?? 0)}</td>
+                        <td style={{ ...S.td, fontWeight: 600 }}>{mvr(d.total)}</td>
+                        <td style={{ ...S.td, fontWeight: 700 }}>{mvr(d.total_with_waste ?? d.total)}</td>
                       </tr>
                     ))}
                   </tbody>

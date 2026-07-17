@@ -410,6 +410,34 @@ class FinanceReportController extends Controller
             ->groupByRaw('DATE(purchase_date)')
             ->pluck('amount', 'date');
 
+        $wasteCost = (float) WasteLog::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->sum('cost_estimate');
+
+        $wasteCount = (int) WasteLog::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+
+        $wasteByReason = WasteLog::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw('reason, COUNT(*) as count, SUM(cost_estimate) as total')
+            ->groupBy('reason')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($r) => [
+                'reason' => (string) ($r->reason ?: 'other'),
+                'count' => (int) $r->count,
+                'total' => round((float) $r->total, 2),
+            ])
+            ->values()
+            ->all();
+
+        $wasteByDay = WasteLog::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw('DATE(created_at) as date, SUM(cost_estimate) as amount')
+            ->groupByRaw('DATE(created_at)')
+            ->pluck('amount', 'date');
+
         $daily = [];
         $cursor = $from->copy()->startOfDay();
         $end = $to->copy()->startOfDay();
@@ -417,11 +445,14 @@ class FinanceReportController extends Controller
             $key = $cursor->toDateString();
             $p = round((float) ($purchaseByDay[$key] ?? 0), 2);
             $e = round((float) ($expenseByDay[$key] ?? 0), 2);
+            $w = round((float) ($wasteByDay[$key] ?? 0), 2);
             $daily[] = [
                 'date' => $key,
                 'purchases' => $p,
                 'expenses' => $e,
+                'waste' => $w,
                 'total' => round($p + $e, 2),
+                'total_with_waste' => round($p + $e + $w, 2),
             ];
             $cursor->addDay();
         }
@@ -429,13 +460,16 @@ class FinanceReportController extends Controller
         return response()->json([
             'from' => $fromDate,
             'to' => $toDate,
-            'note' => 'Purchases feed inventory and COGS. Expenses are operating costs. Linking an expense to a PO is reference only — stock buys should not be logged again as expenses.',
+            'note' => 'Purchases feed inventory and COGS. Expenses are operating cash costs. Waste is inventory shrinkage (not a second cash payment). Linking an expense to a PO is reference only — stock buys should not be logged again as expenses.',
             'totals' => [
                 'purchases' => round($purchasesTotal, 2),
                 'expenses_approved' => round($expensesApproved, 2),
                 'expenses_pending' => round($expensesPending, 2),
                 'expenses_rejected' => round($expensesRejected, 2),
+                'waste_cost' => round($wasteCost, 2),
+                'waste_count' => $wasteCount,
                 'combined_outflow' => round($purchasesTotal + $expensesApproved, 2),
+                'total_with_waste' => round($purchasesTotal + $expensesApproved + $wasteCost, 2),
                 'po_count' => $poCount,
                 'expenses_linked_to_po' => $linkedToPo,
             ],
@@ -450,6 +484,9 @@ class FinanceReportController extends Controller
                     'pending' => round($expensesPending, 2),
                     'rejected' => round($expensesRejected, 2),
                 ],
+            ],
+            'waste' => [
+                'by_reason' => $wasteByReason,
             ],
             'daily' => $daily,
         ]);

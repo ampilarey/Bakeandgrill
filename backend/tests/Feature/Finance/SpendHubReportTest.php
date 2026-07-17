@@ -10,6 +10,7 @@ use App\Models\InventoryItem;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Supplier;
+use App\Models\WasteLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -77,6 +78,16 @@ class SpendHubReportTest extends TestCase
             'payment_method' => 'cash',
         ]);
 
+        WasteLog::create([
+            'inventory_item_id' => $flour->id,
+            'user_id' => $owner->id,
+            'quantity' => 2,
+            'unit' => 'kg',
+            'cost_estimate' => 20,
+            'reason' => 'spoilage',
+            'notes' => 'test waste',
+        ]);
+
         $response = $this->getJson(
             '/api/reports/finance/spend-hub?from='.$today.'&to='.$today,
             $this->staffHeaders($owner),
@@ -87,13 +98,19 @@ class SpendHubReportTest extends TestCase
             ->assertJsonPath('totals.expenses_approved', 75)
             ->assertJsonPath('totals.expenses_pending', 25)
             ->assertJsonPath('totals.combined_outflow', 275)
+            ->assertJsonPath('totals.waste_cost', 20)
+            ->assertJsonPath('totals.waste_count', 1)
+            ->assertJsonPath('totals.total_with_waste', 295)
             ->assertJsonPath('totals.po_count', 1)
             ->assertJsonPath('totals.expenses_linked_to_po', 1)
             ->assertJsonPath('purchases.by_supplier.0.supplier_name', 'Cafe Supply')
             ->assertJsonPath('purchases.top_items.0.item_name', 'Flour')
-            ->assertJsonPath('expenses.by_category.0.category', 'Utilities');
+            ->assertJsonPath('expenses.by_category.0.category', 'Utilities')
+            ->assertJsonPath('waste.by_reason.0.reason', 'spoilage')
+            ->assertJsonPath('waste.by_reason.0.total', 20);
 
         $this->assertStringContainsString('COGS', (string) $response->json('note'));
+        $this->assertStringContainsString('Waste', (string) $response->json('note'));
     }
 
     public function test_spend_hub_requires_auth(): void

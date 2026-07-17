@@ -274,7 +274,10 @@ export type SpendHubReport = {
     expenses_approved: number;
     expenses_pending: number;
     expenses_rejected: number;
+    waste_cost: number;
+    waste_count: number;
     combined_outflow: number;
+    total_with_waste: number;
     po_count: number;
     expenses_linked_to_po: number;
   };
@@ -286,7 +289,17 @@ export type SpendHubReport = {
     by_category: { category: string; icon: string | null; total: number; count: number }[];
     by_status: { approved: number; pending: number; rejected: number };
   };
-  daily: { date: string; purchases: number; expenses: number; total: number }[];
+  waste: {
+    by_reason: { reason: string; count: number; total: number }[];
+  };
+  daily: {
+    date: string;
+    purchases: number;
+    expenses: number;
+    waste: number;
+    total: number;
+    total_with_waste: number;
+  }[];
 };
 
 export async function getSpendHub(from: string, to: string): Promise<SpendHubReport> {
