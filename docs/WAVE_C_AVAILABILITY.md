@@ -52,4 +52,4 @@ Existing clients that only read `is_available` keep working.
 - `app/Http/Controllers/Api/ItemController.php`
 - `packages/shared/src/types/product.ts`
 
-**Next wave:** D — optional POS customer attachment / unified history.
+**Next wave:** D — optional POS customer attachment / unified history — see [`WAVE_D_CUSTOMER_LINKAGE.md`](./WAVE_D_CUSTOMER_LINKAGE.md).

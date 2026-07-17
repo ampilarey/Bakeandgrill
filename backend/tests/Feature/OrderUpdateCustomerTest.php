@@ -54,6 +54,7 @@ class OrderUpdateCustomerTest extends TestCase
             'name' => 'Ahmed',
             'loyalty_points' => 0,
             'tier' => 'bronze',
+            'last_order_at' => null,
         ]);
 
         $order = Order::create([
@@ -83,6 +84,7 @@ class OrderUpdateCustomerTest extends TestCase
             ->assertJsonPath('order.customer.phone', '+9607123456');
 
         $this->assertSame($customer->id, $order->fresh()->customer_id);
+        $this->assertNotNull($customer->fresh()->last_order_at);
     }
 
     public function test_cannot_change_customer_on_completed_order(): void

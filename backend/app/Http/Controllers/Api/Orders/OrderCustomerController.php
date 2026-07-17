@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Orders;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
@@ -36,7 +37,13 @@ class OrderCustomerController extends Controller
         }
 
         $before = $order->customer_id;
-        $order->update(['customer_id' => $request->input('customer_id')]);
+        $customerId = $request->input('customer_id');
+        $order->update(['customer_id' => $customerId]);
+
+        // Mirror create-time behavior so late attach keeps customer profile current.
+        if ($customerId !== null && (int) $customerId !== (int) ($before ?? 0)) {
+            Customer::where('id', $customerId)->update(['last_order_at' => now()]);
+        }
 
         app(AuditLogService::class)->log(
             'order.customer_updated',

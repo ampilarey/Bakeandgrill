@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: wave-d-customer-unify
     content: "Wave D — optional POS customer linkage; unified history"
-    status: pending
+    status: completed
   - id: wave-e-delivery-depth
     content: "Wave E — delivery hours + rider/capacity + zones in pipeline"
     status: pending
@@ -66,7 +66,7 @@ This document is the **single source of truth** for Phase 1 (audit), Phase 2 (im
 
 ### 4. Customer / account summary
 
-- [`orders.customer_id`](backend/database/migrations/2026_01_27_193009_create_orders_table.php) + [`Customer`](backend/app/Models/Customer.php); online sets customer; dine-in often **null** — unified history requires optional POS link (Wave D).
+- [`orders.customer_id`](backend/database/migrations/2026_01_27_193009_create_orders_table.php) + [`Customer`](backend/app/Models/Customer.php); Wave D optional POS link is live — see [`docs/WAVE_D_CUSTOMER_LINKAGE.md`](../../docs/WAVE_D_CUSTOMER_LINKAGE.md).
 
 ### 5. Availability summary
 
