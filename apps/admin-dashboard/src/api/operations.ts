@@ -535,12 +535,71 @@ export async function createInventoryItem(data: {
   reorder_point?: number;
   unit_cost?: number;
   is_active?: boolean;
+  inventory_category_id?: number;
+  preferred_supplier_id?: number;
+  storage_location?: string;
+  notes?: string;
 }): Promise<{ item: InventoryItem }> {
   const res = await req<{ item: BackendInventoryRow }>('/inventory', {
     method: 'POST',
     body: JSON.stringify(data),
   });
   return { item: mapInventoryRow(res.item) };
+}
+
+export async function updateInventoryItem(
+  id: number,
+  data: Partial<{
+    name: string;
+    unit: string;
+    sku: string | null;
+    reorder_point: number | null;
+    unit_cost: number | null;
+    inventory_category_id: number | null;
+    preferred_supplier_id: number | null;
+    storage_location: string | null;
+    notes: string | null;
+    is_active: boolean;
+  }>,
+): Promise<{ item: InventoryItem }> {
+  const res = await req<{ item: BackendInventoryRow }>(`/inventory/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return { item: mapInventoryRow(res.item) };
+}
+
+export type StockMovementRow = {
+  id: number;
+  type: string;
+  quantity: number;
+  balance_after: number | null;
+  unit_cost: number | null;
+  reference_type: string | null;
+  reference_id: number | null;
+  notes: string | null;
+  created_at: string;
+  user?: { id: number; name: string } | null;
+};
+
+export async function fetchInventoryItemDetail(
+  id: number,
+  params?: { page?: number; per_page?: number },
+): Promise<{
+  item: InventoryItem;
+  movements: { data: StockMovementRow[]; current_page: number; last_page: number; total: number };
+}> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.per_page) qs.set('per_page', String(params.per_page));
+  const res = await req<{
+    item: BackendInventoryRow;
+    movements: { data: StockMovementRow[]; current_page: number; last_page: number; total: number };
+  }>(`/inventory/${id}?${qs}`);
+  return {
+    item: mapInventoryRow(res.item),
+    movements: res.movements ?? { data: [], current_page: 1, last_page: 1, total: 0 },
+  };
 }
 
 // ── Prepared stock (menu items) ───────────────────────────────────────────────

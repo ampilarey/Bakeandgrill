@@ -54,7 +54,13 @@ export function ReportsPage() {
     } else if (tab === 'Tax' && taxReport) {
       downloadCSV('tax-report', (taxReport.by_rate ?? []).map(r => ({ 'Rate %': r.rate_pct, 'Net Sales': mvr(r.net_sales), 'Tax Amount': mvr(r.tax_amount) })));
     } else if (tab === 'Inventory' && inventory) {
-      downloadCSV('inventory-valuation', [{ 'Total Value (MVR)': inventory.total_value, 'Total Quantity': inventory.total_quantity }]);
+      downloadCSV('inventory-valuation', (inventory.items ?? []).map((i) => ({
+        Item: i.name,
+        Unit: i.unit,
+        Qty: i.quantity,
+        'Unit cost': i.cost_per_unit,
+        Value: i.total_value,
+      })));
     } else if (tab === 'Accounts Payable' && ap) {
       downloadCSV('accounts-payable', ap.map(s => ({ Supplier: s.supplier_name, 'Outstanding (MVR)': mvr(s.outstanding_amount), 'Open Invoices': s.invoices.length })));
     } else if (tab === 'Accounts Receivable' && ar) {

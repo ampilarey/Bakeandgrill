@@ -294,10 +294,25 @@ class ReportsController extends Controller
     {
         $data = $this->reports->inventoryValuation();
         $rows = [
-            ['metric', 'value'],
-            ['value', $data['value'] ?? 0],
-            ['quantity', $data['quantity'] ?? 0],
+            ['id', 'name', 'unit', 'quantity', 'cost_per_unit', 'total_value', 'is_negative'],
         ];
+        foreach ($data['items'] ?? [] as $item) {
+            $rows[] = [
+                $item['id'] ?? '',
+                $item['name'] ?? '',
+                $item['unit'] ?? '',
+                $item['quantity'] ?? 0,
+                $item['cost_per_unit'] ?? 0,
+                $item['total_value'] ?? 0,
+                ! empty($item['is_negative']) ? 'yes' : 'no',
+            ];
+        }
+        $rows[] = [];
+        $rows[] = ['metric', 'value'];
+        $rows[] = ['positive_value', $data['value'] ?? 0];
+        $rows[] = ['positive_quantity', $data['quantity'] ?? 0];
+        $rows[] = ['negative_stock_count', $data['negative_stock_count'] ?? 0];
+        $rows[] = ['negative_stock_value', $data['negative_stock_value'] ?? 0];
 
         return $this->csvResponse('inventory-valuation.csv', $rows);
     }

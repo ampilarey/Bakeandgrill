@@ -13,8 +13,10 @@ import {
   getUnitConversions, createUnitConversion, deleteUnitConversion,
   getInventoryPriceHistory, getInventoryCheapestSupplier, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
+  fetchInventoryItemDetail,
   type InventoryItem, type InventoryCategory, type UnitConversion,
   type InventoryPriceHistoryEntry, type CheapestSupplier, type PreparedStockRow,
+  type StockMovementRow,
 } from '../api';
 
 const S = {
@@ -51,9 +53,16 @@ export default function InventoryPage() {
   const [adjError, setAdjError] = useState('');
   const [quickAdjusting, setQuickAdjusting] = useState<Record<number, boolean>>({});
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '' });
+  const [createForm, setCreateForm] = useState({
+    name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '',
+    inventory_category_id: '', storage_location: '', notes: '',
+  });
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [ledgerItem, setLedgerItem] = useState<InventoryItem | null>(null);
+  const [ledgerRows, setLedgerRows] = useState<StockMovementRow[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerError, setLedgerError] = useState('');
   const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const pendingAdj = useRef<Record<number, number>>({});
 
@@ -247,6 +256,21 @@ export default function InventoryPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState('');
 
+  const openLedger = async (item: InventoryItem) => {
+    setLedgerItem(item);
+    setLedgerLoading(true);
+    setLedgerError('');
+    setLedgerRows([]);
+    try {
+      const res = await fetchInventoryItemDetail(item.id, { per_page: 50 });
+      setLedgerRows(res.movements.data ?? []);
+    } catch (e) {
+      setLedgerError((e as Error).message || 'Could not load movements');
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
   const openPriceHistory = async (item: InventoryItem) => {
     setPriceHistoryItem(item);
     setPriceHistory([]);
@@ -387,7 +411,15 @@ export default function InventoryPage() {
               style={{ ...S.input, maxWidth: 320 }}
             />
             {canManage && (
-              <Btn onClick={() => { setCreateOpen(true); setCreateError(''); setCreateForm({ name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '' }); }}>
+              <Btn onClick={() => {
+                setCreateOpen(true);
+                setCreateError('');
+                setCreateForm({
+                  name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', unit_cost: '',
+                  inventory_category_id: '', storage_location: '', notes: '',
+                });
+                if (cats.length === 0) void loadCats();
+              }}>
                 + Add SKU
               </Btn>
             )}
@@ -450,6 +482,7 @@ export default function InventoryPage() {
                           ) : (
                             <span style={{ fontSize: 13, fontWeight: 700, color: isLow ? '#ef4444' : '#1C1408' }}>{item.quantity_on_hand}</span>
                           )}
+                          <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
                           <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
                         </div>
                       </td>
@@ -572,9 +605,52 @@ export default function InventoryPage() {
         </Modal>
       )}
 
+      {/* ── Stock movements ledger ── */}
+      {ledgerItem && (
+        <Modal title={`Movements — ${ledgerItem.name}`} onClose={() => setLedgerItem(null)} maxWidth={640}>
+          {ledgerError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{ledgerError}</p>}
+          {ledgerLoading ? (
+            <p style={{ color: '#9C8E7E', fontSize: 13 }}>Loading…</p>
+          ) : ledgerRows.length === 0 ? (
+            <EmptyState message="No stock movements yet for this item." />
+          ) : (
+            <TableCard>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['When', 'Type', 'Qty', 'Balance', 'By', 'Notes'].map((h) => (
+                      <th key={h} style={TH}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledgerRows.map((m) => (
+                    <tr key={m.id}>
+                      <td style={{ ...TD, fontSize: 12, color: '#9C8E7E', whiteSpace: 'nowrap' }}>
+                        {m.created_at ? new Date(m.created_at).toLocaleString() : '—'}
+                      </td>
+                      <td style={{ ...TD, textTransform: 'capitalize' }}>{m.type?.replace(/_/g, ' ')}</td>
+                      <td style={{ ...TD, fontWeight: 700, color: Number(m.quantity) < 0 ? '#ef4444' : '#16a34a' }}>
+                        {Number(m.quantity) > 0 ? '+' : ''}{Number(m.quantity)}
+                      </td>
+                      <td style={TD}>{m.balance_after ?? '—'}</td>
+                      <td style={{ ...TD, fontSize: 12 }}>{m.user?.name ?? '—'}</td>
+                      <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{m.notes ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableCard>
+          )}
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setLedgerItem(null)}>Close</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
       {/* ── Create SKU Modal ── */}
       {createOpen && (
-        <Modal title="Add Inventory SKU" onClose={() => setCreateOpen(false)} maxWidth={420}>
+        <Modal title="Add Inventory SKU" onClose={() => setCreateOpen(false)} maxWidth={480}>
           {createError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{createError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
@@ -584,6 +660,17 @@ export default function InventoryPage() {
             <label>
               <span style={S.label}>SKU</span>
               <input style={S.input} value={createForm.sku} onChange={(e) => setCreateForm((f) => ({ ...f, sku: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Category</span>
+              <select
+                style={S.select}
+                value={createForm.inventory_category_id}
+                onChange={(e) => setCreateForm((f) => ({ ...f, inventory_category_id: e.target.value }))}
+              >
+                <option value="">No category</option>
+                {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </label>
             <label>
               <span style={S.label}>Unit *</span>
@@ -596,6 +683,18 @@ export default function InventoryPage() {
             <label>
               <span style={S.label}>Reorder point</span>
               <input type="number" min="0" step="any" style={S.input} value={createForm.reorder_point} onChange={(e) => setCreateForm((f) => ({ ...f, reorder_point: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Unit cost (MVR)</span>
+              <input type="number" min="0" step="any" style={S.input} value={createForm.unit_cost} onChange={(e) => setCreateForm((f) => ({ ...f, unit_cost: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Storage location</span>
+              <input style={S.input} value={createForm.storage_location} onChange={(e) => setCreateForm((f) => ({ ...f, storage_location: e.target.value }))} placeholder="e.g. Cold room, Dry store" />
+            </label>
+            <label>
+              <span style={S.label}>Notes</span>
+              <input style={S.input} value={createForm.notes} onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
             </label>
           </div>
           <ModalActions>
@@ -610,6 +709,9 @@ export default function InventoryPage() {
                 current_stock: createForm.current_stock ? parseFloat(createForm.current_stock) : undefined,
                 reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,
                 unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
+                inventory_category_id: createForm.inventory_category_id ? Number(createForm.inventory_category_id) : undefined,
+                storage_location: createForm.storage_location.trim() || undefined,
+                notes: createForm.notes.trim() || undefined,
               }).then(() => {
                 setCreateOpen(false);
                 void loadItems();

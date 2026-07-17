@@ -344,13 +344,49 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Total Inventory Value" value={mvr(inventory.total_value)} accent="#22c55e" />
             <StatCard label="Total Units On Hand" value={inventory.total_quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} accent="#6B5D4F" />
+            {inventory.negative_stock_count > 0 && (
+              <StatCard
+                label="Negative stock SKUs"
+                value={String(inventory.negative_stock_count)}
+                accent="#ef4444"
+              />
+            )}
           </div>
           <Card>
             <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 8px' }}>How this is calculated</p>
-            <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>
-              Value is <code>SUM(current_stock × unit_cost)</code> across every inventory item.
-              For a per-item breakdown use <a href="/inventory" style={{ color: '#D4813A', fontWeight: 600 }}>Inventory</a>.
+            <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
+              Positive on-hand only: <code>SUM(current_stock × unit_cost)</code>. Negative stock is excluded from totals and listed below.
             </p>
+            {(inventory.items?.length ?? 0) === 0 ? (
+              <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>No active inventory items.</p>
+            ) : (
+              <div style={{ maxHeight: 360, overflow: 'auto' }}>
+                <table style={S.table}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Item</th>
+                      <th style={S.th}>Qty</th>
+                      <th style={S.th}>Unit cost</th>
+                      <th style={S.th}>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inventory.items.slice(0, 100).map((row) => (
+                      <tr key={row.id}>
+                        <td style={S.td}>{row.name}</td>
+                        <td style={{ ...S.td, color: row.quantity < 0 ? '#ef4444' : undefined }}>
+                          {row.quantity} {row.unit}
+                        </td>
+                        <td style={S.td}>{mvr(row.cost_per_unit)}</td>
+                        <td style={{ ...S.td, fontWeight: 600, color: row.total_value < 0 ? '#ef4444' : undefined }}>
+                          {mvr(row.total_value)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
         </>
       )}

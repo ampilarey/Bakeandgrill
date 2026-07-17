@@ -363,22 +363,32 @@ export async function getZReport(params?: { from: string; to: string }): Promise
 export interface InventoryValuation {
   total_value: number;
   total_quantity: number;
+  negative_stock_count: number;
+  negative_stock_value: number;
   items: { id: number; name: string; unit: string; quantity: number; cost_per_unit: number; total_value: number }[];
 }
 
-// Backend (`ReportsService::inventoryValuation`) returns only the aggregate
-// totals (`value`, `quantity`) — it is intentionally cheap and runs the
-// aggregation in SQL. The admin UI previously assumed a per-item breakdown
-// existed and crashed on `.items.map(...)`. Normalize here so the page just
-// renders totals + an empty list until a future per-item breakdown ships.
 export async function getInventoryValuation(): Promise<InventoryValuation> {
-  const res = await req<{ value: number | string; quantity: number | string }>(
-    '/reports/inventory-valuation',
-  );
+  const res = await req<{
+    value: number | string;
+    quantity: number | string;
+    negative_stock_count?: number;
+    negative_stock_value?: number | string;
+    items?: InventoryValuation['items'];
+  }>('/reports/inventory-valuation');
   return {
     total_value: Number(res.value ?? 0),
     total_quantity: Number(res.quantity ?? 0),
-    items: [],
+    negative_stock_count: Number(res.negative_stock_count ?? 0),
+    negative_stock_value: Number(res.negative_stock_value ?? 0),
+    items: (res.items ?? []).map((i) => ({
+      id: i.id,
+      name: i.name,
+      unit: i.unit,
+      quantity: Number(i.quantity ?? 0),
+      cost_per_unit: Number(i.cost_per_unit ?? 0),
+      total_value: Number(i.total_value ?? 0),
+    })),
   };
 }
 

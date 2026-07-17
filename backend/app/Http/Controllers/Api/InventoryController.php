@@ -59,11 +59,24 @@ class InventoryController extends Controller
         return response()->json(['item' => $item], 201);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $item = InventoryItem::with('stockMovements')->findOrFail($id);
+        $item = InventoryItem::with('category:id,name')->findOrFail($id);
 
-        return response()->json(['item' => $item]);
+        $movements = $item->stockMovements()
+            ->with('user:id,name')
+            ->orderByDesc('id')
+            ->paginate(min(max((int) $request->query('per_page', 50), 10), 100));
+
+        return response()->json([
+            'item' => $item,
+            'movements' => [
+                'data' => $movements->items(),
+                'current_page' => $movements->currentPage(),
+                'last_page' => $movements->lastPage(),
+                'total' => $movements->total(),
+            ],
+        ]);
     }
 
     public function update(UpdateInventoryItemRequest $request, $id)

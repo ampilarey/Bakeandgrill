@@ -280,18 +280,50 @@ class ReportsService
     }
 
     /**
-     * Inventory valuation — total stock value and quantity across all items.
+     * Inventory valuation — aggregate + per-item breakdown.
+     * Negative on-hand is reported separately and excluded from positive totals.
      */
     public function inventoryValuation(): array
     {
-        $totals = InventoryItem::select(
-            DB::raw('SUM(COALESCE(current_stock, 0) * COALESCE(unit_cost, 0)) as value'),
-            DB::raw('SUM(COALESCE(current_stock, 0)) as quantity'),
-        )->first();
+        $items = InventoryItem::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'unit', 'current_stock', 'unit_cost']);
+
+        $rows = [];
+        $value = 0.0;
+        $quantity = 0.0;
+        $negativeValue = 0.0;
+        $negativeCount = 0;
+
+        foreach ($items as $item) {
+            $qty = (float) ($item->current_stock ?? 0);
+            $cost = (float) ($item->unit_cost ?? 0);
+            $lineValue = round($qty * $cost, 2);
+            $rows[] = [
+                'id' => $item->id,
+                'name' => $item->name,
+                'unit' => $item->unit,
+                'quantity' => $qty,
+                'cost_per_unit' => $cost,
+                'total_value' => $lineValue,
+                'is_negative' => $qty < 0,
+            ];
+            if ($qty < 0) {
+                $negativeCount++;
+                $negativeValue += $lineValue;
+            } else {
+                $value += $lineValue;
+                $quantity += $qty;
+            }
+        }
 
         return [
-            'value' => (float) ($totals->value ?? 0),
-            'quantity' => (float) ($totals->quantity ?? 0),
+            'value' => round($value, 2),
+            'quantity' => round($quantity, 3),
+            'negative_stock_count' => $negativeCount,
+            'negative_stock_value' => round($negativeValue, 2),
+            'items' => $rows,
         ];
     }
 
