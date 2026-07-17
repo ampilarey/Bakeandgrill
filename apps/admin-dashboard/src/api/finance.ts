@@ -641,8 +641,10 @@ export type SuggestionItem = {
   current_stock: number;
   reorder_point: number;
   suggested_quantity: number;
+  suggestion_reason?: string;
+  daily_usage_rate?: number;
   last_unit_cost: number | null;
-  suggested_supplier: { id: number; name: string; price: number } | null;
+  suggested_supplier: { id: number; name: string; price: number; source?: string } | null;
 };
 
 export type PurchaseSuggestions = {
@@ -672,6 +674,57 @@ export async function getRevenueForecast(weeks = 8, horizon = 4): Promise<{ weig
 
 export async function getInventoryForecast(): Promise<{ items: { id: number; name: string; unit: string; category: string; current_stock: number; daily_usage_rate: number; days_of_stock: number | null; status: string }[] }> {
   return req('/forecasts/inventory');
+}
+
+export type RestockBuyFrequency = {
+  purchase_count: number;
+  avg_days_between: number | null;
+  avg_buy_qty: number;
+  last_purchase_date: string | null;
+  last_buy_qty: number | null;
+};
+
+export type RestockPlanItem = {
+  id: number;
+  name: string;
+  unit: string;
+  category: string | null;
+  current_stock: number;
+  reorder_point: number;
+  reorder_quantity: number | null;
+  daily_usage_rate: number;
+  days_of_stock: number | null;
+  status: string;
+  buy_frequency: RestockBuyFrequency | null;
+  suggested_next_order_date: string | null;
+  suggested_order_qty: number;
+  suggested_reorder_point: number | null;
+  reason: string;
+  due_soon: boolean;
+};
+
+export type RestockPlan = {
+  lookback_days: number;
+  buy_lookback_days: number;
+  lead_days: number;
+  cover_days: number;
+  totals: { items_count: number; due_soon: number; below_rop: number };
+  items: RestockPlanItem[];
+};
+
+export async function getRestockPlan(params: {
+  lookback_days?: number;
+  buy_lookback_days?: number;
+  lead_days?: number;
+  cover_days?: number;
+} = {}): Promise<RestockPlan> {
+  const q = new URLSearchParams();
+  if (params.lookback_days != null) q.set('lookback_days', String(params.lookback_days));
+  if (params.buy_lookback_days != null) q.set('buy_lookback_days', String(params.buy_lookback_days));
+  if (params.lead_days != null) q.set('lead_days', String(params.lead_days));
+  if (params.cover_days != null) q.set('cover_days', String(params.cover_days));
+  const qs = q.toString();
+  return req(`/forecasts/restock${qs ? `?${qs}` : ''}`);
 }
 
 export type DeliveryZoneReportRow = {

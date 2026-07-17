@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Gst\Services\GstLedgerPoster;
+use App\Domains\Inventory\Services\RestockIntelligenceService;
 use App\Models\InventoryItem;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
@@ -18,7 +19,10 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseWorkflowController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly RestockIntelligenceService $restock,
+    ) {}
 
     // ──────────────────────────────────────────────────────────
     // Approve a purchase order
@@ -203,6 +207,8 @@ class PurchaseWorkflowController extends Controller
     public function autoSuggest(Request $request): JsonResponse
     {
         $supplierFilter = $request->query('supplier_id');
+        $coverDays = min(max((int) $request->query('cover_days', 14), 1), 90);
+        $lookbackDays = min(max((int) $request->query('lookback_days', 30), 7), 180);
 
         // Items below reorder point (or min stock threshold)
         $lowItems = InventoryItem::where('is_active', true)
@@ -215,34 +221,64 @@ class PurchaseWorkflowController extends Controller
             return response()->json(['message' => 'No items are below reorder point.', 'items' => []]);
         }
 
-        // Group by suggested supplier using cheapest known price from price history
-        $suggested = $lowItems->map(function ($item) {
-            $suggestedQty = max(
-                ($item->reorder_quantity ?? $item->reorder_point ?? 1),
-                (($item->reorder_point ?? 0) * 2) - ($item->current_stock ?? 0),
-            );
+        $usageByItem = DB::table('stock_movements')
+            ->where('type', 'deduction')
+            ->where('created_at', '>=', now()->subDays($lookbackDays))
+            ->where('quantity', '<', 0)
+            ->whereIn('inventory_item_id', $lowItems->pluck('id'))
+            ->selectRaw('inventory_item_id, SUM(ABS(quantity)) as consumed')
+            ->groupBy('inventory_item_id')
+            ->pluck('consumed', 'inventory_item_id');
 
-            // Find cheapest supplier via price history
-            $cheapest = \App\Models\SupplierPriceHistory::where('inventory_item_id', $item->id)
-                ->with('supplier:id,name,is_active')
-                ->selectRaw('supplier_id, MIN(unit_price) as min_price, MAX(recorded_at) as latest')
-                ->groupBy('supplier_id')
-                ->orderBy('min_price')
-                ->first();
+        // Group by suggested supplier using preferred supplier, else cheapest price history
+        $suggested = $lowItems->map(function ($item) use ($usageByItem, $lookbackDays, $coverDays) {
+            $stock = (float) ($item->current_stock ?? 0);
+            $rop = (float) ($item->reorder_point ?? 0);
+            $reorderQty = (float) ($item->reorder_quantity ?? 0);
+            $consumed = (float) ($usageByItem[$item->id] ?? 0);
+            $dailyRate = $lookbackDays > 0 ? $consumed / $lookbackDays : 0.0;
+            $qtyInfo = $this->restock->suggestedOrderQuantity($stock, $rop, $reorderQty, $dailyRate, $coverDays);
+
+            $suggestedSupplier = null;
+            if ($item->preferred_supplier_id && $item->preferredSupplier) {
+                $prefPrice = SupplierPriceHistory::where('inventory_item_id', $item->id)
+                    ->where('supplier_id', $item->preferred_supplier_id)
+                    ->orderByDesc('recorded_at')
+                    ->value('unit_price');
+                $suggestedSupplier = [
+                    'id' => (int) $item->preferred_supplier_id,
+                    'name' => $item->preferredSupplier->name,
+                    'price' => $prefPrice !== null ? (float) $prefPrice : (float) ($item->last_purchase_price ?? 0),
+                    'source' => 'preferred',
+                ];
+            } else {
+                $cheapest = SupplierPriceHistory::where('inventory_item_id', $item->id)
+                    ->with('supplier:id,name,is_active')
+                    ->selectRaw('supplier_id, MIN(unit_price) as min_price, MAX(recorded_at) as latest')
+                    ->groupBy('supplier_id')
+                    ->orderBy('min_price')
+                    ->first();
+                if ($cheapest?->supplier) {
+                    $suggestedSupplier = [
+                        'id' => $cheapest->supplier_id,
+                        'name' => $cheapest->supplier->name,
+                        'price' => (float) $cheapest->min_price,
+                        'source' => 'cheapest',
+                    ];
+                }
+            }
 
             return [
                 'inventory_item_id' => $item->id,
                 'name' => $item->name,
                 'unit' => $item->unit,
-                'current_stock' => (float) $item->current_stock,
-                'reorder_point' => (float) $item->reorder_point,
-                'suggested_quantity' => max(1, round($suggestedQty, 2)),
+                'current_stock' => $stock,
+                'reorder_point' => $rop,
+                'suggested_quantity' => $qtyInfo['qty'],
+                'suggestion_reason' => $qtyInfo['reason'],
+                'daily_usage_rate' => round($dailyRate, 4),
                 'last_unit_cost' => $item->last_purchase_price ? (float) $item->last_purchase_price : null,
-                'suggested_supplier' => $cheapest?->supplier ? [
-                    'id' => $cheapest->supplier_id,
-                    'name' => $cheapest->supplier->name,
-                    'price' => (float) $cheapest->min_price,
-                ] : null,
+                'suggested_supplier' => $suggestedSupplier,
             ];
         });
 

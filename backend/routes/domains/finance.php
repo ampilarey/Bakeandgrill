@@ -78,11 +78,11 @@ Route::middleware(['auth:sanctum', 'permission:suppliers.manage'])->prefix('supp
 
 // ─── Purchase Workflow ─────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->prefix('purchases')->group(function () {
-    Route::post('/{id}/approve', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'approve']);
-    Route::post('/{id}/reject', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'reject']);
-    Route::post('/{id}/receive', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'receive']);
     Route::get('/suggest', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'autoSuggest']);
     Route::post('/from-suggest', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'createFromSuggest']);
+    Route::post('/{id}/approve', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'approve'])->whereNumber('id');
+    Route::post('/{id}/reject', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'reject'])->whereNumber('id');
+    Route::post('/{id}/receive', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'receive'])->whereNumber('id');
 });
 
 // ─── Inventory Categories & Unit Conversions ───────────────────────────────
@@ -104,4 +104,5 @@ Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('for
     Route::get('/items', [App\Http\Controllers\Api\ForecastController::class, 'itemForecast']);
     Route::get('/trends', [App\Http\Controllers\Api\ForecastController::class, 'salesTrends']);
     Route::get('/inventory', [App\Http\Controllers\Api\ForecastController::class, 'inventoryForecast']);
+    Route::get('/restock', [App\Http\Controllers\Api\ForecastController::class, 'restockIntelligence']);
 });

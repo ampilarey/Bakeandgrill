@@ -1,0 +1,138 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Inventory;
+
+use App\Models\InventoryItem;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
+use App\Models\StockMovement;
+use App\Models\Supplier;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class RestockIntelligenceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_restock_plan_includes_buy_frequency_and_usage(): void
+    {
+        $owner = $this->makeOwner();
+
+        $supplier = Supplier::create(['name' => 'Mill Co', 'is_active' => true]);
+        $flour = InventoryItem::create([
+            'name' => 'Flour',
+            'sku' => 'FLR-RST',
+            'unit' => 'kg',
+            'current_stock' => 10,
+            'reorder_point' => 20,
+            'reorder_quantity' => 40,
+            'unit_cost' => 5,
+            'is_active' => true,
+        ]);
+
+        $deduct = StockMovement::create([
+            'idempotency_key' => 'test-deduct-flour-1',
+            'inventory_item_id' => $flour->id,
+            'user_id' => $owner->id,
+            'type' => 'deduction',
+            'quantity' => -30,
+            'balance_after' => 10,
+            'unit_cost' => 5,
+            'reference_type' => 'order',
+            'reference_id' => 1,
+            'notes' => 'test',
+        ]);
+        $deduct->forceFill([
+            'created_at' => now()->subDays(10),
+            'updated_at' => now()->subDays(10),
+        ])->save();
+
+        $d1 = now()->subDays(28)->toDateString();
+        $d2 = now()->subDays(14)->toDateString();
+        foreach ([$d1, $d2] as $i => $date) {
+            $po = Purchase::create([
+                'purchase_number' => 'PO-RST-'.$i,
+                'supplier_id' => $supplier->id,
+                'user_id' => $owner->id,
+                'status' => 'received',
+                'subtotal' => 100,
+                'tax_amount' => 0,
+                'total' => 100,
+                'purchase_date' => $date,
+                'actual_delivery_date' => $date,
+            ]);
+            PurchaseItem::create([
+                'purchase_id' => $po->id,
+                'inventory_item_id' => $flour->id,
+                'quantity' => 25,
+                'received_quantity' => 25,
+                'receive_status' => 'complete',
+                'unit_cost' => 4,
+                'total_cost' => 100,
+            ]);
+        }
+
+        $response = $this->getJson(
+            '/api/forecasts/restock?lookback_days=30&buy_lookback_days=90&lead_days=3&cover_days=14',
+            $this->staffHeaders($owner),
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('totals.below_rop', 1)
+            ->assertJsonPath('items.0.name', 'Flour')
+            ->assertJsonPath('items.0.buy_frequency.purchase_count', 2)
+            ->assertJsonPath('items.0.buy_frequency.avg_days_between', 14)
+            ->assertJsonPath('items.0.status', 'critical');
+
+        $this->assertGreaterThan(0, (float) $response->json('items.0.daily_usage_rate'));
+        $this->assertNotNull($response->json('items.0.suggested_next_order_date'));
+        $this->assertGreaterThan(0, (float) $response->json('items.0.suggested_order_qty'));
+    }
+
+    public function test_auto_suggest_uses_usage_cover_when_higher(): void
+    {
+        $owner = $this->makeOwner();
+
+        $item = InventoryItem::create([
+            'name' => 'Sugar',
+            'sku' => 'SGR-RST',
+            'unit' => 'kg',
+            'current_stock' => 5,
+            'reorder_point' => 10,
+            'reorder_quantity' => 10,
+            'unit_cost' => 3,
+            'is_active' => true,
+        ]);
+
+        // 2 kg/day over 30 days → cover 14 days needs 28 − 5 = 23 > ROP-based 15
+        StockMovement::create([
+            'idempotency_key' => 'test-deduct-sugar-1',
+            'inventory_item_id' => $item->id,
+            'user_id' => $owner->id,
+            'type' => 'deduction',
+            'quantity' => -60,
+            'balance_after' => 5,
+            'unit_cost' => 3,
+            'reference_type' => 'order',
+            'reference_id' => 2,
+            'notes' => 'test',
+        ]);
+
+        $response = $this->getJson(
+            '/api/purchases/suggest?lookback_days=30&cover_days=14',
+            $this->staffHeaders($owner),
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('items.0.suggestion_reason', 'usage_cover');
+
+        $this->assertGreaterThanOrEqual(20, (float) $response->json('items.0.suggested_quantity'));
+    }
+
+    public function test_restock_requires_auth(): void
+    {
+        $this->getJson('/api/forecasts/restock')->assertStatus(401);
+    }
+}

@@ -50,13 +50,14 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
     });
 
     // Purchases — all operations require suppliers.purchases
+    // {id} is numeric so /purchases/suggest (finance domain) is not swallowed.
     Route::middleware('permission:suppliers.purchases')->group(function () {
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::post('/purchases', [PurchaseController::class, 'store']);
-        Route::get('/purchases/{id}', [PurchaseController::class, 'show']);
-        Route::patch('/purchases/{id}', [PurchaseController::class, 'update']);
-        Route::post('/purchases/{id}/receipts', [PurchaseController::class, 'uploadReceipt']);
         Route::post('/purchases/import', [PurchaseController::class, 'import']);
+        Route::get('/purchases/{id}', [PurchaseController::class, 'show'])->whereNumber('id');
+        Route::patch('/purchases/{id}', [PurchaseController::class, 'update'])->whereNumber('id');
+        Route::post('/purchases/{id}/receipts', [PurchaseController::class, 'uploadReceipt'])->whereNumber('id');
     });
 
     // Purchase Requests — operational buying tasks (staff request, manager verify)

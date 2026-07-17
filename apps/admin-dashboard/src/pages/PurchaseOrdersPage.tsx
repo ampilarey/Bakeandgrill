@@ -342,6 +342,9 @@ export function PurchaseOrdersPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <p style={{ fontWeight: 700, color: '#92400e', margin: 0, fontSize: 14 }}>
               Low-Stock Suggestions — {(suggestions.items ?? []).length} items below reorder point
+              <span style={{ display: 'block', fontWeight: 500, fontSize: 12, color: '#a16207', marginTop: 4 }}>
+                Qty uses usage cover when higher than the reorder formula. Preferred supplier wins over cheapest price.
+              </span>
             </p>
             <Btn small variant="ghost" onClick={() => setSuggestions(null)}>Dismiss</Btn>
           </div>
@@ -370,6 +373,11 @@ export function PurchaseOrdersPage() {
                       <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.name}</span>
                       <span style={{ color: '#ef4444', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
                       <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>
+                      {item.suggestion_reason && (
+                        <span style={{ color: '#92400e', marginLeft: 6, fontSize: 11 }}>
+                          ({item.suggestion_reason === 'usage_cover' ? 'usage' : item.suggestion_reason === 'reorder_quantity' ? 'reorder qty' : 'ROP'})
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Inventory\Services\RestockIntelligenceService;
 use App\Models\InventoryItem;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class ForecastController extends Controller
 {
+    public function __construct(
+        private readonly RestockIntelligenceService $restock,
+    ) {}
+
     // ──────────────────────────────────────────────────────────
     // Revenue forecast: weighted moving average over past N weeks
     // ──────────────────────────────────────────────────────────
@@ -233,6 +238,20 @@ class ForecastController extends Controller
                 ];
             })->sortBy('days_of_stock')->values(),
         ]);
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // Restock plan: usage runway + buy frequency + suggested qty
+    // ──────────────────────────────────────────────────────────
+
+    public function restockIntelligence(Request $request): JsonResponse
+    {
+        return response()->json($this->restock->restockPlan(
+            (int) $request->query('lookback_days', 30),
+            (int) $request->query('buy_lookback_days', 90),
+            (int) $request->query('lead_days', 3),
+            (int) $request->query('cover_days', 14),
+        ));
     }
 
     // ──────────────────────────────────────────────────────────
