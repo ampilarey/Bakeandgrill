@@ -1,23 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, fetchCustomerOrders, getReorderPayload, fetchFeaturedReviews, submitCorporateInquiry, API_ORIGIN } from '../api';
-import type { Item, DailySpecial, Order, FeaturedReview } from '../api';
-import { WhatsAppIcon, ViberIcon } from '../components/icons';
+import { useNavigate } from 'react-router-dom';
+import {
+  fetchItems,
+  fetchOnlineOrderingStatus,
+  fetchActiveSpecials,
+  fetchCustomerOrders,
+  getReorderPayload,
+  fetchFeaturedReviews,
+  submitCorporateInquiry,
+  API_ORIGIN,
+} from '../api';
+import type { Item, DailySpecial, Order } from '../api';
+import { getLoyaltyAccount } from '../api/promotions';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
-import { HeroCarousel } from '../components/HeroCarousel';
 import { PrayerBar } from '../components/PrayerBar';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useActiveOrder } from '../hooks/useActiveOrder';
 
-function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct: number | null | undefined): boolean {
-  if (!badge || !discountPct || discountPct <= 0) return false;
-  return !badge.includes(`${discountPct}%`);
-}
+import { GreetingHeader } from '../components/home/GreetingHeader';
+import { StatChipsRow } from '../components/home/StatChipsRow';
+import { PromoCarousel } from '../components/home/PromoCarousel';
+import { ModeEntryCards } from '../components/home/ModeEntryCards';
+import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
+import { ReorderStrip } from '../components/home/ReorderStrip';
+import { BrandFooter } from '../components/home/BrandFooter';
 
-const corpInputStyle = {
+const corpInputStyle: React.CSSProperties = {
   width: '100%',
   padding: '0.75rem 1rem',
   border: '1.5px solid var(--color-border)',
@@ -25,84 +37,141 @@ const corpInputStyle = {
   fontSize: '0.9rem',
   fontFamily: 'inherit',
   background: 'var(--color-surface)',
-  boxSizing: 'border-box' as const,
+  boxSizing: 'border-box',
 };
 
 export function HomePage() {
   const navigate = useNavigate();
   const { addItem, clearCart } = useCart();
-  const [featuredItems, setFeaturedItems] = useState<Item[]>([]);
+
+  // ── Data state ─────────────────────────────────────────────────────────────
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
-  const [hoursReason, setHoursReason] = useState<'master_switch_off' | 'schedule' | 'override_active' | null>(null);
+  const [hoursReason, setHoursReason] = useState<
+    'master_switch_off' | 'schedule' | 'override_active' | null
+  >(null);
   const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
-  const [, setDeliveryAvailable] = useState<boolean>(true);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [reorderingId, setReorderingId] = useState<number | null>(null);
-  const [featuredReviews, setFeaturedReviews] = useState<FeaturedReview[]>([]);
-  const [corpForm, setCorpForm] = useState({ contact_name: '', phone: '', company: '', headcount: '', notes: '' });
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
+  const [chipsLoading, setChipsLoading] = useState(true);
+  const [corpForm, setCorpForm] = useState({
+    contact_name: '',
+    phone: '',
+    company: '',
+    headcount: '',
+    notes: '',
+  });
   const [corpSubmitting, setCorpSubmitting] = useState(false);
-  const [corpMessage, setCorpMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-  const { settings: s, trustItems, heroSlides, homepageCategories, text } = useSiteSettingsContext();
+  const [corpMessage, setCorpMessage] = useState<{
+    type: 'ok' | 'err';
+    text: string;
+  } | null>(null);
+
+  const { settings: s, heroSlides } = useSiteSettingsContext();
   const { isAuthenticated, authReady, customerName } = useAuth();
   const { t } = useLanguage();
+  const { activeOrder } = useActiveOrder();
   const reorderFetched = useRef(false);
+  const loyaltyFetched = useRef(false);
 
-  const waLink    = s.business_whatsapp || 'https://wa.me/9609120011';
-  const viberLink = s.business_viber   || 'viber://chat?number=9609120011';
-  const officeOrdersEnabled = s.office_orders_enabled !== '0' && s.office_orders_enabled !== 'false';
-  const officeHeadline = s.office_orders_headline || 'Office breakfast & team catering';
-  const officeSubtext = s.office_orders_subtext || 'Minimum 10 guests. We deliver across Malé — tell us your date and headcount.';
-  const officeMinGuests = Math.max(1, parseInt(s.office_orders_min_guests ?? '10', 10) || 10);
+  // ── Derived settings ───────────────────────────────────────────────────────
+  const waLink = s.business_whatsapp || 'https://wa.me/9609120011';
+  const viberLink = s.business_viber || 'viber://chat?number=9609120011';
+  const officeOrdersEnabled =
+    s.office_orders_enabled !== '0' && s.office_orders_enabled !== 'false';
+  const officeHeadline =
+    s.office_orders_headline || 'Office breakfast & team catering';
+  const officeSubtext =
+    s.office_orders_subtext ||
+    'Minimum 10 guests. We deliver across Malé — tell us your date and headcount.';
+  const officeMinGuests = Math.max(
+    1,
+    parseInt(s.office_orders_min_guests ?? '10', 10) || 10,
+  );
+  const logoSrc = s.logo || '/logo.png';
+  const siteName = s.site_name || 'Bake & Grill';
 
   usePageTitle(null);
 
+  // ── Load featured items (kept for potential future use, kept non-blocking) ─
   useEffect(() => {
     const loadFeatured = () => {
-      fetchItems().then((res) => {
-        setFeaturedItems((res.data ?? []).slice(0, 4));
-      }).catch(() => { /* section simply stays hidden on failure */ });
+      fetchItems().catch(() => {});
     };
     loadFeatured();
     window.addEventListener('sales_channel_change', loadFeatured);
     return () => window.removeEventListener('sales_channel_change', loadFeatured);
   }, []);
 
+  // ── Load ordering status + specials + reviews ──────────────────────────────
   useEffect(() => {
-    fetchOnlineOrderingStatus().then((gate) => {
-      setIsOpen(gate.open);
-      setHoursMsg(gate.open ? null : (gate.message ?? null));
-      setHoursReason(gate.reason ?? null);
-      setCurrentClose(gate.current_close ?? null);
-      setNextOpenWindow(gate.next_open_window ?? null);
-      setDeliveryAvailable(gate.delivery_available ?? true); // kept for future use
-    }).catch(() => setIsOpen(false));
+    fetchOnlineOrderingStatus()
+      .then((gate) => {
+        setIsOpen(gate.open);
+        setHoursMsg(gate.open ? null : (gate.message ?? null));
+        setHoursReason(gate.reason ?? null);
+        setCurrentClose(gate.current_close ?? null);
+        setNextOpenWindow(gate.next_open_window ?? null);
+      })
+      .catch(() => setIsOpen(false));
 
-    fetchActiveSpecials().then(({ specials: sp }) => {
-      setSpecials((sp ?? []).slice(0, 6));
-    }).catch(() => { /* non-blocking */ });
+    fetchActiveSpecials()
+      .then(({ specials: sp }) => {
+        setSpecials((sp ?? []).slice(0, 6));
+      })
+      .catch(() => {});
 
-    fetchFeaturedReviews(6).then(({ reviews }) => {
-      setFeaturedReviews(reviews ?? []);
-    }).catch(() => { /* non-blocking */ });
+    // Fetch reviews but don't render them (wireframe §11 excludes reviews)
+    fetchFeaturedReviews(6).catch(() => {});
   }, []);
 
-  // Load recent completed orders for returning customers (non-blocking)
+  // ── Load recent completed orders for reorder strip ─────────────────────────
   useEffect(() => {
     if (reorderFetched.current || !authReady || !isAuthenticated) return;
     reorderFetched.current = true;
-    fetchCustomerOrders().then(({ data }) => {
-      const completed = (data ?? [])
-        .filter((o) => ['completed', 'delivered', 'paid'].includes(o.status))
-        .slice(0, 3);
-      setRecentOrders(completed);
-    }).catch(() => { /* non-blocking */ });
+    fetchCustomerOrders()
+      .then(({ data }) => {
+        const completed = (data ?? [])
+          .filter((o) => ['completed', 'delivered', 'paid'].includes(o.status))
+          .slice(0, 3);
+        setRecentOrders(completed);
+      })
+      .catch(() => {});
   }, [authReady, isAuthenticated]);
 
+  // ── Load loyalty points for stat chip ─────────────────────────────────────
+  useEffect(() => {
+    if (loyaltyFetched.current || !authReady) return;
+    if (!isAuthenticated) {
+      setChipsLoading(false);
+      return;
+    }
+    loyaltyFetched.current = true;
+    getLoyaltyAccount()
+      .then((res) => {
+        setLoyaltyPoints(res.account?.points_balance ?? null);
+      })
+      .catch(() => {
+        setLoyaltyPoints(null);
+      })
+      .finally(() => setChipsLoading(false));
+  }, [authReady, isAuthenticated]);
+
+  // Chips stop loading once auth is ready and not authenticated
+  useEffect(() => {
+    if (!authReady) return;
+    if (!isAuthenticated) setChipsLoading(false);
+  }, [authReady, isAuthenticated]);
+
+  // ── Reorder handler ────────────────────────────────────────────────────────
   const handleReorder = async (order: Order) => {
-    if (!isAuthenticated) { navigate('/account'); return; }
+    if (!isAuthenticated) {
+      void navigate('/account');
+      return;
+    }
     setReorderingId(order.id);
     try {
       const payload = await getReorderPayload(order.id);
@@ -122,14 +191,15 @@ export function HomePage() {
         }));
         addItem(fakeItem, line.quantity, mods, null);
       }
-      navigate('/checkout');
+      void navigate('/checkout');
     } catch {
-      navigate('/menu');
+      void navigate('/menu');
     } finally {
       setReorderingId(null);
     }
   };
 
+  // ── Opening status badge (passed into GreetingHeader) ─────────────────────
   const statusBadge =
     isOpen !== null ? (
       <OpeningStatusBadge
@@ -141,402 +211,128 @@ export function HomePage() {
         className="opening-status-badge-hero"
         timeDisplay="24h"
       />
-    ) : null;  const gradientHeroFallback = (
-    <section
-      className="home-hero"
-      style={{
-        background: 'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-surface-alt) 40%, var(--color-bg) 100%)',
-        borderBottom: '1px solid var(--color-border)',
-        padding: '3.5rem var(--page-gutter) 3rem',
-        textAlign: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {statusBadge}
-      <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-        {(() => {
-          const heroSub = text(
-            'home_hero_fallback_subtitle',
-            'Where Dhivehi breakfast meets artisan baking. Real food. Proper char. Baked fresh every morning at 5am.',
-          );
-          const dotSplit = heroSub.match(/^(.+?)\.\s+(.+)$/s);
-          const heroHeadline = dotSplit ? dotSplit[1] : heroSub;
-          const heroBody = dotSplit ? dotSplit[2] : '';
-          return (
-            <>
-              <span className="home-banner-eyebrow">{text('home_hero_fallback_title', "Malé's neighbourhood café")}</span>
-              <h1 className="home-banner-title">{heroHeadline}</h1>
-              {heroBody && <p className="home-banner-sub">{heroBody}</p>}
-            </>
-          );
-        })()}
-        <div className="home-banner-ctas">
-          <Link to="/menu" className="home-banner-cta-primary btn-primary-hover">
-            {text('nav_order_cta_text', 'Order Now →')}
-          </Link>
-          <Link to="/menu" className="home-banner-cta-secondary btn-ghost-hover">
-            View Menu
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-
-  const greetingTitle = customerName
-    ? t('home.greeting_named').replace('{name}', customerName)
-    : t('home.greeting_hello');
+    ) : null;
 
   return (
     <div>
+      {/* ── 1. Greeting + avatar/sign-in + opening badge ──────────────────── */}
+      <GreetingHeader
+        customerName={customerName}
+        isAuthenticated={isAuthenticated}
+        statusBadge={statusBadge}
+      />
 
-      {/* Phase 2: basic greeting + PrayerBar (full banner polish in Phase 4) */}
-      <section
+      {/* ── 2. Prayer banner (§12) — no top portal strip on Home ──────────── */}
+      <div
         style={{
-          padding: '1.25rem var(--page-gutter) 0.5rem',
+          padding: '16px var(--page-gutter) 24px',
           maxWidth: 'var(--layout-max)',
           margin: '0 auto',
         }}
       >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: '1.5rem',
-            fontWeight: 800,
-            color: 'var(--color-dark)',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {greetingTitle}
-        </h1>
-        <p
-          style={{
-            margin: '0.35rem 0 0',
-            fontSize: '0.9375rem',
-            color: 'var(--color-text-muted)',
-          }}
-        >
-          {t('home.greeting_sub')}
-        </p>
-      </section>
-
-      <div style={{ padding: '0.75rem var(--page-gutter) 1rem', maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
-        <PrayerBar />
+        <PrayerBar variant="banner" />
       </div>
 
-      {/* Online ordering status — shown inside hero top-right corner always */}
-
-      <HeroCarousel
-        slides={heroSlides}
-        apiOrigin={API_ORIGIN}
-        fallback={gradientHeroFallback}
-        statusSlot={statusBadge}
+      {/* ── 3. Stat chips (loyalty / active order / specials) ─────────────── */}
+      <StatChipsRow
+        loading={chipsLoading}
+        isAuthenticated={isAuthenticated}
+        loyaltyPoints={loyaltyPoints}
+        activeOrder={
+          activeOrder
+            ? { id: activeOrder.id, status: activeOrder.status }
+            : null
+        }
+        specialsCount={specials.length}
       />
 
-      {/* ── "Your usual" returning-customer block ──────────────────────────── */}
-      {recentOrders.length > 0 && (
-        <section style={{ background: 'var(--color-surface-alt)', borderBottom: '1px solid var(--color-border)', padding: '1.25rem var(--page-gutter)' }}>
-          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)', margin: '0 0 0.75rem' }}>
-              {customerName ? `Welcome back, ${customerName}!` : 'Welcome back!'}
-            </p>
-            <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
-              {recentOrders.map((order) => {
-                const busy = reorderingId === order.id;
-                return (
-                  <div
-                    key={order.id}
-                    style={{
-                      flex: '0 0 auto', minWidth: 220, maxWidth: 280,
-                      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                      borderRadius: 12, padding: '0.85rem 1rem',
-                      display: 'flex', flexDirection: 'column', gap: '0.5rem',
-                    }}
-                  >
-                    <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-dark)', margin: 0 }}>
-                      Order #{order.order_number}
-                    </p>
-                    {order.items && order.items.length > 0 && (
-                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.35 }}>
-                        {order.items.slice(0, 3).map((i) => i.item_name).join(', ')}
-                        {order.items.length > 3 ? ` +${order.items.length - 3} more` : ''}
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      disabled={busy || reorderingId !== null}
-                      onClick={() => void handleReorder(order)}
-                      style={{
-                        marginTop: 'auto', padding: '0.55rem 1rem',
-                        background: 'var(--color-primary)', color: '#fff',
-                        border: 'none', borderRadius: 10,
-                        fontSize: '0.85rem', fontWeight: 700,
-                        cursor: busy ? 'wait' : 'pointer',
-                        fontFamily: 'inherit', opacity: reorderingId !== null && !busy ? 0.55 : busy ? 0.75 : 1,
-                      }}
-                    >
-                      {busy ? 'Adding…' : 'Order again'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* ── 4. Promo carousel (16:9) ──────────────────────────────────────── */}
+      <PromoCarousel slides={heroSlides} apiOrigin={API_ORIGIN} />
 
-      {/* ── Trust strip (Blade .trust-strip parity) ───────────────────────── */}
-      <div className="order-trust-strip">
-        <div className="order-trust-inner">
-          {trustItems.map((ti, i) => (
-            <div key={i} className="order-trust-item">
-              <div className="order-trust-icon-wrap">{ti.icon ?? ''}</div>
-              <div className="order-trust-text">
-                <strong>{ti.heading ?? ''}</strong>
-                <span>{ti.subtext ?? ''}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── 5. Mode entry cards (Delivery / Pickup) ───────────────────────── */}
+      <ModeEntryCards />
 
-      {/* ── Category shortcuts ────────────────────────────────── */}
-      <section className="home-section" style={{ paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)', marginBottom: '0.4rem' }}>
-            {text('home_categories_eyebrow', "What we're known for")}
-          </p>
-          <h2 style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.03em' }}>
-            {text('home_categories_title', 'Made for Malé')}
-          </h2>
-        </div>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1rem',
-        }}>
-          {homepageCategories.map((cat, idx) => {
-            const catLink = (cat.link ?? '/menu').replace(/^\/order/, '') || '/menu';
-            return (
-            <Link
-              key={cat.name ?? cat.label ?? idx}
-              to={catLink}
-              className="cat-card-hover"
-              style={{
-                display: 'block',
-                background: 'var(--color-surface-alt)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-2xl)',
-                padding: '1.5rem',
-                textDecoration: 'none',
-              }}
-            >
-              <div style={{ fontSize: '2rem', marginBottom: '0.75rem', lineHeight: 1 }}>{cat.icon ?? ''}</div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.35rem' }}>{cat.name ?? cat.label ?? ''}</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>{cat.hook ?? ''}</p>
-              <div style={{ marginTop: '0.875rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                Order →
-              </div>
-            </Link>
-          );
-          })}
-        </div>
-      </section>
+      {/* ── 6. Today's specials ───────────────────────────────────────────── */}
+      <SpecialsCarousel specials={specials} apiOrigin={API_ORIGIN} />
 
-      {/* ── Today's Specials ──────────────────────────────────── */}
-      {specials.length > 0 && (
-        <section className="home-section" style={{ paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
-              <div>
-                <h2 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>{text('home_specials_title', "Today's Specials")}</h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0' }}>{text('home_specials_eyebrow', 'Limited-time deals, today only')}</p>
-              </div>
-              <Link to="/menu" style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>View all →</Link>
-            </div>
-            <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-              {specials.map((sp) => {
-                const cardKey = sp.variant_id ? `${sp.id}-${sp.variant_id}` : String(sp.id);
-                const imgSrc = sp.item_image
-                  ? sp.item_image.startsWith('http') ? sp.item_image : `${API_ORIGIN}${sp.item_image.startsWith('/') ? '' : '/'}${sp.item_image}`
-                  : null;
-                const price = Number(sp.effective_price ?? 0);
-                const wasPrice = sp.original_price != null && Number(sp.original_price) > price
-                  ? Number(sp.original_price)
-                  : null;
-                const badge = sp.badge_label ?? (sp.discount_pct ? `${sp.discount_pct}% OFF` : 'Special Offer');
-                const pctUnderBadge = showDiscountPctUnderBadge(sp.badge_label, sp.discount_pct);
-                return (
-                  <Link
-                    key={cardKey}
-                    to={`/menu?item=${sp.item_id}`}
-                    style={{
-                      flexShrink: 0, width: 180, borderRadius: 'var(--radius-2xl)',
-                      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                      overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column',
-                    }}
-                  >
-                    <div style={{ height: 110, background: 'var(--color-surface-alt)', position: 'relative', overflow: 'hidden' }}>
-                      {imgSrc
-                        ? <img src={imgSrc} alt={sp.item_name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.3 }}>🍽️</div>
-                      }
-                      {(badge || sp.discount_pct) && (
-                        <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, zIndex: 2 }}>
-                          <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, lineHeight: 1.3 }}>
-                            {badge}
-                          </div>
-                          {pctUnderBadge && (
-                            <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, lineHeight: 1.3 }}>
-                              {sp.discount_pct}% OFF
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ padding: '0.75rem', flex: 1 }}>
-                      <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item_name}</p>
-                      {sp.variant_name && (
-                        <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{sp.variant_name}</p>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                        <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-primary)' }}>MVR {price.toFixed(2)}</span>
-                        {wasPrice && <span style={{ fontSize: 11, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>MVR {wasPrice.toFixed(2)}</span>}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* ── 7. Reorder strip ──────────────────────────────────────────────── */}
+      <ReorderStrip
+        orders={recentOrders}
+        customerName={customerName}
+        reorderingId={reorderingId}
+        onReorder={(order) => void handleReorder(order)}
+      />
 
-      {/* ── Popular Items ─────────────────────────────────────── */}
-      {featuredItems.length > 0 && (
-        <section className="home-section" style={{ background: 'var(--color-surface-alt)', paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div>
-                <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)', marginBottom: '0.25rem' }}>
-                  {text('home_featured_eyebrow_handpicked', '🔥 Most ordered')}
-                </p>
-                <h2 style={{ fontSize: 'clamp(1.3rem, 3.5vw, 1.75rem)', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.03em', margin: 0 }}>
-                  {text('home_featured_title_handpicked', 'Popular right now')}
-                </h2>
-              </div>
-              <Link
-                to="/menu"
-                style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: 'var(--text-base)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
-              >
-                See full menu →
-              </Link>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
-              {featuredItems.map((item) => {
-                const imgSrc = item.image_url
-                  ? item.image_url.startsWith('http') ? item.image_url : `${API_ORIGIN}${item.image_url.startsWith('/') ? '' : '/'}${item.image_url}`
-                  : null;
-                return (
-                  <Link
-                    key={item.id}
-                    to={`/menu?item=${item.id}`}
-                    className="feat-card-hover"
-                    style={{
-                      textDecoration: 'none',
-                      display: 'flex', flexDirection: 'column',
-                      background: 'var(--color-surface)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius-2xl)',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div style={{
-                      height: '150px', flexShrink: 0, overflow: 'hidden',
-                      background: imgSrc ? undefined : 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {imgSrc ? (
-                        <img src={imgSrc} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" decoding="async" />
-                      ) : (
-                        <span style={{ fontSize: '2.5rem', opacity: 0.4 }}>🍽️</span>
-                      )}
-                    </div>
-                    <div style={{ padding: '0.875rem 1rem' }}>
-                      <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.375rem', lineHeight: 1.3 }}>
-                        {item.name}
-                      </h3>
-                      <p style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-primary)', margin: 0 }}>
-                        MVR {Number(item.base_price).toFixed(2)}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── Customer reviews (social proof) ───────────────── */}
-      {featuredReviews.length > 0 && (
-        <section className="home-section" style={{ paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)', marginBottom: '0.35rem' }}>
-                {text('home_proof_eyebrow', 'Loved by locals')}
-              </p>
-              <h2 style={{ fontSize: 'clamp(1.3rem, 3.5vw, 1.75rem)', fontWeight: 800, color: 'var(--color-dark)', letterSpacing: '-0.03em', margin: 0 }}>
-                {text('proof_label', 'What customers say')}
-              </h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-              {featuredReviews.map((review) => (
-                <div
-                  key={review.id}
-                  style={{
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-2xl)',
-                    padding: '1.25rem',
-                  }}
-                >
-                  <div style={{ fontSize: '0.95rem', color: '#f59e0b', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
-                    {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-                  </div>
-                  {review.comment && (
-                    <p style={{ fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: 1.55, margin: '0 0 0.75rem' }}>
-                      &ldquo;{review.comment}&rdquo;
-                    </p>
-                  )}
-                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                    {review.author}
-                    {review.item?.name ? ` · ${review.item.name}` : ''}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── Office / corporate catering inquiry ─────────────── */}
+      {/* ── 8. Corporate / office catering block ─────────────────────────── */}
       {officeOrdersEnabled && (
-        <section className="home-section" style={{ background: 'var(--color-surface-alt)', paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+        <section
+          style={{
+            borderTop: '1px solid var(--color-border)',
+            padding: '2rem var(--page-gutter)',
+            background: 'var(--color-surface-alt)',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: '520px',
+              margin: '0 auto',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-2xl)',
+              padding: '1.5rem',
+            }}
+          >
             <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-              <p style={{ fontSize: '1.5rem', marginBottom: '0.35rem' }}>🏢</p>
-              <h2 style={{ fontSize: 'clamp(1.2rem, 3vw, 1.5rem)', fontWeight: 800, color: 'var(--color-dark)', margin: '0 0 0.5rem' }}>
+              <h2
+                style={{
+                  fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
+                  fontWeight: 800,
+                  color: 'var(--color-dark)',
+                  margin: '0 0 0.5rem',
+                }}
+              >
                 {officeHeadline}
               </h2>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.55 }}>
+              <p
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--color-text-muted)',
+                  margin: 0,
+                  lineHeight: 1.55,
+                }}
+              >
                 {officeSubtext}
               </p>
             </div>
+
             {corpMessage?.type === 'ok' ? (
-              <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--color-success-bg)', borderRadius: 'var(--radius-xl)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                <p style={{ fontWeight: 700, color: 'var(--color-success)', margin: '0 0 0.35rem' }}>Thanks — we&apos;ll be in touch!</p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>{corpMessage.text}</p>
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '1.5rem',
+                  background: 'var(--color-success-bg)',
+                  borderRadius: 'var(--radius-xl)',
+                  border: '1px solid rgba(16,185,129,0.25)',
+                }}
+              >
+                <p
+                  style={{
+                    fontWeight: 700,
+                    color: 'var(--color-success)',
+                    margin: '0 0 0.35rem',
+                  }}
+                >
+                  {t('home.corporate_thanks')}
+                </p>
+                <p
+                  style={{
+                    fontSize: '0.85rem',
+                    color: 'var(--color-text-muted)',
+                    margin: 0,
+                  }}
+                >
+                  {corpMessage.text}
+                </p>
               </div>
             ) : (
               <form
@@ -544,12 +340,20 @@ export function HomePage() {
                   e.preventDefault();
                   setCorpMessage(null);
                   if (!corpForm.contact_name.trim() || !corpForm.phone.trim()) {
-                    setCorpMessage({ type: 'err', text: 'Name and phone are required.' });
+                    setCorpMessage({
+                      type: 'err',
+                      text: 'Name and phone are required.',
+                    });
                     return;
                   }
-                  const headcount = corpForm.headcount ? parseInt(corpForm.headcount, 10) : undefined;
+                  const headcount = corpForm.headcount
+                    ? parseInt(corpForm.headcount, 10)
+                    : undefined;
                   if (headcount != null && headcount < officeMinGuests) {
-                    setCorpMessage({ type: 'err', text: `Minimum ${officeMinGuests} guests for office orders.` });
+                    setCorpMessage({
+                      type: 'err',
+                      text: `Minimum ${officeMinGuests} guests for office orders.`,
+                    });
                     return;
                   }
                   setCorpSubmitting(true);
@@ -562,9 +366,18 @@ export function HomePage() {
                       notes: corpForm.notes.trim() || undefined,
                     });
                     setCorpMessage({ type: 'ok', text: res.message });
-                    setCorpForm({ contact_name: '', phone: '', company: '', headcount: '', notes: '' });
+                    setCorpForm({
+                      contact_name: '',
+                      phone: '',
+                      company: '',
+                      headcount: '',
+                      notes: '',
+                    });
                   } catch (err) {
-                    setCorpMessage({ type: 'err', text: (err as Error).message });
+                    setCorpMessage({
+                      type: 'err',
+                      text: (err as Error).message,
+                    });
                   } finally {
                     setCorpSubmitting(false);
                   }
@@ -572,14 +385,77 @@ export function HomePage() {
                 style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
               >
                 {corpMessage?.type === 'err' && (
-                  <p style={{ color: 'var(--color-error)', fontSize: '0.85rem', margin: 0 }}>{corpMessage.text}</p>
+                  <p
+                    style={{
+                      color: 'var(--color-error)',
+                      fontSize: '0.85rem',
+                      margin: 0,
+                    }}
+                  >
+                    {corpMessage.text}
+                  </p>
                 )}
-                <input required placeholder="Your name *" value={corpForm.contact_name} onChange={(e) => setCorpForm((f) => ({ ...f, contact_name: e.target.value }))} style={corpInputStyle} />
-                <input required placeholder="Phone *" value={corpForm.phone} onChange={(e) => setCorpForm((f) => ({ ...f, phone: e.target.value }))} style={corpInputStyle} />
-                <input placeholder="Company / organisation" value={corpForm.company} onChange={(e) => setCorpForm((f) => ({ ...f, company: e.target.value }))} style={corpInputStyle} />
-                <input type="number" min={officeMinGuests} placeholder={`Headcount (min ${officeMinGuests})`} value={corpForm.headcount} onChange={(e) => setCorpForm((f) => ({ ...f, headcount: e.target.value }))} style={corpInputStyle} />
-                <textarea placeholder="Event date, dietary needs, delivery address…" value={corpForm.notes} onChange={(e) => setCorpForm((f) => ({ ...f, notes: e.target.value }))} rows={3} style={{ ...corpInputStyle, resize: 'vertical' }} />
-                <button type="submit" disabled={corpSubmitting} style={{ padding: '0.875rem', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', cursor: corpSubmitting ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: corpSubmitting ? 0.7 : 1 }}>
+                <input
+                  required
+                  placeholder="Your name *"
+                  value={corpForm.contact_name}
+                  onChange={(e) =>
+                    setCorpForm((f) => ({ ...f, contact_name: e.target.value }))
+                  }
+                  style={corpInputStyle}
+                />
+                <input
+                  required
+                  placeholder="Phone *"
+                  value={corpForm.phone}
+                  onChange={(e) =>
+                    setCorpForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                  style={corpInputStyle}
+                />
+                <input
+                  placeholder="Company / organisation"
+                  value={corpForm.company}
+                  onChange={(e) =>
+                    setCorpForm((f) => ({ ...f, company: e.target.value }))
+                  }
+                  style={corpInputStyle}
+                />
+                <input
+                  type="number"
+                  min={officeMinGuests}
+                  placeholder={`Headcount (min ${officeMinGuests})`}
+                  value={corpForm.headcount}
+                  onChange={(e) =>
+                    setCorpForm((f) => ({ ...f, headcount: e.target.value }))
+                  }
+                  style={corpInputStyle}
+                />
+                <textarea
+                  placeholder="Event date, dietary needs, delivery address…"
+                  value={corpForm.notes}
+                  onChange={(e) =>
+                    setCorpForm((f) => ({ ...f, notes: e.target.value }))
+                  }
+                  rows={3}
+                  style={{ ...corpInputStyle, resize: 'vertical' }}
+                />
+                <button
+                  type="submit"
+                  disabled={corpSubmitting}
+                  style={{
+                    padding: '0.875rem',
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    cursor: corpSubmitting ? 'wait' : 'pointer',
+                    fontFamily: 'inherit',
+                    opacity: corpSubmitting ? 0.7 : 1,
+                  }}
+                >
                   {corpSubmitting ? 'Sending…' : 'Request a quote →'}
                 </button>
               </form>
@@ -588,69 +464,13 @@ export function HomePage() {
         </section>
       )}
 
-      {/* ── Chat with us ──────────────────────────────────────── */}
-      <section className="home-section" style={{
-        paddingLeft: 'var(--page-gutter)',
-        paddingRight: 'var(--page-gutter)',
-        borderTop: '1px solid var(--color-border)',
-        background: 'var(--color-surface)',
-      }}>
-        <div className="chat-block" style={{ maxWidth: '440px', margin: '0 auto' }}>
-          <p style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>💬</p>
-          <p className="chat-block-heading">{text('home_location_title', 'Questions? We reply fast.')}</p>
-          <p className="chat-block-sub" style={{ marginBottom: '1.25rem' }}>
-            {text('home_location_subtitle', 'Reach us on WhatsApp or Viber — usually within 10 minutes.')}
-          </p>
-          <div className="chat-btns">
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="chat-btn chat-btn-wa"
-              aria-label="Chat on WhatsApp"
-            >
-              <WhatsAppIcon /> WhatsApp
-            </a>
-            <a
-              href={viberLink}
-              className="chat-btn chat-btn-viber"
-              aria-label="Chat on Viber"
-            >
-              <ViberIcon /> Viber
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Browse menu CTA ───────────────────────────────────── */}
-      <section className="home-section" style={{ background: 'var(--color-footer-bg)', paddingLeft: 'var(--page-gutter)', paddingRight: 'var(--page-gutter)', textAlign: 'center' }}>
-        <div style={{ maxWidth: '520px', margin: '0 auto' }}>
-          <h2
-            style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 800, color: 'white', marginBottom: '0.75rem', letterSpacing: '-0.03em' }}
-            dangerouslySetInnerHTML={{ __html: text('cta_band_headline', 'Hungry? Browse the menu.') }}
-          />
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 'var(--text-body)', marginBottom: '1.75rem', lineHeight: 1.65 }}>
-            {text('cta_band_subtext', 'Order in seconds — no app needed.')}
-          </p>
-          <Link
-            to="/menu"
-            className="btn-primary-hover"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-              background: 'var(--color-primary)',
-              color: 'white',
-              padding: '0.875rem 2.25rem',
-              borderRadius: 'var(--radius-full)',
-              fontWeight: 700, fontSize: 'var(--text-md)',
-              boxShadow: '0 4px 18px var(--color-primary-glow)',
-              textDecoration: 'none',
-            }}
-          >
-            Browse Full Menu →
-          </Link>
-        </div>
-      </section>
-
+      {/* ── 9. Brand footer ───────────────────────────────────────────────── */}
+      <BrandFooter
+        whatsappLink={waLink}
+        viberLink={viberLink}
+        logoSrc={logoSrc}
+        siteName={siteName}
+      />
     </div>
   );
 }

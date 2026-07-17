@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../api/client';
+import { useLanguage } from '../context/LanguageContext';
+
+type PrayerBarProps = {
+  /**
+   * `banner` — full §12 Home/Account banner (default). Never portals the mobile strip.
+   * `legacy` — old desktop pill + `#prayer-strip-root` portal strip.
+   */
+  variant?: 'banner' | 'legacy';
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -167,8 +176,21 @@ function GeoIcon({ spinning }: { spinning: boolean }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function PrayerBar() {
+export function PrayerBar({ variant = 'banner' }: PrayerBarProps) {
+  const { t } = useLanguage();
   const [loaded, setLoaded] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const [servedFromCache, setServedFromCache] = useState(false);
+  const [offline, setOffline] = useState(
+    () => typeof navigator !== 'undefined' && !navigator.onLine,
+  );
+  const [expanded, setExpanded] = useState(() => {
+    try {
+      return sessionStorage.getItem('pt_banner_expanded') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [geoSpinning, setGeoSpinning] = useState(false);
   const [island, setIsland] = useState<IslandInfo | null>(null);
   const [tick, setTick] = useState<TickInfo | null>(null);
@@ -176,6 +198,8 @@ export function PrayerBar() {
   const [dropOpen, setDropOpen] = useState(false);
   const [dropPos, setDropPos] = useState<DropPos>({ top: 0, left: 0 });
   const [searchQuery, setSearchQuery] = useState('');
+  /** Snapshot of today's prayers for the expanded grid. */
+  const [prayerTimes, setPrayerTimes] = useState<PrayerData | null>(null);
 
   const prayersRef = useRef<PrayerData | null>(null);
   const tomorrowPrayersRef = useRef<PrayerData | null>(null);
@@ -183,9 +207,20 @@ export function PrayerBar() {
   const searchRef = useRef<HTMLInputElement | null>(null);
   const dropTriggerRef = useRef<HTMLElement | null>(null);
 
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
   // ── Prayer data loader ──────────────────────────────────────────────────
 
-  const loadPrayers = useCallback((islandId: number, cb: () => void) => {
+  const loadPrayers = useCallback((islandId: number, cb: (fromCache: boolean) => void) => {
     const today    = mvtDateStr();
     const tomorrow = mvtDateStr(1);
     const cKey = `pt_day_${today}_${islandId}`;
@@ -210,7 +245,7 @@ export function PrayerBar() {
           localStorage.removeItem(cKey);
         } else {
           prayersRef.current = parsed;
-          cb();
+          cb(true);
           // Still prefetch tomorrow in parallel if not yet cached
           if (!tomorrowPrayersRef.current) prefetchTomorrow(islandId, tKey);
           return;
@@ -234,9 +269,9 @@ export function PrayerBar() {
           tomorrowPrayersRef.current = tomorrowData.prayers;
           try { localStorage.setItem(tKey, JSON.stringify(tomorrowData.prayers)); } catch { /* ignore */ }
         }
-        cb();
+        cb(false);
       })
-      .catch(() => cb());
+      .catch(() => cb(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prefetchTomorrow = useCallback((islandId: number, tKey: string) => {
@@ -264,6 +299,21 @@ export function PrayerBar() {
 
   // ── Select island ───────────────────────────────────────────────────────
 
+  const finishLoad = useCallback((fromCache: boolean) => {
+    if (prayersRef.current) {
+      setPrayerTimes(prayersRef.current);
+      setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
+      setLoaded(true);
+      setUnavailable(false);
+      if (fromCache) setServedFromCache(true);
+      startTick();
+    } else {
+      setPrayerTimes(null);
+      setLoaded(true);
+      setUnavailable(true);
+    }
+  }, [startTick]);
+
   const selectIsland = useCallback((isl: Island) => {
     const info: IslandInfo = {
       id: isl.id,
@@ -274,14 +324,9 @@ export function PrayerBar() {
     try { localStorage.setItem('pt_island', JSON.stringify(info)); } catch { /* ignore */ }
     prayersRef.current = null;
     tomorrowPrayersRef.current = null;
-    loadPrayers(info.id, () => {
-      if (prayersRef.current) {
-        setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
-        setLoaded(true);
-        startTick();
-      }
-    });
-  }, [loadPrayers, startTick]);
+    setServedFromCache(false);
+    loadPrayers(info.id, finishLoad);
+  }, [loadPrayers, finishLoad]);
 
   // ── Init ────────────────────────────────────────────────────────────────
 
@@ -294,13 +339,7 @@ export function PrayerBar() {
 
     if (savedIsland) {
       setIsland(savedIsland);
-      loadPrayers(savedIsland.id, () => {
-        if (prayersRef.current) {
-          setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
-          setLoaded(true);
-          startTick();
-        }
-      });
+      loadPrayers(savedIsland.id, finishLoad);
       return;
     }
 
@@ -310,13 +349,7 @@ export function PrayerBar() {
       if (didLoad) return; didLoad = true;
       setIsland(info);
       try { localStorage.setItem('pt_island', JSON.stringify(info)); } catch { /* ignore */ }
-      loadPrayers(info.id, () => {
-        if (prayersRef.current) {
-          setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
-          setLoaded(true);
-          startTick();
-        }
-      });
+      loadPrayers(info.id, finishLoad);
     };
     const fallbackTimer = setTimeout(() => useIsland(MALE_FALLBACK), 3000);
     fetch(`${API_BASE_URL}/prayer-times/islands`)
@@ -329,7 +362,7 @@ export function PrayerBar() {
         useIsland(findMaleIsland(islands));
       })
       .catch(() => { clearTimeout(fallbackTimer); useIsland(MALE_FALLBACK); });
-  }, [loadPrayers, startTick]);
+  }, [loadPrayers, finishLoad]);
 
   // ── Cleanup tick on unmount ─────────────────────────────────────────────
 
@@ -429,11 +462,7 @@ export function PrayerBar() {
 
   const locLabel = island ? makeLabel(island.atollLatin, island.nameLatin) : 'K. Malé';
 
-  // ── Portal targets ──────────────────────────────────────────────────────
-
-  const stripRoot = document.getElementById('prayer-strip-root');
-
-  // ── Dropdown portal ─────────────────────────────────────────────────────
+  const stripRoot = variant === 'legacy' ? document.getElementById('prayer-strip-root') : null;
 
   const dropdown = dropOpen ? createPortal(
     <div
@@ -446,7 +475,7 @@ export function PrayerBar() {
           ref={searchRef}
           type="text"
           className="order-hpt-search-input"
-          placeholder="Search island or atoll…"
+          placeholder={t('prayer.search_island')}
           autoComplete="off"
           spellCheck={false}
           value={searchQuery}
@@ -456,7 +485,7 @@ export function PrayerBar() {
       </div>
       <div className="order-hpt-list">
         {groupedIslands.length === 0 ? (
-          <div className="order-hpt-no-results">No islands found</div>
+          <div className="order-hpt-no-results">{t('prayer.no_islands')}</div>
         ) : groupedIslands.map(({ atoll, islands }) => (
           <div key={atoll}>
             <div className="order-hpt-group-label">
@@ -478,22 +507,137 @@ export function PrayerBar() {
     document.body
   ) : null;
 
-  // ── Desktop Pill ────────────────────────────────────────────────────────
+  const toggleExpanded = () => {
+    setExpanded((prev) => {
+      const next = !prev;
+      try { sessionStorage.setItem('pt_banner_expanded', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const showOfflineCaption = offline || servedFromCache;
+  const cdDisplay = (tick?.cdStr ?? '').replace(/[()]/g, '');
+
+  // ── §12 banner (Home / Account) ─────────────────────────────────────────
+  if (variant === 'banner') {
+    return (
+      <>
+        <section
+          className={`prayer-banner${expanded ? ' is-expanded' : ''}${!loaded ? ' is-loading' : ''}`}
+          aria-label={t('prayer.aria')}
+        >
+          {!loaded && (
+            <div className="prayer-banner-skeleton" aria-hidden>
+              <span className="prayer-banner-skeleton-bar" />
+            </div>
+          )}
+
+          {loaded && unavailable && (
+            <div className="prayer-banner-row prayer-banner-unavailable">
+              <span>{t('prayer.unavailable')}</span>
+            </div>
+          )}
+
+          {loaded && !unavailable && (
+            <>
+              <div className="prayer-banner-summary">
+                <button
+                  type="button"
+                  className="prayer-banner-expand"
+                  aria-expanded={expanded}
+                  onClick={toggleExpanded}
+                >
+                  <span className="prayer-banner-summary-left">
+                    <span className="prayer-banner-title">
+                      {t('prayer.title')}
+                      <span className="prayer-banner-dot">·</span>
+                    </span>
+                    <span className="prayer-banner-next">
+                      {tick ? (
+                        <>
+                          <strong>{tick.pName}</strong> {tick.pTime}
+                          <span className="prayer-banner-cd" aria-live="off">
+                            {' '}{t('prayer.next_in').replace('{t}', cdDisplay)}
+                          </span>
+                        </>
+                      ) : null}
+                    </span>
+                  </span>
+                  <span className="prayer-banner-chevron" aria-hidden>{expanded ? '⌃' : '▾'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="prayer-banner-island"
+                  onClick={(e) => openIslands(e.currentTarget)}
+                >
+                  {locLabel} ▾
+                </button>
+              </div>
+
+              {showOfflineCaption && (
+                <p className="prayer-banner-caption">
+                  {offline ? t('prayer.offline_cached') : t('prayer.cached')}
+                </p>
+              )}
+
+              <div
+                className="prayer-banner-panel"
+                hidden={!expanded}
+              >
+                <div className="prayer-banner-grid" role="list">
+                  {PRAYERS.map((key) => {
+                    const isNext = tick?.pName === PRAYER_EN[key];
+                    return (
+                      <div
+                        key={key}
+                        role="listitem"
+                        className={`prayer-banner-cell${isNext ? ' is-next' : ''}`}
+                      >
+                        <span className="prayer-banner-cell-name">{PRAYER_EN[key]}</span>
+                        <span className="prayer-banner-cell-time">{prayerTimes?.[key] ?? '—'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="prayer-banner-actions">
+                  <button
+                    type="button"
+                    className="prayer-banner-action"
+                    disabled={geoSpinning}
+                    onClick={() => handleGeo()}
+                  >
+                    <GeoIcon spinning={geoSpinning} /> {t('prayer.use_location')}
+                  </button>
+                  <button
+                    type="button"
+                    className="prayer-banner-action"
+                    onClick={(e) => openIslands(e.currentTarget)}
+                  >
+                    {t('prayer.change_island')}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+        {dropdown}
+      </>
+    );
+  }
+
+  // ── Legacy pill + portal strip ──────────────────────────────────────────
 
   const pill = (
-    <div className={`order-pt-pill${loaded ? ' pt-loaded' : ''}`} aria-label="Prayer times">
-      {/* Geo button */}
+    <div className={`order-pt-pill${loaded ? ' pt-loaded' : ''}`} aria-label={t('prayer.aria')}>
       <button
         type="button"
         className="order-pt-geo-btn"
-        title="Detect my location"
+        title={t('prayer.use_location')}
         disabled={geoSpinning}
         onClick={e => { e.stopPropagation(); handleGeo(); }}
       >
         <GeoIcon spinning={geoSpinning} />
       </button>
-
-      {/* Island selector */}
       <button
         type="button"
         className="order-pt-isl-btn"
@@ -502,8 +646,6 @@ export function PrayerBar() {
         <span>{locLabel}</span>
         <span className="order-pt-isl-arrow">▾</span>
       </button>
-
-      {/* Prayer info → links to prayer-times page */}
       <a href="/prayer-times" className="order-pt-pill-info" onClick={e => e.stopPropagation()}>
         <span className="order-pt-div">·</span>
         <span className="order-pt-prayer">{tick?.pName}</span>
@@ -515,15 +657,13 @@ export function PrayerBar() {
     </div>
   );
 
-  // ── Mobile Strip ────────────────────────────────────────────────────────
-
   const strip = (
-    <div className={`order-pt-strip${loaded ? ' pt-loaded' : ''}`} aria-label="Prayer times">
+    <div className={`order-pt-strip${loaded ? ' pt-loaded' : ''}`} aria-label={t('prayer.aria')}>
       <div className="order-pt-strip-controls">
         <button
           type="button"
           className="order-pt-geo-btn"
-          title="Detect my location"
+          title={t('prayer.use_location')}
           disabled={geoSpinning}
           onClick={e => { e.stopPropagation(); handleGeo(); }}
         >

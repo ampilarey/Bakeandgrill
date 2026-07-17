@@ -74,3 +74,34 @@ field in `apps/online-order-web/src/context/LanguageContext.tsx` after native re
 - `menu.toast_prune_many`
 - `menu.toast_delivery_fallback`
 - `cart.edit`
+
+## Phase 4 Home keys (added Jul 2026)
+
+- `home.sign_in`
+- `home.chip_rewards`
+- `home.chip_sign_in_points`
+- `home.chip_order`
+- `home.chip_no_order`
+- `home.chip_specials`
+- `home.specials_title`
+- `home.see_all`
+- `home.order_again`
+- `home.reorder`
+- `home.reordering`
+- `home.promo_region`
+- `home.mode_delivery_hint`
+- `home.mode_pickup_hint`
+- `home.footer_thanks`
+- `home.footer_whatsapp`
+- `home.footer_viber`
+- `home.corporate_thanks`
+- `prayer.aria`
+- `prayer.title`
+- `prayer.next_in`
+- `prayer.use_location`
+- `prayer.change_island`
+- `prayer.search_island`
+- `prayer.no_islands`
+- `prayer.unavailable`
+- `prayer.offline_cached`
+- `prayer.cached`
