@@ -148,11 +148,12 @@ export function MenuPage() {
         const removedCount = cartRef.current.filter((entry) => !allowedIds.has(entry.item.id)).length;
         if (removedCount > 0) {
           pruneCartToAllowedItemIds(allowedIds);
-          showToast(`${removedCount} cart item${removedCount === 1 ? '' : 's'} removed for this order mode.`);
+          const pruneKey = removedCount === 1 ? 'menu.toast_prune_one' : 'menu.toast_prune_many';
+          showToast(t(pruneKey).replace('{n}', String(removedCount)));
         }
         setDeliveryFallback(its.deliveryFallback);
         if (its.deliveryFallback) {
-          showToast('No delivery items right now — showing pickup menu instead.');
+          showToast(t('menu.toast_delivery_fallback'));
         }
         // Gate API is the single source of truth for ordering status
         setIsOpen(gate.open);
@@ -333,7 +334,10 @@ export function MenuPage() {
 
   const scrollToCategorySection = (categoryId: number, behavior: ScrollBehavior = 'smooth') => {
     const section = document.getElementById(`menu-section-${categoryId}`);
-    section?.scrollIntoView({ behavior, block: 'start' });
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    section?.scrollIntoView({ behavior: reduced ? 'auto' : behavior, block: 'start' });
   };
 
   const handleSelectCategory = (categoryId: number) => {

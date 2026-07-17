@@ -69,3 +69,8 @@ field in `apps/online-order-web/src/context/LanguageContext.tsx` after native re
 - `menu.filter_specials`
 - `menu.filter_all_diets`
 - `menu.open_search`
+- `mode.toggle_aria`
+- `menu.toast_prune_one`
+- `menu.toast_prune_many`
+- `menu.toast_delivery_fallback`
+- `cart.edit`

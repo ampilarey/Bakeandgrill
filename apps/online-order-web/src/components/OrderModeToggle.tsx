@@ -24,7 +24,7 @@ export function OrderModeToggle({ deliveryBlocked = false, onModeChange }: Props
     <div
       className="order-mode-toggle"
       role="group"
-      aria-label={t('nav.menu')}
+      aria-label={t('mode.toggle_aria')}
       style={{
         display: 'inline-flex',
         padding: 3,

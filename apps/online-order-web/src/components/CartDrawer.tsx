@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchItems, fetchCartRecommendations, getLoyaltyAccount, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
-import type { Item } from '../api';
+import type { Item, Modifier } from '../api';
+import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
+import { useCart, type CartEntry } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { estimateEarnPointsForSubtotalMvr } from '../utils/loyalty';
+import { ItemSheet } from './ItemSheet';
 
 const DEFAULT_FREE_DELIVERY_MVR = 200;
 
@@ -25,7 +27,7 @@ type Props = {
 export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { cart, cartTotal, updateQuantity, addItem } = useCart();
+  const { cart, cartTotal, updateQuantity, addItem, updateEntry } = useCart();
   const { t } = useLanguage();
   const s = useSiteSettings();
   const freeDeliveryMvr = parseFreeDeliveryThreshold(s.delivery_free_threshold);
@@ -34,6 +36,33 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
   const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
   const hasFetched = useRef(false);
+  const [editLine, setEditLine] = useState<{ index: number; entry: CartEntry } | null>(null);
+  const [editMods, setEditMods] = useState<Modifier[]>([]);
+  const [editQty, setEditQty] = useState(1);
+
+  const startEditLine = (index: number, entry: CartEntry) => {
+    setEditLine({ index, entry });
+    setEditMods([...entry.modifiers]);
+    setEditQty(entry.quantity);
+  };
+
+  const toggleEditModifier = (mod: Modifier) => {
+    setEditMods((prev) => {
+      const exists = prev.some((m) => m.id === mod.id);
+      return exists ? prev.filter((m) => m.id !== mod.id) : [...prev, mod];
+    });
+  };
+
+  const handleUpdateEntry = (variant?: Variant | null) => {
+    if (!editLine) return;
+    updateEntry(editLine.index, {
+      quantity: editQty,
+      modifiers: editMods,
+      variant: variant ?? null,
+      item: editLine.entry.item,
+    });
+    setEditLine(null);
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -202,14 +231,34 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                     + {entry.modifiers.map((m) => m.name).join(', ')}
                   </p>
                 )}
-                <p style={{ marginTop: '0.375rem', fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                  {entry.originalPrice != null && entry.originalPrice > (entry.variantPrice ?? Number(entry.item.base_price)) && (
-                    <span style={{ color: 'var(--color-text-muted)', textDecoration: 'line-through', marginRight: '0.35rem', fontWeight: 500 }}>
-                      MVR {(((entry.originalPrice) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
-                    </span>
-                  )}
-                  MVR {(((entry.variantPrice != null ? entry.variantPrice : parseFloat(String(entry.item.base_price))) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
-                </p>
+                <div style={{ marginTop: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                    {entry.originalPrice != null && entry.originalPrice > (entry.variantPrice ?? Number(entry.item.base_price)) && (
+                      <span style={{ color: 'var(--color-text-muted)', textDecoration: 'line-through', marginRight: '0.35rem', fontWeight: 500 }}>
+                        MVR {(((entry.originalPrice) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
+                      </span>
+                    )}
+                    MVR {(((entry.variantPrice != null ? entry.variantPrice : parseFloat(String(entry.item.base_price))) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => startEditLine(index, entry)}
+                    style={{
+                      minHeight: 32,
+                      padding: '0 0.65rem',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 8,
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-primary)',
+                      fontFamily: 'inherit',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t('cart.edit')}
+                  </button>
+                </div>
               </div>
             ))}
 
@@ -307,6 +356,21 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
             ))}
           </div>
         </div>
+      )}
+
+      {editLine && (
+        <ItemSheet
+          open
+          item={editLine.entry.item}
+          qty={editQty}
+          selectedModifiers={editMods}
+          onToggleModifier={toggleEditModifier}
+          onAddToCart={handleUpdateEntry}
+          onClose={() => setEditLine(null)}
+          editIndex={editLine.index}
+          initialVariantId={editLine.entry.variantId ?? null}
+          onUpdateEntry={handleUpdateEntry}
+        />
       )}
     </div>
   );
