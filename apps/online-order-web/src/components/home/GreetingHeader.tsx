@@ -5,16 +5,36 @@ import { useLanguage } from '../../context/LanguageContext';
 type Props = {
   customerName: string | null;
   isAuthenticated: boolean;
-  /** Compact status pill in the greeting row (e.g. OpeningStatusBadge). */
+  /** Compact status pill under the greeting (e.g. OpeningStatusBadge). */
   statusBadge?: ReactNode;
 };
 
+/** True when the "name" is really a phone (no profile name set). */
+function isPhoneLabel(value: string | null): boolean {
+  if (!value) return false;
+  return /^\d{6,}$/.test(value.replace(/[\s-]/g, ''));
+}
+
+function AccountAvatarGlyph({ label }: { label: string | null }) {
+  // Phone-only accounts: first digit ("7") looks like a badge count — use a person mark instead.
+  if (!label || isPhoneLabel(label)) {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="2" />
+        <path
+          d="M5 19.5c1.5-3.2 4-4.8 7-4.8s5.5 1.6 7 4.8"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+  return <>{label.charAt(0).toUpperCase()}</>;
+}
+
 export function GreetingHeader({ customerName, isAuthenticated, statusBadge }: Props) {
   const { t } = useLanguage();
-
-  const greetingTitle = customerName
-    ? t('home.greeting_named').replace('{name}', customerName)
-    : t('home.greeting_hello');
 
   return (
     <section
@@ -29,20 +49,31 @@ export function GreetingHeader({ customerName, isAuthenticated, statusBadge }: P
           display: 'flex',
           alignItems: 'flex-start',
           justifyContent: 'space-between',
-          gap: '0.625rem',
+          gap: '0.75rem',
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1
             style={{
               margin: 0,
-              fontSize: '1.5rem',
+              fontSize: '1.35rem',
               fontWeight: 800,
               color: 'var(--color-dark)',
               letterSpacing: '-0.02em',
+              lineHeight: 1.25,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
-            {greetingTitle}
+            {customerName ? (
+              <>
+                {t('home.greeting_hello')},{' '}
+                <span style={{ fontWeight: 800 }}>{customerName}</span>
+              </>
+            ) : (
+              t('home.greeting_hello')
+            )}
           </h1>
           <p
             style={{
@@ -53,18 +84,14 @@ export function GreetingHeader({ customerName, isAuthenticated, statusBadge }: P
           >
             {t('home.greeting_sub')}
           </p>
+          {statusBadge ? (
+            <div className="greeting-header-status" style={{ marginTop: '0.5rem' }}>
+              {statusBadge}
+            </div>
+          ) : null}
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            gap: '0.4rem',
-            flexShrink: 0,
-            maxWidth: '58%',
-          }}
-        >
+        <div style={{ flexShrink: 0 }}>
           {isAuthenticated ? (
             <Link
               to="/account"
@@ -88,11 +115,10 @@ export function GreetingHeader({ customerName, isAuthenticated, statusBadge }: P
                   fontSize: '0.85rem',
                   fontWeight: 700,
                   color: 'var(--color-primary)',
-                  textTransform: 'uppercase',
                   userSelect: 'none',
                 }}
               >
-                {customerName ? customerName.charAt(0) : '?'}
+                <AccountAvatarGlyph label={customerName} />
               </div>
             </Link>
           ) : (
@@ -114,11 +140,6 @@ export function GreetingHeader({ customerName, isAuthenticated, statusBadge }: P
               {t('home.sign_in')}
             </Link>
           )}
-          {statusBadge ? (
-            <div className="greeting-header-status" style={{ maxWidth: '100%', overflow: 'hidden' }}>
-              {statusBadge}
-            </div>
-          ) : null}
         </div>
       </div>
     </section>
