@@ -940,57 +940,48 @@ export function CheckoutPage() {
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+// ── Styles (Phase 5 PR2 — visual tokens only; structure unchanged) ─────────────
 const S = {
   page: {
     minHeight: '100vh',
     background: 'var(--color-bg)',
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontFamily: 'inherit',
+    paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))',
   } as React.CSSProperties,
-
-  layout: {
-    maxWidth: 'var(--layout-max)', margin: '0 auto',
-    padding: '1.5rem var(--page-gutter)',
-    display: 'grid', gap: 20,
-  } as React.CSSProperties,
-
-  col: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 14,
-  },
 
   card: {
     background: 'var(--color-surface)',
-    borderRadius: '16px',
-    padding: '18px 20px',
+    borderRadius: 'var(--radius-2xl)',
+    padding: '1.125rem 1.25rem',
     boxShadow: 'var(--shadow-sm)',
     border: '1px solid var(--color-border)',
   } as React.CSSProperties,
 
-  /* Warm tinted variant — used for Order Summary and Pay section */
+  /* Warm tinted variant — Order Summary */
   cardWarm: {
     background: 'var(--color-surface-alt)',
-    borderRadius: '16px',
-    padding: '18px 20px',
-    boxShadow: '0 2px 10px rgba(212,129,58,0.08)',
-    border: '1px solid rgba(212,129,58,0.22)',
+    borderRadius: 'var(--radius-2xl)',
+    padding: '1.125rem 1.25rem',
+    boxShadow: 'var(--shadow-sm)',
+    border: '1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border))',
   } as React.CSSProperties,
 
   sectionTitle: {
-    fontSize: 'var(--text-md)',
-    fontWeight: 700,
-    color: 'var(--color-primary)',
-    margin: '0 0 14px',
-    paddingBottom: 10,
+    fontSize: '1rem',
+    fontWeight: 800,
+    color: 'var(--color-dark)',
+    margin: '0 0 0.85rem',
+    paddingBottom: '0.65rem',
     borderBottom: '1px solid var(--color-border)',
+    letterSpacing: '-0.01em',
   } as React.CSSProperties,
 
   fieldLabel: {
     display: 'block',
-    fontSize: 'var(--text-sm)', fontWeight: 600,
+    fontSize: '0.8125rem',
+    fontWeight: 700,
     color: 'var(--color-text)',
-    marginBottom: 5,
+    marginBottom: 6,
   } as React.CSSProperties,
 
   fieldRow: {
@@ -1000,13 +991,18 @@ const S = {
   } as React.CSSProperties,
 
   typeBtn: {
-    flex: 1, padding: '12px 16px',
+    flex: 1,
+    minHeight: 48,
+    padding: '0.75rem 1rem',
     border: '1.5px solid var(--color-border)',
-    borderRadius: '12px',
+    borderRadius: 'var(--radius-xl)',
     background: 'var(--color-surface)',
-    cursor: 'pointer', fontSize: 'var(--text-base)', fontWeight: 600,
+    cursor: 'pointer',
+    fontSize: '0.9375rem',
+    fontWeight: 700,
     color: 'var(--color-text)',
-    transition: 'all 0.15s', fontFamily: 'inherit',
+    transition: 'background var(--duration-micro) var(--ease-out), border-color var(--duration-micro) var(--ease-out)',
+    fontFamily: 'inherit',
   } as React.CSSProperties,
 
   typeBtnActive: {
@@ -1016,92 +1012,137 @@ const S = {
   } as React.CSSProperties,
 
   infoNote: {
-    display: 'flex', alignItems: 'center', gap: '0.4rem',
-    fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.45rem',
+    fontSize: '0.8125rem',
+    color: 'var(--color-text-muted)',
     background: 'var(--color-surface-alt)',
-    borderRadius: '8px', padding: '8px 12px',
+    borderRadius: 'var(--radius-lg)',
+    padding: '0.65rem 0.85rem',
     marginBottom: 14,
+    border: '1px solid var(--color-border)',
   } as React.CSSProperties,
 
   summaryRow: {
-    display: 'flex', justifyContent: 'space-between',
-    fontSize: 'var(--text-base)', marginBottom: 8,
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '0.9375rem',
+    marginBottom: 8,
+    gap: 12,
   } as React.CSSProperties,
 
   totalRow: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-    fontWeight: 800, fontSize: 'var(--text-lg)',
-    color: 'var(--color-text)',
-    borderTop: '2px solid var(--color-border)',
-    paddingTop: 12, marginTop: 8,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    fontWeight: 800,
+    fontSize: '1.125rem',
+    color: 'var(--color-dark)',
+    borderTop: '1.5px solid var(--color-border)',
+    paddingTop: 12,
+    marginTop: 8,
+    gap: 12,
   } as React.CSSProperties,
 
   totalRowAmount: {
     color: 'var(--color-primary)',
-    fontSize: '1.2rem',
+    fontSize: '1.25rem',
+    fontVariantNumeric: 'tabular-nums',
   } as React.CSSProperties,
 
   promoApplied: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     background: 'var(--color-success-bg)',
-    borderRadius: 10, padding: '10px 14px', fontSize: 'var(--text-base)',
-    border: '1px solid var(--color-success-bg)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '0.7rem 0.9rem',
+    fontSize: '0.9375rem',
+    border: '1px solid color-mix(in srgb, var(--color-success) 25%, transparent)',
+    gap: 10,
   } as React.CSSProperties,
 
   removeBtn: {
-    background: 'none', border: 'none',
+    background: 'none',
+    border: 'none',
     color: 'var(--color-error)',
-    cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600, fontFamily: 'inherit',
+    cursor: 'pointer',
+    fontSize: '0.8125rem',
+    fontWeight: 700,
+    fontFamily: 'inherit',
+    minHeight: 36,
+    padding: '0 0.35rem',
   } as React.CSSProperties,
 
   primaryBtn: {
     background: 'var(--color-primary)',
-    color: '#fff', border: 'none',
-    borderRadius: '12px', padding: '12px 24px',
-    fontSize: 'var(--text-body)', fontWeight: 700,
-    cursor: 'pointer', fontFamily: 'inherit',
-    transition: 'all 0.15s',
-    boxShadow: '0 4px 14px var(--color-primary-glow)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 'var(--radius-xl)',
+    padding: '0.85rem 1.25rem',
+    minHeight: 48,
+    fontSize: '1rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: 'background var(--duration-micro) var(--ease-out)',
   } as React.CSSProperties,
 
   secondaryBtn: {
     background: 'var(--color-surface)',
     color: 'var(--color-primary)',
     border: '1.5px solid var(--color-primary)',
-    borderRadius: '10px', padding: '0 16px',
-    fontSize: 'var(--text-base)', fontWeight: 600,
-    cursor: 'pointer', whiteSpace: 'nowrap' as const,
-    fontFamily: 'inherit', height: 'var(--input-height)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '0 1rem',
+    fontSize: '0.875rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+    fontFamily: 'inherit',
+    minHeight: 44,
   } as React.CSSProperties,
 
   chatBtnWa: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 40,
     padding: '0.5rem 1rem',
-    background: '#25d366', color: 'white',
-    borderRadius: '8px', fontWeight: 600,
-    fontSize: 'var(--text-sm)', textDecoration: 'none',
-    transition: 'all 0.15s',
+    background: '#25d366',
+    color: 'white',
+    borderRadius: 'var(--radius-lg)',
+    fontWeight: 700,
+    fontSize: '0.8125rem',
+    textDecoration: 'none',
   } as React.CSSProperties,
 
   chatBtnViber: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 40,
     padding: '0.5rem 1rem',
-    background: '#7360f2', color: 'white',
-    borderRadius: '8px', fontWeight: 600,
-    fontSize: 'var(--text-sm)', textDecoration: 'none',
-    transition: 'all 0.15s',
+    background: '#7360f2',
+    color: 'white',
+    borderRadius: 'var(--radius-lg)',
+    fontWeight: 700,
+    fontSize: '0.8125rem',
+    textDecoration: 'none',
   } as React.CSSProperties,
 
   complianceBox: {
     background: 'var(--color-surface-alt)',
-    border: '1px solid rgba(212,129,58,0.22)',
-    borderRadius: '12px',
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-xl)',
     padding: '1rem 1.125rem',
-    marginBottom: '12px',
+    marginBottom: '0.75rem',
   } as React.CSSProperties,
 
   secureNote: {
-    fontSize: '0.72rem',
+    fontSize: '0.75rem',
     color: 'var(--color-text-muted)',
     textAlign: 'center' as const,
     marginTop: '0.625rem',
@@ -1109,7 +1150,7 @@ const S = {
   } as React.CSSProperties,
 
   corporateInfo: {
-    fontSize: '0.68rem',
+    fontSize: '0.72rem',
     color: 'var(--color-text-muted)',
     textAlign: 'center' as const,
     marginTop: '0.375rem',
