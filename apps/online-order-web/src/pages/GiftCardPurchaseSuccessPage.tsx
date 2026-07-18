@@ -12,7 +12,7 @@ type Status = Awaited<ReturnType<typeof getGiftCardPurchaseStatus>>;
 export function GiftCardPurchaseSuccessPage() {
   usePageTitle('Gift Card');
   const { t } = useLanguage();
-  const { isAuthenticated, authReady } = useAuth();
+  const { isAuthenticated, authReady, setAuth } = useAuth();
   const [params] = useSearchParams();
   const orderId = Number(params.get('orderId') || 0);
   const paymentState = params.get('payment') || '';
@@ -77,7 +77,7 @@ export function GiftCardPurchaseSuccessPage() {
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 0 2rem' }}>
         <PageHeader title={t('gift.success_title')} />
         <div style={{ padding: '0 var(--page-gutter)' }}>
-          <AuthBlock onSuccess={() => undefined} />
+          <AuthBlock onSuccess={(name) => setAuth(name)} />
         </div>
       </div>
     );

@@ -13,7 +13,7 @@ const PRESETS = [100, 200, 500];
 export function BuyGiftCardPage() {
   usePageTitle('Buy Gift Card');
   const { t } = useLanguage();
-  const { isAuthenticated, authReady } = useAuth();
+  const { isAuthenticated, authReady, setAuth } = useAuth();
   const navigate = useNavigate();
 
   const [amount, setAmount] = useState<number | null>(200);
@@ -87,7 +87,7 @@ export function BuyGiftCardPage() {
           <p style={{ color: 'var(--color-text-muted)', fontSize: 14, marginBottom: 16 }}>
             {t('gift.sign_in')}
           </p>
-          <AuthBlock onSuccess={() => undefined} />
+          <AuthBlock onSuccess={(name) => setAuth(name)} />
         </div>
       </div>
     );
