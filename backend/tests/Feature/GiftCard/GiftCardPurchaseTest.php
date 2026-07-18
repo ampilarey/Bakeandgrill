@@ -12,9 +12,11 @@ use App\Domains\Payments\Services\PaymentService;
 use App\Mail\GiftCardMail;
 use App\Models\GiftCardPurchase;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\SmsLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -191,6 +193,73 @@ class GiftCardPurchaseTest extends TestCase
             'order_id' => $order->id,
         ]);
         $this->assertNotNull(GiftCardPurchase::where('order_id', $order->id)->value('gift_card_id'));
+        Mail::assertSent(GiftCardMail::class);
+    }
+
+    public function test_purchase_status_reconciles_confirmed_bml_then_issues(): void
+    {
+        Mail::fake();
+        config([
+            'bml.base_url' => 'https://api.bml.test/public',
+            'bml.app_id' => 'app',
+            'bml.api_key' => 'key',
+        ]);
+        Http::fake([
+            'https://api.bml.test/public/v2/transactions/TXN-GC-REC-1' => Http::response([
+                'transactionId' => 'TXN-GC-REC-1',
+                'state' => 'CONFIRMED',
+                'amount' => '10000',
+                'currency' => 'MVR',
+            ], 200),
+        ]);
+
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777015',
+            'email' => 'reconcile@example.com',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'GC-TEST-RECONCILE',
+            'tracking_token' => 'gcrecon',
+            'type' => 'gift_card',
+            'status' => 'payment_pending',
+            'payment_status' => 'unpaid',
+            'customer_id' => $customer->id,
+            'subtotal' => 100,
+            'subtotal_laar' => 10000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 100,
+            'total_laar' => 10000,
+        ]);
+
+        GiftCardPurchase::create([
+            'order_id' => $order->id,
+            'purchaser_customer_id' => $customer->id,
+            'amount' => 100,
+            'recipient_phone' => '+9607777015',
+            'recipient_email' => 'reconcile@example.com',
+        ]);
+
+        Payment::create([
+            'order_id' => $order->id,
+            'method' => 'bml_connect',
+            'gateway' => 'bml',
+            'amount' => 100,
+            'amount_laar' => 10000,
+            'status' => 'initiated',
+            'local_id' => 'GCTESTRECONCILE',
+            'provider_transaction_id' => 'TXN-GC-REC-1',
+            'idempotency_key' => 'bml:gc:reconcile:test',
+        ]);
+
+        $this->getJson("/api/gift-cards/purchases/{$order->id}", $this->customerHeaders($customer))
+            ->assertOk()
+            ->assertJsonPath('issued', true)
+            ->assertJsonPath('payment_status', 'paid');
+
+        $this->assertNotNull(GiftCardPurchase::where('order_id', $order->id)->value('gift_card_id'));
+        $this->assertSame('confirmed', Payment::where('order_id', $order->id)->value('status'));
         Mail::assertSent(GiftCardMail::class);
     }
 

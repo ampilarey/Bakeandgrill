@@ -201,6 +201,87 @@ class PaymentService
     }
 
     /**
+     * Re-check BML for a still-pending payment and confirm if the gateway says CONFIRMED.
+     * Used when the customer was charged but return-URL / webhook never marked us paid
+     * (common on TEST when the portal webhook points at production).
+     *
+     * Only confirms when the status API explicitly returns CONFIRMED — never trusts
+     * the browser return URL alone. Idempotent.
+     *
+     * @return bool true if the order is (now) paid
+     */
+    public function reconcilePendingBmlPayment(Order $order): bool
+    {
+        $order->refresh();
+
+        if ($this->orderLooksPaid($order)) {
+            return true;
+        }
+
+        $payment = Payment::query()
+            ->where('order_id', $order->id)
+            ->whereNotNull('provider_transaction_id')
+            ->whereIn('status', ['created', 'initiated', 'pending'])
+            ->latest('id')
+            ->first();
+
+        if (!$payment) {
+            return false;
+        }
+
+        $transactionId = (string) $payment->provider_transaction_id;
+
+        try {
+            $fetched = $this->bml->getTransactionStatus($transactionId);
+        } catch (\Throwable $e) {
+            Log::warning('BML reconcile: status API failed', [
+                'order_id' => $order->id,
+                'payment_id' => $payment->id,
+                'transaction_id' => $transactionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        $apiState = strtoupper((string) ($fetched['state'] ?? $fetched['status'] ?? ''));
+        if ($apiState !== 'CONFIRMED') {
+            Log::info('BML reconcile: gateway not CONFIRMED yet', [
+                'order_id' => $order->id,
+                'payment_id' => $payment->id,
+                'transaction_id' => $transactionId,
+                'api_state' => $apiState !== '' ? $apiState : null,
+            ]);
+
+            return false;
+        }
+
+        Log::info('BML reconcile: confirming payment from gateway status', [
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'transaction_id' => $transactionId,
+        ]);
+
+        $this->confirmPayment($payment, array_merge($fetched, [
+            'transactionId' => $transactionId,
+            'localId' => $payment->local_id,
+            'state' => 'CONFIRMED',
+            'source' => 'status_poll_reconcile',
+        ]));
+
+        $order->refresh();
+
+        return $this->orderLooksPaid($order);
+    }
+
+    private function orderLooksPaid(Order $order): bool
+    {
+        return $order->paid_at !== null
+            || $order->payment_status === 'paid'
+            || in_array($order->status, ['paid', 'completed'], true);
+    }
+
+    /**
      * Fallback confirmation triggered from the BML return URL.
      * Used when webhooks are unreliable (e.g. UAT). Verifies the transaction
      * directly with BML's API, then runs the same confirmation logic as the webhook.

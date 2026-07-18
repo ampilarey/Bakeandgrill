@@ -9,6 +9,7 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Listeners\IssuePurchasedGiftCardOnOrderPaidListener;
+use App\Domains\Payments\Services\PaymentService;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
 use App\Domains\Payments\Services\GiftCardIssueService;
@@ -450,11 +451,22 @@ class GiftCardController extends Controller
             ->where('order_id', $order->id)
             ->first();
 
-        // Recovery: payment confirmed but issue listener missed (return-URL race / error).
-        // Idempotent — safe to retry on every poll while gift_card_id is null.
+        // Recovery 1: BML charged the customer but return-URL / webhook never marked us paid.
+        // Ask BML again; only confirm when gateway state is CONFIRMED.
         $paid = $order->paid_at !== null
             || $order->payment_status === 'paid'
             || in_array($order->status, ['paid', 'completed'], true);
+        if (!$paid) {
+            try {
+                $paid = app(PaymentService::class)->reconcilePendingBmlPayment($order);
+            } catch (\Throwable) {
+                // Leave unpaid; client keeps polling / shows still-processing.
+            }
+            $order->refresh();
+        }
+
+        // Recovery 2: payment confirmed but issue listener missed (return-URL race / error).
+        // Idempotent — safe to retry on every poll while gift_card_id is null.
         if ($paid && $purchase && !$purchase->gift_card_id) {
             try {
                 app(IssuePurchasedGiftCardOnOrderPaidListener::class)->handle(

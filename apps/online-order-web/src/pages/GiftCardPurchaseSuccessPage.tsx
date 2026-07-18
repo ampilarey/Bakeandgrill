@@ -187,10 +187,15 @@ export function GiftCardPurchaseSuccessPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text)', fontWeight: 700, lineHeight: 1.4 }}>
-              {t('gift.still_processing')}
+              {status?.payment_status === 'paid' || status?.status === 'paid' || status?.status === 'completed'
+                ? t('gift.issuing_pending_title')
+                : t('gift.payment_pending_title')}
             </p>
             <p style={{ margin: '0.45rem 0 0', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-              {t('gift.still_processing_help').replace(
+              {(status?.payment_status === 'paid' || status?.status === 'paid' || status?.status === 'completed'
+                ? t('gift.issuing_pending_help')
+                : t('gift.payment_pending_help')
+              ).replace(
                 '{order}',
                 status?.order_number || String(orderId),
               )}
