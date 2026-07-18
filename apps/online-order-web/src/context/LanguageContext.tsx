@@ -84,6 +84,9 @@ const TRANSLATIONS: Translations = {
   "menu.filter_specials": { en: "Specials", dv: "Specials" },
   "menu.filter_all_diets": { en: "All diets", dv: "All diets" },
   "menu.open_search": { en: "Search", dv: "Search" },
+  "menu.unavailable": { en: "UNAVAILABLE", dv: "UNAVAILABLE" },
+  "menu.out_of_stock": { en: "Out of stock", dv: "Out of stock" },
+  "menu.view_item": { en: "View details for {name}", dv: "View details for {name}" },
   "a11y.announcement": { en: "Site announcement", dv: "Site announcement" },
 
   // ── Phase 4 Home strings ───────────────────────────────────────────────────

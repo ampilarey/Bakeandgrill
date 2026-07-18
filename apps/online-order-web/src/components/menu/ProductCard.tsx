@@ -1,9 +1,10 @@
 /**
- * Menu product card. Phase 3 PR1: same UI/behaviour; §15 restyle lands with the MenuPage swap.
+ * Menu product card — whole card is one tap target (§15); quick-add/favourite stopPropagation.
  */
 import { useState } from 'react';
 import { API_ORIGIN } from '../../api';
 import type { Item, Variant } from '../../api';
+import { useLanguage } from '../../context/LanguageContext';
 
 export type ProductCardProps = {
   item: Item;
@@ -26,6 +27,7 @@ const SPICE_MAP: Record<string, { label: string; icon: string }> = {
 const MAX_QTY = 99;
 
 export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = false, onToggleFavourite }: Props) {
+  const { t } = useLanguage();
   const [quantity, setQuantity] = useState(1);
   const [imgError, setImgError] = useState(false);
 
@@ -67,9 +69,23 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
       : null)
     ?? (discountedVariants.length > 0 ? 'Special Offer' : null);
 
+  const openItem = () => {
+    if (!isUnavailable) onSelectItem(item, quantity);
+  };
+
   return (
     <article
       className={`menu-card-article${isUnavailable ? ' unavailable' : ''}${onSale ? ' menu-card-on-sale' : ''}`}
+      role={isUnavailable ? undefined : 'button'}
+      tabIndex={isUnavailable ? undefined : 0}
+      onClick={openItem}
+      onKeyDown={(e) => {
+        if (!isUnavailable && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          openItem();
+        }
+      }}
+      aria-label={isUnavailable ? undefined : t('menu.view_item').replace('{name}', item.name)}
       style={{
         background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
@@ -81,23 +97,18 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
         height: '100%',
         opacity: isUnavailable ? 0.6 : 1,
         position: 'relative',
+        cursor: isUnavailable ? 'default' : 'pointer',
       }}
     >
       {/* ── Image ──────────────────────────────────────────── */}
       <div
-        role={isUnavailable ? undefined : 'button'}
-        tabIndex={isUnavailable ? undefined : 0}
-        onClick={() => { if (!isUnavailable) onSelectItem(item, quantity); }}
-        onKeyDown={(e) => { if (!isUnavailable && e.key === 'Enter') onSelectItem(item, quantity); }}
         style={{
           width: '100%',
           aspectRatio: '4 / 3',
           background: imgSrc ? undefined : 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: isUnavailable ? 'default' : 'pointer',
           overflow: 'hidden', flexShrink: 0, position: 'relative',
         }}
-        aria-label={isUnavailable ? undefined : `View details for ${item.name}`}
       >
         {imgSrc ? (
           <img
@@ -115,13 +126,14 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
         {/* Unavailable overlay */}
         {isUnavailable && (
           <div className="menu-card-unavail-overlay">
-            <span className="badge badge-unavail">Unavailable</span>
+            <span className="badge badge-unavail">{t('menu.unavailable')}</span>
           </div>
         )}
 
         {/* Favourite button */}
         {onToggleFavourite && (
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onToggleFavourite(item.id); }}
             style={{
               position: 'absolute', top: '0.625rem', right: '0.625rem',
@@ -237,7 +249,9 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
           {/* Quantity + add — only when available */}
           {isUnavailable ? (
             <button
+              type="button"
               disabled
+              onClick={(e) => e.stopPropagation()}
               style={{
                 width: '100%', padding: '0.625rem',
                 background: 'var(--color-surface-alt)',
@@ -248,7 +262,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
               }}
               aria-disabled="true"
             >
-              Out of stock
+              {t('menu.out_of_stock')}
             </button>
           ) : item.has_variants ? (
             /* Variant items: − qty + on left, + opens modal on right */

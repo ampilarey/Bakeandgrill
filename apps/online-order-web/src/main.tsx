@@ -13,6 +13,14 @@ import { AppShell } from './components/shell/AppShell';
 import { ScrollToTop } from './components/ScrollToTop';
 import './index.css';
 
+// Apply saved theme before first paint — useTheme only mounts on Account.
+try {
+  document.documentElement.dataset.theme =
+    localStorage.getItem('theme') === 'dark' ? 'dark' : '';
+} catch {
+  /* private mode / quota */
+}
+
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {
   Sentry.init({

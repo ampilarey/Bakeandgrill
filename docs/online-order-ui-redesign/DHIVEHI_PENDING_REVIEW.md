@@ -225,6 +225,12 @@ all `dv` values equal their English counterparts and need native Dhivehi review.
 - `account.link_whatsapp`      — More row: "WhatsApp us"
 - `account.link_viber`         — More row: "Message on Viber"
 
+## Phase 7 follow-up — ProductCard i18n (added Jul 2026)
+
+- `menu.unavailable` — sold-out image badge: "UNAVAILABLE"
+- `menu.out_of_stock` — disabled CTA: "Out of stock"
+- `menu.view_item` — card aria-label with `{name}` placeholder
+
 ## Polish pass keys (added Jul 2026)
 
 Home corporate form, checkout chrome, and Account recent-orders list — `dv`

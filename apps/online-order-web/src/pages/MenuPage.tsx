@@ -6,6 +6,7 @@ import type { Category, Item, Modifier, DailySpecial } from '../api';
 function fmtOrderingTime(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
   const isToday = d.toDateString() === new Date().toDateString();
   const h = d.getHours(), m = d.getMinutes();
   const time = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
@@ -524,12 +525,16 @@ export function MenuPage() {
             <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'pickup-only') : 'closed'}`} style={{ margin: 0 }}>
               <span className="ordering-status-bar-dot" />
               <span className="ordering-status-bar-text">
-                {isOpen
-                  ? deliveryAvailable
-                    ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
-                    : `Online ordering is open · Pickup only${nextDeliveryWindow ? ` · Delivery from ${fmtOrderingTime(nextDeliveryWindow)}` : ''}${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
-                  : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
-                }
+                {(() => {
+                  const closes = fmtOrderingTime(currentClose);
+                  const opens = fmtOrderingTime(nextOpenWindow);
+                  const deliveryFrom = fmtOrderingTime(nextDeliveryWindow);
+                  if (!isOpen) return `Online ordering is closed${opens ? ` · Opens ${opens}` : ''}`;
+                  if (!deliveryAvailable) {
+                    return `Online ordering is open · Pickup only${deliveryFrom ? ` · Delivery from ${deliveryFrom}` : ''}${closes ? ` · Closes ${closes}` : ''}`;
+                  }
+                  return `Online ordering is open${closes ? ` · Closes ${closes}` : ''}`;
+                })()}
               </span>
             </div>
           )}
@@ -648,7 +653,7 @@ export function MenuPage() {
           )}
 
           {loading && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '0 0 1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem', padding: '0 0 1.25rem' }}>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="skeleton" style={{ borderRadius: '16px', height: '300px' }} />
               ))}
@@ -678,7 +683,7 @@ export function MenuPage() {
           )}
 
           {!loading && filtersActive && filteredItems.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
               {filteredItems.map(renderProductCard)}
             </div>
           )}
@@ -697,7 +702,7 @@ export function MenuPage() {
                   }}
                 >
                   <MenuSectionHeader category={section.category} />
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
                     {section.items.map(renderProductCard)}
                   </div>
                 </section>
@@ -717,7 +722,7 @@ export function MenuPage() {
                       Other
                     </h2>
                   </header>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
                     {sectionedMenu.other.map(renderProductCard)}
                   </div>
                 </section>

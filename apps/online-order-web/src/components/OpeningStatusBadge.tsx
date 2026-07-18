@@ -14,20 +14,22 @@ type Props = {
   style?: React.CSSProperties;
 };
 
-/** ISO 8601 datetime → "HH:MM" */
+/** ISO 8601 datetime → "HH:MM", or '' if unparseable */
 function toHHMM(iso: string): string {
   try {
     const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   } catch {
     return '';
   }
 }
 
-/** ISO 8601 datetime → "9:00 PM" */
+/** ISO 8601 datetime → "9:00 PM", or '' if unparseable */
 function to12h(iso: string): string {
   try {
     const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
     const h = d.getHours();
     const m = d.getMinutes();
     const ampm = h >= 12 ? 'PM' : 'AM';
@@ -41,12 +43,15 @@ function to12h(iso: string): string {
 /**
  * Formats an ISO 8601 datetime as a time string.
  * Appends the weekday abbreviation if not today (e.g. "6:00 PM Mon").
+ * Returns '' when the value cannot be parsed (avoids "Closes NaN:NaN").
  */
 function fmtWindow(iso: string | null | undefined, use12h: boolean): string {
   if (!iso) return '';
   try {
     const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
     const timeStr = use12h ? to12h(iso) : toHHMM(iso);
+    if (!timeStr) return '';
     const sameDay = d.toDateString() === new Date().toDateString();
     return sameDay ? timeStr : `${timeStr} ${d.toLocaleDateString('en-US', { weekday: 'short' })}`;
   } catch {
