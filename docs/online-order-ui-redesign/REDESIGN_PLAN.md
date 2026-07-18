@@ -1,5 +1,7 @@
 # Bake & Grill Order App — Master UI/UX Design & Implementation Specification
 
+**v2.2 — owner decision: customer app is English-only; Dhivehi UI language removed. `t()` layer retained for future languages.**
+
 **Version 2 (Enhanced).** Version 1 was the approved ZUS-style redesign plan; this revision expands it into the project's long-term Master UI/UX Design and Implementation Specification. All v1 content is preserved (Context and decisions below; the v1 implementation phases live in §30 Migration Strategy; v1 verification and risks in §30–§32).
 
 **Amendment over v1:** the Prayer Time bar is **not** reduced to a compact chip. It remains a full-width banner directly below the Home greeting (§12). This is a mandatory, brand-defining feature.

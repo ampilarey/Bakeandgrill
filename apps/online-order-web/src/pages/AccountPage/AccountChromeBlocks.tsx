@@ -33,14 +33,19 @@ type PushProps = {
   onToggle: () => void;
 };
 
-/** Settings group: dark mode, language, optional push notifications row. */
+/** Settings group: dark mode, optional push notifications row. */
 export function AccountSettingsBlock({ push }: { push?: PushProps }) {
-  const { t, lang, setLang } = useLanguage();
+  const { t } = useLanguage();
   const { darkMode, setDarkMode } = useTheme();
 
   return (
     <SectionCard title={t('account.settings')}>
-      <div style={{ ...linkRowStyle, borderBottom: '1px solid var(--color-border)' }}>
+      <div
+        style={{
+          ...linkRowStyle,
+          borderBottom: push?.supported ? '1px solid var(--color-border)' : 'none',
+        }}
+      >
         <span>{t('account.dark_mode')}</span>
         <button
           type="button"
@@ -62,39 +67,6 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
         >
           {darkMode ? t('common.on') : t('common.off')}
         </button>
-      </div>
-
-      <div
-        style={{
-          ...linkRowStyle,
-          borderBottom: push?.supported ? '1px solid var(--color-border)' : 'none',
-        }}
-      >
-        <span>{t('account.language')}</span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {(['en', 'dv'] as const).map((l) => (
-            <button
-              key={l}
-              type="button"
-              onClick={() => setLang(l)}
-              aria-pressed={lang === l}
-              style={{
-                minHeight: 36,
-                padding: '0 0.75rem',
-                borderRadius: 8,
-                border: `1.5px solid ${lang === l ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                background: lang === l ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                color: lang === l ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              {t(l === 'en' ? 'account.lang_en' : 'account.lang_dv')}
-            </button>
-          ))}
-        </div>
       </div>
 
       {push?.supported && (
