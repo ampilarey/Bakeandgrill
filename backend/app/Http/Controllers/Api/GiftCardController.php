@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\DTOs\OrderPaidData;
+use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
+use App\Domains\Payments\Listeners\IssuePurchasedGiftCardOnOrderPaidListener;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
 use App\Domains\Payments\Services\GiftCardIssueService;
@@ -446,6 +449,26 @@ class GiftCardController extends Controller
             ->with('giftCard:id,code_last4,initial_balance,current_balance,status,expires_at')
             ->where('order_id', $order->id)
             ->first();
+
+        // Recovery: payment confirmed but issue listener missed (return-URL race / error).
+        // Idempotent — safe to retry on every poll while gift_card_id is null.
+        $paid = $order->paid_at !== null
+            || $order->payment_status === 'paid'
+            || in_array($order->status, ['paid', 'completed'], true);
+        if ($paid && $purchase && !$purchase->gift_card_id) {
+            try {
+                app(IssuePurchasedGiftCardOnOrderPaidListener::class)->handle(
+                    new OrderPaid(OrderPaidData::fromOrder($order->fresh(), false)),
+                );
+            } catch (\Throwable) {
+                // Leave issued=false; client keeps polling / shows still-processing.
+            }
+            $purchase = GiftCardPurchase::query()
+                ->with('giftCard:id,code_last4,initial_balance,current_balance,status,expires_at')
+                ->where('order_id', $order->id)
+                ->first();
+            $order->refresh();
+        }
 
         $card = $purchase?->giftCard;
 

@@ -30,6 +30,8 @@ export function GiftCardPurchaseSuccessPage() {
     }
     let cancelled = false;
     let tries = 0;
+    // Longer window when return URL said CONFIRMED — server may still be issuing.
+    const maxTries = paymentState === 'CONFIRMED' ? 20 : 8;
 
     const poll = async () => {
       try {
@@ -37,7 +39,11 @@ export function GiftCardPurchaseSuccessPage() {
         if (cancelled) return;
         setStatus(res);
         setError('');
-        if (!res.issued && tries < 8) {
+        if (res.issued) {
+          setLoading(false);
+          return;
+        }
+        if (tries < maxTries) {
           tries += 1;
           window.setTimeout(() => { void poll(); }, 1500);
         } else {
@@ -53,7 +59,7 @@ export function GiftCardPurchaseSuccessPage() {
 
     void poll();
     return () => { cancelled = true; };
-  }, [authReady, isAuthenticated, orderId]);
+  }, [authReady, isAuthenticated, orderId, paymentState]);
 
   const handleResend = async (channel: 'sms' | 'email' | 'both') => {
     if (!orderId || resendBusy) return;
@@ -172,10 +178,51 @@ export function GiftCardPurchaseSuccessPage() {
         )}
 
         {!loading && !status?.issued && !failed && (
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-muted)' }}>{t('gift.still_processing')}</p>
+          <div
+            style={{
+              padding: '0.9rem 1rem',
+              borderRadius: 14,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface-alt)',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text)', fontWeight: 700, lineHeight: 1.4 }}>
+              {t('gift.still_processing')}
+            </p>
+            <p style={{ margin: '0.45rem 0 0', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+              {t('gift.still_processing_help').replace(
+                '{order}',
+                status?.order_number || String(orderId),
+              )}
+            </p>
+          </div>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {!status?.issued && (
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setError('');
+                void getGiftCardPurchaseStatus(orderId)
+                  .then((res) => {
+                    setStatus(res);
+                    setLoading(false);
+                  })
+                  .catch((e) => {
+                    setError((e as Error).message);
+                    setLoading(false);
+                  });
+              }}
+              style={{ ...linkBtn, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              {t('gift.retry_status')}
+            </button>
+          )}
+          <Link to="/order-history" style={{ ...linkBtn, background: 'var(--color-surface)', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' }}>
+            {t('gift.view_orders')}
+          </Link>
           <Link to="/menu" style={linkBtn}>{t('gift.order_food')}</Link>
           <Link to="/gift-cards/buy" style={{ ...linkBtn, background: 'transparent', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' }}>
             {t('gift.buy_again')}

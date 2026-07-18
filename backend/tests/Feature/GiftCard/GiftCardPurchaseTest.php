@@ -150,6 +150,50 @@ class GiftCardPurchaseTest extends TestCase
         $this->assertSame(1, SmsLog::query()->where('reference_type', 'gift_card')->count());
     }
 
+    public function test_purchase_status_retries_issue_when_paid_but_not_issued(): void
+    {
+        Mail::fake();
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777014',
+            'email' => 'retry@example.com',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'GC-TEST-RETRY',
+            'tracking_token' => 'gcretry',
+            'type' => 'gift_card',
+            'status' => 'paid',
+            'payment_status' => 'paid',
+            'customer_id' => $customer->id,
+            'subtotal' => 100,
+            'subtotal_laar' => 10000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 100,
+            'total_laar' => 10000,
+            'paid_at' => now(),
+        ]);
+
+        GiftCardPurchase::create([
+            'order_id' => $order->id,
+            'purchaser_customer_id' => $customer->id,
+            'amount' => 100,
+            'recipient_phone' => '+9607777014',
+            'recipient_email' => 'retry@example.com',
+        ]);
+
+        $this->getJson("/api/gift-cards/purchases/{$order->id}", $this->customerHeaders($customer))
+            ->assertOk()
+            ->assertJsonPath('issued', true)
+            ->assertJsonPath('gift_card.status', 'active');
+
+        $this->assertDatabaseHas('gift_card_purchases', [
+            'order_id' => $order->id,
+        ]);
+        $this->assertNotNull(GiftCardPurchase::where('order_id', $order->id)->value('gift_card_id'));
+        Mail::assertSent(GiftCardMail::class);
+    }
+
     public function test_purchase_status_never_exposes_plaintext_code(): void
     {
         Mail::fake();
