@@ -8,22 +8,16 @@ use App\Domains\Loyalty\Repositories\CustomerRepositoryInterface;
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\Events\OrderCompleted;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Awards loyalty points to the customer when an order is fully completed.
+ * Synchronous after commit so points land even if the queue worker is down.
  * Idempotent: unique (idempotency_key) on loyalty_ledger.
  */
-class EarnPointsFromOrderListener implements ShouldQueue
+class EarnPointsFromOrderListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(
         private LoyaltyLedgerService $service,
@@ -65,8 +59,6 @@ class EarnPointsFromOrderListener implements ShouldQueue
                 'customer_id' => $customerId,
                 'error' => $e->getMessage(),
             ]);
-            // Re-throw so the queue worker retries this job (respects $tries = 3).
-            // Swallowing silently marks the job as succeeded → earned points are lost.
             throw $e;
         }
     }

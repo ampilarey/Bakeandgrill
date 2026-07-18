@@ -15,6 +15,7 @@ use App\Domains\Inventory\Listeners\RestoreInventoryOnRefundListener;
 use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
+use App\Domains\Loyalty\Listeners\ReverseLoyaltyEarnOnRefundListener;
 use App\Domains\Marketing\Listeners\DecrementDailySpecialSoldCountListener;
 use App\Domains\Marketing\Listeners\IncrementDailySpecialSoldCountListener;
 use App\Domains\Marketing\Listeners\RecordReferralRedemptionListener;
@@ -110,6 +111,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             ReverseCreditOnRefundListener::class,
             \App\Domains\Deposits\Listeners\ReverseDepositOnRefundListener::class,
             \App\Domains\Payments\Listeners\RestoreGiftCardOnRefundListener::class,
+            ReverseLoyaltyEarnOnRefundListener::class,
             DecrementDailySpecialSoldCountListener::class,
             PostGstOnRefundListener::class,
             DispatchWebhookOnDomainEvent::class,

@@ -140,6 +140,9 @@ class OrderStatusMachineTest extends TestCase
         $this->assertTrue($machine->isAllowed('in_progress', 'paid'));
         $this->assertTrue($machine->isAllowed('ready', 'paid'));
         $this->assertTrue($machine->isAllowed('pending', 'payment_pending'));
+        $this->assertTrue($machine->isAllowed('partial', 'refunded'));
+        $this->assertTrue($machine->isAllowed('in_progress', 'refunded'));
+        $this->assertTrue($machine->isAllowed('ready', 'partially_refunded'));
     }
 
     public function test_invalid_transitions_are_blocked(): void

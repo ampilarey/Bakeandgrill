@@ -170,4 +170,21 @@ class LoyaltyTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->service->createOrRefreshHold($this->customer, $this->order, 1);
     }
+
+    public function test_reverse_earn_for_refund_claws_back_points(): void
+    {
+        $this->service->earnPointsForOrder($this->customer, $this->order);
+        $account = LoyaltyAccount::where('customer_id', $this->customer->id)->first();
+        $earned = (int) $account->points_balance;
+        $this->assertGreaterThan(0, $earned);
+
+        $this->service->reverseEarnForRefund($this->order, 1.0, 42);
+
+        $account->refresh();
+        $this->assertSame(0, (int) $account->points_balance);
+
+        // Idempotent
+        $this->service->reverseEarnForRefund($this->order, 1.0, 42);
+        $this->assertSame(0, (int) $account->fresh()->points_balance);
+    }
 }

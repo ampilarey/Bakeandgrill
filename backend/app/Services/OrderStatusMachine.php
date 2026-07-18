@@ -20,9 +20,9 @@ use App\Models\Order;
  *  payment_pending ─→ paid | pending | cancelled
  *  pending ─→ in_progress | ready | held | paid | partial | payment_pending | cancelled
  *  paid ─→ in_progress | ready | completed | out_for_delivery | refunded | partially_refunded | cancelled
- *  partial ─→ paid | in_progress | ready | payment_pending | partially_refunded | cancelled
- *  in_progress ─→ ready | held | paid | partial | cancelled
- *  ready ─→ completed | in_progress | out_for_delivery | paid | partial | cancelled
+ *  partial ─→ paid | in_progress | ready | payment_pending | refunded | partially_refunded | cancelled
+ *  in_progress ─→ ready | held | paid | partial | refunded | partially_refunded | cancelled
+ *  ready ─→ completed | in_progress | out_for_delivery | paid | partial | refunded | partially_refunded | cancelled
  *  held ─→ pending | cancelled
  *
  * ─────────────────────────────────────────────────────────────────────
@@ -49,9 +49,9 @@ class OrderStatusMachine
         'payment_pending' => ['paid', 'pending', 'cancelled'],
         'pending' => ['in_progress', 'ready', 'held', 'paid', 'partial', 'payment_pending', 'cancelled'],
         'paid' => ['in_progress', 'ready', 'completed', 'out_for_delivery', 'refunded', 'partially_refunded', 'cancelled'],
-        'partial' => ['paid', 'in_progress', 'ready', 'payment_pending', 'partially_refunded', 'cancelled'],
-        'in_progress' => ['ready', 'held', 'paid', 'partial', 'cancelled'],
-        'ready' => ['completed', 'in_progress', 'out_for_delivery', 'paid', 'partial', 'cancelled'],
+        'partial' => ['paid', 'in_progress', 'ready', 'payment_pending', 'refunded', 'partially_refunded', 'cancelled'],
+        'in_progress' => ['ready', 'held', 'paid', 'partial', 'refunded', 'partially_refunded', 'cancelled'],
+        'ready' => ['completed', 'in_progress', 'out_for_delivery', 'paid', 'partial', 'refunded', 'partially_refunded', 'cancelled'],
         'held' => ['pending', 'cancelled'],
         'out_for_delivery' => ['picked_up', 'cancelled'],
         'picked_up' => ['on_the_way', 'cancelled'],

@@ -11,6 +11,7 @@ use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\Customer;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyHold;
+use App\Models\LoyaltyLedger;
 use App\Models\Order;
 use App\Services\LoyaltySettingsService;
 use Illuminate\Support\Facades\DB;
@@ -295,6 +296,68 @@ class LoyaltyLedgerService
             ]);
 
             $this->accountRepo->updateBalance($customer->id, $balanceAfter, $points);
+        });
+    }
+
+    /**
+     * Claw back earned points when a completed order is refunded (proportional).
+     * No-op if earn was never recorded. Never drives balance below 0.
+     */
+    public function reverseEarnForRefund(Order $order, float $refundRatio, int $refundId): void
+    {
+        if ($refundRatio <= 0 || !$order->customer_id) {
+            return;
+        }
+
+        $earn = LoyaltyLedger::query()
+            ->where('order_id', $order->id)
+            ->where('customer_id', $order->customer_id)
+            ->where('type', 'earn')
+            ->where('points', '>', 0)
+            ->first();
+
+        if (!$earn) {
+            return;
+        }
+
+        $idempotencyKey = 'loyalty:earn_reverse:' . $order->id . ':' . $refundId;
+        $pointsToReverse = (int) floor((int) $earn->points * min(1.0, $refundRatio));
+        if ($pointsToReverse <= 0) {
+            return;
+        }
+
+        DB::transaction(function () use ($order, $pointsToReverse, $idempotencyKey): void {
+            if ($this->ledgerRepo->existsByIdempotencyKey($idempotencyKey)) {
+                return;
+            }
+
+            $account = LoyaltyAccount::where('customer_id', $order->customer_id)
+                ->lockForUpdate()
+                ->first();
+            if (!$account) {
+                return;
+            }
+
+            $debit = min($pointsToReverse, max(0, (int) $account->points_balance));
+            if ($debit <= 0) {
+                return;
+            }
+
+            $balanceAfter = (int) $account->points_balance - $debit;
+            $lifetimeDebit = -min($debit, max(0, (int) $account->lifetime_points));
+
+            $this->ledgerRepo->createEntry([
+                'idempotency_key' => $idempotencyKey,
+                'customer_id' => $order->customer_id,
+                'order_id' => $order->id,
+                'type' => 'adjust',
+                'points' => -$debit,
+                'balance_after' => $balanceAfter,
+                'notes' => 'Earn reversed for refund on order ' . $order->order_number,
+                'occurred_at' => now(),
+            ]);
+
+            $this->accountRepo->updateBalance((int) $order->customer_id, $balanceAfter, $lifetimeDebit);
         });
     }
 }
