@@ -8,7 +8,6 @@ use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Services\PrintJobService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -18,17 +17,11 @@ use Illuminate\Support\Facades\Log;
  * Online orders → kitchen print is suppressed on OrderCreated (payment not yet confirmed)
  *                and fires here on OrderPaid once BML webhook or zero-balance confirms it.
  *
- * Runs after DB commit.
+ * Synchronous after commit so tickets enqueue even if the queue worker is down.
  */
-class DispatchKitchenPrintListener implements ShouldQueue
+class DispatchKitchenPrintListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(
         private OrderRepositoryInterface $orders,

@@ -7,23 +7,15 @@ namespace App\Domains\Printing\Listeners;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Services\PrintJobService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Dispatches receipt print jobs when an order is fully paid.
- *
- * Runs after DB commit.
+ * Synchronous after commit so receipts enqueue even if the queue worker is down.
  */
-class DispatchReceiptPrintListener implements ShouldQueue
+class DispatchReceiptPrintListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(
         private OrderRepositoryInterface $orders,

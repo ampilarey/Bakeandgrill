@@ -7,14 +7,15 @@ namespace App\Domains\Gst\Listeners;
 use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\Refund;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-class PostGstOnRefundListener implements ShouldQueue
+/**
+ * Posts GST reversal entries when an order is refunded.
+ * Synchronous after commit so GST reverses even if the queue worker is down.
+ */
+class PostGstOnRefundListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
 
     public function __construct(
         private readonly GstLedgerPoster $poster,

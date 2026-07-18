@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Domains\Loyalty\Services\PointsCalculator;
+use App\Models\Order;
+use App\Models\SiteSetting;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PointsCalculatorTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     private PointsCalculator $calc;
 
@@ -40,5 +43,39 @@ class PointsCalculatorTest extends TestCase
     public function test_min_redeem_default(): void
     {
         $this->assertGreaterThan(0, $this->calc->minRedeemPoints());
+    }
+
+    public function test_earn_uses_discounted_merchandise_not_gross_total(): void
+    {
+        // Gross total includes GST; earn must use discounted food subtotal only.
+        $order = Order::factory()->make([
+            'subtotal' => 100.00,
+            'subtotal_laar' => 10000,
+            'tax_amount' => 8.00,
+            'total' => 128.00,
+            'total_laar' => 12800,
+            'delivery_fee_laar' => 2000,
+            'promo_discount_laar' => 2000,
+        ]);
+
+        // 100.00 − 20.00 promo = 80.00 → 80 points at 1 pt/MVR (delivery excluded)
+        $this->assertSame(80, $this->calc->pointsForOrder($order));
+    }
+
+    public function test_earn_includes_delivery_when_setting_enabled(): void
+    {
+        SiteSetting::set('loyalty_earn_on_delivery_fee', '1');
+
+        $order = Order::factory()->make([
+            'subtotal' => 100.00,
+            'subtotal_laar' => 10000,
+            'total' => 120.00,
+            'total_laar' => 12000,
+            'delivery_fee_laar' => 2000,
+            'promo_discount_laar' => 0,
+        ]);
+
+        // 100 food + 20 delivery = 120 points
+        $this->assertSame(120, app(PointsCalculator::class)->pointsForOrder($order));
     }
 }

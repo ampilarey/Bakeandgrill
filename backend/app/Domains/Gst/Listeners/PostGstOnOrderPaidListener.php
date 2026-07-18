@@ -7,14 +7,15 @@ namespace App\Domains\Gst\Listeners;
 use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Models\Order;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-class PostGstOnOrderPaidListener implements ShouldQueue
+/**
+ * Posts GST ledger entries when an order is paid.
+ * Synchronous after commit so GST posts even if the queue worker is down.
+ */
+class PostGstOnOrderPaidListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
 
     public function __construct(
         private readonly GstLedgerPoster $poster,

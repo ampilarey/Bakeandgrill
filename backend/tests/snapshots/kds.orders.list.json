@@ -28,6 +28,7 @@
                     "status": "pending",
                     "menu_group_id": 1,
                     "prep_time_minutes": null,
+                    "is_available": true,
                     "modifiers": []
                 }
             ]

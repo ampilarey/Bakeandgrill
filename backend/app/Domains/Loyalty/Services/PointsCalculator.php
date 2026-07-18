@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Loyalty\Services;
 
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\LoyaltyAccount;
 use App\Models\Order;
 use App\Services\LoyaltySettingsService;
@@ -34,6 +35,11 @@ class PointsCalculator
      * Calculate points to earn for an order.
      * Uses floor() — always round DOWN.
      * Applies tier multiplier when enabled.
+     *
+     * Earn base = discounted merchandise (subtotal after allocated promo/loyalty/
+     * manual/gift/referral), matching free-delivery / fee thresholds. GST, service
+     * charge, and packaging are excluded. Delivery fee is included only when
+     * loyalty_earn_on_delivery_fee is enabled.
      */
     public function pointsForOrder(Order $order, ?LoyaltyAccount $account = null): int
     {
@@ -41,12 +47,12 @@ class PointsCalculator
             return 0;
         }
 
-        $totalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
-        $deliveryLaar = $this->settings->earnOnDeliveryFee()
-            ? 0
-            : (int) ($order->delivery_fee_laar ?? 0);
-        $foodLaar = max(0, $totalLaar - $deliveryLaar);
-        $amountMvr = $foodLaar / 100;
+        $foodLaar = EffectiveDiscount::discountedSubtotalLaarFromOrder($order);
+        if ($this->settings->earnOnDeliveryFee()) {
+            $foodLaar += max(0, (int) ($order->delivery_fee_laar ?? 0));
+        }
+
+        $amountMvr = max(0, $foodLaar) / 100;
         $basePoints = (int) floor($amountMvr * $this->earnRatePerMvr());
 
         if ($account && $this->settings->tiersEnabled()) {

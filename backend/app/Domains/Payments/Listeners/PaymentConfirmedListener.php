@@ -12,7 +12,6 @@ use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
 use App\Domains\Payments\Services\OrderPaymentStateService;
 use App\Models\Order;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -26,20 +25,12 @@ use Illuminate\Support\Facades\Log;
  * synchronously inside DB::afterCommit; the idempotency guard below
  * prevents a double OrderPaid dispatch.
  *
- * Idempotent: the order status check (not already 'paid'/'completed')
- * prevents a second OrderPaid from being fired if the listener runs twice.
+ * Synchronous after commit so Stripe/gateway paid transitions are not
+ * stranded when the queue worker is down. Idempotent via paid_at / status.
  */
-class PaymentConfirmedListener implements ShouldQueue
+class PaymentConfirmedListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
-
-    public int $timeout = 30;
 
     public function __construct(
         private readonly PaymentRepositoryInterface $payments,
@@ -47,19 +38,6 @@ class PaymentConfirmedListener implements ShouldQueue
         private readonly PaymentConfirmationNotifier $confirmationNotifier,
         private readonly OrderPaymentStateService $paymentState,
     ) {}
-
-    public function failed(PaymentConfirmed $event, \Throwable $e): void
-    {
-        Log::critical('PaymentConfirmedListener: exhausted retries', [
-            'order_id' => $event->data->orderId,
-            'payment_id' => $event->data->paymentId,
-            'error' => $e->getMessage(),
-        ]);
-
-        if (app()->bound('sentry')) {
-            \Sentry\captureException($e);
-        }
-    }
 
     public function handle(PaymentConfirmed $event): void
     {
@@ -76,7 +54,7 @@ class PaymentConfirmedListener implements ShouldQueue
         $orderLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
 
         // BML path sets paid_at synchronously inside PaymentService::confirmPayment
-        // before this queued listener runs. If the sync SMS failed or was skipped,
+        // before this listener runs. If the sync SMS failed or was skipped,
         // still attempt delivery here (SmsService idempotency prevents duplicates).
         if ($order->paid_at !== null || in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
             if ($paidLaar >= $orderLaar && $order->status !== 'cancelled') {
