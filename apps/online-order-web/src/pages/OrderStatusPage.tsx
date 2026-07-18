@@ -776,52 +776,41 @@ export function OrderStatusPage() {
                 Order #{order.order_number}
               </p>
 
-              {/* Stepper — hide for cancelled */}
+              {/* Vertical timeline — hide for cancelled */}
               {!isCancelled && (
-                <div style={{ position: 'relative' }}>
-                  {/* Background rail */}
-                  <div style={{ position: 'absolute', top: 13, left: '12.5%', right: '12.5%', height: 3, background: 'var(--color-border)', borderRadius: 99 }} />
-                  {/* Filled rail */}
-                  <div style={{
-                    position: 'absolute', top: 13, left: '12.5%',
-                    height: 3,
-                    background: statusInfo.color,
-                    borderRadius: 99,
-                    width: activeStep < 0 ? '0%' : `${Math.min(100, (activeStep / (STEPS.length - 1)) * 100)}%`,
-                    transition: 'width 0.6s ease',
-                  }} />
-                  {/* Steps */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
-                    {STEPS.map((step, i) => {
-                      const done   = i < activeStep;
-                      const active = i === activeStep;
-                      return (
-                        <div key={step.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.375rem' }}>
-                          <div style={{
-                            width: '1.75rem', height: '1.75rem', borderRadius: '50%',
-                            background: (done || active) ? statusInfo.color : 'var(--color-surface)',
-                            border: `2.5px solid ${(done || active) ? statusInfo.color : 'var(--color-border)'}`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '0.6875rem', fontWeight: 800,
-                            color: (done || active) ? 'white' : 'var(--color-text-muted)',
-                            boxShadow: active ? `0 0 0 5px ${statusInfo.color}22` : 'none',
-                            animation: active ? 'stepper-pulse 2s ease-in-out infinite' : 'none',
-                            transition: 'all 0.3s',
-                          }}>
+                <div className="order-timeline">
+                  {STEPS.map((step, i) => {
+                    const done   = i < activeStep;
+                    const active = i === activeStep;
+                    return (
+                      <div key={step.key} className="order-timeline__row">
+                        <div className="order-timeline__indicator">
+                          <div className={[
+                            'order-timeline__dot',
+                            done   ? 'is-done'   : '',
+                            active ? 'is-active' : '',
+                          ].filter(Boolean).join(' ')}>
                             {done ? '✓' : i + 1}
                           </div>
-                          <span style={{
-                            fontSize: '0.625rem', fontWeight: active ? 700 : 500,
-                            color: (done || active) ? statusInfo.color : 'var(--color-text-muted)',
-                            textAlign: 'center', lineHeight: 1.2,
-                            whiteSpace: 'nowrap',
-                          }}>
+                          {i < STEPS.length - 1 && (
+                            <div className={`order-timeline__connector${done ? ' is-done' : ''}`} />
+                          )}
+                        </div>
+                        <div className="order-timeline__content">
+                          <span className={[
+                            'order-timeline__step-name',
+                            done   ? 'is-done'   : '',
+                            active ? 'is-active' : '',
+                          ].filter(Boolean).join(' ')}>
                             {step.label}
                           </span>
+                          {active && (
+                            <span className="order-timeline__step-sub">{statusInfo.sub}</span>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1015,23 +1004,41 @@ export function OrderStatusPage() {
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: '0.875rem' }}>
                 We reply within 10 minutes on WhatsApp and Viber
               </p>
-              <div style={{ display: 'flex', gap: '0.625rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <a
+                  href={phoneTel}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.55rem 1rem', background: 'var(--color-surface-alt)', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
+                  aria-label="Call us"
+                >
+                  📞 Call
+                </a>
                 <a
                   href={`${waLink}?text=Hi%2C+I+need+help+with+order+%23${order.order_number}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.625rem 1.125rem', background: '#25d366', color: 'white', borderRadius: '0.625rem', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.55rem 1rem', background: '#25d366', color: 'white', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
                   aria-label="Contact us on WhatsApp"
                 >
                   <WhatsAppIcon /> WhatsApp
                 </a>
                 <a
                   href={viberLink}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.625rem 1.125rem', background: '#7360f2', color: 'white', borderRadius: '0.625rem', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.55rem 1rem', background: '#7360f2', color: 'white', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
                   aria-label="Contact us on Viber"
                 >
                   <ViberIcon /> Viber
                 </a>
+                {s.business_maps_url && (
+                  <a
+                    href={s.business_maps_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.55rem 1rem', background: 'var(--color-surface-alt)', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
+                    aria-label="Get directions"
+                  >
+                    📍 Directions
+                  </a>
+                )}
               </div>
             </div>
 

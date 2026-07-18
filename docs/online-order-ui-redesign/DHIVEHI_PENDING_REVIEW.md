@@ -116,6 +116,20 @@ field in `apps/online-order-web/src/context/LanguageContext.tsx` after native re
 - `prayer.offline_cached`
 - `prayer.cached`
 
+## Phase 6 Orders tab keys (added Jul 2026)
+
+New strings for the restyled OrderHistoryPage — all `dv` values equal their
+English counterparts and need native Dhivehi review before shipping in Dv mode.
+
+- `orders.active_section` — section heading: "Active Orders"
+- `orders.past_section`   — section heading: "Past Orders"
+- `orders.empty_title`    — empty-state heading: "No orders yet"
+- `orders.empty_body`     — empty-state body: "Start your first order and it will appear here."
+- `orders.empty_cta`      — empty-state CTA: "Browse the menu"
+- `orders.sign_in_prompt` — unauthenticated prompt: "Sign in to view your order history."
+- `orders.track`          — active-card CTA: "Track"
+- `orders.view`           — past-card CTA: "View"
+
 ## Phase 5 PR3 AuthBlock keys (added Jul 2026)
 
 New chrome strings for the restyled AuthBlock — all `dv` values equal their
