@@ -348,16 +348,26 @@ export interface GiftCard {
   masked_code: string;
   initial_balance: number;
   current_balance: number;
-  status: 'active' | 'depleted' | 'expired';
+  status: 'active' | 'depleted' | 'expired' | 'cancelled';
   expires_at: string | null;
   issued_to: { id: number; name: string } | null;
   created_at?: string;
 }
 
-export async function fetchGiftCards(params?: { page?: number; status?: string }): Promise<{ data: GiftCard[]; meta: { current_page: number; last_page: number; total: number; active_count?: number; active_balance?: number } }> {
+export interface GiftCardTransaction {
+  id: number;
+  type: 'load' | 'redeem' | 'refund';
+  amount: number;
+  balance_after: number;
+  order_id: number | null;
+  created_at: string | null;
+}
+
+export async function fetchGiftCards(params?: { page?: number; status?: string; q?: string }): Promise<{ data: GiftCard[]; meta: { current_page: number; last_page: number; total: number; active_count?: number; active_balance?: number } }> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
   if (params?.status) qs.set('status', params.status);
+  if (params?.q) qs.set('q', params.q);
   return req(`/admin/gift-cards?${qs}`);
 }
 
@@ -366,7 +376,15 @@ export async function issueGiftCard(data: { amount: number; customer_id?: number
 }
 
 export async function checkGiftCardBalance(code: string): Promise<{ masked_code: string; current_balance: number; expires_at: string | null }> {
-  return req(`/gift-cards/${encodeURIComponent(code)}/balance`);
+  return req('/gift-cards/balance', { method: 'POST', body: JSON.stringify({ code: code.trim().toUpperCase() }) });
+}
+
+export async function cancelGiftCard(id: number): Promise<{ gift_card: GiftCard }> {
+  return req(`/admin/gift-cards/${id}/cancel`, { method: 'POST' });
+}
+
+export async function fetchGiftCardTransactions(id: number): Promise<{ gift_card: GiftCard; transactions: GiftCardTransaction[] }> {
+  return req(`/admin/gift-cards/${id}/transactions`);
 }
 
 // ── Reviews ───────────────────────────────────────────────────────────────────

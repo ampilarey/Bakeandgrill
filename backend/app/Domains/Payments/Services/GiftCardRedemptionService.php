@@ -36,6 +36,21 @@ final class GiftCardRedemptionService
             return;
         }
 
+        // Re-check expiry at payment time (card may have expired after apply).
+        if ($giftCard->expires_at && $giftCard->expires_at->isPast()) {
+            $giftCard->update(['status' => 'expired']);
+
+            return;
+        }
+
+        // Re-check idempotency after lock — concurrent payment + listener paths.
+        $alreadyRedeemed = GiftCardTransaction::where('order_id', $order->id)
+            ->where('type', 'redeem')
+            ->exists();
+        if ($alreadyRedeemed) {
+            return;
+        }
+
         $deductLaar = min(
             EffectiveDiscount::giftCardRedeemLaar($order),
             $giftCard->balanceLaar(),

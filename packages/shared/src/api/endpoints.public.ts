@@ -29,7 +29,9 @@ export const PUBLIC_ENDPOINTS = {
 
   // Gift card balance check (intentionally public — anyone holding the
   // physical card should be able to read its balance without an account)
+  /** @deprecated Prefer GIFT_CARD_BALANCE_POST — code in URL can hit access logs. */
   GIFT_CARD_BALANCE:         (code: string) => `/gift-cards/${encodeURIComponent(code)}/balance`,
+  GIFT_CARD_BALANCE_POST:    '/gift-cards/balance',
 
   // Opening hours / ordering eligibility (drives the storefront banner)
   OPENING_HOURS_STATUS:      '/opening-hours/status',

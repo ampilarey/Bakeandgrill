@@ -9,16 +9,36 @@ use Illuminate\Support\Str;
 
 final class GiftCardCodeService
 {
+    /**
+     * Canonical form for hashing: uppercase, no spaces or hyphens.
+     * Lets customers enter ABCD-EFGH-IJKL-MNOP or ABCDEFGHIJKLMNOP.
+     */
     public function normalize(string $code): string
+    {
+        return strtoupper(preg_replace('/[\s\-]+/', '', $code) ?? '');
+    }
+
+    /** Legacy normalize kept hyphens — used only for looking up pre-migration hashes. */
+    public function normalizeLegacy(string $code): string
     {
         return strtoupper(preg_replace('/\s+/', '', $code) ?? '');
     }
 
     public function hash(string $code): string
     {
+        return $this->hmac($this->normalize($code));
+    }
+
+    public function hashLegacy(string $code): string
+    {
+        return $this->hmac($this->normalizeLegacy($code));
+    }
+
+    private function hmac(string $normalized): string
+    {
         $key = (string) config('app.key');
 
-        return hash_hmac('sha256', $this->normalize($code), $key);
+        return hash_hmac('sha256', $normalized, $key);
     }
 
     public function last4(string $code): string
@@ -53,12 +73,22 @@ final class GiftCardCodeService
 
     public function findByCode(string $code): ?GiftCard
     {
-        return GiftCard::where('code_hash', $this->hash($code))->first();
+        $hashes = array_values(array_unique([
+            $this->hash($code),
+            $this->hashLegacy($code),
+        ]));
+
+        return GiftCard::whereIn('code_hash', $hashes)->first();
     }
 
     public function findActiveByCodeForUpdate(string $code): ?GiftCard
     {
-        return GiftCard::where('code_hash', $this->hash($code))
+        $hashes = array_values(array_unique([
+            $this->hash($code),
+            $this->hashLegacy($code),
+        ]));
+
+        return GiftCard::whereIn('code_hash', $hashes)
             ->where('status', 'active')
             ->lockForUpdate()
             ->first();

@@ -5,12 +5,30 @@ import {
   PageHeader, StatCard, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
 } from '../components/SharedUI';
 import { CustomerSearch } from '../components/CustomerSearch';
-import { fetchGiftCards, issueGiftCard, checkGiftCardBalance, type GiftCard } from '../api';
+import {
+  fetchGiftCards,
+  issueGiftCard,
+  checkGiftCardBalance,
+  cancelGiftCard,
+  fetchGiftCardTransactions,
+  type GiftCard,
+  type GiftCardTransaction,
+} from '../api';
 import { Gift, Search, Copy, Check } from 'lucide-react';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
 
 const STATUS_COLOR: Record<string, string> = {
-  active: 'green', redeemed: 'orange', expired: 'red', cancelled: 'gray',
+  active: 'green',
+  depleted: 'orange',
+  expired: 'red',
+  cancelled: 'gray',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Active',
+  depleted: 'Depleted',
+  expired: 'Expired',
+  cancelled: 'Cancelled',
 };
 
 export default function GiftCardsPage() {
@@ -22,6 +40,8 @@ export default function GiftCardsPage() {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [searchQ, setSearchQ] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   const [issueOpen, setIssueOpen] = useState(false);
   const [printCard, setPrintCard] = useState<PrintCardData | null>(null);
@@ -38,11 +58,20 @@ export default function GiftCardsPage() {
   const [balanceError, setBalanceError] = useState('');
   const [checkingBalance, setCheckingBalance] = useState(false);
 
+  const [ledgerCard, setLedgerCard] = useState<GiftCard | null>(null);
+  const [ledgerRows, setLedgerRows] = useState<GiftCardTransaction[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [actionError, setActionError] = useState('');
+
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchGiftCards({ page, status: statusFilter || undefined });
+      const res = await fetchGiftCards({
+        page,
+        status: statusFilter || undefined,
+        q: searchQ || undefined,
+      });
       setCards(res.data ?? []);
       setMeta({
         current_page: res.meta?.current_page ?? 1,
@@ -55,7 +84,7 @@ export default function GiftCardsPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, [page, statusFilter]);
+  useEffect(() => { void load(); }, [page, statusFilter, searchQ]);
 
   const handleIssue = async () => {
     const amt = parseFloat(amount);
@@ -75,7 +104,7 @@ export default function GiftCardsPage() {
     if (!balanceCode.trim()) return;
     setCheckingBalance(true); setBalanceError(''); setBalanceResult(null);
     try {
-      const res = await checkGiftCardBalance(balanceCode.trim().toUpperCase());
+      const res = await checkGiftCardBalance(balanceCode.trim());
       setBalanceResult(res);
     } catch (e) { setBalanceError((e as Error).message); }
     finally { setCheckingBalance(false); }
@@ -85,6 +114,39 @@ export default function GiftCardsPage() {
     void navigator.clipboard.writeText(code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   };
 
+  const openLedger = async (card: GiftCard) => {
+    setLedgerCard(card);
+    setLedgerRows([]);
+    setLedgerLoading(true);
+    setActionError('');
+    try {
+      const res = await fetchGiftCardTransactions(card.id);
+      setLedgerCard(res.gift_card);
+      setLedgerRows(res.transactions);
+    } catch (e) { setActionError((e as Error).message); }
+    finally { setLedgerLoading(false); }
+  };
+
+  const handleCancel = async (card: GiftCard) => {
+    if (!window.confirm(`Cancel gift card ${card.masked_code}? It can no longer be redeemed.`)) return;
+    setActionError('');
+    try {
+      await cancelGiftCard(card.id);
+      void load();
+      if (ledgerCard?.id === card.id) setLedgerCard(null);
+    } catch (e) { setActionError((e as Error).message); }
+  };
+
+  const printDataFor = (card: GiftCard, fullCode?: string): PrintCardData => ({
+    type: 'gift_card',
+    code: fullCode ?? card.masked_code,
+    title: 'Gift Card',
+    subtitle: `MVR ${Number(card.initial_balance).toFixed(2)}`,
+    expiry: card.expires_at ?? null,
+    note: fullCode ? 'Redeem online or in-store' : 'Masked code — print full code only at issue time',
+    logoText: 'Bake & Grill',
+  });
+
   return (
     <div>
       {printCard && <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />}
@@ -93,9 +155,9 @@ export default function GiftCardsPage() {
         action={<Btn onClick={() => { setIssueOpen(true); setIssuedCard(null); setIssueError(''); setCustomerId(null); }}>+ Issue Gift Card</Btn>}
       />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+      {actionError && <p style={{ color: '#ef4444', marginBottom: 16 }}>{actionError}</p>}
 
-      {/* Status filter */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
@@ -103,10 +165,20 @@ export default function GiftCardsPage() {
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
-          <option value="redeemed">Redeemed</option>
+          <option value="depleted">Depleted</option>
           <option value="expired">Expired</option>
           <option value="cancelled">Cancelled</option>
         </select>
+        <input
+          placeholder="Search last4 / customer…"
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { setSearchQ(searchInput.trim()); setPage(1); }
+          }}
+          style={{ padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', minWidth: 200 }}
+        />
+        <Btn variant="secondary" onClick={() => { setSearchQ(searchInput.trim()); setPage(1); }}>Search</Btn>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -115,24 +187,25 @@ export default function GiftCardsPage() {
         <StatCard label="Active Balance" value={`MVR ${Number(meta.active_balance ?? 0).toFixed(2)}`} accent="#8b5cf6" />
       </div>
 
-      {/* Balance checker */}
       <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: 20, marginBottom: 24 }}>
         <p style={{ fontWeight: 700, color: '#1C1408', margin: '0 0 12px', fontSize: 14 }}>Check Balance</p>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <input
-            placeholder="XXXX-XXXX-XXXX"
+            placeholder="XXXX-XXXX-XXXX-XXXX"
             value={balanceCode}
             onChange={e => { setBalanceCode(e.target.value.toUpperCase()); setBalanceResult(null); setBalanceError(''); }}
-            onKeyDown={e => e.key === 'Enter' && handleCheckBalance()}
-            style={{ fontFamily: 'monospace', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, maxWidth: 220, textTransform: 'uppercase' }}
+            onKeyDown={e => e.key === 'Enter' && void handleCheckBalance()}
+            style={{ fontFamily: 'monospace', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, maxWidth: 260, textTransform: 'uppercase' }}
           />
-          <Btn variant="secondary" onClick={handleCheckBalance} disabled={checkingBalance}>
+          <Btn variant="secondary" onClick={() => void handleCheckBalance()} disabled={checkingBalance}>
             <Search size={14} style={{ marginRight: 6 }} />{checkingBalance ? 'Checking…' : 'Check'}
           </Btn>
         </div>
         {balanceResult && (
           <div style={{ marginTop: 12, padding: 12, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
-            <p style={{ margin: 0, color: '#166534', fontWeight: 700 }}>Balance: MVR {balanceResult.current_balance.toFixed(2)}</p>
+            <p style={{ margin: 0, color: '#166534', fontWeight: 700 }}>
+              {balanceResult.masked_code} — Balance: MVR {balanceResult.current_balance.toFixed(2)}
+            </p>
             {balanceResult.expires_at && <p style={{ margin: '4px 0 0', color: '#166534', fontSize: 12 }}>Expires: {balanceResult.expires_at}</p>}
           </div>
         )}
@@ -144,15 +217,15 @@ export default function GiftCardsPage() {
           <thead>
             <tr>
               {['Code', 'Issued To', 'Initial', 'Balance', 'Status', 'Expires', 'Issued', ''].map(h => (
-                <th key={h} style={TH}>{h}</th>
+                <th key={h || 'actions'} style={TH}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
             ) : cards.length === 0 ? (
-              <tr><td colSpan={7}><EmptyState message="No gift cards yet." /></td></tr>
+              <tr><td colSpan={8}><EmptyState message="No gift cards yet." /></td></tr>
             ) : cards.map(card => (
               <tr key={card.id}>
                 <td style={TD}><code style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em', color: '#1C1408' }}>{card.masked_code}</code></td>
@@ -167,19 +240,15 @@ export default function GiftCardsPage() {
                 </td>
                 <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
                 <td style={{ ...TD, fontWeight: 700, color: card.current_balance > 0 ? '#166534' : '#9C8E7E' }}>MVR {Number(card.current_balance).toFixed(2)}</td>
-                <td style={TD}><Badge color={STATUS_COLOR[card.status] ?? 'gray'}>{card.status}</Badge></td>
+                <td style={TD}><Badge color={STATUS_COLOR[card.status] ?? 'gray'}>{STATUS_LABEL[card.status] ?? card.status}</Badge></td>
                 <td style={TD}>{card.expires_at ?? '—'}</td>
                 <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{card.created_at ? new Date(card.created_at).toLocaleDateString() : '—'}</td>
-                <td style={TD}>
-                  <Btn small variant="secondary" onClick={() => setPrintCard({
-                    type: 'gift_card',
-                    code: card.masked_code,
-                    title: 'Gift Card',
-                    subtitle: `MVR ${Number(card.initial_balance).toFixed(2)}`,
-                    expiry: card.expires_at ?? null,
-                    note: 'Redeem online or in-store',
-                    logoText: 'Bake & Grill',
-                  })}>🖨️ Print</Btn>
+                <td style={{ ...TD, whiteSpace: 'nowrap' }}>
+                  <Btn small variant="secondary" onClick={() => void openLedger(card)}>Ledger</Btn>
+                  {' '}
+                  {(card.status === 'active' || card.status === 'expired') && (
+                    <Btn small variant="secondary" onClick={() => void handleCancel(card)}>Cancel</Btn>
+                  )}
                 </td>
               </tr>
             ))}
@@ -189,15 +258,61 @@ export default function GiftCardsPage() {
 
       <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
 
+      {ledgerCard && (
+        <Modal title={`Ledger · ${ledgerCard.masked_code}`} onClose={() => setLedgerCard(null)}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+            Status: <strong>{STATUS_LABEL[ledgerCard.status] ?? ledgerCard.status}</strong>
+            {' · '}Balance: MVR {Number(ledgerCard.current_balance).toFixed(2)}
+          </p>
+          {ledgerLoading ? (
+            <p style={{ color: '#9C8E7E' }}>Loading…</p>
+          ) : ledgerRows.length === 0 ? (
+            <EmptyState message="No transactions yet." />
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  {['When', 'Type', 'Amount', 'Balance', 'Order'].map(h => (
+                    <th key={h} style={{ ...TH, fontSize: 12 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ledgerRows.map(row => (
+                  <tr key={row.id}>
+                    <td style={TD}>{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                    <td style={TD}>{row.type}</td>
+                    <td style={{ ...TD, color: row.amount < 0 ? '#b91c1c' : '#166534', fontWeight: 600 }}>
+                      {row.amount < 0 ? '−' : '+'}MVR {Math.abs(row.amount).toFixed(2)}
+                    </td>
+                    <td style={TD}>MVR {row.balance_after.toFixed(2)}</td>
+                    <td style={TD}>{row.order_id ? `#${row.order_id}` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setLedgerCard(null)}>Close</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
       {issueOpen && (
         <Modal title="Issue Gift Card" onClose={() => setIssueOpen(false)}>
           {issuedCard ? (
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
               <Gift size={40} style={{ color: '#D4813A', marginBottom: 16 }} />
               <p style={{ fontWeight: 700, color: '#1C1408', marginBottom: 8 }}>Gift card issued!</p>
+              <p style={{ color: '#b45309', fontSize: 12, marginBottom: 10 }}>
+                Full code is shown once — copy or print it now.
+              </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
-                <p style={{ fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.1em', color: '#D4813A', fontWeight: 700, margin: 0 }}>{issuedCard.code ?? issuedCard.masked_code}</p>
+                <p style={{ fontFamily: 'monospace', fontSize: 18, letterSpacing: '0.08em', color: '#D4813A', fontWeight: 700, margin: 0 }}>
+                  {issuedCard.code ?? issuedCard.masked_code}
+                </p>
                 <button
+                  type="button"
                   onClick={() => handleCopyCode(issuedCard.code ?? issuedCard.masked_code)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#22c55e' : '#9C8E7E', padding: 4 }}
                   title="Copy code"
@@ -207,7 +322,12 @@ export default function GiftCardsPage() {
               </div>
               <p style={{ color: '#6B5D4F', fontSize: 14 }}>Balance: MVR {issuedCard.current_balance.toFixed(2)}</p>
               {issuedCard.expires_at && <p style={{ color: '#9C8E7E', fontSize: 13 }}>Expires: {issuedCard.expires_at}</p>}
-              <div style={{ marginTop: 20 }}>
+              <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {issuedCard.code && (
+                  <Btn variant="secondary" onClick={() => setPrintCard(printDataFor(issuedCard, issuedCard.code))}>
+                    Print card
+                  </Btn>
+                )}
                 <Btn onClick={() => { setIssuedCard(null); setIssueOpen(false); }}>Done</Btn>
               </div>
             </div>
@@ -234,7 +354,7 @@ export default function GiftCardsPage() {
               </div>
               <ModalActions>
                 <Btn variant="secondary" onClick={() => setIssueOpen(false)}>Cancel</Btn>
-                <Btn onClick={handleIssue} disabled={issuing}>{issuing ? 'Issuing…' : 'Issue Gift Card'}</Btn>
+                <Btn onClick={() => void handleIssue()} disabled={issuing}>{issuing ? 'Issuing…' : 'Issue Gift Card'}</Btn>
               </ModalActions>
             </>
           )}

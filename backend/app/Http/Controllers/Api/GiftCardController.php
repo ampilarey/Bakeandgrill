@@ -276,11 +276,36 @@ class GiftCardController extends Controller
 
     // ── Admin: list gift cards ────────────────────────────────────────────────
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $cards = GiftCard::with('issuedTo:id,name,phone')
-            ->orderByDesc('created_at')
-            ->paginate(20);
+        $validated = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'status' => ['sometimes', 'nullable', 'string', 'in:active,depleted,expired,cancelled'],
+            'q' => ['sometimes', 'nullable', 'string', 'max:64'],
+        ]);
+
+        $query = GiftCard::with('issuedTo:id,name,phone')->orderByDesc('created_at');
+
+        if (!empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        if (!empty($validated['q'])) {
+            $q = trim($validated['q']);
+            $last4 = strtoupper(substr(preg_replace('/[\s\-]+/', '', $q) ?? '', -4));
+            $query->where(function ($builder) use ($q, $last4) {
+                $builder->where('code_last4', $last4);
+                if (is_numeric($q)) {
+                    $builder->orWhere('id', (int) $q);
+                }
+                $builder->orWhereHas('issuedTo', function ($c) use ($q) {
+                    $c->where('name', 'like', '%' . $q . '%')
+                        ->orWhere('phone', 'like', '%' . $q . '%');
+                });
+            });
+        }
+
+        $cards = $query->paginate(20);
 
         return response()->json([
             'data' => collect($cards->items())->map(fn ($c) => $this->format($c)),
@@ -294,6 +319,60 @@ class GiftCardController extends Controller
         ]);
     }
 
+    // ── Admin: cancel a gift card ─────────────────────────────────────────────
+
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        $card = GiftCard::findOrFail($id);
+
+        if ($card->status === 'cancelled') {
+            return response()->json(['message' => 'Gift card is already cancelled.'], 422);
+        }
+        if ($card->status === 'depleted') {
+            return response()->json(['message' => 'Depleted gift cards cannot be cancelled.'], 422);
+        }
+
+        $previous = $card->status;
+        $card->update(['status' => 'cancelled']);
+
+        $this->audit->log(
+            'gift_card.cancelled',
+            'GiftCard',
+            $card->id,
+            ['status' => $previous],
+            ['status' => 'cancelled'],
+            ['masked_code' => $card->masked_code],
+            $request,
+        );
+
+        return response()->json(['gift_card' => $this->format($card->fresh('issuedTo'))]);
+    }
+
+    // ── Admin: transaction ledger ─────────────────────────────────────────────
+
+    public function transactions(int $id): JsonResponse
+    {
+        $card = GiftCard::with('issuedTo:id,name,phone')->findOrFail($id);
+
+        $rows = GiftCardTransaction::where('gift_card_id', $card->id)
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get()
+            ->map(fn (GiftCardTransaction $t) => [
+                'id' => $t->id,
+                'type' => $t->type,
+                'amount' => (float) $t->amount,
+                'balance_after' => (float) $t->balance_after,
+                'order_id' => $t->order_id,
+                'created_at' => $t->created_at?->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'gift_card' => $this->format($card),
+            'transactions' => $rows,
+        ]);
+    }
+
     private function format(GiftCard $c): array
     {
         return [
@@ -303,6 +382,7 @@ class GiftCardController extends Controller
             'current_balance' => (float) $c->current_balance,
             'status' => $c->status,
             'expires_at' => $c->expires_at?->toDateString(),
+            'created_at' => $c->created_at?->toIso8601String(),
             'issued_to' => $c->issuedTo ? ['id' => $c->issuedTo->id, 'name' => $c->issuedTo->name] : null,
         ];
     }

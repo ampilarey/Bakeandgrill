@@ -224,13 +224,19 @@ export function useCheckout() {
 
   const [useLoyalty, setUseLoyalty]   = useState(false);
 
-  const [giftCardCode, setGiftCardCode]     = useState("");
+  const [giftCardCode, setGiftCardCodeState] = useState("");
   const [giftCardApplied, setGiftCardApplied] = useState<{
     code: string; discountLaar: number; pending?: boolean;
   } | null>(null);
   const [giftCardError, setGiftCardError]   = useState("");
   const [giftCardLoading, setGiftCardLoading] = useState(false);
   const [giftCardBalance, setGiftCardBalance] = useState<number | null>(null);
+
+  const setGiftCardCode = (code: string) => {
+    setGiftCardCodeState(code);
+    setGiftCardBalance(null);
+    setGiftCardError("");
+  };
 
   const [myReferralCode, setMyReferralCode] = useState<string | null>(null);
 

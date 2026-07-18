@@ -355,7 +355,7 @@ const TRANSLATIONS: Translations = {
   "checkout.aria_referral": "Friend referral code",
   "checkout.referral_est": "est. MVR {amount} off at checkout",
   "checkout.gift_card": "Gift Card",
-  "checkout.ph_gift": "XXXX-XXXX-XXXX",
+  "checkout.ph_gift": "XXXX-XXXX-XXXX-XXXX",
   "checkout.aria_gift": "Gift card code",
   "checkout.gift_balance": "Balance: MVR {amount} — click Apply to use it",
   "checkout.share_referral": "Share your referral code with friends",
