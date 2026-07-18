@@ -89,7 +89,7 @@
   /* ── Redesign shell metrics (§8.3) — additive; old tokens kept ── */
   --shell-max:            640px;
   --bottom-nav-height:    64px;
-  --float-cart-height:    56px;
+  --float-cart-height:    72px; /* logo FAB above bottom nav */
   --safe-bottom:          env(safe-area-inset-bottom, 0px);
   --cat-rail-width:       90px;
   --menu-header-height:   112px;
@@ -1299,8 +1299,9 @@ textarea.field-input {
 }
 
 .app-shell--with-cart .app-shell__main {
+  /* Logo FAB overlays bottom-left — keep modest clearance, not a full bar */
   padding-bottom: calc(
-    var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 1.25rem
+    var(--bottom-nav-height) + var(--safe-bottom) + 1.5rem
   );
 }
 
@@ -1312,7 +1313,7 @@ textarea.field-input {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 16px);
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 10px);
   width: calc(100% - 2 * var(--page-gutter));
   max-width: calc(var(--shell-max) - 2 * var(--page-gutter));
   min-height: 44px;
@@ -1329,6 +1330,11 @@ textarea.field-input {
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+/* Lift order capsule above the logo FAB when cart has items */
+.app-shell--with-cart .active-order-capsule {
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 8px);
 }
 
 .app-shell:not(.app-shell--with-cart) .active-order-capsule {
@@ -1417,127 +1423,69 @@ textarea.field-input {
   bottom: 6px;
 }
 
-/* ZUS-style minimized cart — logo badge + total + Checkout (expands via CartSheet) */
-.float-cart-bar {
+/* ZUS-style cart FAB — logo + badge + tiny total only (no banner) */
+.float-cart-fab {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 8px);
-  width: calc(100% - 2 * var(--page-gutter));
-  max-width: calc(var(--shell-max) - 2 * var(--page-gutter));
-  min-height: var(--float-cart-height);
-  padding: 0.35rem 0.45rem 0.35rem 0.55rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-3xl);
-  box-shadow: var(--shadow-float);
+  left: max(var(--page-gutter), calc(50% - (var(--shell-max) / 2) + var(--page-gutter)));
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 10px);
   z-index: var(--z-pay-bar);
-  font-family: inherit;
-}
-
-.float-cart-bar__main {
-  flex: 1;
-  min-width: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.15rem 0.25rem 0.15rem 0;
+  gap: 0.2rem;
+  padding: 0;
   border: none;
   background: transparent;
-  color: inherit;
   cursor: pointer;
   font-family: inherit;
-  text-align: left;
-  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.float-cart-bar__logo-wrap {
+.float-cart-fab__logo-wrap {
   position: relative;
-  flex-shrink: 0;
-  width: 52px;
-  height: 52px;
-  margin: -10px 0;
+  width: 56px;
+  height: 56px;
 }
 
-.float-cart-bar__logo {
-  width: 52px;
-  height: 52px;
+.float-cart-fab__logo {
+  width: 56px;
+  height: 56px;
   object-fit: contain;
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
-  box-shadow: 0 4px 14px rgba(42, 30, 12, 0.12);
+  box-shadow: var(--shadow-float);
   display: block;
 }
 
-.float-cart-bar__badge {
+.float-cart-fab__badge {
   position: absolute;
-  top: -4px;
+  top: -5px;
   right: -6px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
   border-radius: 999px;
   background: var(--color-error);
   color: #fff;
   font-size: 0.6875rem;
   font-weight: 800;
-  line-height: 20px;
+  line-height: 22px;
   text-align: center;
-  box-shadow: 0 0 0 2px var(--color-surface);
+  box-shadow: 0 0 0 2px var(--color-bg);
 }
 
-.float-cart-bar__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.float-cart-bar__brand {
+.float-cart-fab__total {
   font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.float-cart-bar__total {
-  font-size: 1rem;
   font-weight: 800;
   color: var(--color-primary);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.float-cart-bar__checkout {
-  flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 1.15rem;
-  border: none;
+  line-height: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-primary);
-  color: #fff;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background var(--duration-standard) var(--ease-out);
-}
-
-.float-cart-bar__checkout:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.float-cart-bar__checkout:disabled {
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  cursor: not-allowed;
+  padding: 0.15rem 0.45rem;
+  box-shadow: 0 2px 8px rgba(42, 30, 12, 0.08);
 }
 
 /* Product grid beside category rail — always 2 cols on phone (§15).
@@ -1921,7 +1869,7 @@ textarea.field-input {
 @media (prefers-reduced-motion: reduce) {
   .sheet-panel,
   .sheet-backdrop,
-  .float-cart-bar,
+  .float-cart-fab,
   .accordion__chevron,
   .prayer-banner-panel {
     animation: none !important;
