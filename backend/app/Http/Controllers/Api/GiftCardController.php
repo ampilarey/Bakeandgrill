@@ -8,6 +8,7 @@ use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
+use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Domains\Payments\Services\GiftCardSmsDelivery;
 use App\Models\Customer;
 use App\Models\GiftCard;
@@ -27,6 +28,7 @@ class GiftCardController extends Controller
         private readonly GiftCardCodeService $giftCardCodes,
         private readonly GiftCardSmsDelivery $giftCardSms,
         private readonly GiftCardEmailDelivery $giftCardEmail,
+        private readonly GiftCardRedemptionService $giftCardRedemption,
         private readonly AuditLogService $audit,
     ) {}
 
@@ -92,8 +94,15 @@ class GiftCardController extends Controller
                 return response()->json(['message' => 'This gift card has expired.'], 422);
             }
 
+            $availableLaar = $this->giftCardRedemption->availableLaar($card, $order->id);
+            if ($availableLaar <= 0) {
+                return response()->json([
+                    'message' => 'This gift card has no available balance (held on other unpaid orders).',
+                ], 422);
+            }
+
             $discountLaar = min(
-                $card->balanceLaar(),
+                $availableLaar,
                 EffectiveDiscount::remainingPreTaxBeforeGift($order),
             );
 
@@ -108,6 +117,7 @@ class GiftCardController extends Controller
                 'discount_laar' => $discountLaar,
                 'discount_mvr' => number_format($discountLaar / 100, 2),
                 'card_balance' => (float) $card->current_balance,
+                'available_balance' => round($availableLaar / 100, 2),
                 'masked_code' => $card->masked_code,
             ]);
         });
@@ -157,8 +167,15 @@ class GiftCardController extends Controller
                 return response()->json(['message' => 'This gift card has expired.'], 422);
             }
 
+            $availableLaar = $this->giftCardRedemption->availableLaar($card, $order->id);
+            if ($availableLaar <= 0) {
+                return response()->json([
+                    'message' => 'This gift card has no available balance (held on other unpaid orders).',
+                ], 422);
+            }
+
             $discountLaar = min(
-                $card->balanceLaar(),
+                $availableLaar,
                 EffectiveDiscount::remainingPreTaxBeforeGift($order),
             );
 
@@ -183,6 +200,7 @@ class GiftCardController extends Controller
                 'discount_laar' => $discountLaar,
                 'discount_mvr' => number_format($discountLaar / 100, 2),
                 'card_balance' => (float) $card->current_balance,
+                'available_balance' => round($availableLaar / 100, 2),
                 'masked_code' => $card->masked_code,
                 'order' => [
                     'id' => (int) $order->id,

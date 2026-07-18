@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Stock;
 
+use App\Domains\Payments\Listeners\RestoreGiftCardOnRefundListener;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardRedemptionService;
+use App\Domains\Orders\DTOs\OrderRefundedData;
+use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\Customer;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;
+use App\Models\Refund;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -458,5 +462,162 @@ class GiftCardStockTest extends TestCase
         $order->refresh();
         $this->assertNull($order->gift_card_id);
         $this->assertSame(0, (int) $order->gift_card_discount_laar);
+    }
+
+    // ── Soft reservation + refund restore ─────────────────────────────────────
+
+    public function test_second_unpaid_order_cannot_over_allocate_gift_card(): void
+    {
+        ['card' => $card, 'code' => $code] = $this->makeGiftCard([
+            'initial_balance' => 40,
+            'current_balance' => 40,
+        ]);
+
+        $customer = $this->makeCustomer();
+        $item = $this->makeItem(false, 10, ['base_price' => 40.00]);
+
+        $makeOrder = function (string $number) use ($customer, $item) {
+            $order = $this->makeOrder($customer, [
+                'order_number' => $number,
+                'tracking_token' => $number,
+                'type' => 'online_pickup',
+                'status' => 'pending',
+                'subtotal' => 40.00,
+                'subtotal_laar' => 4000,
+                'tax_amount' => 0,
+                'discount_amount' => 0,
+                'total' => 40.00,
+                'total_laar' => 4000,
+            ]);
+            $order->items()->create([
+                'item_id' => $item->id,
+                'item_name' => $item->name,
+                'quantity' => 1,
+                'unit_price' => 40.00,
+                'total_price' => 40.00,
+            ]);
+
+            return $order;
+        };
+
+        $orderA = $makeOrder('BG-HOLD-A');
+        $orderB = $makeOrder('BG-HOLD-B');
+        $token = $this->customerHeaders($customer);
+
+        $this->postJson("/api/orders/{$orderA->id}/apply-gift-card", ['code' => $code], $token)
+            ->assertOk()
+            ->assertJsonPath('discount_laar', 4000);
+
+        $this->postJson("/api/orders/{$orderB->id}/apply-gift-card", ['code' => $code], $token)
+            ->assertStatus(422);
+
+        $card->refresh();
+        $this->assertSame(40.0, (float) $card->current_balance);
+        $this->assertNull($orderB->fresh()->gift_card_id);
+    }
+
+    public function test_redeem_fails_closed_when_balance_short(): void
+    {
+        ['card' => $card] = $this->makeGiftCard([
+            'initial_balance' => 10,
+            'current_balance' => 10,
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BG-SHORT-01',
+            'tracking_token' => 'short01',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'subtotal' => 25.00,
+            'subtotal_laar' => 2500,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 25.00,
+            'total_laar' => 2500,
+            'gift_card_id' => $card->id,
+            'gift_card_discount_laar' => 2500,
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+
+        DB::transaction(function () use ($order): void {
+            app(GiftCardRedemptionService::class)->redeemForOrder($order->fresh());
+        });
+    }
+
+    public function test_refund_restores_gift_card_balance(): void
+    {
+        ['card' => $card] = $this->makeGiftCard([
+            'initial_balance' => 30,
+            'current_balance' => 30,
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BG-REFUND-GC',
+            'tracking_token' => 'refundgc',
+            'type' => 'takeaway',
+            'status' => 'paid',
+            'subtotal' => 30.00,
+            'subtotal_laar' => 3000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 30.00,
+            'total_laar' => 3000,
+            'gift_card_id' => $card->id,
+            'gift_card_discount_laar' => 3000,
+        ]);
+
+        DB::transaction(function () use ($order): void {
+            app(GiftCardRedemptionService::class)->redeemForOrder($order->fresh());
+        });
+
+        $card->refresh();
+        $this->assertSame(0.0, (float) $card->current_balance);
+        $this->assertSame('depleted', $card->status);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'user_id' => $this->makeOwner()->id,
+            'amount' => 30.00,
+            'status' => 'completed',
+            'reason' => 'test restore',
+        ]);
+
+        app(RestoreGiftCardOnRefundListener::class)->handle(new OrderRefunded(
+            new OrderRefundedData(
+                refundId: $refund->id,
+                orderId: $order->id,
+                orderNumber: $order->order_number,
+                amount: 30.00,
+                reason: 'test restore',
+                refundRatio: 1.0,
+            ),
+        ));
+
+        $card->refresh();
+        $this->assertSame(30.0, (float) $card->current_balance);
+        $this->assertSame('active', $card->status);
+        $this->assertDatabaseHas('gift_card_transactions', [
+            'gift_card_id' => $card->id,
+            'order_id' => $order->id,
+            'refund_id' => $refund->id,
+            'type' => 'refund',
+            'amount' => 30,
+        ]);
+
+        // Idempotent on replay
+        app(RestoreGiftCardOnRefundListener::class)->handle(new OrderRefunded(
+            new OrderRefundedData(
+                refundId: $refund->id,
+                orderId: $order->id,
+                orderNumber: $order->order_number,
+                amount: 30.00,
+                reason: 'test restore',
+                refundRatio: 1.0,
+            ),
+        ));
+
+        $this->assertSame(1, GiftCardTransaction::where('order_id', $order->id)->where('type', 'refund')->count());
+        $this->assertSame(30.0, (float) $card->fresh()->current_balance);
     }
 }

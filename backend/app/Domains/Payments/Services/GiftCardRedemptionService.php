@@ -8,11 +8,42 @@ use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;
+use Illuminate\Support\Facades\DB;
 
 final class GiftCardRedemptionService
 {
+    /** Unpaid order statuses that soft-reserve gift card balance. */
+    public const RESERVING_STATUSES = ['pending', 'payment_pending', 'partial', 'held'];
+
+    /**
+     * Laari already claimed by other unpaid orders on this card.
+     */
+    public function reservedLaar(GiftCard $card, ?int $excludeOrderId = null): int
+    {
+        $query = Order::query()
+            ->where('gift_card_id', $card->id)
+            ->whereIn('status', self::RESERVING_STATUSES)
+            ->where('gift_card_discount_laar', '>', 0);
+
+        if ($excludeOrderId !== null) {
+            $query->where('id', '!=', $excludeOrderId);
+        }
+
+        return (int) $query->sum('gift_card_discount_laar');
+    }
+
+    /**
+     * Balance available to apply to an order (ledger balance minus other unpaid holds).
+     */
+    public function availableLaar(GiftCard $card, ?int $excludeOrderId = null): int
+    {
+        return max(0, $card->balanceLaar() - $this->reservedLaar($card, $excludeOrderId));
+    }
+
     /**
      * Deduct gift card balance for an order. Must run inside an outer DB transaction.
+     *
+     * @throws \RuntimeException when the order still claims a gift discount but balance is short
      */
     public function redeemForOrder(Order $order): void
     {
@@ -33,14 +64,14 @@ final class GiftCardRedemptionService
             ->first();
 
         if (!$giftCard) {
-            return;
+            throw new \RuntimeException('Gift card is no longer available for redemption.');
         }
 
         // Re-check expiry at payment time (card may have expired after apply).
         if ($giftCard->expires_at && $giftCard->expires_at->isPast()) {
             $giftCard->update(['status' => 'expired']);
 
-            return;
+            throw new \RuntimeException('Gift card expired before payment.');
         }
 
         // Re-check idempotency after lock — concurrent payment + listener paths.
@@ -51,12 +82,16 @@ final class GiftCardRedemptionService
             return;
         }
 
-        $deductLaar = min(
-            EffectiveDiscount::giftCardRedeemLaar($order),
-            $giftCard->balanceLaar(),
-        );
-        if ($deductLaar <= 0) {
+        $neededLaar = EffectiveDiscount::giftCardRedeemLaar($order);
+        if ($neededLaar <= 0) {
             return;
+        }
+
+        $deductLaar = min($neededLaar, $giftCard->balanceLaar());
+        if ($deductLaar < $neededLaar) {
+            throw new \RuntimeException(
+                'Gift card balance is insufficient at payment time. Remove the gift card and try again.'
+            );
         }
 
         $newBalanceLaar = max(0, $giftCard->balanceLaar() - $deductLaar);
@@ -75,5 +110,93 @@ final class GiftCardRedemptionService
             'balance_after' => $newBalanceMvr,
             'order_id' => $order->id,
         ]);
+    }
+
+    /**
+     * Restore gift card balance after a refund (full or partial via ratio).
+     * Idempotent per refund_id when provided.
+     */
+    public function restoreForOrder(Order $order, float $refundRatio = 1.0, ?int $refundId = null): void
+    {
+        $refundRatio = max(0.0, min(1.0, $refundRatio));
+        if ($refundRatio <= 0) {
+            return;
+        }
+
+        DB::transaction(function () use ($order, $refundRatio, $refundId): void {
+            $redeem = GiftCardTransaction::query()
+                ->where('order_id', $order->id)
+                ->where('type', 'redeem')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$redeem) {
+                return;
+            }
+
+            if ($refundId !== null) {
+                $already = GiftCardTransaction::query()
+                    ->where('order_id', $order->id)
+                    ->where('type', 'refund')
+                    ->where('refund_id', $refundId)
+                    ->exists();
+                if ($already) {
+                    return;
+                }
+            }
+
+            $redeemedMvr = abs((float) $redeem->amount);
+            $alreadyRestoredMvr = (float) GiftCardTransaction::query()
+                ->where('order_id', $order->id)
+                ->where('type', 'refund')
+                ->sum('amount');
+
+            $remainingMvr = max(0.0, round($redeemedMvr - $alreadyRestoredMvr, 2));
+            if ($remainingMvr <= 0) {
+                return;
+            }
+
+            $restoreMvr = round(min($remainingMvr, $redeemedMvr * $refundRatio), 2);
+            if ($restoreMvr <= 0) {
+                return;
+            }
+
+            $giftCard = GiftCard::query()
+                ->where('id', $redeem->gift_card_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$giftCard) {
+                return;
+            }
+
+            // Do not revive cancelled/expired cards beyond a balance credit on cancelled.
+            if ($giftCard->status === 'cancelled') {
+                return;
+            }
+
+            $newBalanceMvr = round((float) $giftCard->current_balance + $restoreMvr, 2);
+            $status = $giftCard->status;
+            if ($status === 'depleted' && $newBalanceMvr > 0) {
+                $status = 'active';
+            }
+            if ($giftCard->expires_at && $giftCard->expires_at->isPast()) {
+                $status = 'expired';
+            }
+
+            $giftCard->update([
+                'current_balance' => $newBalanceMvr,
+                'status' => $status,
+            ]);
+
+            GiftCardTransaction::create([
+                'gift_card_id' => $giftCard->id,
+                'order_id' => $order->id,
+                'refund_id' => $refundId,
+                'amount' => $restoreMvr,
+                'type' => 'refund',
+                'balance_after' => $newBalanceMvr,
+            ]);
+        });
     }
 }

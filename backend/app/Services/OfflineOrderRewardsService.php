@@ -8,6 +8,7 @@ use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\GiftCardCodeService;
+use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Models\Customer;
 use App\Models\Order;
@@ -133,8 +134,13 @@ class OfflineOrderRewardsService
                 throw new \RuntimeException('This gift card has expired.');
             }
 
+            $availableLaar = app(GiftCardRedemptionService::class)->availableLaar($card, $order->id);
+            if ($availableLaar <= 0) {
+                throw new \RuntimeException('This gift card has no available balance (held on other unpaid orders).');
+            }
+
             $discountLaar = min(
-                $card->balanceLaar(),
+                $availableLaar,
                 EffectiveDiscount::remainingPreTaxBeforeGift($order),
             );
 

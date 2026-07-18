@@ -108,6 +108,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             RestoreInventoryOnRefundListener::class,
             ReverseCreditOnRefundListener::class,
             \App\Domains\Deposits\Listeners\ReverseDepositOnRefundListener::class,
+            \App\Domains\Payments\Listeners\RestoreGiftCardOnRefundListener::class,
             DecrementDailySpecialSoldCountListener::class,
             PostGstOnRefundListener::class,
             DispatchWebhookOnDomainEvent::class,
