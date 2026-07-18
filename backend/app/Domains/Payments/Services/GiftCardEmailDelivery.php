@@ -22,9 +22,11 @@ final class GiftCardEmailDelivery
         string $plainCode,
         string $email,
         ?string $personalNote = null,
+        ?string $senderFromLine = null,
+        ?string $viewUrl = null,
     ): array {
         $normalized = strtolower(trim($email));
-        if ($normalized === '' || !filter_var($normalized, FILTER_VALIDATE_EMAIL)) {
+        if ($normalized === '' || ! filter_var($normalized, FILTER_VALIDATE_EMAIL)) {
             return [
                 'ok' => false,
                 'email' => $email,
@@ -40,6 +42,8 @@ final class GiftCardEmailDelivery
                 strtoupper(trim($plainCode)),
                 $redeemUrl,
                 $personalNote !== null ? trim($personalNote) ?: null : null,
+                $senderFromLine !== null ? trim($senderFromLine) ?: null : null,
+                $viewUrl !== null ? trim($viewUrl) ?: null : null,
             ));
         } catch (\Throwable $e) {
             return [

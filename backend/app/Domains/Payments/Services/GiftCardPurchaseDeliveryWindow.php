@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 /**
  * Short-lived encrypted plaintext for customer purchase resend / SMS view link.
  * Stored in cache + DB (encrypted) for 48h — never returned via API JSON except
- * to the authenticated buyer when delivery failed, or via the public view token.
+ * to the recipient via SMS/email resend or the public view token (never to the buyer).
  */
 final class GiftCardPurchaseDeliveryWindow
 {

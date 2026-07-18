@@ -244,6 +244,8 @@ final class GiftCardPurchaseFulfillmentService
         }
 
         $note = $purchase->personal_note;
+        $fromLine = $purchase->senderFromLine();
+        $viewUrl = $this->deliveryWindow->viewUrl($purchase);
         $smsOk = $purchase->sms_ok;
         $emailOk = $purchase->email_ok;
 
@@ -255,7 +257,8 @@ final class GiftCardPurchaseFulfillmentService
                 $note,
                 $purchase->purchaser_customer_id,
                 null,
-                $this->deliveryWindow->viewUrl($purchase),
+                $viewUrl,
+                $fromLine,
             );
             $smsOk = (bool) $sent['ok'];
             if (!$smsOk) {
@@ -272,6 +275,8 @@ final class GiftCardPurchaseFulfillmentService
                 $plain,
                 $purchase->recipient_email,
                 $note,
+                $fromLine,
+                $viewUrl,
             );
             $emailOk = (bool) $sent['ok'];
             if (!$emailOk) {

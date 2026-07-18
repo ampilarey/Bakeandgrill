@@ -18,6 +18,8 @@ class GiftCardMail extends Mailable
         public string $plainCode,
         public string $redeemUrl,
         public ?string $personalNote = null,
+        public ?string $senderFromLine = null,
+        public ?string $viewUrl = null,
     ) {}
 
     public function build(): self

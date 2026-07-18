@@ -104,6 +104,8 @@ export async function purchaseGiftCard(data: {
   recipient_phone?: string | null;
   recipient_email?: string | null;
   personal_note?: string | null;
+  sender_name?: string | null;
+  send_anonymously?: boolean;
 }): Promise<{
   order_id: number;
   order_number: string;
@@ -134,8 +136,10 @@ export async function getGiftCardPurchaseStatus(orderId: number): Promise<{
   payment_status: string | null;
   amount: number;
   issued: boolean;
-  /** Full code — only when SMS/email delivery failed and resend window is open. */
+  /** Always null for the buyer — plaintext code is receiver-only. */
   code?: string | null;
+  send_anonymously?: boolean;
+  sender_name?: string | null;
   gift_card: {
     masked_code: string;
     initial_balance: number;
@@ -151,7 +155,7 @@ export async function getGiftCardPurchaseStatus(orderId: number): Promise<{
 export async function resendGiftCardPurchaseDelivery(
   orderId: number,
   channel: 'sms' | 'email' | 'both' = 'both',
-): Promise<{ message: string; delivery: GiftCardPurchaseDelivery; code?: string | null }> {
+): Promise<{ message: string; delivery: GiftCardPurchaseDelivery }> {
   return request(`/gift-cards/purchases/${orderId}/resend`, {
     method: 'POST',
     body: JSON.stringify({ channel }),

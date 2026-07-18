@@ -37,7 +37,6 @@ export function GiftCardPurchaseSuccessPage() {
     }
     let cancelled = false;
     let tries = 0;
-    // Longer window when return URL said CONFIRMED — server may still be issuing / re-delivering.
     const maxTries = paymentState === 'CONFIRMED' ? 20 : 12;
 
     const poll = async () => {
@@ -46,7 +45,7 @@ export function GiftCardPurchaseSuccessPage() {
         if (cancelled) return;
         setStatus(res);
         setError('');
-        const done = res.issued && (deliveryOk(res) || !!res.code || tries >= maxTries);
+        const done = res.issued && (deliveryOk(res) || tries >= maxTries);
         if (done) {
           setLoading(false);
           return;
@@ -78,30 +77,19 @@ export function GiftCardPurchaseSuccessPage() {
       setStatus((prev) => (prev ? {
         ...prev,
         delivery: res.delivery,
-        code: res.code ?? (deliveryOk({ ...prev, delivery: res.delivery }) ? null : prev.code),
       } : prev));
       setResendMsg(t('gift.resend_ok'));
     } catch (e) {
-      const body = (e as { body?: { code?: string; delivery?: Status['delivery']; message?: string } }).body;
-      if (body?.delivery || body?.code) {
+      const body = (e as { body?: { delivery?: Status['delivery']; message?: string } }).body;
+      if (body?.delivery) {
         setStatus((prev) => (prev ? {
           ...prev,
           delivery: body.delivery ?? prev.delivery,
-          code: body.code ?? prev.code,
         } : prev));
       }
       setResendMsg(body?.message || (e as Error).message || t('gift.resend_fail'));
     } finally {
       setResendBusy(null);
-    }
-  };
-
-  const copyCode = async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setResendMsg(t('gift.code_copied'));
-    } catch {
-      setResendMsg(t('gift.code_copy_fail'));
     }
   };
 
@@ -137,7 +125,7 @@ export function GiftCardPurchaseSuccessPage() {
   const waHref = (() => {
     const orderNo = status?.order_number || String(orderId);
     const text = encodeURIComponent(
-      `Hi, I bought a gift card (order ${orderNo}) but did not receive the full code. Please help.`,
+      `Hi, I bought a gift card (order ${orderNo}) but the recipient did not get the code. Please help.`,
     );
     const base = waBase.split('?')[0];
     return `${base}?text=${text}`;
@@ -170,32 +158,17 @@ export function GiftCardPurchaseSuccessPage() {
             <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, color: 'var(--color-text)' }}>
               {t('gift.ready')}
             </p>
-            {status.code ? (
-              <>
-                <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  {t('gift.code_on_screen')}
-                </p>
-                <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.08em', color: 'var(--color-primary)', fontWeight: 700 }}>
-                  {status.code}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void copyCode(status.code!)}
-                  style={{ ...resendBtn, marginTop: 8 }}
-                >
-                  {t('gift.copy_code')}
-                </button>
-              </>
-            ) : (
-              <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.08em', color: 'var(--color-primary)', fontWeight: 700 }}>
-                {status.gift_card.masked_code}
-              </p>
-            )}
-            <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 700 }}>
+            <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700 }}>
               MVR {Number(status.gift_card.current_balance).toFixed(2)}
             </p>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
+              {t('gift.buyer_masked').replace('{code}', status.gift_card.masked_code)}
+            </p>
             <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-              {status.code ? t('gift.code_on_screen_help') : deliveryMessage(status, t)}
+              {deliveryMessage(status, t)}
+            </p>
+            <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+              {t('gift.code_private')}
             </p>
 
             {(showSmsResend || showEmailResend) && (

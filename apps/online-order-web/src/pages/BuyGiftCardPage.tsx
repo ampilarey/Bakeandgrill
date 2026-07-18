@@ -21,6 +21,8 @@ export function BuyGiftCardPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
+  const [senderName, setSenderName] = useState('');
+  const [anonymous, setAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,8 +32,8 @@ export function BuyGiftCardPage() {
     void getCustomerMe()
       .then((res) => {
         if (cancelled) return;
-        if (res.customer.phone) setPhone((prev) => prev || res.customer.phone || '');
-        if (res.customer.email) setEmail((prev) => prev || res.customer.email || '');
+        const name = (res.customer.name || '').trim();
+        if (name) setSenderName((prev) => prev || name);
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
@@ -50,6 +52,10 @@ export function BuyGiftCardPage() {
       setError(t('gift.err_contact'));
       return;
     }
+    if (!anonymous && !senderName.trim()) {
+      setError(t('gift.err_sender'));
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -58,6 +64,8 @@ export function BuyGiftCardPage() {
         recipient_phone: phone.trim() || null,
         recipient_email: email.trim() || null,
         personal_note: note.trim() || null,
+        sender_name: anonymous ? null : senderName.trim(),
+        send_anonymously: anonymous,
       });
       if (res.payment_url) {
         window.location.href = res.payment_url;
@@ -133,27 +141,71 @@ export function BuyGiftCardPage() {
           />
         </div>
 
-        <label>
-          <span style={labelStyle}>{t('gift.phone')}</span>
-          <input
-            type="tel"
-            placeholder="7XXXXXX"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            style={inputStyle}
-          />
-        </label>
+        <div>
+          <p style={labelStyle}>{t('gift.recipient_section')}</p>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+            {t('gift.recipient_help')}
+          </p>
+          <label style={{ display: 'block', marginBottom: 12 }}>
+            <span style={labelStyle}>{t('gift.phone')}</span>
+            <input
+              type="tel"
+              placeholder="7XXXXXX"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={inputStyle}
+            />
+          </label>
+          <label style={{ display: 'block' }}>
+            <span style={labelStyle}>{t('gift.email')}</span>
+            <input
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={inputStyle}
+            />
+          </label>
+        </div>
 
-        <label>
-          <span style={labelStyle}>{t('gift.email')}</span>
-          <input
-            type="email"
-            placeholder="name@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
-          />
-        </label>
+        <div>
+          <p style={labelStyle}>{t('gift.sender_section')}</p>
+          <label style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+            marginBottom: 12,
+            cursor: 'pointer',
+            fontSize: 14,
+            color: 'var(--color-text)',
+            lineHeight: 1.4,
+          }}>
+            <input
+              type="checkbox"
+              checked={anonymous}
+              onChange={(e) => setAnonymous(e.target.checked)}
+              style={{ marginTop: 3, width: 18, height: 18, flexShrink: 0 }}
+            />
+            <span>{t('gift.send_anonymous')}</span>
+          </label>
+          {!anonymous && (
+            <label>
+              <span style={labelStyle}>{t('gift.sender_name')}</span>
+              <input
+                value={senderName}
+                maxLength={80}
+                placeholder={t('gift.sender_name_ph')}
+                onChange={(e) => setSenderName(e.target.value)}
+                style={inputStyle}
+              />
+            </label>
+          )}
+          {anonymous && (
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+              {t('gift.anonymous_help')}
+            </p>
+          )}
+        </div>
 
         <label>
           <span style={labelStyle}>{t('gift.note')}</span>
@@ -200,30 +252,33 @@ export function BuyGiftCardPage() {
 const labelStyle: CSSProperties = {
   display: 'block',
   fontSize: 13,
-  fontWeight: 700,
-  color: 'var(--color-text-muted)',
+  fontWeight: 600,
+  color: 'var(--color-text)',
   marginBottom: 6,
 };
 
 const inputStyle: CSSProperties = {
   width: '100%',
-  padding: '11px 14px',
-  border: '1.5px solid var(--color-border)',
-  borderRadius: 12,
-  fontSize: 15,
-  fontFamily: 'inherit',
   boxSizing: 'border-box',
+  padding: '12px 14px',
+  borderRadius: 12,
+  border: '1.5px solid var(--color-border)',
   background: 'var(--color-surface)',
   color: 'var(--color-text)',
+  fontSize: 15,
+  fontFamily: 'inherit',
+  minHeight: 48,
 };
 
 const chipStyle: CSSProperties = {
-  padding: '10px 16px',
-  borderRadius: 12,
+  padding: '10px 14px',
+  borderRadius: 999,
   border: '1.5px solid var(--color-border)',
-  cursor: 'pointer',
+  background: 'var(--color-surface)',
   fontSize: 14,
+  cursor: 'pointer',
   fontFamily: 'inherit',
+  minHeight: 44,
 };
 
 export default BuyGiftCardPage;

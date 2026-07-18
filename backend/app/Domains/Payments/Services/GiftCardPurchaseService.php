@@ -25,11 +25,16 @@ final class GiftCardPurchaseService
     /**
      * Create a payable gift-card order and start BML checkout.
      *
+     * Recipient phone/email are required (who receives the code). The buyer never
+     * sees the plaintext code — only the recipient via SMS/email/view link.
+     *
      * @param  array{
      *   amount: float,
      *   recipient_phone?: string|null,
      *   recipient_email?: string|null,
      *   personal_note?: string|null,
+     *   sender_name?: string|null,
+     *   send_anonymously?: bool,
      * }  $data
      * @return array{order: Order, purchase: GiftCardPurchase, payment_url: string, payment_id: int}
      */
@@ -43,28 +48,32 @@ final class GiftCardPurchaseService
         }
 
         $phone = isset($data['recipient_phone']) ? trim((string) $data['recipient_phone']) : '';
-        if ($phone !== '') {
-            $phone = MaldivesPhone::normalize($phone);
-        } else {
-            $phone = $customer->phone ? MaldivesPhone::normalize((string) $customer->phone) : null;
-        }
+        $phone = $phone !== '' ? MaldivesPhone::normalize($phone) : null;
 
         $email = isset($data['recipient_email']) ? strtolower(trim((string) $data['recipient_email'])) : '';
         if ($email === '') {
-            $email = $customer->email ? strtolower(trim((string) $customer->email)) : null;
-        }
-        if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $email = null;
+        } elseif (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('Invalid recipient email.');
         }
 
-        if (!$phone && !$email) {
+        if (! $phone && ! $email) {
             throw new \InvalidArgumentException('Provide a recipient phone or email so we can deliver the code.');
+        }
+
+        $anonymous = filter_var($data['send_anonymously'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $senderName = isset($data['sender_name']) ? trim((string) $data['sender_name']) : '';
+        if (! $anonymous && $senderName === '') {
+            throw new \InvalidArgumentException('Enter your name for the recipient, or choose send anonymously.');
+        }
+        if ($anonymous) {
+            $senderName = '';
         }
 
         $amountLaar = (int) round($amount * 100);
         $note = isset($data['personal_note']) ? trim((string) $data['personal_note']) : '';
 
-        return DB::transaction(function () use ($customer, $amount, $amountLaar, $phone, $email, $note): array {
+        return DB::transaction(function () use ($customer, $amount, $amountLaar, $phone, $email, $note, $senderName, $anonymous): array {
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'tracking_token' => Str::random(32),
@@ -91,6 +100,8 @@ final class GiftCardPurchaseService
                 'recipient_phone' => $phone,
                 'recipient_email' => $email,
                 'personal_note' => $note !== '' ? $note : null,
+                'sender_name' => $senderName !== '' ? $senderName : null,
+                'send_anonymously' => $anonymous,
             ]);
 
             $result = $this->payments->initiateBmlPayment($order, $amountLaar);

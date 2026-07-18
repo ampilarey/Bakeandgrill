@@ -29,6 +29,11 @@
                             <p style="margin:0 0 6px; font-size:18px; font-weight:700; color:#0f172a;">
                                 You've received a gift card
                             </p>
+                            @if (!empty($senderFromLine))
+                            <p style="margin:0 0 12px; font-size:15px; font-weight:600; color:#D4813A;">
+                                {{ $senderFromLine }}
+                            </p>
+                            @endif
                             <p style="margin:0 0 24px; font-size:14px; color:#64748b;">
                                 Use this code online or in-store at Bake &amp; Grill.
                             </p>
@@ -37,6 +42,19 @@
                             <p style="margin:0 0 24px; font-size:14px; color:#0f172a; background:#FEF3E8; border-radius:8px; padding:14px 16px; font-style:italic;">
                                 {{ $personalNote }}
                             </p>
+                            @endif
+
+                            @if (!empty($viewUrl))
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{{ $viewUrl }}"
+                                           style="display:inline-block; background:#0f172a; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700; padding:12px 24px; border-radius:8px;">
+                                            View your card
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
                             @endif
 
                             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc; border-radius:8px; margin-bottom:24px;">

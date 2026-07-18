@@ -31,6 +31,7 @@ final class GiftCardSmsDelivery
         int|string|null $customerId = null,
         ?string $idempotencyKey = null,
         ?string $viewUrl = null,
+        ?string $senderFromLine = null,
     ): array {
         // Eloquent may hand back int IDs as strings from PDO — coerce before SMS DTO.
         $customerId = $customerId !== null && $customerId !== ''
@@ -48,7 +49,7 @@ final class GiftCardSmsDelivery
             ];
         }
 
-        $message = $this->buildMessage($card, $plainCode, $personalNote, $viewUrl);
+        $message = $this->buildMessage($card, $plainCode, $personalNote, $viewUrl, $senderFromLine);
 
         try {
             $log = $this->sms->send(new SmsMessage(
@@ -92,12 +93,19 @@ final class GiftCardSmsDelivery
         string $plainCode,
         ?string $personalNote = null,
         ?string $viewUrl = null,
+        ?string $senderFromLine = null,
     ): string {
         $amount = number_format((float) $card->initial_balance, 2, '.', '');
         $lines = [
             'Bake & Grill Gift Card',
-            'MVR ' . $amount,
         ];
+
+        $from = trim((string) $senderFromLine);
+        if ($from !== '') {
+            $lines[] = $from;
+        }
+
+        $lines[] = 'MVR ' . $amount;
 
         $url = is_string($viewUrl) ? trim($viewUrl) : '';
         if ($url !== '') {

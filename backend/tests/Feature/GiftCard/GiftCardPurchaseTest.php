@@ -44,7 +44,11 @@ class GiftCardPurchaseTest extends TestCase
 
         $this->postJson('/api/gift-cards/purchase', [
             'amount' => 200,
+            'recipient_phone' => '+9607777009',
+            'recipient_email' => 'friend@example.com',
             'personal_note' => 'Enjoy!',
+            'sender_name' => 'Aisha',
+            'send_anonymously' => false,
         ], $this->customerHeaders($customer))
             ->assertCreated()
             ->assertJsonPath('payment_url', 'https://pay.example/test')
@@ -61,8 +65,54 @@ class GiftCardPurchaseTest extends TestCase
             'purchaser_customer_id' => $customer->id,
             'amount' => 200,
             'recipient_phone' => '+9607777009',
-            'recipient_email' => 'buyer@example.com',
+            'recipient_email' => 'friend@example.com',
+            'sender_name' => 'Aisha',
+            'send_anonymously' => 0,
         ]);
+    }
+
+    public function test_purchase_can_be_anonymous(): void
+    {
+        $this->mock(PaymentService::class, function ($mock): void {
+            $mock->shouldReceive('initiateBmlPayment')->once()->andReturn([
+                'payment_url' => 'https://pay.example/anon',
+                'payment_id' => 100,
+                'local_id' => 'GC-ANON',
+                'reused' => false,
+            ]);
+        });
+
+        $customer = $this->makeCustomer(['phone' => '+9607777020']);
+
+        $this->postJson('/api/gift-cards/purchase', [
+            'amount' => 100,
+            'recipient_phone' => '+9607777021',
+            'send_anonymously' => true,
+        ], $this->customerHeaders($customer))
+            ->assertCreated();
+
+        $this->assertDatabaseHas('gift_card_purchases', [
+            'purchaser_customer_id' => $customer->id,
+            'recipient_phone' => '+9607777021',
+            'send_anonymously' => 1,
+            'sender_name' => null,
+        ]);
+    }
+
+    public function test_purchase_requires_sender_name_unless_anonymous(): void
+    {
+        $this->mock(PaymentService::class, function ($mock): void {
+            $mock->shouldReceive('initiateBmlPayment')->never();
+        });
+
+        $customer = $this->makeCustomer(['phone' => '+9607777022']);
+
+        $this->postJson('/api/gift-cards/purchase', [
+            'amount' => 100,
+            'recipient_phone' => '+9607777023',
+            'send_anonymously' => false,
+        ], $this->customerHeaders($customer))
+            ->assertStatus(422);
     }
 
     public function test_purchase_requires_delivery_channel(): void
@@ -76,6 +126,7 @@ class GiftCardPurchaseTest extends TestCase
 
         $this->postJson('/api/gift-cards/purchase', [
             'amount' => 100,
+            'sender_name' => 'Buyer',
         ], $this->customerHeaders($customer))
             ->assertStatus(422);
     }
@@ -90,6 +141,8 @@ class GiftCardPurchaseTest extends TestCase
 
         $this->postJson('/api/gift-cards/purchase', [
             'amount' => 10,
+            'recipient_phone' => '+9607777012',
+            'sender_name' => 'Buyer',
         ], $this->customerHeaders($customer))
             ->assertStatus(422);
     }
@@ -430,7 +483,7 @@ class GiftCardPurchaseTest extends TestCase
         $this->assertStringContainsString('/order/gift-cards/v/', $msg);
     }
 
-    public function test_purchase_status_reveals_code_when_delivery_failed(): void
+    public function test_purchase_status_never_reveals_code_even_when_delivery_failed(): void
     {
         Mail::fake();
         $customer = $this->makeCustomer([
@@ -471,6 +524,7 @@ class GiftCardPurchaseTest extends TestCase
             'amount' => 50,
             'recipient_phone' => '+9607777018',
             'recipient_email' => 'reveal@example.com',
+            'sender_name' => 'Aisha',
             'gift_card_id' => $card->id,
             'sms_ok' => false,
             'email_ok' => false,
@@ -482,7 +536,32 @@ class GiftCardPurchaseTest extends TestCase
         $this->getJson("/api/gift-cards/purchases/{$order->id}", $this->customerHeaders($customer))
             ->assertOk()
             ->assertJsonPath('issued', true)
-            ->assertJsonPath('code', 'ABCD-EFGH-IJKL-MNOP');
+            ->assertJsonPath('code', null)
+            ->assertJsonPath('sender_name', 'Aisha')
+            ->assertJsonPath('delivery.can_resend', true);
+    }
+
+    public function test_sms_includes_sender_from_line(): void
+    {
+        $card = \App\Models\GiftCard::create([
+            'code_hash' => hash('sha256', 'FROMCODE1234567'),
+            'code_last4' => '4567',
+            'initial_balance' => 100,
+            'current_balance' => 100,
+            'status' => 'active',
+        ]);
+
+        $msg = app(\App\Domains\Payments\Services\GiftCardSmsDelivery::class)->buildMessage(
+            $card,
+            'FROMCODE1234567',
+            'Have fun!',
+            null,
+            'From: Aisha',
+        );
+
+        $this->assertStringContainsString('From: Aisha', $msg);
+        $this->assertStringContainsString('Code: FROMCODE1234567', $msg);
+        $this->assertStringContainsString('Have fun!', $msg);
     }
 
     public function test_purchase_status_never_exposes_plaintext_code(): void

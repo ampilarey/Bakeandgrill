@@ -93,6 +93,8 @@ class GiftCardController extends Controller
             'status' => $card->status,
             'expires_at' => $card->expires_at?->toDateString(),
             'order_number' => Order::query()->where('id', $purchase->order_id)->value('order_number'),
+            'from' => $purchase->senderFromLine(),
+            'personal_note' => $purchase->personal_note,
         ]);
     }
 
@@ -443,6 +445,8 @@ class GiftCardController extends Controller
             'recipient_phone' => ['nullable', 'string', 'max:20', new MaldivesPhone],
             'recipient_email' => ['nullable', 'email', 'max:200'],
             'personal_note' => ['nullable', 'string', 'max:500'],
+            'sender_name' => ['nullable', 'string', 'max:80'],
+            'send_anonymously' => ['sometimes', 'boolean'],
         ]);
 
         /** @var Customer $customer */
@@ -528,15 +532,6 @@ class GiftCardController extends Controller
 
         $card = $purchase?->giftCard;
         $canResend = $purchase ? $this->deliveryWindow->canResend($purchase) : false;
-        $deliveryOk = $purchase
-            && ($purchase->sms_ok === true || $purchase->email_ok === true);
-
-        // If SMS/email both failed, show the full code to the authenticated buyer
-        // while the 48h delivery window is open — otherwise they are stuck.
-        $revealCode = null;
-        if ($purchase && $card && $canResend && !$deliveryOk) {
-            $revealCode = $this->deliveryWindow->plainCode($purchase);
-        }
 
         return response()->json([
             'order_id' => $order->id,
@@ -552,8 +547,10 @@ class GiftCardController extends Controller
                 'status' => $card->status,
                 'expires_at' => $card->expires_at?->toDateString(),
             ] : null,
-            // Only present when delivery failed and window is open — never after successful send.
-            'code' => $revealCode,
+            // Buyer never sees the plaintext code — only the recipient via SMS/email/view link.
+            'code' => null,
+            'send_anonymously' => (bool) ($purchase?->send_anonymously ?? false),
+            'sender_name' => $purchase?->send_anonymously ? null : $purchase?->sender_name,
             'delivery' => [
                 'phone' => $purchase?->recipient_phone,
                 'email' => $purchase?->recipient_email,
@@ -616,12 +613,12 @@ class GiftCardController extends Controller
         if (!$wantSms && !$wantEmail) {
             return response()->json([
                 'message' => 'No delivery channel available for this purchase.',
-                'code' => $plain,
             ], 422);
         }
 
         $card = $purchase->giftCard;
         $note = $purchase->personal_note;
+        $fromLine = $purchase->senderFromLine();
         $smsOk = $purchase->sms_ok === true;
         $emailOk = $purchase->email_ok === true;
         $resendN = $resendCount + 1;
@@ -649,6 +646,7 @@ class GiftCardController extends Controller
                     $purchase->purchaser_customer_id,
                     'gift_card_resend:' . $purchase->id . ':sms:' . $resendN,
                     $viewUrl,
+                    $fromLine,
                 );
                 $smsOk = (bool) $sent['ok'];
                 if (!$smsOk) {
@@ -662,6 +660,8 @@ class GiftCardController extends Controller
                     $plain,
                     (string) $purchase->recipient_email,
                     $note,
+                    $fromLine,
+                    $viewUrl,
                 );
                 $emailOk = (bool) $sent['ok'];
                 if (!$emailOk) {
@@ -701,8 +701,7 @@ class GiftCardController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Could not resend SMS/email right now. Your code is below — copy and save it.',
-                'code' => $plain,
+                'message' => 'Could not resend SMS/email right now. Try again or WhatsApp the restaurant with your order number.',
                 'delivery' => [
                     'phone' => $purchase->recipient_phone,
                     'email' => $purchase->recipient_email,
@@ -719,9 +718,8 @@ class GiftCardController extends Controller
 
         return response()->json([
             'message' => $deliveryOk
-                ? 'Delivery resent. Check your phone/email.'
-                : ('Could not deliver: ' . implode(' · ', $errors) . ' — your code is below.'),
-            'code' => $deliveryOk ? null : $plain,
+                ? 'Delivery resent to the recipient.'
+                : ('Could not deliver: ' . implode(' · ', $errors) . '. Try again or WhatsApp the restaurant with your order number.'),
             'delivery' => [
                 'phone' => $purchase->recipient_phone,
                 'email' => $purchase->recipient_email,

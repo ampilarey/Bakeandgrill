@@ -13,6 +13,8 @@ type ViewPayload = {
   status: string;
   expires_at: string | null;
   order_number: string | null;
+  from?: string | null;
+  personal_note?: string | null;
 };
 
 /**
@@ -96,7 +98,23 @@ export function GiftCardViewPage() {
               textAlign: 'center',
             }}
           >
-            <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800 }}>{t('gift.ready')}</p>
+            <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800 }}>{t('gift.view_title')}</p>
+            {data.from && (
+              <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: 'var(--color-primary)' }}>
+                {data.from}
+              </p>
+            )}
+            {data.personal_note && (
+              <p style={{
+                margin: '0 0 12px',
+                fontSize: 14,
+                fontStyle: 'italic',
+                color: 'var(--color-text)',
+                lineHeight: 1.45,
+              }}>
+                {data.personal_note}
+              </p>
+            )}
             {data.order_number && (
               <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)' }}>
                 {data.order_number}

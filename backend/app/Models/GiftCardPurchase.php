@@ -16,6 +16,8 @@ class GiftCardPurchase extends Model
         'recipient_phone',
         'recipient_email',
         'personal_note',
+        'sender_name',
+        'send_anonymously',
         'gift_card_id',
         'sms_ok',
         'email_ok',
@@ -39,11 +41,29 @@ class GiftCardPurchase extends Model
         'amount' => 'decimal:2',
         'sms_ok' => 'boolean',
         'email_ok' => 'boolean',
+        'send_anonymously' => 'boolean',
         'resend_count' => 'integer',
         'last_resent_at' => 'datetime',
         'code_delivery_expires_at' => 'datetime',
         'delivery_recovery_count' => 'integer',
     ];
+
+    /**
+     * Line shown to the recipient in SMS/email ("From: …"), or null to omit.
+     */
+    public function senderFromLine(): ?string
+    {
+        if ($this->send_anonymously) {
+            return 'Anonymous gift';
+        }
+
+        $name = trim((string) ($this->sender_name ?? ''));
+        if ($name === '') {
+            return null;
+        }
+
+        return 'From: '.$name;
+    }
 
     public function order(): BelongsTo
     {
