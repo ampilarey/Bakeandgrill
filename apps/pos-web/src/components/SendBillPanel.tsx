@@ -61,7 +61,7 @@ export function SendBillPanel({ orderId, onClose }: Props) {
   const handleSend = async () => {
     if (!orderId) return;
     const normalised = normalise(phone.trim());
-    if (!/^\+960[379]\d{6}$/.test(normalised)) {
+    if (!/^\+960[3679]\d{6}$/.test(normalised)) {
       setError("Enter a valid 7-digit Maldivian number");
       return;
     }

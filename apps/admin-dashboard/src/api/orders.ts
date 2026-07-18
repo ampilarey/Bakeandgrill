@@ -102,8 +102,18 @@ export async function addOrderPayments(id: number, data: {
   return req(`/orders/${id}/payments`, { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function sendOrderBill(id: number): Promise<void> {
-  await req(`/orders/${id}/send-bill`, { method: 'POST' });
+export async function sendOrderBill(
+  id: number,
+  phone?: string | null,
+): Promise<{
+  link?: string;
+  sms_status?: string | null;
+  bill_total?: number;
+}> {
+  return req(`/orders/${id}/send-bill`, {
+    method: 'POST',
+    body: JSON.stringify(phone ? { phone } : {}),
+  });
 }
 
 // ── KDS ──────────────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import {
   fetchRecentCustomers, quickCreateCustomer, searchCustomers,
   updateCustomerFromPos, type PosCustomer,
 } from "../api";
+import { isValidMvMobile } from "../orderTypes";
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
@@ -68,16 +69,8 @@ const C = {
   danger: "#B91C1C",
 };
 
-// Anything that is at least 7 digits (Maldivian local numbers are 7) is
-// considered "valid enough" to enable the Save button. We strip
-// non-digits before counting so "+960 7123456" still passes.
-const PHONE_RX = /^\+?[\d\s\-]{4,}$/;
-
-function digitsOnly(s: string): number {
-  return (s.match(/\d/g) ?? []).length;
-}
 function isValidPhone(s: string): boolean {
-  return PHONE_RX.test(s.trim()) && digitsOnly(s) >= 7;
+  return isValidMvMobile(s.trim());
 }
 
 type Mode = "phone" | "name";

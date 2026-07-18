@@ -11,6 +11,7 @@ import {
   holdLoyaltyForOrder,
   holdOrder,
   lookupBarcode,
+  releaseLoyaltyHold,
   resumeOrder,
   updateOrderItems,
 } from "../api";
@@ -680,6 +681,8 @@ export function useOrderCreation(params: Params) {
           params.clearCart();
           params.setSelectedItem(null);
           params.onOrderSettled?.(settledOrderId, cid, cphone, settledType, paidOnCreditFromRows(paymentSnapshot));
+        } else if ((params.appliedLoyaltyPoints ?? 0) > 0) {
+          await releaseLoyaltyHold(resumedOrderId).catch(() => undefined);
         }
         return settled;
       } finally {
@@ -736,9 +739,11 @@ export function useOrderCreation(params: Params) {
 
     setIsSubmitting(true);
     let orderCreated = false;
+    let createdOrderId: number | null = null;
     try {
       const response = await submitCreatedOrder(payload);
       orderCreated = true;
+      createdOrderId = response.order.id;
       setLastCreatedOrderId(response.order.id);
       // Apply any customer-rewards the cashier staged in the cart. Each
       // hop reduces the order total server-side (promo → loyalty → gift
@@ -769,6 +774,10 @@ export function useOrderCreation(params: Params) {
           mapOrderType(params.orderType),
           paidOnCreditFromRows(paymentSnapshot),
         );
+      } else if ((params.appliedLoyaltyPoints ?? 0) > 0) {
+        // Payment failed after a loyalty hold — free the points so the
+        // customer isn't stuck until hold TTL expires.
+        await releaseLoyaltyHold(response.order.id).catch(() => undefined);
       }
       return settled;
     } catch (err: unknown) {
@@ -782,6 +791,9 @@ export function useOrderCreation(params: Params) {
         // the cashier rings up — they should drive the orphan
         // from the Open Tickets pane instead.
         setLastCreatedOrderId(null);
+        if (createdOrderId && (params.appliedLoyaltyPoints ?? 0) > 0) {
+          await releaseLoyaltyHold(createdOrderId).catch(() => undefined);
+        }
         return false;
       }
       const message = (err as Error)?.message ?? "";

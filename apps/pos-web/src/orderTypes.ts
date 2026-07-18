@@ -30,6 +30,18 @@ export function normalizeMvPhone(phone: string): string {
   return phone.trim();
 }
 
+/** Matches backend MaldivesPhone: local mobiles starting with 3, 6, 7, or 9. */
+export function isValidMvMobile(phone: string): boolean {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("960") && digits.length === 10) {
+    return /^960[3679]\d{6}$/.test(digits);
+  }
+  if (digits.length === 7) {
+    return /^[3679]\d{6}$/.test(digits);
+  }
+  return false;
+}
+
 type DeliveryContactFallback = {
   name?: string | null;
   phone?: string | null;
@@ -82,8 +94,7 @@ export function validateDeliveryDetails(
   if (!resolved.island.trim()) return "Enter the delivery island/area.";
   if (!resolved.contactName.trim()) return "Enter the contact name.";
   if (!resolved.contactPhone.trim()) return "Enter the contact phone.";
-  const normalized = normalizeMvPhone(resolved.contactPhone);
-  if (!/^(\+?960)?[379]\d{6}$/.test(normalized.replace(/\s/g, ""))) {
+  if (!isValidMvMobile(resolved.contactPhone)) {
     return "Enter a valid 7-digit Maldivian mobile number.";
   }
   return null;

@@ -319,8 +319,44 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   {acting === 'resume' ? '…' : '▶ Resume Order'}
                 </Btn>
               )}
-              {canSendBill && order.type === 'dine_in' && ['ready', 'preparing', 'in_progress'].includes(order.status) && (
-                <Btn small variant="secondary" onClick={() => doAction('bill', () => sendOrderBill(order.id), 'Bill sent')}>
+              {canSendBill && order.type === 'dine_in' && ['ready', 'preparing', 'in_progress', 'pending', 'payment_pending'].includes(order.status) && (
+                <Btn
+                  small
+                  variant="secondary"
+                  onClick={() => {
+                    const phone = (order.customer?.phone ?? order.customer_phone ?? '').trim();
+                    if (!phone) {
+                      setActionErr('Attach a customer with a phone number before sending the bill SMS.');
+                      showToast('Send Bill needs a customer phone.');
+                      return;
+                    }
+                    void (async () => {
+                      setActing('bill');
+                      setActionErr('');
+                      try {
+                        const res = await sendOrderBill(order.id, phone);
+                        const sms = res.sms_status;
+                        if (sms === 'sent' || sms === 'demo') {
+                          showToast(`Bill SMS ${sms === 'demo' ? '(demo) ' : ''}sent to ${phone}.`);
+                        } else if (sms === 'failed') {
+                          throw new Error(`Invoice ready but SMS failed for ${phone}.`);
+                        } else if (!sms) {
+                          throw new Error('Invoice created but SMS was not sent. Check phone and try again.');
+                        } else {
+                          showToast(`Bill SMS status: ${sms}.`);
+                        }
+                        reload();
+                        onOrderUpdated();
+                      } catch (e) {
+                        const msg = (e as Error).message;
+                        setActionErr(msg);
+                        showToast(`Send Bill failed: ${msg}`);
+                      } finally {
+                        setActing('');
+                      }
+                    })();
+                  }}
+                >
                   {acting === 'bill' ? '…' : '🧾 Send Bill'}
                 </Btn>
               )}

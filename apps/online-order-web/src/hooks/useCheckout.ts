@@ -11,6 +11,7 @@ import {
   createDeliveryOrder,
   createLoyaltyHold,
   previewLoyaltyHold,
+  releaseLoyaltyHold,
   getLoyaltyAccount,
   getCustomerMe,
   getOrderDetail,
@@ -745,6 +746,7 @@ export function useCheckout() {
 
     setIsPlacing(true);
     setGlobalError("");
+    let loyaltyHeldForOrderId: number | null = null;
 
     try {
       let orderId: number;
@@ -833,6 +835,7 @@ export function useCheckout() {
             return;
           }
           await createLoyaltyHold(orderId, pointsToRedeem);
+          loyaltyHeldForOrderId = orderId;
         } catch (e) {
           setGlobalError("Could not apply loyalty points: " + (e as Error).message);
           setIsPlacing(false);
@@ -847,6 +850,10 @@ export function useCheckout() {
           setGiftCardApplied({ code: giftCardToApply, discountLaar: gcRes.discount_laar });
           setGiftCardCode("");
         } catch (e) {
+          if (loyaltyHeldForOrderId) {
+            await releaseLoyaltyHold(loyaltyHeldForOrderId).catch(() => undefined);
+            loyaltyHeldForOrderId = null;
+          }
           setGlobalError("Could not apply gift card: " + (e as Error).message);
           setIsPlacing(false);
           return;
@@ -863,6 +870,10 @@ export function useCheckout() {
             setFriendReferralApplied({ code: refRes.code, discountLaar: refRes.discount_laar });
             setFriendReferralCode("");
           } catch (e) {
+            if (loyaltyHeldForOrderId) {
+              await releaseLoyaltyHold(loyaltyHeldForOrderId).catch(() => undefined);
+              loyaltyHeldForOrderId = null;
+            }
             setFriendReferralError((e as Error).message);
             setFriendReferralApplied(null);
             setIsPlacing(false);
@@ -878,6 +889,8 @@ export function useCheckout() {
           : Math.round(Number(freshOrder.total) * 100);
 
       if (dueLaar <= 0) {
+        // Hold is consumed on zero-balance completion — do not release.
+        loyaltyHeldForOrderId = null;
         await completeZeroBalanceOrder(orderId);
         try {
           const historyKey = 'bakegrill_order_history';
@@ -901,6 +914,9 @@ export function useCheckout() {
       if (!payment.payment_url) {
         throw new Error("Payment could not be started. Please try again in a moment.");
       }
+
+      // Keep hold through BML redirect — OrderPaid consumes it.
+      loyaltyHeldForOrderId = null;
 
       // Save to order history in localStorage before leaving the page
       try {
@@ -927,6 +943,9 @@ export function useCheckout() {
       window.location.href = payment.payment_url;
       return; // skip the finally reset below
     } catch (e) {
+      if (loyaltyHeldForOrderId) {
+        await releaseLoyaltyHold(loyaltyHeldForOrderId).catch(() => undefined);
+      }
       setGlobalError((e as Error).message);
       setIsPlacing(false);
     }
