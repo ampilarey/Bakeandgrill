@@ -29,7 +29,7 @@ class EloquentOrderRepository implements OrderRepositoryInterface
     public function updateStatus(int $id, string $status, array $extra = []): bool
     {
         $order = Order::find($id);
-        if (! $order) {
+        if (!$order) {
             return false;
         }
 

@@ -20,7 +20,7 @@ class OrderStatusTransitionService
     ) {}
 
     /**
-     * @param  array<string, mixed>  $extra  Additional attributes saved with the status change
+     * @param array<string, mixed> $extra Additional attributes saved with the status change
      */
     public function transition(Order $order, string $toStatus, array $extra = []): Order
     {

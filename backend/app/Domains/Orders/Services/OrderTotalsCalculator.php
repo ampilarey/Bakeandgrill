@@ -159,7 +159,7 @@ class OrderTotalsCalculator
     {
         // Prefer already-loaded / setRelation items (preview + unit tests).
         // Only hit the DB when the relation was never loaded.
-        if (! $order->relationLoaded('items')) {
+        if (!$order->relationLoaded('items')) {
             $order->load('items');
         }
 
@@ -227,7 +227,7 @@ class OrderTotalsCalculator
         // Free-delivery threshold uses discounted merchandise (promo/loyalty/gift/referral).
         $deliveryFeeLaar = (int) ($order->delivery_fee_laar ?? 0);
         $island = trim((string) ($order->delivery_island ?? ''));
-        if (! $feesLocked && ($order->type ?? '') === 'delivery' && $island !== '') {
+        if (!$feesLocked && ($order->type ?? '') === 'delivery' && $island !== '') {
             $deliveryFeeLaar = app(DeliveryFeeCalculator::class)->calculateLaar($island, $discountedLaar);
         }
 

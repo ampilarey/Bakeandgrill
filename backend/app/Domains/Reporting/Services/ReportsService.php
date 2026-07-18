@@ -1276,10 +1276,10 @@ class ReportsService
                 ?? ''
             );
 
-            if (! isset($byItem[$itemId])) {
+            if (!isset($byItem[$itemId])) {
                 $byItem[$itemId] = [
                     'inventory_item_id' => $itemId,
-                    'item_name' => $line->inventoryItem?->name ?? ('Item #'.$itemId),
+                    'item_name' => $line->inventoryItem?->name ?? ('Item #' . $itemId),
                     'unit' => $line->inventoryItem?->unit,
                     'qty_received' => 0.0,
                     'total_spend' => 0.0,
@@ -1322,7 +1322,7 @@ class ReportsService
 
             foreach ($history as $itemId => $rows) {
                 $best = $rows->first();
-                if (! $best || ! isset($byItem[(int) $itemId])) {
+                if (!$best || !isset($byItem[(int) $itemId])) {
                     continue;
                 }
                 $histPrice = (float) $best->unit_price;

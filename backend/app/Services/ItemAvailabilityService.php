@@ -36,22 +36,22 @@ class ItemAvailabilityService
     /**
      * Full availability check for a single item on a given channel.
      *
-     * @param  string  $channel  One of: dine_in, takeaway, online_pickup, delivery
+     * @param string $channel One of: dine_in, takeaway, online_pickup, delivery
      */
     public function check(Item $item, string $channel, ?Carbon $at = null): AvailabilityResult
     {
         $at ??= now();
 
         // 1. Item-level flags
-        if (! $item->is_active) {
+        if (!$item->is_active) {
             return AvailabilityResult::unavailable('item_inactive', 'This item is currently unavailable.');
         }
-        if (! $item->is_available) {
+        if (!$item->is_available) {
             return AvailabilityResult::unavailable('item_unavailable', 'This item is currently unavailable.');
         }
 
         // 2. Channel + menu-group check
-        if (! $this->menuResolver->isItemVisibleForChannel($item, $channel, $at)) {
+        if (!$this->menuResolver->isItemVisibleForChannel($item, $channel, $at)) {
             return AvailabilityResult::unavailable(
                 'channel_unavailable',
                 "This item is not available for {$channel} orders right now.",
@@ -61,7 +61,7 @@ class ItemAvailabilityService
 
         // 3. Online ordering gate (only for online channels)
         if (in_array($channel, ['online_pickup', 'delivery'], true)) {
-            if (! $this->gate->isOpen($at)) {
+            if (!$this->gate->isOpen($at)) {
                 $status = $this->gate->status($at);
                 $from = is_string($status['next_open_window'] ?? null)
                     ? $status['next_open_window']
@@ -118,7 +118,7 @@ class ItemAvailabilityService
     /**
      * Wave C optional top-level aliases (non-breaking).
      *
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
     public function withPublicAliases(array $data, AvailabilityResult $result): array
@@ -134,7 +134,7 @@ class ItemAvailabilityService
     /**
      * Annotate a collection of items with availability metadata.
      *
-     * @param  iterable<Item>  $items
+     * @param iterable<Item> $items
      * @return array<int, array<string, mixed>>
      */
     public function annotate(iterable $items, string $channel, ?Carbon $at = null): array

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Stock;
 
+use App\Domains\Orders\DTOs\OrderRefundedData;
+use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Payments\Listeners\RestoreGiftCardOnRefundListener;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardRedemptionService;
-use App\Domains\Orders\DTOs\OrderRefundedData;
-use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\Customer;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;

@@ -21,19 +21,19 @@ class EnsureStaffCustomerOrDriverToken
     {
         $user = $request->user();
 
-        if (! $user && ! $request->bearerToken()) {
+        if (!$user && !$request->bearerToken()) {
             $user = Auth::guard('customer')->user();
             if ($user) {
                 Auth::setUser($user);
             }
         }
 
-        if (! $user) {
+        if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         if ($user instanceof User) {
-            if ($request->bearerToken() && ! $user->tokenCan('staff')) {
+            if ($request->bearerToken() && !$user->tokenCan('staff')) {
                 return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
             }
 
@@ -41,10 +41,10 @@ class EnsureStaffCustomerOrDriverToken
         }
 
         if ($user instanceof Customer) {
-            if (! $user->is_active) {
+            if (!$user->is_active) {
                 return response()->json(['message' => 'This account has been deactivated.'], 403);
             }
-            if ($request->bearerToken() && ! $user->tokenCan('customer')) {
+            if ($request->bearerToken() && !$user->tokenCan('customer')) {
                 return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
             }
 
@@ -52,7 +52,7 @@ class EnsureStaffCustomerOrDriverToken
         }
 
         if ($user instanceof DeliveryDriver) {
-            if ($request->bearerToken() && ! $user->tokenCan('driver')) {
+            if ($request->bearerToken() && !$user->tokenCan('driver')) {
                 return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
             }
 

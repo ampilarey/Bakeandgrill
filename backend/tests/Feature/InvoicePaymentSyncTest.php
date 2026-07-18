@@ -97,7 +97,7 @@ class InvoicePaymentSyncTest extends TestCase
         $this->assertSame(0, (int) $invoice->amount_paid_laar);
         $this->assertGreaterThan(0, $invoice->balanceDueLaar());
 
-        $this->get('/invoices/'.$token)
+        $this->get('/invoices/' . $token)
             ->assertOk()
             ->assertSee('Something wrong with this bill?')
             ->assertSee('wa.me', false);
@@ -111,7 +111,7 @@ class InvoicePaymentSyncTest extends TestCase
         $this->assertSame((int) $invoice->total_laar, (int) $invoice->amount_paid_laar);
         $this->assertSame(0, $invoice->balanceDueLaar());
 
-        $page = $this->get('/invoices/'.$token)->assertOk();
+        $page = $this->get('/invoices/' . $token)->assertOk();
         $page->assertDontSee('Balance due');
         $page->assertSee('PAID', false);
         $page->assertDontSee('Something wrong with this bill?');
@@ -149,7 +149,7 @@ class InvoicePaymentSyncTest extends TestCase
             'paid_at' => null,
         ]);
 
-        $this->get('/invoices/'.$token)->assertOk()->assertDontSee('Balance due');
+        $this->get('/invoices/' . $token)->assertOk()->assertDontSee('Balance due');
 
         $stale->refresh();
         $this->assertSame('paid', $stale->status);

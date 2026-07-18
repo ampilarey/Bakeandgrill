@@ -150,7 +150,7 @@ class ItemAvailabilityServiceTest extends TestCase
 
     public function test_public_item_show_includes_wave_c_aliases(): void
     {
-        $response = $this->getJson('/api/items/'.$this->item->id.'?channel=online_pickup');
+        $response = $this->getJson('/api/items/' . $this->item->id . '?channel=online_pickup');
         $response->assertOk();
 
         $item = $response->json('item');

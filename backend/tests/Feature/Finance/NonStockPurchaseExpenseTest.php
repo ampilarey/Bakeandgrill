@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Finance;
 
 use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
-use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\InventoryItem;
 use App\Models\Purchase;

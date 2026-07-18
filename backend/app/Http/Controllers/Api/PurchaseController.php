@@ -33,7 +33,7 @@ class PurchaseController extends Controller
 
         if ($request->filled('search')) {
             $raw = (string) $request->query('search');
-            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $raw).'%';
+            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $raw) . '%';
             $query->where(function ($q) use ($term, $raw) {
                 $q->where('purchase_number', 'like', $term)
                     ->orWhere('notes', 'like', $term)
@@ -246,7 +246,7 @@ class PurchaseController extends Controller
                 $subtotal += $lineTotal;
 
                 $inventoryItem = null;
-                if (! empty($itemPayload['inventory_item_id'])) {
+                if (!empty($itemPayload['inventory_item_id'])) {
                     $inventoryItem = InventoryItem::lockForUpdate()->find($itemPayload['inventory_item_id']);
                 }
 
@@ -269,8 +269,8 @@ class PurchaseController extends Controller
                     $oldCost = (float) ($inventoryItem->unit_cost ?? 0);
                     $newCost = (float) $itemPayload['unit_cost'];
 
-                    $idempotencyKey = 'purchase:'.$purchase->id.':item:'.$purchaseItem->id;
-                    if (! StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+                    $idempotencyKey = 'purchase:' . $purchase->id . ':item:' . $purchaseItem->id;
+                    if (!StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
                         $inventoryItem->current_stock = $oldStock + $newQty;
                         $inventoryItem->last_purchase_price = $newCost;
 

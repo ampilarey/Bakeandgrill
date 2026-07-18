@@ -7,6 +7,7 @@ namespace App\Domains\Payments\Listeners;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
 use App\Domains\Payments\Services\GiftCardIssueService;
+use App\Domains\Payments\Services\GiftCardPurchaseDeliveryWindow;
 use App\Domains\Payments\Services\GiftCardSmsDelivery;
 use App\Models\GiftCardPurchase;
 use App\Models\Order;
@@ -25,6 +26,7 @@ final class IssuePurchasedGiftCardOnOrderPaidListener
         private readonly GiftCardIssueService $issuer,
         private readonly GiftCardSmsDelivery $sms,
         private readonly GiftCardEmailDelivery $email,
+        private readonly GiftCardPurchaseDeliveryWindow $deliveryWindow,
     ) {}
 
     public function handle(OrderPaid $event): void
@@ -93,6 +95,9 @@ final class IssuePurchasedGiftCardOnOrderPaidListener
                     'sms_ok' => $smsOk,
                     'email_ok' => $emailOk,
                 ]);
+
+                // Short window so the purchaser can resend if SMS/email failed.
+                $this->deliveryWindow->store($purchase->fresh(), $issued['plain']);
 
                 if ($order->status !== 'completed') {
                     $order->update([

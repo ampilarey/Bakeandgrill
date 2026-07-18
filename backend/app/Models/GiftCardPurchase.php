@@ -19,12 +19,18 @@ class GiftCardPurchase extends Model
         'gift_card_id',
         'sms_ok',
         'email_ok',
+        'resend_count',
+        'last_resent_at',
+        'code_delivery_expires_at',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'sms_ok' => 'boolean',
         'email_ok' => 'boolean',
+        'resend_count' => 'integer',
+        'last_resent_at' => 'datetime',
+        'code_delivery_expires_at' => 'datetime',
     ];
 
     public function order(): BelongsTo

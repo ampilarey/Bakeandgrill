@@ -16,8 +16,8 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Purchase;
 use App\Models\User;
-use App\Services\AuditLogService;
 use App\Rules\MaldivesPhone;
+use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -69,7 +69,7 @@ class InvoiceController extends Controller
         }
         if ($request->filled('search')) {
             $raw = (string) $request->query('search');
-            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $raw).'%';
+            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $raw) . '%';
             $query->where(function ($q) use ($term, $raw) {
                 $q->where('invoice_number', 'like', $term)
                     ->orWhere('recipient_name', 'like', $term)
@@ -488,7 +488,7 @@ class InvoiceController extends Controller
     public function syncPaymentStateFromOrder(Order $order): ?Invoice
     {
         $invoice = Invoice::where('order_id', $order->id)->where('type', 'sale')->first();
-        if (! $invoice || in_array($invoice->status, ['void', 'cancelled'], true)) {
+        if (!$invoice || in_array($invoice->status, ['void', 'cancelled'], true)) {
             return $invoice;
         }
 

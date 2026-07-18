@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '../components/shell/PageHeader';
 import { AuthBlock } from '../components/AuthBlock';
-import { getGiftCardPurchaseStatus } from '../api/promotions';
+import { getGiftCardPurchaseStatus, resendGiftCardPurchaseDelivery } from '../api/promotions';
 
 type Status = Awaited<ReturnType<typeof getGiftCardPurchaseStatus>>;
 
@@ -20,6 +20,8 @@ export function GiftCardPurchaseSuccessPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [resendBusy, setResendBusy] = useState<'sms' | 'email' | 'both' | null>(null);
+  const [resendMsg, setResendMsg] = useState('');
 
   useEffect(() => {
     if (!authReady || !isAuthenticated || !orderId) {
@@ -53,6 +55,21 @@ export function GiftCardPurchaseSuccessPage() {
     return () => { cancelled = true; };
   }, [authReady, isAuthenticated, orderId]);
 
+  const handleResend = async (channel: 'sms' | 'email' | 'both') => {
+    if (!orderId || resendBusy) return;
+    setResendBusy(channel);
+    setResendMsg('');
+    try {
+      const res = await resendGiftCardPurchaseDelivery(orderId, channel);
+      setStatus((prev) => (prev ? { ...prev, delivery: res.delivery } : prev));
+      setResendMsg(t('gift.resend_ok'));
+    } catch (e) {
+      setResendMsg((e as Error).message || t('gift.resend_fail'));
+    } finally {
+      setResendBusy(null);
+    }
+  };
+
   if (!authReady) return null;
 
   if (!isAuthenticated) {
@@ -77,6 +94,10 @@ export function GiftCardPurchaseSuccessPage() {
   }
 
   const failed = paymentState && paymentState !== 'CONFIRMED' && !status?.issued;
+  const delivery = status?.delivery;
+  const canResend = delivery?.can_resend === true;
+  const showSmsResend = canResend && !!delivery?.phone;
+  const showEmailResend = canResend && !!delivery?.email;
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 0 2rem' }}>
@@ -114,6 +135,39 @@ export function GiftCardPurchaseSuccessPage() {
             <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
               {deliveryMessage(status, t)}
             </p>
+
+            {(showSmsResend || showEmailResend) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+                {showSmsResend && (
+                  <button
+                    type="button"
+                    disabled={!!resendBusy}
+                    onClick={() => void handleResend('sms')}
+                    style={resendBtn}
+                  >
+                    {resendBusy === 'sms' ? '…' : t('gift.resend_sms')}
+                  </button>
+                )}
+                {showEmailResend && (
+                  <button
+                    type="button"
+                    disabled={!!resendBusy}
+                    onClick={() => void handleResend('email')}
+                    style={resendBtn}
+                  >
+                    {resendBusy === 'email' ? '…' : t('gift.resend_email')}
+                  </button>
+                )}
+              </div>
+            )}
+            {resendMsg && (
+              <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{resendMsg}</p>
+            )}
+            {!canResend && status.issued && (delivery?.phone || delivery?.email) && (
+              <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                {t('gift.resend_window')}
+              </p>
+            )}
           </div>
         )}
 
@@ -142,6 +196,18 @@ const linkBtn: CSSProperties = {
   fontWeight: 700,
   textDecoration: 'none',
   fontSize: 15,
+};
+
+const resendBtn: CSSProperties = {
+  padding: '10px 14px',
+  borderRadius: 10,
+  border: '1.5px solid var(--color-primary)',
+  background: 'transparent',
+  color: 'var(--color-primary)',
+  fontWeight: 700,
+  fontSize: 13,
+  cursor: 'pointer',
+  minHeight: 44,
 };
 
 function deliveryMessage(

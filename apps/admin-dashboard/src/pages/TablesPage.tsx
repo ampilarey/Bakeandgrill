@@ -5,7 +5,7 @@ import {
   PageHeader, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
 import {
-  fetchTables, createTable, updateTable, openTable, closeTable, mergeTables,
+  fetchTables, createTable, updateTable,
   type RestaurantTable,
 } from '../api';
 import { LayoutGrid, Map } from 'lucide-react';
@@ -89,9 +89,6 @@ export default function TablesPage() {
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
-  const [busyId, setBusyId] = useState<number | null>(null);
-  const [mergeSourceId, setMergeSourceId] = useState<number | null>(null);
-  const [actionMsg, setActionMsg] = useState('');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -129,46 +126,6 @@ export default function TablesPage() {
       void load();
     } catch (e) { setFormError((e as Error).message); }
     finally { setSaving(false); }
-  };
-
-  const runTableAction = async (id: number, action: () => Promise<unknown>, okMsg: string) => {
-    setBusyId(id);
-    setActionMsg('');
-    setError('');
-    try {
-      await action();
-      setActionMsg(okMsg);
-      setMergeSourceId(null);
-      await load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleOpen = (t: RestaurantTable) =>
-    void runTableAction(t.id, () => openTable(t.id), `Opened table ${t.name}`);
-
-  const handleClose = (t: RestaurantTable) =>
-    void runTableAction(t.id, () => closeTable(t.id), `Closed table ${t.name}`);
-
-  const handleMergePick = (t: RestaurantTable) => {
-    if (mergeSourceId == null) {
-      setMergeSourceId(t.id);
-      setActionMsg(`Select target table to merge T${t.name} into…`);
-      return;
-    }
-    if (mergeSourceId === t.id) {
-      setMergeSourceId(null);
-      setActionMsg('');
-      return;
-    }
-    void runTableAction(
-      t.id,
-      () => mergeTables(mergeSourceId, t.id),
-      `Merged tables into T${t.name}`,
-    );
   };
 
   const available = tables.filter(t => t.status === 'available').length;
@@ -216,11 +173,11 @@ export default function TablesPage() {
       />
 
       <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.45 }}>
-        Layout setup plus floor ops: open a check, close when paid, or merge two occupied tables. Split-by-items stays on POS.
+        Configure seating layout here. Open, close, merge, and split run on the{' '}
+        <strong style={{ color: '#1C1408' }}>POS</strong>.
       </p>
 
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
-      {actionMsg && <p style={{ color: '#15803d', marginBottom: 16, fontSize: 13, fontWeight: 600 }}>{actionMsg}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Tables" value={String(tables.length)} accent="#D4813A" />
@@ -246,26 +203,6 @@ export default function TablesPage() {
               <OrderPeek table={t} />
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                 <Btn small variant="secondary" onClick={() => openModal(t)}>Edit</Btn>
-                {t.status === 'available' && (
-                  <Btn small onClick={() => handleOpen(t)} disabled={busyId === t.id}>
-                    {busyId === t.id ? '…' : 'Open'}
-                  </Btn>
-                )}
-                {t.status === 'occupied' && (
-                  <>
-                    <Btn small variant="secondary" onClick={() => handleClose(t)} disabled={busyId === t.id}>
-                      Close
-                    </Btn>
-                    <Btn
-                      small
-                      variant={mergeSourceId === t.id ? 'primary' : 'secondary'}
-                      onClick={() => handleMergePick(t)}
-                      disabled={busyId === t.id}
-                    >
-                      {mergeSourceId === t.id ? 'Source…' : mergeSourceId != null ? 'Merge here' : 'Merge'}
-                    </Btn>
-                  </>
-                )}
               </div>
             </div>
           ))}
@@ -280,7 +217,7 @@ export default function TablesPage() {
               </div>
             ))}
             <span style={{ fontSize: 12, color: '#9C8E7E', marginLeft: 'auto' }}>
-              {mergeSourceId != null ? 'Tap target table to merge' : 'Tap Open / Close on cards for ops'}
+              Floor service runs on POS
             </span>
           </div>
 

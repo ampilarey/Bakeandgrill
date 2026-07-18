@@ -56,7 +56,7 @@ final class NonStockPurchaseExpenseService
      */
     public function syncForPurchase(Purchase $purchase, ?User $user = null): ?Expense
     {
-        if (! $this->enabled()) {
+        if (!$this->enabled()) {
             return null;
         }
 
@@ -82,7 +82,7 @@ final class NonStockPurchaseExpenseService
         $amount = round($amount, 2);
         $existing = Expense::query()
             ->where('purchase_id', $purchase->id)
-            ->where('notes', 'like', '%'.self::NOTE_MARKER.'%')
+            ->where('notes', 'like', '%' . self::NOTE_MARKER . '%')
             ->first();
 
         if ($amount <= 0 || $lineCount === 0) {
@@ -92,10 +92,10 @@ final class NonStockPurchaseExpenseService
         }
 
         $category = ExpenseCategory::query()->orderBy('id')->first();
-        $number = 'EXP-PO-'.($purchase->purchase_number ?? $purchase->id).'-NS';
-        $description = 'Non-stock purchase '.$purchase->purchase_number
-            .' ('.$lineCount.' line'.($lineCount === 1 ? '' : 's').')';
-        $notes = self::NOTE_MARKER.' — auto-created from PO receive. Stock inventory lines are excluded.';
+        $number = 'EXP-PO-' . ($purchase->purchase_number ?? $purchase->id) . '-NS';
+        $description = 'Non-stock purchase ' . $purchase->purchase_number
+            . ' (' . $lineCount . ' line' . ($lineCount === 1 ? '' : 's') . ')';
+        $notes = self::NOTE_MARKER . ' — auto-created from PO receive. Stock inventory lines are excluded.';
 
         if ($existing) {
             // Never overwrite an approved/rejected expense automatically.

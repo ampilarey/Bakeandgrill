@@ -7,12 +7,14 @@ namespace Tests\Feature\GiftCard;
 use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Payments\Listeners\IssuePurchasedGiftCardOnOrderPaidListener;
+use App\Domains\Payments\Services\GiftCardPurchaseDeliveryWindow;
 use App\Domains\Payments\Services\PaymentService;
 use App\Mail\GiftCardMail;
 use App\Models\GiftCardPurchase;
 use App\Models\Order;
 use App\Models\SmsLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -190,5 +192,96 @@ class GiftCardPurchaseTest extends TestCase
         $this->assertArrayNotHasKey('code', $res->json('gift_card'));
         $this->assertTrue($res->json('delivery.sms_ok'));
         $this->assertTrue($res->json('delivery.email_ok'));
+        $this->assertTrue($res->json('delivery.can_resend'));
+    }
+
+    public function test_customer_can_resend_purchase_delivery(): void
+    {
+        Mail::fake();
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777013',
+            'email' => 'resend@example.com',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'GC-TEST-0003',
+            'tracking_token' => 'gctest3',
+            'type' => 'gift_card',
+            'status' => 'paid',
+            'customer_id' => $customer->id,
+            'subtotal' => 100,
+            'subtotal_laar' => 10000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 100,
+            'total_laar' => 10000,
+        ]);
+
+        GiftCardPurchase::create([
+            'order_id' => $order->id,
+            'purchaser_customer_id' => $customer->id,
+            'amount' => 100,
+            'recipient_phone' => '+9607777013',
+            'recipient_email' => 'resend@example.com',
+        ]);
+
+        app(IssuePurchasedGiftCardOnOrderPaidListener::class)->handle(
+            new OrderPaid(OrderPaidData::fromOrder($order, true)),
+        );
+
+        $smsBefore = SmsLog::query()->where('reference_type', 'gift_card')->count();
+
+        $res = $this->postJson(
+            "/api/gift-cards/purchases/{$order->id}/resend",
+            ['channel' => 'sms'],
+            $this->customerHeaders($customer),
+        )->assertOk();
+
+        $this->assertArrayNotHasKey('code', $res->json());
+        $this->assertSame(1, $res->json('delivery.resend_count'));
+        $this->assertGreaterThan($smsBefore, SmsLog::query()->where('reference_type', 'gift_card')->count());
+    }
+
+    public function test_resend_fails_when_delivery_window_expired(): void
+    {
+        Mail::fake();
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777014',
+            'email' => 'expired@example.com',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'GC-TEST-0004',
+            'tracking_token' => 'gctest4',
+            'type' => 'gift_card',
+            'status' => 'paid',
+            'customer_id' => $customer->id,
+            'subtotal' => 100,
+            'subtotal_laar' => 10000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 100,
+            'total_laar' => 10000,
+        ]);
+
+        $purchase = GiftCardPurchase::create([
+            'order_id' => $order->id,
+            'purchaser_customer_id' => $customer->id,
+            'amount' => 100,
+            'recipient_phone' => '+9607777014',
+            'recipient_email' => 'expired@example.com',
+        ]);
+
+        app(IssuePurchasedGiftCardOnOrderPaidListener::class)->handle(
+            new OrderPaid(OrderPaidData::fromOrder($order, true)),
+        );
+
+        Cache::forget(GiftCardPurchaseDeliveryWindow::cacheKey((int) $purchase->id));
+
+        $this->postJson(
+            "/api/gift-cards/purchases/{$order->id}/resend",
+            ['channel' => 'both'],
+            $this->customerHeaders($customer),
+        )->assertStatus(410);
     }
 }

@@ -89,7 +89,7 @@ class SpendHubReportTest extends TestCase
         ]);
 
         $response = $this->getJson(
-            '/api/reports/finance/spend-hub?from='.$today.'&to='.$today,
+            '/api/reports/finance/spend-hub?from=' . $today . '&to=' . $today,
             $this->staffHeaders($owner),
         );
 
@@ -115,7 +115,7 @@ class SpendHubReportTest extends TestCase
 
     public function test_spend_hub_requires_auth(): void
     {
-        $this->getJson('/api/reports/finance/spend-hub?from='.now()->toDateString().'&to='.now()->toDateString())
+        $this->getJson('/api/reports/finance/spend-hub?from=' . now()->toDateString() . '&to=' . now()->toDateString())
             ->assertStatus(401);
     }
 }

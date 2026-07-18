@@ -104,6 +104,16 @@ export async function purchaseGiftCard(data: {
   });
 }
 
+export type GiftCardPurchaseDelivery = {
+  phone: string | null;
+  email: string | null;
+  sms_ok: boolean | null;
+  email_ok: boolean | null;
+  can_resend?: boolean;
+  resend_count?: number;
+  expires_at?: string | null;
+};
+
 export async function getGiftCardPurchaseStatus(orderId: number): Promise<{
   order_id: number;
   order_number: string;
@@ -118,14 +128,19 @@ export async function getGiftCardPurchaseStatus(orderId: number): Promise<{
     status: string;
     expires_at: string | null;
   } | null;
-  delivery: {
-    phone: string | null;
-    email: string | null;
-    sms_ok: boolean | null;
-    email_ok: boolean | null;
-  };
+  delivery: GiftCardPurchaseDelivery;
 }> {
   return request(`/gift-cards/purchases/${orderId}`);
+}
+
+export async function resendGiftCardPurchaseDelivery(
+  orderId: number,
+  channel: 'sms' | 'email' | 'both' = 'both',
+): Promise<{ message: string; delivery: GiftCardPurchaseDelivery }> {
+  return request(`/gift-cards/purchases/${orderId}/resend`, {
+    method: 'POST',
+    body: JSON.stringify({ channel }),
+  });
 }
 
 export async function applyGiftCard(

@@ -45,7 +45,7 @@ class ExpenseController extends Controller
             $query->where('is_recurring', filter_var($request->query('recurring'), FILTER_VALIDATE_BOOLEAN));
         }
         if ($request->filled('search')) {
-            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $request->query('search')).'%';
+            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], (string) $request->query('search')) . '%';
             $query->where(function ($q) use ($term) {
                 $q->where('expense_number', 'like', $term)
                     ->orWhere('description', 'like', $term)
@@ -65,7 +65,7 @@ class ExpenseController extends Controller
                 ->when($request->filled('to'), fn ($qq) => $qq->whereDate('expense_date', '<=', $request->query('to')))
                 ->when($request->filled('recurring'), fn ($qq) => $qq->where('is_recurring', filter_var($request->query('recurring'), FILTER_VALIDATE_BOOLEAN)))
                 ->when($request->filled('search'), function ($qq) use ($request) {
-                    $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $request->query('search')).'%';
+                    $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], (string) $request->query('search')) . '%';
                     $qq->where(function ($inner) use ($term) {
                         $inner->where('expense_number', 'like', $term)
                             ->orWhere('description', 'like', $term)

@@ -135,7 +135,7 @@ class SystemHealthService
     public function retryFailedJob(string $uuid): bool
     {
         $exists = DB::table('failed_jobs')->where('uuid', $uuid)->exists();
-        if (! $exists) {
+        if (!$exists) {
             return false;
         }
 
@@ -147,7 +147,7 @@ class SystemHealthService
     public function forgetFailedJob(string $uuid): bool
     {
         $exists = DB::table('failed_jobs')->where('uuid', $uuid)->exists();
-        if (! $exists) {
+        if (!$exists) {
             return false;
         }
 
@@ -188,7 +188,7 @@ class SystemHealthService
             ? storage_path('app')
             : storage_path('app'));
 
-        if (! is_dir($path)) {
+        if (!is_dir($path)) {
             $path = base_path();
         }
 

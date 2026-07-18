@@ -86,7 +86,7 @@ class WasteLogController extends Controller
                     $invItem->refresh();
 
                     StockMovement::create([
-                        'idempotency_key' => 'waste_log:'.$wasteLog->id.':inv',
+                        'idempotency_key' => 'waste_log:' . $wasteLog->id . ':inv',
                         'inventory_item_id' => $invItem->id,
                         'user_id' => $validated['user_id'],
                         'type' => 'waste',
@@ -123,8 +123,8 @@ class WasteLogController extends Controller
                         $menuItem,
                         -$qty,
                         (int) $validated['user_id'],
-                        'waste_log:'.$wasteLog->id.':prepared',
-                        'Waste: '.$validated['reason'],
+                        'waste_log:' . $wasteLog->id . ':prepared',
+                        'Waste: ' . $validated['reason'],
                     );
                     if (empty($validated['cost_estimate'])) {
                         $wasteLog->update([

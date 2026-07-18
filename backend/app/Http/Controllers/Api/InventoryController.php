@@ -93,7 +93,7 @@ class InventoryController extends Controller
         $item->update($request->validated());
 
         $resolvedAlerts = 0;
-        if (! $wasExcluded && (bool) $item->restock_excluded) {
+        if (!$wasExcluded && (bool) $item->restock_excluded) {
             $resolvedAlerts = $this->restock->resolveOpenAlertsForItems([(int) $item->id]);
         }
 
@@ -134,7 +134,7 @@ class InventoryController extends Controller
                 'reference_id' => null,
                 'notes' => $validated['notes'] ?? null,
             ];
-            if (! empty($validated['idempotency_key'])) {
+            if (!empty($validated['idempotency_key'])) {
                 if (StockMovement::where('idempotency_key', $validated['idempotency_key'])->exists()) {
                     return [$item->fresh(), StockMovement::where('idempotency_key', $validated['idempotency_key'])->first()];
                 }

@@ -140,7 +140,7 @@ final class PurchaseRequestVerificationService
                         ->where('inventory_item_id', $line->inventory_item_id)
                         ->exists();
 
-                if (! $alreadyStocked) {
+                if (!$alreadyStocked) {
                     $allAlreadyStocked = false;
                 }
 
@@ -215,7 +215,7 @@ final class PurchaseRequestVerificationService
             return;
         }
 
-        $idempotencyKey = 'purchase_request:'.$item->purchase_request_id.':item:'.$item->id;
+        $idempotencyKey = 'purchase_request:' . $item->purchase_request_id . ':item:' . $item->id;
         if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
             return;
         }

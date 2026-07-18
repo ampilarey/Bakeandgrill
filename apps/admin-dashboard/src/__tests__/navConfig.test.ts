@@ -55,6 +55,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/xero', permission: 'xero.manage' },
   { to: '/system-health', permission: 'website.manage' },
   { to: '/account' },
+  { to: '/checklist', permission: 'website.manage' },
 ];
 
 describe('navConfig', () => {

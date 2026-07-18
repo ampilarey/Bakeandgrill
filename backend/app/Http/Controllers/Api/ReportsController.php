@@ -318,7 +318,7 @@ class ReportsController extends Controller
                 $item['quantity'] ?? 0,
                 $item['cost_per_unit'] ?? 0,
                 $item['total_value'] ?? 0,
-                ! empty($item['is_negative']) ? 'yes' : 'no',
+                !empty($item['is_negative']) ? 'yes' : 'no',
             ];
         }
         $rows[] = [];

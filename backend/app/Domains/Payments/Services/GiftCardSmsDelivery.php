@@ -29,6 +29,7 @@ final class GiftCardSmsDelivery
         string $phone,
         ?string $personalNote = null,
         ?int $customerId = null,
+        ?string $idempotencyKey = null,
     ): array {
         try {
             $normalized = MaldivesPhone::normalize($phone);
@@ -52,7 +53,8 @@ final class GiftCardSmsDelivery
                 customerId: $customerId ?? $card->issued_to_customer_id,
                 referenceType: 'gift_card',
                 referenceId: (string) $card->id,
-                idempotencyKey: 'gift_card:' . $card->id . ':' . $normalized . ':' . now()->format('YmdHi'),
+                idempotencyKey: $idempotencyKey
+                    ?? ('gift_card:' . $card->id . ':' . $normalized . ':' . now()->format('YmdHi')),
             ));
         } catch (\Throwable $e) {
             return [

@@ -111,10 +111,10 @@ final class RestockIntelligenceService
             $isSnoozed = $snoozeUntil !== null && $snoozeUntil->copy()->startOfDay()->gte($today);
             $isExcluded = (bool) $item->restock_excluded;
             // Snoozed / excluded SKUs drop out of due-soon / draft-PO urgency.
-            $dueSoonFlag = $wouldBeDueSoon && ! $isSnoozed && ! $isExcluded;
+            $dueSoonFlag = $wouldBeDueSoon && !$isSnoozed && !$isExcluded;
 
             // Keep the plan focused: items with usage, buy history, or below ROP.
-            if ($dailyRate <= 0 && $buy === null && ! ($rop > 0 && $stock <= $rop)) {
+            if ($dailyRate <= 0 && $buy === null && !($rop > 0 && $stock <= $rop)) {
                 continue;
             }
 
@@ -126,7 +126,7 @@ final class RestockIntelligenceService
             if ($dueSoonFlag) {
                 $dueSoon++;
             }
-            if ($rop > 0 && $stock <= $rop && ! $isExcluded) {
+            if ($rop > 0 && $stock <= $rop && !$isExcluded) {
                 $belowRop++;
             }
 
@@ -158,17 +158,17 @@ final class RestockIntelligenceService
                 $unitCost > 0 ? $unitCost : null,
                 $lastPurchasePrice > 0 ? $lastPurchasePrice : null,
             );
-            if ($priceChange['direction'] === 'up' && ! $isExcluded) {
+            if ($priceChange['direction'] === 'up' && !$isExcluded) {
                 $priceUp++;
             }
 
             $openPurchase = $openPoByItem[$item->id] ?? null;
-            if ($openPurchase !== null && ! $isExcluded) {
+            if ($openPurchase !== null && !$isExcluded) {
                 $withOpenPo++;
             }
 
             $openAlert = $openAlertByItem[$item->id] ?? null;
-            if ($openAlert !== null && ! $isExcluded) {
+            if ($openAlert !== null && !$isExcluded) {
                 $withOpenAlert++;
             }
 
@@ -190,7 +190,7 @@ final class RestockIntelligenceService
                 'reason' => $qtyInfo['reason'],
                 'due_soon' => $dueSoonFlag,
                 'would_be_due_soon' => $wouldBeDueSoon,
-                'snoozed' => $isSnoozed && ! $isExcluded,
+                'snoozed' => $isSnoozed && !$isExcluded,
                 'restock_snoozed_until' => $snoozeUntil?->toDateString(),
                 'excluded' => $isExcluded,
                 'lead_days' => $effectiveLead,
@@ -241,7 +241,7 @@ final class RestockIntelligenceService
     /**
      * Open (unresolved) reorder alerts keyed by inventory item id.
      *
-     * @param  list<int|string>  $itemIds
+     * @param list<int|string> $itemIds
      * @return array<int, array{id: int, current_stock: float, reorder_point: float, created_at: string|null}>
      */
     private function openAlertByItem(array $itemIds): array
@@ -299,7 +299,7 @@ final class RestockIntelligenceService
     /**
      * Latest open (draft/ordered/partial) PO line per inventory item, if any.
      *
-     * @param  list<int|string>  $itemIds
+     * @param list<int|string> $itemIds
      * @return array<int, array{id: int, purchase_number: string, status: string, quantity: float}>
      */
     private function openPurchaseByItem(array $itemIds): array
@@ -342,7 +342,7 @@ final class RestockIntelligenceService
     /**
      * Write suggested reorder points onto inventory items (explicit opt-in).
      *
-     * @param  list<int>  $itemIds
+     * @param list<int> $itemIds
      * @return array{
      *     updated_count: int,
      *     skipped_count: int,
@@ -421,7 +421,7 @@ final class RestockIntelligenceService
     /**
      * Opt-in: promote restock "cheapest" supplier suggestions to preferred_supplier_id.
      *
-     * @param  list<int>  $itemIds
+     * @param list<int> $itemIds
      * @return array{
      *     updated_count: int,
      *     skipped_count: int,
@@ -500,7 +500,7 @@ final class RestockIntelligenceService
     /**
      * Resolve open reorder alerts for the given inventory items.
      *
-     * @param  list<int>  $itemIds
+     * @param list<int> $itemIds
      * @return int Number of alerts newly resolved
      */
     public function resolveOpenAlertsForItems(array $itemIds): int
@@ -617,8 +617,8 @@ final class RestockIntelligenceService
             // Collapse multiple lines on the same PO+date into one buy event.
             $collapsed = [];
             foreach ($events as $ev) {
-                $key = $ev['purchase_id'].'|'.$ev['date'];
-                if (! isset($collapsed[$key])) {
+                $key = $ev['purchase_id'] . '|' . $ev['date'];
+                if (!isset($collapsed[$key])) {
                     $collapsed[$key] = ['date' => $ev['date'], 'qty' => 0.0];
                 }
                 $collapsed[$key]['qty'] += $ev['qty'];
@@ -649,7 +649,7 @@ final class RestockIntelligenceService
     }
 
     /**
-     * @param  list<int|string>  $itemIds
+     * @param list<int|string> $itemIds
      * @return array<int, array<int, array{supplier_id: int, supplier_name: string, price: float}>>
      */
     private function cheapestSupplierByItem(array $itemIds): array

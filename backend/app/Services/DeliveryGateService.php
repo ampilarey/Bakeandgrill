@@ -36,8 +36,8 @@ class DeliveryGateService
     }
 
     /**
-     * @param  bool  $checkCapacity  When false, skips max-active check (menu visibility /
-     *                               mid-create line asserts — order shell may already exist).
+     * @param bool $checkCapacity When false, skips max-active check (menu visibility /
+     *                            mid-create line asserts — order shell may already exist).
      */
     public function isDeliveryOpen(?string $deliveryArea = null, ?Carbon $at = null, bool $checkCapacity = true): bool
     {
@@ -184,7 +184,7 @@ class DeliveryGateService
     public function rawSchedulePayload(): mixed
     {
         $raw = SiteSetting::get('delivery_schedule');
-        if (! $raw) {
+        if (!$raw) {
             return null;
         }
         try {

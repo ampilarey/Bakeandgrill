@@ -82,7 +82,7 @@ class KdsController extends Controller
     {
         $item = Item::findOrFail($itemId);
         $wasAvailable = (bool) $item->is_available;
-        $item->update(['is_available' => ! $wasAvailable]);
+        $item->update(['is_available' => !$wasAvailable]);
         $nowAvailable = (bool) $item->is_available;
 
         app(AuditLogService::class)->log(

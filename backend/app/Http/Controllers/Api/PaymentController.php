@@ -61,7 +61,7 @@ class PaymentController extends Controller
 
         // Hold the order in payment_pending until BML webhook confirms.
         // Kitchen (KDS/admin) should not see it until payment is confirmed.
-        if (! in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
+        if (!in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
             app(OrderStatusTransitionService::class)->transition($order, 'payment_pending');
         }
 
@@ -127,7 +127,7 @@ class PaymentController extends Controller
 
         // Hold the order in payment_pending until BML webhook confirms payment,
         // so it does not appear in KDS/kitchen queue before payment is received.
-        if (! in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
+        if (!in_array($order->status, ['payment_pending', 'paid', 'completed'], true)) {
             app(OrderStatusTransitionService::class)->transition($order, 'payment_pending');
         }
 
@@ -190,7 +190,7 @@ class PaymentController extends Controller
             if ($giftOrder) {
                 $orderAppBase = preg_replace('#/orders/?$#', '', rtrim((string) $baseUrl, '/')) ?: '/order';
 
-                return redirect(rtrim($orderAppBase, '/').'/gift-cards/success?orderId='.$orderId.'&payment='.$state);
+                return redirect(rtrim($orderAppBase, '/') . '/gift-cards/success?orderId=' . $orderId . '&payment=' . $state);
             }
         }
 

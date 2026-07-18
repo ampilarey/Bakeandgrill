@@ -72,6 +72,8 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
         Route::post('/gift-cards/purchase', [App\Http\Controllers\Api\GiftCardController::class, 'purchase'])
             ->middleware('throttle:10,1');
         Route::get('/gift-cards/purchases/{orderId}', [App\Http\Controllers\Api\GiftCardController::class, 'purchaseStatus']);
+        Route::post('/gift-cards/purchases/{orderId}/resend', [App\Http\Controllers\Api\GiftCardController::class, 'resendPurchaseDelivery'])
+            ->middleware('throttle:5,10');
         Route::post('/orders/{orderId}/apply-gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'applyToOrder']);
         Route::delete('/orders/{orderId}/gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'removeFromOrder']);
         Route::post('/orders/{orderId}/apply-referral', [App\Http\Controllers\Api\ReferralController::class, 'applyToOrder']);

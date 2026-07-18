@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Api\InvoiceController;
@@ -37,8 +39,8 @@ class InvoicePageController extends Controller
         if (
             $invoice->order
             && $invoice->type === 'sale'
-            && ! in_array($invoice->status, ['paid', 'void', 'cancelled'], true)
-            && ! $invoice->isOnCreditAccount()
+            && !in_array($invoice->status, ['paid', 'void', 'cancelled'], true)
+            && !$invoice->isOnCreditAccount()
         ) {
             $order = $invoice->order;
             $orderLooksPaid = $order->payment_status === 'paid'

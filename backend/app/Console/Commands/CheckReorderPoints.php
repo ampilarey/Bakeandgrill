@@ -62,7 +62,7 @@ class CheckReorderPoints extends Command
 
             $snoozeUntil = $item->restock_snoozed_until;
             $isSnoozed = $snoozeUntil !== null && $snoozeUntil->copy()->startOfDay()->gte($today);
-            if (! $isSnoozed) {
+            if (!$isSnoozed) {
                 $notifyNames[] = (string) $item->name;
             }
         }
@@ -75,7 +75,7 @@ class CheckReorderPoints extends Command
 
         foreach ($openAlerts as $alert) {
             $item = $alert->inventoryItem;
-            if (! $item || $item->reorder_point === null || (float) $item->current_stock > (float) $item->reorder_point) {
+            if (!$item || $item->reorder_point === null || (float) $item->current_stock > (float) $item->reorder_point) {
                 $alert->update(['resolved_at' => now()]);
                 $resolved++;
             }
@@ -95,23 +95,23 @@ class CheckReorderPoints extends Command
     }
 
     /**
-     * @param  list<string>  $itemNames
+     * @param list<string> $itemNames
      */
     private function maybeSendReorderSms(SmsService $sms, array $itemNames): void
     {
-        if (! filter_var(SiteSetting::get('ops_inventory_reorder_alert_sms', '0'), FILTER_VALIDATE_BOOLEAN)) {
+        if (!filter_var(SiteSetting::get('ops_inventory_reorder_alert_sms', '0'), FILTER_VALIDATE_BOOLEAN)) {
             return;
         }
 
         $count = count($itemNames);
         $preview = collect($itemNames)->take(3)->implode(', ');
         if ($count > 3) {
-            $preview .= ' +'.($count - 3).' more';
+            $preview .= ' +' . ($count - 3) . ' more';
         }
 
         $message = "Bake & Grill: {$count} inventory item(s) hit reorder point"
-            .($preview !== '' ? " ({$preview})" : '')
-            .'. Check Forecasts → Restock.';
+            . ($preview !== '' ? " ({$preview})" : '')
+            . '. Check Forecasts → Restock.';
 
         $phones = User::query()
             ->where('is_active', true)
@@ -146,7 +146,7 @@ class CheckReorderPoints extends Command
                     type: 'system',
                     referenceType: 'inventory_reorder_alert',
                     referenceId: $dateKey,
-                    idempotencyKey: 'inventory-reorder-digest:'.$dateKey.':'.$phone,
+                    idempotencyKey: 'inventory-reorder-digest:' . $dateKey . ':' . $phone,
                 ));
             } catch (\Throwable $e) {
                 Log::error('Failed to send inventory reorder SMS', [
@@ -156,6 +156,6 @@ class CheckReorderPoints extends Command
             }
         }
 
-        $this->info('Reorder alert SMS sent to '.$phones->count().' recipient(s).');
+        $this->info('Reorder alert SMS sent to ' . $phones->count() . ' recipient(s).');
     }
 }

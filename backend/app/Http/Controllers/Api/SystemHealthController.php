@@ -54,7 +54,7 @@ class SystemHealthController extends Controller
 
     public function retryFailedJob(Request $request, string $uuid): JsonResponse
     {
-        if (! $this->health->retryFailedJob($uuid)) {
+        if (!$this->health->retryFailedJob($uuid)) {
             return response()->json(['message' => 'Failed job not found.'], 404);
         }
 
@@ -63,7 +63,7 @@ class SystemHealthController extends Controller
 
     public function forgetFailedJob(Request $request, string $uuid): JsonResponse
     {
-        if (! $this->health->forgetFailedJob($uuid)) {
+        if (!$this->health->forgetFailedJob($uuid)) {
             return response()->json(['message' => 'Failed job not found.'], 404);
         }
 

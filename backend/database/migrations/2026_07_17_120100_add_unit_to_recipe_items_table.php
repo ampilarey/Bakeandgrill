@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasColumn('recipe_items', 'unit')) {
+        if (!Schema::hasColumn('recipe_items', 'unit')) {
             Schema::table('recipe_items', function (Blueprint $table) {
                 $table->string('unit', 20)->nullable()->after('quantity');
             });

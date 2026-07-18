@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domains\Orders\Services\OrderCreationService;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Device;
@@ -15,7 +16,6 @@ use App\Models\OrderItem;
 use App\Models\Role;
 use App\Models\SmsLog;
 use App\Models\User;
-use App\Domains\Orders\Services\OrderCreationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;

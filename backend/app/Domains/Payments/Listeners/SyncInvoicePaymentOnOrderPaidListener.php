@@ -17,7 +17,7 @@ final class SyncInvoicePaymentOnOrderPaidListener
     public function handle(OrderPaid $event): void
     {
         $order = Order::with('payments')->find($event->data->orderId);
-        if (! $order) {
+        if (!$order) {
             return;
         }
 

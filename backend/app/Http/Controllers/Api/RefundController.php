@@ -135,7 +135,7 @@ class RefundController extends Controller
                 $transitions->transition($order, 'refunded');
             } elseif ($amountLaar > 0) {
                 // Don't override a more terminal state (cancelled / refunded).
-                if (! in_array($order->status, ['cancelled', 'refunded'], true)) {
+                if (!in_array($order->status, ['cancelled', 'refunded'], true)) {
                     $transitions->transition($order, 'partially_refunded');
                 }
             }

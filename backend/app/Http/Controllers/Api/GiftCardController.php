@@ -9,6 +9,7 @@ use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
 use App\Domains\Payments\Services\GiftCardIssueService;
+use App\Domains\Payments\Services\GiftCardPurchaseDeliveryWindow;
 use App\Domains\Payments\Services\GiftCardPurchaseService;
 use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Domains\Payments\Services\GiftCardSmsDelivery;
@@ -34,6 +35,7 @@ class GiftCardController extends Controller
         private readonly GiftCardRedemptionService $giftCardRedemption,
         private readonly GiftCardIssueService $giftCardIssue,
         private readonly GiftCardPurchaseService $giftCardPurchase,
+        private readonly GiftCardPurchaseDeliveryWindow $deliveryWindow,
         private readonly AuditLogService $audit,
     ) {}
 
@@ -397,7 +399,7 @@ class GiftCardController extends Controller
     public function purchase(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:'.GiftCardPurchaseService::MIN_AMOUNT, 'max:'.GiftCardPurchaseService::MAX_AMOUNT],
+            'amount' => ['required', 'numeric', 'min:' . GiftCardPurchaseService::MIN_AMOUNT, 'max:' . GiftCardPurchaseService::MAX_AMOUNT],
             'recipient_phone' => ['nullable', 'string', 'max:20', new MaldivesPhone],
             'recipient_email' => ['nullable', 'email', 'max:200'],
             'personal_note' => ['nullable', 'string', 'max:500'],
@@ -466,6 +468,109 @@ class GiftCardController extends Controller
                 'email' => $purchase?->recipient_email,
                 'sms_ok' => $purchase?->sms_ok,
                 'email_ok' => $purchase?->email_ok,
+                'can_resend' => $purchase ? $this->deliveryWindow->canResend($purchase) : false,
+                'resend_count' => (int) ($purchase?->resend_count ?? 0),
+                'expires_at' => $purchase?->code_delivery_expires_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
+     * Customer: resend purchase delivery to the original phone/email only.
+     * Uses a short-lived encrypted cache of the plaintext (never returned in JSON).
+     */
+    public function resendPurchaseDelivery(Request $request, int $orderId): JsonResponse
+    {
+        /** @var Customer $customer */
+        $customer = $request->user();
+
+        $validated = $request->validate([
+            'channel' => ['sometimes', 'string', 'in:sms,email,both'],
+        ]);
+        $channel = $validated['channel'] ?? 'both';
+
+        $order = Order::query()
+            ->where('id', $orderId)
+            ->where('customer_id', $customer->id)
+            ->where('type', 'gift_card')
+            ->firstOrFail();
+
+        $purchase = GiftCardPurchase::query()
+            ->with('giftCard')
+            ->where('order_id', $order->id)
+            ->where('purchaser_customer_id', $customer->id)
+            ->firstOrFail();
+
+        if (!$purchase->gift_card_id || !$purchase->giftCard) {
+            return response()->json(['message' => 'Gift card has not been issued yet.'], 422);
+        }
+
+        if ((int) $purchase->resend_count >= GiftCardPurchaseDeliveryWindow::MAX_RESENDS) {
+            return response()->json([
+                'message' => 'Resend limit reached. Contact the restaurant with your order number.',
+            ], 429);
+        }
+
+        $plain = $this->deliveryWindow->plainCode($purchase);
+        if ($plain === null) {
+            return response()->json([
+                'message' => 'Delivery window expired. Contact the restaurant with your order number.',
+            ], 410);
+        }
+
+        $wantSms = in_array($channel, ['sms', 'both'], true) && (bool) $purchase->recipient_phone;
+        $wantEmail = in_array($channel, ['email', 'both'], true) && (bool) $purchase->recipient_email;
+
+        if (!$wantSms && !$wantEmail) {
+            return response()->json(['message' => 'No delivery channel available for this purchase.'], 422);
+        }
+
+        $card = $purchase->giftCard;
+        $note = $purchase->personal_note;
+        $smsOk = $purchase->sms_ok;
+        $emailOk = $purchase->email_ok;
+        $resendN = (int) $purchase->resend_count + 1;
+
+        if ($wantSms) {
+            $sent = $this->giftCardSms->send(
+                $card,
+                $plain,
+                $purchase->recipient_phone,
+                $note,
+                $purchase->purchaser_customer_id,
+                'gift_card_resend:' . $purchase->id . ':sms:' . $resendN,
+            );
+            $smsOk = (bool) $sent['ok'];
+        }
+
+        if ($wantEmail) {
+            $sent = $this->giftCardEmail->send(
+                $card,
+                $plain,
+                $purchase->recipient_email,
+                $note,
+            );
+            $emailOk = (bool) $sent['ok'];
+        }
+
+        $purchase->update([
+            'sms_ok' => $smsOk,
+            'email_ok' => $emailOk,
+            'resend_count' => $resendN,
+            'last_resent_at' => now(),
+        ]);
+        $purchase->refresh();
+
+        return response()->json([
+            'message' => 'Delivery resent.',
+            'delivery' => [
+                'phone' => $purchase->recipient_phone,
+                'email' => $purchase->recipient_email,
+                'sms_ok' => $purchase->sms_ok,
+                'email_ok' => $purchase->email_ok,
+                'can_resend' => $this->deliveryWindow->canResend($purchase),
+                'resend_count' => (int) $purchase->resend_count,
+                'expires_at' => $purchase->code_delivery_expires_at?->toIso8601String(),
             ],
         ]);
     }

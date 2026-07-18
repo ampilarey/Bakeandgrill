@@ -43,7 +43,7 @@ final class GiftCardRedemptionService
     /**
      * Batch soft-reserve totals for a page of cards (laari keyed by gift_card_id).
      *
-     * @param  list<int>  $cardIds
+     * @param list<int> $cardIds
      * @return array<int, int>
      */
     public function reservedLaarByCardIds(array $cardIds): array
@@ -138,7 +138,7 @@ final class GiftCardRedemptionService
         $deductLaar = min($neededLaar, $giftCard->balanceLaar());
         if ($deductLaar < $neededLaar) {
             throw new \RuntimeException(
-                'Gift card balance is insufficient at payment time. Remove the gift card and try again.'
+                'Gift card balance is insufficient at payment time. Remove the gift card and try again.',
             );
         }
 

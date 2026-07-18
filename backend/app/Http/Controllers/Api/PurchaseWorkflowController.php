@@ -125,11 +125,11 @@ class PurchaseWorkflowController extends Controller
 
                 if ($pItem->inventory_item_id && $incomingQty > 0) {
                     $invItem = InventoryItem::lockForUpdate()->find($pItem->inventory_item_id);
-                    if (! $invItem) {
+                    if (!$invItem) {
                         continue;
                     }
 
-                    $idempotencyKey = 'purchase:'.$purchase->id.':item:'.$pItem->id.':to:'.round((float) $pItem->received_quantity, 4);
+                    $idempotencyKey = 'purchase:' . $purchase->id . ':item:' . $pItem->id . ':to:' . round((float) $pItem->received_quantity, 4);
                     if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
                         continue;
                     }
@@ -386,7 +386,7 @@ class PurchaseWorkflowController extends Controller
     /**
      * PO-level ETA = today + max lead among lines (per-item lead_days, else default).
      *
-     * @param  list<int>  $itemIds
+     * @param list<int> $itemIds
      */
     private function expectedDeliveryFromLeadDays(array $itemIds, int $defaultLeadDays = 3): string
     {

@@ -57,7 +57,7 @@ class RestockIntelligenceTest extends TestCase
         $d2 = now()->subDays(14)->toDateString();
         foreach ([$d1, $d2] as $i => $date) {
             $po = Purchase::create([
-                'purchase_number' => 'PO-RST-'.$i,
+                'purchase_number' => 'PO-RST-' . $i,
                 'supplier_id' => $supplier->id,
                 'user_id' => $owner->id,
                 'status' => 'received',
@@ -507,7 +507,7 @@ class RestockIntelligenceTest extends TestCase
 
         foreach ([$short, $long] as $i => $item) {
             StockMovement::create([
-                'idempotency_key' => 'test-lead-deduct-'.$i,
+                'idempotency_key' => 'test-lead-deduct-' . $i,
                 'inventory_item_id' => $item->id,
                 'user_id' => $owner->id,
                 'type' => 'deduction',
@@ -566,7 +566,7 @@ class RestockIntelligenceTest extends TestCase
 
         foreach ([$short, $long] as $i => $item) {
             StockMovement::create([
-                'idempotency_key' => 'test-cover-deduct-'.$i,
+                'idempotency_key' => 'test-cover-deduct-' . $i,
                 'inventory_item_id' => $item->id,
                 'user_id' => $owner->id,
                 'type' => 'deduction',

@@ -75,7 +75,7 @@ class SpendByItemReportTest extends TestCase
             'total_cost' => 150,
         ]);
 
-        $response = $this->getJson('/api/reports/spend-by-item?from='.$today.'&to='.$today);
+        $response = $this->getJson('/api/reports/spend-by-item?from=' . $today . '&to=' . $today);
 
         $response->assertOk()
             ->assertJsonPath('totals.items_count', 1)
@@ -88,7 +88,7 @@ class SpendByItemReportTest extends TestCase
 
     public function test_spend_by_item_requires_auth(): void
     {
-        $this->getJson('/api/reports/spend-by-item?from='.now()->toDateString().'&to='.now()->toDateString())
+        $this->getJson('/api/reports/spend-by-item?from=' . now()->toDateString() . '&to=' . now()->toDateString())
             ->assertStatus(401);
     }
 }

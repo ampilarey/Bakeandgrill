@@ -38,7 +38,7 @@ final class GiftCardPurchaseService
         $amount = round((float) $data['amount'], 2);
         if ($amount < self::MIN_AMOUNT || $amount > self::MAX_AMOUNT) {
             throw new \InvalidArgumentException(
-                'Amount must be between MVR '.number_format(self::MIN_AMOUNT, 0).' and MVR '.number_format(self::MAX_AMOUNT, 0).'.'
+                'Amount must be between MVR ' . number_format(self::MIN_AMOUNT, 0) . ' and MVR ' . number_format(self::MAX_AMOUNT, 0) . '.',
             );
         }
 
@@ -138,6 +138,6 @@ final class GiftCardPurchaseService
             return $nextNumber;
         });
 
-        return 'GC-'.$dateFormatted.'-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+        return 'GC-' . $dateFormatted . '-' . str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
     }
 }

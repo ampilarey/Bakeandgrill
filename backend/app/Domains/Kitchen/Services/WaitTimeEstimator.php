@@ -36,7 +36,7 @@ class WaitTimeEstimator
     }
 
     /**
-     * @param  Collection<int, Order>  $orders
+     * @param Collection<int, Order> $orders
      * @return array{wait_minutes: int, queue_depth: int, workload_minutes: int}
      */
     public function fromOrders(Collection $orders): array
