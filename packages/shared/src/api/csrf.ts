@@ -7,10 +7,23 @@ export function readBrowserCookie(name: string): string | null {
   return match ? decodeURIComponent(match.split('=').slice(1).join('=')) : null;
 }
 
-/** Build the X-XSRF-TOKEN header from the XSRF-TOKEN cookie, if present. */
+/**
+ * Build CSRF headers from the XSRF-TOKEN cookie.
+ *
+ * Laravel's VerifyCsrfToken:
+ * - `X-CSRF-TOKEN` → used as-is (plain session token)
+ * - `X-XSRF-TOKEN` → decrypt() first (encrypted cookie payload)
+ *
+ * Encrypted cookies look like `eyJpdiI...`. Plain cookies (misconfigured
+ * encryptCookies except) must use X-CSRF-TOKEN or every POST 419s.
+ */
 export function xsrfHeaderFromCookie(): Record<string, string> {
   const xsrf = readBrowserCookie('XSRF-TOKEN');
-  return xsrf ? { 'X-XSRF-TOKEN': xsrf } : {};
+  if (!xsrf) return {};
+  if (xsrf.startsWith('eyJpdiI')) {
+    return { 'X-XSRF-TOKEN': xsrf };
+  }
+  return { 'X-CSRF-TOKEN': xsrf };
 }
 
 /**

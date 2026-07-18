@@ -40,8 +40,10 @@ $middleware->statefulApi();
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
 
         // _cauth_revoked: short-lived JS-readable logout signal for the order SPA.
-        // XSRF-TOKEN must stay readable by JS for SPA CSRF headers.
-        $middleware->encryptCookies(except: ['_cauth_revoked', 'XSRF-TOKEN']);
+        // Do NOT except XSRF-TOKEN — Sanctum SPAs send it as X-XSRF-TOKEN, which
+        // Laravel decrypts. A plain (unencrypted) XSRF cookie makes decrypt() fail
+        // and every mutating /api call 419 with "CSRF token mismatch".
+        $middleware->encryptCookies(except: ['_cauth_revoked']);
 
         // Staff/POS/admin login uses bearer tokens — CSRF on these routes breaks SPA login.
         // Route-level withoutMiddleware(ValidateCsrfToken) does NOT affect Sanctum's
