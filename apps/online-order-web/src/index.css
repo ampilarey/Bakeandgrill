@@ -1426,7 +1426,8 @@ textarea.field-input {
 /* ZUS-style cart FAB — logo + badge + tiny total only (no banner) */
 .float-cart-fab {
   position: fixed;
-  left: max(var(--page-gutter), calc(50% - (var(--shell-max) / 2) + var(--page-gutter)));
+  right: max(var(--page-gutter), calc(50% - (var(--shell-max) / 2) + var(--page-gutter)));
+  left: auto;
   bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 10px);
   z-index: var(--z-pay-bar);
   display: flex;

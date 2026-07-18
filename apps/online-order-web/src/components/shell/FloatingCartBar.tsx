@@ -60,7 +60,7 @@ export function FloatingCartBar() {
           className="float-cart-fab"
           onClick={() => openCartSheet()}
           aria-expanded={cartSheetOpen}
-          aria-label={`${t('cart.view')} — ${count} — MVR ${cartTotal.toFixed(2)}`}
+          aria-label={`${t('cart.view')} — ${count} — ${Math.round(cartTotal)}/-`}
         >
           <span className="float-cart-fab__logo-wrap">
             <img
@@ -76,7 +76,7 @@ export function FloatingCartBar() {
             </span>
           </span>
           <span className="float-cart-fab__total" aria-hidden>
-            {cartTotal.toFixed(0)}
+            {Math.round(cartTotal)}/-
           </span>
         </button>
       )}
