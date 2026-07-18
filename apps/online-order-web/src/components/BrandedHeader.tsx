@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useSiteSettings } from '../context/SiteSettingsContext';
+import { useLanguage } from '../context/LanguageContext';
 
 type Props = {
   /** Content placed on the right side of the header (e.g. Live pill, back button) */
@@ -10,13 +12,15 @@ type Props = {
 };
 
 /**
- * Branded sticky header matching the main Blade site and Layout.tsx header.
- * Shows the CMS logo + site name. Used by standalone pages (OrderStatusPage, CheckoutPage).
+ * Branded sticky header for standalone pages (OrderStatus, Checkout).
+ * Logo stays in-app (Home) — never links out to the marketing site.
  */
-export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Props) {
+export function BrandedHeader({ rightSlot, onBack, backLabel }: Props) {
   const s = useSiteSettings();
+  const { t } = useLanguage();
   const siteName = s.site_name || 'Bake & Grill';
-  const logoUrl  = s.logo      || '/logo.png';
+  const logoUrl = s.logo || '/logo.png';
+  const label = backLabel ?? t('header.back_menu');
 
   return (
     <header
@@ -31,10 +35,10 @@ export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Pro
       }}
     >
       <div className="order-header-inner" style={{ justifyContent: 'space-between', gap: '0.75rem' }}>
-        {/* Left: optional back + logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
           {onBack && (
             <button
+              type="button"
               onClick={onBack}
               style={{
                 background: 'none',
@@ -44,19 +48,20 @@ export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Pro
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 fontFamily: 'inherit',
-                padding: '6px 8px',
+                padding: '0 0.75rem',
+                minHeight: 44,
                 borderRadius: '8px',
                 flexShrink: 0,
                 whiteSpace: 'nowrap',
               }}
-              aria-label={backLabel}
+              aria-label={label}
             >
-              {backLabel}
+              {label}
             </button>
           )}
 
-          <a
-            href="/"
+          <Link
+            to="/"
             className="order-header-brand"
             style={{
               display: 'flex',
@@ -64,8 +69,9 @@ export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Pro
               gap: '0.55rem',
               textDecoration: 'none',
               flexShrink: 0,
+              minHeight: 44,
             }}
-            aria-label={`${siteName} — Back to main site`}
+            aria-label={t('header.home_aria').replace('{name}', siteName)}
           >
             <img
               src={logoUrl}
@@ -89,10 +95,9 @@ export function BrandedHeader({ rightSlot, onBack, backLabel = '← Menu' }: Pro
             >
               {siteName}
             </span>
-          </a>
+          </Link>
         </div>
 
-        {/* Right slot */}
         {rightSlot && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
             {rightSlot}

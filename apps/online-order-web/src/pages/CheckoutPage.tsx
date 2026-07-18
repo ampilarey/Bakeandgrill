@@ -901,7 +901,13 @@ export function CheckoutPage() {
               <AccordionItem
                 id="notes"
                 title={t('checkout.acc_notes')}
-                summary={notes ? notes.slice(0, 40) + (notes.length > 40 ? '…' : '') : undefined}
+                summary={notes ? (() => {
+                  const max = 56;
+                  if (notes.length <= max) return notes;
+                  const cut = notes.slice(0, max);
+                  const sp = cut.lastIndexOf(' ');
+                  return `${sp > 24 ? cut.slice(0, sp) : cut}…`;
+                })() : undefined}
                 open={openId === 'notes'}
                 onToggle={() => toggle('notes')}
               >

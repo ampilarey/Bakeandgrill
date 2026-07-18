@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '../components/shell/PageHeader';
 import { AuthBlock } from '../components/AuthBlock';
 import { Skeleton } from '../components/ui/Skeleton';
+import { MenuThumb } from '../components/menu/MenuThumb';
 import { getLoyaltyAccount, getMyReferralCode } from '../api/promotions';
 import { fetchActiveSpecials, API_ORIGIN } from '../api';
 import type { DailySpecial } from '../api/menu';
@@ -414,35 +415,8 @@ function SpecialsSection({
                 flexDirection: 'column',
               }}
             >
-              <div
-                style={{
-                  height: 100,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  background: 'var(--color-surface-alt)',
-                }}
-              >
-                {src ? (
-                  <img
-                    src={src}
-                    alt={sp.item_name ?? ''}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '100%',
-                      fontSize: 26,
-                      opacity: 0.3,
-                    }}
-                    aria-hidden="true"
-                  >
-                    🍽️
-                  </div>
-                )}
+              <div style={{ height: 100, position: 'relative', overflow: 'hidden' }}>
+                <MenuThumb src={src} alt={sp.item_name ?? ''} height={100} fontSize={26} />
                 {badge && (
                   <div
                     style={{

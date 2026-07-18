@@ -1,4 +1,5 @@
 import type { OnlineOrderingStatus } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 type Props = {
   open: boolean;
@@ -61,28 +62,26 @@ function fmtWindow(iso: string | null | undefined, use12h: boolean): string {
 
 /**
  * Pill badge — single source of truth is the online ordering gate API.
- *
- * Open:   "We're open · Closes 10:30 PM"
- * Closed by schedule: "Closed · Opens 6:00 PM" (or "6:00 PM Mon" if next day)
- * Closed by master switch / no schedule: "Online ordering is currently closed"
  */
 export function OpeningStatusBadge({
   open, reason, currentClose, nextOpenWindow, timeDisplay = '24h', className = '', style,
 }: Omit<Props, 'closedDetail'> & { closedDetail?: string | null }) {
+  const { t } = useLanguage();
   const use12h = timeDisplay === '12h';
   let label: string;
 
   if (open) {
-    label = 'Online ordering open';
     const closeStr = currentClose ? fmtWindow(currentClose, use12h) : '';
-    if (closeStr) label += ` · Closes ${closeStr}`;
+    label = closeStr
+      ? t('status.open_closes').replace('{time}', closeStr)
+      : t('status.open');
+  } else if (reason === 'schedule') {
+    const nextStr = nextOpenWindow ? fmtWindow(nextOpenWindow, use12h) : '';
+    label = nextStr
+      ? t('status.closed_opens').replace('{time}', nextStr)
+      : t('status.closed');
   } else {
-    if (reason === 'schedule') {
-      const nextStr = nextOpenWindow ? fmtWindow(nextOpenWindow, use12h) : '';
-      label = nextStr ? `Online ordering closed · Opens ${nextStr}` : 'Online ordering closed';
-    } else {
-      label = 'Online ordering closed';
-    }
+    label = t('status.closed');
   }
 
   return (

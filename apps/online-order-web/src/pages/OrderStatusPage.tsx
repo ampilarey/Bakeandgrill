@@ -563,7 +563,7 @@ export function OrderStatusPage() {
       {/* ── Branded header ───────────────────────────────── */}
       <BrandedHeader
         onBack={() => navigate('/')}
-        backLabel="← Menu"
+        backLabel="← Home"
         rightSlot={liveIndicator ?? undefined}
       />
 

@@ -47,8 +47,8 @@ export function OrderModeToggle({ deliveryBlocked = false, onModeChange }: Props
             aria-pressed={active}
             onClick={() => select(id)}
             style={{
-              minHeight: 36,
-              padding: '0.35rem 1rem',
+              minHeight: 44,
+              padding: '0.4rem 1.1rem',
               border: 'none',
               borderRadius: 999,
               fontFamily: 'inherit',

@@ -1,17 +1,22 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrderMode } from '../../context/OrderModeContext';
 import { useLanguage } from '../../context/LanguageContext';
 
+type ModeKind = 'delivery' | 'pickup';
+
 type CardProps = {
+  kind: ModeKind;
   label: string;
   hint: string;
-  imgSrc: string;
   onClick: () => void;
 };
 
-function ModeCard({ label, hint, imgSrc, onClick }: CardProps) {
-  const [imgFailed, setImgFailed] = useState(false);
+function ModeCard({ kind, label, hint, onClick }: CardProps) {
+  const icon = kind === 'delivery' ? '🛵' : '🏪';
+  const gradient =
+    kind === 'delivery'
+      ? 'linear-gradient(145deg, var(--color-primary-light) 0%, var(--color-surface-alt) 100%)'
+      : 'linear-gradient(145deg, var(--color-surface-alt) 0%, var(--color-primary-light) 100%)';
 
   return (
     <button
@@ -28,35 +33,22 @@ function ModeCard({ label, hint, imgSrc, onClick }: CardProps) {
         padding: 0,
         textAlign: 'left',
         fontFamily: 'inherit',
+        minHeight: 44,
       }}
     >
       <div
+        aria-hidden
         style={{
           height: 120,
           overflow: 'hidden',
-          background: 'var(--color-surface-alt)',
+          background: gradient,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          fontSize: 48,
         }}
       >
-        {!imgFailed ? (
-          <img
-            src={imgSrc}
-            alt=""
-            onError={() => setImgFailed(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        ) : (
-          <div
-            aria-hidden
-            style={{
-              width: '100%',
-              height: '100%',
-              background: 'linear-gradient(145deg, #F7F0E4 0%, #EDE4D4 100%)',
-            }}
-          />
-        )}
+        {icon}
       </div>
       <div style={{ padding: '0.875rem 1rem 1rem' }}>
         <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--color-dark)' }}>
@@ -92,7 +84,7 @@ export function ModeEntryCards() {
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  const handleMode = (mode: 'delivery' | 'pickup') => {
+  const handleMode = (mode: ModeKind) => {
     setMode(mode);
     void navigate('/menu');
   };
@@ -111,15 +103,15 @@ export function ModeEntryCards() {
         style={{ display: 'flex', flexWrap: 'wrap', gap: '0.875rem' }}
       >
         <ModeCard
+          kind="delivery"
           label={t('mode.delivery')}
           hint={t('home.mode_delivery_hint')}
-          imgSrc="/images/mode-delivery.jpg"
           onClick={() => handleMode('delivery')}
         />
         <ModeCard
+          kind="pickup"
           label={t('mode.pickup')}
           hint={t('home.mode_pickup_hint')}
-          imgSrc="/images/mode-pickup.jpg"
           onClick={() => handleMode('pickup')}
         />
       </div>

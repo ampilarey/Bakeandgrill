@@ -244,7 +244,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                     type="button"
                     onClick={() => startEditLine(index, entry)}
                     style={{
-                      minHeight: 32,
+                      minHeight: 44,
                       padding: '0 0.65rem',
                       border: '1px solid var(--color-border)',
                       borderRadius: 8,
@@ -264,7 +264,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
 
             {/* Subtotal (tax & delivery calculated at checkout) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)', fontWeight: 700, color: 'var(--color-text)' }}>
-              <span>Subtotal <span style={{ fontWeight: 500, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(excl. tax &amp; fees)</span></span>
+              <span>{t('cart.subtotal')} <span style={{ fontWeight: 500, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('cart.subtotal_excl')}</span></span>
               <span style={{ color: 'var(--color-primary)', fontSize: '1.05rem' }}>MVR {cartTotal.toFixed(2)}</span>
             </div>
 
@@ -272,7 +272,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
             {cartTotal < freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
-                  <span>🛵 Add <strong style={{ color: 'var(--color-primary)' }}>MVR {(freeDeliveryMvr - cartTotal).toFixed(2)}</strong> for free delivery</span>
+                  <span>🛵 {t('cart.free_delivery_add').replace('{amount}', (freeDeliveryMvr - cartTotal).toFixed(2))}</span>
                   <span>MVR {freeDeliveryMvr}</span>
                 </div>
                 <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 999, overflow: 'hidden' }}>
@@ -282,13 +282,13 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
             )}
             {cartTotal >= freeDeliveryMvr && (
               <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600, textAlign: 'center', padding: '0.35rem', background: 'var(--color-success-bg)', borderRadius: 8 }}>
-                Over the free-delivery threshold — final fee confirmed at checkout
+                {t('cart.free_delivery_met')}
               </div>
             )}
 
             {earnPreviewPoints > 0 && (
               <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '0.35rem 0.5rem', background: 'var(--color-warning-bg, #FFFBEB)', borderRadius: 8, border: '1px solid rgba(252, 211, 77, 0.35)' }}>
-                ⭐ ~{earnPreviewPoints.toLocaleString()} pts you&apos;ll earn
+                ⭐ {t('cart.earn_preview').replace('{n}', earnPreviewPoints.toLocaleString())}
               </div>
             )}
           </div>
@@ -302,7 +302,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
 
         {waitMinutes != null && cart.length > 0 && (
           <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-            Kitchen wait ~{waitMinutes} min
+            {t('cart.kitchen_wait').replace('{n}', String(waitMinutes))}
           </p>
         )}
 
@@ -313,6 +313,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           style={{
             marginTop: '1rem',
             width: '100%',
+            minHeight: 44,
             padding: '0.875rem',
             background: canCheckout ? 'var(--color-primary)' : 'var(--color-text-muted)',
             color: 'white',
@@ -326,7 +327,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           onMouseEnter={(e) => { if (canCheckout) e.currentTarget.style.background = 'var(--color-primary-hover)'; }}
           onMouseLeave={(e) => { if (canCheckout) e.currentTarget.style.background = 'var(--color-primary)'; }}
         >
-          {!isOpen ? "Closed — not taking orders right now" : cart.length === 0 ? "Add items to continue" : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
+          {!isOpen ? t('cart.closed_cta') : cart.length === 0 ? t('cart.add_items_cta') : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
         </button>
       </div>
 
@@ -334,7 +335,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
       {upsellItems.length > 0 && cart.length > 0 && (
         <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1rem' }}>
           <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Add to your order
+            {t('cart.upsell_title')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             {upsellItems.map((item) => (

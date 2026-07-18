@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { DailySpecial } from '../../api/menu';
 import { useLanguage } from '../../context/LanguageContext';
+import { MenuThumb } from '../menu/MenuThumb';
 
 function showPctUnder(badge: string | null | undefined, pct: number | null | undefined): boolean {
   if (!badge || !pct || pct <= 0) return false;
@@ -105,34 +106,8 @@ export function SpecialsCarousel({ specials, apiOrigin }: Props) {
                   flexDirection: 'column',
                 }}
               >
-                <div
-                  style={{
-                    height: 100,
-                    background: 'var(--color-surface-alt)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {imgSrc ? (
-                    <img
-                      src={imgSrc}
-                      alt={sp.item_name ?? ''}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%',
-                        fontSize: 28,
-                        opacity: 0.3,
-                      }}
-                    >
-                      🍽️
-                    </div>
-                  )}
+                <div style={{ height: 100, position: 'relative', overflow: 'hidden' }}>
+                  <MenuThumb src={imgSrc} alt={sp.item_name ?? ''} height={100} />
                   <div
                     style={{
                       position: 'absolute',

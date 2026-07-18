@@ -15,6 +15,7 @@ function fmtOrderingTime(iso: string | null | undefined): string {
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
+import { MenuThumb } from '../components/menu/MenuThumb';
 import { ItemSheet } from '../components/ItemSheet';
 import { CartSheet } from '../components/CartSheet';
 import { CartDrawer } from '../components/CartDrawer';
@@ -196,7 +197,7 @@ export function MenuPage() {
   }, []);
 
   const handleToggleFavourite = (itemId: number) => {
-    if (!isAuthenticated) { showToast('Sign in to save favourites'); return; }
+    if (!isAuthenticated) { showToast(t('menu.toast_sign_in_favourites')); return; }
     setFavouriteIds((prev) => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
@@ -570,7 +571,7 @@ export function MenuPage() {
               color: 'var(--color-text)',
             }}
           >
-            Delivery is unavailable for these items — you&apos;re viewing the <strong>pickup</strong> menu.
+            {t('menu.delivery_fallback_banner')}
           </div>
         )}
       </div>
@@ -591,8 +592,8 @@ export function MenuPage() {
             <section style={{ paddingBottom: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <div>
-                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>Today&apos;s Specials</h2>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0.15rem 0 0' }}>Limited-time deals, today only</p>
+                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>{t('home.specials_title')}</h2>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0.15rem 0 0' }}>{t('home.specials_subtitle')}</p>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.875rem', overflowX: 'auto', paddingBottom: '0.35rem' }}>
@@ -617,11 +618,8 @@ export function MenuPage() {
                         overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column',
                       }}
                     >
-                      <div style={{ height: 100, background: 'var(--color-surface-alt)', position: 'relative', overflow: 'hidden' }}>
-                        {imgSrc
-                          ? <img src={imgSrc} alt={sp.item_name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 28, opacity: 0.3 }}>🍽️</div>
-                        }
+                      <div style={{ height: 100, position: 'relative', overflow: 'hidden' }}>
+                        <MenuThumb src={imgSrc} alt={sp.item_name ?? ''} height={100} />
                         {(badge || sp.discount_pct) && (
                           <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, zIndex: 2 }}>
                             <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>

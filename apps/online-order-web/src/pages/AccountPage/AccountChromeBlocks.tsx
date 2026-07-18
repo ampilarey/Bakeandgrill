@@ -54,7 +54,7 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
           aria-label={t('account.dark_mode')}
           style={{
             minWidth: 52,
-            minHeight: 32,
+            minHeight: 44,
             borderRadius: 999,
             border: '1.5px solid var(--color-border)',
             background: darkMode ? 'var(--color-primary)' : 'var(--color-surface-alt)',
@@ -79,7 +79,7 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
             aria-pressed={push.subscribed}
             style={{
               minWidth: 52,
-              minHeight: 32,
+              minHeight: 44,
               borderRadius: 999,
               border: '1.5px solid var(--color-border)',
               background: push.subscribed ? 'var(--color-primary)' : 'var(--color-surface-alt)',
