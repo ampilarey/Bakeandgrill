@@ -22,7 +22,7 @@ return new class extends Migration
             Schema::table('abandoned_carts', function (Blueprint $table): void {
                 $table->dropForeign(['customer_id']);
             });
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // FK name may differ across environments.
         }
 
@@ -53,7 +53,7 @@ return new class extends Migration
             Schema::table('abandoned_carts', function (Blueprint $table): void {
                 $table->dropForeign(['customer_id']);
             });
-        } catch (\Throwable) {
+        } catch (Throwable) {
         }
 
         Schema::table('abandoned_carts', function (Blueprint $table): void {
