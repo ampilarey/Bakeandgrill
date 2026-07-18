@@ -174,6 +174,27 @@ const TRANSLATIONS: Translations = {
   "auth.new_pass_for":     { en: "New password for +960 {phone}",            dv: "New password for +960 {phone}" },
   "auth.set_password":     { en: "Set password →",                           dv: "Set password →" },
 
+  // ── Phase 6 Account §21 hub strings ──────────────────────────────────────
+  "account.title":              { en: "My Account",           dv: "My Account" },
+  "account.greeting":           { en: "Hi, {name}",           dv: "Hi, {name}" },
+  "account.profile":            { en: "Profile",              dv: "Profile" },
+  "account.addresses":          { en: "Addresses",            dv: "Addresses" },
+  "account.orders":             { en: "Order History",        dv: "Order History" },
+  "account.bookings":           { en: "Bookings",             dv: "Bookings" },
+  "account.extras":             { en: "Account extras",       dv: "Account extras" },
+  "account.loyalty":            { en: "Loyalty",              dv: "Loyalty" },
+  "account.credit":             { en: "Credit Account",       dv: "Credit Account" },
+  "account.deposit":            { en: "Deposit Balance",      dv: "Deposit Balance" },
+  "account.favourites":         { en: "Favourites",           dv: "Favourites" },
+  "account.preorders":          { en: "Pre-orders",           dv: "Pre-orders" },
+  "account.reviews":            { en: "Reviews",              dv: "Reviews" },
+  "account.push_notifications": { en: "Push notifications",   dv: "Push notifications" },
+  "account.logout":             { en: "Sign out",             dv: "Sign out" },
+  "account.logout_confirm":     { en: "Sign out of your account?", dv: "Sign out of your account?" },
+  "account.link_whatsapp":      { en: "WhatsApp us",          dv: "WhatsApp us" },
+  "account.link_viber":         { en: "Message on Viber",     dv: "Message on Viber" },
+  "account.referrals":          { en: "Referrals",            dv: "Referrals" },
+
   // ── Phase 6 RewardsPage strings ────────────────────────────────────────────
   "rewards.sign_in_teaser":     { en: "Sign in to see your loyalty points and referral code",     dv: "Sign in to see your loyalty points and referral code" },
   "rewards.points_available":   { en: "points available",                                         dv: "points available" },

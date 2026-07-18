@@ -9,10 +9,10 @@ type ProfileSectionProps = {
   profile: ReturnType<typeof useAccountProfile>;
   loyalty: LoyaltyAccount | null;
   loyaltyError: string;
-  onLogout: () => void;
+  onLogout?: () => void;
 };
 
-export function ProfileSection({ profile, loyalty, loyaltyError, onLogout }: ProfileSectionProps) {
+export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectionProps) {
   const {
     customer,
     loadingProfile,
@@ -168,22 +168,6 @@ export function ProfileSection({ profile, loyalty, loyaltyError, onLogout }: Pro
         </div>
       </SectionCard>
 
-      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          onClick={() => void onLogout()}
-          style={{
-            padding: '10px 20px',
-            background: 'transparent',
-            border: '1.5px solid var(--color-error, #dc2626)',
-            borderRadius: 10,
-            fontSize: 14, fontWeight: 600,
-            color: 'var(--color-error, #dc2626)',
-            fontFamily: 'inherit', cursor: 'pointer',
-          }}
-        >
-          Sign Out
-        </button>
-      </div>
     </>
   );
 }

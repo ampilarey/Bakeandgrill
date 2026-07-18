@@ -199,3 +199,28 @@ values equal their English counterparts and need native Dhivehi review.
 - `rewards.how_max_pct`        — max percent bullet: "Points can cover up to {pct}% of your order total."
 - `rewards.how_expand`         — expand toggle label: "Details"
 - `rewards.how_collapse`       — collapse toggle label: "Close"
+
+## Phase 6 Account §21 hub keys (added Jul 2026)
+
+New strings for the grouped settings list hub replacing the emoji tab bar —
+all `dv` values equal their English counterparts and need native Dhivehi review.
+
+- `account.title`              — page heading: "My Account"
+- `account.greeting`           — greeting line with {name} placeholder: "Hi, {name}"
+- `account.profile`            — hub section / drill-in title: "Profile"
+- `account.addresses`          — hub section / drill-in title: "Addresses"
+- `account.orders`             — hub section title: "Order History"
+- `account.bookings`           — hub section title: "Bookings"
+- `account.extras`             — hub section title: "Account extras"
+- `account.loyalty`            — row label: "Loyalty"
+- `account.referrals`          — row label: "Referrals"
+- `account.credit`             — row label: "Credit Account"
+- `account.deposit`            — row label: "Deposit Balance"
+- `account.favourites`         — row label: "Favourites"
+- `account.preorders`          — row label: "Pre-orders"
+- `account.reviews`            — row label: "Reviews"
+- `account.push_notifications` — settings row label: "Push notifications"
+- `account.logout`             — sign-out button: "Sign out"
+- `account.logout_confirm`     — confirm dialog text: "Sign out of your account?"
+- `account.link_whatsapp`      — More row: "WhatsApp us"
+- `account.link_viber`         — More row: "Message on Viber"
