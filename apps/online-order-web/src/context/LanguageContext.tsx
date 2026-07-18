@@ -9,6 +9,7 @@ const TRANSLATIONS: Translations = {
   "cart.title": "Your Cart",
   "cart.empty": "Your cart is empty — add something to get started",
   "cart.checkout": "Proceed to Checkout",
+  "cart.checkout_short": "Checkout",
   "checkout.title": "Checkout",
   "reserve.title": "Reserve a Table",
   "order.status.pending": "Order Received",

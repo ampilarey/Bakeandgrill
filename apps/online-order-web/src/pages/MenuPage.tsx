@@ -17,11 +17,11 @@ import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
 import { MenuThumb } from '../components/menu/MenuThumb';
 import { ItemSheet } from '../components/ItemSheet';
-import { CartSheet } from '../components/CartSheet';
 import { CartDrawer } from '../components/CartDrawer';
 import { SearchOverlay } from '../components/SearchOverlay';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useShellNav } from '../context/ShellNavContext';
 import { useToast } from '../context/ToastContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { OrderModeToggle } from '../components/OrderModeToggle';
@@ -73,6 +73,7 @@ export function MenuPage() {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
+  const { openCartSheet } = useShellNav();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -100,7 +101,6 @@ export function MenuPage() {
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
   const [nextDeliveryWindow, setNextDeliveryWindow] = useState<string | null>(null);
 
-  const [cartVisible, setCartVisible] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
@@ -238,15 +238,14 @@ export function MenuPage() {
     }
   }, [searchParams, categories, items]);
 
-  // Mobile: header/bottom-nav "Cart" links use ?openCart=1 — open sheet (they don't tap the FAB).
+  // Mobile: legacy ?openCart=1 links open the shell cart sheet.
   useEffect(() => {
     if (searchParams.get('openCart') !== '1') return;
-    const sheet = window.matchMedia('(max-width: 900px)').matches;
-    if (sheet) setCartVisible(true);
+    if (window.matchMedia('(max-width: 900px)').matches) openCartSheet();
     const next = new URLSearchParams(searchParams);
     next.delete('openCart');
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, openCartSheet]);
 
   const filteredItems = useMemo(() => {
     let list = items;
@@ -737,13 +736,6 @@ export function MenuPage() {
           <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} />
         </aside>
       </div>
-
-      <CartSheet
-        open={cartVisible}
-        onClose={() => setCartVisible(false)}
-        isOpen={isOpen ?? true}
-        closedMessage={closedMessage}
-      />
 
       <SearchOverlay
         open={searchOpen}
