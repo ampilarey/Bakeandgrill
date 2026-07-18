@@ -1,6 +1,5 @@
 /**
- * Menu product card (extracted from MenuCard). Phase 3 PR1: same UI/behaviour;
- * §15 restyle lands with the MenuPage swap.
+ * Menu product card. Phase 3 PR1: same UI/behaviour; §15 restyle lands with the MenuPage swap.
  */
 import { useState } from 'react';
 import { API_ORIGIN } from '../../api';

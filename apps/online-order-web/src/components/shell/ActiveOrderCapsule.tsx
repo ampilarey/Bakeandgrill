@@ -14,7 +14,7 @@ const STATUS_KEYS: Record<string, string> = {
 };
 
 /**
- * AppShell pill above the floating cart (Home + Orders). Replaces OrderStatusBar.
+ * AppShell pill above the floating cart (Home + Orders).
  */
 export function ActiveOrderCapsule() {
   const { t } = useLanguage();

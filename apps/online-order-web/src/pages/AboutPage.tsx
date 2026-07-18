@@ -1,9 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { interpolateCopy, useSiteSettingsContext } from '../context/SiteSettingsContext';
+import { PageHeader } from '../components/shell/PageHeader';
 
 export function AboutPage() {
   usePageTitle('About');
+  const navigate = useNavigate();
   const { settings: s, aboutValues, text } = useSiteSettingsContext();
   const address  = s.business_address  || 'Majeedhee Magu, Malé, Maldives';
   const landmark = s.business_landmark || 'Near the ferry terminal';
@@ -17,12 +19,11 @@ export function AboutPage() {
   const storyParagraphs = interpolateCopy(storyRaw, { address }).split(/\n\n+/).filter(Boolean);
 
   return (
-    <div style={{ maxWidth: '860px', margin: '0 auto', padding: '3rem var(--page-gutter)' }}>
+    <>
+      <PageHeader title={text('about_page_title', 'About Bake & Grill')} onBack={() => navigate(-1)} />
+      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '1.5rem var(--page-gutter) 3rem' }}>
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🍽️</div>
-        <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.75rem)', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '1rem' }}>
-          {text('about_page_title', 'About Bake & Grill')}
-        </h1>
         <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)', lineHeight: 1.7, maxWidth: '560px', margin: '0 auto' }}>
           {tagline}
         </p>
@@ -91,5 +92,6 @@ export function AboutPage() {
         </Link>
       </div>
     </div>
+    </>
   );
 }

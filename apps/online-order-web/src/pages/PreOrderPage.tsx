@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchItems, createPreOrder } from '../api';
 import type { Item, PreOrderResult } from '../api';
 import { AuthBlock } from '../components/AuthBlock';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
+import { usePageTitle } from '../hooks/usePageTitle';
+import { PageHeader } from '../components/shell/PageHeader';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function mvrToDisplay(mvr: number) { return mvr.toFixed(2); }
@@ -18,8 +20,9 @@ function minFulfillmentDate(): string {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export function PreOrderPage() {
+  usePageTitle('Pre-Order');
+  const navigate = useNavigate();
   const { settings: s, text } = useSiteSettingsContext();
-  const siteName = s.site_name || 'Bake & Grill';
   const waLink = s.business_whatsapp || 'https://wa.me/9609120011';
   let confirmSteps: { text?: string }[] = [];
   try {
@@ -44,7 +47,6 @@ export function PreOrderPage() {
   const [result, setResult] = useState<PreOrderResult | null>(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => { document.title = `Pre-Order — ${siteName}`; }, [siteName]);
   useEffect(() => {
     fetchItems().then(({ data }) => setItems(data ?? [])).catch((e: Error) => setError(e.message || 'Failed to load menu items.'));
   }, []);
@@ -90,12 +92,13 @@ export function PreOrderPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={S.page}>
+    <>
+      <PageHeader title={text('preorder_page_title', 'Event Pre-Order')} onBack={() => navigate(-1)} />
+      <div style={S.page}>
       <div style={S.container}>
 
-        {/* Header */}
+        {/* Subtitle + notice */}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <h1 style={S.heading}>{text('preorder_page_title', 'Event Pre-Order')}</h1>
           <p style={S.sub}>
             {text('preorder_page_subtitle', "Ordering for a gathering or event? Select your items, choose a fulfillment date, and we'll prepare everything fresh for collection.")}
           </p>
@@ -333,6 +336,7 @@ export function PreOrderPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -340,7 +344,6 @@ export function PreOrderPage() {
 const S: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: 'var(--color-bg)', padding: '3rem var(--page-gutter) 5rem' },
   container: { maxWidth: '900px', margin: '0 auto' },
-  heading: { fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '0.75rem' },
   sub: { color: 'var(--color-text-muted)', fontSize: '1rem', lineHeight: 1.7, maxWidth: '540px', margin: '0 auto 1rem' },
   notice: {
     display: 'inline-block', background: 'var(--color-warning-bg)', border: '1px solid rgba(202,138,4,0.3)',

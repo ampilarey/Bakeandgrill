@@ -1,6 +1,6 @@
 /**
- * Item customisation sheet (extracted from ItemModal). Phase 3 PR2:
- * same UI; edit-mode props call CartContext.updateEntry when editIndex is set.
+ * Item customisation sheet. Phase 3 PR2: same UI;
+ * edit-mode props call CartContext.updateEntry when editIndex is set.
  */
 import { useEffect, useRef, useState } from 'react';
 import { fetchCartRecommendations, getItemReviews, getItemPhotos, API_ORIGIN } from '../api';

@@ -1,7 +1,10 @@
-import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
+import { usePageTitle } from '../hooks/usePageTitle';
+import { PageHeader } from '../components/shell/PageHeader';
 
 export function PrivacyPage() {
+  const navigate = useNavigate();
   const { settings: s, text } = useSiteSettingsContext();
   const siteName = s.site_name      || 'Bake & Grill';
   const phone    = s.business_phone || '+960 912 0011';
@@ -11,23 +14,26 @@ export function PrivacyPage() {
   const pageTitle = text('privacy_page_title', 'Privacy Policy');
   const cmsBody = s.legal_privacy_body?.trim();
 
-  useEffect(() => { document.title = `${pageTitle} — ${siteName}`; }, [siteName, pageTitle]);
+  usePageTitle(pageTitle);
 
   if (cmsBody) {
     return (
-      <div style={S.wrap}>
-        <h1 style={S.h1}>{pageTitle}</h1>
-        <p style={S.updated}><em>Last updated: {new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' })}</em></p>
-        {cmsBody.split(/\n\n+/).filter(Boolean).map((para, i) => (
-          <p key={i} style={{ ...S.body, marginBottom: '1.25rem' }}>{para}</p>
-        ))}
-      </div>
+      <>
+        <PageHeader title={pageTitle} onBack={() => navigate(-1)} />
+        <div style={S.wrap}>
+          <p style={S.updated}><em>Last updated: {new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' })}</em></p>
+          {cmsBody.split(/\n\n+/).filter(Boolean).map((para, i) => (
+            <p key={i} style={{ ...S.body, marginBottom: '1.25rem' }}>{para}</p>
+          ))}
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={S.wrap}>
-      <h1 style={S.h1}>{pageTitle}</h1>
+    <>
+      <PageHeader title={pageTitle} onBack={() => navigate(-1)} />
+      <div style={S.wrap}>
       <p style={S.updated}><em>Last updated: {new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' })}</em></p>
 
       <Section title="Introduction">
@@ -112,6 +118,7 @@ export function PrivacyPage() {
         </ul>
       </Section>
     </div>
+    </>
   );
 }
 

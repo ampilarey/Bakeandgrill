@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchReservationSlots, createReservation } from "../api";
 import type { ReservationSlot, CustomerReservation } from "../api";
+import { usePageTitle } from "../hooks/usePageTitle";
+import { PageHeader } from "../components/shell/PageHeader";
 
 const tomorrow = () => {
   const d = new Date();
@@ -12,9 +14,8 @@ const tomorrow = () => {
 const today = () => new Date().toISOString().split("T")[0];
 
 export function ReservationPage() {
+  usePageTitle('Reserve a Table');
   const navigate = useNavigate();
-
-  useEffect(() => { document.title = 'Reserve a Table — Bake & Grill'; }, []);
 
   const [step, setStep] = useState<"form" | "slots" | "confirm" | "done">("form");
   const [loading, setLoading] = useState(false);
@@ -68,13 +69,9 @@ export function ReservationPage() {
   };
 
   return (
-    <div style={s.page}>
-      {/* Header */}
-      <div style={s.header}>
-        <button style={s.back} onClick={() => navigate("/menu")}>← Menu</button>
-        <h1 style={s.title}>Table Reservation</h1>
-      </div>
-
+    <>
+      <PageHeader title="Table Reservation" onBack={() => navigate(-1)} />
+      <div style={s.page}>
       <div style={s.card}>
         {step === "done" && reservation ? (
           <div style={{ textAlign: "center" }}>
@@ -169,14 +166,12 @@ export function ReservationPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
 const s: Record<string, React.CSSProperties> = {
   page: { minHeight: "100vh", background: "var(--color-bg)", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" },
-  header: { background: "var(--color-footer-bg)", padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 },
-  back: { background: "none", border: "none", color: "rgba(255,255,255,0.75)", cursor: "pointer", fontSize: 15 },
-  title: { color: "white", fontSize: 22, fontWeight: 700, margin: 0 },
   card: { maxWidth: 520, margin: "32px auto", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 16, padding: 32, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" },
   heading: { fontSize: 22, fontWeight: 700, margin: "0 0 8px", color: "var(--color-text)" },
   sub: { fontSize: 15, color: "var(--color-text-muted)", margin: "0 0 16px" },
