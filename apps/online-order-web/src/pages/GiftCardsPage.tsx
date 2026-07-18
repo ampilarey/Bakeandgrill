@@ -1,17 +1,59 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '../components/shell/PageHeader';
+import { AuthBlock } from '../components/AuthBlock';
+import { fetchCustomerOrders } from '../api';
+import type { Order } from '../api';
 import { checkGiftCardBalance } from '../api/promotions';
+import { isGiftCardOrder } from '../utils/giftCardOrder';
+
+function ordersFromResponse(res: unknown): Order[] {
+  if (Array.isArray(res)) return res as Order[];
+  if (!res || typeof res !== 'object') return [];
+  const o = res as Record<string, unknown>;
+  const d = o.data;
+  if (Array.isArray(d)) return d as Order[];
+  if (d && typeof d === 'object') {
+    const inner = (d as Record<string, unknown>).data;
+    if (Array.isArray(inner)) return inner as Order[];
+  }
+  if (Array.isArray(o.orders)) return o.orders as Order[];
+  return [];
+}
+
+function fmtDate(iso: string | null | undefined) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return '—';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function purchaseStatusLabel(order: Order, t: (k: string) => string): string {
+  if (order.status === 'completed' || order.payment_status === 'paid') {
+    if (order.status === 'completed') return t('gift.history_ready');
+    return t('gift.history_paid');
+  }
+  if (order.status === 'cancelled') return t('gift.history_cancelled');
+  if (order.status === 'payment_pending' || order.payment_status === 'unpaid') {
+    return t('gift.history_pending');
+  }
+  return order.status;
+}
 
 /**
  * Gift cards hub — bottom-nav destination.
  * Buy flow lives at /gift-cards/buy; balance check is inline (no login required).
+ * Purchase history shows for signed-in customers.
  */
 export function GiftCardsPage() {
   const { t } = useLanguage();
   usePageTitle(t('gift.hub_title'));
+  const { isAuthenticated, authReady, setAuth } = useAuth();
 
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,6 +64,45 @@ export function GiftCardsPage() {
     held_balance: number;
     expires_at: string | null;
   } | null>(null);
+
+  const [purchases, setPurchases] = useState<Order[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [showSignIn, setShowSignIn] = useState(false);
+
+  useEffect(() => {
+    if (!authReady) return;
+    if (!isAuthenticated) {
+      setPurchases([]);
+      setHistoryLoading(false);
+      setHistoryError('');
+      return;
+    }
+
+    let cancelled = false;
+    setHistoryLoading(true);
+    setHistoryError('');
+    fetchCustomerOrders()
+      .then((res) => {
+        if (cancelled) return;
+        const list = ordersFromResponse(res)
+          .filter(isGiftCardOrder)
+          .sort((a, b) => {
+            const ta = new Date(a.created_at ?? 0).getTime();
+            const tb = new Date(b.created_at ?? 0).getTime();
+            return tb - ta;
+          });
+        setPurchases(list);
+      })
+      .catch(() => {
+        if (!cancelled) setHistoryError(t('gift.history_fail'));
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [authReady, isAuthenticated, t]);
 
   const handleCheck = async () => {
     const trimmed = code.trim().toUpperCase();
@@ -63,6 +144,86 @@ export function GiftCardsPage() {
           </span>
           <span style={cardChevron} aria-hidden>→</span>
         </Link>
+
+        <section
+          style={{
+            border: '1.5px solid var(--color-border)',
+            borderRadius: 16,
+            background: 'var(--color-surface)',
+            padding: '1rem 1.1rem',
+          }}
+        >
+          <p style={{ ...cardTitle, marginBottom: 4 }}>{t('gift.history_title')}</p>
+          <p style={{ ...cardSub, marginBottom: 12 }}>{t('gift.history_sub')}</p>
+
+          {!authReady && (
+            <div className="skeleton" style={{ height: 64, borderRadius: 12 }} />
+          )}
+
+          {authReady && !isAuthenticated && !showSignIn && (
+            <button
+              type="button"
+              onClick={() => setShowSignIn(true)}
+              style={{
+                ...inputStyle,
+                background: 'var(--color-surface-alt)',
+                border: '1.5px solid var(--color-border)',
+                fontWeight: 700,
+                color: 'var(--color-primary)',
+                cursor: 'pointer',
+              }}
+            >
+              {t('gift.history_sign_in')}
+            </button>
+          )}
+
+          {authReady && !isAuthenticated && showSignIn && (
+            <AuthBlock onSuccess={(name) => { setAuth(name); setShowSignIn(false); }} />
+          )}
+
+          {authReady && isAuthenticated && historyLoading && (
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>
+              {t('common.loading')}…
+            </p>
+          )}
+
+          {authReady && isAuthenticated && historyError && (
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-error, #dc2626)' }}>
+              {historyError}
+            </p>
+          )}
+
+          {authReady && isAuthenticated && !historyLoading && !historyError && purchases.length === 0 && (
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+              {t('gift.history_empty')}
+            </p>
+          )}
+
+          {authReady && isAuthenticated && purchases.length > 0 && (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {purchases.map((order) => (
+                <li key={order.id}>
+                  <Link
+                    to={`/gift-cards/success?orderId=${order.id}`}
+                    style={historyRow}
+                  >
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--color-dark)' }}>
+                        {order.order_number ?? `#${order.id}`}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                        {fmtDate(order.created_at)} · {purchaseStatusLabel(order, t)}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
+                      MVR {Number(order.total).toFixed(2)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <section
           style={{
@@ -156,13 +317,6 @@ export function GiftCardsPage() {
             </div>
           )}
         </section>
-
-        <Link
-          to="/account"
-          style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 600, alignSelf: 'flex-start' }}
-        >
-          {t('gift.open_account')}
-        </Link>
       </div>
     </div>
   );
@@ -201,6 +355,19 @@ const cardChevron: CSSProperties = {
   fontSize: 18,
   fontWeight: 700,
   color: 'var(--color-primary)',
+};
+
+const historyRow: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 10,
+  padding: '12px 14px',
+  background: 'var(--color-surface-alt)',
+  borderRadius: 12,
+  textDecoration: 'none',
+  color: 'inherit',
+  minHeight: 52,
 };
 
 const labelStyle: CSSProperties = {

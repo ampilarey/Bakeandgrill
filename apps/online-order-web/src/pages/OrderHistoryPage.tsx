@@ -100,11 +100,13 @@ export function OrderHistoryPage() {
     }
   };
 
-  const activeOrders = orders.filter(
-    (o) => !isGiftCardOrder(o) && !['completed', 'cancelled'].includes(o.status),
+  // Food orders only — gift card purchases live under Gifts.
+  const foodOrders = orders.filter((o) => !isGiftCardOrder(o));
+  const activeOrders = foodOrders.filter(
+    (o) => !['completed', 'cancelled'].includes(o.status),
   );
-  const pastOrders = orders.filter(
-    (o) => isGiftCardOrder(o) || ['completed', 'cancelled'].includes(o.status),
+  const pastOrders = foodOrders.filter(
+    (o) => ['completed', 'cancelled'].includes(o.status),
   );
 
   const typeLabel = (type: string) => {

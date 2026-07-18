@@ -43,7 +43,7 @@ export function OrderHistorySection() {
     fetchCustomerOrders()
       .then((res) => {
         if (cancelled) return;
-        const list = ordersFromResponse(res);
+        const list = ordersFromResponse(res).filter((o) => !isGiftCardOrder(o));
         setOrders(list.slice(0, 3));
       })
       .catch(() => {
