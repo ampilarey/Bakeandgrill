@@ -245,4 +245,118 @@ class GiftCardEnhancementsTest extends TestCase
 
         Mail::assertSent(GiftCardMail::class, fn (GiftCardMail $mail) => $mail->hasTo('resend@example.com'));
     }
+
+    public function test_admin_can_top_up_gift_card(): void
+    {
+        $card = GiftCard::create([
+            'code_hash' => hash('sha256', 'topup-card'),
+            'code_last4' => 'TPUP',
+            'initial_balance' => 50,
+            'current_balance' => 20,
+            'status' => 'active',
+        ]);
+
+        $this->postJson("/api/admin/gift-cards/{$card->id}/top-up", [
+            'amount' => 30,
+        ], $this->adminHeaders)
+            ->assertOk()
+            ->assertJsonPath('gift_card.current_balance', 50)
+            ->assertJsonPath('gift_card.initial_balance', 80);
+
+        $card->refresh();
+        $this->assertEquals(50.0, (float) $card->current_balance);
+        $this->assertEquals(80.0, (float) $card->initial_balance);
+        $this->assertDatabaseHas('gift_card_transactions', [
+            'gift_card_id' => $card->id,
+            'type' => 'load',
+            'amount' => 30,
+            'balance_after' => 50,
+        ]);
+    }
+
+    public function test_admin_top_up_revives_depleted_card(): void
+    {
+        $card = GiftCard::create([
+            'code_hash' => hash('sha256', 'depleted-topup'),
+            'code_last4' => 'DPL2',
+            'initial_balance' => 40,
+            'current_balance' => 0,
+            'status' => 'depleted',
+        ]);
+
+        $this->postJson("/api/admin/gift-cards/{$card->id}/top-up", [
+            'amount' => 25,
+        ], $this->adminHeaders)
+            ->assertOk()
+            ->assertJsonPath('gift_card.status', 'active')
+            ->assertJsonPath('gift_card.current_balance', 25);
+
+        $this->assertSame('active', $card->fresh()->status);
+    }
+
+    public function test_admin_cannot_top_up_cancelled_card(): void
+    {
+        $card = GiftCard::create([
+            'code_hash' => hash('sha256', 'cancelled-topup'),
+            'code_last4' => 'CNCL',
+            'initial_balance' => 40,
+            'current_balance' => 40,
+            'status' => 'cancelled',
+        ]);
+
+        $this->postJson("/api/admin/gift-cards/{$card->id}/top-up", [
+            'amount' => 10,
+        ], $this->adminHeaders)
+            ->assertStatus(422);
+    }
+
+    public function test_admin_can_extend_and_clear_expiry(): void
+    {
+        $card = GiftCard::create([
+            'code_hash' => hash('sha256', 'expiry-card'),
+            'code_last4' => 'EXPR',
+            'initial_balance' => 40,
+            'current_balance' => 40,
+            'status' => 'expired',
+            'expires_at' => now()->subDay()->toDateString(),
+        ]);
+
+        $future = now()->addMonths(3)->toDateString();
+
+        $this->patchJson("/api/admin/gift-cards/{$card->id}/expiry", [
+            'expires_at' => $future,
+        ], $this->adminHeaders)
+            ->assertOk()
+            ->assertJsonPath('gift_card.status', 'active')
+            ->assertJsonPath('gift_card.expires_at', $future);
+
+        $this->assertSame('active', $card->fresh()->status);
+
+        $this->patchJson("/api/admin/gift-cards/{$card->id}/expiry", [
+            'expires_at' => null,
+        ], $this->adminHeaders)
+            ->assertOk()
+            ->assertJsonPath('gift_card.expires_at', null);
+
+        $this->assertNull($card->fresh()->expires_at);
+    }
+
+    public function test_admin_index_includes_purchased_by(): void
+    {
+        $buyer = $this->makeCustomer(['name' => 'Gift Buyer', 'phone' => '+9607777111']);
+
+        GiftCard::create([
+            'code_hash' => hash('sha256', 'purchased-card'),
+            'code_last4' => 'BUYR',
+            'initial_balance' => 100,
+            'current_balance' => 100,
+            'status' => 'active',
+            'purchased_by_customer_id' => $buyer->id,
+        ]);
+
+        $this->getJson('/api/admin/gift-cards', $this->adminHeaders)
+            ->assertOk()
+            ->assertJsonPath('data.0.purchased_by.id', $buyer->id)
+            ->assertJsonPath('data.0.purchased_by.name', 'Gift Buyer');
+    }
 }

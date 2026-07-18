@@ -567,7 +567,10 @@ class GiftCardController extends Controller
             'q' => ['sometimes', 'nullable', 'string', 'max:64'],
         ]);
 
-        $query = GiftCard::with('issuedTo:id,name,phone')->orderByDesc('created_at');
+        $query = GiftCard::with([
+            'issuedTo:id,name,phone',
+            'purchasedBy:id,name,phone',
+        ])->orderByDesc('created_at');
 
         if (!empty($validated['status'])) {
             $query->where('status', $validated['status']);
@@ -582,6 +585,10 @@ class GiftCardController extends Controller
                     $builder->orWhere('id', (int) $q);
                 }
                 $builder->orWhereHas('issuedTo', function ($c) use ($q) {
+                    $c->where('name', 'like', '%' . $q . '%')
+                        ->orWhere('phone', 'like', '%' . $q . '%');
+                });
+                $builder->orWhereHas('purchasedBy', function ($c) use ($q) {
                     $c->where('name', 'like', '%' . $q . '%')
                         ->orWhere('phone', 'like', '%' . $q . '%');
                 });
@@ -628,14 +635,115 @@ class GiftCardController extends Controller
             $request,
         );
 
-        return response()->json(['gift_card' => $this->format($card->fresh('issuedTo'))]);
+        return response()->json(['gift_card' => $this->format($card->fresh(['issuedTo', 'purchasedBy']))]);
+    }
+
+    // ── Admin: top-up balance ─────────────────────────────────────────────────
+
+    public function topUp(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:1', 'max:5000'],
+        ]);
+
+        return DB::transaction(function () use ($request, $validated, $id): JsonResponse {
+            /** @var GiftCard|null $card */
+            $card = GiftCard::query()->lockForUpdate()->find($id);
+            if (!$card) {
+                return response()->json(['message' => 'Gift card not found.'], 404);
+            }
+
+            if ($card->status === 'cancelled') {
+                return response()->json(['message' => 'Cancelled gift cards cannot be topped up.'], 422);
+            }
+
+            $amount = round((float) $validated['amount'], 2);
+            $newBalance = round((float) $card->current_balance + $amount, 2);
+            $newInitial = round((float) $card->initial_balance + $amount, 2);
+
+            $status = $card->status;
+            if ($status === 'depleted' || $status === 'expired') {
+                $stillExpired = $card->expires_at && $card->expires_at->isPast();
+                $status = $stillExpired ? 'expired' : 'active';
+            }
+
+            $card->update([
+                'current_balance' => $newBalance,
+                'initial_balance' => $newInitial,
+                'status' => $status,
+            ]);
+
+            GiftCardTransaction::create([
+                'gift_card_id' => $card->id,
+                'amount' => $amount,
+                'type' => 'load',
+                'balance_after' => $newBalance,
+            ]);
+
+            $this->audit->log(
+                'gift_card.topped_up',
+                'GiftCard',
+                $card->id,
+                [],
+                ['amount' => $amount, 'balance_after' => $newBalance, 'status' => $status],
+                ['masked_code' => $card->masked_code],
+                $request,
+            );
+
+            return response()->json([
+                'gift_card' => $this->format($card->fresh(['issuedTo', 'purchasedBy'])),
+            ]);
+        });
+    }
+
+    // ── Admin: extend / clear expiry ──────────────────────────────────────────
+
+    public function extendExpiry(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'expires_at' => ['nullable', 'date', 'after_or_equal:today'],
+        ]);
+
+        $card = GiftCard::findOrFail($id);
+
+        if ($card->status === 'cancelled') {
+            return response()->json(['message' => 'Cancelled gift cards cannot be updated.'], 422);
+        }
+
+        $previousExpiry = $card->expires_at?->toDateString();
+        $previousStatus = $card->status;
+        $expiresAt = $validated['expires_at'] ?? null;
+
+        $status = $card->status;
+        if ($status === 'expired') {
+            $status = ((float) $card->current_balance > 0) ? 'active' : 'depleted';
+        }
+
+        $card->update([
+            'expires_at' => $expiresAt,
+            'status' => $status,
+        ]);
+
+        $this->audit->log(
+            'gift_card.expiry_updated',
+            'GiftCard',
+            $card->id,
+            ['expires_at' => $previousExpiry, 'status' => $previousStatus],
+            ['expires_at' => $expiresAt, 'status' => $status],
+            ['masked_code' => $card->masked_code],
+            $request,
+        );
+
+        return response()->json([
+            'gift_card' => $this->format($card->fresh(['issuedTo', 'purchasedBy'])),
+        ]);
     }
 
     // ── Admin: transaction ledger ─────────────────────────────────────────────
 
     public function transactions(int $id): JsonResponse
     {
-        $card = GiftCard::with('issuedTo:id,name,phone')->findOrFail($id);
+        $card = GiftCard::with(['issuedTo:id,name,phone', 'purchasedBy:id,name,phone'])->findOrFail($id);
 
         $rows = GiftCardTransaction::where('gift_card_id', $card->id)
             ->orderByDesc('created_at')
@@ -667,6 +775,7 @@ class GiftCardController extends Controller
             'expires_at' => $c->expires_at?->toDateString(),
             'created_at' => $c->created_at?->toIso8601String(),
             'issued_to' => $c->issuedTo ? ['id' => $c->issuedTo->id, 'name' => $c->issuedTo->name] : null,
+            'purchased_by' => $c->purchasedBy ? ['id' => $c->purchasedBy->id, 'name' => $c->purchasedBy->name] : null,
         ];
     }
 }

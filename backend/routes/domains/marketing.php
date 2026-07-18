@@ -86,6 +86,8 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
         Route::post('/admin/gift-cards/send-email', [App\Http\Controllers\Api\GiftCardController::class, 'sendEmail']);
         Route::get('/admin/gift-cards/{id}/transactions', [App\Http\Controllers\Api\GiftCardController::class, 'transactions']);
         Route::post('/admin/gift-cards/{id}/cancel', [App\Http\Controllers\Api\GiftCardController::class, 'cancel']);
+        Route::post('/admin/gift-cards/{id}/top-up', [App\Http\Controllers\Api\GiftCardController::class, 'topUp']);
+        Route::patch('/admin/gift-cards/{id}/expiry', [App\Http\Controllers\Api\GiftCardController::class, 'extendExpiry']);
         Route::get('/admin/referrals', [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
         Route::get('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'show']);
         Route::patch('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'update']);

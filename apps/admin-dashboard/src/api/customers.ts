@@ -351,6 +351,7 @@ export interface GiftCard {
   status: 'active' | 'depleted' | 'expired' | 'cancelled';
   expires_at: string | null;
   issued_to: { id: number; name: string } | null;
+  purchased_by: { id: number; name: string } | null;
   created_at?: string;
 }
 
@@ -425,6 +426,26 @@ export async function checkGiftCardBalance(code: string): Promise<{
 
 export async function cancelGiftCard(id: number): Promise<{ gift_card: GiftCard }> {
   return req(`/admin/gift-cards/${id}/cancel`, { method: 'POST' });
+}
+
+export async function topUpGiftCard(
+  id: number,
+  amount: number,
+): Promise<{ gift_card: GiftCard }> {
+  return req(`/admin/gift-cards/${id}/top-up`, {
+    method: 'POST',
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export async function extendGiftCardExpiry(
+  id: number,
+  expiresAt: string | null,
+): Promise<{ gift_card: GiftCard }> {
+  return req(`/admin/gift-cards/${id}/expiry`, {
+    method: 'PATCH',
+    body: JSON.stringify({ expires_at: expiresAt }),
+  });
 }
 
 export async function fetchGiftCardTransactions(id: number): Promise<{ gift_card: GiftCard; transactions: GiftCardTransaction[] }> {

@@ -12,6 +12,8 @@ import {
   sendGiftCardEmail,
   checkGiftCardBalance,
   cancelGiftCard,
+  topUpGiftCard,
+  extendGiftCardExpiry,
   fetchGiftCardTransactions,
   type GiftCard,
   type GiftCardTransaction,
@@ -86,6 +88,16 @@ export default function GiftCardsPage() {
   const [ledgerRows, setLedgerRows] = useState<GiftCardTransaction[]>([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [actionError, setActionError] = useState('');
+
+  const [topUpCard, setTopUpCard] = useState<GiftCard | null>(null);
+  const [topUpAmount, setTopUpAmount] = useState('');
+  const [topUpError, setTopUpError] = useState('');
+  const [topUpSaving, setTopUpSaving] = useState(false);
+
+  const [expiryCard, setExpiryCard] = useState<GiftCard | null>(null);
+  const [expiryDate, setExpiryDate] = useState('');
+  const [expiryError, setExpiryError] = useState('');
+  const [expirySaving, setExpirySaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -236,6 +248,49 @@ export default function GiftCardsPage() {
     } catch (e) { setActionError((e as Error).message); }
   };
 
+  const openTopUp = (card: GiftCard) => {
+    setTopUpCard(card);
+    setTopUpAmount('');
+    setTopUpError('');
+  };
+
+  const handleTopUp = async () => {
+    if (!topUpCard) return;
+    const amt = parseFloat(topUpAmount);
+    if (!topUpAmount || isNaN(amt) || amt < 1 || amt > 5000) {
+      setTopUpError('Enter an amount between MVR 1 and 5000.');
+      return;
+    }
+    setTopUpSaving(true);
+    setTopUpError('');
+    try {
+      await topUpGiftCard(topUpCard.id, amt);
+      setTopUpCard(null);
+      void load();
+      if (ledgerCard?.id === topUpCard.id) void openLedger(topUpCard);
+    } catch (e) { setTopUpError((e as Error).message); }
+    finally { setTopUpSaving(false); }
+  };
+
+  const openExpiry = (card: GiftCard) => {
+    setExpiryCard(card);
+    setExpiryDate(card.expires_at ?? '');
+    setExpiryError('');
+  };
+
+  const handleExpirySave = async () => {
+    if (!expiryCard) return;
+    setExpirySaving(true);
+    setExpiryError('');
+    try {
+      await extendGiftCardExpiry(expiryCard.id, expiryDate.trim() || null);
+      setExpiryCard(null);
+      void load();
+      if (ledgerCard?.id === expiryCard.id) void openLedger(expiryCard);
+    } catch (e) { setExpiryError((e as Error).message); }
+    finally { setExpirySaving(false); }
+  };
+
   const printDataFor = (card: GiftCard, fullCode?: string): PrintCardData => ({
     type: 'gift_card',
     code: fullCode ?? card.masked_code,
@@ -349,6 +404,14 @@ export default function GiftCardsPage() {
                   ) : (
                     <span style={{ color: '#9C8E7E' }}>—</span>
                   )}
+                  {card.purchased_by && (
+                    <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 2 }}>
+                      Bought by{' '}
+                      <Link to={`/customers?customer=${card.purchased_by.id}`} style={{ color: '#6B5D4F', textDecoration: 'none' }}>
+                        {card.purchased_by.name}
+                      </Link>
+                    </div>
+                  )}
                 </td>
                 <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
                 <td style={{ ...TD, fontWeight: 700, color: card.current_balance > 0 ? '#166534' : '#9C8E7E' }}>MVR {Number(card.current_balance).toFixed(2)}</td>
@@ -358,6 +421,14 @@ export default function GiftCardsPage() {
                 <td style={{ ...TD, whiteSpace: 'nowrap' }}>
                   <Btn small variant="secondary" onClick={() => void openLedger(card)}>Ledger</Btn>
                   {' '}
+                  {card.status !== 'cancelled' && (
+                    <>
+                      <Btn small variant="secondary" onClick={() => openTopUp(card)}>Top up</Btn>
+                      {' '}
+                      <Btn small variant="secondary" onClick={() => openExpiry(card)}>Expiry</Btn>
+                      {' '}
+                    </>
+                  )}
                   {(card.status === 'active' || card.status === 'expired') && (
                     <Btn small variant="secondary" onClick={() => void handleCancel(card)}>Cancel</Btn>
                   )}
@@ -370,11 +441,58 @@ export default function GiftCardsPage() {
 
       <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
 
+      {topUpCard && (
+        <Modal title={`Top up · ${topUpCard.masked_code}`} onClose={() => setTopUpCard(null)}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+            Current balance: MVR {Number(topUpCard.current_balance).toFixed(2)}
+          </p>
+          {topUpError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{topUpError}</p>}
+          <Input
+            label="Amount (MVR)"
+            type="number"
+            min={1}
+            max={5000}
+            step="0.01"
+            value={topUpAmount}
+            onChange={setTopUpAmount}
+            placeholder="e.g. 100"
+          />
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setTopUpCard(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleTopUp()} disabled={topUpSaving}>
+              {topUpSaving ? 'Saving…' : 'Top up'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {expiryCard && (
+        <Modal title={`Expiry · ${expiryCard.masked_code}`} onClose={() => setExpiryCard(null)}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+            Leave blank to clear expiry. Expired cards with balance become active again.
+          </p>
+          {expiryError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{expiryError}</p>}
+          <Input
+            label="Expires on"
+            type="date"
+            value={expiryDate}
+            onChange={setExpiryDate}
+          />
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setExpiryCard(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleExpirySave()} disabled={expirySaving}>
+              {expirySaving ? 'Saving…' : 'Save expiry'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
       {ledgerCard && (
         <Modal title={`Ledger · ${ledgerCard.masked_code}`} onClose={() => setLedgerCard(null)}>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
             Status: <strong>{STATUS_LABEL[ledgerCard.status] ?? ledgerCard.status}</strong>
             {' · '}Balance: MVR {Number(ledgerCard.current_balance).toFixed(2)}
+            {ledgerCard.purchased_by ? ` · Bought by ${ledgerCard.purchased_by.name}` : ''}
           </p>
           {ledgerLoading ? (
             <p style={{ color: '#9C8E7E' }}>Loading…</p>
