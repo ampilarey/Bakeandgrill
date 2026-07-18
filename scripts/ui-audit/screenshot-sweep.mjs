@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Lightweight grid check for MenuPage §15 (2 columns at 390px).
- * Asserts all MenuPage product grids use minmax(130px, …).
+ * Grid check for MenuPage §15 (2 columns at phone widths).
+ * Asserts MenuPage uses .menu-grid (not inline minmax) and CSS is deterministic:
+ *   <768px → repeat(2, 1fr); ≥768px → auto-fill minmax(190px).
  * Optional: if Playwright is installed and ORDER_AUDIT_URL is set, capture
- * a 390px menu screenshot under scripts/ui-audit/out/.
+ * 390px + 320px screenshots and assert 2 columns / no horizontal scroll.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -11,20 +12,28 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const menuPath = join(root, 'apps/online-order-web/src/pages/MenuPage.tsx');
+const cssPath = join(root, 'apps/online-order-web/src/index.css');
 const menuSrc = readFileSync(menuPath, 'utf8');
+const cssSrc = readFileSync(cssPath, 'utf8');
 
-const bad = (menuSrc.match(/minmax\(190px/g) || []).length;
-const good = (menuSrc.match(/minmax\(130px/g) || []).length;
+const classHits = (menuSrc.match(/className="menu-grid"/g) || []).length;
+const inlineMinmax = (menuSrc.match(/gridTemplateColumns[\s\S]{0,80}minmax\(/g) || []).length;
+const hasTwoFr = /\.menu-grid\s*\{[^}]*repeat\(2,\s*1fr\)/s.test(cssSrc);
+const hasDesktopAutoFill = /@media\s*\(min-width:\s*768px\)\s*\{[^}]*\.menu-grid[^}]*minmax\(190px/s.test(cssSrc);
 
-if (bad > 0) {
-  console.error(`FAIL: MenuPage still has minmax(190px) (${bad} hits)`);
+if (inlineMinmax > 0) {
+  console.error(`FAIL: MenuPage still has inline minmax gridTemplateColumns (${inlineMinmax})`);
   process.exit(1);
 }
-if (good < 4) {
-  console.error(`FAIL: expected ≥4 minmax(130px) grids, found ${good}`);
+if (classHits < 4) {
+  console.error(`FAIL: expected ≥4 className="menu-grid", found ${classHits}`);
   process.exit(1);
 }
-console.log(`grid: ok (${good}× minmax(130px) — 2 columns at ~390px with 90px rail)`);
+if (!hasTwoFr || !hasDesktopAutoFill) {
+  console.error('FAIL: index.css .menu-grid rules missing (need repeat(2,1fr) + 768px auto-fill 190px)');
+  process.exit(1);
+}
+console.log(`grid: ok (${classHits}× .menu-grid — repeat(2,1fr) <768px, auto-fill≥768px)`);
 
 const url = process.env.ORDER_AUDIT_URL;
 if (!url) {
@@ -42,11 +51,59 @@ try {
 
 const outDir = join(root, 'scripts/ui-audit/out');
 mkdirSync(outDir, { recursive: true });
+const base = url.replace(/\/$/, '');
 const browser = await playwright.chromium.launch();
-const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-await page.goto(`${url.replace(/\/$/, '')}/menu`, { waitUntil: 'networkidle', timeout: 60_000 });
-const out = join(outDir, 'menu-390.png');
-await page.screenshot({ path: out, fullPage: false });
+
+async function checkViewport(width, height, label) {
+  const page = await browser.newPage({ viewport: { width, height } });
+  await page.goto(`${base}/menu`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  await page.waitForSelector('.menu-grid > *', { timeout: 30_000 });
+  // Prefer a grid that has real product cards (not only skeletons)
+  await page.waitForFunction(() => {
+    const grids = [...document.querySelectorAll('.menu-grid')];
+    return grids.some((g) => g.querySelector('article, a, button'));
+  }, { timeout: 15_000 }).catch(() => {});
+  const metrics = await page.evaluate(() => {
+    const grids = [...document.querySelectorAll('.menu-grid')];
+    const grid =
+      grids.find((g) => g.querySelector('article, a, button')) ||
+      grids.find((g) => g.children.length >= 2);
+    if (!grid) return { error: 'no .menu-grid' };
+    const style = getComputedStyle(grid);
+    const cols = style.gridTemplateColumns;
+    const tracks = cols.split(/\s+/).filter((t) => t && t !== 'none');
+    const children = [...grid.children];
+    const firstTop = children[0]?.getBoundingClientRect().top;
+    const firstRowCount = children.filter(
+      (c) => Math.abs(c.getBoundingClientRect().top - firstTop) < 2,
+    ).length;
+    const hscroll = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
+    return { cols, trackCount: tracks.length, firstRowCount, hscroll };
+  });
+  const out = join(outDir, `menu-${label}.png`);
+  await page.screenshot({ path: out, fullPage: false });
+  await page.close();
+  writeFileSync(join(outDir, `menu-${label}.txt`), `${JSON.stringify(metrics, null, 2)}\n`);
+  console.log(`screenshot ${label}: ${out}`);
+  console.log(`  metrics: ${JSON.stringify(metrics)}`);
+  if (metrics.error) {
+    console.error(`FAIL ${label}: ${metrics.error}`);
+    return false;
+  }
+  if (metrics.firstRowCount < 2 || metrics.trackCount < 2) {
+    console.error(`FAIL ${label}: expected 2 columns, got firstRowCount=${metrics.firstRowCount} tracks=${metrics.trackCount}`);
+    return false;
+  }
+  if (metrics.hscroll) {
+    console.error(`FAIL ${label}: horizontal scroll detected`);
+    return false;
+  }
+  return true;
+}
+
+const ok390 = await checkViewport(390, 844, '390');
+const ok320 = await checkViewport(320, 568, '320');
 await browser.close();
-writeFileSync(join(outDir, 'menu-390.txt'), `Wrote ${out}\n`);
-console.log(`screenshot: ${out}`);
+
+if (!ok390 || !ok320) process.exit(1);
+console.log('screenshot: ok (2 cols at 390px & 320px, no hscroll)');

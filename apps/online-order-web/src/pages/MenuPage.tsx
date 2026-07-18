@@ -653,7 +653,7 @@ export function MenuPage() {
           )}
 
           {loading && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem', padding: '0 0 1.25rem' }}>
+            <div className="menu-grid" style={{ padding: '0 0 1.25rem' }}>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="skeleton" style={{ borderRadius: '16px', height: '300px' }} />
               ))}
@@ -683,7 +683,7 @@ export function MenuPage() {
           )}
 
           {!loading && filtersActive && filteredItems.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+            <div className="menu-grid" style={{ paddingBottom: '1.25rem' }}>
               {filteredItems.map(renderProductCard)}
             </div>
           )}
@@ -702,7 +702,7 @@ export function MenuPage() {
                   }}
                 >
                   <MenuSectionHeader category={section.category} />
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+                  <div className="menu-grid" style={{ paddingBottom: '1.25rem' }}>
                     {section.items.map(renderProductCard)}
                   </div>
                 </section>
@@ -722,7 +722,7 @@ export function MenuPage() {
                       Other
                     </h2>
                   </header>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+                  <div className="menu-grid" style={{ paddingBottom: '1.25rem' }}>
                     {sectionedMenu.other.map(renderProductCard)}
                   </div>
                 </section>
