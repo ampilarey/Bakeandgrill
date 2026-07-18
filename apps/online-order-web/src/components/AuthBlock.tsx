@@ -56,6 +56,7 @@ function PhoneInput({
   onEnter?: () => void;
   autoFocus?: boolean;
 }) {
+  const { t } = useLanguage();
   return (
     <div style={S.phoneRow}>
       <span style={S.prefix} aria-hidden="true">+960</span>
@@ -63,7 +64,7 @@ function PhoneInput({
         style={S.phoneFieldInner}
         type="tel"
         inputMode="numeric"
-        placeholder="7xxxxxxx"
+        placeholder={t("auth.ph_phone")}
         value={value}
         onChange={(e) => onChange(normalisePhone(e.target.value))}
         onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
@@ -84,6 +85,7 @@ function OtpBoxes({
   onChange: (v: string) => void;
   autoFocus?: boolean;
 }) {
+  const { t } = useLanguage();
   const refs = useRef<Array<HTMLInputElement | null>>([]);
 
   const handleChange = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,7 +136,7 @@ function OtpBoxes({
           autoFocus={autoFocus && i === 0}
           autoComplete={i === 0 ? "one-time-code" : "off"}
           style={{ ...S.otpBox, ...(value[i] ? S.otpBoxFilled : undefined) }}
-          aria-label={`Digit ${i + 1}`}
+          aria-label={t("auth.digit_aria").replace("{n}", String(i + 1))}
         />
       ))}
     </div>
@@ -183,7 +185,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     try {
       const r = await requestOtp(phone, purpose);
       if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
-      else setHint("New code sent.");
+      else setHint(t("auth.hint_code_sent"));
       setResendIn(30);
     } catch (e) { setError((e as Error).message); }
   };
@@ -214,7 +216,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   const handleGuestCheckout = async () => {
-    if (!guestName.trim()) { setError("Please enter your name."); return; }
+    if (!guestName.trim()) { setError(t("auth.err_name_required")); return; }
     setError("");
     setLoading(true);
     try {
@@ -265,7 +267,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
 
   const handleCompleteProfile = async () => {
     if (!pendingCustomer) return;
-    if (setupPwd !== setupPwdConfirm) { setError("Passwords don't match."); return; }
+    if (setupPwd !== setupPwdConfirm) { setError(t("auth.err_password_mismatch")); return; }
 
     setError("");
     setLoading(true);
@@ -300,7 +302,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   };
 
   const handleResetPassword = async () => {
-    if (newPwd !== newPwdConfirm) { setError("Passwords don't match."); return; }
+    if (newPwd !== newPwdConfirm) { setError(t("auth.err_password_mismatch")); return; }
     setError("");
     setLoading(true);
     try {
@@ -352,7 +354,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
             </button>
           )}
           <p style={S.note}>
-            {text("order_auth_privacy_line", "Used for order updates only — we never sell your number or spam you.")}
+            {text("order_auth_privacy_line", t("auth.privacy_line"))}
           </p>
         </>
       )}
@@ -362,17 +364,17 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
           <h2 style={S.title}>{t("auth.title_guest")}</h2>
           <p style={S.sub}>{t("auth.sub_guest")}</p>
           {error && <p style={S.error}>{error}</p>}
-          <label style={S.label}>Your name</label>
+          <label style={S.label}>{t("auth.label_name")}</label>
           <input
             style={S.input}
             type="text"
-            placeholder="Ahmed Ali"
+            placeholder={t("auth.ph_name")}
             value={guestName}
             onChange={(e) => setGuestName(e.target.value)}
             autoFocus
             autoComplete="name"
           />
-          <label style={S.label}>Phone number</label>
+          <label style={S.label}>{t("auth.label_phone")}</label>
           <PhoneInput value={phone} onChange={setPhone} onEnter={handleGuestCheckout} />
           <button
             style={{ ...S.primaryBtn, opacity: loading || !phone || !guestName.trim() ? 0.55 : 1 }}
@@ -395,7 +397,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
           <input
             style={S.input}
             type="password"
-            placeholder="Your password"
+            placeholder={t("auth.ph_password")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handlePasswordLogin()}
@@ -455,42 +457,42 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
           <h2 style={S.title}>{t("auth.title_profile")}</h2>
           <p style={S.sub}>{t("auth.sub_profile")}</p>
           {error && <p style={S.error}>{error}</p>}
-          <label style={S.label}>Your name</label>
+          <label style={S.label}>{t("auth.label_name")}</label>
           <input
             style={S.input}
             type="text"
-            placeholder="Ahmed Ali"
+            placeholder={t("auth.ph_name")}
             value={setupName}
             onChange={(e) => setSetupName(e.target.value)}
             autoFocus
             autoComplete="name"
           />
           <label style={S.label}>
-            Email{" "}
-            <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(optional)</span>
+            {t("auth.label_email")}{" "}
+            <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>{t("auth.optional")}</span>
           </label>
           <input
             style={S.input}
             type="email"
-            placeholder="you@example.com"
+            placeholder={t("auth.ph_email")}
             value={setupEmail}
             onChange={(e) => setSetupEmail(e.target.value)}
             autoComplete="email"
           />
-          <label style={S.label}>Password</label>
+          <label style={S.label}>{t("auth.label_password")}</label>
           <input
             style={S.input}
             type="password"
-            placeholder="At least 6 characters"
+            placeholder={t("auth.ph_password_min")}
             value={setupPwd}
             onChange={(e) => setSetupPwd(e.target.value)}
             autoComplete="new-password"
           />
-          <label style={S.label}>Confirm password</label>
+          <label style={S.label}>{t("auth.label_confirm_password")}</label>
           <input
             style={S.input}
             type="password"
-            placeholder="Repeat your password"
+            placeholder={t("auth.ph_password_repeat")}
             value={setupPwdConfirm}
             onChange={(e) => setSetupPwdConfirm(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCompleteProfile()}
@@ -579,21 +581,21 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
           <h2 style={S.title}>{t("auth.title_new_pass")}</h2>
           <p style={S.sub}>{t("auth.new_pass_for").replace("{phone}", phone)}</p>
           {error && <p style={S.error}>{error}</p>}
-          <label style={S.label}>New password</label>
+          <label style={S.label}>{t("auth.label_new_password")}</label>
           <input
             style={S.input}
             type="password"
-            placeholder="At least 6 characters"
+            placeholder={t("auth.ph_password_min")}
             value={newPwd}
             onChange={(e) => setNewPwd(e.target.value)}
             autoFocus
             autoComplete="new-password"
           />
-          <label style={S.label}>Confirm password</label>
+          <label style={S.label}>{t("auth.label_confirm_password")}</label>
           <input
             style={S.input}
             type="password"
-            placeholder="Repeat your password"
+            placeholder={t("auth.ph_password_repeat")}
             value={newPwdConfirm}
             onChange={(e) => setNewPwdConfirm(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}

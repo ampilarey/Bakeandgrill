@@ -128,7 +128,7 @@ export function CheckoutPage() {
   const viberLink   = s.business_viber   || 'viber://chat?number=9609120011';
   const deliveryEta = (s.delivery_time ?? s.delivery_eta) || '30–45 min';
 
-  useEffect(() => { document.title = `Checkout — ${siteName}`; }, [siteName]);
+  useEffect(() => { document.title = `${t('checkout.title')} — ${siteName}`; }, [siteName, t]);
 
   const [orderElig, setOrderElig] = useState<OrderingEligibility | null>(null);
   const [onlineGate, setOnlineGate] = useState<OnlineOrderingStatus | null>(null);
@@ -264,13 +264,13 @@ export function CheckoutPage() {
             }}
             aria-pressed={orderType === type}
           >
-            {type === 'pickup' ? '🥡 Pickup' : '🛵 Delivery'}
+            {type === 'pickup' ? `🥡 ${t('checkout.type_pickup')}` : `🛵 ${t('checkout.type_delivery')}`}
           </button>
         ))}
       </div>
       {deliveryBlocked && (
         <p style={{ margin: '12px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-          {orderElig.delivery.message ?? 'Delivery is not available right now. Please choose pickup.'}
+          {orderElig.delivery.message ?? t('checkout.delivery_unavailable')}
         </p>
       )}
     </>
@@ -279,15 +279,15 @@ export function CheckoutPage() {
   const bodyPickupSlot = (
     <>
       {pickupSlotsLoading ? (
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Loading available times…</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>{t('checkout.pickup_loading')}</p>
       ) : pickupSlots.length === 0 ? (
         <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-          Pickup slots are full or unavailable right now — we'll prepare your order as soon as possible after payment.
+          {t('checkout.pickup_full')}
         </p>
       ) : (
         <>
           <p style={{ margin: '0 0 12px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-            Choose when you'd like to collect your order (optional).
+            {t('checkout.pickup_choose')}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <button
@@ -339,24 +339,27 @@ export function CheckoutPage() {
       <>
         <div style={S.infoNote}>
           <span>🛵</span>{' '}
-          Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong>
+          {t('checkout.delivery_fee_prefix')}{' '}
+          <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong>
           {islandKey && zoneFee != null && zoneFee !== defaultFee && (
-            <> · Zone rate for {islandKey}: MVR {explainedFee.toFixed(2)}</>
+            <> · {t('checkout.zone_rate').replace('{island}', islandKey).replace('{fee}', explainedFee.toFixed(2))}</>
           )}
           {islandKey && zoneFee == null && (
-            <> · Standard rate: MVR {defaultFee.toFixed(2)}</>
+            <> · {t('checkout.standard_rate').replace('{fee}', defaultFee.toFixed(2))}</>
           )}
-          {' '}· Estimated {deliveryEta}
+          {' '}· {t('checkout.estimated').replace('{eta}', deliveryEta)}
         </div>
         <p style={{ margin: '0 0 14px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
           {qualifiesFree
-            ? `Your order qualifies for free delivery (orders over MVR ${freeThreshold.toFixed(0)}).`
-            : `Free delivery on orders over MVR ${freeThreshold.toFixed(0)} — add MVR ${Math.max(0, freeThreshold - cartMvr).toFixed(2)} more to qualify.`}
+            ? t('checkout.free_qualifies').replace('{n}', freeThreshold.toFixed(0))
+            : t('checkout.free_add_more')
+                .replace('{n}', freeThreshold.toFixed(0))
+                .replace('{amount}', Math.max(0, freeThreshold - cartMvr).toFixed(2))}
         </p>
         {isAuthenticated && savedAddresses.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Saved address
+              {t('checkout.saved_address')}
             </label>
             <select
               className="field-input"
@@ -369,31 +372,31 @@ export function CheckoutPage() {
             >
               {savedAddresses.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {(a.label ? `${a.label} — ` : '') + a.address_line1 + (a.is_default ? ' (default)' : '')}
+                  {(a.label ? `${a.label} — ` : '') + a.address_line1 + (a.is_default ? ` ${t('checkout.default_suffix')}` : '')}
                 </option>
               ))}
-              <option value="new">Use a new address</option>
+              <option value="new">{t('checkout.new_address')}</option>
             </select>
           </div>
         )}
-        <Field label="Address *" placeholder="House / Flat number, Street"
+        <Field label={t('checkout.label_address')} placeholder={t('checkout.ph_address')}
           value={delivery.address_line1} onChange={(v) => { setDelivery({ ...delivery, address_line1: v }); setSelectedAddressId('new'); }} error={errors.address_line1} />
-        <Field label="Address line 2" placeholder="Building name (optional)"
+        <Field label={t('checkout.label_address2')} placeholder={t('checkout.ph_address2')}
           value={delivery.address_line2} onChange={(v) => setDelivery({ ...delivery, address_line2: v })} />
-        <Field label="Island *" placeholder="Malé"
+        <Field label={t('checkout.label_island')} placeholder={t('checkout.ph_island')}
           value={delivery.island}
           onChange={(v) => { setDelivery({ ...delivery, island: v }); setZoneError(null); }}
           onBlur={() => void handleIslandBlur(delivery.island)}
           error={zoneError ?? errors.island} />
-        <Field label="Google Maps / location link" placeholder="https://maps.google.com/..."
+        <Field label={t('checkout.label_maps')} placeholder={t('checkout.ph_maps')}
           value={delivery.location_link} onChange={(v) => setDelivery({ ...delivery, location_link: v })} />
         <div style={S.fieldRow}>
-          <Field label="Contact name *" placeholder="Full name"
+          <Field label={t('checkout.label_contact_name')} placeholder={t('checkout.ph_contact_name')}
             value={delivery.contact_name} onChange={(v) => setDelivery({ ...delivery, contact_name: v })} error={errors.contact_name} />
-          <Field label="Contact phone *" placeholder="7xxxxxxx"
+          <Field label={t('checkout.label_contact_phone')} placeholder={t('checkout.ph_contact_phone')}
             value={delivery.contact_phone} onChange={(v) => setDelivery({ ...delivery, contact_phone: v })} error={errors.contact_phone} />
         </div>
-        <Field label="Delivery notes" placeholder="Any special instructions for the rider"
+        <Field label={t('checkout.label_delivery_notes')} placeholder={t('checkout.ph_delivery_notes')}
           value={delivery.notes} onChange={(v) => setDelivery({ ...delivery, notes: v })} multiline />
         {isAuthenticated && (selectedAddressId === 'new' || saveAddress) && (
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -403,10 +406,10 @@ export function CheckoutPage() {
                 checked={saveAddress}
                 onChange={(e) => setSaveAddress(e.target.checked)}
               />
-              Save this address to my account
+              {t('checkout.save_address')}
             </label>
             {saveAddress && (
-              <Field label="Address label" placeholder="Home, Office, etc."
+              <Field label={t('checkout.label_address_label')} placeholder={t('checkout.ph_address_label')}
                 value={addressLabel} onChange={setAddressLabel} />
             )}
           </div>
@@ -418,7 +421,7 @@ export function CheckoutPage() {
   const bodyNotes = (
     <textarea
       className="field-input"
-      placeholder="Allergies, special requests, or notes for the kitchen"
+      placeholder={t('checkout.ph_notes')}
       value={notes}
       onChange={(e) => setNotes(e.target.value)}
       style={{ height: 80, resize: 'vertical' }}
@@ -431,17 +434,17 @@ export function CheckoutPage() {
       {/* Promo Code */}
       <div>
         <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          Promo Code
+          {t('checkout.promo_code')}
         </p>
         {promoApplied ? (
           <div style={S.promoApplied}>
             <span style={{ fontSize: 'var(--text-base)' }}>
               {(promoApplied.pending && promoApplied.discountLaar === 0)
-                ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — applied at checkout</>
-                : <><span>✅</span> <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
+                ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — {t('checkout.promo_pending')}</>
+                : <><span>✅</span> <strong>{promoApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(promoApplied.discountLaar)))}</>
               }
             </span>
-            <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>Remove</button>
+            <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>{t('checkout.remove')}</button>
           </div>
         ) : (
           <>
@@ -449,13 +452,13 @@ export function CheckoutPage() {
               <input
                 className="field-input"
                 style={{ flex: 1 }}
-                placeholder="Enter promo code"
+                placeholder={t('checkout.ph_promo')}
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                aria-label="Promo code"
+                aria-label={t('checkout.aria_promo')}
               />
               <button style={S.secondaryBtn} onClick={handleApplyPromo} disabled={promoLoading || !promoCode}>
-                {promoLoading ? '…' : 'Apply'}
+                {promoLoading ? '…' : t('checkout.apply')}
               </button>
             </div>
             {promoError && <p className="field-error" style={{ marginTop: 6 }}>{promoError}</p>}
@@ -472,7 +475,7 @@ export function CheckoutPage() {
         return (
           <div>
             <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Loyalty Points
+              {t('checkout.loyalty_points')}
             </p>
             {loyaltyProgramMessage && (
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.45 }}>
@@ -480,17 +483,20 @@ export function CheckoutPage() {
               </p>
             )}
             <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 8 }}>
-              You have <strong>{available.toLocaleString()} pts</strong> available to use
-              {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {pointsValueMvr(available, loyaltyRates)}</span> value).
+              {t('checkout.loyalty_available')
+                .replace('{n}', available.toLocaleString())
+                .replace('{value}', `MVR ${pointsValueMvr(available, loyaltyRates)}`)}
             </p>
             {held > 0 && (
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px', lineHeight: 1.45 }}>
-                {held.toLocaleString()} pts are reserved on another order ({loyaltyAccount.points_balance.toLocaleString()} total balance).
+                {t('checkout.loyalty_held')
+                  .replace('{held}', held.toLocaleString())
+                  .replace('{total}', loyaltyAccount.points_balance.toLocaleString())}
               </p>
             )}
             {available < minRedeem && (
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-                Minimum {minRedeem} available points required to redeem.
+                {t('checkout.loyalty_min').replace('{n}', String(minRedeem))}
               </p>
             )}
             <label style={{
@@ -506,8 +512,11 @@ export function CheckoutPage() {
                 style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
               />
               {canRedeem
-                ? <>Use {loyaltyRedeemPoints.toLocaleString()} pts to save MVR {pointsValueMvr(loyaltyRedeemPoints, loyaltyRates)} (max {loyaltyRates.maxRedeemPercent}% of subtotal)</>
-                : <>Use loyalty points on this order</>}
+                ? t('checkout.loyalty_use')
+                    .replace('{n}', loyaltyRedeemPoints.toLocaleString())
+                    .replace('{value}', String(pointsValueMvr(loyaltyRedeemPoints, loyaltyRates)))
+                    .replace('{pct}', String(loyaltyRates.maxRedeemPercent))
+                : t('checkout.loyalty_use_disabled')}
             </label>
           </div>
         );
@@ -516,37 +525,37 @@ export function CheckoutPage() {
       {/* Friend's Referral Code */}
       <div>
         <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          Friend's Referral Code
+          {t('checkout.friend_referral')}
         </p>
         {friendReferralApplied ? (
           <div style={S.promoApplied}>
             <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
               {friendReferralApplied.pending
-                ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — est. MVR {laarToMvr(referralDelta)} off at checkout</>
-                : <><span>🤝</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — MVR {laarToMvr(friendReferralApplied.discountLaar)} off</>}
+                ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — {t('checkout.referral_est').replace('{amount}', String(laarToMvr(referralDelta)))}</>
+                : <><span>🤝</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(friendReferralApplied.discountLaar)))}</>}
             </span>
-            <button style={S.removeBtn} onClick={() => void handleRemoveFriendReferral()}>Remove</button>
+            <button style={S.removeBtn} onClick={() => void handleRemoveFriendReferral()}>{t('checkout.remove')}</button>
           </div>
         ) : (
           <>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
-              Have a code from a friend? Enter it for a discount on your first order with that code.
+              {t('checkout.friend_referral_hint')}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 className="field-input"
                 style={{ flex: 1, fontFamily: 'monospace' }}
-                placeholder="Referral code"
+                placeholder={t('checkout.ph_referral')}
                 value={friendReferralCode}
                 onChange={(e) => setFriendReferralCode(e.target.value.toUpperCase())}
-                aria-label="Friend referral code"
+                aria-label={t('checkout.aria_referral')}
               />
               <button
                 style={S.secondaryBtn}
                 onClick={() => void handleApplyFriendReferral()}
                 disabled={friendReferralLoading || !friendReferralCode.trim()}
               >
-                {friendReferralLoading ? '…' : 'Apply'}
+                {friendReferralLoading ? '…' : t('checkout.apply')}
               </button>
             </div>
             {friendReferralError && <p className="field-error" style={{ marginTop: 6 }}>{friendReferralError}</p>}
@@ -557,39 +566,39 @@ export function CheckoutPage() {
       {/* Gift Card */}
       <div>
         <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          Gift Card
+          {t('checkout.gift_card')}
         </p>
         {giftCardApplied ? (
           <div style={S.promoApplied}>
             <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
               {giftCardApplied.pending
-                ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — applied at checkout</>
-                : <><span>🎁</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — MVR {laarToMvr(giftCardApplied.discountLaar)} off</>}
+                ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — {t('checkout.promo_pending')}</>
+                : <><span>🎁</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(giftCardApplied.discountLaar)))}</>}
             </span>
-            <button style={S.removeBtn} onClick={() => void handleRemoveGiftCard()}>Remove</button>
+            <button style={S.removeBtn} onClick={() => void handleRemoveGiftCard()}>{t('checkout.remove')}</button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
-                placeholder="XXXX-XXXX-XXXX"
+                placeholder={t('checkout.ph_gift')}
                 value={giftCardCode}
                 onChange={(e) => { setGiftCardCode(e.target.value.toUpperCase()); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleCheckGiftCard(); }}
                 style={{ flex: 1, padding: '9px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 'var(--text-base)', fontFamily: 'monospace', textTransform: 'uppercase', minWidth: 0 }}
-                aria-label="Gift card code"
+                aria-label={t('checkout.aria_gift')}
               />
               <button
                 style={{ ...S.secondaryBtn, whiteSpace: 'nowrap' }}
                 onClick={giftCardBalance !== null ? () => void handleApplyGiftCard() : () => void handleCheckGiftCard()}
                 disabled={giftCardLoading || !giftCardCode.trim()}
               >
-                {giftCardLoading ? '…' : giftCardBalance !== null ? 'Apply' : 'Check'}
+                {giftCardLoading ? '…' : giftCardBalance !== null ? t('checkout.apply') : t('checkout.check')}
               </button>
             </div>
             {giftCardBalance !== null && !giftCardError && (
               <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-success)', fontWeight: 600 }}>
-                Balance: MVR {giftCardBalance.toFixed(2)} — click Apply to use it
+                {t('checkout.gift_balance').replace('{amount}', giftCardBalance.toFixed(2))}
               </p>
             )}
             {giftCardError && <p className="field-error" style={{ marginTop: 0 }}>{giftCardError}</p>}
@@ -601,7 +610,7 @@ export function CheckoutPage() {
 
   const discountsSummary: string | undefined = [
     promoApplied?.code ?? null,
-    useLoyalty && loyaltyDelta > 0 ? 'Loyalty' : null,
+    useLoyalty && loyaltyDelta > 0 ? t('checkout.loyalty_summary') : null,
     giftCardApplied?.code ?? null,
     friendReferralApplied?.code ?? null,
   ].filter((v): v is string => v !== null).join(' · ') || undefined;
@@ -609,7 +618,7 @@ export function CheckoutPage() {
   const sectionReferral = myReferralCode && (
     <div style={{ background: 'var(--color-surface-alt)', border: '1px dashed var(--color-border)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
       <p style={{ margin: '0 0 6px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-        Share your referral code with friends
+        {t('checkout.share_referral')}
       </p>
       <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '1.1rem', letterSpacing: '0.1em', color: 'var(--color-primary)', fontWeight: 700 }}>
         {myReferralCode}
@@ -618,7 +627,7 @@ export function CheckoutPage() {
         style={{ marginTop: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textDecoration: 'underline' }}
         onClick={() => { void navigator.clipboard?.writeText(myReferralCode); }}
       >
-        Copy code
+        {t('checkout.copy_code')}
       </button>
     </div>
   );
@@ -627,20 +636,20 @@ export function CheckoutPage() {
 
   const sectionOrderSummary = (
     <div style={S.cardWarm}>
-      <h2 style={S.sectionTitle}>Order Summary</h2>
-      <SummaryRow label="Subtotal" value={`MVR ${laarToMvr(subtotalLaar)}`} />
+      <h2 style={S.sectionTitle}>{t('checkout.order_summary')}</h2>
+      <SummaryRow label={t('cart.subtotal')} value={`MVR ${laarToMvr(subtotalLaar)}`} />
       {promoApplied && promoDelta > 0 && (
-        <SummaryRow label={`Promo (${promoApplied.code})`} value={`− MVR ${laarToMvr(promoDelta)}`} highlight />
+        <SummaryRow label={`${t('checkout.promo_code')} (${promoApplied.code})`} value={`− MVR ${laarToMvr(promoDelta)}`} highlight />
       )}
       {useLoyalty && loyaltyDelta > 0 && (
-        <SummaryRow label="Loyalty discount" value={`− MVR ${laarToMvr(loyaltyDelta)}`} highlight />
+        <SummaryRow label={t('checkout.loyalty_discount')} value={`− MVR ${laarToMvr(loyaltyDelta)}`} highlight />
       )}
       {giftCardApplied && giftCardDelta > 0 && (
-        <SummaryRow label={`Gift Card (${giftCardApplied.code})`} value={`− MVR ${laarToMvr(giftCardDelta)}`} highlight />
+        <SummaryRow label={`${t('checkout.gift_card')} (${giftCardApplied.code})`} value={`− MVR ${laarToMvr(giftCardDelta)}`} highlight />
       )}
       {friendReferralApplied && referralDelta > 0 && (
         <SummaryRow
-          label={`Referral (${friendReferralApplied.code})${friendReferralApplied.pending ? ' (est.)' : ''}`}
+          label={`${t('checkout.friend_referral')} (${friendReferralApplied.code})${friendReferralApplied.pending ? ' (est.)' : ''}`}
           value={`− MVR ${laarToMvr(referralDelta)}`}
           highlight
         />
@@ -655,20 +664,20 @@ export function CheckoutPage() {
         <SummaryRow label={smallOrderFeeLabel} value={`MVR ${laarToMvr(smallOrderFeeLaar)}`} />
       )}
       {taxLaar > 0 && (
-        <SummaryRow label="GST" value={`MVR ${laarToMvr(taxLaar)}`} />
+        <SummaryRow label={t('checkout.gst')} value={`MVR ${laarToMvr(taxLaar)}`} />
       )}
       {orderType === 'delivery' && (
-        <SummaryRow label="Delivery fee" value={`MVR ${laarToMvr(deliveryFeeLaar)}`} />
+        <SummaryRow label={t('checkout.delivery_fee')} value={`MVR ${laarToMvr(deliveryFeeLaar)}`} />
       )}
       <div style={S.totalRow}>
-        <span>Total</span>
+        <span>{t('checkout.total')}</span>
         <span style={S.totalRowAmount}>MVR {laarToMvr(totalLaar)}</span>
       </div>
       {isAuthenticated && totalLaar > 0 && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: '0.8rem' }}>⭐</span>
           <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-            You'll earn <strong style={{ color: 'var(--color-primary)' }}>{earnPreviewPoints} pts</strong> from this order
+            {t('checkout.earn_pts').replace('{n}', String(earnPreviewPoints))}
           </span>
         </div>
       )}
@@ -679,14 +688,14 @@ export function CheckoutPage() {
   const bodyPayment = (
     <div style={S.complianceBox}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>We accept</span>
-        <img src="/card-brands.png" alt="Amex, Visa, Mastercard, Maestro" style={{ height: '53px', objectFit: 'contain' }} />
+        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('checkout.we_accept')}</span>
+        <img src="/card-brands.png" alt={t('checkout.card_brands_alt')} style={{ height: '53px', objectFit: 'contain' }} />
       </div>
       <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.625rem', lineHeight: 1.5 }}>
         {paymentCompliance}
       </p>
       <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-        Before completing your purchase, please read:
+        {t('checkout.read_before')}
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
         {[
