@@ -33,6 +33,9 @@ class GiftCardPurchase extends Model
     ];
 
     protected $casts = [
+        'order_id' => 'integer',
+        'purchaser_customer_id' => 'integer',
+        'gift_card_id' => 'integer',
         'amount' => 'decimal:2',
         'sms_ok' => 'boolean',
         'email_ok' => 'boolean',

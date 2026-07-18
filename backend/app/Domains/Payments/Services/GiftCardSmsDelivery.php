@@ -28,10 +28,15 @@ final class GiftCardSmsDelivery
         string $plainCode,
         string $phone,
         ?string $personalNote = null,
-        ?int $customerId = null,
+        int|string|null $customerId = null,
         ?string $idempotencyKey = null,
         ?string $viewUrl = null,
     ): array {
+        // Eloquent may hand back int IDs as strings from PDO — coerce before SMS DTO.
+        $customerId = $customerId !== null && $customerId !== ''
+            ? (int) $customerId
+            : null;
+
         try {
             $normalized = MaldivesPhone::normalize($phone);
         } catch (\InvalidArgumentException) {
@@ -51,7 +56,7 @@ final class GiftCardSmsDelivery
                 message: $message,
                 // transactional — must deliver even if marketing opt-out is on
                 type: 'transactional',
-                customerId: $customerId ?? $card->issued_to_customer_id,
+                customerId: $customerId ?? ($card->issued_to_customer_id !== null ? (int) $card->issued_to_customer_id : null),
                 referenceType: 'gift_card',
                 referenceId: (string) $card->id,
                 idempotencyKey: $idempotencyKey

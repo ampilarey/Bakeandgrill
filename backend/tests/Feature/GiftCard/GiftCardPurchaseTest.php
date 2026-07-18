@@ -539,6 +539,9 @@ class GiftCardPurchaseTest extends TestCase
             'email' => 'resend@example.com',
         ]);
 
+        // Simulate PDO string IDs (strict_types TypeError was crashing resend on TEST).
+        $this->assertIsInt($customer->id);
+
         $order = Order::create([
             'order_number' => 'GC-TEST-0003',
             'tracking_token' => 'gctest3',
