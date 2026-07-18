@@ -4,6 +4,7 @@ import { fetchReservationSlots, createReservation } from "../api";
 import type { ReservationSlot, CustomerReservation } from "../api";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { PageHeader } from "../components/shell/PageHeader";
+import { useLanguage } from "../context/LanguageContext";
 
 const tomorrow = () => {
   const d = new Date();
@@ -16,6 +17,7 @@ const today = () => new Date().toISOString().split("T")[0];
 export function ReservationPage() {
   usePageTitle('Reserve a Table');
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [step, setStep] = useState<"form" | "slots" | "confirm" | "done">("form");
   const [loading, setLoading] = useState(false);
@@ -47,7 +49,7 @@ export function ReservationPage() {
   };
 
   const handleBook = async () => {
-    if (!selectedSlot) { setError("Please select a time slot."); return; }
+    if (!selectedSlot) { setError(t("reserve.err_slot")); return; }
     setLoading(true);
     setError("");
     try {
@@ -70,37 +72,37 @@ export function ReservationPage() {
 
   return (
     <>
-      <PageHeader title="Table Reservation" onBack={() => navigate(-1)} />
+      <PageHeader title={t("reserve.page_title")} onBack={() => navigate(-1)} />
       <div style={s.page}>
       <div style={s.card}>
         {step === "done" && reservation ? (
           <div style={{ textAlign: "center" }}>
             <div style={s.successIcon}>✓</div>
-            <h2 style={s.heading}>Reservation Confirmed!</h2>
+            <h2 style={s.heading}>{t("reserve.confirmed")}</h2>
             <p style={s.sub}>
-              <b>{reservation.customer_name}</b> — {reservation.party_size} guests<br />
+              <b>{reservation.customer_name}</b> — {t("reserve.guests").replace("{n}", String(reservation.party_size))}<br />
               {reservation.date} at {reservation.time_slot}
             </p>
             {reservation.table && (
-              <p style={s.sub}>Table: <b>{reservation.table.name}</b></p>
+              <p style={s.sub}>{t("reserve.table").replace("{name}", reservation.table.name)}</p>
             )}
             <p style={{ ...s.sub, color: "var(--color-text-muted)", fontSize: 13 }}>
-              You'll receive an SMS confirmation shortly.
+              {t("reserve.sms_soon")}
             </p>
             <p style={{ ...s.sub, color: "var(--color-text-muted)", fontSize: 12 }}>
-              Reference: <code>#{reservation.id}</code>
+              {t("reserve.reference").replace("{id}", String(reservation.id))}
             </p>
-            <button style={s.btn} onClick={() => navigate("/menu")}>Back to Menu</button>
+            <button style={s.btn} onClick={() => navigate("/menu")}>{t("reserve.back_menu")}</button>
           </div>
         ) : step === "slots" ? (
           <>
-            <button style={s.backLink} onClick={() => setStep("form")}>← Change details</button>
-            <h2 style={s.heading}>Select a Time Slot</h2>
-            <p style={s.sub}>{date} · {partySize} guests</p>
+            <button style={s.backLink} onClick={() => setStep("form")}>{t("reserve.change_details")}</button>
+            <h2 style={s.heading}>{t("reserve.heading_slots")}</h2>
+            <p style={s.sub}>{date} · {t("reserve.guests").replace("{n}", String(partySize))}</p>
             {error && <div style={s.error}>{error}</div>}
             <div style={s.slotGrid}>
               {slots.length === 0 ? (
-                <p style={s.sub}>No available slots for this date. Try another date.</p>
+                <p style={s.sub}>{t("reserve.no_slots")}</p>
               ) : (
                 slots.map((slot) => (
                   <button
@@ -120,29 +122,29 @@ export function ReservationPage() {
             </div>
             {selectedSlot && (
               <button style={s.btn} disabled={loading} onClick={handleBook}>
-                {loading ? "Booking…" : `Book for ${selectedSlot}`}
+                {loading ? t("reserve.booking") : t("reserve.book_for").replace("{slot}", selectedSlot)}
               </button>
             )}
           </>
         ) : (
           <>
-            <h2 style={s.heading}>Make a Reservation</h2>
+            <h2 style={s.heading}>{t("reserve.heading_form")}</h2>
             {error && <div style={s.error}>{error}</div>}
 
-            <label htmlFor="rsv-name" style={s.label}>Your Name</label>
-            <input id="rsv-name" style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
+            <label htmlFor="rsv-name" style={s.label}>{t("reserve.label_name")}</label>
+            <input id="rsv-name" style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder={t("reserve.ph_name")} />
 
-            <label htmlFor="rsv-phone" style={s.label}>Phone Number</label>
-            <input id="rsv-phone" style={s.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 7654321" type="tel" />
+            <label htmlFor="rsv-phone" style={s.label}>{t("reserve.label_phone")}</label>
+            <input id="rsv-phone" style={s.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder={t("reserve.ph_phone")} type="tel" />
 
-            <label style={s.label}>Party Size</label>
+            <label style={s.label}>{t("reserve.label_party")}</label>
             <div style={s.stepper}>
-              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.max(1, p - 1))} aria-label="Decrease party size">−</button>
+              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.max(1, p - 1))} aria-label={t("reserve.party_dec")}>−</button>
               <span style={s.stepVal} aria-live="polite">{partySize}</span>
-              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.min(20, p + 1))} aria-label="Increase party size">+</button>
+              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.min(20, p + 1))} aria-label={t("reserve.party_inc")}>+</button>
             </div>
 
-            <label htmlFor="rsv-date" style={s.label}>Date</label>
+            <label htmlFor="rsv-date" style={s.label}>{t("reserve.label_date")}</label>
             <input
               id="rsv-date"
               style={s.input}
@@ -152,15 +154,15 @@ export function ReservationPage() {
               onChange={e => setDate(e.target.value)}
             />
 
-            <label htmlFor="rsv-notes" style={s.label}>Special Requests (optional)</label>
-            <textarea id="rsv-notes" style={{ ...s.input, resize: "vertical", minHeight: 72 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Allergies, celebrations, seating preferences…" />
+            <label htmlFor="rsv-notes" style={s.label}>{t("reserve.label_notes")}</label>
+            <textarea id="rsv-notes" style={{ ...s.input, resize: "vertical", minHeight: 72 }} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t("reserve.ph_notes")} />
 
             <button
               style={s.btn}
               disabled={!name.trim() || !phone.trim() || !date || loading}
               onClick={loadSlots}
             >
-              {loading ? "Checking availability…" : "Check Availability →"}
+              {loading ? t("reserve.checking") : t("reserve.check_cta")}
             </button>
           </>
         )}

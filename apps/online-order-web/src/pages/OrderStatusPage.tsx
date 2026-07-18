@@ -8,6 +8,7 @@ import { useCart } from "../context/CartContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useSiteSettings } from "../context/SiteSettingsContext";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -23,6 +24,7 @@ type DriverLocationData = {
 };
 
 function DriverTracker({ orderId, authenticated }: { orderId: number; authenticated: boolean }) {
+  const { t } = useLanguage();
   const [data, setData] = useState<{ location: DriverLocationData | null; driver: { name: string; phone: string } | null; eta_minutes?: number | null } | null>(null);
   const [fetchErr, setFetchErr] = useState(false);
 
@@ -65,21 +67,26 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
       background: 'linear-gradient(135deg, #D4813A, #B5681F)',
       borderRadius: '1rem', padding: '1rem', color: 'white',
     }}>
-      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 0.5rem', opacity: 0.85 }}>🚀 Your driver is on the way!</p>
+      <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 0.5rem', opacity: 0.85 }}>🚀 {t('track.driver.title')}</p>
       {data?.eta_minutes != null && (
         <p style={{ fontSize: 'var(--text-base)', fontWeight: 800, margin: '0 0 0.35rem' }}>
-          ETA ~{data.eta_minutes} min
+          {t('track.driver.eta').replace('{n}', String(data.eta_minutes))}
         </p>
       )}
       {driver && <p style={{ fontSize: 'var(--text-body)', fontWeight: 700, margin: '0 0 0.25rem' }}>🛵 {driver.name}</p>}
       {location ? (
         <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>
-          Last seen: {(() => { const t = Date.parse(location.recorded_at); return Number.isFinite(t) ? `${Math.floor((Date.now() - t) / 60000)} min ago` : 'Unknown'; })()}
+          {(() => {
+            const ts = Date.parse(location.recorded_at);
+            return Number.isFinite(ts)
+              ? t('track.driver.last_seen').replace('{n}', String(Math.floor((Date.now() - ts) / 60000)))
+              : t('track.driver.last_unknown');
+          })()}
         </p>
       ) : fetchErr ? (
-        <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>Location unavailable</p>
+        <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>{t('track.driver.loc_unavailable')}</p>
       ) : (
-        <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>Locating driver…</p>
+        <p style={{ fontSize: 'var(--text-xs)', margin: '0 0 0.75rem', opacity: 0.8 }}>{t('track.driver.locating')}</p>
       )}
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         {mapsUrl && (
@@ -93,7 +100,7 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
               borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
-            📍 Track on Map
+            📍 {t('track.driver.track_map')}
           </a>
         )}
         {driver?.phone && (
@@ -105,7 +112,7 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
               borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
-            📞 Call
+            📞 {t('track.driver.call')}
           </a>
         )}
         {waLink && (
@@ -119,7 +126,7 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
               borderRadius: '0.625rem', textDecoration: 'none',
             }}
           >
-            💬 WhatsApp
+            💬 {t('track.driver.whatsapp')}
           </a>
         )}
       </div>
@@ -127,91 +134,84 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
   );
 }
 
-// ─── Status config ────────────────────────────────────────────────────────────
+// ─── Status config (copy via track.status.* keys) ─────────────────────────────
 const STATUS_CONFIG: Record<string, {
-  label: string; sub: string; next?: string;
+  labelKey: string; subKey: string; nextKey?: string;
   color: string; bg: string; icon: string;
 }> = {
   payment_pending: {
-    label: "Payment received!",
-    sub: "We're confirming your order — this usually takes under 30 seconds.",
-    next: "Your order will go to the kitchen as soon as it's confirmed",
+    labelKey: "track.status.payment_pending.label",
+    subKey: "track.status.payment_pending.sub",
+    nextKey: "track.status.payment_pending.next",
     color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "⏳",
   },
   pending: {
-    label: "Order confirmed!",
-    sub: "Payment received. Your order is in the queue.",
-    next: "Up next: kitchen will start preparing",
+    labelKey: "track.status.pending.label",
+    subKey: "track.status.pending.sub",
+    nextKey: "track.status.pending.next",
     color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "✅",
   },
   paid: {
-    label: "Order confirmed!",
-    sub: "Payment received. The kitchen is being notified.",
-    next: "Up next: kitchen will start preparing",
+    labelKey: "track.status.paid.label",
+    subKey: "track.status.paid.sub",
+    nextKey: "track.status.paid.next",
     color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "✅",
   },
   preparing: {
-    label: "Being prepared",
-    sub: "Your food is being freshly made right now.",
-    next: "Up next: ready for pickup or delivery",
+    labelKey: "track.status.preparing.label",
+    subKey: "track.status.preparing.sub",
+    nextKey: "track.status.preparing.next",
     color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "👨‍🍳",
   },
   in_progress: {
-    label: "Being prepared",
-    sub: "Your order is in the kitchen right now.",
-    next: "Up next: ready for pickup",
+    labelKey: "track.status.in_progress.label",
+    subKey: "track.status.in_progress.sub",
+    nextKey: "track.status.in_progress.next",
     color: "var(--color-primary)", bg: "var(--color-primary-light)", icon: "👨‍🍳",
   },
   ready: {
-    label: "Ready!",
-    sub: "Your order is ready.",
-    next: undefined,
+    labelKey: "track.status.ready.label",
+    subKey: "track.status.ready.sub",
     color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "🎉",
   },
   out_for_delivery: {
-    label: "Out for delivery",
-    sub: "Your order is on the way. Estimated: 15–30 min.",
-    next: undefined,
+    labelKey: "track.status.out_for_delivery.label",
+    subKey: "track.status.out_for_delivery.sub",
     color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "🛵",
   },
   picked_up: {
-    label: "Driver picked up your order",
-    sub: "Your driver has collected your order and is heading your way!",
-    next: undefined,
+    labelKey: "track.status.picked_up.label",
+    subKey: "track.status.picked_up.sub",
     color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "✅",
   },
   on_the_way: {
-    label: "Driver is on the way!",
-    sub: "Your order is almost there. Keep an eye out for your driver.",
-    next: undefined,
+    labelKey: "track.status.on_the_way.label",
+    subKey: "track.status.on_the_way.sub",
     color: "var(--color-warning)", bg: "var(--color-warning-bg)", icon: "🏃",
   },
   delivered: {
-    label: "Delivered!",
-    sub: "Your order has been delivered. Enjoy your meal!",
-    next: undefined,
+    labelKey: "track.status.delivered.label",
+    subKey: "track.status.delivered.sub",
     color: "var(--color-success)", bg: "var(--color-success-bg)", icon: "🎉",
   },
   completed: {
-    label: "Delivered!",
-    sub: "Your order was delivered. Enjoy your meal!",
-    next: undefined,
+    labelKey: "track.status.completed.label",
+    subKey: "track.status.completed.sub",
     color: "var(--color-text-muted)", bg: "var(--color-surface-alt)", icon: "🎉",
   },
   cancelled: {
-    label: "Order cancelled",
-    sub: "This order was cancelled. If you were charged, your money will be refunded within 3–5 business days. Message us on WhatsApp if you need help.",
-    next: undefined,
+    labelKey: "track.status.cancelled.label",
+    subKey: "track.status.cancelled.sub",
     color: "var(--color-error)", bg: "var(--color-error-bg)", icon: "✕",
   },
 };
 
 // ─── Progress steps ───────────────────────────────────────────────────────────
 const STEPS = [
-  { key: "pending",    label: "Received" },
-  { key: "preparing",  label: "Preparing" },
-  { key: "ready",      label: "Ready" },
-  { key: "completed",  label: "Done" },
+  { key: "pending",    labelKey: "track.step.received" },
+  { key: "preparing",  labelKey: "track.step.preparing" },
+  { key: "ready",      labelKey: "track.step.ready" },
+  { key: "completed",  labelKey: "track.step.done" },
 ];
 function stepIndex(status: string): number {
   const normalised = status === "paid" || status === "in_progress" ? "preparing"
@@ -224,13 +224,13 @@ function stepIndex(status: string): number {
   return s;
 }
 
-function orderTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    dine_in: "Dine In", takeaway: "Takeaway",
-    online_pickup: "Online Pickup", delivery: "Delivery", preorder: "Pre-order",
-  };
-  return map[type] ?? type;
-}
+const ORDER_TYPE_KEYS: Record<string, string> = {
+  dine_in: "track.type.dine_in",
+  takeaway: "track.type.takeaway",
+  online_pickup: "track.type.online_pickup",
+  delivery: "track.type.delivery",
+  preorder: "track.type.preorder",
+};
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
 
@@ -251,6 +251,7 @@ export function OrderStatusPage() {
   const { clearCart, addItem } = useCart();
   const s = useSiteSettings();
   const { isAuthenticated } = useAuth();
+  const { t } = useLanguage();
 
   const paymentState = searchParams.get("payment") as PaymentState;
   const trackingToken = trackingTokenFromPath ?? searchParams.get("tok");
@@ -279,7 +280,7 @@ export function OrderStatusPage() {
 
     const parsedId = orderId ? parseInt(orderId, 10) : NaN;
     if (!trackingToken && !Number.isFinite(parsedId)) {
-      setError("Invalid order ID.");
+      setError(t("track.err_invalid_id"));
       setLoading(false);
       return;
     }
@@ -292,20 +293,20 @@ export function OrderStatusPage() {
         const res = await getOrderDetail(parsedId);
         setOrder(res.order);
       } else {
-        setError("Open the full link from your SMS, or log in to view your order.");
+        setError(t("track.err_need_link"));
       }
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, trackingToken, orderId]);
+  }, [isAuthenticated, trackingToken, orderId, t]);
 
   useEffect(() => {
     document.title = order?.order_number
-      ? `Order #${order.order_number} — Bake & Grill`
-      : 'Order Status — Bake & Grill';
-  }, [order?.order_number]);
+      ? `${t("track.page_title_num").replace("{n}", order.order_number)} — Bake & Grill`
+      : `${t("track.page_title")} — Bake & Grill`;
+  }, [order?.order_number, t]);
 
   useEffect(() => {
     if (!order || !['pending', 'paid', 'confirmed', 'preparing', 'in_progress', 'ready'].includes(order.status)) {
@@ -358,14 +359,14 @@ export function OrderStatusPage() {
 
   const redirectToPayment = (paymentUrl: string | null | undefined) => {
     if (!paymentUrl) {
-      throw new Error("Payment could not be started. Please try again in a moment.");
+      throw new Error(t("track.err_pay_start"));
     }
     window.location.href = paymentUrl;
   };
 
   const handlePayAgain = async () => {
     if (!order || !isAuthenticated) {
-      setPayError("Please sign in to pay for this order.");
+      setPayError(t("track.err_sign_in_pay"));
       navigate("/checkout");
       return;
     }
@@ -383,16 +384,16 @@ export function OrderStatusPage() {
 
   const handlePayPartial = async () => {
     if (!order || !isAuthenticated) {
-      setPayError("Please sign in to pay for this order.");
+      setPayError(t("track.err_sign_in_pay"));
       return;
     }
     const amountLaar = Math.round(parseFloat(partialAmountMvr) * 100);
     if (!Number.isFinite(amountLaar) || amountLaar <= 0) {
-      setPayError("Enter a valid amount in MVR.");
+      setPayError(t("track.err_amount"));
       return;
     }
     if (amountLaar > remainingLaar) {
-      setPayError(`Amount cannot exceed MVR ${remainingMvr.toFixed(2)} remaining.`);
+      setPayError(t("track.err_amount_max").replace("{amount}", remainingMvr.toFixed(2)));
       return;
     }
     setIsPaying(true);
@@ -475,9 +476,29 @@ export function OrderStatusPage() {
     return () => clearInterval(interval);
   }, [liveConnected, loadOrder]);
 
-  const statusInfo = order ? (STATUS_CONFIG[order.status] ?? {
-    label: order.status, sub: '', color: 'var(--color-text-muted)', bg: 'var(--color-surface-alt)', icon: '📋',
-  }) : null;
+  const statusMeta = order ? STATUS_CONFIG[order.status] : null;
+  const statusInfo = order
+    ? (statusMeta
+      ? {
+          label: t(statusMeta.labelKey),
+          sub: t(statusMeta.subKey),
+          next: statusMeta.nextKey ? t(statusMeta.nextKey) : undefined,
+          color: statusMeta.color,
+          bg: statusMeta.bg,
+          icon: statusMeta.icon,
+        }
+      : {
+          label: order.status,
+          sub: '',
+          color: 'var(--color-text-muted)',
+          bg: 'var(--color-surface-alt)',
+          icon: '📋',
+        })
+    : null;
+  const orderTypeLabel = (type: string) => {
+    const key = ORDER_TYPE_KEYS[type];
+    return key ? t(key) : type;
+  };
 
   const isCancelled = order?.status === 'cancelled';
   const isDone = order?.status === 'completed';
@@ -490,16 +511,16 @@ export function OrderStatusPage() {
   const handleShareOrder = async () => {
     if (!order) return;
     const referralLine = referralCode
-      ? `\nUse my code ${referralCode} on your first order at Bake & Grill!`
+      ? `\n${t('track.share_referral').replace('{code}', referralCode)}`
       : '';
-    const shareText = `Just ordered from Bake & Grill! Order #${order.order_number}${referralLine}`;
+    const shareText = `${t('track.share_text').replace('{n}', order.order_number)}${referralLine}`;
     const shareUrl = window.location.origin + '/order';
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Bake & Grill', text: shareText, url: shareUrl });
       } else {
         await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-        alert('Link copied to clipboard!');
+        alert(t('track.share_copied'));
       }
     } catch {
       /* user cancelled share */
@@ -553,7 +574,7 @@ export function OrderStatusPage() {
   const liveIndicator = liveConnected ? (
     <span style={{ fontSize: '0.6875rem', color: 'var(--color-success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
       <span style={{ width: '0.4375rem', height: '0.4375rem', borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block', animation: 'pulse-dot 2s infinite' }} />
-      Live
+      {t('track.live')}
     </span>
   ) : null;
 
@@ -563,7 +584,7 @@ export function OrderStatusPage() {
       {/* ── Branded header ───────────────────────────────── */}
       <BrandedHeader
         onBack={() => navigate('/')}
-        backLabel="← Home"
+        backLabel={t('header.back_home')}
         rightSlot={liveIndicator ?? undefined}
       />
 
@@ -576,13 +597,13 @@ export function OrderStatusPage() {
           <div className="banner banner-success animate-fade-in">
             <span className="banner-icon">🎉</span>
             <div style={{ flex: 1 }}>
-              <p className="banner-title">Payment successful!</p>
-              <p className="banner-sub">Confirming your order — this page will update automatically.</p>
+              <p className="banner-title">{t('track.pay_ok_title')}</p>
+              <p className="banner-sub">{t('track.pay_ok_sub')}</p>
             </div>
             <button
               onClick={() => setShowPaymentBanner(false)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--color-success)', padding: '0 0.25rem' }}
-              aria-label="Dismiss"
+              aria-label={t('track.dismiss')}
             >✕</button>
           </div>
         )}
@@ -590,17 +611,17 @@ export function OrderStatusPage() {
           <div className="banner banner-error animate-fade-in">
             <span className="banner-icon">❌</span>
             <div style={{ flex: 1 }}>
-              <p className="banner-title">Payment didn't go through</p>
-              <p className="banner-sub">Your card was not charged. Please try paying again — or{' '}
+              <p className="banner-title">{t('track.pay_fail_title')}</p>
+              <p className="banner-sub">{t('track.pay_fail_sub_before')}{' '}
                 <a
                   href={s.business_whatsapp || 'https://wa.me/9609120011'}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}
                 >
-                  message us on WhatsApp
+                  {t('track.pay_fail_wa')}
                 </a>{' '}
-                and we'll sort it out.
+                {t('track.pay_fail_sub_after')}
               </p>
               {payError && (
                 <p style={{ margin: '0.5rem 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-error)' }}>{payError}</p>
@@ -625,7 +646,7 @@ export function OrderStatusPage() {
                     opacity: isPaying ? 0.8 : 1,
                   }}
                 >
-                  {isPaying ? 'Starting payment…' : 'Pay again'}
+                  {isPaying ? t('track.pay_starting') : t('track.pay_again')}
                 </button>
               )}
             </div>
@@ -648,7 +669,7 @@ export function OrderStatusPage() {
           <div className="banner banner-error">
             <span className="banner-icon">⚠️</span>
             <div style={{ flex: 1 }}>
-              <p className="banner-title">Couldn't load your order</p>
+              <p className="banner-title">{t('track.load_fail_title')}</p>
               <p className="banner-sub">{error}</p>
             </div>
             <button
@@ -659,7 +680,7 @@ export function OrderStatusPage() {
                 borderRadius: '0.5rem', cursor: 'pointer',
               }}
             >
-              Try again
+              {t('common.try_again')}
             </button>
           </div>
         )}
@@ -705,8 +726,8 @@ export function OrderStatusPage() {
                 <div style={{ marginBottom: '1rem' }}>
                   <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 0.75rem' }}>
                     {order.payment_status === 'partial'
-                      ? `MVR ${remainingMvr.toFixed(2)} remaining on this order.`
-                      : 'Payment is still pending. Complete checkout to send your order to the kitchen.'}
+                      ? t('track.pay_remaining').replace('{amount}', remainingMvr.toFixed(2))
+                      : t('track.pay_pending')}
                   </p>
                   {payError && (
                     <p style={{ margin: '0 0 0.5rem', fontSize: 'var(--text-xs)', color: 'var(--color-error)' }}>{payError}</p>
@@ -731,7 +752,7 @@ export function OrderStatusPage() {
                       marginBottom: order.payment_status === 'partial' ? '0.75rem' : 0,
                     }}
                   >
-                    {isPaying ? 'Starting payment…' : `Pay MVR ${remainingMvr.toFixed(2)}`}
+                    {isPaying ? t('track.pay_starting') : t('track.pay_mvr').replace('{amount}', remainingMvr.toFixed(2))}
                   </button>
                   {order.payment_status === 'partial' && (
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -742,7 +763,7 @@ export function OrderStatusPage() {
                         max={remainingMvr}
                         value={partialAmountMvr}
                         onChange={(e) => setPartialAmountMvr(e.target.value)}
-                        placeholder="Custom amount (MVR)"
+                        placeholder={t('track.pay_custom_ph')}
                         style={{
                           flex: 1,
                           padding: '0.65rem 0.75rem',
@@ -765,7 +786,7 @@ export function OrderStatusPage() {
                           fontFamily: 'inherit',
                         }}
                       >
-                        Pay part
+                        {t('track.pay_part')}
                       </button>
                     </div>
                   )}
@@ -773,7 +794,7 @@ export function OrderStatusPage() {
               )}
 
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 600, margin: '0 0 0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
-                Order #{order.order_number}
+                {t('track.order_hash').replace('{n}', order.order_number)}
               </p>
 
               {/* Vertical timeline — hide for cancelled */}
@@ -802,7 +823,7 @@ export function OrderStatusPage() {
                             done   ? 'is-done'   : '',
                             active ? 'is-active' : '',
                           ].filter(Boolean).join(' ')}>
-                            {step.label}
+                            {t(step.labelKey)}
                           </span>
                           {active && (
                             <span className="order-timeline__step-sub">{statusInfo.sub}</span>
@@ -825,70 +846,70 @@ export function OrderStatusPage() {
               }}>
                 <p style={{ fontSize: '1.75rem', margin: '0 0 0.35rem' }}>🎉</p>
                 <p style={{ fontSize: 'var(--text-body)', fontWeight: 800, color: '#92400E', margin: '0 0 0.25rem' }}>
-                  You earned {pointsEarned.toLocaleString()} loyalty points!
+                  {t('track.points_title').replace('{n}', pointsEarned.toLocaleString())}
                 </p>
                 <p style={{ fontSize: 'var(--text-sm)', color: '#B45309', margin: 0 }}>
-                  Points are added to your account — redeem them on your next order.
+                  {t('track.points_sub')}
                 </p>
               </div>
             )}
 
             {/* Order details card */}
             <div style={S.card}>
-              <p style={S.cardTitle}>Order Details</p>
-              <DetailRow label="Order number" value={`#${order.order_number}`} />
-              <DetailRow label="Type" value={orderTypeLabel(order.type)} />
-              <DetailRow label="Status" value={statusInfo.label} />
+              <p style={S.cardTitle}>{t('track.details')}</p>
+              <DetailRow label={t('track.label_number')} value={`#${order.order_number}`} />
+              <DetailRow label={t('track.label_type')} value={orderTypeLabel(order.type)} />
+              <DetailRow label={t('track.label_status')} value={statusInfo.label} />
               {(order.estimated_wait_minutes ?? waitMinutes) != null && ['pending', 'paid', 'confirmed', 'preparing', 'in_progress', 'ready'].includes(order.status) && (
-                <DetailRow label="Kitchen wait" value={`~${order.estimated_wait_minutes ?? waitMinutes} min`} />
+                <DetailRow label={t('track.label_wait')} value={t('track.wait_min').replace('{n}', String(order.estimated_wait_minutes ?? waitMinutes))} />
               )}
               {order.pickup_slot_at && (
-                <DetailRow label="Pickup time" value={new Date(order.pickup_slot_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} />
+                <DetailRow label={t('track.label_pickup')} value={new Date(order.pickup_slot_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} />
               )}
               {order.paid_at && (
-                <DetailRow label="Paid at" value={new Date(order.paid_at).toLocaleString()} />
+                <DetailRow label={t('track.label_paid_at')} value={new Date(order.paid_at).toLocaleString()} />
               )}
 
               {/* Receipt breakdown */}
               {order.subtotal != null && (
                 <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', paddingBottom: '0.375rem' }}>
-                    <span>Subtotal</span>
+                    <span>{t('track.subtotal')}</span>
                     <span>MVR {parseFloat(String(order.subtotal)).toFixed(2)}</span>
                   </div>
                   {(order.promo_discount_laar ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
-                      <span>🏷️ Promo</span>
+                      <span>🏷️ {t('track.promo')}</span>
                       <span>-MVR {((order.promo_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.loyalty_discount_laar ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
-                      <span>⭐ Loyalty</span>
+                      <span>⭐ {t('track.loyalty')}</span>
                       <span>-MVR {((order.loyalty_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.gift_card_discount_laar ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
-                      <span>🎁 Gift Card</span>
+                      <span>🎁 {t('track.gift_card')}</span>
                       <span>-MVR {((order.gift_card_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.referral_discount_laar ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-success)', paddingBottom: '0.375rem' }}>
-                      <span>👥 Referral</span>
+                      <span>👥 {t('track.referral')}</span>
                       <span>-MVR {((order.referral_discount_laar ?? 0) / 100).toFixed(2)}</span>
                     </div>
                   )}
                   {(order.delivery_fee ?? 0) > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', paddingBottom: '0.375rem' }}>
-                      <span>🛵 Delivery</span>
+                      <span>🛵 {t('track.delivery')}</span>
                       <span>+MVR {parseFloat(String(order.delivery_fee)).toFixed(2)}</span>
                     </div>
                   )}
                   {order.tax_amount != null && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', paddingBottom: '0.375rem' }}>
-                      <span>GST (8%)</span>
+                      <span>{t('track.gst')}</span>
                       <span>MVR {parseFloat(String(order.tax_amount)).toFixed(2)}</span>
                     </div>
                   )}
@@ -896,7 +917,7 @@ export function OrderStatusPage() {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 'var(--text-lg)', color: 'var(--color-text)', borderTop: '2px solid var(--color-border)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-                <span>Total</span>
+                <span>{t('track.total')}</span>
                 <span style={{ color: 'var(--color-primary)' }}>
                   MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}
                 </span>
@@ -911,12 +932,12 @@ export function OrderStatusPage() {
             {/* Delivery address */}
             {order.type === 'delivery' && order.delivery_address_line1 && (
               <div style={S.card}>
-                <p style={S.cardTitle}>Delivery Address</p>
+                <p style={S.cardTitle}>{t('track.delivery_address')}</p>
                 <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', margin: 0 }}>{order.delivery_address_line1}</p>
                 {order.delivery_island && <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-muted)', margin: '0.25rem 0 0' }}>{order.delivery_island}</p>}
                 {order.delivery_contact_name && (
                   <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', margin: '0.5rem 0 0' }}>
-                    Contact: {order.delivery_contact_name}{order.delivery_contact_phone && ` · ${order.delivery_contact_phone}`}
+                    {t('track.contact').replace('{name}', order.delivery_contact_name)}{order.delivery_contact_phone && ` · ${order.delivery_contact_phone}`}
                   </p>
                 )}
               </div>
@@ -925,7 +946,7 @@ export function OrderStatusPage() {
             {/* Items ordered */}
             {order.items && order.items.length > 0 && (
               <div style={S.card}>
-                <p style={S.cardTitle}>Items Ordered</p>
+                <p style={S.cardTitle}>{t('track.items')}</p>
                 {order.items.map((item: OrderDetailItem) => (
                   <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', paddingBottom: '0.625rem', marginBottom: '0.625rem', borderBottom: '1px solid var(--color-border)' }}>
                     <div style={{ flex: 1 }}>
@@ -948,8 +969,8 @@ export function OrderStatusPage() {
             {/* Refresh note */}
             <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
               {liveConnected
-                ? '🟢 Live tracking enabled — updates instantly'
-                : '🔄 Auto-refreshing every 10 seconds'}
+                ? `🟢 ${t('track.refresh_live')}`
+                : `🔄 ${t('track.refresh_poll')}`}
             </p>
 
             {/* Push notification opt-in banner */}
@@ -963,10 +984,10 @@ export function OrderStatusPage() {
                 <div style={{ fontSize: '1.75rem', flexShrink: 0 }}>🔔</div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontWeight: 700, fontSize: 'var(--text-base)', margin: '0 0 0.125rem', color: 'var(--color-text)' }}>
-                    Get notified when your order is ready
+                    {t('track.push_title')}
                   </p>
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 0 }}>
-                    We'll send you a push notification as your order progresses.
+                    {t('track.push_sub')}
                   </p>
                 </div>
                 <button
@@ -981,13 +1002,13 @@ export function OrderStatusPage() {
                     opacity: pushLoading ? 0.7 : 1,
                   }}
                 >
-                  {pushLoading ? '…' : 'Enable'}
+                  {pushLoading ? '…' : t('track.push_enable')}
                 </button>
               </div>
             )}
             {pushSupported && pushSubscribed && !isCancelled && !isDone && (
               <p style={{ textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-success)' }}>
-                🔔 Push notifications enabled — you'll be notified when your order status changes.
+                🔔 {t('track.push_on')}
               </p>
             )}
 
@@ -999,34 +1020,34 @@ export function OrderStatusPage() {
             {/* Support block */}
             <div style={{ ...S.card, textAlign: 'center', padding: '1.375rem 1.5rem' }}>
               <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 'var(--text-body)', marginBottom: '0.25rem' }}>
-                Need help with your order?
+                {t('track.help_title')}
               </p>
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: '0.875rem' }}>
-                We reply within 10 minutes on WhatsApp and Viber
+                {t('track.help_sub')}
               </p>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <a
                   href={phoneTel}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.55rem 1rem', background: 'var(--color-surface-alt)', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
-                  aria-label="Call us"
+                  aria-label={t('track.call_aria')}
                 >
-                  📞 Call
+                  📞 {t('track.call')}
                 </a>
                 <a
                   href={`${waLink}?text=Hi%2C+I+need+help+with+order+%23${order.order_number}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.55rem 1rem', background: '#25d366', color: 'white', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
-                  aria-label="Contact us on WhatsApp"
+                  aria-label={t('track.wa_aria')}
                 >
-                  <WhatsAppIcon /> WhatsApp
+                  <WhatsAppIcon /> {t('track.whatsapp')}
                 </a>
                 <a
                   href={viberLink}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4375rem', padding: '0.55rem 1rem', background: '#7360f2', color: 'white', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
-                  aria-label="Contact us on Viber"
+                  aria-label={t('track.viber_aria')}
                 >
-                  <ViberIcon /> Viber
+                  <ViberIcon /> {t('track.viber')}
                 </a>
                 {s.business_maps_url && (
                   <a
@@ -1034,9 +1055,9 @@ export function OrderStatusPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.55rem 1rem', background: 'var(--color-surface-alt)', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 'var(--text-sm)', textDecoration: 'none' }}
-                    aria-label="Get directions"
+                    aria-label={t('track.directions_aria')}
                   >
-                    📍 Directions
+                    📍 {t('track.directions')}
                   </a>
                 )}
               </div>
@@ -1057,7 +1078,7 @@ export function OrderStatusPage() {
                   marginBottom: '0.625rem',
                 }}
               >
-                📤 Share your order
+                📤 {t('track.share')}
               </button>
             )}
             <button
@@ -1076,7 +1097,7 @@ export function OrderStatusPage() {
               disabled={reordering}
               onClick={() => void handleOrderAgain()}
             >
-              {reordering ? 'Adding to cart…' : isDone ? '🔁 Order again' : '← Back to menu'}
+              {reordering ? t('track.reordering') : isDone ? `🔁 ${t('track.reorder')}` : t('track.back_menu')}
             </button>
           </div>
         )}
@@ -1090,19 +1111,19 @@ export function OrderStatusPage() {
               // message right after a successful payment.
               <>
                 <p style={{ color: 'var(--color-success)', fontWeight: 700, textAlign: 'center', marginBottom: '0.5rem', fontSize: 'var(--text-lg)' }}>
-                  Payment received!
+                  {t('track.payment_received')}
                 </p>
                 <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '1rem' }}>
-                  Your order has been confirmed. Check your email or WhatsApp for details.
+                  {t('track.payment_received_sub')}
                 </p>
               </>
             ) : (
               <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '1rem' }}>
-                Order not found. Please sign in to view your order.
+                {t('track.not_found')}
               </p>
             )}
             <button style={{ background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '0.75rem', padding: '0.75rem 1.5rem', fontSize: 'var(--text-body)', fontWeight: 700, cursor: 'pointer', width: '100%', fontFamily: 'inherit' }} onClick={() => navigate('/')}>
-              Back to menu
+              {t('track.back_menu_cta')}
             </button>
           </div>
         )}
@@ -1118,15 +1139,15 @@ export function OrderStatusPage() {
       }}>
         <div style={{ maxWidth: 'min(600px, 100%)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.625rem', alignItems: 'center' }}>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
-            Need help?{' '}
+            {t('track.footer_help')}{' '}
             <a href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
-              WhatsApp us
+              {t('track.footer_wa')}
             </a>
             {' · '}
             <a href={phoneTel} style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{phone}</a>
           </p>
           <a href="/" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textDecoration: 'none' }}>
-            ← Back to main website
+            {t('track.footer_site')}
           </a>
         </div>
       </footer>

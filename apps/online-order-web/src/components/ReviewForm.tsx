@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { submitReview } from "../api";
+import { useLanguage } from "../context/LanguageContext";
 
 interface Props {
   orderId: number;
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function ReviewForm({ orderId, onDone }: Props) {
+  const { t } = useLanguage();
   const [rating, setRating]   = useState(0);
   const [hovered, setHovered] = useState(0);
   const [comment, setComment] = useState("");
@@ -19,7 +21,7 @@ export function ReviewForm({ orderId, onDone }: Props) {
   useEffect(() => () => { if (doneTimer.current) clearTimeout(doneTimer.current); }, []);
 
   const submit = async () => {
-    if (!rating) { setError("Please select a rating."); return; }
+    if (!rating) { setError(t("review.err_rating")); return; }
     setLoading(true);
     setError("");
     try {
@@ -36,14 +38,14 @@ export function ReviewForm({ orderId, onDone }: Props) {
   if (done) {
     return (
       <div style={s.card}>
-        <p style={{ textAlign: "center", fontSize: 18 }}>⭐ Thanks for your feedback!</p>
+        <p style={{ textAlign: "center", fontSize: 18 }}>⭐ {t("review.thanks")}</p>
       </div>
     );
   }
 
   return (
     <div style={s.card}>
-      <h3 style={s.title}>Rate your order</h3>
+      <h3 style={s.title}>{t("review.title")}</h3>
       {error && <div style={s.err}>{error}</div>}
 
       <div style={s.stars}>
@@ -54,7 +56,7 @@ export function ReviewForm({ orderId, onDone }: Props) {
             onMouseEnter={() => setHovered(n)}
             onMouseLeave={() => setHovered(0)}
             onClick={() => setRating(n)}
-            aria-label={`${n} star`}
+            aria-label={t("review.star_aria").replace("{n}", String(n))}
           >
             ★
           </button>
@@ -65,18 +67,18 @@ export function ReviewForm({ orderId, onDone }: Props) {
         style={s.textarea}
         value={comment}
         onChange={e => setComment(e.target.value)}
-        placeholder="Share your experience (optional)…"
+        placeholder={t("review.ph_comment")}
         rows={3}
         maxLength={500}
       />
 
       <label style={s.checkRow}>
         <input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} />
-        <span style={{ fontSize: 13 }}>Post anonymously</span>
+        <span style={{ fontSize: 13 }}>{t("review.anonymous")}</span>
       </label>
 
       <button style={s.btn} disabled={loading || !rating} onClick={submit}>
-        {loading ? "Submitting…" : "Submit Review"}
+        {loading ? t("review.submitting") : t("review.submit")}
       </button>
     </div>
   );

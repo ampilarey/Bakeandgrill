@@ -5,6 +5,7 @@ import type { Item, PreOrderResult } from '../api';
 import { AuthBlock } from '../components/AuthBlock';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/shell/PageHeader';
 
@@ -23,6 +24,7 @@ export function PreOrderPage() {
   usePageTitle('Pre-Order');
   const navigate = useNavigate();
   const { settings: s, text } = useSiteSettingsContext();
+  const { t } = useLanguage();
   const waLink = s.business_whatsapp || 'https://wa.me/9609120011';
   let confirmSteps: { text?: string }[] = [];
   try {
@@ -31,9 +33,9 @@ export function PreOrderPage() {
   } catch { /* use defaults below */ }
   if (confirmSteps.length === 0) {
     confirmSteps = [
-      { text: 'Our team will review your request within a few hours.' },
-      { text: 'We will call you to confirm availability and final details.' },
-      { text: 'Payment is collected on delivery or pickup day.' },
+      { text: t('preorder.step1_default') },
+      { text: t('preorder.step2_default') },
+      { text: t('preorder.step3_default') },
     ];
   }
   const { isAuthenticated, customerName, setAuth } = useAuth();
@@ -48,8 +50,8 @@ export function PreOrderPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetchItems().then(({ data }) => setItems(data ?? [])).catch((e: Error) => setError(e.message || 'Failed to load menu items.'));
-  }, []);
+    fetchItems().then(({ data }) => setItems(data ?? [])).catch((e: Error) => setError(e.message || t('preorder.err_load')));
+  }, [t]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const selectedLines = items.filter(i => (quantities[i.id] ?? 0) > 0);
@@ -70,7 +72,7 @@ export function PreOrderPage() {
     if (!isAuthenticated) return;
     const parsedDate = Date.parse(fulfillmentDate);
     if (!fulfillmentDate || !Number.isFinite(parsedDate)) {
-      setError('Please select a valid fulfillment date and time.');
+      setError(t('preorder.err_date'));
       return;
     }
     setLoading(true);
@@ -103,7 +105,7 @@ export function PreOrderPage() {
             {text('preorder_page_subtitle', "Ordering for a gathering or event? Select your items, choose a fulfillment date, and we'll prepare everything fresh for collection.")}
           </p>
           <div style={S.notice}>
-            ⏰ Pre-orders require <strong>at least 24 hours' notice</strong>. Our team will confirm your order by phone.
+            ⏰ {t('preorder.notice')}
           </div>
         </div>
 
@@ -122,7 +124,7 @@ export function PreOrderPage() {
                   {['items','details','confirm'].indexOf(step) > i ? '✓' : i + 1}
                 </div>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: step === s ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
-                  {s === 'items' ? 'Choose Items' : s === 'details' ? 'Event Details' : 'Confirm'}
+                  {s === 'items' ? t('preorder.step_items') : s === 'details' ? t('preorder.step_details') : t('preorder.step_confirm')}
                 </span>
                 {i < 2 && <div style={{ flex: 1, height: 2, background: 'var(--color-border)', margin: '0 0.5rem' }} />}
               </div>
@@ -141,7 +143,7 @@ export function PreOrderPage() {
             <div style={{ marginBottom: '1.25rem' }}>
               <input
                 style={S.input}
-                placeholder="Search items or categories…"
+                placeholder={t('preorder.search_ph')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -159,11 +161,11 @@ export function PreOrderPage() {
 
                     {item.is_available ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button style={S.qtyBtn} onClick={() => setQty(item.id, -1)} disabled={qty === 0} aria-label="Remove one">−</button>
+                        <button style={S.qtyBtn} onClick={() => setQty(item.id, -1)} disabled={qty === 0} aria-label={t('preorder.qty_remove')}>−</button>
                         <span style={{ minWidth: '1.5rem', textAlign: 'center', fontWeight: 700, fontSize: '1rem', color: qty > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
                           {qty || '0'}
                         </span>
-                        <button style={S.qtyBtn} onClick={() => setQty(item.id, 1)} aria-label="Add one">+</button>
+                        <button style={S.qtyBtn} onClick={() => setQty(item.id, 1)} aria-label={t('preorder.qty_add')}>+</button>
                         {qty > 0 && (
                           <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
                             = MVR {mvrToDisplay(Number(item.base_price) * qty)}
@@ -171,7 +173,7 @@ export function PreOrderPage() {
                         )}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>Unavailable</span>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{t('preorder.unavailable')}</span>
                     )}
                   </div>
                 );
@@ -183,14 +185,16 @@ export function PreOrderPage() {
               <div style={S.totalBar}>
                 <div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>
-                    {selectedLines.length} item{selectedLines.length !== 1 ? 's' : ''} selected
+                    {selectedLines.length === 1
+                      ? t('preorder.item_selected')
+                      : t('preorder.items_selected').replace('{n}', String(selectedLines.length))}
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--color-text)' }}>
-                    MVR {mvrToDisplay(total)} total
+                    {t('preorder.total_mvr').replace('{amount}', mvrToDisplay(total))}
                   </div>
                 </div>
                 <button style={S.primaryBtn} onClick={() => setStep('details')}>
-                  Next: Event Details →
+                  {t('preorder.next_details')}
                 </button>
               </div>
             )}
@@ -200,9 +204,9 @@ export function PreOrderPage() {
         {/* ── Step 2: Details ── */}
         {step === 'details' && (
           <div style={{ ...S.card, maxWidth: '520px', margin: '0 auto' }}>
-            <h2 style={S.cardTitle}>Event Details</h2>
+            <h2 style={S.cardTitle}>{t('preorder.details_title')}</h2>
 
-            <label style={S.label}>Fulfillment Date &amp; Time *</label>
+            <label style={S.label}>{t('preorder.label_fulfillment')}</label>
             <input
               type="datetime-local"
               style={S.input}
@@ -211,21 +215,21 @@ export function PreOrderPage() {
               onChange={e => setFulfillmentDate(e.target.value)}
             />
             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-              Must be at least 24 hours from now. We'll contact you to confirm.
+              {t('preorder.fulfillment_hint')}
             </p>
 
-            <label style={S.label}>Special Instructions (optional)</label>
+            <label style={S.label}>{t('preorder.label_notes')}</label>
             <textarea
               style={{ ...S.input, height: 100, resize: 'vertical' }}
-              placeholder="Allergens, delivery location, setup notes…"
+              placeholder={t('preorder.ph_notes')}
               value={notes}
               onChange={e => setNotes(e.target.value)}
             />
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <button style={S.ghostBtn} onClick={() => setStep('items')}>← Back</button>
+              <button style={S.ghostBtn} onClick={() => setStep('items')}>{t('common.back')}</button>
               <button style={{ ...S.primaryBtn, flex: 1 }} onClick={() => setStep('confirm')} disabled={!fulfillmentDate}>
-                Review Order →
+                {t('preorder.review_cta')}
               </button>
             </div>
           </div>
@@ -234,7 +238,7 @@ export function PreOrderPage() {
         {/* ── Step 3: Confirm ── */}
         {step === 'confirm' && (
           <div style={{ ...S.card, maxWidth: '520px', margin: '0 auto' }}>
-            <h2 style={S.cardTitle}>Review Your Pre-Order</h2>
+            <h2 style={S.cardTitle}>{t('preorder.review_title')}</h2>
 
             {/* Items summary */}
             <div style={{ marginBottom: '1.25rem' }}>
@@ -245,19 +249,19 @@ export function PreOrderPage() {
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0 0', fontWeight: 800, fontSize: '1rem' }}>
-                <span>Total</span>
+                <span>{t('track.total')}</span>
                 <span style={{ color: 'var(--color-primary)' }}>MVR {mvrToDisplay(total)}</span>
               </div>
             </div>
 
             <div style={{ ...S.infoRow, marginBottom: '1rem' }}>
-              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>📅 Fulfillment</span>
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>📅 {t('preorder.fulfillment_row')}</span>
               <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{new Date(fulfillmentDate).toLocaleString()}</span>
             </div>
 
             {notes && (
               <div style={{ ...S.infoRow, marginBottom: '1rem' }}>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>📝 Notes</span>
+                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>📝 {t('preorder.notes_row')}</span>
                 <span style={{ fontSize: '0.875rem' }}>{notes}</span>
               </div>
             )}
@@ -267,7 +271,7 @@ export function PreOrderPage() {
               <AuthBlock onSuccess={(name) => setAuth(name)} />
             ) : (
               <div style={{ background: 'var(--color-surface-alt)', borderRadius: '10px', padding: '0.875rem 1rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
-                ✅ Ordering as <strong>{customerName}</strong>
+                ✅ {t('preorder.ordering_as').replace('{name}', customerName ?? '')}
               </div>
             )}
 
@@ -278,13 +282,13 @@ export function PreOrderPage() {
             )}
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button style={S.ghostBtn} onClick={() => setStep('details')}>← Back</button>
+              <button style={S.ghostBtn} onClick={() => setStep('details')}>{t('common.back')}</button>
               <button
                 style={{ ...S.primaryBtn, flex: 1, opacity: (!isAuthenticated || loading) ? 0.55 : 1, cursor: (!isAuthenticated || loading) ? 'not-allowed' : 'pointer' }}
                 onClick={handleSubmit}
                 disabled={!isAuthenticated || loading}
               >
-                {loading ? 'Submitting…' : text('preorder_submit_label', 'Submit Pre-Order')}
+                {loading ? t('preorder.submitting') : text('preorder_submit_label', 'Submit Pre-Order')}
               </button>
             </div>
           </div>
@@ -299,10 +303,10 @@ export function PreOrderPage() {
             </h2>
             <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
               {text('preorder_confirm_message', 'Your pre-order request has been submitted successfully.')}
-              {' '}Order <strong>{result.order_number}</strong>.
+              {' '}{t('preorder.order_num').replace('{n}', result.order_number)}
             </p>
             <div style={{ background: 'var(--color-surface-alt)', borderRadius: '10px', padding: '1rem', marginBottom: '1.5rem', textAlign: 'left' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-primary)' }}>What&apos;s Next?</h3>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-primary)' }}>{t('preorder.whats_next')}</h3>
               {confirmSteps.map((step, i) => (
                 <p key={i} style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
                   {i + 1}. {step.text}
@@ -318,18 +322,18 @@ export function PreOrderPage() {
                 </div>
               ))}
               <div style={{ borderTop: '1px solid var(--color-border)', marginTop: '0.5rem', paddingTop: '0.5rem', fontWeight: 800 }}>
-                <span>Total: MVR {mvrToDisplay(result.total)}</span>
+                <span>{t('track.total')}: MVR {mvrToDisplay(result.total)}</span>
               </div>
             </div>
 
             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
-              📅 Fulfillment: {new Date(result.fulfillment_date).toLocaleString()}
+              📅 {t('preorder.fulfillment_done').replace('{date}', new Date(result.fulfillment_date).toLocaleString())}
             </p>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/menu" style={S.primaryBtn}>Browse Menu</Link>
+              <Link to="/menu" style={S.primaryBtn}>{t('preorder.browse_menu')}</Link>
               <a href={waLink} target="_blank" rel="noopener noreferrer" style={{ ...S.ghostBtn, textDecoration: 'none' }}>
-                💬 WhatsApp Us
+                💬 {t('preorder.whatsapp_us')}
               </a>
             </div>
           </div>
