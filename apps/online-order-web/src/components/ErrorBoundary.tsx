@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { translate as t } from '../context/LanguageContext';
 
 type Props = { children: ReactNode; inline?: boolean };
 type State = { hasError: boolean };
@@ -34,10 +35,10 @@ export class ErrorBoundary extends Component<Props, State> {
         >
           <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>😔</div>
           <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.5rem' }}>
-            Something went wrong
+            {t('error.generic_title')}
           </h1>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', maxWidth: 360, fontSize: '0.9rem', lineHeight: 1.5 }}>
-            This page encountered an unexpected error.
+            {t('error.generic_body')}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
@@ -53,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 minHeight: 44,
               }}
             >
-              Try again
+              {t('common.try_again')}
             </button>
             {inline && (
               <a
@@ -72,7 +73,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   minHeight: 44,
                 }}
               >
-                Go to menu
+                {t('error.go_menu')}
               </a>
             )}
             <button
@@ -88,7 +89,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 minHeight: 44,
               }}
             >
-              Reload page
+              {t('error.reload')}
             </button>
           </div>
         </div>

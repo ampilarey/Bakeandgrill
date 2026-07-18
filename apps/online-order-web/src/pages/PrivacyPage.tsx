@@ -42,11 +42,11 @@ export function PrivacyPage() {
       <div style={S.wrap}>
       <p style={S.updated}><em>{updatedLabel}</em></p>
 
-      <Section title="Introduction">
+      <Section title={t('privacy.sec_intro')}>
         <p>{siteName} ("we", "us", "our") operates the {siteName} café and online ordering system. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.</p>
       </Section>
 
-      <Section title="Information We Collect">
+      <Section title={t('privacy.sec_collect')}>
         <p>When you place an order or use our services, we may collect:</p>
         <ul>
           <li><strong>Phone Number:</strong> Required for OTP authentication and order notifications.</li>
@@ -58,7 +58,7 @@ export function PrivacyPage() {
         <p>We do <strong>not</strong> collect, store, or process your payment card details. All card payments are handled exclusively by Bank of Maldives (BML) on their secure payment page.</p>
       </Section>
 
-      <Section title="How We Use Your Information">
+      <Section title={t('privacy.sec_use')}>
         <p>We use your information to:</p>
         <ul>
           <li>Process and fulfil your orders</li>
@@ -70,7 +70,7 @@ export function PrivacyPage() {
         </ul>
       </Section>
 
-      <Section title="SMS Communications">
+      <Section title={t('privacy.sec_sms')}>
         <p>By providing your phone number, you consent to receive:</p>
         <ul>
           <li>One-time passcodes (OTP) for order verification</li>
@@ -80,12 +80,12 @@ export function PrivacyPage() {
         <p><strong>Opt-out:</strong> To stop receiving promotional SMS, reply STOP to any promotional message or contact us at <a href={phoneTel} style={{ color: 'var(--color-primary, #d97706)' }}>{phone}</a>.</p>
       </Section>
 
-      <Section title="Card Payment Security">
+      <Section title={t('privacy.sec_payment')}>
         <p>All card payments are processed exclusively through the <strong>Bank of Maldives (BML) BankConnect</strong> secure payment page using SSL/TLS encryption. {siteName} does <strong>not</strong> store, view, process, or retain any payment card details on our servers. Your card data is handled entirely by BML.</p>
         <p>We strongly recommend you retain a copy of your order confirmation and payment receipt for your records.</p>
       </Section>
 
-      <Section title="Data Security">
+      <Section title={t('privacy.sec_security')}>
         <p>We implement industry-standard measures to protect your personal data, including:</p>
         <ul>
           <li>Encrypted data transmission (HTTPS/TLS)</li>
@@ -95,7 +95,7 @@ export function PrivacyPage() {
         </ul>
       </Section>
 
-      <Section title="Data Sharing">
+      <Section title={t('privacy.sec_sharing')}>
         <p>We do not sell your personal information. We share it only where necessary:</p>
         <ul>
           <li><strong>Dhiraagu (SMS provider):</strong> Your phone number is used solely for message delivery.</li>
@@ -104,7 +104,7 @@ export function PrivacyPage() {
         </ul>
       </Section>
 
-      <Section title="Your Rights">
+      <Section title={t('privacy.sec_rights')}>
         <p>You have the right to:</p>
         <ul>
           <li>Access your personal data we hold</li>
@@ -115,7 +115,7 @@ export function PrivacyPage() {
         <p>To exercise any of these rights, contact us using the details below.</p>
       </Section>
 
-      <Section title="Contact Us">
+      <Section title={t('privacy.sec_contact')}>
         <p>For privacy-related questions or requests:</p>
         <ul>
           <li><strong>Email:</strong> <a href={`mailto:${email}`} style={{ color: 'var(--color-primary, #d97706)' }}>{email}</a></li>

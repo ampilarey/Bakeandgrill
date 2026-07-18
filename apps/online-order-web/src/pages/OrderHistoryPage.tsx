@@ -72,9 +72,9 @@ export function OrderHistoryPage() {
     setError('');
     fetchCustomerOrders()
       .then((res) => setOrders(ordersFromResponse(res)))
-      .catch(() => setError('Could not load orders. Please try again.'))
+      .catch(() => setError(t('orders.load_fail')))
       .finally(() => setLoading(false));
-  }, [isAuthenticated, authReady]);
+  }, [isAuthenticated, authReady, t]);
 
   const handleAuthSuccess = (name: string) => setAuth(name);
 
@@ -339,7 +339,7 @@ export function OrderHistoryPage() {
                             whiteSpace: 'nowrap',
                             marginBottom: '0.15rem',
                           }}>
-                            {itemSummary}{extraCount > 0 ? ` +${extraCount} more` : ''}
+                            {itemSummary}{extraCount > 0 ? ` ${t('orders.more_items').replace('{n}', String(extraCount))}` : ''}
                           </div>
                         )}
                         {/* Total + date */}

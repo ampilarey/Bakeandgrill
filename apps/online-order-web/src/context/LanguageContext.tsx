@@ -36,6 +36,25 @@ const TRANSLATIONS: Translations = {
   "sheet.close": "Close",
   "sheet.dialog": "Dialog",
   "error.generic_title": "Something went wrong",
+  "error.generic_body": "This page encountered an unexpected error.",
+  "error.reload": "Reload page",
+  "error.go_menu": "Go to menu",
+  "notfound.title": "Page not found",
+  "notfound.body": "The page you're looking for doesn't exist.",
+  "notfound.home": "Back to home",
+  "orders.load_fail": "Could not load orders. Please try again.",
+  "orders.more_items": "+{n} more",
+  "home.corp_headline_default": "Office breakfast & team catering",
+  "home.corp_sub_default": "Minimum 10 guests. We deliver across Malé — tell us your date and headcount.",
+  "privacy.sec_intro": "Introduction",
+  "privacy.sec_collect": "Information We Collect",
+  "privacy.sec_use": "How We Use Your Information",
+  "privacy.sec_sms": "SMS Communications",
+  "privacy.sec_payment": "Card Payment Security",
+  "privacy.sec_security": "Data Security",
+  "privacy.sec_sharing": "Data Sharing",
+  "privacy.sec_rights": "Your Rights",
+  "privacy.sec_contact": "Contact Us",
   "orders.active_capsule": "Order",
   "orders.active_badge": "Active order",
   "rewards.title": "Rewards",
@@ -778,13 +797,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.dir = "ltr";
   }, []);
 
-  const t = (key: string): string => TRANSLATIONS[key] ?? key;
+  const t = translate;
 
   return (
     <LanguageContext.Provider value={{ t }}>
       {children}
     </LanguageContext.Provider>
   );
+}
+
+/** Lookup copy outside React hooks (e.g. class ErrorBoundary). */
+export function translate(key: string): string {
+  return TRANSLATIONS[key] ?? key;
 }
 
 export const useLanguage = () => useContext(LanguageContext);

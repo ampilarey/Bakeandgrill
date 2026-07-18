@@ -83,10 +83,9 @@ export function HomePage() {
   const officeOrdersEnabled =
     s.office_orders_enabled !== '0' && s.office_orders_enabled !== 'false';
   const officeHeadline =
-    s.office_orders_headline || 'Office breakfast & team catering';
+    s.office_orders_headline || t('home.corp_headline_default');
   const officeSubtext =
-    s.office_orders_subtext ||
-    'Minimum 10 guests. We deliver across Malé — tell us your date and headcount.';
+    s.office_orders_subtext || t('home.corp_sub_default');
   const officeMinGuests = Math.max(
     1,
     parseInt(s.office_orders_min_guests ?? '10', 10) || 10,
