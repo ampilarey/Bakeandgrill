@@ -63,9 +63,14 @@ class GiftCardController extends Controller
             return response()->json(['error' => 'Invalid or unavailable gift card.'], 404);
         }
 
+        $heldLaar = $this->giftCardRedemption->reservedLaar($card);
+        $availableLaar = $this->giftCardRedemption->availableLaar($card);
+
         return response()->json([
             'masked_code' => $card->masked_code,
             'current_balance' => (float) $card->current_balance,
+            'held_balance' => round($heldLaar / 100, 2),
+            'available_balance' => round($availableLaar / 100, 2),
             'expires_at' => $card->expires_at?->toDateString(),
         ]);
     }

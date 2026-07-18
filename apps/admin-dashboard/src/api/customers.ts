@@ -413,7 +413,13 @@ export async function sendGiftCardEmail(data: {
   return req('/admin/gift-cards/send-email', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function checkGiftCardBalance(code: string): Promise<{ masked_code: string; current_balance: number; expires_at: string | null }> {
+export async function checkGiftCardBalance(code: string): Promise<{
+  masked_code: string;
+  current_balance: number;
+  available_balance: number;
+  held_balance: number;
+  expires_at: string | null;
+}> {
   return req('/gift-cards/balance', { method: 'POST', body: JSON.stringify({ code: code.trim().toUpperCase() }) });
 }
 

@@ -72,7 +72,13 @@ export default function GiftCardsPage() {
   const [emailResendMsg, setEmailResendMsg] = useState('');
 
   const [balanceCode, setBalanceCode] = useState('');
-  const [balanceResult, setBalanceResult] = useState<{ masked_code: string; current_balance: number; expires_at: string | null } | null>(null);
+  const [balanceResult, setBalanceResult] = useState<{
+    masked_code: string;
+    current_balance: number;
+    available_balance: number;
+    held_balance: number;
+    expires_at: string | null;
+  } | null>(null);
   const [balanceError, setBalanceError] = useState('');
   const [checkingBalance, setCheckingBalance] = useState(false);
 
@@ -304,7 +310,13 @@ export default function GiftCardsPage() {
         {balanceResult && (
           <div style={{ marginTop: 12, padding: 12, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
             <p style={{ margin: 0, color: '#166534', fontWeight: 700 }}>
-              {balanceResult.masked_code} — Balance: MVR {balanceResult.current_balance.toFixed(2)}
+              {balanceResult.masked_code} — Available: MVR {Number(balanceResult.available_balance).toFixed(2)}
+            </p>
+            <p style={{ margin: '4px 0 0', color: '#166534', fontSize: 12 }}>
+              Ledger: MVR {Number(balanceResult.current_balance).toFixed(2)}
+              {Number(balanceResult.held_balance) > 0
+                ? ` · Held on unpaid orders: MVR ${Number(balanceResult.held_balance).toFixed(2)}`
+                : ''}
             </p>
             {balanceResult.expires_at && <p style={{ margin: '4px 0 0', color: '#166534', fontSize: 12 }}>Expires: {balanceResult.expires_at}</p>}
           </div>

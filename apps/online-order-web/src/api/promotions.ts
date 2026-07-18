@@ -73,7 +73,13 @@ export async function releaseLoyaltyHold(orderId: number): Promise<void> {
 
 export async function checkGiftCardBalance(
   code: string,
-): Promise<{ masked_code: string; current_balance: number; expires_at: string | null }> {
+): Promise<{
+  masked_code: string;
+  current_balance: number;
+  available_balance: number;
+  held_balance: number;
+  expires_at: string | null;
+}> {
   return request(ENDPOINTS.GIFT_CARD_BALANCE_POST, {
     method: 'POST',
     body: JSON.stringify({ code: code.trim().toUpperCase() }),

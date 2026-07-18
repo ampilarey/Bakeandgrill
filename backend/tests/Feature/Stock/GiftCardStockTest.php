@@ -127,8 +127,39 @@ class GiftCardStockTest extends TestCase
             ->assertStatus(200);
 
         $this->assertEquals(75, $response->json('current_balance'));
+        $this->assertEquals(75, $response->json('available_balance'));
+        $this->assertEquals(0, $response->json('held_balance'));
         $this->assertArrayHasKey('masked_code', $response->json());
         $this->assertArrayNotHasKey('code', $response->json());
+    }
+
+    public function test_balance_check_reports_held_on_unpaid_orders(): void
+    {
+        ['card' => $card, 'code' => $code] = $this->makeGiftCard([
+            'initial_balance' => 50,
+            'current_balance' => 50,
+        ]);
+
+        Order::create([
+            'order_number' => 'BG-HELD-BAL',
+            'tracking_token' => 'heldbal',
+            'type' => 'takeaway',
+            'status' => 'pending',
+            'subtotal' => 30.00,
+            'subtotal_laar' => 3000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 30.00,
+            'total_laar' => 3000,
+            'gift_card_id' => $card->id,
+            'gift_card_discount_laar' => 3000,
+        ]);
+
+        $this->postJson('/api/gift-cards/balance', ['code' => $code])
+            ->assertOk()
+            ->assertJsonPath('current_balance', 50)
+            ->assertJsonPath('held_balance', 30)
+            ->assertJsonPath('available_balance', 20);
     }
 
     public function test_post_balance_check_returns_404_for_cancelled_card(): void

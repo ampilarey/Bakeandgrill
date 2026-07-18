@@ -176,7 +176,7 @@ export function CheckoutPage() {
     packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
-    giftCardBalance, giftCardDelta,
+    giftCardBalance, giftCardHeld, giftCardDelta,
     handleCheckGiftCard, handleApplyGiftCard, handleRemoveGiftCard,
     myReferralCode,
     friendReferralCode, setFriendReferralCode, friendReferralApplied, friendReferralError,
@@ -598,7 +598,11 @@ export function CheckoutPage() {
             </div>
             {giftCardBalance !== null && !giftCardError && (
               <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-success)', fontWeight: 600 }}>
-                {t('checkout.gift_balance').replace('{amount}', giftCardBalance.toFixed(2))}
+                {giftCardHeld > 0
+                  ? t('checkout.gift_balance_held')
+                      .replace('{available}', giftCardBalance.toFixed(2))
+                      .replace('{held}', giftCardHeld.toFixed(2))
+                  : t('checkout.gift_balance').replace('{amount}', giftCardBalance.toFixed(2))}
               </p>
             )}
             {giftCardError && <p className="field-error" style={{ marginTop: 0 }}>{giftCardError}</p>}

@@ -231,10 +231,12 @@ export function useCheckout() {
   const [giftCardError, setGiftCardError]   = useState("");
   const [giftCardLoading, setGiftCardLoading] = useState(false);
   const [giftCardBalance, setGiftCardBalance] = useState<number | null>(null);
+  const [giftCardHeld, setGiftCardHeld] = useState(0);
 
   const setGiftCardCode = (code: string) => {
     setGiftCardCodeState(code);
     setGiftCardBalance(null);
+    setGiftCardHeld(0);
     setGiftCardError("");
   };
 
@@ -555,10 +557,22 @@ export function useCheckout() {
   // ── Gift Card ──────────────────────────────────────────────────────────────
   const handleCheckGiftCard = async () => {
     if (!giftCardCode.trim()) return;
-    setGiftCardError(""); setGiftCardBalance(null); setGiftCardLoading(true);
+    setGiftCardError(""); setGiftCardBalance(null); setGiftCardHeld(0); setGiftCardLoading(true);
     try {
       const res = await checkGiftCardBalance(giftCardCode.trim().toUpperCase());
-      setGiftCardBalance(res.current_balance);
+      const available = Number(res.available_balance ?? res.current_balance);
+      const held = Number(res.held_balance ?? 0);
+      setGiftCardHeld(held);
+      if (available <= 0) {
+        setGiftCardBalance(null);
+        setGiftCardError(
+          held > 0
+            ? 'This gift card is fully held on other unpaid orders.'
+            : 'This gift card has no available balance.',
+        );
+      } else {
+        setGiftCardBalance(available);
+      }
     } catch (e) {
       setGiftCardError((e as Error).message);
     } finally {
@@ -609,6 +623,7 @@ export function useCheckout() {
     setGiftCardApplied(null);
     setGiftCardCode("");
     setGiftCardBalance(null);
+    setGiftCardHeld(0);
   };
 
   const handleApplyFriendReferral = async () => {
@@ -928,7 +943,7 @@ export function useCheckout() {
     totalLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
-    giftCardBalance, giftCardDelta,
+    giftCardBalance, giftCardHeld, giftCardDelta,
     handleCheckGiftCard, handleApplyGiftCard, handleRemoveGiftCard,
     myReferralCode,
     friendReferralCode, setFriendReferralCode, friendReferralApplied, friendReferralError,
