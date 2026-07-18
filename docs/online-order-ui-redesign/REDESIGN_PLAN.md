@@ -12,7 +12,7 @@
 
 ## Context (from v1)
 
-The customer ordering app (`apps/online-order-web`, React 19 + Vite + TS, served at `/order`) works but looks like a responsive website. The goal is to make it feel like the ZUS Coffee mobile app — a native-app-like ordering experience — based on 10 ZUS screenshots and a written spec provided by the owner. This is a **frontend-only redesign**: keep every existing feature, route, API call, pricing rule, OTP flow, and backend contract. Keep Bake & Grill branding (existing amber `#D4813A` palette — owner explicitly chose NOT to switch to maroon), logo, Plus Jakarta Sans, dark mode, i18n.
+The customer ordering app (`apps/online-order-web`, React 19 + Vite + TS, served at `/order`) works but looks like a responsive website. The goal is to make it feel like the ZUS Coffee mobile app — a native-app-like ordering experience — based on 10 ZUS screenshots and a written spec provided by the owner. This is a **frontend-only redesign**: keep every existing feature, route, API call, pricing rule, OTP flow, and backend contract. Keep Bake & Grill branding (existing amber `#D4813A` palette — owner explicitly chose NOT to switch to maroon), logo, Plus Jakarta Sans, dark mode, and the `t()` copy layer (English-only UI as of v2.2).
 
 **Owner decisions locked in:**
 
@@ -66,7 +66,7 @@ Success in one sentence: a returning customer on a 390px phone can go from openi
 - **Feedback within 100ms:** every tap gets an immediate visual response (press state, skeleton, spinner ≤ one).
 - **Progressive disclosure:** collapsed accordions show their chosen value; the floating cart shows count + total before the cart is opened; stat chips summarise before Rewards details.
 - **Predictable back:** back always closes the topmost layer (sheet → page → tab root), never dumps the user out of a flow with unsaved state without confirmation.
-- **Respect user settings:** dark mode, reduced motion, font scaling, and language are honoured on every new surface.
+- **Respect user settings:** dark mode, reduced motion, and font scaling are honoured on every new surface.
 
 ## 4. User Personas
 
@@ -191,7 +191,7 @@ AppShell (/order)
 ├── TAB 3 Orders (/order-history) ──► /orders/:id · /track/:token (standalone tracking)
 ├── TAB 4 Rewards (/rewards)   [new route]
 └── TAB 5 Account (/account)
-      profile · addresses · orders link · settings (theme, language, notifications)
+      profile · addresses · orders link · settings (theme, notifications)
       └── More links: Pre-Order, Reservations, Hours, Contact, About, Privacy, legal
 ```
 
@@ -570,7 +570,7 @@ Rules: media/container queries in CSS only — no new `isMobile` JS branches (th
 - **Keyboard:** full traversal — nav, rail, grid, sheet controls, accordions; visible focus ring (existing token) on every interactive element; Escape closes topmost layer; no positive `tabindex`.
 - **Reduced motion:** global `@media (prefers-reduced-motion: reduce)` kill-switch (§24); carousel autoplay off; smooth scroll → instant.
 - **Contrast:** all text pairs ≥4.5:1 (large ≥3:1); verify amber-on-white CTA text (white on `#D4813A` is ~3.2:1 — CTA labels must be ≥18.66px bold, or use `--color-primary-hover` `#B86820` for small-text-on-amber; audit in Phase 1 and encode the rule in the button styles); sold-out pill AA on its dim background; dark theme re-audited separately.
-- **Other:** meaning never by colour alone (icons/labels accompany status pills); inputs have visible labels (no placeholder-only); errors are text + icon, associated via `aria-describedby`; language switch updates `lang` attribute (Thaana `dir` handling as today); 200% text zoom doesn't break layout.
+- **Other:** meaning never by colour alone (icons/labels accompany status pills); inputs have visible labels (no placeholder-only); errors are text + icon, associated via `aria-describedby`; document stays `lang="en"` / `dir="ltr"` (v2.2); 200% text zoom doesn't break layout.
 
 ## 27. Folder Structure
 
