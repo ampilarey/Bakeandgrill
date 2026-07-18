@@ -6,7 +6,7 @@
 
 **Amendment over v1:** the Prayer Time bar is **not** reduced to a compact chip. It remains a full-width banner directly below the Home greeting (§12). This is a mandatory, brand-defining feature.
 
-**v2.1 (implementer-review rulings).** The implementing engineer's pre-build review raised 12 ambiguities and several gaps; the architect's rulings are folded into the affected sections below and marked *(v2.1)*. Headline rulings: deep links stay id-only (`?item=<id>`); PWA "My Orders" shortcut retargets to `/order-history` in Phase 2; the header-mounted PrayerBar moves to Home in Phase 2 (never absent); the `fetchItems` delivery→pickup fallback is authoritative for the mode toggle; checkout uses 6 accordions (time merged into the mode-specific section); ActiveOrderCapsule fully replaces OrderStatusBar; per-card prep times are omitted (global ETA only); all new strings go through `t()` (EN + Dhivehi).
+**v2.1 (implementer-review rulings).** The implementing engineer's pre-build review raised 12 ambiguities and several gaps; the architect's rulings are folded into the affected sections below and marked *(v2.1)*. Headline rulings: deep links stay id-only (`?item=<id>`); PWA "My Orders" shortcut retargets to `/order-history` in Phase 2; the header-mounted PrayerBar moves to Home in Phase 2 (never absent); the `fetchItems` delivery→pickup fallback is authoritative for the mode toggle; checkout uses 6 accordions (time merged into the mode-specific section); ActiveOrderCapsule fully replaces OrderStatusBar; per-card prep times are omitted (global ETA only); all new strings go through `t()` (English UI; see v2.2).
 
 ---
 
@@ -42,7 +42,7 @@ The customer ordering app (`apps/online-order-web`, React 19 + Vite + TS, served
 
 ## 1. Executive Summary
 
-Bake & Grill's online ordering app is functionally complete (menu, modifiers, cart, OTP auth, delivery zones, pickup slots, BML payment, loyalty, referrals, pre-orders, reservations, live order tracking, PWA install, dark mode, English/Dhivehi) but presents as a responsive website. This project restyles and restructures **only the presentation layer** of `apps/online-order-web` into a premium, mobile-first, app-like experience inspired by the usability of the ZUS Coffee app.
+Bake & Grill's online ordering app is functionally complete (menu, modifiers, cart, OTP auth, delivery zones, pickup slots, BML payment, loyalty, referrals, pre-orders, reservations, live order tracking, PWA install, dark mode, English UI via `t()`) but presents as a responsive website. This project restyles and restructures **only the presentation layer** of `apps/online-order-web` into a premium, mobile-first, app-like experience inspired by the usability of the ZUS Coffee app.
 
 What changes: screen hierarchy, navigation (5-tab bottom nav + floating cart), the Menu browsing model (category rail + scroll-spy + sectioned grid), sheet-based product customisation and cart, accordion checkout, a focused OTP login screen, a new Rewards tab surfacing existing loyalty data, and a consolidated Account hub. What does not change: every API call, business rule, price calculation, and backend contract. Delivery is phased (7 phases, §30) so the app builds and works at every commit; rollback is a branch revert.
 
@@ -53,7 +53,7 @@ Success in one sentence: a returning customer on a 390px phone can go from openi
 1. **App, not website.** One centred column, fixed bottom navigation, sheets instead of page jumps, sticky CTAs. The browser chrome should be forgettable, especially in installed-PWA mode.
 2. **Ordering is the spine.** Every screen answers "how does this get the customer closer to food?" Home is a launchpad, not a brochure; marketing content ranks below ordering entry points.
 3. **Bake & Grill identity, ZUS usability.** Warm amber (`#D4813A`), cream backgrounds, Plus Jakarta Sans, own photography, the Prayer Time banner, WhatsApp/Viber contact — laid out with ZUS's calm spacing, image-led cards, and one-hand reachability.
-4. **Local first.** Maldives context is a feature: prayer times, Dhivehi (`name_dv`), MVR/laari money handling, island-based delivery zones. These are promoted, not hidden.
+4. **Local first.** Maldives context is a feature: prayer times, MVR/laari money handling, island-based delivery zones. (`name_dv` remains on API/admin contracts but is not shown in the customer UI — v2.2.)
 5. **Nothing invented, nothing lost.** UI may only surface data and actions that exist today. Every current feature must have a home in the new IA (§9) before its old home is deleted.
 6. **Honest states.** Sold-out, closed-for-orders, gate-closed, offline, and loading states are designed deliberately — dimmed but readable (improving on ZUS's over-faded sold-out treatment).
 
@@ -74,7 +74,7 @@ Success in one sentence: a returning customer on a 390px phone can go from openi
 |---|---|---|---|
 | **Aisha, 28 — Malé office worker** | Orders pickup lunch 2–3×/week from her phone; time-poor; logged in; PWA installed | Home → reorder strip or Menu → floating cart → checkout (pickup, ASAP) | Reorder strip near top of Home; remembered mode; ≤10 taps to pay; pickup slot picker fast |
 | **Hassan, 41 — family dinner at home** | Orders delivery for 4–5 people in the evening; browses broadly; price-aware | Menu (delivery mode) → several items with modifiers → promo code → delivery checkout | Category rail for broad browsing; clear delivery fee/zone feedback; cart editing in place |
-| **Maryam, 19 — student, Dhivehi-first** | Prefers Dhivehi UI; watches for specials and loyalty points; shares referral code | Home stat chips → Rewards → specials → Menu | Full i18n via `t()`; Dhivehi names (`name_dv`); RTL-safe layouts for Thaana script where already supported; Rewards tab visible in nav |
+| **Maryam, 19 — student** | Watches for specials and loyalty points; shares referral code | Home stat chips → Rewards → specials → Menu | Copy via `t()` (English-only UI, v2.2); Rewards tab visible in nav |
 | **David, 35 — expat/tourist** | First-time guest; no account; unfamiliar with local payment | Menu → cart → guest checkout | Guest flow prominent in AuthBlock; menu browsable with zero login walls; clear MVR pricing |
 | **Corporate admin, 45** | Places large pre-orders/catering; occasionally reserves tables | Home corporate block / Account → Pre-Order / Reservations | Pre-order & reservations reachable from Account and Home; forms usable on desktop too |
 
@@ -158,7 +158,7 @@ Rules: primary-on-white and text-on-bg pairs must hold ≥ 4.5:1 contrast (§26)
 
 ### 8.2 Typography — Plus Jakarta Sans (existing)
 
-Scale (rem): display 1.75/800 (greeting, points hero) · title 1.25/700 (page & section headers) · body 1.0/500 · label 0.875/600 (chips, nav) · caption 0.75/500 (taglines, legal). Product name: 1.0/700, 2-line clamp. Price: 1.0/700 tabular-nums. Dhivehi/Thaana text keeps existing font fallbacks and `dir` handling.
+Scale (rem): display 1.75/800 (greeting, points hero) · title 1.25/700 (page & section headers) · body 1.0/500 · label 0.875/600 (chips, nav) · caption 0.75/500 (taglines, legal). Product name: 1.0/700, 2-line clamp. Price: 1.0/700 tabular-nums. Document is `lang="en"` / `dir="ltr"` (v2.2).
 
 ### 8.3 Spacing, radius, elevation
 
@@ -499,7 +499,7 @@ Signed-out → points hero is replaced by an AuthBlock teaser card ("Sign in to 
 3. **My addresses** — AddressesSection (add/edit/delete/default, unchanged).
 4. **Orders** — link to Orders tab + recent list (OrderHistorySection).
 5. **Bookings** — Pre-Order ▸, Reservations ▸ (existing pages).
-6. **Settings** — dark-mode toggle (`useTheme`, relocated from old header), language EN/ދިވެހި (LanguageContext), push notifications toggle (`usePushNotifications`: hidden when `!supported`, existing subscribe/unsubscribe).
+6. **Settings** — dark-mode toggle (`useTheme`, relocated from old header); push notifications toggle (`usePushNotifications`: hidden when `!supported`, existing subscribe/unsubscribe). Language switcher removed (v2.2 — English-only).
 7. **More** — Hours, Contact, About, Privacy, footer legal links, WhatsApp/Viber (rehomed old header/footer/More-sheet destinations).
 8. **Log out** (existing logic; confirm dialog).
 
@@ -644,7 +644,7 @@ Budgets (mid-range Android, Fast-3G, Lighthouse mobile): Menu interactive < 3.5s
 
 ## 30. Migration Strategy (v1 implementation phases, preserved & extended)
 
-Direct redesign on branch `claude/zus-coffee-app-redesign-f79hfx` (no feature flag; rationale in Context). Extract-then-swap per phase; every commit builds (`tsc && vite build`) and leaves the app fully usable. `main` stays the working UI until merge; rollback = revert/redeploy. *(v2.1)* **Every new user-facing string goes through the existing `t()` i18n layer (EN + Dhivehi)** — BottomNav labels, empty/error states, Rewards, toasts, all of it; untranslated hardcoded strings fail review.
+Direct redesign on branch `claude/zus-coffee-app-redesign-f79hfx` (no feature flag; rationale in Context). Extract-then-swap per phase; every commit builds (`tsc && vite build`) and leaves the app fully usable. `main` stays the working UI until merge; rollback = revert/redeploy. *(v2.1 / v2.2)* **Every new user-facing string goes through `t()`** (English copy in `LanguageContext`; structure retained for a future language) — BottomNav labels, empty/error states, Rewards, toasts, all of it; untranslated hardcoded strings fail review.
 
 ### Phase 1 — Foundation (ships green, old UI unaffected)
 `src/index.css`: add §8 tokens + new classes (`.app-shell`, `.bottom-nav`, `.float-cart-bar`, `.cat-rail`, `.stat-chip`, `.sheet`, `.section-accent`); **do not delete old classes** (`order-mob-*`, `cat-sheet-*`, footer) until Phase 7. New `OrderModeContext` (init from `getSalesChannel()`; `setMode` → `setSalesChannel`; listens to `sales_channel_change`), provider in `main.tsx`. `useCheckout.ts`: swap line-207 state for `useOrderMode()` — hook return shape unchanged ⇒ CheckoutPage needs zero changes; keep fetch/prune effect, drop only the duplicate `setSalesChannel` call (~line 265); `deliveryBlocked` guard now updates shared mode (desired). Primitives: Sheet, StickyCtaBar, Accordion, PageHeader, Skeleton, EmptyState, ErrorState; `useTheme` extracted. Amber-contrast audit (§26).
@@ -654,7 +654,7 @@ Rewrite Layout.tsx → AppShell + BottomNav + FloatingCartBar + ActiveOrderCapsu
 
 *(v2.1 — hard gates for this phase, since the header/footer carry live functionality):*
 - **Temporary Account links block** (minimum set): Pre-Order, Reservations, Hours, Contact, About, Privacy, legal/footer links, Order history. No orphaned route at any commit.
-- **Dark-mode toggle + language switcher move to Account in this phase** (not Phase 6) — the header that hosts them is deleted here.
+- **Dark-mode toggle moves to Account in this phase** (not Phase 6) — the header that hosts it is deleted here. *(v2.2: language switcher removed entirely.)*
 - **PrayerBar mounts on Home** (below greeting, basic placement) in the same commit that removes the header instance (§12.3).
 - **`AnalyticsTracker` stays mounted** in AppShell (route-change tracking must not silently die with Layout).
 - **Retarget manifest "My Orders" shortcut** to `/order/order-history`; set a document title for `/rewards` via the existing per-page title mechanism.
@@ -676,7 +676,7 @@ PreOrder/Reservations/About/Contact/Hours/Privacy wrapped in PageHeader; delete 
 
 ## 31. QA Checklist (screen-by-screen; run per phase and fully before merge)
 
-**Global (every screen):** builds (`tsc && vite build`); vitest green (`App.test.tsx`, `checkoutTotals.test.ts`, new OrderModeContext / updateEntry / scroll-spy-reducer tests — plus Layout/AppShell smoke updates budgeted in Phase 2); 320/360/390/430/768/desktop widths — no horizontal scroll; dark mode; EN + ދިވެހި (all new strings via `t()`); reduced-motion; keyboard-only pass; screen-reader smoke (VoiceOver/TalkBack); content never hidden behind nav/cart bar; safe-area on notched iPhone (installed PWA); `AnalyticsTracker` route events still fire after the shell swap.
+**Global (every screen):** builds (`tsc && vite build`); vitest green (`App.test.tsx`, `checkoutTotals.test.ts`, new OrderModeContext / updateEntry / scroll-spy-reducer tests — plus Layout/AppShell smoke updates budgeted in Phase 2); 320/360/390/430/768/desktop widths — no horizontal scroll; dark mode; English UI via `t()` (v2.2); reduced-motion; keyboard-only pass; screen-reader smoke (VoiceOver/TalkBack); content never hidden behind nav/cart bar; safe-area on notched iPhone (installed PWA); `AnalyticsTracker` route events still fire after the shell swap.
 
 - **Home:** all sections render per §11 order; prayer banner below greeting, expandable, offline-cached; stat chips reflect real data & degrade; carousel autoplay/pause/reduced-motion; mode cards set mode then land on Menu; reorder works; corporate form submits.
 - **Menu:** mode toggle switches channel, refetches, prunes with toast; disabled-delivery state; address row per mode/auth; rail syncs both directions (tap-scroll & scroll-spy) incl. rapid taps; deep links `?category=` `?item=` `?openCart=1`; filters/search → flat grid + dimmed rail + clear; sold-out per §15; quick-add only on no-mandatory items; skeletons; error retry; empty channel state.
@@ -686,7 +686,7 @@ PreOrder/Reservations/About/Contact/Hours/Privacy wrapped in PageHeader; delete 
 - **Auth:** phone → password / OTP branches; resend timer; profile setup; forgot/reset; +960 display doesn't alter submitted phone; error states.
 - **Orders/tracking:** active pinned; history paginates as today; reorder revalidation; timeline mirrors backend statuses incl. cancelled/refund states; polling continues in background tab; `/track/:token` logged-out; driver map on delivery orders.
 - **Rewards:** points/tier/referral against real account; copy/share fallbacks; signed-out teaser; specials grid; no invented UI.
-- **Account:** profile edit; addresses CRUD + default; theme & language toggles persist; push toggle (supported/unsupported paths); all More links reachable; logout confirm.
+- **Account:** profile edit; addresses CRUD + default; theme toggle persists; push toggle (supported/unsupported paths); all More links reachable; logout confirm.
 - **PWA:** install both platforms; new UI after sw bump without manual cache clear; offline → offline.html; push deep-links land correctly; shortcuts work.
 - **Perf:** Lighthouse mobile on Home/Menu/Checkout — CLS < 0.1, budgets per §29.
 

@@ -56,6 +56,16 @@ All six pages now open with the `PageHeader` component (`components/shell/PageHe
 
 ---
 
+## Automated checks (agent / CI)
+
+| Check | Status |
+|---|---|
+| Dead CSS/components grep (`order-mob-`, `cat-sheet-`, `MenuCard`, `ItemModal`, `HeroCarousel`, `OrderStatusBar`) in `apps/online-order-web` src/public | Pass (2026-07-18) |
+| `CACHE_VERSION = 'bg-pwa-v6'` in `public/sw.js` | Pass |
+| `tsc && vite build` + vitest | Pass (with English-only UI, `fd841d3b`+) |
+| Menu `.menu-grid` 2 cols @390 / no hscroll @320 (ui-audit sweep) | Pass |
+| `apps/online-order-web/src` grep clean for UI `dv` / language switcher | Pass (v2.2) |
+
 ## §31 QA + Lighthouse (Manual Owner Checks)
 
 The following are manual checks; no automated Lighthouse scores are recorded here.
@@ -69,4 +79,4 @@ The following are manual checks; no automated Lighthouse scores are recorded her
 - [ ] Lighthouse Accessibility: no new violations (heading hierarchy, touch targets)
 - [ ] Smoke-test each deleted component's replacement still works (ProductCard on MenuPage, ItemSheet on item tap, ActiveOrderCapsule on active order)
 - [ ] Confirm no 404s in network tab for removed component files (they were never served directly; this is a build check)
-- [ ] `rg -n "order-mob-|cat-sheet-|MenuCard|ItemModal|HeroCarousel|OrderStatusBar" src public --glob '!*.md'` should return no matches
+- [ ] Account ▸ Settings: dark mode only (no EN/Dhivehi language buttons)
