@@ -8,30 +8,37 @@ use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\DailySpecial;
 use App\Models\OrderItem;
 use App\Services\SpecialPricingService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Decrements daily_specials.sold_count when a paid order is refunded.
+ *
+ * Synchronous after commit; idempotent per refund_id so retries cannot double-decrement.
  */
-class DecrementDailySpecialSoldCountListener implements ShouldQueue
+class DecrementDailySpecialSoldCountListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(private SpecialPricingService $pricing) {}
 
     public function handle(OrderRefunded $event): void
     {
         $orderId = $event->data->orderId;
+        $refundId = $event->data->refundId;
         $ratio = max(0.0, min(1.0, $event->data->refundRatio));
 
         if ($ratio <= 0) {
+            return;
+        }
+
+        $inserted = DB::table('daily_special_sold_count_refund_logs')->insertOrIgnore([
+            'refund_id' => $refundId,
+            'order_id' => $orderId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if ($inserted === 0) {
             return;
         }
 

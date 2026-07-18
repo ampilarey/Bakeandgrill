@@ -11,23 +11,19 @@ use App\Models\Order;
 use App\Models\Referral;
 use App\Models\ReferralCode;
 use App\Services\LoyaltySettingsService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * On payment, record referral usage once per order and bump the code's uses_count
- * only for the referee's first completed redemption for that code.
+ * On payment, record referral usage once per order and credit the referrer.
+ *
+ * Synchronous after commit. Does NOT mark redemption recorded until the
+ * referrer bonus succeeds (or there is no bonus to pay) — so a failed credit
+ * can retry instead of permanently skipping the reward.
  */
-class RecordReferralRedemptionListener implements ShouldQueue
+class RecordReferralRedemptionListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function handle(OrderPaid $event): void
     {
@@ -62,41 +58,16 @@ class RecordReferralRedemptionListener implements ShouldQueue
 
                 if (!$existing) {
                     $code->increment('uses_count');
-                    Referral::create([
+                    $existing = Referral::create([
                         'referral_code_id' => $code->id,
                         'referee_customer_id' => (int) $locked->customer_id,
                         'order_id' => $locked->id,
                         'reward_paid' => false,
                     ]);
+                }
 
-                    // Credit referrer with loyalty points equivalent to their reward MVR
-                    $referrer = Customer::find($code->customer_id);
-                    if ($referrer) {
-                        $redeemRate = app(LoyaltySettingsService::class)->redeemRatePointsPerMvr();
-                        $rewardMvr = (float) ($code->referrer_reward_mvr ?? config('loyalty.referral.referrer_reward_mvr', 10.00));
-                        $rewardPoints = (int) round($rewardMvr * $redeemRate);
-
-                        if ($rewardPoints > 0) {
-                            try {
-                                $idempotencyKey = 'referral:reward:' . $code->id . ':' . $locked->id;
-                                app(LoyaltyLedgerService::class)->creditBonus(
-                                    $referrer,
-                                    $rewardPoints,
-                                    'Referral reward — friend used code ' . $code->code,
-                                    $idempotencyKey,
-                                );
-                                Referral::where('referral_code_id', $code->id)
-                                    ->where('referee_customer_id', $locked->customer_id)
-                                    ->update(['reward_paid' => true]);
-                            } catch (\Throwable $e) {
-                                Log::error('RecordReferralRedemptionListener: failed to credit referrer bonus', [
-                                    'referral_code_id' => $code->id,
-                                    'referrer_id' => $referrer->id,
-                                    'error' => $e->getMessage(),
-                                ]);
-                            }
-                        }
-                    }
+                if (!$existing->reward_paid) {
+                    $this->creditReferrerBonus($code, $locked, $existing);
                 }
 
                 $locked->update(['referral_redemption_recorded' => true]);
@@ -106,6 +77,35 @@ class RecordReferralRedemptionListener implements ShouldQueue
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
             ]);
+            throw $e;
         }
+    }
+
+    private function creditReferrerBonus(ReferralCode $code, Order $order, Referral $referral): void
+    {
+        $referrer = Customer::find($code->customer_id);
+        if (!$referrer) {
+            return;
+        }
+
+        $redeemRate = app(LoyaltySettingsService::class)->redeemRatePointsPerMvr();
+        $rewardMvr = (float) ($code->referrer_reward_mvr ?? config('loyalty.referral.referrer_reward_mvr', 10.00));
+        $rewardPoints = (int) round($rewardMvr * $redeemRate);
+
+        if ($rewardPoints <= 0) {
+            $referral->update(['reward_paid' => true]);
+
+            return;
+        }
+
+        $idempotencyKey = 'referral:reward:' . $code->id . ':' . $order->id;
+        app(LoyaltyLedgerService::class)->creditBonus(
+            $referrer,
+            $rewardPoints,
+            'Referral reward — friend used code ' . $code->code,
+            $idempotencyKey,
+        );
+
+        $referral->update(['reward_paid' => true]);
     }
 }

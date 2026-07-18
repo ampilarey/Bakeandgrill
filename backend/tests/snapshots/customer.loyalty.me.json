@@ -19,6 +19,7 @@
     },
     "rates": {
         "earn_per_mvr": 1,
+        "tier_multiplier": 1,
         "redeem_rate_points_per_mvr": 100,
         "discount_per_point_laar": 1,
         "min_redeem_points": 100,

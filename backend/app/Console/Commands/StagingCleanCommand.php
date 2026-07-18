@@ -71,6 +71,7 @@ class StagingCleanCommand extends Command
         'xero_sync_logs',
         'offline_sync_records',
         'daily_special_sold_count_logs',
+        'daily_special_sold_count_refund_logs',
         'item_pair_stats',
         'corporate_inquiries',
         'driver_locations',

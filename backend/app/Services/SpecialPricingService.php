@@ -240,10 +240,14 @@ class SpecialPricingService
                 return true;
             }
 
+            // Active unpaid holds only — cancelled / abandoned carts must not
+            // exhaust max_quantity for everyone else.
             $unpaidQty = (int) OrderItem::query()
                 ->where('daily_special_id', $specialId)
                 ->where('order_id', '!=', $orderId)
-                ->whereHas('order', fn ($q) => $q->where('payment_status', '!=', 'paid'))
+                ->whereHas('order', fn ($q) => $q
+                    ->where('payment_status', '!=', 'paid')
+                    ->whereNotIn('status', ['cancelled', 'refunded', 'partially_refunded']))
                 ->sum('quantity');
 
             $remaining = $special->max_quantity - $special->sold_count - $unpaidQty;

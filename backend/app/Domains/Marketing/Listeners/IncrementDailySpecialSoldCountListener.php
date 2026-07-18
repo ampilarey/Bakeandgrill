@@ -8,21 +8,17 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Models\DailySpecial;
 use App\Models\OrderItem;
 use App\Services\SpecialPricingService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Increments daily_specials.sold_count for each paid line that had a special applied.
+ *
+ * Synchronous after commit so capacity (sold_count + unpaid holds) stays accurate
+ * the moment payment lands — queued increment allowed oversell of capped specials.
  */
-class IncrementDailySpecialSoldCountListener implements ShouldQueue
+class IncrementDailySpecialSoldCountListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(private SpecialPricingService $pricing) {}
 
