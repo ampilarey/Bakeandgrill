@@ -125,6 +125,16 @@ const TRANSLATIONS: Translations = {
   "checkout.acc_payment":        { en: "Payment",                      dv: "Payment" },
   "checkout.acc_payment_summary":{ en: "BML",                          dv: "BML" },
 
+  // ── Phase 6 Orders tab strings ────────────────────────────────────────────
+  "orders.active_section": { en: "Active Orders",                                        dv: "Active Orders" },
+  "orders.past_section":   { en: "Past Orders",                                          dv: "Past Orders" },
+  "orders.empty_title":    { en: "No orders yet",                                        dv: "No orders yet" },
+  "orders.empty_body":     { en: "Start your first order and it will appear here.",      dv: "Start your first order and it will appear here." },
+  "orders.empty_cta":      { en: "Browse the menu",                                      dv: "Browse the menu" },
+  "orders.sign_in_prompt": { en: "Sign in to view your order history.",                  dv: "Sign in to view your order history." },
+  "orders.track":          { en: "Track",                                                dv: "Track" },
+  "orders.view":           { en: "View",                                                 dv: "View" },
+
   // ── Phase 5 PR3 AuthBlock strings ──────────────────────────────────────────
   "auth.title_phone":      { en: "Your phone number",                        dv: "Your phone number" },
   "auth.sub_phone":        { en: "Enter your Maldives number to sign in.",    dv: "Enter your Maldives number to sign in." },
@@ -163,6 +173,29 @@ const TRANSLATIONS: Translations = {
   "auth.title_new_pass":   { en: "New password",                             dv: "New password" },
   "auth.new_pass_for":     { en: "New password for +960 {phone}",            dv: "New password for +960 {phone}" },
   "auth.set_password":     { en: "Set password →",                           dv: "Set password →" },
+
+  // ── Phase 6 RewardsPage strings ────────────────────────────────────────────
+  "rewards.sign_in_teaser":     { en: "Sign in to see your loyalty points and referral code",     dv: "Sign in to see your loyalty points and referral code" },
+  "rewards.points_available":   { en: "points available",                                         dv: "points available" },
+  "rewards.approx_mvr":         { en: "≈ MVR {value}",                                           dv: "≈ MVR {value}" },
+  "rewards.tier_member":        { en: "{tier} Member",                                            dv: "{tier} Member" },
+  "rewards.progress_to_next":   { en: "{n} pts to reach {tier}",                                  dv: "{n} pts to reach {tier}" },
+  "rewards.at_max_tier":        { en: "Maximum tier reached",                                      dv: "Maximum tier reached" },
+  "rewards.use_at_checkout":    { en: "Use points at checkout →",                                  dv: "Use points at checkout →" },
+  "rewards.referral_title":     { en: "Refer a friend",                                            dv: "Refer a friend" },
+  "rewards.referral_body":      { en: "Share your code. Your friend saves on their first order.",  dv: "Share your code. Your friend saves on their first order." },
+  "rewards.referral_copy":      { en: "Copy code",                                                 dv: "Copy code" },
+  "rewards.referral_copied":    { en: "Copied!",                                                   dv: "Copied!" },
+  "rewards.referral_share":     { en: "Share",                                                     dv: "Share" },
+  "rewards.referral_uses_one":  { en: "1 friend referred",                                         dv: "1 friend referred" },
+  "rewards.referral_uses_many": { en: "{n} friends referred",                                      dv: "{n} friends referred" },
+  "rewards.how_title":          { en: "How points work",                                           dv: "How points work" },
+  "rewards.how_earn":           { en: "Earn {rate} point per MVR 1 spent on food.",                dv: "Earn {rate} point per MVR 1 spent on food." },
+  "rewards.how_redeem":         { en: "{rate} points = MVR 1 off at checkout.",                    dv: "{rate} points = MVR 1 off at checkout." },
+  "rewards.how_min":            { en: "Minimum {min} points needed to redeem.",                    dv: "Minimum {min} points needed to redeem." },
+  "rewards.how_max_pct":        { en: "Points can cover up to {pct}% of your order total.",        dv: "Points can cover up to {pct}% of your order total." },
+  "rewards.how_expand":         { en: "Details",                                                   dv: "Details" },
+  "rewards.how_collapse":       { en: "Close",                                                     dv: "Close" },
 };
 
 type LanguageContextType = {

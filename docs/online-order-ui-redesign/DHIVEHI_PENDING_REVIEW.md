@@ -158,3 +158,30 @@ English counterparts and need native Dhivehi review before shipping in Dv mode.
 - `auth.title_new_pass`    — step heading: "New password"
 - `auth.new_pass_for`      — subtitle with +960 {phone} placeholder
 - `auth.set_password`      — primary CTA on reset-password step
+
+## Phase 6 RewardsPage keys (added Jul 2026)
+
+New strings for the Rewards page loyalty/referral/specials content — all `dv`
+values equal their English counterparts and need native Dhivehi review.
+
+- `rewards.sign_in_teaser`     — teaser shown above the inline sign-in form when signed out
+- `rewards.points_available`   — label below the points count: "points available"
+- `rewards.approx_mvr`         — MVR equivalent value: "≈ MVR {value}"
+- `rewards.tier_member`        — tier badge: "{tier} Member"
+- `rewards.progress_to_next`   — progress bar caption: "{n} pts to reach {tier}"
+- `rewards.at_max_tier`        — shown when customer is at the highest tier
+- `rewards.use_at_checkout`    — CTA linking to checkout: "Use points at checkout →"
+- `rewards.referral_title`     — referral card heading: "Refer a friend"
+- `rewards.referral_body`      — referral card subtitle
+- `rewards.referral_copy`      — copy-code button label
+- `rewards.referral_copied`    — copy button feedback state: "Copied!"
+- `rewards.referral_share`     — share button label
+- `rewards.referral_uses_one`  — singular friend count: "1 friend referred"
+- `rewards.referral_uses_many` — plural friend count: "{n} friends referred"
+- `rewards.how_title`          — expandable section heading: "How points work"
+- `rewards.how_earn`           — earn rate bullet: "Earn {rate} point per MVR 1 spent on food."
+- `rewards.how_redeem`         — redeem rate bullet: "{rate} points = MVR 1 off at checkout."
+- `rewards.how_min`            — minimum points bullet: "Minimum {min} points needed to redeem."
+- `rewards.how_max_pct`        — max percent bullet: "Points can cover up to {pct}% of your order total."
+- `rewards.how_expand`         — expand toggle label: "Details"
+- `rewards.how_collapse`       — collapse toggle label: "Close"
