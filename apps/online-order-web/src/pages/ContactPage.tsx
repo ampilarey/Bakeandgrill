@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { PageHeader } from '../components/shell/PageHeader';
 
 export function ContactPage() {
+  const navigate = useNavigate();
   const { settings: s, text } = useSiteSettingsContext();
 
   const phone     = s.business_phone   || '+960 912 0011';
@@ -21,16 +23,12 @@ export function ContactPage() {
   ];
 
   return (
-    <div style={{ maxWidth: 'min(760px, 100%)', margin: '0 auto', padding: '3rem var(--page-gutter)' }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '0.875rem' }}>
-          {text('contact_page_title', 'Contact Us')}
-        </h1>
-        <p style={{ fontSize: '1.05rem', color: 'var(--color-text-muted)', lineHeight: 1.65 }}>
-          {text('contact_page_subtitle', "Have a question or feedback? We'd love to hear from you.")}
-        </p>
-      </div>
+    <>
+      <PageHeader title={text('contact_page_title', 'Contact Us')} onBack={() => navigate(-1)} />
+      <div style={{ maxWidth: 'min(760px, 100%)', margin: '0 auto', padding: '1.5rem var(--page-gutter) 3rem' }}>
+      <p style={{ fontSize: '1.05rem', color: 'var(--color-text-muted)', lineHeight: 1.65, marginBottom: '2rem' }}>
+        {text('contact_page_subtitle', "Have a question or feedback? We'd love to hear from you.")}
+      </p>
 
       {/* Contact cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
@@ -98,5 +96,6 @@ export function ContactPage() {
         </Link>
       </div>
     </div>
+    </>
   );
 }

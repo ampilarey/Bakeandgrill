@@ -1,7 +1,14 @@
 // ── Shared API client instance ─────────────────────────────────────────────────
 // Session cookie auth (Sanctum stateful SPA) — no Bearer tokens in localStorage.
 
-import { createApiClient } from '@shared/api';
+import {
+  ApiRequestError,
+  createApiClient,
+  csrfHeadersForMutation,
+  refreshCsrfCookie,
+  xsrfHeaderFromCookie,
+  type ApiRequestOptions,
+} from '@shared/api';
 
 export const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
@@ -12,25 +19,9 @@ export const API_ORIGIN =
   API_BASE_URL.replace(/\/api\/?$/, '') ||
   (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-function readCookie(name: string): string | null {
-  const m = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
-  return m ? decodeURIComponent(m.split('=').slice(1).join('=')) : null;
-}
-
 /** Always re-prime CSRF before mutations — stale XSRF cookies cause 419s. */
 export async function ensureCsrfCookie(): Promise<void> {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  await fetch(`${API_ORIGIN}/sanctum/csrf-cookie`, {
-    credentials: 'include',
-    cache: 'no-store',
-  });
-}
-
-function xsrfHeaders(): Record<string, string> {
-  const xsrf = readCookie('XSRF-TOKEN');
-  return xsrf ? { 'X-XSRF-TOKEN': xsrf } : {};
+  await refreshCsrfCookie(API_ORIGIN);
 }
 
 const { request: coreRequest } = createApiClient({
@@ -38,17 +29,41 @@ const { request: coreRequest } = createApiClient({
   credentials: 'include',
 });
 
-export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function withCsrf(options: ApiRequestOptions = {}): Promise<ApiRequestOptions> {
   const method = (options.method ?? 'GET').toUpperCase();
-  if (method !== 'GET' && method !== 'HEAD') {
-    await ensureCsrfCookie();
+  if (method === 'GET' || method === 'HEAD') {
+    return options;
   }
-
-  return coreRequest<T>(path, {
+  return {
     ...options,
     headers: {
-      ...xsrfHeaders(),
+      ...(await csrfHeadersForMutation(API_ORIGIN)),
       ...(options.headers ?? {}),
     },
-  });
+  };
+}
+
+/**
+ * Mutating calls get a fresh CSRF cookie; on 419 (stale sibling-host XSRF),
+ * re-prime once and retry — same pattern as admin-dashboard.
+ */
+export async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  const method = (options.method ?? 'GET').toUpperCase();
+  const prepared = await withCsrf(options);
+  try {
+    return await coreRequest<T>(path, prepared);
+  } catch (e) {
+    const status = e instanceof ApiRequestError ? e.status : (e as { status?: number })?.status;
+    if (status === 419 && method !== 'GET' && method !== 'HEAD') {
+      await csrfHeadersForMutation(API_ORIGIN);
+      return coreRequest<T>(path, {
+        ...options,
+        headers: {
+          ...xsrfHeaderFromCookie(),
+          ...(options.headers ?? {}),
+        },
+      });
+    }
+    throw e;
+  }
 }

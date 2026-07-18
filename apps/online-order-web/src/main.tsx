@@ -8,7 +8,8 @@ import { LanguageProvider } from './context/LanguageContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
-import { Layout } from './components/Layout';
+import { OrderModeProvider } from './context/OrderModeContext';
+import { AppShell } from './components/shell/AppShell';
 import { ScrollToTop } from './components/ScrollToTop';
 import './index.css';
 
@@ -34,6 +35,7 @@ const PrivacyPage      = lazy(() => import('./pages/PrivacyPage').then((m) => ({
 const NotFoundPage     = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage').then((m) => ({ default: m.OrderHistoryPage })));
 const AccountPage      = lazy(() => import('./pages/AccountPage').then((m) => ({ default: m.AccountPage })));
+const RewardsPage      = lazy(() => import('./pages/RewardsPage').then((m) => ({ default: m.RewardsPage })));
 
 // Minimal fallback shown while a page chunk loads
 function PageSkeleton() {
@@ -56,6 +58,7 @@ ReactDOM.createRoot(rootEl).render(
           <CartProvider>
             <ToastProvider>
             <AuthProvider>
+            <OrderModeProvider>
             <BrowserRouter basename="/order">
               <ScrollToTop />
               <Suspense fallback={<PageSkeleton />}>
@@ -67,8 +70,8 @@ ReactDOM.createRoot(rootEl).render(
                   <Route path="track/:trackingToken" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
                   <Route path="orders/:orderId" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
 
-                  {/* Public pages wrapped in shared Layout */}
-                  <Route element={<Layout />}>
+                  {/* Public pages wrapped in AppShell (5-tab chrome) */}
+                  <Route element={<AppShell />}>
                     <Route index element={<HomePage />} />
                     <Route path="menu" element={<MenuPage />} />
                     <Route path="about" element={<AboutPage />} />
@@ -78,12 +81,14 @@ ReactDOM.createRoot(rootEl).render(
                     <Route path="pre-order" element={<PreOrderPage />} />
                     <Route path="privacy" element={<PrivacyPage />} />
                     <Route path="order-history" element={<ErrorBoundary inline><OrderHistoryPage /></ErrorBoundary>} />
+                    <Route path="rewards" element={<ErrorBoundary inline><RewardsPage /></ErrorBoundary>} />
                     <Route path="account" element={<ErrorBoundary inline><AccountPage /></ErrorBoundary>} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Routes>
               </Suspense>
             </BrowserRouter>
+            </OrderModeProvider>
             </AuthProvider>
             </ToastProvider>
           </CartProvider>

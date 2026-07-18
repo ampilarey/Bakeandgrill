@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchOpeningHoursStatus, fetchOpeningHoursSchedule } from '../api';
 import type { DaySchedule } from '../api';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { PageHeader } from '../components/shell/PageHeader';
 
 const DAY_NAMES   = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const DAY_LABELS  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -18,6 +19,7 @@ function fmt(time: string) {
 }
 
 export function HoursPage() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen]     = useState<boolean | null>(null);
   const [message, setMessage]   = useState<string | null>(null);
   const [schedule, setSchedule] = useState<Record<string, DaySchedule> | null>(null);
@@ -53,17 +55,12 @@ export function HoursPage() {
   const openBg          = isOpen ? 'rgba(72,199,142,0.1)' : isOpen === false ? 'rgba(255,112,67,0.1)' : 'var(--color-surface-alt)';
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '3rem var(--page-gutter)' }}>
-
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-        <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, color: 'var(--color-dark)', marginBottom: '0.875rem' }}>
-          {text('hours_page_title', 'Opening Hours')}
-        </h1>
-        <p style={{ fontSize: '1rem', color: 'var(--color-text-muted)' }}>
-          We&apos;re open most days — visit us at {address}.
-        </p>
-      </div>
+    <>
+      <PageHeader title={text('hours_page_title', 'Opening Hours')} onBack={() => navigate(-1)} />
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1.5rem var(--page-gutter) 3rem' }}>
+      <p style={{ fontSize: '1rem', color: 'var(--color-text-muted)', marginBottom: '2rem' }}>
+        We&apos;re open most days — visit us at {address}.
+      </p>
 
       {/* Live status */}
       <div style={{
@@ -151,5 +148,6 @@ export function HoursPage() {
         </a>
       </div>
     </div>
+    </>
   );
 }

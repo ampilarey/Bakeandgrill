@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   fetchOrderingEligibility, type OrderingEligibility,
   fetchOnlineOrderingStatus, type OnlineOrderingStatus,
@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
 import { useSiteSettingsContext } from "../context/SiteSettingsContext";
+import { useLanguage } from "../context/LanguageContext";
 import { AuthBlock } from "../components/AuthBlock";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { CartSummary } from "../components/CartSummary";
@@ -19,15 +20,8 @@ import {
   loyaltyAvailablePoints,
   pointsValueMvr,
 } from '../utils/loyalty';
-
-// ── Viewport hook ──────────────────────────────────────────────────────────────
-function useIsMobile() {
-  return useSyncExternalStore(
-    (cb) => { window.addEventListener("resize", cb); return () => window.removeEventListener("resize", cb); },
-    () => window.innerWidth < 768,
-    () => false,
-  );
-}
+import { AccordionItem } from '../components/ui/Accordion';
+import { StickyCtaBar } from '../components/ui/StickyCtaBar';
 
 function parseFreeDeliveryThreshold(raw: string | undefined): number {
   const n = parseFloat(raw ?? '');
@@ -95,113 +89,28 @@ function SummaryRow({ label, value, highlight }: { label: string; value: string;
   );
 }
 
-// ── Section card ───────────────────────────────────────────────────────────────
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={S.card}>
-      <h2 style={S.sectionTitle}>{title}</h2>
-      {children}
-    </div>
-  );
-}
-
-// ── T&C + Pay button (reused in both columns depending on viewport) ───────────
-function PaySection({ acceptTerms, setAcceptTerms, globalError, isPlacing, placeLabel, handlePlaceAndPay, gateClosed, gateMessage, hasPendingReferral, waLink }: {
-  acceptTerms: boolean;
-  setAcceptTerms: (v: boolean) => void;
-  globalError: string | null;
-  isPlacing: boolean;
-  placeLabel: string;
-  handlePlaceAndPay: () => void;
-  gateClosed?: boolean;
-  gateMessage?: string | null;
-  hasPendingReferral?: boolean;
-  waLink?: string;
-}) {
-  const disabled = isPlacing || !acceptTerms || !!gateClosed;
-  return (
-    <div style={{ ...S.cardWarm, border: '1.5px solid rgba(212,129,58,0.35)', boxShadow: '0 4px 16px rgba(212,129,58,0.12)' }}>
-      {gateClosed && (
-        <div className="banner banner-warning" style={{ marginBottom: 12 }}>
-          <span className="banner-icon">🔒</span>
-          <div>
-            <p className="banner-title">Online ordering is closed</p>
-            <p className="banner-sub">{gateMessage ?? 'Online ordering is currently unavailable. Please check back later.'}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Req 13: Affirmative acceptance checkbox */}
-      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
-        <input
-          type="checkbox"
-          checked={acceptTerms}
-          onChange={(e) => setAcceptTerms(e.target.checked)}
-          style={{ marginTop: '2px', width: 16, height: 16, accentColor: 'var(--color-primary)', flexShrink: 0 }}
-        />
-        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
-          I agree to the <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Terms &amp; Conditions</a>,{' '}
-          <a href="/refund" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Refund Policy</a>, and{' '}
-          <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
-        </span>
-      </label>
-
-      {globalError && (
-        <div className="banner banner-error" style={{ marginBottom: 12 }}>
-          <span className="banner-icon">⚠️</span>
-          <div>
-            <p className="banner-title">Something went wrong</p>
-            <p className="banner-sub">{globalError}</p>
-            {waLink && (
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
-                  fontSize: '0.8125rem', fontWeight: 700, color: '#166534',
-                  background: '#dcfce7', padding: '6px 12px', borderRadius: 999, textDecoration: 'none',
-                }}
-              >
-                <WhatsAppIcon size={16} /> Message us on WhatsApp
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-
-      <button
-        style={{
-          ...S.primaryBtn,
-          width: '100%',
-          padding: '1rem var(--page-gutter)',
-          fontSize: 'var(--text-md)',
-          opacity: disabled ? 0.55 : 1,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-        }}
-        onClick={handlePlaceAndPay}
-        disabled={disabled}
-        aria-busy={isPlacing}
-        title={!acceptTerms ? 'Please agree to the terms to continue' : gateClosed ? 'Online ordering is currently closed' : undefined}
-      >
-        {isPlacing && <span className="animate-spin" style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%' }} />}
-        {placeLabel}
-      </button>
-      {hasPendingReferral && (
-        <p style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-          ⏳ Referral discount is estimated — final amount confirmed when your order is created.
-        </p>
-      )}
-    </div>
-  );
-}
+// ── Error → accordion mapping ──────────────────────────────────────────────────
+/**
+ * Maps form field error keys (from useCheckout `errors`) and zone/promo
+ * banner errors to the accordion id that should be force-opened to surface
+ * the error to the user.
+ * See docs/online-order-ui-redesign/CHECKOUT_ACCORDION_ERRORS.md for the full table.
+ */
+const ERROR_TO_ACCORDION: Record<string, string> = {
+  address_line1: 'fulfillment',
+  island:        'fulfillment',
+  contact_name:  'fulfillment',
+  contact_phone: 'fulfillment',
+};
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function CheckoutPage() {
   const navigate  = useNavigate();
-  const isMobile  = useIsMobile();
+  const { t }     = useLanguage();
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [openId, setOpenId]           = useState<string | null>('order-type');
+  const toggle = (id: string) => setOpenId((cur) => (cur === id ? null : id));
+
   const { settings: s, text } = useSiteSettingsContext();
 
   const siteName    = s.site_name        || 'Bake & Grill';
@@ -300,15 +209,26 @@ export function CheckoutPage() {
       .finally(() => setPickupSlotsLoading(false));
   }, [orderType, pickupSlotsEnabled, setPickupSlotAt]);
 
+  // ── Force-open accordion when errors surface ────────────────────────────────
+  useEffect(() => {
+    const found = Object.keys(ERROR_TO_ACCORDION).find(
+      (k) => !!(errors as Record<string, string | undefined>)[k],
+    );
+    if (found) { setOpenId(ERROR_TO_ACCORDION[found]); return; }
+    if (zoneError) { setOpenId('fulfillment'); return; }
+    if (promoError || giftCardError || friendReferralError) { setOpenId('discounts'); return; }
+    // globalError surfaces as a banner in StickyCtaBar.above — no accordion redirect
+  }, [errors, zoneError, promoError, giftCardError, friendReferralError, globalError]);
+
   if (cart.length === 0) {
     return (
       <div style={{ padding: '3rem var(--page-gutter)', textAlign: 'center', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="animate-fade-in">
           <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.35 }}>🛒</div>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', fontSize: '1rem' }}>
-            Your cart is empty. Add some items first.
+            {t('checkout.empty_cart')}
           </p>
-          <button style={S.primaryBtn} onClick={() => navigate("/")}>Browse the menu</button>
+          <button style={S.primaryBtn} onClick={() => navigate("/")}>{t('checkout.browse_menu')}</button>
         </div>
       </div>
     );
@@ -316,16 +236,17 @@ export function CheckoutPage() {
 
   const hasPendingReferral = friendReferralApplied?.pending === true;
   const placeLabel = isPlacing
-    ? 'Processing…'
+    ? t('checkout.processing')
     : orderingGateClosed
-      ? 'Online ordering is closed'
+      ? t('checkout.gate_closed')
       : totalLaar <= 0
-        ? 'Place order — no payment due'
-        : `Pay MVR ${laarToMvr(totalLaar)} with BML`;
+        ? t('checkout.place_no_payment')
+        : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(totalLaar)));
 
-  // ── Reusable section blocks (shared between mobile and desktop layouts) ──────
-  const sectionOrderType = (
-    <SectionCard title="Order Type">
+  // ── Section bodies (bare content — AccordionItem provides title/chrome) ──────
+
+  const bodyOrderType = (
+    <>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {(['pickup', 'delivery'] as const).map((type) => (
           <button
@@ -352,11 +273,11 @@ export function CheckoutPage() {
           {orderElig.delivery.message ?? 'Delivery is not available right now. Please choose pickup.'}
         </p>
       )}
-    </SectionCard>
+    </>
   );
 
-  const sectionPickupSlot = orderType === 'pickup' && pickupSlotsEnabled && (
-    <SectionCard title="Pickup time">
+  const bodyPickupSlot = (
+    <>
       {pickupSlotsLoading ? (
         <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Loading available times…</p>
       ) : pickupSlots.length === 0 ? (
@@ -379,7 +300,7 @@ export function CheckoutPage() {
                 fontSize: '0.85rem',
               }}
             >
-              ASAP
+              {t('checkout.asap')}
             </button>
             {pickupSlots.map((slot) => (
               <button
@@ -399,10 +320,10 @@ export function CheckoutPage() {
           </div>
         </>
       )}
-    </SectionCard>
+    </>
   );
 
-  const sectionDelivery = orderType === 'delivery' && (() => {
+  const bodyDelivery = orderType === 'delivery' ? (() => {
     const freeThreshold = parseFreeDeliveryThreshold(s.delivery_free_threshold);
     const defaultFee = parseFloat(s.delivery_default_fee ?? '30') || 30;
     const zoneFees = parseZoneFees(s.delivery_zone_fees);
@@ -415,256 +336,275 @@ export function CheckoutPage() {
     const qualifiesFree = cartMvr >= freeThreshold;
 
     return (
-    <SectionCard title="Delivery Details">
-      <div style={S.infoNote}>
-        <span>🛵</span>{' '}
-        Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong>
-        {islandKey && zoneFee != null && zoneFee !== defaultFee && (
-          <> · Zone rate for {islandKey}: MVR {explainedFee.toFixed(2)}</>
-        )}
-        {islandKey && zoneFee == null && (
-          <> · Standard rate: MVR {defaultFee.toFixed(2)}</>
-        )}
-        {' '}· Estimated {deliveryEta}
-      </div>
-      <p style={{ margin: '0 0 14px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-        {qualifiesFree
-          ? `Your order qualifies for free delivery (orders over MVR ${freeThreshold.toFixed(0)}).`
-          : `Free delivery on orders over MVR ${freeThreshold.toFixed(0)} — add MVR ${Math.max(0, freeThreshold - cartMvr).toFixed(2)} more to qualify.`}
-      </p>
-      {isAuthenticated && savedAddresses.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Saved address
-          </label>
-          <select
-            className="field-input"
-            value={selectedAddressId}
-            onChange={(e) => {
-              const v = e.target.value;
-              applySavedAddress(v === 'new' ? 'new' : Number(v));
-            }}
-            style={{ width: '100%' }}
-          >
-            {savedAddresses.map((a) => (
-              <option key={a.id} value={a.id}>
-                {(a.label ? `${a.label} — ` : '') + a.address_line1 + (a.is_default ? ' (default)' : '')}
-              </option>
-            ))}
-            <option value="new">Use a new address</option>
-          </select>
-        </div>
-      )}
-      <Field label="Address *" placeholder="House / Flat number, Street"
-        value={delivery.address_line1} onChange={(v) => { setDelivery({ ...delivery, address_line1: v }); setSelectedAddressId('new'); }} error={errors.address_line1} />
-      <Field label="Address line 2" placeholder="Building name (optional)"
-        value={delivery.address_line2} onChange={(v) => setDelivery({ ...delivery, address_line2: v })} />
-      <Field label="Island *" placeholder="Malé"
-        value={delivery.island}
-        onChange={(v) => { setDelivery({ ...delivery, island: v }); setZoneError(null); }}
-        onBlur={() => void handleIslandBlur(delivery.island)}
-        error={zoneError ?? errors.island} />
-      <Field label="Google Maps / location link" placeholder="https://maps.google.com/..."
-        value={delivery.location_link} onChange={(v) => setDelivery({ ...delivery, location_link: v })} />
-      <div style={S.fieldRow}>
-        <Field label="Contact name *" placeholder="Full name"
-          value={delivery.contact_name} onChange={(v) => setDelivery({ ...delivery, contact_name: v })} error={errors.contact_name} />
-        <Field label="Contact phone *" placeholder="7xxxxxxx"
-          value={delivery.contact_phone} onChange={(v) => setDelivery({ ...delivery, contact_phone: v })} error={errors.contact_phone} />
-      </div>
-      <Field label="Delivery notes" placeholder="Any special instructions for the rider"
-        value={delivery.notes} onChange={(v) => setDelivery({ ...delivery, notes: v })} multiline />
-      {isAuthenticated && (selectedAddressId === 'new' || saveAddress) && (
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={saveAddress}
-              onChange={(e) => setSaveAddress(e.target.checked)}
-            />
-            Save this address to my account
-          </label>
-          {saveAddress && (
-            <Field label="Address label" placeholder="Home, Office, etc."
-              value={addressLabel} onChange={setAddressLabel} />
+      <>
+        <div style={S.infoNote}>
+          <span>🛵</span>{' '}
+          Delivery fee: <strong>MVR {(deliveryFee / 100).toFixed(2)}</strong>
+          {islandKey && zoneFee != null && zoneFee !== defaultFee && (
+            <> · Zone rate for {islandKey}: MVR {explainedFee.toFixed(2)}</>
           )}
+          {islandKey && zoneFee == null && (
+            <> · Standard rate: MVR {defaultFee.toFixed(2)}</>
+          )}
+          {' '}· Estimated {deliveryEta}
         </div>
-      )}
-    </SectionCard>
-    );
-  })();
-
-  const sectionNotes = (
-    <SectionCard title="Special Instructions">
-      <textarea
-        className="field-input"
-        placeholder="Allergies, special requests, or notes for the kitchen"
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        style={{ height: 80, resize: 'vertical' }}
-      />
-    </SectionCard>
-  );
-
-  const sectionPromo = (
-    <SectionCard title="Promo Code">
-      {promoApplied ? (
-        <div style={S.promoApplied}>
-          <span style={{ fontSize: 'var(--text-base)' }}>
-            {(promoApplied.pending && promoApplied.discountLaar === 0)
-              ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — applied at checkout</>
-              : <><span>✅</span> <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
-            }
-          </span>
-          <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>Remove</button>
-        </div>
-      ) : (
-        <>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
+        <p style={{ margin: '0 0 14px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+          {qualifiesFree
+            ? `Your order qualifies for free delivery (orders over MVR ${freeThreshold.toFixed(0)}).`
+            : `Free delivery on orders over MVR ${freeThreshold.toFixed(0)} — add MVR ${Math.max(0, freeThreshold - cartMvr).toFixed(2)} more to qualify.`}
+        </p>
+        {isAuthenticated && savedAddresses.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Saved address
+            </label>
+            <select
               className="field-input"
-              style={{ flex: 1 }}
-              placeholder="Enter promo code"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-              aria-label="Promo code"
-            />
-            <button style={S.secondaryBtn} onClick={handleApplyPromo} disabled={promoLoading || !promoCode}>
-              {promoLoading ? '…' : 'Apply'}
-            </button>
+              value={selectedAddressId}
+              onChange={(e) => {
+                const v = e.target.value;
+                applySavedAddress(v === 'new' ? 'new' : Number(v));
+              }}
+              style={{ width: '100%' }}
+            >
+              {savedAddresses.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {(a.label ? `${a.label} — ` : '') + a.address_line1 + (a.is_default ? ' (default)' : '')}
+                </option>
+              ))}
+              <option value="new">Use a new address</option>
+            </select>
           </div>
-          {promoError && <p className="field-error" style={{ marginTop: 6 }}>{promoError}</p>}
-        </>
-      )}
-    </SectionCard>
-  );
-
-  const sectionLoyalty = loyaltyAccount && loyaltyAccount.points_balance > 0 && (() => {
-    const available = loyaltyAvailablePoints(loyaltyAccount);
-    const held = loyaltyAccount.points_held ?? 0;
-    const minRedeem = loyaltyRates.minRedeemPoints;
-    const canRedeem = available >= minRedeem && loyaltyRedeemPoints >= minRedeem;
-
-    return (
-    <SectionCard title="Loyalty Points">
-      {loyaltyProgramMessage && (
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.45 }}>
-          {loyaltyProgramMessage}
-        </p>
-      )}
-      <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 8 }}>
-        You have <strong>{available.toLocaleString()} pts</strong> available to use
-        {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {pointsValueMvr(available, loyaltyRates)}</span> value).
-      </p>
-      {held > 0 && (
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px', lineHeight: 1.45 }}>
-          {held.toLocaleString()} pts are reserved on another order ({loyaltyAccount.points_balance.toLocaleString()} total balance).
-        </p>
-      )}
-      {available < minRedeem && (
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-          Minimum {minRedeem} available points required to redeem.
-        </p>
-      )}
-      <label style={{
-        display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-base)',
-        color: canRedeem ? 'var(--color-text)' : 'var(--color-text-muted)',
-        cursor: canRedeem ? 'pointer' : 'not-allowed',
-      }}>
-        <input
-          type="checkbox"
-          checked={useLoyalty && canRedeem}
-          disabled={!canRedeem}
-          onChange={(e) => setUseLoyalty(e.target.checked)}
-          style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
-        />
-        {canRedeem
-          ? <>Use {loyaltyRedeemPoints.toLocaleString()} pts to save MVR {pointsValueMvr(loyaltyRedeemPoints, loyaltyRates)} (max {loyaltyRates.maxRedeemPercent}% of subtotal)</>
-          : <>Use loyalty points on this order</>}
-      </label>
-    </SectionCard>
+        )}
+        <Field label="Address *" placeholder="House / Flat number, Street"
+          value={delivery.address_line1} onChange={(v) => { setDelivery({ ...delivery, address_line1: v }); setSelectedAddressId('new'); }} error={errors.address_line1} />
+        <Field label="Address line 2" placeholder="Building name (optional)"
+          value={delivery.address_line2} onChange={(v) => setDelivery({ ...delivery, address_line2: v })} />
+        <Field label="Island *" placeholder="Malé"
+          value={delivery.island}
+          onChange={(v) => { setDelivery({ ...delivery, island: v }); setZoneError(null); }}
+          onBlur={() => void handleIslandBlur(delivery.island)}
+          error={zoneError ?? errors.island} />
+        <Field label="Google Maps / location link" placeholder="https://maps.google.com/..."
+          value={delivery.location_link} onChange={(v) => setDelivery({ ...delivery, location_link: v })} />
+        <div style={S.fieldRow}>
+          <Field label="Contact name *" placeholder="Full name"
+            value={delivery.contact_name} onChange={(v) => setDelivery({ ...delivery, contact_name: v })} error={errors.contact_name} />
+          <Field label="Contact phone *" placeholder="7xxxxxxx"
+            value={delivery.contact_phone} onChange={(v) => setDelivery({ ...delivery, contact_phone: v })} error={errors.contact_phone} />
+        </div>
+        <Field label="Delivery notes" placeholder="Any special instructions for the rider"
+          value={delivery.notes} onChange={(v) => setDelivery({ ...delivery, notes: v })} multiline />
+        {isAuthenticated && (selectedAddressId === 'new' || saveAddress) && (
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={saveAddress}
+                onChange={(e) => setSaveAddress(e.target.checked)}
+              />
+              Save this address to my account
+            </label>
+            {saveAddress && (
+              <Field label="Address label" placeholder="Home, Office, etc."
+                value={addressLabel} onChange={setAddressLabel} />
+            )}
+          </div>
+        )}
+      </>
     );
-  })();
+  })() : null;
 
-  const sectionFriendReferral = (
-    <SectionCard title="Friend's Referral Code">
-      {friendReferralApplied ? (
-        <div style={S.promoApplied}>
-          <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
-            {friendReferralApplied.pending
-              ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — est. MVR {laarToMvr(referralDelta)} off at checkout</>
-              : <><span>🤝</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — MVR {laarToMvr(friendReferralApplied.discountLaar)} off</>}
-          </span>
-          <button style={S.removeBtn} onClick={() => void handleRemoveFriendReferral()}>Remove</button>
-        </div>
-      ) : (
-        <>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
-            Have a code from a friend? Enter it for a discount on your first order with that code.
-          </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              className="field-input"
-              style={{ flex: 1, fontFamily: 'monospace' }}
-              placeholder="Referral code"
-              value={friendReferralCode}
-              onChange={(e) => setFriendReferralCode(e.target.value.toUpperCase())}
-              aria-label="Friend referral code"
-            />
-            <button
-              style={S.secondaryBtn}
-              onClick={() => void handleApplyFriendReferral()}
-              disabled={friendReferralLoading || !friendReferralCode.trim()}
-            >
-              {friendReferralLoading ? '…' : 'Apply'}
-            </button>
-          </div>
-          {friendReferralError && <p className="field-error" style={{ marginTop: 6 }}>{friendReferralError}</p>}
-        </>
-      )}
-    </SectionCard>
+  const bodyNotes = (
+    <textarea
+      className="field-input"
+      placeholder="Allergies, special requests, or notes for the kitchen"
+      value={notes}
+      onChange={(e) => setNotes(e.target.value)}
+      style={{ height: 80, resize: 'vertical' }}
+    />
   );
 
-  const sectionGiftCard = (
-    <SectionCard title="Gift Card">
-      {giftCardApplied ? (
-        <div style={S.promoApplied}>
-          <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
-            {giftCardApplied.pending
-              ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — applied at checkout</>
-              : <><span>🎁</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — MVR {laarToMvr(giftCardApplied.discountLaar)} off</>}
-          </span>
-          <button style={S.removeBtn} onClick={() => void handleRemoveGiftCard()}>Remove</button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              placeholder="XXXX-XXXX-XXXX"
-              value={giftCardCode}
-              onChange={(e) => { setGiftCardCode(e.target.value.toUpperCase()); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') void handleCheckGiftCard(); }}
-              style={{ flex: 1, padding: '9px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 'var(--text-base)', fontFamily: 'monospace', textTransform: 'uppercase', minWidth: 0 }}
-              aria-label="Gift card code"
-            />
-            <button
-              style={{ ...S.secondaryBtn, whiteSpace: 'nowrap' }}
-              onClick={giftCardBalance !== null ? () => void handleApplyGiftCard() : () => void handleCheckGiftCard()}
-              disabled={giftCardLoading || !giftCardCode.trim()}
-            >
-              {giftCardLoading ? '…' : giftCardBalance !== null ? 'Apply' : 'Check'}
-            </button>
+  // Discounts: promo + loyalty + friend referral + gift card stacked in one panel
+  const bodyDiscounts = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Promo Code */}
+      <div>
+        <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          Promo Code
+        </p>
+        {promoApplied ? (
+          <div style={S.promoApplied}>
+            <span style={{ fontSize: 'var(--text-base)' }}>
+              {(promoApplied.pending && promoApplied.discountLaar === 0)
+                ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — applied at checkout</>
+                : <><span>✅</span> <strong>{promoApplied.code}</strong> — MVR {laarToMvr(promoApplied.discountLaar)} off</>
+              }
+            </span>
+            <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>Remove</button>
           </div>
-          {giftCardBalance !== null && !giftCardError && (
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-success)', fontWeight: 600 }}>
-              Balance: MVR {giftCardBalance.toFixed(2)} — click Apply to use it
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="field-input"
+                style={{ flex: 1 }}
+                placeholder="Enter promo code"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                aria-label="Promo code"
+              />
+              <button style={S.secondaryBtn} onClick={handleApplyPromo} disabled={promoLoading || !promoCode}>
+                {promoLoading ? '…' : 'Apply'}
+              </button>
+            </div>
+            {promoError && <p className="field-error" style={{ marginTop: 6 }}>{promoError}</p>}
+          </>
+        )}
+      </div>
+
+      {/* Loyalty Points */}
+      {loyaltyAccount && loyaltyAccount.points_balance > 0 && (() => {
+        const available = loyaltyAvailablePoints(loyaltyAccount);
+        const held = loyaltyAccount.points_held ?? 0;
+        const minRedeem = loyaltyRates.minRedeemPoints;
+        const canRedeem = available >= minRedeem && loyaltyRedeemPoints >= minRedeem;
+        return (
+          <div>
+            <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Loyalty Points
             </p>
-          )}
-          {giftCardError && <p className="field-error" style={{ marginTop: 0 }}>{giftCardError}</p>}
-        </div>
-      )}
-    </SectionCard>
+            {loyaltyProgramMessage && (
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.45 }}>
+                {loyaltyProgramMessage}
+              </p>
+            )}
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)', marginBottom: 8 }}>
+              You have <strong>{available.toLocaleString()} pts</strong> available to use
+              {' '}(<span style={{ color: 'var(--color-primary)' }}>MVR {pointsValueMvr(available, loyaltyRates)}</span> value).
+            </p>
+            {held > 0 && (
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px', lineHeight: 1.45 }}>
+                {held.toLocaleString()} pts are reserved on another order ({loyaltyAccount.points_balance.toLocaleString()} total balance).
+              </p>
+            )}
+            {available < minRedeem && (
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+                Minimum {minRedeem} available points required to redeem.
+              </p>
+            )}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-base)',
+              color: canRedeem ? 'var(--color-text)' : 'var(--color-text-muted)',
+              cursor: canRedeem ? 'pointer' : 'not-allowed',
+            }}>
+              <input
+                type="checkbox"
+                checked={useLoyalty && canRedeem}
+                disabled={!canRedeem}
+                onChange={(e) => setUseLoyalty(e.target.checked)}
+                style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
+              />
+              {canRedeem
+                ? <>Use {loyaltyRedeemPoints.toLocaleString()} pts to save MVR {pointsValueMvr(loyaltyRedeemPoints, loyaltyRates)} (max {loyaltyRates.maxRedeemPercent}% of subtotal)</>
+                : <>Use loyalty points on this order</>}
+            </label>
+          </div>
+        );
+      })()}
+
+      {/* Friend's Referral Code */}
+      <div>
+        <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          Friend's Referral Code
+        </p>
+        {friendReferralApplied ? (
+          <div style={S.promoApplied}>
+            <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
+              {friendReferralApplied.pending
+                ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — est. MVR {laarToMvr(referralDelta)} off at checkout</>
+                : <><span>🤝</span> <strong style={{ fontFamily: 'monospace' }}>{friendReferralApplied.code}</strong> — MVR {laarToMvr(friendReferralApplied.discountLaar)} off</>}
+            </span>
+            <button style={S.removeBtn} onClick={() => void handleRemoveFriendReferral()}>Remove</button>
+          </div>
+        ) : (
+          <>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
+              Have a code from a friend? Enter it for a discount on your first order with that code.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="field-input"
+                style={{ flex: 1, fontFamily: 'monospace' }}
+                placeholder="Referral code"
+                value={friendReferralCode}
+                onChange={(e) => setFriendReferralCode(e.target.value.toUpperCase())}
+                aria-label="Friend referral code"
+              />
+              <button
+                style={S.secondaryBtn}
+                onClick={() => void handleApplyFriendReferral()}
+                disabled={friendReferralLoading || !friendReferralCode.trim()}
+              >
+                {friendReferralLoading ? '…' : 'Apply'}
+              </button>
+            </div>
+            {friendReferralError && <p className="field-error" style={{ marginTop: 6 }}>{friendReferralError}</p>}
+          </>
+        )}
+      </div>
+
+      {/* Gift Card */}
+      <div>
+        <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          Gift Card
+        </p>
+        {giftCardApplied ? (
+          <div style={S.promoApplied}>
+            <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
+              {giftCardApplied.pending
+                ? <><span>⏳</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — applied at checkout</>
+                : <><span>🎁</span> <strong style={{ fontFamily: 'monospace' }}>{giftCardApplied.code}</strong> — MVR {laarToMvr(giftCardApplied.discountLaar)} off</>}
+            </span>
+            <button style={S.removeBtn} onClick={() => void handleRemoveGiftCard()}>Remove</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                placeholder="XXXX-XXXX-XXXX"
+                value={giftCardCode}
+                onChange={(e) => { setGiftCardCode(e.target.value.toUpperCase()); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleCheckGiftCard(); }}
+                style={{ flex: 1, padding: '9px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 'var(--text-base)', fontFamily: 'monospace', textTransform: 'uppercase', minWidth: 0 }}
+                aria-label="Gift card code"
+              />
+              <button
+                style={{ ...S.secondaryBtn, whiteSpace: 'nowrap' }}
+                onClick={giftCardBalance !== null ? () => void handleApplyGiftCard() : () => void handleCheckGiftCard()}
+                disabled={giftCardLoading || !giftCardCode.trim()}
+              >
+                {giftCardLoading ? '…' : giftCardBalance !== null ? 'Apply' : 'Check'}
+              </button>
+            </div>
+            {giftCardBalance !== null && !giftCardError && (
+              <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-success)', fontWeight: 600 }}>
+                Balance: MVR {giftCardBalance.toFixed(2)} — click Apply to use it
+              </p>
+            )}
+            {giftCardError && <p className="field-error" style={{ marginTop: 0 }}>{giftCardError}</p>}
+          </div>
+        )}
+      </div>
+    </div>
   );
+
+  const discountsSummary: string | undefined = [
+    promoApplied?.code ?? null,
+    useLoyalty && loyaltyDelta > 0 ? 'Loyalty' : null,
+    giftCardApplied?.code ?? null,
+    friendReferralApplied?.code ?? null,
+  ].filter((v): v is string => v !== null).join(' · ') || undefined;
 
   const sectionReferral = myReferralCode && (
     <div style={{ background: 'var(--color-surface-alt)', border: '1px dashed var(--color-border)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
@@ -735,7 +675,8 @@ export function CheckoutPage() {
     </div>
   );
 
-  const sectionCompliance = (
+  // Payment accordion body — BML compliance notice
+  const bodyPayment = (
     <div style={S.complianceBox}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
         <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>We accept</span>
@@ -749,9 +690,9 @@ export function CheckoutPage() {
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
         {[
-          { href: '/terms',   label: 'Terms & Conditions' },
-          { href: '/refund',  label: 'Refund Policy' },
-          { href: '/privacy', label: 'Privacy Policy' },
+          { href: '/terms',   label: t('account.link_terms') },
+          { href: '/refund',  label: t('account.link_refund') },
+          { href: '/privacy', label: t('account.link_privacy') },
         ].map(({ href, label }) => (
           <a key={href} href={href} target="_blank" rel="noopener noreferrer"
             style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
@@ -770,21 +711,6 @@ export function CheckoutPage() {
     </div>
   );
 
-  const paySectionEl = (
-    <PaySection
-      acceptTerms={acceptTerms}
-      setAcceptTerms={setAcceptTerms}
-      globalError={globalError}
-      isPlacing={isPlacing}
-      placeLabel={placeLabel}
-      handlePlaceAndPay={handlePlaceAndPay}
-      gateClosed={orderingGateClosed}
-      gateMessage={onlineGate?.message}
-      hasPendingReferral={hasPendingReferral}
-      waLink={waLink}
-    />
-  );
-
   const sectionHelp = (
     <div style={{ ...S.card, textAlign: 'center', padding: '1.25rem' }}>
       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem', fontWeight: 600 }}>
@@ -792,14 +718,80 @@ export function CheckoutPage() {
       </p>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
         <a href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`} target="_blank" rel="noopener noreferrer"
-          style={S.chatBtnWa} aria-label="Contact us on WhatsApp">
-          <WhatsAppIcon /> WhatsApp
+          style={S.chatBtnWa} aria-label={t('checkout.contact_whatsapp')}>
+          <WhatsAppIcon /> {t('home.footer_whatsapp')}
         </a>
-        <a href={viberLink} style={S.chatBtnViber} aria-label="Contact us on Viber">
-          <ViberIcon /> Viber
+        <a href={viberLink} style={S.chatBtnViber} aria-label={t('checkout.contact_viber')}>
+          <ViberIcon /> {t('home.footer_viber')}
         </a>
       </div>
     </div>
+  );
+
+  // Fulfillment accordion (pickup slot or delivery form — mode-specific)
+  const showFulfillmentAccordion = orderType === 'delivery' || (orderType === 'pickup' && pickupSlotsEnabled);
+  const bodyFulfillment          = orderType === 'pickup' ? bodyPickupSlot : bodyDelivery;
+  const fulfillmentTitle         = orderType === 'pickup' ? t('checkout.acc_pickup') : t('checkout.acc_delivery');
+  const fulfillmentSummary       = orderType === 'pickup'
+    ? (pickupSlotAt ? (pickupSlots.find((sl) => sl.starts_at === pickupSlotAt)?.label ?? pickupSlotAt) : t('checkout.asap'))
+    : (delivery.address_line1 || undefined);
+
+  // StickyCtaBar above-content: gate banner + terms + error + pending note
+  const stickyAbove = (
+    <>
+      {orderingGateClosed && (
+        <div className="banner banner-warning" style={{ marginBottom: 12 }}>
+          <span className="banner-icon">🔒</span>
+          <div>
+            <p className="banner-title">{t('checkout.gate_closed')}</p>
+            <p className="banner-sub">{onlineGate?.message ?? t('checkout.gate_closed_sub')}</p>
+          </div>
+        </div>
+      )}
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
+        <input
+          type="checkbox"
+          checked={acceptTerms}
+          onChange={(e) => setAcceptTerms(e.target.checked)}
+          style={{ marginTop: '2px', width: 16, height: 16, accentColor: 'var(--color-primary)', flexShrink: 0 }}
+        />
+        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+          {t('checkout.terms_prefix')}{' '}
+          <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_terms')}</a>,{' '}
+          <a href="/refund" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_refund')}</a>
+          {t('checkout.terms_and')}{' '}
+          <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_privacy')}</a>.
+        </span>
+      </label>
+      {globalError && (
+        <div className="banner banner-error" style={{ marginBottom: 12 }}>
+          <span className="banner-icon">⚠️</span>
+          <div>
+            <p className="banner-title">{t('error.generic_title')}</p>
+            <p className="banner-sub">{globalError}</p>
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
+                  fontSize: '0.8125rem', fontWeight: 700, color: '#166534',
+                  background: '#dcfce7', padding: '6px 12px', borderRadius: 999, textDecoration: 'none',
+                }}
+              >
+                <WhatsAppIcon size={16} /> {t('checkout.whatsapp_help')}
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+      {hasPendingReferral && (
+        <p style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+          ⏳ {t('checkout.referral_pending')}
+        </p>
+      )}
+    </>
   );
 
   return (
@@ -825,10 +817,11 @@ export function CheckoutPage() {
             : '!'}
         </div>
       )}
+
       {/* ── Branded header ─────────────────────────────────── */}
       <BrandedHeader
         onBack={() => navigate(-1)}
-        backLabel="← Back"
+        backLabel={`← ${t('common.back')}`}
         rightSlot={
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             {loyaltyAccount && loyaltyAvailablePoints(loyaltyAccount) > 0 && (
@@ -843,7 +836,7 @@ export function CheckoutPage() {
             )}
             {customerName && (
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                Hi, {customerName}
+                {t('checkout.hi_name').replace('{name}', customerName)}
               </span>
             )}
           </div>
@@ -860,126 +853,137 @@ export function CheckoutPage() {
             </h1>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0, marginTop: '0.125rem' }}>
               {checkoutSubtitle}
-              {waitMinutes != null && <> · Kitchen wait ~{waitMinutes} min</>}
+              {waitMinutes != null && <> · {t('checkout.kitchen_wait').replace('{n}', String(waitMinutes))}</>}
             </p>
           </div>
         </div>
       </div>
 
-      {isMobile ? (
-        /* ── Mobile: single column, sections in logical order ─────────── */
-        <div style={{ ...S.layout, gridTemplateColumns: '1fr' }}>
-          <div style={S.col}>
-            {!isAuthenticated && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
-            {isAuthenticated && (
-              <>
-                {sectionOrderType}
-                {sectionPickupSlot}
-                {sectionDelivery}
-                {sectionNotes}
-                {sectionPromo}
-                {sectionLoyalty}
-                {sectionFriendReferral}
-                {sectionGiftCard}
-                {sectionCartSummary}
-                {sectionOrderSummary}
-                {sectionReferral}
-                {sectionCompliance}
-                {paySectionEl}
-                {sectionHelp}
-              </>
-            )}
-          </div>
+      {/* ── Unified two-area layout (CSS grid: 1-col mobile, 2-col ≥900px) ── */}
+      <div className="checkout-layout">
+        {/* Main: auth gate + accordion sections + sticky CTA */}
+        <div className="checkout-main">
+          {!isAuthenticated && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
+          {isAuthenticated && (
+            <>
+              <AccordionItem
+                id="order-type"
+                title={t('checkout.acc_order_type')}
+                summary={orderType === 'pickup' ? t('mode.pickup') : t('mode.delivery')}
+                open={openId === 'order-type'}
+                onToggle={() => toggle('order-type')}
+              >
+                {bodyOrderType}
+              </AccordionItem>
+
+              {showFulfillmentAccordion && (
+                <AccordionItem
+                  id="fulfillment"
+                  title={fulfillmentTitle}
+                  summary={fulfillmentSummary}
+                  open={openId === 'fulfillment'}
+                  onToggle={() => toggle('fulfillment')}
+                >
+                  {bodyFulfillment}
+                </AccordionItem>
+              )}
+
+              <AccordionItem
+                id="discounts"
+                title={t('checkout.acc_discounts')}
+                summary={discountsSummary}
+                open={openId === 'discounts'}
+                onToggle={() => toggle('discounts')}
+              >
+                {bodyDiscounts}
+              </AccordionItem>
+
+              <AccordionItem
+                id="notes"
+                title={t('checkout.acc_notes')}
+                summary={notes ? notes.slice(0, 40) + (notes.length > 40 ? '…' : '') : undefined}
+                open={openId === 'notes'}
+                onToggle={() => toggle('notes')}
+              >
+                {bodyNotes}
+              </AccordionItem>
+
+              <AccordionItem
+                id="payment"
+                title={t('checkout.acc_payment')}
+                summary={t('checkout.acc_payment_summary')}
+                open={openId === 'payment'}
+                onToggle={() => toggle('payment')}
+              >
+                {bodyPayment}
+              </AccordionItem>
+
+              {sectionHelp}
+
+              <StickyCtaBar
+                above={stickyAbove}
+                label={placeLabel}
+                onClick={handlePlaceAndPay}
+                disabled={isPlacing || !acceptTerms || orderingGateClosed}
+                loading={isPlacing}
+              />
+            </>
+          )}
         </div>
-      ) : (
-        /* ── Desktop: two-column grid ──────────────────────────────────── */
-        <div style={{ ...S.layout, gridTemplateColumns: 'minmax(0,1fr) minmax(300px,380px)' }}>
-          {/* Left: form */}
-          <div style={S.col}>
-            {!isAuthenticated && <AuthBlock skipProfileSetup onSuccess={handleAuthSuccess} />}
-            {isAuthenticated && (
-              <>
-                {sectionOrderType}
-                {sectionPickupSlot}
-                {sectionDelivery}
-                {sectionNotes}
-                {sectionPromo}
-                {sectionLoyalty}
-                {sectionFriendReferral}
-                {sectionGiftCard}
-                {sectionHelp}
-              </>
-            )}
-          </div>
-          {/* Right: summary + pay */}
-          <div style={S.col}>
-            {sectionCartSummary}
-            {sectionOrderSummary}
-            {myReferralCode && sectionReferral}
-            {isAuthenticated && (
-              <>
-                {sectionCompliance}
-                {paySectionEl}
-              </>
-            )}
-          </div>
-        </div>
-      )}
+
+        {/* Summary aside: cart + order totals + referral share */}
+        <aside className="checkout-summary">
+          {sectionCartSummary}
+          {sectionOrderSummary}
+          {sectionReferral}
+        </aside>
+      </div>
     </div>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+// ── Styles (Phase 5 PR2 — visual tokens only; structure unchanged) ─────────────
 const S = {
   page: {
     minHeight: '100vh',
     background: 'var(--color-bg)',
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontFamily: 'inherit',
+    paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))',
   } as React.CSSProperties,
-
-  layout: {
-    maxWidth: 'var(--layout-max)', margin: '0 auto',
-    padding: '1.5rem var(--page-gutter)',
-    display: 'grid', gap: 20,
-  } as React.CSSProperties,
-
-  col: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 14,
-  },
 
   card: {
     background: 'var(--color-surface)',
-    borderRadius: '16px',
-    padding: '18px 20px',
+    borderRadius: 'var(--radius-2xl)',
+    padding: '1.125rem 1.25rem',
     boxShadow: 'var(--shadow-sm)',
     border: '1px solid var(--color-border)',
   } as React.CSSProperties,
 
-  /* Warm tinted variant — used for Order Summary and Pay section */
+  /* Warm tinted variant — Order Summary */
   cardWarm: {
     background: 'var(--color-surface-alt)',
-    borderRadius: '16px',
-    padding: '18px 20px',
-    boxShadow: '0 2px 10px rgba(212,129,58,0.08)',
-    border: '1px solid rgba(212,129,58,0.22)',
+    borderRadius: 'var(--radius-2xl)',
+    padding: '1.125rem 1.25rem',
+    boxShadow: 'var(--shadow-sm)',
+    border: '1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border))',
   } as React.CSSProperties,
 
   sectionTitle: {
-    fontSize: 'var(--text-md)',
-    fontWeight: 700,
-    color: 'var(--color-primary)',
-    margin: '0 0 14px',
-    paddingBottom: 10,
+    fontSize: '1rem',
+    fontWeight: 800,
+    color: 'var(--color-dark)',
+    margin: '0 0 0.85rem',
+    paddingBottom: '0.65rem',
     borderBottom: '1px solid var(--color-border)',
+    letterSpacing: '-0.01em',
   } as React.CSSProperties,
 
   fieldLabel: {
     display: 'block',
-    fontSize: 'var(--text-sm)', fontWeight: 600,
+    fontSize: '0.8125rem',
+    fontWeight: 700,
     color: 'var(--color-text)',
-    marginBottom: 5,
+    marginBottom: 6,
   } as React.CSSProperties,
 
   fieldRow: {
@@ -989,13 +993,18 @@ const S = {
   } as React.CSSProperties,
 
   typeBtn: {
-    flex: 1, padding: '12px 16px',
+    flex: 1,
+    minHeight: 48,
+    padding: '0.75rem 1rem',
     border: '1.5px solid var(--color-border)',
-    borderRadius: '12px',
+    borderRadius: 'var(--radius-xl)',
     background: 'var(--color-surface)',
-    cursor: 'pointer', fontSize: 'var(--text-base)', fontWeight: 600,
+    cursor: 'pointer',
+    fontSize: '0.9375rem',
+    fontWeight: 700,
     color: 'var(--color-text)',
-    transition: 'all 0.15s', fontFamily: 'inherit',
+    transition: 'background var(--duration-micro) var(--ease-out), border-color var(--duration-micro) var(--ease-out)',
+    fontFamily: 'inherit',
   } as React.CSSProperties,
 
   typeBtnActive: {
@@ -1005,92 +1014,137 @@ const S = {
   } as React.CSSProperties,
 
   infoNote: {
-    display: 'flex', alignItems: 'center', gap: '0.4rem',
-    fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.45rem',
+    fontSize: '0.8125rem',
+    color: 'var(--color-text-muted)',
     background: 'var(--color-surface-alt)',
-    borderRadius: '8px', padding: '8px 12px',
+    borderRadius: 'var(--radius-lg)',
+    padding: '0.65rem 0.85rem',
     marginBottom: 14,
+    border: '1px solid var(--color-border)',
   } as React.CSSProperties,
 
   summaryRow: {
-    display: 'flex', justifyContent: 'space-between',
-    fontSize: 'var(--text-base)', marginBottom: 8,
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '0.9375rem',
+    marginBottom: 8,
+    gap: 12,
   } as React.CSSProperties,
 
   totalRow: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-    fontWeight: 800, fontSize: 'var(--text-lg)',
-    color: 'var(--color-text)',
-    borderTop: '2px solid var(--color-border)',
-    paddingTop: 12, marginTop: 8,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    fontWeight: 800,
+    fontSize: '1.125rem',
+    color: 'var(--color-dark)',
+    borderTop: '1.5px solid var(--color-border)',
+    paddingTop: 12,
+    marginTop: 8,
+    gap: 12,
   } as React.CSSProperties,
 
   totalRowAmount: {
     color: 'var(--color-primary)',
-    fontSize: '1.2rem',
+    fontSize: '1.25rem',
+    fontVariantNumeric: 'tabular-nums',
   } as React.CSSProperties,
 
   promoApplied: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     background: 'var(--color-success-bg)',
-    borderRadius: 10, padding: '10px 14px', fontSize: 'var(--text-base)',
-    border: '1px solid var(--color-success-bg)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '0.7rem 0.9rem',
+    fontSize: '0.9375rem',
+    border: '1px solid color-mix(in srgb, var(--color-success) 25%, transparent)',
+    gap: 10,
   } as React.CSSProperties,
 
   removeBtn: {
-    background: 'none', border: 'none',
+    background: 'none',
+    border: 'none',
     color: 'var(--color-error)',
-    cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 600, fontFamily: 'inherit',
+    cursor: 'pointer',
+    fontSize: '0.8125rem',
+    fontWeight: 700,
+    fontFamily: 'inherit',
+    minHeight: 36,
+    padding: '0 0.35rem',
   } as React.CSSProperties,
 
   primaryBtn: {
     background: 'var(--color-primary)',
-    color: '#fff', border: 'none',
-    borderRadius: '12px', padding: '12px 24px',
-    fontSize: 'var(--text-body)', fontWeight: 700,
-    cursor: 'pointer', fontFamily: 'inherit',
-    transition: 'all 0.15s',
-    boxShadow: '0 4px 14px var(--color-primary-glow)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 'var(--radius-xl)',
+    padding: '0.85rem 1.25rem',
+    minHeight: 48,
+    fontSize: '1rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: 'background var(--duration-micro) var(--ease-out)',
   } as React.CSSProperties,
 
   secondaryBtn: {
     background: 'var(--color-surface)',
     color: 'var(--color-primary)',
     border: '1.5px solid var(--color-primary)',
-    borderRadius: '10px', padding: '0 16px',
-    fontSize: 'var(--text-base)', fontWeight: 600,
-    cursor: 'pointer', whiteSpace: 'nowrap' as const,
-    fontFamily: 'inherit', height: 'var(--input-height)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '0 1rem',
+    fontSize: '0.875rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+    fontFamily: 'inherit',
+    minHeight: 44,
   } as React.CSSProperties,
 
   chatBtnWa: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 40,
     padding: '0.5rem 1rem',
-    background: '#25d366', color: 'white',
-    borderRadius: '8px', fontWeight: 600,
-    fontSize: 'var(--text-sm)', textDecoration: 'none',
-    transition: 'all 0.15s',
+    background: '#25d366',
+    color: 'white',
+    borderRadius: 'var(--radius-lg)',
+    fontWeight: 700,
+    fontSize: '0.8125rem',
+    textDecoration: 'none',
   } as React.CSSProperties,
 
   chatBtnViber: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 40,
     padding: '0.5rem 1rem',
-    background: '#7360f2', color: 'white',
-    borderRadius: '8px', fontWeight: 600,
-    fontSize: 'var(--text-sm)', textDecoration: 'none',
-    transition: 'all 0.15s',
+    background: '#7360f2',
+    color: 'white',
+    borderRadius: 'var(--radius-lg)',
+    fontWeight: 700,
+    fontSize: '0.8125rem',
+    textDecoration: 'none',
   } as React.CSSProperties,
 
   complianceBox: {
     background: 'var(--color-surface-alt)',
-    border: '1px solid rgba(212,129,58,0.22)',
-    borderRadius: '12px',
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-xl)',
     padding: '1rem 1.125rem',
-    marginBottom: '12px',
+    marginBottom: '0.75rem',
   } as React.CSSProperties,
 
   secureNote: {
-    fontSize: '0.72rem',
+    fontSize: '0.75rem',
     color: 'var(--color-text-muted)',
     textAlign: 'center' as const,
     marginTop: '0.625rem',
@@ -1098,7 +1152,7 @@ const S = {
   } as React.CSSProperties,
 
   corporateInfo: {
-    fontSize: '0.68rem',
+    fontSize: '0.72rem',
     color: 'var(--color-text-muted)',
     textAlign: 'center' as const,
     marginTop: '0.375rem',

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, getMyFavourites, toggleFavourite, getWaitTimeEstimate, API_ORIGIN } from '../api';
 import type { Category, Item, Modifier, DailySpecial } from '../api';
@@ -14,13 +13,20 @@ function fmtOrderingTime(iso: string | null | undefined): string {
 }
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
-import { MenuCard } from '../components/MenuCard';
-import { ItemModal } from '../components/ItemModal';
+import { ProductCard } from '../components/menu/ProductCard';
+import { ItemSheet } from '../components/ItemSheet';
+import { CartSheet } from '../components/CartSheet';
 import { CartDrawer } from '../components/CartDrawer';
+import { SearchOverlay } from '../components/SearchOverlay';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { OrderModeToggle } from '../components/OrderModeToggle';
+import { CategoryRail } from '../components/menu/CategoryRail';
+import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
+import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
+import { pickActiveSectionId } from '../utils/scrollSpy';
 
 function isItemOnSale(item: Item): boolean {
   if (item.special?.effective_price != null) return true;
@@ -42,7 +48,15 @@ function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct
   return !badge.includes(`${discountPct}%`);
 }
 
-type SaleFilter = 'all' | 'discount' | 'special';
+function slugifyCategoryName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+function sortMenuItems(list: Item[], sortBy: string): Item[] {
+  if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
+  if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
+  return [...list].sort((a, b) => a.name.localeCompare(b.name));
+}
 
 const DIETARY_FILTERS = [
   { id: 'vegetarian', label: '🥬 Vegetarian' },
@@ -53,7 +67,7 @@ const DIETARY_FILTERS = [
 ] as const;
 
 export function MenuPage() {
-  const { addItem } = useCart();
+  const { addItem, pruneCartToAllowedItemIds, cart } = useCart();
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
@@ -68,7 +82,6 @@ export function MenuPage() {
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
 
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
-  const [activeSubId, setActiveSubId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [saleFilter, setSaleFilter] = useState<SaleFilter>('all');
@@ -86,11 +99,14 @@ export function MenuPage() {
   const [nextDeliveryWindow, setNextDeliveryWindow] = useState<string | null>(null);
 
   const [cartVisible, setCartVisible] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
-  // Refs for scrolling category pill into view
-  const pillContainerRef = useRef<HTMLDivElement>(null);
-  const activePillRef = useRef<HTMLButtonElement>(null);
+  const cartRef = useRef(cart);
+  const isProgrammaticScroll = useRef(false);
+  const programmaticScrollTimerRef = useRef<number | null>(null);
+  const sectionVisibilityRef = useRef<Map<number, { id: number; ratio: number; top: number }>>(new Map());
+  const pendingCategoryScrollRef = useRef<number | null>(null);
 
   // Back to top visibility — throttled with requestAnimationFrame
   useEffect(() => {
@@ -113,6 +129,10 @@ export function MenuPage() {
 
   usePageTitle('Menu');
 
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
+
   const loadMenu = () => {
     setLoading(true);
     Promise.all([
@@ -121,11 +141,19 @@ export function MenuPage() {
       fetchOnlineOrderingStatus(),
     ])
       .then(([cats, its, gate]) => {
+        const loadedItems = its.data ?? [];
         setCategories(cats.data ?? []);
-        setItems(its.data ?? []);
+        setItems(loadedItems);
+        const allowedIds = new Set(loadedItems.map((item) => item.id));
+        const removedCount = cartRef.current.filter((entry) => !allowedIds.has(entry.item.id)).length;
+        if (removedCount > 0) {
+          pruneCartToAllowedItemIds(allowedIds);
+          const pruneKey = removedCount === 1 ? 'menu.toast_prune_one' : 'menu.toast_prune_many';
+          showToast(t(pruneKey).replace('{n}', String(removedCount)));
+        }
         setDeliveryFallback(its.deliveryFallback);
         if (its.deliveryFallback) {
-          showToast('No delivery items right now — showing pickup menu instead.');
+          showToast(t('menu.toast_delivery_fallback'));
         }
         // Gate API is the single source of truth for ordering status
         setIsOpen(gate.open);
@@ -190,12 +218,16 @@ export function MenuPage() {
     const itemId = searchParams.get('item') ? Number(searchParams.get('item')) : null;
 
     if (categorySlug) {
+      const normalizedCategorySlug = categorySlug.toLowerCase();
       const match = categories.find(
-        (c) => c.name.toLowerCase().replace(/\s+/g, '-') === categorySlug,
+        (c) => slugifyCategoryName(c.name) === normalizedCategorySlug,
       );
-      setActiveCategoryId(match?.id ?? null);
+      const sectionCategoryId = match ? (match.parent_id ?? match.id) : null;
+      setActiveCategoryId(sectionCategoryId);
+      pendingCategoryScrollRef.current = sectionCategoryId;
     } else {
       setActiveCategoryId(null);
+      pendingCategoryScrollRef.current = null;
     }
 
     if (itemId) {
@@ -214,30 +246,8 @@ export function MenuPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    if (!cartVisible) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [cartVisible]);
-
-  // Scroll active pill into view when category changes
-  useEffect(() => {
-    if (activePillRef.current && pillContainerRef.current) {
-      activePillRef.current.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
-    }
-  }, [activeCategoryId]);
-
   const filteredItems = useMemo(() => {
     let list = items;
-    if (activeSubId !== null) {
-      list = list.filter((i) => i.category_id === activeSubId);
-    } else if (activeCategoryId !== null) {
-      const subcategoryIds = categories.filter((c) => c.parent_id === activeCategoryId).map((c) => c.id);
-      list = subcategoryIds.length > 0
-        ? list.filter((i) => i.category_id !== null && (i.category_id === activeCategoryId || subcategoryIds.includes(i.category_id)))
-        : list.filter((i) => i.category_id === activeCategoryId);
-    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
@@ -250,10 +260,10 @@ export function MenuPage() {
     if (dietaryFilter) {
       list = list.filter((i) => (i.dietary_tags ?? []).some((t) => t.toLowerCase() === dietaryFilter));
     }
-    if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
-    if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
-    return [...list].sort((a, b) => a.name.localeCompare(b.name));
-  }, [items, categories, activeCategoryId, activeSubId, searchQuery, sortBy, saleFilter, dietaryFilter]);
+    return sortMenuItems(list, sortBy);
+  }, [items, searchQuery, sortBy, saleFilter, dietaryFilter]);
+
+  const filtersActive = Boolean(searchQuery.trim() || saleFilter !== 'all' || dietaryFilter != null);
 
   const availableDietaryFilters = useMemo(() => {
     const tags = new Set<string>();
@@ -268,7 +278,7 @@ export function MenuPage() {
   const discountCount = useMemo(() => items.filter(isPercentDiscountItem).length, [items]);
   const specialCount = useMemo(() => items.filter(isFixedSpecialItem).length, [items]);
 
-  // Item counts per category (for bottom sheet badges)
+  // Item counts per category (parent counts include their subcategories)
   const catItemCounts = useMemo(() => {
     const direct: Record<number, number> = {};
     for (const item of items) {
@@ -285,35 +295,110 @@ export function MenuPage() {
     return total;
   }, [items, categories]);
 
-  // When a parent category is active (and no sub selected), group items by subcategory
-  const itemGroups = useMemo(() => {
-    if (activeSubId !== null || activeCategoryId === null || searchQuery.trim()) {
-      return [{ label: null as string | null, items: filteredItems }];
-    }
-    const subs = categories.filter((c) => c.parent_id === activeCategoryId);
-    if (subs.length === 0) return [{ label: null as string | null, items: filteredItems }];
-    const groups: { label: string | null; items: typeof filteredItems }[] = [];
-    const subIds = new Set(subs.map((s) => s.id));
-    const direct = filteredItems.filter((i) => i.category_id === null || !subIds.has(i.category_id));
-    if (direct.length > 0) groups.push({ label: null, items: direct });
-    for (const sub of subs) {
-      const subItems = filteredItems.filter((i) => i.category_id === sub.id);
-      if (subItems.length > 0) groups.push({ label: sub.name, items: subItems });
-    }
-    return groups;
-  }, [filteredItems, categories, activeCategoryId, activeSubId, searchQuery]);
+  const parentCategories = useMemo(
+    () => categories
+      .filter((cat) => !cat.parent_id)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name)),
+    [categories],
+  );
 
-  const [catSheetOpen, setCatSheetOpen] = useState(false);
+  const railCategories = useMemo(
+    () => parentCategories.filter((cat) => (catItemCounts[cat.id] ?? 0) > 0),
+    [parentCategories, catItemCounts],
+  );
 
-  const activeCatLabel = activeCategoryId === null
-    ? 'All Items'
-    : (categories.find((c) => c.id === activeCategoryId)?.name ?? 'All Items');
-  const activeSubLabel = activeSubId !== null
-    ? categories.find((c) => c.id === activeSubId)?.name
-    : null;
-  const sheetSubs = activeCategoryId !== null
-    ? categories.filter((c) => c.parent_id === activeCategoryId)
-    : [];
+  const sectionedMenu = useMemo(() => {
+    const childToParent = new Map<number, number>();
+    for (const cat of categories) {
+      if (cat.parent_id != null) childToParent.set(cat.id, cat.parent_id);
+    }
+
+    const usedItemIds = new Set<number>();
+    const sections = parentCategories
+      .map((category) => {
+        const sectionItems = items.filter((item) => {
+          const categoryId = item.category_id;
+          if (categoryId == null) return false;
+          return categoryId === category.id || childToParent.get(categoryId) === category.id;
+        });
+        for (const item of sectionItems) usedItemIds.add(item.id);
+        return { category, items: sortMenuItems(sectionItems, sortBy) };
+      })
+      .filter((section) => section.items.length > 0);
+
+    const other = sortMenuItems(items.filter((item) => !usedItemIds.has(item.id)), sortBy);
+    return { sections, other };
+  }, [categories, parentCategories, items, sortBy]);
+
+  const hasSectionedItems = sectionedMenu.sections.length > 0 || sectionedMenu.other.length > 0;
+
+  const scrollToCategorySection = (categoryId: number, behavior: ScrollBehavior = 'smooth') => {
+    const section = document.getElementById(`menu-section-${categoryId}`);
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    section?.scrollIntoView({ behavior: reduced ? 'auto' : behavior, block: 'start' });
+  };
+
+  const handleSelectCategory = (categoryId: number) => {
+    setActiveCategoryId(categoryId);
+    isProgrammaticScroll.current = true;
+    scrollToCategorySection(categoryId);
+    if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
+    programmaticScrollTimerRef.current = window.setTimeout(() => {
+      isProgrammaticScroll.current = false;
+      programmaticScrollTimerRef.current = null;
+    }, 500);
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSaleFilter('all');
+    setDietaryFilter(null);
+  };
+
+  useEffect(() => {
+    if (filtersActive || loading || sectionedMenu.sections.length === 0) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+    const headers = Array.from(document.querySelectorAll<HTMLElement>('.menu-section-header[data-category-id]'));
+    if (headers.length === 0) return;
+
+    sectionVisibilityRef.current = new Map();
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const id = Number((entry.target as HTMLElement).dataset.categoryId);
+        if (!Number.isFinite(id)) continue;
+        sectionVisibilityRef.current.set(id, {
+          id,
+          ratio: entry.intersectionRatio,
+          top: entry.boundingClientRect.top,
+        });
+      }
+
+      if (isProgrammaticScroll.current) return;
+      const next = pickActiveSectionId(Array.from(sectionVisibilityRef.current.values()), activeCategoryId);
+      if (next !== activeCategoryId) setActiveCategoryId(next);
+    }, {
+      rootMargin: '-120px 0px -55% 0px',
+      threshold: [0, 0.01, 0.25, 0.5, 0.75, 1],
+    });
+
+    headers.forEach((header) => observer.observe(header));
+    return () => observer.disconnect();
+  }, [activeCategoryId, filtersActive, loading, sectionedMenu.sections]);
+
+  useEffect(() => {
+    if (filtersActive || loading || pendingCategoryScrollRef.current == null) return;
+    const categoryId = pendingCategoryScrollRef.current;
+    pendingCategoryScrollRef.current = null;
+    window.setTimeout(() => {
+      requestAnimationFrame(() => scrollToCategorySection(categoryId, 'auto'));
+    }, 0);
+  }, [filtersActive, loading, sectionedMenu.sections]);
+
+  useEffect(() => () => {
+    if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
+  }, []);
 
   const handleSelectItem = (item: Item, qty = 1) => { setSelectedItem(item); setSelectedQty(qty); setSelectedModifiers([]); };
   const toggleModifier = (mod: Modifier) => {
@@ -331,6 +416,21 @@ export function MenuPage() {
     setSelectedQty(1);
     setSelectedModifiers([]);
   };
+
+  const renderProductCard = (item: Item) => (
+    <div key={item.id} className="menu-item-anim">
+      <ProductCard
+        item={item}
+        onSelectItem={(it, qty) => handleSelectItem(it, qty)}
+        onAddToCart={(it, qty, variant) => {
+          addItem(it, qty, [], variant ?? null);
+          showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`);
+        }}
+        isFavourite={favouriteIds.has(item.id)}
+        onToggleFavourite={handleToggleFavourite}
+      />
+    </div>
+  );
 
   if (error) {
     return (
@@ -359,72 +459,104 @@ export function MenuPage() {
   }
 
   return (
-    <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', display: 'flex', gap: '1.5rem', position: 'relative' }}>
-
-      {/* ── Desktop sidebar categories ─────────────────────────── */}
-      <aside style={{ width: '200px', flexShrink: 0, padding: '1.5rem 0' }} className="menu-sidebar">
-        <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: '0.625rem', padding: '0 0.25rem' }}>
-          Categories
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="skeleton" style={{ height: '38px', borderRadius: '10px' }} />
-              ))
-            : (
-              <>
-                <CatButton
-                  label="All Items"
-                  active={activeCategoryId === null}
-                  onClick={() => { setActiveCategoryId(null); setActiveSubId(null); }}
-                />
-                {categories.filter((cat) => !cat.parent_id).map((cat) => (
-                  <div key={cat.id}>
-                    <CatButton
-                      label={cat.name}
-                      active={activeCategoryId === cat.id}
-                      onClick={() => { setActiveCategoryId(cat.id); setActiveSubId(null); }}
-                    />
-                    {categories.filter((sub) => sub.parent_id === cat.id).map((sub) => (
-                      <div key={sub.id} style={{ paddingLeft: '0.75rem' }}>
-                        <CatButton
-                          label={'↳ ' + sub.name}
-                          active={activeSubId === sub.id}
-                          onClick={() => { setActiveCategoryId(cat.id); setActiveSubId(sub.id); }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </>
-            )
-          }
-        </div>
-      </aside>
-
-      {/* ── Main content ──────────────────────────────────────────── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-
-        {/* Online ordering status bar */}
-        {isOpen !== null && (
-          <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'pickup-only') : 'closed'}`}>
-            <span className="ordering-status-bar-dot" />
-            <span className="ordering-status-bar-text">
-              {isOpen
-                ? deliveryAvailable
-                  ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}${waitMinutes !== null ? ` · ~${waitMinutes} min` : ''}`
-                  : `Online ordering is open · Pickup only${nextDeliveryWindow ? ` · Delivery from ${fmtOrderingTime(nextDeliveryWindow)}` : ''}${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
-                : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
-              }
-            </span>
+    <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>
+      {/* ── Sticky menu controls ─────────────────────────────────── */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          background: 'color-mix(in srgb, var(--color-bg) 92%, transparent)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          padding: '0.75rem 0',
+          borderBottom: '1px solid var(--color-border)',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+            <OrderModeToggle deliveryBlocked={isOpen === true && !deliveryAvailable} />
           </div>
-        )}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label={t('menu.search_aria')}
+            style={{
+              minWidth: 44,
+              minHeight: 44,
+              padding: '0 0.9rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              border: '1.5px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              background: searchQuery.trim() ? 'var(--color-primary-light)' : 'var(--color-surface)',
+              color: searchQuery.trim() ? 'var(--color-primary)' : 'var(--color-text)',
+              fontFamily: 'inherit',
+              fontWeight: 700,
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {t('menu.open_search')}
+            {searchQuery.trim() ? ` · "${searchQuery.trim()}"` : ''}
+          </button>
+        </div>
+
+        <FilterChipsRow
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          saleFilter={saleFilter}
+          onSaleFilterChange={setSaleFilter}
+          dietaryFilter={dietaryFilter}
+          onDietaryFilterChange={setDietaryFilter}
+          dietaryOptions={[...availableDietaryFilters]}
+          discountCount={discountCount}
+          specialCount={specialCount}
+          filtersActive={filtersActive}
+          onClear={handleClearFilters}
+        />
+
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+          {isOpen !== null && (
+            <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'pickup-only') : 'closed'}`} style={{ margin: 0 }}>
+              <span className="ordering-status-bar-dot" />
+              <span className="ordering-status-bar-text">
+                {isOpen
+                  ? deliveryAvailable
+                    ? `Online ordering is open${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
+                    : `Online ordering is open · Pickup only${nextDeliveryWindow ? ` · Delivery from ${fmtOrderingTime(nextDeliveryWindow)}` : ''}${currentClose ? ` · Closes ${fmtOrderingTime(currentClose)}` : ''}`
+                  : `Online ordering is closed${nextOpenWindow ? ` · Opens ${fmtOrderingTime(nextOpenWindow)}` : ''}`
+                }
+              </span>
+            </div>
+          )}
+          {waitMinutes !== null && (
+            <div
+              role="status"
+              style={{
+                padding: '0.4rem 0.85rem',
+                borderRadius: 999,
+                background: 'var(--color-primary-light)',
+                color: 'var(--color-primary)',
+                border: '1px solid var(--color-border)',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ~{waitMinutes} min wait
+            </div>
+          )}
+        </div>
 
         {deliveryFallback && (
           <div
             role="status"
             style={{
-              margin: '0 var(--page-gutter)',
+              marginTop: '0.75rem',
               padding: '10px 14px',
               borderRadius: 10,
               background: 'var(--color-primary-light, #FFF7ED)',
@@ -436,437 +568,199 @@ export function MenuPage() {
             Delivery is unavailable for these items — you&apos;re viewing the <strong>pickup</strong> menu.
           </div>
         )}
+      </div>
 
-        {/* Today's Specials */}
-        {specials.length > 0 && (
-          <section style={{ padding: '1rem var(--page-gutter) 0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              <div>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>Today&apos;s Specials</h2>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0.15rem 0 0' }}>Limited-time deals, today only</p>
+      <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start', position: 'relative' }}>
+        <CategoryRail
+          categories={railCategories}
+          activeCategoryId={activeCategoryId}
+          onSelect={handleSelectCategory}
+          dimmed={loading || filtersActive}
+          counts={catItemCounts}
+        />
+
+        {/* ── Main menu column ───────────────────────────────────── */}
+        <main style={{ flex: 1, minWidth: 0, paddingTop: '1rem' }}>
+          {/* Today's Specials */}
+          {specials.length > 0 && (
+            <section style={{ paddingBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>Today&apos;s Specials</h2>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0.15rem 0 0' }}>Limited-time deals, today only</p>
+                </div>
               </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.875rem', overflowX: 'auto', paddingBottom: '0.35rem' }}>
-              {specials.map((sp) => {
-                const cardKey = sp.variant_id ? `${sp.id}-${sp.variant_id}` : String(sp.id);
-                const imgSrc = sp.item_image
-                  ? sp.item_image.startsWith('http') ? sp.item_image : `${API_ORIGIN}${sp.item_image.startsWith('/') ? '' : '/'}${sp.item_image}`
-                  : null;
-                const price = Number(sp.effective_price ?? 0);
-                const wasPrice = sp.original_price != null && Number(sp.original_price) > price
-                  ? Number(sp.original_price)
-                  : null;
-                const badge = sp.badge_label ?? (sp.discount_pct ? `${sp.discount_pct}% OFF` : 'Special Offer');
-                const pctUnderBadge = showDiscountPctUnderBadge(sp.badge_label, sp.discount_pct);
-                return (
-                  <Link
-                    key={cardKey}
-                    to={`/menu?item=${sp.item_id}`}
-                    style={{
-                      flexShrink: 0, width: 168, borderRadius: 'var(--radius-2xl)',
-                      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                      overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column',
-                    }}
-                  >
-                    <div style={{ height: 100, background: 'var(--color-surface-alt)', position: 'relative', overflow: 'hidden' }}>
-                      {imgSrc
-                        ? <img src={imgSrc} alt={sp.item_name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 28, opacity: 0.3 }}>🍽️</div>
-                      }
-                      {(badge || sp.discount_pct) && (
-                        <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, zIndex: 2 }}>
-                          <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>
-                            {badge}
-                          </div>
-                          {pctUnderBadge && (
-                            <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>
-                              {sp.discount_pct}% OFF
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ padding: '0.65rem 0.75rem', flex: 1 }}>
-                      <p style={{ margin: '0 0 3px', fontWeight: 700, fontSize: 12, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item_name}</p>
-                      {sp.variant_name && (
-                        <p style={{ margin: '0 0 3px', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{sp.variant_name}</p>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                        <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-primary)' }}>MVR {price.toFixed(2)}</span>
-                        {wasPrice && <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>MVR {wasPrice.toFixed(2)}</span>}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Mobile category picker — sticky trigger */}
-        <div className="mobile-category-pills cat-trigger-bar">
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.6rem var(--page-gutter)' }}>
-            <button
-              className="cat-sheet-trigger"
-              onClick={() => setCatSheetOpen(true)}
-              aria-label="Browse categories"
-            >
-              <span style={{ fontSize: '1rem', lineHeight: 1 }}>☰</span>
-              <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {activeCatLabel}{activeSubLabel ? ` › ${activeSubLabel}` : ''}
-              </span>
-              <span style={{ fontSize: '0.75rem', opacity: 0.5, flexShrink: 0 }}>▾</span>
-            </button>
-            {!loading && (
-              <span style={{ flexShrink: 0, fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-primary-light)', padding: '0.25rem 0.6rem', borderRadius: 999, whiteSpace: 'nowrap' }}>
-                {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
-              </span>
-            )}
-            {(activeCategoryId !== null || activeSubId !== null) && (
-              <button
-                onClick={() => { setActiveCategoryId(null); setActiveSubId(null); }}
-                style={{ flexShrink: 0, padding: '0 0.6rem', height: '36px', border: '1.5px solid var(--color-border)', borderRadius: '999px', background: 'transparent', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--color-text-muted)', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                aria-label="Clear filter"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Category bottom sheet */}
-        {catSheetOpen && typeof document !== 'undefined' && createPortal(
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number, background: 'rgba(0,0,0,0.5)' }}
-            onClick={() => setCatSheetOpen(false)}
-          >
-            <div
-              className="cat-sheet-panel"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Drag handle */}
-              <div style={{ width: 40, height: 4, borderRadius: 99, background: 'var(--color-border)', margin: '0 auto 1.25rem' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-dark)' }}>Browse Menu</h3>
-                <button onClick={() => setCatSheetOpen(false)} style={{ background: 'var(--color-primary-light)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', fontSize: '1.1rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-              </div>
-
-              {/* All Items */}
-              <button
-                className={`cat-sheet-item${activeCategoryId === null ? ' active' : ''}`}
-                onClick={() => { setActiveCategoryId(null); setActiveSubId(null); setCatSheetOpen(false); }}
-              >
-                <span>🍽️ All Items</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{items.length} items</span>
-                  {activeCategoryId === null && <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>✓</span>}
-                </span>
-              </button>
-
-              {/* Parent category grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.75rem' }}>
-                {categories.filter((cat) => !cat.parent_id).map((cat) => {
-                  const isActive = activeCategoryId === cat.id;
-                  const count = catItemCounts[cat.id] ?? 0;
-                  const hasSubs = categories.some((c) => c.parent_id === cat.id);
+              <div style={{ display: 'flex', gap: '0.875rem', overflowX: 'auto', paddingBottom: '0.35rem' }}>
+                {specials.map((sp) => {
+                  const cardKey = sp.variant_id ? `${sp.id}-${sp.variant_id}` : String(sp.id);
+                  const imgSrc = sp.item_image
+                    ? sp.item_image.startsWith('http') ? sp.item_image : `${API_ORIGIN}${sp.item_image.startsWith('/') ? '' : '/'}${sp.item_image}`
+                    : null;
+                  const price = Number(sp.effective_price ?? 0);
+                  const wasPrice = sp.original_price != null && Number(sp.original_price) > price
+                    ? Number(sp.original_price)
+                    : null;
+                  const badge = sp.badge_label ?? (sp.discount_pct ? `${sp.discount_pct}% OFF` : 'Special Offer');
+                  const pctUnderBadge = showDiscountPctUnderBadge(sp.badge_label, sp.discount_pct);
                   return (
-                    <button
-                      key={cat.id}
-                      className={`cat-sheet-card${isActive ? ' active' : ''}`}
-                      onClick={() => {
-                        setActiveCategoryId(cat.id);
-                        setActiveSubId(null);
-                        if (!hasSubs) setCatSheetOpen(false);
+                    <Link
+                      key={cardKey}
+                      to={`/menu?item=${sp.item_id}`}
+                      style={{
+                        flexShrink: 0, width: 168, borderRadius: 'var(--radius-2xl)',
+                        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                        overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column',
                       }}
                     >
-                      {cat.image_url && (
-                        <img src={cat.image_url.startsWith('http') ? cat.image_url : `${window.location.origin}${cat.image_url}`}
-                          alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', marginBottom: 4, display: 'block', margin: '0 auto 4px' }} />
-                      )}
-                      <span style={{ display: 'block', lineHeight: 1.3 }}>{cat.name}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, marginTop: 3 }}>
-                        <span style={{ fontSize: '0.68rem', opacity: 0.5, fontWeight: 500 }}>{count > 0 ? `${count} items` : ''}{hasSubs ? (count > 0 ? ' · subs' : 'subs') : ''}</span>
-                        {isActive && <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 800 }}>✓</span>}
-                      </span>
-                    </button>
+                      <div style={{ height: 100, background: 'var(--color-surface-alt)', position: 'relative', overflow: 'hidden' }}>
+                        {imgSrc
+                          ? <img src={imgSrc} alt={sp.item_name ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 28, opacity: 0.3 }}>🍽️</div>
+                        }
+                        {(badge || sp.discount_pct) && (
+                          <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, zIndex: 2 }}>
+                            <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>
+                              {badge}
+                            </div>
+                            {pctUnderBadge && (
+                              <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>
+                                {sp.discount_pct}% OFF
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding: '0.65rem 0.75rem', flex: 1 }}>
+                        <p style={{ margin: '0 0 3px', fontWeight: 700, fontSize: 12, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item_name}</p>
+                        {sp.variant_name && (
+                          <p style={{ margin: '0 0 3px', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{sp.variant_name}</p>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                          <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-primary)' }}>MVR {price.toFixed(2)}</span>
+                          {wasPrice && <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>MVR {wasPrice.toFixed(2)}</span>}
+                        </div>
+                      </div>
+                    </Link>
                   );
                 })}
               </div>
+            </section>
+          )}
 
-              {/* Subcategory chips */}
-              {sheetSubs.length > 0 && (
-                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-                  <p style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', marginBottom: '0.6rem' }}>
-                    {activeCatLabel} — pick a section
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                    <button
-                      className={`sub-pill${activeSubId === null ? ' active' : ''}`}
-                      onClick={() => { setActiveSubId(null); setCatSheetOpen(false); }}
-                    >
-                      All {catItemCounts[activeCategoryId!] ? `(${catItemCounts[activeCategoryId!]})` : ''}
-                    </button>
-                    {sheetSubs.map((sub) => (
-                      <button
-                        key={sub.id}
-                        className={`sub-pill${activeSubId === sub.id ? ' active' : ''}`}
-                        onClick={() => { setActiveSubId(sub.id); setCatSheetOpen(false); }}
-                      >
-                        {sub.name}{catItemCounts[sub.id] ? ` (${catItemCounts[sub.id]})` : ''}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+          {loading && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '0 0 1.25rem' }}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="skeleton" style={{ borderRadius: '16px', height: '300px' }} />
+              ))}
+            </div>
+          )}
+
+          {!loading && (filtersActive ? filteredItems.length === 0 : !hasSectionedItems) && (
+            <div className="empty-state">
+              <div className="empty-state-icon">🔍</div>
+              <p className="empty-state-title">
+                {searchQuery.trim()
+                  ? t('menu.no_results').replace('{q}', searchQuery.trim())
+                  : 'Nothing here yet'}
+              </p>
+              <p className="empty-state-sub">
+                {filtersActive ? 'Try clearing filters or using a different search term.' : 'Check back soon.'}
+              </p>
+              {filtersActive && (
+                <button
+                  onClick={handleClearFilters}
+                  style={{ marginTop: '1rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem' }}
+                >
+                  {t('menu.clear_filters')}
+                </button>
               )}
             </div>
-          </div>,
-          document.body
-        )}
+          )}
 
-        {/* Search + sort */}
-        <div style={{ display: 'flex', gap: '0.75rem', padding: '1.25rem var(--page-gutter) 0', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
-            <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.875rem', pointerEvents: 'none', opacity: 0.4 }}>🔍</span>
-            <input
-              type="text"
-              placeholder={t('menu.search')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%', height: 'var(--input-height)',
-                padding: '0 0.875rem 0 2.25rem',
-                border: '1.5px solid var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                fontSize: '0.9rem', outline: 'none',
-                fontFamily: 'inherit', background: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                transition: 'border-color 0.15s', boxSizing: 'border-box',
-              }}
-              onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; }}
-              onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; }}
-              aria-label="Search menu items"
-            />
-          </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            style={{
-              height: 'var(--input-height)',
-              padding: '0 0.875rem',
-              border: '1.5px solid var(--color-border)',
-              borderRadius: 'var(--radius-lg)',
-              fontSize: '0.875rem',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text)',
-              fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
-            }}
-            aria-label="Sort items"
-          >
-            <option value="name">Sort: A–Z</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-          </select>
-          {(discountCount > 0 || specialCount > 0) && (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {([
-                { id: 'all' as SaleFilter, label: 'All items' },
-                ...(discountCount > 0 ? [{ id: 'discount' as SaleFilter, label: `% Off (${discountCount})` }] : []),
-                ...(specialCount > 0 ? [{ id: 'special' as SaleFilter, label: `Specials (${specialCount})` }] : []),
-              ]).map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setSaleFilter(opt.id)}
-                  style={{
-                    height: 'var(--input-height)',
-                    padding: '0 1rem',
-                    border: saleFilter === opt.id ? '2px solid #dc2626' : '1.5px solid var(--color-border)',
-                    borderRadius: 'var(--radius-lg)',
-                    fontSize: '0.875rem',
-                    fontWeight: 700,
-                    background: saleFilter === opt.id && opt.id !== 'all'
-                      ? 'linear-gradient(135deg, #dc2626, #ea580c)'
-                      : saleFilter === opt.id
-                        ? 'var(--color-primary-light)'
-                        : 'var(--color-surface)',
-                    color: saleFilter === opt.id && opt.id !== 'all' ? '#fff' : saleFilter === opt.id ? 'var(--color-primary)' : 'var(--color-text)',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                  aria-pressed={saleFilter === opt.id}
-                >
-                  {opt.label}
-                </button>
-              ))}
+          {!loading && filtersActive && filteredItems.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+              {filteredItems.map(renderProductCard)}
             </div>
           )}
-          {availableDietaryFilters.length > 0 && (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', width: '100%' }}>
-              <button
-                type="button"
-                onClick={() => setDietaryFilter(null)}
-                style={{
-                  height: 'var(--input-height)',
-                  padding: '0 1rem',
-                  border: dietaryFilter === null ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
-                  borderRadius: 'var(--radius-lg)',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  background: dietaryFilter === null ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                  color: dietaryFilter === null ? 'var(--color-primary)' : 'var(--color-text)',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-                aria-pressed={dietaryFilter === null}
-              >
-                All diets
-              </button>
-              {availableDietaryFilters.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setDietaryFilter(dietaryFilter === opt.id ? null : opt.id)}
+
+          {!loading && !filtersActive && hasSectionedItems && (
+            <div>
+              {sectionedMenu.sections.map((section) => (
+                <section
+                  key={section.category.id}
+                  id={`menu-section-${section.category.id}`}
+                  data-category-id={section.category.id}
                   style={{
-                    height: 'var(--input-height)',
-                    padding: '0 1rem',
-                    border: dietaryFilter === opt.id ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
-                    borderRadius: 'var(--radius-lg)',
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    background: dietaryFilter === opt.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                    color: dietaryFilter === opt.id ? 'var(--color-primary)' : 'var(--color-text)',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    whiteSpace: 'nowrap',
+                    contentVisibility: 'auto' as any,
+                    containIntrinsicSize: '480px',
+                    scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
                   }}
-                  aria-pressed={dietaryFilter === opt.id}
                 >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Category heading on desktop */}
-        {!loading && activeCategoryId !== null && (
-          <div style={{ padding: '1rem var(--page-gutter) 0' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-              {categories.find((c) => c.id === activeCategoryId)?.name ?? ''}
-            </h2>
-          </div>
-        )}
-
-        {/* Loading skeletons */}
-        {loading && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: '1.25rem var(--page-gutter)' }}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="skeleton" style={{ borderRadius: '16px', height: '300px' }} />
-            ))}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && filteredItems.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-state-icon">🔍</div>
-            <p className="empty-state-title">
-              {searchQuery ? `No results for "${searchQuery}"` : 'Nothing here yet'}
-            </p>
-            <p className="empty-state-sub">
-              {searchQuery ? 'Try a different search term.' : 'Check back soon.'}
-            </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                style={{ marginTop: '1rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem' }}
-              >
-                Clear search
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Items grid */}
-        {!loading && filteredItems.length > 0 && (
-          <div>
-            {itemGroups.map((group, gi) => (
-              <div key={gi}>
-                {group.label && (
-                  <div style={{ padding: `${gi === 0 ? '1.25rem' : '0.5rem'} var(--page-gutter) 0.5rem` }}>
-                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
-                      {group.label}
-                    </h3>
+                  <MenuSectionHeader category={section.category} />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+                    {section.items.map(renderProductCard)}
                   </div>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', padding: `${group.label || gi > 0 ? '0' : '1.25rem'} var(--page-gutter) 1.25rem` }}>
-                  {group.items.map((item) => (
-                    <div key={item.id} className="menu-item-anim">
-                      <MenuCard
-                        item={item}
-                        onSelectItem={(it, qty) => handleSelectItem(it, qty)}
-                        onAddToCart={(it, qty, variant) => { addItem(it, qty, [], variant ?? null); showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`); }}
-                        isFavourite={favouriteIds.has(item.id)}
-                        onToggleFavourite={handleToggleFavourite}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                </section>
+              ))}
+
+              {sectionedMenu.other.length > 0 && (
+                <section
+                  id="menu-section-other"
+                  style={{
+                    contentVisibility: 'auto' as any,
+                    containIntrinsicSize: '360px',
+                    scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
+                  }}
+                >
+                  <header style={{ padding: '1.25rem 0 0.75rem' }}>
+                    <h2 className="section-accent" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-dark)' }}>
+                      Other
+                    </h2>
+                  </header>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem', paddingBottom: '1.25rem' }}>
+                    {sectionedMenu.other.map(renderProductCard)}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+        </main>
+
+        {/* ── Desktop cart sidebar ───────────────────────────────── */}
+        <aside
+          className="cart-sidebar"
+          style={{ width: '280px', flexShrink: 0, position: 'sticky', top: 'var(--menu-header-height)', alignSelf: 'flex-start', maxHeight: 'calc(100vh - var(--menu-header-height) - 20px)', overflowY: 'auto', padding: '1rem 0' }}
+        >
+          <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} />
+        </aside>
       </div>
 
-      {/* ── Desktop cart sidebar ─────────────────────────────────── */}
-      <aside
-        className="cart-sidebar"
-        style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '80px', alignSelf: 'flex-start', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', padding: '1.5rem 0' }}
-      >
-        <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} />
-      </aside>
+      <CartSheet
+        open={cartVisible}
+        onClose={() => setCartVisible(false)}
+        isOpen={isOpen ?? true}
+        closedMessage={closedMessage}
+      />
 
-      {/* ── Mobile cart bottom sheet (portal → body; open via header/bottom Cart → ?openCart=1) ── */}
-      {cartVisible && typeof document !== 'undefined' && createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('cart.title')}
-          style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number, background: 'rgba(0,0,0,0.45)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setCartVisible(false); }}
-        >
-          <div
-            style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0,
-              background: 'var(--color-surface)',
-              borderRadius: '20px 20px 0 0',
-              padding: '1.25rem var(--page-gutter)',
-              paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
-              maxHeight: '85vh', overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-            }}
-            className="animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                {t('cart.title')}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCartVisible(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--color-text-muted)', padding: '0.25rem', lineHeight: 1 }}
-                aria-label="Close cart"
-              >
-                ✕
-              </button>
-            </div>
-            <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} compact />
-          </div>
-        </div>,
-        document.body,
-      )}
+      <SearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+        items={items}
+        categories={categories}
+        onSelectItem={(it, qty) => handleSelectItem(it, qty)}
+        onAddToCart={(it, qty, variant) => {
+          addItem(it, qty, [], variant ?? null);
+          showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`);
+        }}
+        onSelectCategory={(categoryId) => {
+          setSearchQuery('');
+          handleSelectCategory(categoryId);
+        }}
+        favouriteIds={favouriteIds}
+        onToggleFavourite={handleToggleFavourite}
+      />
 
       {/* ── Back to top FAB ─────────────────────────────────────── */}
       <button
@@ -877,9 +771,9 @@ export function MenuPage() {
         ↑
       </button>
 
-      {/* ── Item modifier modal ──────────────────────────────────── */}
       {selectedItem && (
-        <ItemModal
+        <ItemSheet
+          open
           item={selectedItem}
           qty={selectedQty}
           selectedModifiers={selectedModifiers}
@@ -889,29 +783,5 @@ export function MenuPage() {
         />
       )}
     </div>
-  );
-}
-
-// ─── Sidebar category button ──────────────────────────────────────────────────
-function CatButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={active ? undefined : 'cat-btn-hover'}
-      style={{
-        padding: '0.6rem 0.875rem',
-        borderRadius: '10px',
-        border: '1.5px solid',
-        borderColor: active ? 'var(--color-primary)' : 'var(--color-border)',
-        background: active ? 'var(--color-primary)' : 'var(--color-surface)',
-        color: active ? 'white' : 'var(--color-text)',
-        fontSize: '0.875rem', fontWeight: active ? 600 : 400,
-        cursor: 'pointer', textAlign: 'left',
-        fontFamily: 'inherit',
-        width: '100%',
-      }}
-    >
-      {label}
-    </button>
   );
 }
