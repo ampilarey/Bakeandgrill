@@ -69,11 +69,14 @@ class DhiraaguSmsProvider implements SmsProviderInterface
     {
         $authorizationKey = base64_encode($creds['username'] . ':' . $creds['password']);
 
+        // Dhiraagu Bulk SMS expects 10-digit destinations: 9607XXXXXXX (no '+').
+        $destination = ltrim($phone, '+');
+
         try {
             $response = Http::timeout($creds['timeout'])
                 ->withHeaders(['Content-Type' => 'application/json'])
                 ->post($creds['api_url'], [
-                    'destination' => [$phone],
+                    'destination' => [$destination],
                     'content' => $message,
                     'authorizationKey' => $authorizationKey,
                 ]);

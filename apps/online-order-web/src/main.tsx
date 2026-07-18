@@ -48,6 +48,7 @@ const RewardsPage      = lazy(() => import('./pages/RewardsPage').then((m) => ({
 const GiftCardsPage = lazy(() => import('./pages/GiftCardsPage').then((m) => ({ default: m.GiftCardsPage })));
 const BuyGiftCardPage = lazy(() => import('./pages/BuyGiftCardPage').then((m) => ({ default: m.BuyGiftCardPage })));
 const GiftCardPurchaseSuccessPage = lazy(() => import('./pages/GiftCardPurchaseSuccessPage').then((m) => ({ default: m.GiftCardPurchaseSuccessPage })));
+const GiftCardViewPage = lazy(() => import('./pages/GiftCardViewPage').then((m) => ({ default: m.GiftCardViewPage })));
 
 // Minimal fallback shown while a page chunk loads
 function PageSkeleton() {
@@ -98,6 +99,7 @@ ReactDOM.createRoot(rootEl).render(
                     <Route path="gift-cards" element={<ErrorBoundary inline><GiftCardsPage /></ErrorBoundary>} />
                     <Route path="gift-cards/buy" element={<ErrorBoundary inline><BuyGiftCardPage /></ErrorBoundary>} />
                     <Route path="gift-cards/success" element={<ErrorBoundary inline><GiftCardPurchaseSuccessPage /></ErrorBoundary>} />
+                    <Route path="gift-cards/v/:token" element={<ErrorBoundary inline><GiftCardViewPage /></ErrorBoundary>} />
                     <Route path="account" element={<ErrorBoundary inline><AccountPage /></ErrorBoundary>} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>

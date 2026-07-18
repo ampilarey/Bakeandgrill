@@ -60,6 +60,42 @@ class GiftCardController extends Controller
         return $this->balanceResponse($validated['code']);
     }
 
+    /**
+     * Public: open a gift card from the SMS "View your card" link (48h window).
+     */
+    public function viewByToken(string $token): JsonResponse
+    {
+        $purchase = GiftCardPurchase::query()
+            ->with('giftCard:id,code_last4,initial_balance,current_balance,status,expires_at')
+            ->where('view_token', $token)
+            ->first();
+
+        if (!$purchase || !$purchase->giftCard) {
+            return response()->json(['message' => 'This gift card link is invalid or has expired.'], 404);
+        }
+
+        if ($purchase->code_delivery_expires_at && $purchase->code_delivery_expires_at->isPast()) {
+            return response()->json(['message' => 'This gift card link has expired.'], 410);
+        }
+
+        $plain = $this->deliveryWindow->plainCode($purchase);
+        if ($plain === null) {
+            return response()->json(['message' => 'This gift card link has expired.'], 410);
+        }
+
+        $card = $purchase->giftCard;
+
+        return response()->json([
+            'code' => $plain,
+            'masked_code' => $card->masked_code,
+            'amount' => (float) $card->initial_balance,
+            'current_balance' => (float) $card->current_balance,
+            'status' => $card->status,
+            'expires_at' => $card->expires_at?->toDateString(),
+            'order_number' => Order::query()->where('id', $purchase->order_id)->value('order_number'),
+        ]);
+    }
+
     private function balanceResponse(string $code): JsonResponse
     {
         $card = $this->giftCardCodes->findByCode($code);
@@ -589,6 +625,10 @@ class GiftCardController extends Controller
             $resendN = $resendCount + 1;
             $errors = [];
 
+            // Ensure view token exists before SMS so the message includes a view link.
+            $this->deliveryWindow->store($purchase, $plain);
+            $purchase->refresh();
+
             if ($wantSms) {
                 $sent = $this->giftCardSms->send(
                     $card,
@@ -597,6 +637,7 @@ class GiftCardController extends Controller
                     $note,
                     $purchase->purchaser_customer_id,
                     'gift_card_resend:' . $purchase->id . ':sms:' . $resendN,
+                    $this->deliveryWindow->viewUrl($purchase),
                 );
                 $smsOk = (bool) $sent['ok'];
                 if (!$smsOk) {

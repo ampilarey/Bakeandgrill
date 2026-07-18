@@ -12,7 +12,7 @@ use App\Rules\MaldivesPhone;
 
 /**
  * Delivers a gift card code by SMS. Full plaintext code is required — we never
- * store it, so SMS can only be sent at issue time (or when staff still has the code).
+ * store it on gift_cards, so SMS can only be sent at issue/resend time.
  */
 final class GiftCardSmsDelivery
 {
@@ -30,6 +30,7 @@ final class GiftCardSmsDelivery
         ?string $personalNote = null,
         ?int $customerId = null,
         ?string $idempotencyKey = null,
+        ?string $viewUrl = null,
     ): array {
         try {
             $normalized = MaldivesPhone::normalize($phone);
@@ -42,7 +43,7 @@ final class GiftCardSmsDelivery
             ];
         }
 
-        $message = $this->buildMessage($card, $plainCode, $personalNote);
+        $message = $this->buildMessage($card, $plainCode, $personalNote, $viewUrl);
 
         try {
             $log = $this->sms->send(new SmsMessage(
@@ -81,21 +82,29 @@ final class GiftCardSmsDelivery
         ];
     }
 
-    public function buildMessage(GiftCard $card, string $plainCode, ?string $personalNote = null): string
-    {
+    public function buildMessage(
+        GiftCard $card,
+        string $plainCode,
+        ?string $personalNote = null,
+        ?string $viewUrl = null,
+    ): string {
         $amount = number_format((float) $card->initial_balance, 2, '.', '');
         $lines = [
             'Bake & Grill Gift Card',
-            'Code: ' . strtoupper(trim($plainCode)),
-            'Value: MVR ' . $amount,
+            'MVR ' . $amount,
         ];
+
+        $url = is_string($viewUrl) ? trim($viewUrl) : '';
+        if ($url !== '') {
+            $lines[] = 'View your card:';
+            $lines[] = $url;
+        }
+
+        $lines[] = 'Code: ' . strtoupper(trim($plainCode));
 
         if ($card->expires_at) {
             $lines[] = 'Expires: ' . $card->expires_at->format('d M Y');
         }
-
-        $orderUrl = rtrim((string) config('app.url'), '/') . '/order';
-        $lines[] = 'Redeem online or in-store: ' . $orderUrl;
 
         $note = trim((string) $personalNote);
         if ($note !== '') {

@@ -8,10 +8,12 @@ use App\Models\GiftCardPurchase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
- * Short-lived encrypted plaintext for customer purchase resend.
- * Stored in cache + DB (encrypted) for 48h — never returned via API JSON.
+ * Short-lived encrypted plaintext for customer purchase resend / SMS view link.
+ * Stored in cache + DB (encrypted) for 48h — never returned via API JSON except
+ * to the authenticated buyer when delivery failed, or via the public view token.
  */
 final class GiftCardPurchaseDeliveryWindow
 {
@@ -42,8 +44,14 @@ final class GiftCardPurchaseDeliveryWindow
         if (Schema::hasColumn('gift_card_purchases', 'delivery_code_encrypted')) {
             $updates['delivery_code_encrypted'] = $encrypted;
         }
+        if (Schema::hasColumn('gift_card_purchases', 'view_token')
+            && (!is_string($purchase->view_token) || $purchase->view_token === '')
+        ) {
+            $updates['view_token'] = Str::random(48);
+        }
         if ($updates !== []) {
             $purchase->update($updates);
+            $purchase->refresh();
         }
     }
 
@@ -120,5 +128,18 @@ final class GiftCardPurchaseDeliveryWindow
         }
 
         return $this->plainCode($purchase) !== null;
+    }
+
+    /** Public SPA URL to view this purchase (requires view_token). */
+    public function viewUrl(GiftCardPurchase $purchase): ?string
+    {
+        $token = is_string($purchase->view_token) ? $purchase->view_token : '';
+        if ($token === '') {
+            return null;
+        }
+
+        $base = rtrim((string) config('app.url'), '/');
+
+        return $base . '/order/gift-cards/v/' . $token;
     }
 }

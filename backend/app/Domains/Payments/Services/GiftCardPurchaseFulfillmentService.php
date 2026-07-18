@@ -254,6 +254,8 @@ final class GiftCardPurchaseFulfillmentService
                 $purchase->recipient_phone,
                 $note,
                 $purchase->purchaser_customer_id,
+                null,
+                $this->deliveryWindow->viewUrl($purchase),
             );
             $smsOk = (bool) $sent['ok'];
             if (!$smsOk) {

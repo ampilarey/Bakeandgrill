@@ -24,10 +24,12 @@ class GiftCardPurchase extends Model
         'code_delivery_expires_at',
         'delivery_code_encrypted',
         'delivery_recovery_count',
+        'view_token',
     ];
 
     protected $hidden = [
         'delivery_code_encrypted',
+        'view_token',
     ];
 
     protected $casts = [

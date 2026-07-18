@@ -60,9 +60,12 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
     Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController::class, 'validate'])
         ->middleware('throttle:30,1');
 
-    // Public: gift card balance check
+    // Public: gift card balance check + SMS view link (token, not the card code)
     Route::post('/gift-cards/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balancePost'])
         ->middleware('throttle:10,1');
+    Route::get('/gift-cards/view/{token}', [App\Http\Controllers\Api\GiftCardController::class, 'viewByToken'])
+        ->middleware('throttle:30,1')
+        ->where('token', '[A-Za-z0-9]{32,64}');
     Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
         ->middleware('throttle:10,1');
 

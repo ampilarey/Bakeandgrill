@@ -369,6 +369,67 @@ class GiftCardPurchaseTest extends TestCase
         Mail::assertSent(GiftCardMail::class);
     }
 
+    public function test_public_view_token_shows_code(): void
+    {
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777019',
+            'email' => 'view@example.com',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'GC-TEST-VIEW',
+            'tracking_token' => 'gcview',
+            'type' => 'gift_card',
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'customer_id' => $customer->id,
+            'subtotal' => 50,
+            'subtotal_laar' => 5000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 50,
+            'total_laar' => 5000,
+            'paid_at' => now(),
+            'completed_at' => now(),
+        ]);
+
+        $card = \App\Models\GiftCard::create([
+            'code_hash' => hash('sha256', 'VIEWCODE1234'),
+            'code_last4' => 'VIEW',
+            'initial_balance' => 50,
+            'current_balance' => 50,
+            'status' => 'active',
+            'purchased_by_customer_id' => $customer->id,
+            'issued_to_customer_id' => $customer->id,
+        ]);
+
+        $purchase = GiftCardPurchase::create([
+            'order_id' => $order->id,
+            'purchaser_customer_id' => $customer->id,
+            'amount' => 50,
+            'recipient_phone' => '+9607777019',
+            'gift_card_id' => $card->id,
+        ]);
+
+        app(GiftCardPurchaseDeliveryWindow::class)->store($purchase, 'VIEW-CODE-TEST-0001');
+        $token = $purchase->fresh()->view_token;
+        $this->assertNotEmpty($token);
+
+        $this->getJson("/api/gift-cards/view/{$token}")
+            ->assertOk()
+            ->assertJsonPath('code', 'VIEW-CODE-TEST-0001')
+            ->assertJsonPath('order_number', 'GC-TEST-VIEW');
+
+        $msg = app(\App\Domains\Payments\Services\GiftCardSmsDelivery::class)->buildMessage(
+            $card,
+            'VIEW-CODE-TEST-0001',
+            null,
+            app(GiftCardPurchaseDeliveryWindow::class)->viewUrl($purchase->fresh()),
+        );
+        $this->assertStringContainsString('View your card:', $msg);
+        $this->assertStringContainsString('/order/gift-cards/v/', $msg);
+    }
+
     public function test_purchase_status_reveals_code_when_delivery_failed(): void
     {
         Mail::fake();
