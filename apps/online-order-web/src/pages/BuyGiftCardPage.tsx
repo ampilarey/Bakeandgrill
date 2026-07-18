@@ -82,7 +82,7 @@ export function BuyGiftCardPage() {
   if (!isAuthenticated) {
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 0 2rem' }}>
-        <PageHeader title={t('gift.title')} onBack={() => void navigate(-1)} />
+        <PageHeader title={t('gift.title')} onBack={() => void navigate('/gift-cards')} />
         <div style={{ padding: '0 var(--page-gutter)' }}>
           <p style={{ color: 'var(--color-text-muted)', fontSize: 14, marginBottom: 16 }}>
             {t('gift.sign_in')}
@@ -95,7 +95,7 @@ export function BuyGiftCardPage() {
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 0 2rem' }}>
-      <PageHeader title={t('gift.title')} onBack={() => void navigate(-1)} />
+      <PageHeader title={t('gift.title')} onBack={() => void navigate('/gift-cards')} />
       <div style={{ padding: '0 var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
           {t('gift.intro')}
@@ -189,8 +189,8 @@ export function BuyGiftCardPage() {
           {t('gift.footnote')}
         </p>
 
-        <Link to="/account" style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}>
-          {t('gift.back_account')}
+        <Link to="/gift-cards" style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}>
+          {t('gift.back_hub')}
         </Link>
       </div>
     </div>

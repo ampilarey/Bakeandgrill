@@ -45,6 +45,7 @@ const NotFoundPage     = lazy(() => import('./pages/NotFoundPage').then((m) => (
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage').then((m) => ({ default: m.OrderHistoryPage })));
 const AccountPage      = lazy(() => import('./pages/AccountPage').then((m) => ({ default: m.AccountPage })));
 const RewardsPage      = lazy(() => import('./pages/RewardsPage').then((m) => ({ default: m.RewardsPage })));
+const GiftCardsPage = lazy(() => import('./pages/GiftCardsPage').then((m) => ({ default: m.GiftCardsPage })));
 const BuyGiftCardPage = lazy(() => import('./pages/BuyGiftCardPage').then((m) => ({ default: m.BuyGiftCardPage })));
 const GiftCardPurchaseSuccessPage = lazy(() => import('./pages/GiftCardPurchaseSuccessPage').then((m) => ({ default: m.GiftCardPurchaseSuccessPage })));
 
@@ -94,7 +95,8 @@ ReactDOM.createRoot(rootEl).render(
                     <Route path="privacy" element={<PrivacyPage />} />
                     <Route path="order-history" element={<ErrorBoundary inline><OrderHistoryPage /></ErrorBoundary>} />
                     <Route path="rewards" element={<ErrorBoundary inline><RewardsPage /></ErrorBoundary>} />
-                    <Route path="gift-cards" element={<ErrorBoundary inline><BuyGiftCardPage /></ErrorBoundary>} />
+                    <Route path="gift-cards" element={<ErrorBoundary inline><GiftCardsPage /></ErrorBoundary>} />
+                    <Route path="gift-cards/buy" element={<ErrorBoundary inline><BuyGiftCardPage /></ErrorBoundary>} />
                     <Route path="gift-cards/success" element={<ErrorBoundary inline><GiftCardPurchaseSuccessPage /></ErrorBoundary>} />
                     <Route path="account" element={<ErrorBoundary inline><AccountPage /></ErrorBoundary>} />
                     <Route path="*" element={<NotFoundPage />} />

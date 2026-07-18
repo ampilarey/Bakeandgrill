@@ -88,7 +88,7 @@ export function GiftCardPurchaseSuccessPage() {
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 var(--page-gutter) 2rem' }}>
         <PageHeader title={t('gift.success_title')} />
         <p style={{ color: 'var(--color-error, #dc2626)' }}>{t('gift.err_missing_order')}</p>
-        <Link to="/gift-cards">{t('gift.buy_again')}</Link>
+        <Link to="/gift-cards/buy">{t('gift.buy_again')}</Link>
       </div>
     );
   }
@@ -177,7 +177,7 @@ export function GiftCardPurchaseSuccessPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Link to="/menu" style={linkBtn}>{t('gift.order_food')}</Link>
-          <Link to="/gift-cards" style={{ ...linkBtn, background: 'transparent', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' }}>
+          <Link to="/gift-cards/buy" style={{ ...linkBtn, background: 'transparent', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' }}>
             {t('gift.buy_again')}
           </Link>
         </div>

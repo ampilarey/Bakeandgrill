@@ -47,7 +47,8 @@ describe('AppShell', () => {
     expect(screen.getByText('Menu')).toBeTruthy();
     expect(screen.getByText('Orders')).toBeTruthy();
     expect(screen.getByText('Rewards')).toBeTruthy();
-    expect(screen.getByText('Account')).toBeTruthy();
+    expect(screen.getByText('Gifts')).toBeTruthy();
+    expect(screen.queryByText('Account')).toBeNull();
   });
 
   it('does not mount legacy prayer-strip portal', () => {
