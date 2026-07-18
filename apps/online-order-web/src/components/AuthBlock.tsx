@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   checkPhone,
   requestOtp,
@@ -11,6 +11,7 @@ import {
   type AuthCustomer,
 } from "../api";
 import { useSiteSettingsContext } from "../context/SiteSettingsContext";
+import { useLanguage } from "../context/LanguageContext";
 
 type Step =
   | "phone"
@@ -32,8 +33,123 @@ function displayName(customer: AuthCustomer): string {
   return stripped.length === 7 ? stripped : (customer.name ?? customer.phone ?? "");
 }
 
+/**
+ * Strip non-digits and remove a leading Maldives country code so the stored
+ * value stays as a local 7-digit string. API calls receive the raw value.
+ */
+function normalisePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  return digits.startsWith("960") ? digits.slice(3) : digits;
+}
+
+// ── Shared sub-components ────────────────────────────────────────────────────
+
+/** Phone number field with a fixed +960 Maldives display prefix. */
+function PhoneInput({
+  value,
+  onChange,
+  onEnter,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onEnter?: () => void;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div style={S.phoneRow}>
+      <span style={S.prefix} aria-hidden="true">+960</span>
+      <input
+        style={S.phoneFieldInner}
+        type="tel"
+        inputMode="numeric"
+        placeholder="7xxxxxxx"
+        value={value}
+        onChange={(e) => onChange(normalisePhone(e.target.value))}
+        onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
+        autoFocus={autoFocus}
+        autoComplete="tel-national"
+      />
+    </div>
+  );
+}
+
+/** Six individual digit boxes backed by a single OTP string state. */
+function OtpBoxes({
+  value,
+  onChange,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  autoFocus?: boolean;
+}) {
+  const refs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const handleChange = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const ch = e.target.value.replace(/\D/g, "").slice(-1);
+    if (!ch) return;
+    const arr = Array.from({ length: 6 }, (_, k) => value[k] ?? "");
+    arr[i] = ch;
+    onChange(arr.join(""));
+    if (i < 5) refs.current[i + 1]?.focus();
+  };
+
+  const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const arr = Array.from({ length: 6 }, (_, k) => value[k] ?? "");
+      if (arr[i]) {
+        arr[i] = "";
+        onChange(arr.join(""));
+      } else if (i > 0) {
+        arr[i - 1] = "";
+        onChange(arr.join(""));
+        refs.current[i - 1]?.focus();
+      }
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    onChange(pasted);
+    const focusIdx = Math.min(pasted.length, 5);
+    setTimeout(() => refs.current[focusIdx]?.focus(), 0);
+  };
+
+  return (
+    <div style={S.otpRow}>
+      {Array.from({ length: 6 }, (_, i) => (
+        <input
+          key={i}
+          ref={(el) => { refs.current[i] = el; }}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value[i] ?? ""}
+          onChange={(e) => handleChange(i, e)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={handlePaste}
+          autoFocus={autoFocus && i === 0}
+          autoComplete={i === 0 ? "one-time-code" : "off"}
+          style={{ ...S.otpBox, ...(value[i] ? S.otpBoxFilled : undefined) }}
+          aria-label={`Digit ${i + 1}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
 export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
-  const { text } = useSiteSettingsContext();
+  const { settings, text } = useSiteSettingsContext();
+  const { t } = useLanguage();
+
+  const logoSrc  = settings.logo || "/logo.png";
+  const siteName = settings.site_name || "Bake & Grill";
+
   const [step, setStep]       = useState<Step>("phone");
   const [phone, setPhone]     = useState("");
   const [guestName, setGuestName] = useState("");
@@ -57,17 +173,17 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const [resendIn, setResendIn] = useState(0);
   useEffect(() => {
     if (resendIn <= 0) return;
-    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
   }, [resendIn]);
 
-  const handleResendOtp = async (purpose: 'register' | 'reset_password' = 'register') => {
+  const handleResendOtp = async (purpose: "register" | "reset_password" = "register") => {
     if (resendIn > 0) return;
-    setError(''); setHint(null);
+    setError(""); setHint(null);
     try {
       const r = await requestOtp(phone, purpose);
       if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
-      else setHint('New code sent.');
+      else setHint("New code sent.");
       setResendIn(30);
     } catch (e) { setError((e as Error).message); }
   };
@@ -75,7 +191,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const go = (s: Step) => {
     setError("");
     setStep(s);
-    if (s === 'otp' || s === 'forgot_otp') setResendIn(30);
+    if (s === "otp" || s === "forgot_otp") setResendIn(30);
   };
 
   const handleCheckPhone = async () => {
@@ -202,137 +318,193 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     }
   };
 
+  const logo = (
+    <div style={S.logoWrap}>
+      <img src={logoSrc} alt={siteName} style={S.logo} />
+    </div>
+  );
+
   return (
     <div style={S.card}>
+      {logo}
+
       {step === "phone" && (
         <>
-          <h2 style={S.title}>Your phone number</h2>
-          <p style={S.sub}>We'll send a code or show a password field depending on your account.</p>
+          <h2 style={S.title}>{t("auth.title_phone")}</h2>
+          <p style={S.sub}>{t("auth.sub_phone")}</p>
           {error && <p style={S.error}>{error}</p>}
-          <input
-            style={S.input} type="tel" inputMode="numeric" placeholder="7xxxxxxx"
-            value={phone} onChange={e => setPhone(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleCheckPhone()}
+          <PhoneInput
+            value={phone}
+            onChange={setPhone}
+            onEnter={handleCheckPhone}
             autoFocus
           />
-          <button style={{ ...S.primaryBtn, opacity: loading || !phone ? 0.55 : 1 }}
-            onClick={handleCheckPhone} disabled={loading || !phone}>
-            {loading ? "Checking…" : "Continue →"}
+          <button
+            style={{ ...S.primaryBtn, opacity: loading || !phone ? 0.55 : 1 }}
+            onClick={handleCheckPhone}
+            disabled={loading || !phone}
+          >
+            {loading ? t("auth.checking") : t("auth.continue")}
           </button>
           {skipProfileSetup && (
             <button style={S.ghostBtn} onClick={() => { go("guest"); setError(""); }}>
-              Checkout as guest — no OTP needed
+              {t("auth.guest_cta")}
             </button>
           )}
-          <p style={S.note}>{text('order_auth_privacy_line', 'Used for order updates only — we never sell your number or spam you.')}</p>
+          <p style={S.note}>
+            {text("order_auth_privacy_line", "Used for order updates only — we never sell your number or spam you.")}
+          </p>
         </>
       )}
 
       {step === "guest" && (
         <>
-          <h2 style={S.title}>Guest checkout</h2>
-          <p style={S.sub}>Enter your name and phone — no account or OTP required.</p>
+          <h2 style={S.title}>{t("auth.title_guest")}</h2>
+          <p style={S.sub}>{t("auth.sub_guest")}</p>
           {error && <p style={S.error}>{error}</p>}
           <label style={S.label}>Your name</label>
           <input
-            style={S.input} type="text" placeholder="Ahmed Ali"
-            value={guestName} onChange={e => setGuestName(e.target.value)}
-            autoFocus autoComplete="name"
+            style={S.input}
+            type="text"
+            placeholder="Ahmed Ali"
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            autoFocus
+            autoComplete="name"
           />
           <label style={S.label}>Phone number</label>
-          <input
-            style={S.input} type="tel" inputMode="numeric" placeholder="7xxxxxxx"
-            value={phone} onChange={e => setPhone(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleGuestCheckout()}
-            autoComplete="tel"
-          />
-          <button style={{ ...S.primaryBtn, opacity: loading || !phone || !guestName.trim() ? 0.55 : 1 }}
-            onClick={handleGuestCheckout} disabled={loading || !phone || !guestName.trim()}>
-            {loading ? "Starting…" : "Continue to checkout →"}
+          <PhoneInput value={phone} onChange={setPhone} onEnter={handleGuestCheckout} />
+          <button
+            style={{ ...S.primaryBtn, opacity: loading || !phone || !guestName.trim() ? 0.55 : 1 }}
+            onClick={handleGuestCheckout}
+            disabled={loading || !phone || !guestName.trim()}
+          >
+            {loading ? t("auth.guest_starting") : t("auth.guest_continue")}
           </button>
           <button style={S.ghostBtn} onClick={() => { go("phone"); setGuestName(""); }}>
-            ← Sign in with OTP instead
+            {t("auth.back_otp")}
           </button>
         </>
       )}
 
       {step === "password" && (
         <>
-          <h2 style={S.title}>Welcome back</h2>
-          <p style={S.sub}>Signing in as <strong>{phone}</strong></p>
+          <h2 style={S.title}>{t("auth.title_password")}</h2>
+          <p style={S.sub}>{t("auth.signing_as").replace("{phone}", phone)}</p>
           {error && <p style={S.error}>{error}</p>}
           <input
-            style={S.input} type="password" placeholder="Your password"
-            value={password} onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handlePasswordLogin()}
-            autoFocus autoComplete="current-password"
+            style={S.input}
+            type="password"
+            placeholder="Your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handlePasswordLogin()}
+            autoFocus
+            autoComplete="current-password"
           />
-          <button style={{ ...S.primaryBtn, opacity: loading || !password ? 0.55 : 1 }}
-            onClick={handlePasswordLogin} disabled={loading || !password}>
-            {loading ? "Signing in…" : "Sign in →"}
+          <button
+            style={{ ...S.primaryBtn, opacity: loading || !password ? 0.55 : 1 }}
+            onClick={handlePasswordLogin}
+            disabled={loading || !password}
+          >
+            {loading ? t("auth.signing_in") : t("auth.sign_in")}
           </button>
-          <button style={S.ghostBtn} onClick={() => {
-            go("forgot_phone");
-            setHint(null);
-          }}>
-            Forgot password?
+          <button style={S.ghostBtn} onClick={() => { go("forgot_phone"); setHint(null); }}>
+            {t("auth.forgot")}
           </button>
           <button style={S.ghostBtn} onClick={() => { go("phone"); setPassword(""); }}>
-            ← Use a different number
+            {t("auth.different_number")}
           </button>
         </>
       )}
 
       {step === "otp" && (
         <>
-          <h2 style={S.title}>Enter the code we sent</h2>
-          <p style={S.sub}>A 6-digit code was sent to <strong>{phone}</strong>.</p>
+          <h2 style={S.title}>{t("auth.title_otp")}</h2>
+          <p style={S.sub}>{t("auth.otp_sent").replace("{phone}", phone)}</p>
           {error && <p style={S.error}>{error}</p>}
           {hint && <p style={S.hint}>{hint}</p>}
-          <input
-            style={S.input} type="text" inputMode="numeric" placeholder="6-digit code"
-            value={otp} onChange={e => setOtp(e.target.value)} maxLength={6}
-            onKeyDown={e => e.key === "Enter" && handleVerifyOtp()}
-            autoFocus autoComplete="one-time-code"
-          />
-          <button style={{ ...S.primaryBtn, opacity: loading || otp.length < 6 ? 0.55 : 1 }}
-            onClick={handleVerifyOtp} disabled={loading || otp.length < 6}>
-            {loading ? "Verifying…" : "Confirm →"}
+          <OtpBoxes value={otp} onChange={setOtp} autoFocus />
+          <button
+            style={{ ...S.primaryBtn, opacity: loading || otp.length < 6 ? 0.55 : 1 }}
+            onClick={handleVerifyOtp}
+            disabled={loading || otp.length < 6}
+          >
+            {loading ? t("auth.verifying") : t("auth.confirm")}
           </button>
           <button
             style={{ ...S.ghostBtn, opacity: resendIn > 0 ? 0.55 : 1 }}
-            onClick={() => void handleResendOtp('register')}
+            onClick={() => void handleResendOtp("register")}
             disabled={resendIn > 0}
           >
-            {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+            {resendIn > 0
+              ? t("auth.resend_in").replace("{n}", String(resendIn))
+              : t("auth.resend")}
           </button>
-          <button style={S.ghostBtn} onClick={() => { go("phone"); setOtp(""); setHint(null); }}>
-            ← Use a different number
+          <button
+            style={S.ghostBtn}
+            onClick={() => { go("phone"); setOtp(""); setHint(null); }}
+          >
+            {t("auth.different_number")}
           </button>
         </>
       )}
 
       {step === "profile_setup" && (
         <>
-          <h2 style={S.title}>One last step</h2>
-          <p style={S.sub}>Set your name and a password so you can sign in easily next time.</p>
+          <h2 style={S.title}>{t("auth.title_profile")}</h2>
+          <p style={S.sub}>{t("auth.sub_profile")}</p>
           {error && <p style={S.error}>{error}</p>}
           <label style={S.label}>Your name</label>
-          <input style={S.input} type="text" placeholder="Ahmed Ali"
-            value={setupName} onChange={e => setSetupName(e.target.value)} autoFocus autoComplete="name" />
-          <label style={S.label}>Email <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(optional)</span></label>
-          <input style={S.input} type="email" placeholder="you@example.com"
-            value={setupEmail} onChange={e => setSetupEmail(e.target.value)} autoComplete="email" />
+          <input
+            style={S.input}
+            type="text"
+            placeholder="Ahmed Ali"
+            value={setupName}
+            onChange={(e) => setSetupName(e.target.value)}
+            autoFocus
+            autoComplete="name"
+          />
+          <label style={S.label}>
+            Email{" "}
+            <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(optional)</span>
+          </label>
+          <input
+            style={S.input}
+            type="email"
+            placeholder="you@example.com"
+            value={setupEmail}
+            onChange={(e) => setSetupEmail(e.target.value)}
+            autoComplete="email"
+          />
           <label style={S.label}>Password</label>
-          <input style={S.input} type="password" placeholder="At least 6 characters"
-            value={setupPwd} onChange={e => setSetupPwd(e.target.value)} autoComplete="new-password" />
+          <input
+            style={S.input}
+            type="password"
+            placeholder="At least 6 characters"
+            value={setupPwd}
+            onChange={(e) => setSetupPwd(e.target.value)}
+            autoComplete="new-password"
+          />
           <label style={S.label}>Confirm password</label>
-          <input style={S.input} type="password" placeholder="Repeat your password"
-            value={setupPwdConfirm} onChange={e => setSetupPwdConfirm(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleCompleteProfile()} autoComplete="new-password" />
-          <button style={{ ...S.primaryBtn, opacity: loading || !setupName.trim() || !setupPwd ? 0.55 : 1 }}
-            onClick={handleCompleteProfile} disabled={loading || !setupName.trim() || !setupPwd}>
-            {loading ? "Saving…" : "Create account →"}
+          <input
+            style={S.input}
+            type="password"
+            placeholder="Repeat your password"
+            value={setupPwdConfirm}
+            onChange={(e) => setSetupPwdConfirm(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCompleteProfile()}
+            autoComplete="new-password"
+          />
+          <button
+            style={{
+              ...S.primaryBtn,
+              opacity: loading || !setupName.trim() || !setupPwd ? 0.55 : 1,
+            }}
+            onClick={handleCompleteProfile}
+            disabled={loading || !setupName.trim() || !setupPwd}
+          >
+            {loading ? t("auth.saving") : t("auth.create_account")}
           </button>
           <button
             style={{ ...S.ghostBtn, marginTop: "0.25rem" }}
@@ -341,74 +513,98 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
               onSuccess(displayName(pendingCustomer));
             }}
           >
-            Skip for now — go to checkout
+            {t("auth.skip_profile")}
           </button>
         </>
       )}
 
       {step === "forgot_phone" && (
         <>
-          <h2 style={S.title}>Reset your password</h2>
-          <p style={S.sub}>We'll send a code to verify it's you.</p>
+          <h2 style={S.title}>{t("auth.title_forgot")}</h2>
+          <p style={S.sub}>{t("auth.sub_forgot")}</p>
           {error && <p style={S.error}>{error}</p>}
-          <input
-            style={S.input} type="tel" inputMode="numeric" placeholder="Your phone number"
-            value={phone} onChange={e => setPhone(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleForgotRequest()}
+          <PhoneInput
+            value={phone}
+            onChange={setPhone}
+            onEnter={handleForgotRequest}
             autoFocus
           />
-          <button style={{ ...S.primaryBtn, opacity: loading || !phone ? 0.55 : 1 }}
-            onClick={handleForgotRequest} disabled={loading || !phone}>
-            {loading ? "Sending…" : "Send reset code →"}
+          <button
+            style={{ ...S.primaryBtn, opacity: loading || !phone ? 0.55 : 1 }}
+            onClick={handleForgotRequest}
+            disabled={loading || !phone}
+          >
+            {loading ? t("auth.sending") : t("auth.send_reset")}
           </button>
-          <button style={S.ghostBtn} onClick={() => go("password")}>← Back to sign in</button>
+          <button style={S.ghostBtn} onClick={() => go("password")}>
+            {t("auth.back_pass")}
+          </button>
         </>
       )}
 
       {step === "forgot_otp" && (
         <>
-          <h2 style={S.title}>Enter the code</h2>
-          <p style={S.sub}>A reset code was sent to <strong>{phone}</strong>.</p>
+          <h2 style={S.title}>{t("auth.title_forgot_otp")}</h2>
+          <p style={S.sub}>{t("auth.reset_sent").replace("{phone}", phone)}</p>
           {error && <p style={S.error}>{error}</p>}
           {hint && <p style={S.hint}>{hint}</p>}
-          <input
-            style={S.input} type="text" inputMode="numeric" placeholder="6-digit code"
-            value={resetOtp} onChange={e => setResetOtp(e.target.value)} maxLength={6}
-            onKeyDown={e => e.key === "Enter" && resetOtp.length === 6 && go("reset_password")}
-            autoFocus autoComplete="one-time-code"
-          />
-          <button style={{ ...S.primaryBtn, opacity: loading || resetOtp.length < 6 ? 0.55 : 1 }}
-            onClick={() => go("reset_password")} disabled={loading || resetOtp.length < 6}>
-            Continue →
+          <OtpBoxes value={resetOtp} onChange={setResetOtp} autoFocus />
+          <button
+            style={{ ...S.primaryBtn, opacity: loading || resetOtp.length < 6 ? 0.55 : 1 }}
+            onClick={() => go("reset_password")}
+            disabled={loading || resetOtp.length < 6}
+          >
+            {t("auth.continue")}
           </button>
           <button
             style={{ ...S.ghostBtn, opacity: resendIn > 0 ? 0.55 : 1 }}
-            onClick={() => void handleResendOtp('reset_password')}
+            onClick={() => void handleResendOtp("reset_password")}
             disabled={resendIn > 0}
           >
-            {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+            {resendIn > 0
+              ? t("auth.resend_in").replace("{n}", String(resendIn))
+              : t("auth.resend")}
           </button>
-          <button style={S.ghostBtn} onClick={() => { go("forgot_phone"); setResetOtp(""); setHint(null); }}>
-            ← Use a different number
+          <button
+            style={S.ghostBtn}
+            onClick={() => { go("forgot_phone"); setResetOtp(""); setHint(null); }}
+          >
+            {t("auth.different_number")}
           </button>
         </>
       )}
 
       {step === "reset_password" && (
         <>
-          <h2 style={S.title}>New password</h2>
-          <p style={S.sub}>Choose a new password for {phone}</p>
+          <h2 style={S.title}>{t("auth.title_new_pass")}</h2>
+          <p style={S.sub}>{t("auth.new_pass_for").replace("{phone}", phone)}</p>
           {error && <p style={S.error}>{error}</p>}
           <label style={S.label}>New password</label>
-          <input style={S.input} type="password" placeholder="At least 6 characters"
-            value={newPwd} onChange={e => setNewPwd(e.target.value)} autoFocus autoComplete="new-password" />
+          <input
+            style={S.input}
+            type="password"
+            placeholder="At least 6 characters"
+            value={newPwd}
+            onChange={(e) => setNewPwd(e.target.value)}
+            autoFocus
+            autoComplete="new-password"
+          />
           <label style={S.label}>Confirm password</label>
-          <input style={S.input} type="password" placeholder="Repeat your password"
-            value={newPwdConfirm} onChange={e => setNewPwdConfirm(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleResetPassword()} autoComplete="new-password" />
-          <button style={{ ...S.primaryBtn, opacity: loading || !newPwd ? 0.55 : 1 }}
-            onClick={handleResetPassword} disabled={loading || !newPwd}>
-            {loading ? "Saving…" : "Set password →"}
+          <input
+            style={S.input}
+            type="password"
+            placeholder="Repeat your password"
+            value={newPwdConfirm}
+            onChange={(e) => setNewPwdConfirm(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
+            autoComplete="new-password"
+          />
+          <button
+            style={{ ...S.primaryBtn, opacity: loading || !newPwd ? 0.55 : 1 }}
+            onClick={handleResetPassword}
+            disabled={loading || !newPwd}
+          >
+            {loading ? t("auth.saving") : t("auth.set_password")}
           </button>
         </>
       )}
@@ -420,22 +616,33 @@ const S: Record<string, React.CSSProperties> = {
   card: {
     background: "var(--color-surface)",
     borderRadius: "var(--radius-lg)",
-    padding: "1.5rem",
+    padding: "2rem 1.75rem",
     marginBottom: "1rem",
     border: "1px solid var(--color-border)",
-    boxShadow: "var(--shadow-sm)",
+    boxShadow: "0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+  },
+  logoWrap: {
+    display: "flex",
+    justifyContent: "center",
+    marginBottom: "1.5rem",
+  },
+  logo: {
+    height: 48,
+    width: "auto",
+    objectFit: "contain",
   },
   title: {
-    fontSize: "1rem",
+    fontSize: "1.375rem",
     fontWeight: 700,
     color: "var(--color-text)",
     marginBottom: "0.375rem",
+    lineHeight: 1.3,
   },
   sub: {
     color: "var(--color-text-muted)",
-    fontSize: "0.875rem",
-    lineHeight: 1.55,
-    marginBottom: "1rem",
+    fontSize: "0.9rem",
+    lineHeight: 1.6,
+    marginBottom: "1.25rem",
   },
   label: {
     display: "block",
@@ -448,7 +655,8 @@ const S: Record<string, React.CSSProperties> = {
     color: "var(--color-text-muted)",
     fontSize: "0.78rem",
     textAlign: "center",
-    marginTop: "0.5rem",
+    marginTop: "0.75rem",
+    lineHeight: 1.55,
   },
   error: {
     color: "var(--color-error)",
@@ -469,10 +677,11 @@ const S: Record<string, React.CSSProperties> = {
   },
   input: {
     width: "100%",
-    padding: "0.75rem 0.875rem",
+    padding: "0 0.875rem",
     border: "1.5px solid var(--color-border)",
     borderRadius: "var(--radius-md)",
     fontSize: "1rem",
+    minHeight: 44,
     marginBottom: "0.75rem",
     boxSizing: "border-box",
     fontFamily: "inherit",
@@ -480,14 +689,51 @@ const S: Record<string, React.CSSProperties> = {
     background: "var(--color-surface)",
     outline: "none",
   },
+  // Phone field with inline +960 prefix
+  phoneRow: {
+    display: "flex",
+    alignItems: "stretch",
+    border: "1.5px solid var(--color-border)",
+    borderRadius: "var(--radius-md)",
+    marginBottom: "0.75rem",
+    overflow: "hidden",
+    background: "var(--color-surface)",
+  },
+  prefix: {
+    padding: "0 0.875rem",
+    color: "var(--color-text-muted)",
+    fontWeight: 600,
+    fontSize: "1rem",
+    borderRight: "1.5px solid var(--color-border)",
+    display: "flex",
+    alignItems: "center",
+    whiteSpace: "nowrap",
+    userSelect: "none",
+    flexShrink: 0,
+  },
+  phoneFieldInner: {
+    flex: 1,
+    minWidth: 0,
+    padding: "0 0.875rem",
+    border: "none",
+    borderRadius: 0,
+    fontSize: "1rem",
+    minHeight: 44,
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+    color: "var(--color-text)",
+    background: "transparent",
+    outline: "none",
+  },
   primaryBtn: {
     width: "100%",
-    padding: "0.8rem",
+    padding: "0 1rem",
+    minHeight: 44,
     background: "var(--color-primary)",
     color: "#fff",
     border: "none",
     borderRadius: "var(--radius-md)",
-    fontSize: "0.975rem",
+    fontSize: "1rem",
     fontWeight: 700,
     cursor: "pointer",
     fontFamily: "inherit",
@@ -496,13 +742,41 @@ const S: Record<string, React.CSSProperties> = {
   ghostBtn: {
     width: "100%",
     marginTop: "0.625rem",
-    padding: "0.625rem",
+    padding: "0 1rem",
+    minHeight: 44,
     background: "transparent",
     color: "var(--color-text-muted)",
     border: "1px solid var(--color-border)",
     borderRadius: "var(--radius-md)",
-    fontSize: "0.875rem",
+    fontSize: "0.9rem",
     cursor: "pointer",
     fontFamily: "inherit",
+  },
+  // OTP digit boxes
+  otpRow: {
+    display: "flex",
+    gap: "0.5rem",
+    marginBottom: "0.75rem",
+  },
+  otpBox: {
+    flex: 1,
+    minWidth: 0,
+    padding: 0,
+    border: "1.5px solid var(--color-border)",
+    borderRadius: "var(--radius-md)",
+    fontSize: "1.375rem",
+    fontWeight: 700,
+    textAlign: "center",
+    minHeight: 52,
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+    color: "var(--color-text)",
+    background: "var(--color-surface)",
+    outline: "none",
+    cursor: "text",
+    caretColor: "var(--color-primary)",
+  },
+  otpBoxFilled: {
+    borderColor: "var(--color-primary)",
   },
 };
