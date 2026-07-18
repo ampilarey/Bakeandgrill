@@ -121,6 +121,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     code: string;
     discount: number;
     cardBalance: number;
+    heldBalance?: number;
   } | null>(null);
 
   const [serviceChargeConfig, setServiceChargeConfig] = useState<ServiceChargePublicConfig | null>(null);

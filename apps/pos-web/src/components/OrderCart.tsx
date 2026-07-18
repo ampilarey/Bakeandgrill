@@ -18,7 +18,12 @@ const ORDER_TYPES = POS_ORDER_TYPES;
 
 type AppliedPromo = { code: string; promotionId: number | null; discount: number };
 type AppliedLoyalty = { points: number; discount: number };
-type AppliedGiftCard = { code: string; discount: number; cardBalance: number };
+type AppliedGiftCard = {
+  code: string;
+  discount: number;
+  cardBalance: number;
+  heldBalance?: number;
+};
 
 type Props = {
   orderType: OrderType;

@@ -68,18 +68,23 @@ export async function releaseLoyaltyHold(orderId: number): Promise<{ message: st
   return request(`/pos/loyalty/hold/${orderId}`, { method: "DELETE" });
 }
 
-/** Lightweight balance check — public route, no auth needed. The POS
- *  uses this before applying so the cashier can see "MVR 250 on this
- *  card" before they commit it as a tender. */
+/** Lightweight balance check — public POST (code in body, not URL).
+ *  Returns ledger balance plus available/held after soft-reserves on
+ *  unpaid orders so POS preview matches what apply will actually use. */
 export async function checkGiftCardBalance(code: string): Promise<{
-  code: string;
+  masked_code: string;
   current_balance: number;
+  available_balance: number;
+  held_balance: number;
   expires_at: string | null;
 }> {
-  return request(`/gift-cards/${encodeURIComponent(code)}/balance`);
+  return request('/gift-cards/balance', {
+    method: 'POST',
+    body: JSON.stringify({ code: code.trim().toUpperCase() }),
+  });
 }
 
-/** Apply a gift card to a POS order. The server sets gift_card_code +
+/** Apply a gift card to a POS order. The server sets gift_card_id +
  *  gift_card_discount_laar on the order row and recalculates totals; the
  *  actual balance debit happens at payment time via PaymentService. */
 export async function applyGiftCardToOrder(
@@ -89,7 +94,16 @@ export async function applyGiftCardToOrder(
   discount_laar: number;
   discount_mvr: string;
   card_balance: number;
-  order: { id: number; total: number; subtotal: number; tax_amount: number; gift_card_discount_laar: number };
+  available_balance: number;
+  masked_code: string;
+  order: {
+    id: number;
+    total: number;
+    subtotal: number;
+    tax_amount: number;
+    gift_card_discount_laar: number;
+    gift_card_masked?: string;
+  };
 }> {
   return request(`/pos/orders/${orderId}/gift-card`, {
     method: "POST",

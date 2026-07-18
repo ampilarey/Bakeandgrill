@@ -162,7 +162,12 @@ type Params = {
   setDiscountAmount?: (s: string) => void;
   setAppliedPromo?: (p: { code: string; promotionId: number | null; discount: number } | null) => void;
   setAppliedLoyalty?: (l: { points: number; discount: number } | null) => void;
-  setAppliedGiftCard?: (g: { code: string; discount: number; cardBalance: number } | null) => void;
+  setAppliedGiftCard?: (g: {
+    code: string;
+    discount: number;
+    cardBalance: number;
+    heldBalance?: number;
+  } | null) => void;
   onOrderSettled?: (
     orderId: number,
     customerId: number | null,

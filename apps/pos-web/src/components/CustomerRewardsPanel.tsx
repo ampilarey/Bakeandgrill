@@ -5,10 +5,17 @@ import {
   validatePromoCode,
 } from "../api";
 import type { PosCustomer, PosCustomerSummary } from "../api";
+import { previewGiftCardDiscount } from "../utils/giftCardPreview";
 
 type AppliedPromo = { code: string; promotionId: number | null; discount: number };
 type AppliedLoyalty = { points: number; discount: number };
-type AppliedGiftCard = { code: string; discount: number; cardBalance: number };
+type AppliedGiftCard = {
+  code: string;
+  discount: number;
+  /** Available (spendable) balance used for the preview cap. */
+  cardBalance: number;
+  heldBalance?: number;
+};
 
 type Props = {
   customer: PosCustomer | null;
@@ -51,7 +58,7 @@ const COLOR = {
  * stage three reward types:
  *   - Promo code   (validated against /api/promotions/validate)
  *   - Loyalty pts  (previewed via /api/pos/loyalty/preview)
- *   - Gift card    (balance via /api/gift-cards/{code}/balance)
+ *   - Gift card    (available balance via POST /api/gift-cards/balance)
  *
  * NONE of these hit the server's apply endpoints yet — each one stores
  * an "estimated discount" object back into useCart state. The actual
@@ -204,10 +211,21 @@ export function CustomerRewardsPanel({
     setGiftError("");
     try {
       const res = await checkGiftCardBalance(code);
-      const discount = Math.min(res.current_balance, taxableSubtotal);
-      setAppliedGiftCard({ code: res.code, discount, cardBalance: res.current_balance });
+      const available = Number(res.available_balance ?? res.current_balance);
+      const held = Number(res.held_balance ?? 0);
+      const preview = previewGiftCardDiscount(available, held, taxableSubtotal);
+      if (!preview.ok) {
+        setGiftError(preview.error);
+        return;
+      }
+      setAppliedGiftCard({
+        code,
+        discount: preview.discount,
+        cardBalance: available,
+        heldBalance: held,
+      });
       setGiftCode("");
-    } catch (err) {
+    } catch {
       // 404 from the balance endpoint is intentionally generic.
       setGiftError("Invalid or unavailable gift card.");
     } finally {
@@ -379,7 +397,11 @@ export function CustomerRewardsPanel({
             title="Gift card"
             applied={
               applied.giftCard
-                ? `${applied.giftCard.code} · MVR ${applied.giftCard.discount.toFixed(2)} of ${applied.giftCard.cardBalance.toFixed(2)} balance`
+                ? `${applied.giftCard.code} · MVR ${applied.giftCard.discount.toFixed(2)} of ${applied.giftCard.cardBalance.toFixed(2)} available${
+                    (applied.giftCard.heldBalance ?? 0) > 0
+                      ? ` (${applied.giftCard.heldBalance!.toFixed(2)} held)`
+                      : ''
+                  }`
                 : null
             }
             onRemove={applied.giftCard ? () => setAppliedGiftCard(null) : undefined}
