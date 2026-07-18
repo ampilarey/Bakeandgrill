@@ -5,13 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Payments\Listeners;
 
 use App\Domains\Orders\Events\OrderPaid;
-use App\Domains\Payments\Services\GiftCardEmailDelivery;
-use App\Domains\Payments\Services\GiftCardIssueService;
-use App\Domains\Payments\Services\GiftCardPurchaseDeliveryWindow;
-use App\Domains\Payments\Services\GiftCardSmsDelivery;
-use App\Models\GiftCardPurchase;
+use App\Domains\Payments\Services\GiftCardPurchaseFulfillmentService;
 use App\Models\Order;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -23,10 +18,7 @@ final class IssuePurchasedGiftCardOnOrderPaidListener
     public bool $afterCommit = true;
 
     public function __construct(
-        private readonly GiftCardIssueService $issuer,
-        private readonly GiftCardSmsDelivery $sms,
-        private readonly GiftCardEmailDelivery $email,
-        private readonly GiftCardPurchaseDeliveryWindow $deliveryWindow,
+        private readonly GiftCardPurchaseFulfillmentService $fulfillment,
     ) {}
 
     public function handle(OrderPaid $event): void
@@ -37,77 +29,7 @@ final class IssuePurchasedGiftCardOnOrderPaidListener
         }
 
         try {
-            DB::transaction(function () use ($order): void {
-                $purchase = GiftCardPurchase::query()
-                    ->where('order_id', $order->id)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$purchase || $purchase->gift_card_id) {
-                    return;
-                }
-
-                $issued = $this->issuer->issue([
-                    'amount' => (float) $purchase->amount,
-                    'purchased_by_customer_id' => $purchase->purchaser_customer_id,
-                    'issued_to_customer_id' => $purchase->purchaser_customer_id,
-                ]);
-
-                $note = $purchase->personal_note;
-                $smsOk = null;
-                $emailOk = null;
-
-                if ($purchase->recipient_phone) {
-                    $sent = $this->sms->send(
-                        $issued['card'],
-                        $issued['plain'],
-                        $purchase->recipient_phone,
-                        $note,
-                        $purchase->purchaser_customer_id,
-                    );
-                    $smsOk = (bool) $sent['ok'];
-                    if (!$smsOk) {
-                        Log::warning('Gift card purchase SMS failed', [
-                            'order_id' => $order->id,
-                            'error' => $sent['error'],
-                        ]);
-                    }
-                }
-
-                if ($purchase->recipient_email) {
-                    $sent = $this->email->send(
-                        $issued['card'],
-                        $issued['plain'],
-                        $purchase->recipient_email,
-                        $note,
-                    );
-                    $emailOk = (bool) $sent['ok'];
-                    if (!$emailOk) {
-                        Log::warning('Gift card purchase email failed', [
-                            'order_id' => $order->id,
-                            'error' => $sent['error'],
-                        ]);
-                    }
-                }
-
-                $purchase->update([
-                    'gift_card_id' => $issued['card']->id,
-                    'sms_ok' => $smsOk,
-                    'email_ok' => $emailOk,
-                ]);
-
-                // Short window so the purchaser can resend if SMS/email failed.
-                $this->deliveryWindow->store($purchase->fresh(), $issued['plain']);
-
-                if ($order->status !== 'completed') {
-                    $order->update([
-                        'status' => 'completed',
-                        'payment_status' => 'paid',
-                        'completed_at' => now(),
-                        'paid_at' => $order->paid_at ?? now(),
-                    ]);
-                }
-            });
+            $this->fulfillment->fulfill($order);
         } catch (\Throwable $e) {
             Log::error('IssuePurchasedGiftCardOnOrderPaidListener failed', [
                 'order_id' => $event->data->orderId,

@@ -7,6 +7,7 @@ namespace App\Domains\Payments\Services;
 use App\Models\GiftCardPurchase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Short-lived encrypted plaintext for customer purchase resend.
@@ -33,9 +34,11 @@ final class GiftCardPurchaseDeliveryWindow
             $expiresAt,
         );
 
-        $purchase->update([
-            'code_delivery_expires_at' => $expiresAt,
-        ]);
+        if (Schema::hasColumn('gift_card_purchases', 'code_delivery_expires_at')) {
+            $purchase->update([
+                'code_delivery_expires_at' => $expiresAt,
+            ]);
+        }
     }
 
     public function plainCode(GiftCardPurchase $purchase): ?string

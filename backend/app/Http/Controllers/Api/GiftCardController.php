@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domains\Orders\DTOs\OrderPaidData;
-use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
-use App\Domains\Payments\Listeners\IssuePurchasedGiftCardOnOrderPaidListener;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
 use App\Domains\Payments\Services\GiftCardIssueService;
 use App\Domains\Payments\Services\GiftCardPurchaseDeliveryWindow;
+use App\Domains\Payments\Services\GiftCardPurchaseFulfillmentService;
 use App\Domains\Payments\Services\GiftCardPurchaseService;
 use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Domains\Payments\Services\GiftCardSmsDelivery;
@@ -28,6 +26,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class GiftCardController extends Controller
@@ -469,11 +468,12 @@ class GiftCardController extends Controller
         // Idempotent — safe to retry on every poll while gift_card_id is null.
         if ($paid && $purchase && !$purchase->gift_card_id) {
             try {
-                app(IssuePurchasedGiftCardOnOrderPaidListener::class)->handle(
-                    new OrderPaid(OrderPaidData::fromOrder($order->fresh(), false)),
-                );
-            } catch (\Throwable) {
-                // Leave issued=false; client keeps polling / shows still-processing.
+                app(GiftCardPurchaseFulfillmentService::class)->fulfill($order->fresh() ?? $order);
+            } catch (\Throwable $e) {
+                Log::warning('Gift card purchaseStatus fulfill failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
             $purchase = GiftCardPurchase::query()
                 ->with('giftCard:id,code_last4,initial_balance,current_balance,status,expires_at')

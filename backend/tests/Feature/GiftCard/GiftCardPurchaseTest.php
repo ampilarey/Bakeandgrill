@@ -8,6 +8,7 @@ use App\Domains\Orders\DTOs\OrderPaidData;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Payments\Listeners\IssuePurchasedGiftCardOnOrderPaidListener;
 use App\Domains\Payments\Services\GiftCardPurchaseDeliveryWindow;
+use App\Domains\Payments\Services\GiftCardPurchaseFulfillmentService;
 use App\Domains\Payments\Services\PaymentService;
 use App\Mail\GiftCardMail;
 use App\Models\GiftCardPurchase;
@@ -18,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class GiftCardPurchaseTest extends TestCase
@@ -150,6 +152,49 @@ class GiftCardPurchaseTest extends TestCase
             new OrderPaid(OrderPaidData::fromOrder($order->fresh(), true)),
         );
         $this->assertSame(1, SmsLog::query()->where('reference_type', 'gift_card')->count());
+    }
+
+    public function test_fulfillment_keeps_card_when_delivery_column_missing(): void
+    {
+        Mail::fake();
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777016',
+            'email' => 'colmiss@example.com',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'GC-TEST-COL',
+            'tracking_token' => 'gccol',
+            'type' => 'gift_card',
+            'status' => 'paid',
+            'payment_status' => 'paid',
+            'customer_id' => $customer->id,
+            'subtotal' => 100,
+            'subtotal_laar' => 10000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 100,
+            'total_laar' => 10000,
+            'paid_at' => now(),
+        ]);
+
+        GiftCardPurchase::create([
+            'order_id' => $order->id,
+            'purchaser_customer_id' => $customer->id,
+            'amount' => 100,
+            'recipient_phone' => '+9607777016',
+            'recipient_email' => 'colmiss@example.com',
+        ]);
+
+        Schema::table('gift_card_purchases', function ($table): void {
+            $table->dropColumn('code_delivery_expires_at');
+        });
+
+        app(GiftCardPurchaseFulfillmentService::class)->fulfill($order->fresh());
+
+        $this->assertNotNull(GiftCardPurchase::where('order_id', $order->id)->value('gift_card_id'));
+        $this->assertSame('completed', $order->fresh()->status);
+        Mail::assertSent(GiftCardMail::class);
     }
 
     public function test_purchase_status_retries_issue_when_paid_but_not_issued(): void

@@ -187,6 +187,8 @@ class OrderCreationController extends Controller
         //     Picked up / Delivered.
         if ($request->filled('active_only') && $request->boolean('active_only')) {
             $query->whereNotIn('status', ['cancelled', 'refunded', 'completed', 'payment_pending']);
+            // Online gift-card purchases are not kitchen/cashier tickets.
+            $query->where('type', '!=', 'gift_card');
 
             $query->where(function ($w) {
                 $w->whereIn('type', ['online_pickup', 'delivery'])
@@ -197,7 +199,7 @@ class OrderCreationController extends Controller
                                     ->orWhereIn('payment_status', ['unpaid', 'partial']);
                             });
                     })
-                    ->orWhereNotIn('type', ['dine_in', 'takeaway', 'online_pickup', 'delivery']);
+                    ->orWhereNotIn('type', ['dine_in', 'takeaway', 'online_pickup', 'delivery', 'gift_card']);
             });
         }
 

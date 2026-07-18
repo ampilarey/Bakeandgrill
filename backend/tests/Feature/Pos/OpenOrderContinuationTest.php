@@ -305,4 +305,30 @@ class OpenOrderContinuationTest extends TestCase
 
         $this->assertTrue($ids->contains($pickup->id));
     }
+
+    public function test_gift_card_purchases_are_hidden_from_active_orders(): void
+    {
+        Sanctum::actingAs($this->sara, ['staff']);
+
+        $gift = Order::create([
+            'order_number' => 'GC-POS-HIDE',
+            'tracking_token' => 'gcposhide',
+            'type' => 'gift_card',
+            'status' => 'paid',
+            'payment_status' => 'paid',
+            'user_id' => $this->sara->id,
+            'subtotal' => 100,
+            'subtotal_laar' => 10000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 100,
+            'total_laar' => 10000,
+            'paid_at' => now(),
+        ]);
+
+        $ids = collect($this->getJson('/api/orders?active_only=1')->assertOk()->json('data'))
+            ->pluck('id');
+
+        $this->assertFalse($ids->contains($gift->id));
+    }
 }
