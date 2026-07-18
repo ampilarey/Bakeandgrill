@@ -115,6 +115,15 @@ const TRANSLATIONS: Translations = {
   "prayer.unavailable":        { en: "Prayer times unavailable",      dv: "Prayer times unavailable" },
   "prayer.offline_cached":     { en: "Offline — cached times",        dv: "Offline — cached times" },
   "prayer.cached":             { en: "Showing cached times",          dv: "Showing cached times" },
+
+  // ── Phase 5 Checkout accordion strings ────────────────────────────────────
+  "checkout.acc_order_type":     { en: "Order Type",                   dv: "Order Type" },
+  "checkout.acc_pickup":         { en: "Pickup Time",                  dv: "Pickup Time" },
+  "checkout.acc_delivery":       { en: "Delivery Details",             dv: "Delivery Details" },
+  "checkout.acc_discounts":      { en: "Discounts & Rewards",          dv: "Discounts & Rewards" },
+  "checkout.acc_notes":          { en: "Special Instructions",         dv: "Special Instructions" },
+  "checkout.acc_payment":        { en: "Payment",                      dv: "Payment" },
+  "checkout.acc_payment_summary":{ en: "BML",                          dv: "BML" },
 };
 
 type LanguageContextType = {

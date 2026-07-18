@@ -2383,6 +2383,40 @@ textarea.field-input {
   padding: 0 1rem 1rem;
 }
 
+/* ── Checkout page layout ─────────────────────────────────────────────────── */
+.checkout-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: 1rem var(--page-gutter) calc(7rem + var(--safe-bottom, 0px));
+}
+
+@media (min-width: 900px) {
+  .checkout-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    align-items: start;
+  }
+
+  .checkout-summary {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+.checkout-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.checkout-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .empty-state,
 .error-state {
   text-align: center;

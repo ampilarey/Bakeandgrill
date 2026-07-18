@@ -75,6 +75,16 @@ field in `apps/online-order-web/src/context/LanguageContext.tsx` after native re
 - `menu.toast_delivery_fallback`
 - `cart.edit`
 
+## Phase 5 Checkout accordion keys (added Jul 2026)
+
+- `checkout.acc_order_type`
+- `checkout.acc_pickup`
+- `checkout.acc_delivery`
+- `checkout.acc_discounts`
+- `checkout.acc_notes`
+- `checkout.acc_payment`
+- `checkout.acc_payment_summary`
+
 ## Phase 4 Home keys (added Jul 2026)
 
 - `home.sign_in`
