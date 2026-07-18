@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Modal, ModalActions, Btn, Select } from './Layout';
 
 export type PrintCardData = {
-  type: 'gift_card' | 'promo';
+  type: 'gift_card' | 'promo' | 'discount_card';
   code: string;
   title: string;           // e.g. "Gift Card" or promo name
   subtitle?: string;       // e.g. "MVR 50.00" or "20% OFF"
@@ -33,7 +33,8 @@ function CardFace({ data, size }: { data: PrintCardData; size: CardSize }) {
   const w = size.widthMm * MM_TO_PX;
   const h = size.heightMm * MM_TO_PX;
   const isGift = data.type === 'gift_card';
-  const accent = isGift ? '#D4813A' : '#1C5F3A';
+  const isDiscountCard = data.type === 'discount_card';
+  const accent = isGift ? '#D4813A' : isDiscountCard ? '#2A1E0C' : '#1C5F3A';
   const qrSize = Math.min(h * 0.45, 72);
   const expiry = data.expiry ? new Date(data.expiry).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
 

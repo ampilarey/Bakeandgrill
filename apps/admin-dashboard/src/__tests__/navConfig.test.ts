@@ -35,6 +35,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/customers/growth', permission: 'customers.manage' },
   { to: '/loyalty', permission: 'loyalty.manage' },
   { to: '/gift-cards', permission: 'promotions.manage' },
+  { to: '/discount-cards', permission: 'promotions.discount_cards' },
   { to: '/referrals', permission: 'customers.manage' },
   { to: '/reviews', permission: 'customers.manage' },
   { to: '/promotions', permission: 'promotions.manage' },

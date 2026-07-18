@@ -255,7 +255,12 @@ class PromotionController extends Controller
 
     public function adminIndex(Request $request): JsonResponse
     {
+        // Discount cards live under /admin/discount-cards — keep campaign promos clean.
         $promotions = Promotion::withTrashed()
+            ->where(function ($q): void {
+                $q->whereNull('metadata->kind')
+                    ->orWhere('metadata->kind', '!=', 'discount_card');
+            })
             ->orderByDesc('created_at')
             ->paginate(50);
 

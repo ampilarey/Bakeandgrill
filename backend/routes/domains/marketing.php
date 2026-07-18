@@ -99,6 +99,14 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
         Route::patch('/admin/marketing/automation', [App\Http\Controllers\Api\AdminMarketingAutomationController::class, 'update']);
     });
 
+    // Owner-only: discount cards (unique codes; redeem via existing promo path)
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.discount_cards'])->group(function () {
+        Route::get('/admin/discount-cards/batches', [App\Http\Controllers\Api\DiscountCardController::class, 'indexBatches']);
+        Route::post('/admin/discount-cards/batches', [App\Http\Controllers\Api\DiscountCardController::class, 'issue']);
+        Route::get('/admin/discount-cards/batches/{id}', [App\Http\Controllers\Api\DiscountCardController::class, 'showBatch']);
+        Route::post('/admin/discount-cards/{id}/void', [App\Http\Controllers\Api\DiscountCardController::class, 'voidCard']);
+    });
+
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.analytics'])->group(function () {
         Route::get('/admin/marketing/item-pairs', [App\Http\Controllers\Api\ItemPairAdminController::class, 'index']);
     });

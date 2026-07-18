@@ -136,6 +136,7 @@ final class PermissionCatalog
             ['group' => 'Promotions', 'slug' => 'promotions.discounts', 'name' => 'Apply discounts'],
             ['group' => 'Promotions', 'slug' => 'promotions.apply_promo_code', 'name' => 'Apply promo codes'],
             ['group' => 'Promotions', 'slug' => 'promotions.gift_cards', 'name' => 'Redeem gift cards'],
+            ['group' => 'Promotions', 'slug' => 'promotions.discount_cards', 'name' => 'Issue discount cards', 'description' => 'Owner-only: generate time-limited discount cards'],
 
             // Shifts & reports
             ['group' => 'Shifts', 'slug' => 'shifts.view_own_history', 'name' => 'View own shift history'],
@@ -263,6 +264,8 @@ final class PermissionCatalog
             'customers.credit.repay',
             'customers.deposit.adjust',
             'customers.deposit.transfer_credit',
+            // Discount cards — owner-issued only by default
+            'promotions.discount_cards',
         ];
 
         return array_values(array_diff(self::ownerSlugs(), $excluded));

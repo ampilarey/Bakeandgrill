@@ -11,6 +11,7 @@ export * from './staff';
 export * from './customers';
 export * from './customer-growth';
 export * from './marketing';
+export * from './discount-cards';
 export * from './operations';
 export * from './settings';
 export * from './sms-module';

@@ -35,6 +35,7 @@ const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPag
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
 const SettingsPage            = lazyWithRetry(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const GiftCardsPage           = lazyWithRetry(() => import('./pages/GiftCardsPage'));
+const DiscountCardsPage       = lazyWithRetry(() => import('./pages/DiscountCardsPage'));
 const ReviewsPage             = lazyWithRetry(() => import('./pages/ReviewsPage'));
 const SpecialsPage            = lazyWithRetry(() => import('./pages/SpecialsPage'));
 const RefundsPage             = lazyWithRetry(() => import('./pages/RefundsPage'));
@@ -335,6 +336,11 @@ export default function App() {
                 <Route path="gift-cards" element={
                   <PermissionGuard user={user} permission="promotions.manage">
                     <GiftCardsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="discount-cards" element={
+                  <PermissionGuard user={user} permission="promotions.discount_cards">
+                    <DiscountCardsPage />
                   </PermissionGuard>
                 } />
                 <Route path="reviews" element={
