@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\GiftCard;
 
 use App\Domains\Payments\Services\GiftCardCodeService;
+use App\Mail\GiftCardMail;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
 use App\Models\SmsLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class GiftCardEnhancementsTest extends TestCase
@@ -177,5 +179,70 @@ class GiftCardEnhancementsTest extends TestCase
             'reference_type' => 'gift_card',
             'to' => '+9607890456',
         ]);
+    }
+
+    public function test_issue_with_send_email_dispatches_mailable(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/admin/gift-cards', [
+            'amount' => 100,
+            'send_email' => true,
+            'recipient_email' => 'gift@example.com',
+            'email_note' => 'Enjoy!',
+        ], $this->adminHeaders)
+            ->assertCreated()
+            ->assertJsonPath('email.ok', true)
+            ->assertJsonPath('email.email', 'gift@example.com');
+
+        Mail::assertSent(GiftCardMail::class, function (GiftCardMail $mail) {
+            return $mail->hasTo('gift@example.com')
+                && $mail->personalNote === 'Enjoy!'
+                && abs((float) $mail->card->initial_balance - 100.0) < 0.001;
+        });
+    }
+
+    public function test_issue_send_email_uses_customer_email_when_recipient_omitted(): void
+    {
+        Mail::fake();
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777002',
+            'email' => 'customer@example.com',
+        ]);
+
+        $this->postJson('/api/admin/gift-cards', [
+            'amount' => 55,
+            'customer_id' => $customer->id,
+            'send_email' => true,
+        ], $this->adminHeaders)
+            ->assertCreated()
+            ->assertJsonPath('email.ok', true)
+            ->assertJsonPath('email.email', 'customer@example.com');
+
+        Mail::assertSent(GiftCardMail::class, fn (GiftCardMail $mail) => $mail->hasTo('customer@example.com'));
+    }
+
+    public function test_send_email_endpoint_requires_plaintext_code(): void
+    {
+        Mail::fake();
+        $svc = app(GiftCardCodeService::class);
+        $generated = $svc->generate();
+
+        GiftCard::create([
+            'code_hash' => $generated['hash'],
+            'code_last4' => $generated['last4'],
+            'initial_balance' => 50,
+            'current_balance' => 50,
+            'status' => 'active',
+        ]);
+
+        $this->postJson('/api/admin/gift-cards/send-email', [
+            'code' => $generated['plain'],
+            'recipient_email' => 'resend@example.com',
+        ], $this->adminHeaders)
+            ->assertOk()
+            ->assertJsonPath('email.ok', true);
+
+        Mail::assertSent(GiftCardMail::class, fn (GiftCardMail $mail) => $mail->hasTo('resend@example.com'));
     }
 }

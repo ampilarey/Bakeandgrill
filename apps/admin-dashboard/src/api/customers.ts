@@ -377,6 +377,12 @@ export type GiftCardSmsResult = {
   error?: string | null;
 };
 
+export type GiftCardEmailResult = {
+  ok: boolean;
+  email?: string | null;
+  error?: string | null;
+};
+
 export async function issueGiftCard(data: {
   amount: number;
   customer_id?: number | null;
@@ -384,7 +390,10 @@ export async function issueGiftCard(data: {
   send_sms?: boolean;
   recipient_phone?: string | null;
   sms_note?: string | null;
-}): Promise<{ gift_card: GiftCard; sms?: GiftCardSmsResult | null }> {
+  send_email?: boolean;
+  recipient_email?: string | null;
+  email_note?: string | null;
+}): Promise<{ gift_card: GiftCard; sms?: GiftCardSmsResult | null; email?: GiftCardEmailResult | null }> {
   return req('/admin/gift-cards', { method: 'POST', body: JSON.stringify(data) });
 }
 
@@ -394,6 +403,14 @@ export async function sendGiftCardSms(data: {
   sms_note?: string | null;
 }): Promise<{ message: string; sms: GiftCardSmsResult }> {
   return req('/admin/gift-cards/send-sms', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function sendGiftCardEmail(data: {
+  code: string;
+  recipient_email: string;
+  email_note?: string | null;
+}): Promise<{ message: string; email: GiftCardEmailResult }> {
+  return req('/admin/gift-cards/send-email', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function checkGiftCardBalance(code: string): Promise<{ masked_code: string; current_balance: number; expires_at: string | null }> {

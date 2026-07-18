@@ -9,12 +9,14 @@ import {
   fetchGiftCards,
   issueGiftCard,
   sendGiftCardSms,
+  sendGiftCardEmail,
   checkGiftCardBalance,
   cancelGiftCard,
   fetchGiftCardTransactions,
   type GiftCard,
   type GiftCardTransaction,
   type GiftCardSmsResult,
+  type GiftCardEmailResult,
 } from '../api';
 import { Gift, Search, Copy, Check } from 'lucide-react';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
@@ -52,16 +54,22 @@ export default function GiftCardsPage() {
   const [expiresAt, setExpiresAt] = useState('');
   const [sendSms, setSendSms] = useState(false);
   const [recipientPhone, setRecipientPhone] = useState('');
-  const [smsNote, setSmsNote] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [deliveryNote, setDeliveryNote] = useState('');
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState('');
   const [issuedCard, setIssuedCard] = useState<GiftCard | null>(null);
   const [issueSms, setIssueSms] = useState<GiftCardSmsResult | null>(null);
+  const [issueEmail, setIssueEmail] = useState<GiftCardEmailResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [smsSending, setSmsSending] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
   const [smsResendPhone, setSmsResendPhone] = useState('');
-  const [smsResendNote, setSmsResendNote] = useState('');
+  const [emailResendTo, setEmailResendTo] = useState('');
+  const [deliveryResendNote, setDeliveryResendNote] = useState('');
   const [smsResendMsg, setSmsResendMsg] = useState('');
+  const [emailResendMsg, setEmailResendMsg] = useState('');
 
   const [balanceCode, setBalanceCode] = useState('');
   const [balanceResult, setBalanceResult] = useState<{ masked_code: string; current_balance: number; expires_at: string | null } | null>(null);
@@ -102,7 +110,9 @@ export default function GiftCardsPage() {
     setExpiresAt('');
     setSendSms(false);
     setRecipientPhone('');
-    setSmsNote('');
+    setSendEmail(false);
+    setRecipientEmail('');
+    setDeliveryNote('');
   };
 
   const handleIssue = async () => {
@@ -112,9 +122,14 @@ export default function GiftCardsPage() {
       setIssueError('Enter a recipient phone, or pick a customer with a phone on file.');
       return;
     }
-    setIssuing(true); setIssueError(''); setIssueSms(null);
+    if (sendEmail && !customerId && !recipientEmail.trim()) {
+      setIssueError('Enter a recipient email, or pick a customer with an email on file.');
+      return;
+    }
+    setIssuing(true); setIssueError(''); setIssueSms(null); setIssueEmail(null);
     const phoneForSms = recipientPhone.trim();
-    const noteForSms = smsNote.trim();
+    const emailForSend = recipientEmail.trim();
+    const note = deliveryNote.trim();
     try {
       const res = await issueGiftCard({
         amount: amt,
@@ -122,12 +137,17 @@ export default function GiftCardsPage() {
         expires_at: expiresAt || null,
         send_sms: sendSms,
         recipient_phone: sendSms ? (phoneForSms || null) : null,
-        sms_note: sendSms ? (noteForSms || null) : null,
+        sms_note: sendSms ? (note.slice(0, 160) || null) : null,
+        send_email: sendEmail,
+        recipient_email: sendEmail ? (emailForSend || null) : null,
+        email_note: sendEmail ? (note || null) : null,
       });
       setIssuedCard(res.gift_card);
       setIssueSms(res.sms ?? null);
+      setIssueEmail(res.email ?? null);
       setSmsResendPhone(phoneForSms || res.sms?.phone || '');
-      setSmsResendNote(noteForSms);
+      setEmailResendTo(emailForSend || res.email?.email || '');
+      setDeliveryResendNote(note);
       setCopied(false);
       resetIssueForm();
       void load();
@@ -145,13 +165,32 @@ export default function GiftCardsPage() {
       const res = await sendGiftCardSms({
         code: issuedCard.code,
         recipient_phone: smsResendPhone.trim(),
-        sms_note: smsResendNote || null,
+        sms_note: deliveryResendNote.slice(0, 160) || null,
       });
       setIssueSms(res.sms);
       if (res.sms?.phone) setSmsResendPhone(res.sms.phone);
       setSmsResendMsg(res.message);
     } catch (e) { setSmsResendMsg((e as Error).message); }
     finally { setSmsSending(false); }
+  };
+
+  const handleResendEmail = async () => {
+    if (!issuedCard?.code || !emailResendTo.trim()) {
+      setEmailResendMsg('Enter an email address to send the code.');
+      return;
+    }
+    setEmailSending(true); setEmailResendMsg('');
+    try {
+      const res = await sendGiftCardEmail({
+        code: issuedCard.code,
+        recipient_email: emailResendTo.trim(),
+        email_note: deliveryResendNote || null,
+      });
+      setIssueEmail(res.email);
+      if (res.email?.email) setEmailResendTo(res.email.email);
+      setEmailResendMsg(res.message);
+    } catch (e) { setEmailResendMsg((e as Error).message); }
+    finally { setEmailSending(false); }
   };
 
   const handleCheckBalance = async () => {
@@ -396,6 +435,18 @@ export default function GiftCardsPage() {
                     : `SMS not sent: ${issueSms.error ?? 'unknown error'}`}
                 </p>
               )}
+              {issueEmail && (
+                <p style={{
+                  margin: '8px 0 0',
+                  fontSize: 13,
+                  color: issueEmail.ok ? '#166534' : '#b91c1c',
+                  fontWeight: 600,
+                }}>
+                  {issueEmail.ok
+                    ? `Email sent to ${issueEmail.email ?? 'recipient'}`
+                    : `Email not sent: ${issueEmail.error ?? 'unknown error'}`}
+                </p>
+              )}
 
               {issuedCard.code && (
                 <div style={{
@@ -405,9 +456,9 @@ export default function GiftCardsPage() {
                   borderRadius: 10,
                   textAlign: 'left',
                 }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Send / resend SMS</p>
+                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Send / resend</p>
                   <input
-                    placeholder="7XXXXXX or +9607XXXXXX"
+                    placeholder="Phone — 7XXXXXX or +9607XXXXXX"
                     value={smsResendPhone}
                     onChange={e => setSmsResendPhone(e.target.value)}
                     style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }}
@@ -416,6 +467,17 @@ export default function GiftCardsPage() {
                     {smsSending ? 'Sending…' : 'SMS code now'}
                   </Btn>
                   {smsResendMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6B5D4F' }}>{smsResendMsg}</p>}
+
+                  <input
+                    placeholder="Email — name@example.com"
+                    value={emailResendTo}
+                    onChange={e => setEmailResendTo(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', margin: '12px 0 8px', boxSizing: 'border-box' }}
+                  />
+                  <Btn variant="secondary" onClick={() => void handleResendEmail()} disabled={emailSending}>
+                    {emailSending ? 'Sending…' : 'Email code now'}
+                  </Btn>
+                  {emailResendMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6B5D4F' }}>{emailResendMsg}</p>}
                 </div>
               )}
 
@@ -429,9 +491,12 @@ export default function GiftCardsPage() {
                   setIssuedCard(null);
                   setIssueOpen(false);
                   setIssueSms(null);
+                  setIssueEmail(null);
                   setSmsResendPhone('');
-                  setSmsResendNote('');
+                  setEmailResendTo('');
+                  setDeliveryResendNote('');
                   setSmsResendMsg('');
+                  setEmailResendMsg('');
                 }}>Done</Btn>
               </div>
             </div>
@@ -461,29 +526,48 @@ export default function GiftCardsPage() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408' }}>Send code by SMS</span>
                 </label>
                 {sendSms && (
-                  <>
-                    <label>
-                      <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
-                        Recipient phone {!customerId ? '*' : '(optional if customer has phone)'}
-                      </span>
-                      <Input
-                        type="tel"
-                        placeholder="7XXXXXX or +9607XXXXXX"
-                        value={recipientPhone}
-                        onChange={setRecipientPhone}
-                      />
-                    </label>
-                    <label>
-                      <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Personal note (optional)</span>
-                      <input
-                        value={smsNote}
-                        onChange={e => setSmsNote(e.target.value)}
-                        maxLength={160}
-                        placeholder="Happy birthday from…"
-                        style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                      />
-                    </label>
-                  </>
+                  <label>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+                      Recipient phone {!customerId ? '*' : '(optional if customer has phone)'}
+                    </span>
+                    <Input
+                      type="tel"
+                      placeholder="7XXXXXX or +9607XXXXXX"
+                      value={recipientPhone}
+                      onChange={setRecipientPhone}
+                    />
+                  </label>
+                )}
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408' }}>Send code by email</span>
+                </label>
+                {sendEmail && (
+                  <label>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+                      Recipient email {!customerId ? '*' : '(optional if customer has email)'}
+                    </span>
+                    <Input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={recipientEmail}
+                      onChange={setRecipientEmail}
+                    />
+                  </label>
+                )}
+
+                {(sendSms || sendEmail) && (
+                  <label>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Personal note (optional)</span>
+                    <input
+                      value={deliveryNote}
+                      onChange={e => setDeliveryNote(e.target.value)}
+                      maxLength={sendSms ? 160 : 500}
+                      placeholder="Happy birthday from…"
+                      style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </label>
                 )}
               </div>
               <ModalActions>

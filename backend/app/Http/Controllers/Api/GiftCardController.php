@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\GiftCardCodeService;
+use App\Domains\Payments\Services\GiftCardEmailDelivery;
 use App\Domains\Payments\Services\GiftCardSmsDelivery;
 use App\Models\Customer;
 use App\Models\GiftCard;
@@ -25,6 +26,7 @@ class GiftCardController extends Controller
     public function __construct(
         private readonly GiftCardCodeService $giftCardCodes,
         private readonly GiftCardSmsDelivery $giftCardSms,
+        private readonly GiftCardEmailDelivery $giftCardEmail,
         private readonly AuditLogService $audit,
     ) {}
 
@@ -243,6 +245,14 @@ class GiftCardController extends Controller
                 new MaldivesPhone,
             ],
             'sms_note' => ['nullable', 'string', 'max:160'],
+            'send_email' => ['sometimes', 'boolean'],
+            'recipient_email' => [
+                Rule::requiredIf(fn () => $request->boolean('send_email') && !$request->filled('customer_id')),
+                'nullable',
+                'email',
+                'max:200',
+            ],
+            'email_note' => ['nullable', 'string', 'max:500'],
         ]);
 
         try {
@@ -320,9 +330,46 @@ class GiftCardController extends Controller
             }
         }
 
+        $emailResult = null;
+        if ($request->boolean('send_email')) {
+            $email = $validated['recipient_email'] ?? null;
+            if (!$email && !empty($validated['customer_id'])) {
+                $email = Customer::query()->where('id', $validated['customer_id'])->value('email');
+            }
+            if (!$email) {
+                $emailResult = [
+                    'ok' => false,
+                    'email' => null,
+                    'error' => 'No recipient email — email not sent. Copy the code and send manually.',
+                ];
+            } else {
+                $sent = $this->giftCardEmail->send(
+                    $card,
+                    $generated['plain'],
+                    $email,
+                    $validated['email_note'] ?? $validated['sms_note'] ?? null,
+                );
+                $emailResult = [
+                    'ok' => $sent['ok'],
+                    'email' => $sent['email'],
+                    'error' => $sent['error'],
+                ];
+                $this->audit->log(
+                    $sent['ok'] ? 'gift_card.email_sent' : 'gift_card.email_failed',
+                    'GiftCard',
+                    $card->id,
+                    [],
+                    ['email' => $sent['email'], 'error' => $sent['error']],
+                    ['masked_code' => $card->masked_code],
+                    $request,
+                );
+            }
+        }
+
         return response()->json([
             'gift_card' => array_merge($this->format($card), ['code' => $generated['plain']]),
             'sms' => $smsResult,
+            'email' => $emailResult,
         ], 201);
     }
 
@@ -368,6 +415,50 @@ class GiftCardController extends Controller
         return response()->json([
             'message' => 'Gift card SMS sent.',
             'sms' => $sent,
+        ]);
+    }
+
+    /**
+     * Send gift-card email while staff still has the plaintext code (issue modal).
+     * Body must include the full code — we never store it after issue.
+     */
+    public function sendEmail(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:32'],
+            'recipient_email' => ['required', 'email', 'max:200'],
+            'email_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $card = $this->giftCardCodes->findByCode($validated['code']);
+        if (!$card || $card->status !== 'active') {
+            return response()->json(['message' => 'Invalid or inactive gift card code.'], 422);
+        }
+
+        $sent = $this->giftCardEmail->send(
+            $card,
+            $validated['code'],
+            $validated['recipient_email'],
+            $validated['email_note'] ?? null,
+        );
+
+        $this->audit->log(
+            $sent['ok'] ? 'gift_card.email_sent' : 'gift_card.email_failed',
+            'GiftCard',
+            $card->id,
+            [],
+            ['email' => $sent['email'], 'error' => $sent['error']],
+            ['masked_code' => $card->masked_code],
+            $request,
+        );
+
+        if (!$sent['ok']) {
+            return response()->json(['message' => $sent['error'] ?? 'Email send failed.', 'email' => $sent], 422);
+        }
+
+        return response()->json([
+            'message' => 'Gift card email sent.',
+            'email' => $sent,
         ]);
     }
 
