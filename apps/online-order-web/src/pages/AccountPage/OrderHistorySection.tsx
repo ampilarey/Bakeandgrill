@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { fetchCustomerOrders } from '../../api';
 import type { Order } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
+import { isGiftCardOrder } from '../../utils/giftCardOrder';
 
 const STATUS_KEY: Record<string, string> = {
   payment_pending: 'order.status.payment_pending',
@@ -89,11 +90,16 @@ export function OrderHistorySection() {
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {orders.map((order) => {
             const statusKey = STATUS_KEY[order.status];
-            const label = statusKey ? t(statusKey) : order.status;
+            const label = isGiftCardOrder(order)
+              ? t('orders.type_gift_card')
+              : (statusKey ? t(statusKey) : order.status);
+            const href = isGiftCardOrder(order)
+              ? `/gift-cards/success?orderId=${order.id}`
+              : `/orders/${order.id}`;
             return (
               <li key={order.id}>
                 <Link
-                  to={`/orders/${order.id}`}
+                  to={href}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

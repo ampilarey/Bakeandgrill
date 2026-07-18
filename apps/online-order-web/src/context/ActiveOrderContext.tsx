@@ -12,8 +12,13 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { fetchCustomerOrders } from '../api';
 import type { Order } from '../api';
+import { isGiftCardOrder } from '../utils/giftCardOrder';
 
 const ACTIVE = new Set(['payment_pending', 'pending', 'paid', 'preparing', 'ready']);
+
+function findActiveFoodOrder(orders: Order[]): Order | null {
+  return orders.find((o) => ACTIVE.has(o.status) && !isGiftCardOrder(o)) ?? null;
+}
 
 function isOrder(v: unknown): v is Order {
   return typeof v === 'object' && v !== null && 'id' in v && 'status' in v;
@@ -91,8 +96,7 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
       fetchCustomerOrders(controller.signal)
         .then((res) => {
           const orders = normalizeOrders(res);
-          const active = orders.find((o) => ACTIVE.has(o.status));
-          applyOrder(active ?? null);
+          applyOrder(findActiveFoodOrder(orders));
         })
         .catch((err) => {
           if (err.name !== 'AbortError') applyOrder(null);
@@ -116,8 +120,7 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
     fetchCustomerOrders(controller.signal)
       .then((res) => {
         const orders = normalizeOrders(res);
-        const active = orders.find((o) => ACTIVE.has(o.status));
-        applyOrder(active ?? null);
+        applyOrder(findActiveFoodOrder(orders));
       })
       .catch((err) => {
         if (err.name !== 'AbortError') applyOrder(null);
@@ -126,7 +129,7 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
   }, [location.pathname, skip, applyOrder]);
 
   const activeOrder =
-    order && isActiveOrderStatus(order.status) ? order : null;
+    order && isActiveOrderStatus(order.status) && !isGiftCardOrder(order) ? order : null;
 
   const value = useMemo<ActiveOrderContextValue>(
     () => ({

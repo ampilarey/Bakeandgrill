@@ -9,6 +9,7 @@ import { usePushNotifications } from "../hooks/usePushNotifications";
 import { useSiteSettings } from "../context/SiteSettingsContext";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+import { isGiftCardOrder } from "../utils/giftCardOrder";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -307,6 +308,12 @@ export function OrderStatusPage() {
       ? `${t("track.page_title_num").replace("{n}", order.order_number)} — Bake & Grill`
       : `${t("track.page_title")} — Bake & Grill`;
   }, [order?.order_number, t]);
+
+  useEffect(() => {
+    if (order && isGiftCardOrder(order)) {
+      void navigate(`/gift-cards/success?orderId=${order.id}`, { replace: true });
+    }
+  }, [order, navigate]);
 
   useEffect(() => {
     if (!order || !['pending', 'paid', 'confirmed', 'preparing', 'in_progress', 'ready'].includes(order.status)) {

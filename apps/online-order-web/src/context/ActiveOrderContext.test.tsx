@@ -62,6 +62,22 @@ describe('ActiveOrderProvider', () => {
     vi.clearAllMocks();
   });
 
+  it('ignores gift_card purchases for the active capsule', async () => {
+    fetchMock.mockResolvedValue({
+      data: [
+        { id: 9, status: 'paid', type: 'gift_card', order_number: 'GC-9' },
+        activeOrder,
+      ],
+    } as never);
+
+    const { result } = renderHook(() => useActiveOrder(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.activeOrder?.id).toBe(42);
+    });
+    expect(result.current.activeOrder?.type).not.toBe('gift_card');
+  });
+
   it('does not schedule an immediate refetch when an active order resolves', async () => {
     fetchMock.mockResolvedValue({ data: [activeOrder] } as never);
 

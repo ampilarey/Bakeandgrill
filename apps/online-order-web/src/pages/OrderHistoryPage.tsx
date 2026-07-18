@@ -9,6 +9,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 import { PageHeader } from '../components/shell/PageHeader';
+import { isGiftCardOrder } from '../utils/giftCardOrder';
 
 const STATUS_KEY: Record<string, string> = {
   payment_pending: 'order.status.payment_pending',
@@ -99,11 +100,21 @@ export function OrderHistoryPage() {
     }
   };
 
-  const activeOrders = orders.filter(o => !['completed', 'cancelled'].includes(o.status));
-  const pastOrders   = orders.filter(o => ['completed', 'cancelled'].includes(o.status));
+  const activeOrders = orders.filter(
+    (o) => !isGiftCardOrder(o) && !['completed', 'cancelled'].includes(o.status),
+  );
+  const pastOrders = orders.filter(
+    (o) => isGiftCardOrder(o) || ['completed', 'cancelled'].includes(o.status),
+  );
 
-  const typeLabel = (type: string) =>
-    type === 'delivery' ? t('mode.delivery') : t('mode.pickup');
+  const typeLabel = (type: string) => {
+    if (type === 'gift_card') return t('orders.type_gift_card');
+    if (type === 'delivery') return t('mode.delivery');
+    return t('mode.pickup');
+  };
+
+  const orderDetailPath = (order: Order) =>
+    isGiftCardOrder(order) ? `/gift-cards/success?orderId=${order.id}` : `/orders/${order.id}`;
 
   const statusPill = (status: string) => {
     const style = STATUS_STYLE[status] ?? { color: '#374151', bg: '#f3f4f6' };
@@ -266,7 +277,7 @@ export function OrderHistoryPage() {
                         </div>
                         {/* Track CTA */}
                         <Link
-                          to={`/orders/${order.id}`}
+                          to={orderDetailPath(order)}
                           style={{
                             padding: '0.5rem 1rem',
                             background: 'var(--color-primary)',
@@ -297,10 +308,20 @@ export function OrderHistoryPage() {
               <p style={sectionLabel}>{t('orders.past_section')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {pastOrders.map((order) => {
-                  const s = statusPill(order.status);
+                  const gift = isGiftCardOrder(order);
+                  const s = statusPill(gift && ['paid', 'completed'].includes(order.status) ? 'completed' : order.status);
+                  const statusLabel = gift
+                    ? (['paid', 'completed'].includes(order.status)
+                        ? t('orders.gift_purchased')
+                        : order.status === 'payment_pending'
+                          ? t('orders.gift_payment_pending')
+                          : s.label)
+                    : s.label;
                   const sliced = order.items?.slice(0, 3);
-                  const itemSummary = sliced?.map(it => it.item_name).join(', ');
-                  const extraCount = (order.items?.length ?? 0) - 3;
+                  const itemSummary = gift
+                    ? t('orders.type_gift_card')
+                    : sliced?.map(it => it.item_name).join(', ');
+                  const extraCount = gift ? 0 : (order.items?.length ?? 0) - 3;
                   return (
                     <div
                       key={order.id}
@@ -323,10 +344,18 @@ export function OrderHistoryPage() {
                           </span>
                           <span style={{
                             fontSize: '0.68rem', fontWeight: 600,
+                            color: 'var(--color-text-muted)',
+                            background: 'var(--color-surface-alt)',
+                            padding: '0.1rem 0.45rem', borderRadius: '999px',
+                          }}>
+                            {typeLabel(order.type)}
+                          </span>
+                          <span style={{
+                            fontSize: '0.68rem', fontWeight: 600,
                             color: s.color, background: s.bg,
                             padding: '0.1rem 0.45rem', borderRadius: '999px',
                           }}>
-                            {s.label}
+                            {statusLabel}
                           </span>
                         </div>
                         {/* Items summary */}
@@ -351,7 +380,7 @@ export function OrderHistoryPage() {
                       {/* Actions */}
                       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                         <Link
-                          to={`/orders/${order.id}`}
+                          to={orderDetailPath(order)}
                           style={{
                             padding: '0.4rem 0.75rem',
                             background: 'var(--color-surface-alt)',
@@ -366,7 +395,7 @@ export function OrderHistoryPage() {
                         >
                           {t('orders.view')}
                         </Link>
-                        {order.status === 'completed' && (
+                        {order.status === 'completed' && !isGiftCardOrder(order) && (
                           <button
                             onClick={() => void handleReorder(order.id)}
                             disabled={reordering === order.id}

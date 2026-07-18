@@ -188,6 +188,9 @@ const TRANSLATIONS: Translations = {
   "checkout.contact_viber": "Contact us on Viber",
   // ── Phase 6 Orders tab strings ────────────────────────────────────────────
   "orders.active_section": "Active Orders",
+  "orders.type_gift_card": "Gift card",
+  "orders.gift_purchased": "Purchased",
+  "orders.gift_payment_pending": "Payment pending",
   "orders.past_section": "Past Orders",
   "orders.empty_title": "No orders yet",
   "orders.empty_body": "Start your first order and it will appear here.",
