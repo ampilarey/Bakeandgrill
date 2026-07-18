@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { DailySpecial } from '../../api/menu';
 import { useLanguage } from '../../context/LanguageContext';
+import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { MenuThumb } from '../menu/MenuThumb';
 
 function showPctUnder(badge: string | null | undefined, pct: number | null | undefined): boolean {
@@ -19,12 +20,15 @@ type Props = {
  */
 export function SpecialsCarousel({ specials, apiOrigin }: Props) {
   const { t } = useLanguage();
+  const { text } = useSiteSettingsContext();
+  const specialsTitle = text('home_specials_title', t('home.specials_title'));
+  const specialsEyebrow = text('home_specials_eyebrow', '');
 
   if (specials.length === 0) return null;
 
   return (
     <section
-      aria-label={t('home.specials_title')}
+      aria-label={specialsTitle}
       style={{
         borderTop: '1px solid var(--color-border)',
         padding: '1.25rem var(--page-gutter)',
@@ -41,16 +45,32 @@ export function SpecialsCarousel({ specials, apiOrigin }: Props) {
             marginBottom: '1rem',
           }}
         >
-          <h2
-            style={{
-              fontSize: '1.25rem',
-              fontWeight: 800,
-              color: 'var(--color-dark)',
-              margin: 0,
-            }}
-          >
-            {t('home.specials_title')}
-          </h2>
+          <div>
+            {specialsEyebrow && (
+              <p
+                style={{
+                  margin: '0 0 0.2rem',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-primary)',
+                }}
+              >
+                {specialsEyebrow}
+              </p>
+            )}
+            <h2
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 800,
+                color: 'var(--color-dark)',
+                margin: 0,
+              }}
+            >
+              {specialsTitle}
+            </h2>
+          </div>
           <Link
             to="/menu"
             style={{

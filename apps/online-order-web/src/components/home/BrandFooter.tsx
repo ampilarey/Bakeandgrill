@@ -7,10 +7,22 @@ type Props = {
   viberLink: string;
   logoSrc?: string;
   siteName?: string;
+  /** CMS footer_text / site_tagline */
+  tagline?: string;
+  chatLabel?: string;
 };
 
-export function BrandFooter({ whatsappLink, viberLink, logoSrc, siteName }: Props) {
+export function BrandFooter({
+  whatsappLink,
+  viberLink,
+  logoSrc,
+  siteName,
+  tagline,
+  chatLabel,
+}: Props) {
   const { t } = useLanguage();
+  const thanks = (tagline ?? '').trim() || t('home.footer_thanks');
+  const chat = (chatLabel ?? '').trim();
 
   return (
     <footer
@@ -45,7 +57,7 @@ export function BrandFooter({ whatsappLink, viberLink, logoSrc, siteName }: Prop
               lineHeight: 1.6,
             }}
           >
-            {t('home.footer_thanks')}
+            {thanks}
           </p>
         </div>
 
@@ -59,6 +71,22 @@ export function BrandFooter({ whatsappLink, viberLink, logoSrc, siteName }: Prop
             flexWrap: 'wrap',
           }}
         >
+          {chat && (
+            <p
+              style={{
+                width: '100%',
+                textAlign: 'center',
+                margin: '0 0 0.25rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.45)',
+              }}
+            >
+              {chat}
+            </p>
+          )}
           <a
             href={whatsappLink}
             target="_blank"

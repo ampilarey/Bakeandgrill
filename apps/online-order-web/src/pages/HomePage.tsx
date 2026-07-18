@@ -26,6 +26,8 @@ import { GreetingHeader } from '../components/home/GreetingHeader';
 import { StatChipsRow } from '../components/home/StatChipsRow';
 import { PromoCarousel } from '../components/home/PromoCarousel';
 import { ModeEntryCards } from '../components/home/ModeEntryCards';
+import { TrustStrip } from '../components/home/TrustStrip';
+import { CategoryShortcuts } from '../components/home/CategoryShortcuts';
 import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
 import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
@@ -72,7 +74,13 @@ export function HomePage() {
     text: string;
   } | null>(null);
 
-  const { settings: s, heroSlides } = useSiteSettingsContext();
+  const {
+    settings: s,
+    heroSlides,
+    trustItems,
+    homepageCategories,
+    text,
+  } = useSiteSettingsContext();
   const { isAuthenticated, authReady, customerName } = useAuth();
   const { t } = useLanguage();
   const { activeOrder } = useActiveOrder();
@@ -248,10 +256,27 @@ export function HomePage() {
       />
 
       {/* ── 4. Promo carousel (16:9) ──────────────────────────────────────── */}
-      <PromoCarousel slides={heroSlides} apiOrigin={API_ORIGIN} />
+      <PromoCarousel
+        slides={heroSlides}
+        apiOrigin={API_ORIGIN}
+        logoSrc={logoSrc}
+        siteName={siteName}
+        fallbackTitle={text('home_hero_fallback_title', '')}
+        fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
+      />
 
       {/* ── 5. Mode entry cards (Delivery / Pickup) ───────────────────────── */}
       <ModeEntryCards />
+
+      {/* ── 5b. Trust strip (CMS) ─────────────────────────────────────────── */}
+      <TrustStrip items={trustItems} />
+
+      {/* ── 5c. Category shortcuts (CMS) ──────────────────────────────────── */}
+      <CategoryShortcuts
+        categories={homepageCategories}
+        eyebrow={text('home_categories_eyebrow', '')}
+        title={text('home_categories_title', '')}
+      />
 
       {/* ── 6. Today's specials ───────────────────────────────────────────── */}
       <SpecialsCarousel specials={specials} apiOrigin={API_ORIGIN} />
@@ -273,7 +298,7 @@ export function HomePage() {
           }}
         >
           <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 0.75rem', color: 'var(--color-dark)' }}>
-            What guests say
+            {text('order_home_reviews_title', text('home_proof_eyebrow', 'What guests say'))}
           </h2>
           <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: 8 }}>
             {reviews.map((r) => (
@@ -511,6 +536,8 @@ export function HomePage() {
         viberLink={viberLink}
         logoSrc={logoSrc}
         siteName={siteName}
+        tagline={text('footer_text', text('site_tagline', ''))}
+        chatLabel={text('home_chat_label', '')}
       />
     </div>
   );

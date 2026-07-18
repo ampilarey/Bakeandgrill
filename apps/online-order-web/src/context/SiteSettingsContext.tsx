@@ -61,6 +61,11 @@ export interface SiteSettings {
   order_checkout_subtitle?: string;
   order_payment_compliance?: string;
   order_auth_privacy_line?: string;
+  order_home_reviews_title?: string;
+  order_mode_delivery_hint?: string;
+  order_mode_pickup_hint?: string;
+  primary_color?: string;
+  delivery_threshold?: string;
   preorder_page_title?: string;
   preorder_page_subtitle?: string;
   footer_text?: string;
@@ -253,6 +258,20 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
         if (import.meta.env.DEV) console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
       });
   }, []);
+
+  // Optional brand accent from CMS (valid hex only).
+  useEffect(() => {
+    const raw = (settings.primary_color ?? '').trim();
+    const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw) ? raw : '';
+    if (!hex) return;
+    const root = document.documentElement;
+    const prev = root.style.getPropertyValue('--color-primary');
+    root.style.setProperty('--color-primary', hex);
+    return () => {
+      if (prev) root.style.setProperty('--color-primary', prev);
+      else root.style.removeProperty('--color-primary');
+    };
+  }, [settings.primary_color]);
 
   const text = useCallback(
     (key: keyof SiteSettings | string, fallback: string) => {

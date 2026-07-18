@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrderMode } from '../../context/OrderModeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 
 type ModeKind = 'delivery' | 'pickup';
 
@@ -101,10 +102,47 @@ function ModeCard({ kind, label, hint, onClick }: CardProps) {
   );
 }
 
+function buildDeliveryHint(
+  text: (key: string, fallback: string) => string,
+  settings: { delivery_time?: string; delivery_eta?: string; delivery_threshold?: string; home_delivery_tagline?: string },
+  i18nFallback: string,
+): string {
+  const custom = text('order_mode_delivery_hint', '');
+  if (custom.trim()) return custom.trim();
+
+  const eta = (settings.delivery_time || settings.delivery_eta || '').trim();
+  const threshold = (settings.delivery_threshold || '').trim();
+  const tagline = (settings.home_delivery_tagline || '').trim();
+
+  if (eta && threshold) return `${eta} · Free above ${threshold}`;
+  if (eta) return `Delivered to your door in ${eta}`;
+  if (tagline) return tagline;
+  return i18nFallback;
+}
+
+function buildPickupHint(
+  text: (key: string, fallback: string) => string,
+  settings: { business_address?: string; business_landmark?: string },
+  i18nFallback: string,
+): string {
+  const custom = text('order_mode_pickup_hint', '');
+  if (custom.trim()) return custom.trim();
+
+  const address = (settings.business_address || '').trim();
+  const landmark = (settings.business_landmark || '').trim();
+  if (address && landmark) return `Pick up at ${address} (${landmark})`;
+  if (address) return `Pick up at ${address}`;
+  return i18nFallback;
+}
+
 export function ModeEntryCards() {
   const { setMode } = useOrderMode();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { settings, text } = useSiteSettingsContext();
+
+  const deliveryHint = buildDeliveryHint(text, settings, t('home.mode_delivery_hint'));
+  const pickupHint = buildPickupHint(text, settings, t('home.mode_pickup_hint'));
 
   const handleMode = (mode: ModeKind) => {
     setMode(mode);
@@ -127,13 +165,13 @@ export function ModeEntryCards() {
         <ModeCard
           kind="delivery"
           label={t('mode.delivery')}
-          hint={t('home.mode_delivery_hint')}
+          hint={deliveryHint}
           onClick={() => handleMode('delivery')}
         />
         <ModeCard
           kind="pickup"
           label={t('mode.pickup')}
-          hint={t('home.mode_pickup_hint')}
+          hint={pickupHint}
           onClick={() => handleMode('pickup')}
         />
       </div>

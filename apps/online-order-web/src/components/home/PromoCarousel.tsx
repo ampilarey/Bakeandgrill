@@ -47,6 +47,11 @@ type Props = {
   slides: HeroSlideRow[];
   apiOrigin: string;
   loading?: boolean;
+  /** CMS empty-hero fallback */
+  fallbackTitle?: string;
+  fallbackSubtitle?: string;
+  logoSrc?: string;
+  siteName?: string;
 };
 
 /**
@@ -57,7 +62,15 @@ type Props = {
  * - Broken image → cream + logo fallback per slide.
  * - Does NOT render a statusSlot (status is in GreetingHeader).
  */
-export function PromoCarousel({ slides, apiOrigin, loading }: Props) {
+export function PromoCarousel({
+  slides,
+  apiOrigin,
+  loading,
+  fallbackTitle,
+  fallbackSubtitle,
+  logoSrc = '/logo.png',
+  siteName = 'Bake & Grill',
+}: Props) {
   const { t } = useLanguage();
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -137,14 +150,26 @@ export function PromoCarousel({ slides, apiOrigin, loading }: Props) {
           gap: '0.5rem',
           borderTop: '1px solid var(--color-border)',
           borderBottom: '1px solid var(--color-border)',
+          padding: '1.25rem',
+          textAlign: 'center',
         }}
         aria-label={t('home.promo_region')}
       >
         <img
-          src="/logo.png"
-          alt="Bake & Grill"
-          style={{ height: 48, objectFit: 'contain', opacity: 0.5 }}
+          src={logoSrc}
+          alt={siteName}
+          style={{ height: 48, objectFit: 'contain', opacity: 0.55 }}
         />
+        {fallbackTitle && (
+          <p style={{ margin: 0, fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-dark)' }}>
+            {fallbackTitle}
+          </p>
+        )}
+        {fallbackSubtitle && (
+          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)', maxWidth: 360, lineHeight: 1.45 }}>
+            {fallbackSubtitle}
+          </p>
+        )}
       </div>
     );
   }

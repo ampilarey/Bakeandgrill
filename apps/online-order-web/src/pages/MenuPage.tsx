@@ -24,6 +24,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useShellNav } from '../context/ShellNavContext';
 import { useToast } from '../context/ToastContext';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderModeToggle } from '../components/OrderModeToggle';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
@@ -128,8 +129,11 @@ export function MenuPage() {
   }, []);
 
   const [deliveryFallback, setDeliveryFallback] = useState(false);
+  const { text } = useSiteSettingsContext();
+  const menuTitle = text('menu_page_title', 'Menu');
+  const menuSubtitle = text('menu_page_subtitle', '');
 
-  usePageTitle('Menu');
+  usePageTitle(menuTitle);
 
   useEffect(() => {
     cartRef.current = cart;
@@ -461,6 +465,26 @@ export function MenuPage() {
 
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>
+      {(menuTitle || menuSubtitle) && (
+        <div style={{ padding: '1rem 0 0.25rem' }}>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: '1.35rem',
+              fontWeight: 800,
+              color: 'var(--color-dark)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {menuTitle}
+          </h1>
+          {menuSubtitle && (
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+              {menuSubtitle}
+            </p>
+          )}
+        </div>
+      )}
       {/* ── Sticky menu controls ─────────────────────────────────── */}
       <div
         style={{
