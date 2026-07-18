@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../api/client';
 import { useLanguage } from '../context/LanguageContext';
@@ -120,6 +120,15 @@ function findMaleIsland(islands: Island[]): IslandInfo {
     : MALE_FALLBACK;
 }
 
+/** Normalize API / localStorage payloads into a plain Island[]. */
+function normalizeIslands(raw: unknown): Island[] {
+  if (Array.isArray(raw)) return raw as Island[];
+  if (raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)) {
+    return (raw as { data: Island[] }).data;
+  }
+  return [];
+}
+
 function computeTick(prayers: PrayerData, tomorrowPrayers?: PrayerData | null): TickInfo {
   const mv = getMVT();
   const nowMin = mv.getUTCHours() * 60 + mv.getUTCMinutes();
@@ -198,6 +207,8 @@ export function PrayerBar() {
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const dropTriggerRef = useRef<HTMLElement | null>(null);
+  const dropPanelRef = useRef<HTMLDivElement | null>(null);
+  const ignoreOutsideClickRef = useRef(false);
 
   useEffect(() => {
     const on = () => setOffline(false);
@@ -337,9 +348,31 @@ export function PrayerBar() {
       if (s) savedIsland = JSON.parse(s);
     } catch { /* ignore */ }
 
+    // Always warm the islands list (needed for Change island), even when a
+    // saved island means we skip the Malé defaulting path below.
+    const warmIslands = () => {
+      try {
+        const c = localStorage.getItem('pt_islands_list');
+        if (c) {
+          const cached = normalizeIslands(JSON.parse(c));
+          if (cached.length) setAllIslands(cached);
+        }
+      } catch { /* ignore */ }
+      fetch(`${API_BASE_URL}/prayer-times/islands`)
+        .then(r => r.json())
+        .then(d => {
+          const islands = normalizeIslands(d?.islands);
+          if (!islands.length) return;
+          setAllIslands(islands);
+          try { localStorage.setItem('pt_islands_list', JSON.stringify(islands)); } catch { /* ignore */ }
+        })
+        .catch(() => { /* ignore */ });
+    };
+
     if (savedIsland) {
       setIsland(savedIsland);
       loadPrayers(savedIsland.id, finishLoad);
+      warmIslands();
       return;
     }
 
@@ -356,7 +389,7 @@ export function PrayerBar() {
       .then(r => r.json())
       .then(d => {
         clearTimeout(fallbackTimer);
-        const islands: Island[] = d.islands || [];
+        const islands = normalizeIslands(d?.islands);
         setAllIslands(islands);
         try { localStorage.setItem('pt_islands_list', JSON.stringify(islands)); } catch { /* ignore */ }
         useIsland(findMaleIsland(islands));
@@ -395,31 +428,57 @@ export function PrayerBar() {
 
   // ── Island dropdown ─────────────────────────────────────────────────────
 
-  const openIslands = useCallback((trigger: HTMLElement) => {
-    if (dropOpen) { setDropOpen(false); return; }
+  const openIslands = useCallback((trigger: HTMLElement, event?: ReactMouseEvent) => {
+    // Match Blade: stop the opening click from hitting the document closer.
+    event?.stopPropagation();
+    event?.preventDefault();
+
+    // Same trigger while open → toggle closed (Blade behaviour).
+    if (dropOpen && dropTriggerRef.current === trigger) {
+      setDropOpen(false);
+      return;
+    }
+
     dropTriggerRef.current = trigger;
     const r = trigger.getBoundingClientRect();
     const pw = 290;
+    const ph = 380;
     let left = r.left;
-    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
-    setDropPos({ top: r.bottom + 6, left });
+    if (left + pw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - pw - 8);
+    // Prefer below the trigger; flip above when near the bottom of the viewport
+    // (Change island sits low in the expanded banner on small phones).
+    const spaceBelow = window.innerHeight - r.bottom - 12;
+    const top = spaceBelow >= 220
+      ? r.bottom + 6
+      : Math.max(8, r.top - ph - 6);
+    setDropPos({ top, left });
     setSearchQuery('');
 
     const openPanel = (islands: Island[]) => {
+      if (!islands.length) return;
       setAllIslands(islands);
+      // Ignore the remainder of this click tick + the deferred outside listener.
+      ignoreOutsideClickRef.current = true;
       setDropOpen(true);
-      setTimeout(() => searchRef.current?.focus(), 30);
+      window.setTimeout(() => {
+        ignoreOutsideClickRef.current = false;
+        searchRef.current?.focus();
+      }, 0);
     };
 
     if (allIslands.length) { openPanel(allIslands); return; }
     try {
       const c = localStorage.getItem('pt_islands_list');
-      if (c) { openPanel(JSON.parse(c)); return; }
+      if (c) {
+        const cached = normalizeIslands(JSON.parse(c));
+        if (cached.length) { openPanel(cached); return; }
+      }
     } catch { /* ignore */ }
     fetch(`${API_BASE_URL}/prayer-times/islands`)
       .then(r => r.json())
       .then(d => {
-        const islands: Island[] = d.islands || [];
+        const islands = normalizeIslands(d?.islands);
+        if (!islands.length) return;
         try { localStorage.setItem('pt_islands_list', JSON.stringify(islands)); } catch { /* ignore */ }
         openPanel(islands);
       })
@@ -429,12 +488,24 @@ export function PrayerBar() {
   // Close dropdown on outside click / Escape
   useEffect(() => {
     if (!dropOpen) return;
-    const close = () => setDropOpen(false);
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      if (ignoreOutsideClickRef.current) return;
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (dropPanelRef.current?.contains(target)) return;
+      if (dropTriggerRef.current?.contains(target)) return;
+      setDropOpen(false);
+    };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDropOpen(false); };
-    document.addEventListener('click', close);
+    // pointerdown + defer: avoids the open-click immediately dismissing the panel
+    // (the bug that made Change island look dead).
+    const attachId = window.setTimeout(() => {
+      document.addEventListener('pointerdown', onPointerDown, true);
+    }, 0);
     document.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener('click', close);
+      window.clearTimeout(attachId);
+      document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKey);
     };
   }, [dropOpen]);
@@ -445,6 +516,7 @@ export function PrayerBar() {
     const q = searchQuery.toLowerCase().trim();
     const groups: Record<string, Island[]> = {};
     const order: string[] = [];
+    if (!Array.isArray(allIslands)) return [];
     allIslands.forEach(isl => {
       const a = isl.atoll_latin || isl.atoll || '–';
       if (!groups[a]) { groups[a] = []; order.push(a); }
@@ -462,9 +534,13 @@ export function PrayerBar() {
 
   const dropdown = dropOpen ? createPortal(
     <div
+      ref={dropPanelRef}
       className="order-hpt-panel"
       style={{ top: dropPos.top, left: dropPos.left }}
+      role="listbox"
+      aria-label={t('prayer.search_island')}
       onClick={e => e.stopPropagation()}
+      onPointerDown={e => e.stopPropagation()}
     >
       <div className="order-hpt-search-row">
         <input
@@ -564,7 +640,7 @@ export function PrayerBar() {
                 <button
                   type="button"
                   className="prayer-banner-island"
-                  onClick={(e) => openIslands(e.currentTarget)}
+                  onClick={(e) => openIslands(e.currentTarget, e)}
                 >
                   {locLabel} ▾
                 </button>
@@ -607,7 +683,7 @@ export function PrayerBar() {
                   <button
                     type="button"
                     className="prayer-banner-action"
-                    onClick={(e) => openIslands(e.currentTarget)}
+                    onClick={(e) => openIslands(e.currentTarget, e)}
                   >
                     {t('prayer.change_island')}
                   </button>
