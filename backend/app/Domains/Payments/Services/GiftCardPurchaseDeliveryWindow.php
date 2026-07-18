@@ -7,6 +7,7 @@ namespace App\Domains\Payments\Services;
 use App\Models\GiftCardPurchase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -49,9 +50,19 @@ final class GiftCardPurchaseDeliveryWindow
         ) {
             $updates['view_token'] = Str::random(48);
         }
-        if ($updates !== []) {
+        if ($updates === []) {
+            return;
+        }
+
+        try {
             $purchase->update($updates);
             $purchase->refresh();
+        } catch (\Throwable $e) {
+            // Missing columns / cache schema drift must not block SMS delivery.
+            Log::warning('GiftCardPurchaseDeliveryWindow::store failed', [
+                'purchase_id' => $purchase->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
