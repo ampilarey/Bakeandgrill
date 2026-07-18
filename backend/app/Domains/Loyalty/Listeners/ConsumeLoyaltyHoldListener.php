@@ -7,7 +7,6 @@ namespace App\Domains\Loyalty\Listeners;
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Models\LoyaltyHold;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,17 +15,12 @@ use Illuminate\Support\Facades\Log;
  * If the hold has expired but the customer paid, we still honor the discount
  * (log a warning, never fail a confirmed payment over a discount).
  *
+ * Synchronous after commit so points_held clears even if the queue worker is down.
  * Idempotent: protected by unique constraint on idempotency_key in loyalty_ledger.
  */
-class ConsumeLoyaltyHoldListener implements ShouldQueue
+class ConsumeLoyaltyHoldListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(private LoyaltyLedgerService $service) {}
 
@@ -50,9 +44,6 @@ class ConsumeLoyaltyHoldListener implements ShouldQueue
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
             ]);
-            // Re-throw so the queue worker retries this job (respects $tries = 3).
-            // Swallowing the exception would mark the job as succeeded and silently
-            // skip the retry — leaving points stuck in held state permanently.
             throw $e;
         }
     }

@@ -6,22 +6,17 @@ namespace App\Domains\Promotions\Listeners;
 
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Models\OrderPromotion;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Releases the draft OrderPromotion when an order is cancelled.
+ *
+ * Synchronous after commit so promo slots free even if the queue worker is down.
  */
-class ReleasePromoReservationListener implements ShouldQueue
+class ReleasePromoReservationListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function handle(OrderCancelled $event): void
     {

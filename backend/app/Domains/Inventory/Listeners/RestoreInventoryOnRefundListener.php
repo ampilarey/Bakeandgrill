@@ -7,7 +7,6 @@ namespace App\Domains\Inventory\Listeners;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Orders\Repositories\OrderRepositoryInterface;
 use App\Services\InventoryDeductionService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,12 +18,15 @@ use Illuminate\Support\Facades\Log;
  * (flour, butter, etc.) stayed permanently deducted — inflating COGS
  * and triggering spurious low-stock alerts.
  *
+ * Synchronous after commit (mirrors DeductInventoryListener) so stock
+ * restores even if the queue worker is down.
+ *
  * Idempotent: InventoryDeductionService::restoreForOrder() guards
  * against double-restore via StockMovement unique idempotency keys
  * and refuses to restore inventory the order never actually deducted
  * (e.g. an online order refunded before payment confirmation).
  */
-class RestoreInventoryOnRefundListener implements ShouldQueue
+class RestoreInventoryOnRefundListener
 {
     public bool $afterCommit = true;
 

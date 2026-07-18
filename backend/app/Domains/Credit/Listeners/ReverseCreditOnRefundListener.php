@@ -9,12 +9,13 @@ use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\User;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
  * Reverse customer credit balance when a house_account order is refunded.
+ *
+ * Synchronous after commit so credit restores even if the queue worker is down.
  */
-class ReverseCreditOnRefundListener implements ShouldQueue
+class ReverseCreditOnRefundListener
 {
     public bool $afterCommit = true;
 

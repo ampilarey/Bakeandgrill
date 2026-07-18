@@ -75,7 +75,8 @@ class Wave13SmsAbTest extends TestCase
     public function test_ab_campaign_dispatch_assigns_variants(): void
     {
         for ($i = 1; $i <= 10; $i++) {
-            Customer::create(['name' => "Cust {$i}", 'phone' => "+960711100{$i}", 'tier' => 'silver']);
+            // Must stay 7 local digits after +960 (strict MaldivesPhone).
+            Customer::create(['name' => "Cust {$i}", 'phone' => sprintf('+9607111%03d', $i), 'tier' => 'silver']);
         }
 
         $campaign = SmsCampaign::create([

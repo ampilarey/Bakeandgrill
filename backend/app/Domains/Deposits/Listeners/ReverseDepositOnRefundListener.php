@@ -9,12 +9,13 @@ use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\User;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
  * Restore customer deposit balance when a wallet-paid order is refunded.
+ *
+ * Synchronous after commit so wallet restores even if the queue worker is down.
  */
-class ReverseDepositOnRefundListener implements ShouldQueue
+class ReverseDepositOnRefundListener
 {
     public bool $afterCommit = true;
 

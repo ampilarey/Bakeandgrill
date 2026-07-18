@@ -132,7 +132,10 @@ class RefundController extends Controller
             // can short-circuit on this status to render the right thing.
             $transitions = app(OrderStatusTransitionService::class);
             if ($isFullRefund) {
-                $transitions->transition($order, 'refunded');
+                // Cancelled tickets stay cancelled — refund row still records the money out.
+                if (!in_array($order->status, ['cancelled', 'refunded'], true)) {
+                    $transitions->transition($order, 'refunded');
+                }
             } elseif ($amountLaar > 0) {
                 // Don't override a more terminal state (cancelled / refunded).
                 if (!in_array($order->status, ['cancelled', 'refunded'], true)) {

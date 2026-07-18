@@ -162,6 +162,34 @@ class GiftCardStockTest extends TestCase
             ->assertJsonPath('available_balance', 20);
     }
 
+    public function test_balance_check_holds_through_kitchen_in_progress(): void
+    {
+        ['card' => $card, 'code' => $code] = $this->makeGiftCard([
+            'initial_balance' => 50,
+            'current_balance' => 50,
+        ]);
+
+        Order::create([
+            'order_number' => 'BG-HELD-KDS',
+            'tracking_token' => 'heldkds',
+            'type' => 'takeaway',
+            'status' => 'in_progress',
+            'subtotal' => 25.00,
+            'subtotal_laar' => 2500,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 25.00,
+            'total_laar' => 2500,
+            'gift_card_id' => $card->id,
+            'gift_card_discount_laar' => 2500,
+        ]);
+
+        $this->postJson('/api/gift-cards/balance', ['code' => $code])
+            ->assertOk()
+            ->assertJsonPath('held_balance', 25)
+            ->assertJsonPath('available_balance', 25);
+    }
+
     public function test_post_balance_check_returns_404_for_cancelled_card(): void
     {
         ['code' => $code] = $this->makeGiftCard([

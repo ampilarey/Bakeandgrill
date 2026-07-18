@@ -12,8 +12,19 @@ use Illuminate\Support\Facades\DB;
 
 final class GiftCardRedemptionService
 {
-    /** Unpaid order statuses that soft-reserve gift card balance. */
-    public const RESERVING_STATUSES = ['pending', 'payment_pending', 'partial', 'held'];
+    /**
+     * Unpaid / unpaid-through-kitchen statuses that soft-reserve gift card balance.
+     * Includes in_progress / ready / preparing so firing to KDS does not free the hold.
+     */
+    public const RESERVING_STATUSES = [
+        'pending',
+        'payment_pending',
+        'partial',
+        'held',
+        'in_progress',
+        'preparing',
+        'ready',
+    ];
 
     /**
      * Laari already claimed by other unpaid orders on this card.

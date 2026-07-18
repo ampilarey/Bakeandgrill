@@ -7,18 +7,16 @@ namespace App\Domains\Loyalty\Listeners;
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\Events\OrderCancelled;
 use App\Models\LoyaltyHold;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-class ReleaseLoyaltyHoldListener implements ShouldQueue
+/**
+ * Releases active loyalty holds when an order is cancelled.
+ *
+ * Synchronous after commit so points_held clears even if the queue worker is down.
+ */
+class ReleaseLoyaltyHoldListener
 {
     public bool $afterCommit = true;
-
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
-    public int $backoff = 5;
 
     public function __construct(private LoyaltyLedgerService $service) {}
 
@@ -42,7 +40,6 @@ class ReleaseLoyaltyHoldListener implements ShouldQueue
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
             ]);
-            // Re-throw so the queue worker retries this job (respects $tries = 3).
             throw $e;
         }
     }
