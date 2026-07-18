@@ -69,6 +69,29 @@ export async function fetchPurchaseRequests(params?: {
   return req(`/purchase-requests${qs ? `?${qs}` : ''}`);
 }
 
+export async function createPurchaseRequest(data: {
+  title?: string;
+  source?: 'pos' | 'kds' | 'admin';
+  priority?: 'low' | 'normal' | 'urgent';
+  needed_by?: string;
+  notes?: string;
+  items: Array<{
+    free_text_name?: string;
+    inventory_item_id?: number;
+    menu_item_id?: number;
+    category?: string;
+    requested_qty: number;
+    requested_unit: string;
+    reason?: string;
+    notes?: string;
+  }>;
+}): Promise<{ request: PurchaseRequest }> {
+  return req('/purchase-requests', {
+    method: 'POST',
+    body: JSON.stringify({ source: 'admin', ...data }),
+  });
+}
+
 export async function getPurchaseRequest(id: number): Promise<{ request: PurchaseRequest }> {
   return req(`/purchase-requests/${id}`);
 }

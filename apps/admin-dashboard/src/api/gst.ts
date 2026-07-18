@@ -86,3 +86,41 @@ export async function downloadGstInputXlsx(period: string): Promise<void> {
 export async function downloadGstLedgerCsv(period: string): Promise<void> {
   return downloadGstExport('/reports/finance/gst/export/ledger.csv', period, `gst-ledger-${period}.csv`);
 }
+
+export type GstLedgerEntry = {
+  id: number;
+  document_no: string;
+  document_date: string;
+  source_type: string;
+  direction: string;
+  tax_code: string;
+  taxable_value_laar: number;
+  tax_laar: number;
+  total_laar: number;
+  is_tax_invoice?: boolean;
+  is_claimable?: boolean;
+};
+
+export async function getGstLedger(period: string, page = 1): Promise<{
+  period: string;
+  data: GstLedgerEntry[];
+  meta: { current_page: number; last_page: number; total: number };
+}> {
+  return req(`/reports/finance/gst/ledger?period=${encodeURIComponent(period)}&page=${page}`);
+}
+
+export async function postGstManualAdjustment(data: {
+  period_key: string;
+  document_no: string;
+  document_date: string;
+  tax_code: string;
+  taxable_value_laar: number;
+  tax_laar: number;
+  total_laar: number;
+  reason: string;
+}): Promise<{ message: string; entry: GstLedgerEntry }> {
+  return req('/reports/finance/gst/manual-adjustment', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

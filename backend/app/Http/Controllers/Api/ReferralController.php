@@ -159,17 +159,35 @@ class ReferralController extends Controller
             ->paginate(20);
 
         return response()->json([
-            'data' => collect($codes->items())->map(fn ($c) => [
-                'id' => $c->id,
-                'code' => $c->code,
-                'customer' => $c->customer ? ['id' => $c->customer->id, 'name' => $c->customer->name] : null,
-                'uses_count' => $c->uses_count,
-                'max_uses' => $c->max_uses,
-                'referrer_reward_mvr' => (float) $c->referrer_reward_mvr,
-                'referee_discount_mvr' => (float) $c->referee_discount_mvr,
-                'is_active' => $c->is_active,
-            ]),
+            'data' => collect($codes->items())->map(fn ($c) => $this->formatCode($c)),
             'meta' => ['current_page' => $codes->currentPage(), 'last_page' => $codes->lastPage(), 'total' => $codes->total()],
         ]);
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        $code = ReferralCode::with('customer:id,name,phone')->findOrFail($id);
+        $code->update(['is_active' => $validated['is_active']]);
+
+        return response()->json(['code' => $this->formatCode($code->fresh(['customer:id,name,phone']))]);
+    }
+
+    /** @return array<string, mixed> */
+    private function formatCode(ReferralCode $c): array
+    {
+        return [
+            'id' => $c->id,
+            'code' => $c->code,
+            'customer' => $c->customer ? ['id' => $c->customer->id, 'name' => $c->customer->name] : null,
+            'uses_count' => $c->uses_count,
+            'max_uses' => $c->max_uses,
+            'referrer_reward_mvr' => (float) $c->referrer_reward_mvr,
+            'referee_discount_mvr' => (float) $c->referee_discount_mvr,
+            'is_active' => (bool) $c->is_active,
+        ];
     }
 }

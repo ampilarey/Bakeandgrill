@@ -30,8 +30,8 @@ apps/admin-dashboard/src/
 ```
 
 Backend API routes:
-- `backend/routes/api.php`
-- `backend/routes/api_finance.php`
+- `backend/routes/api.php` — bootstraps domain route files
+- `backend/routes/domains/*.php` — feature routes (orders, finance, marketing, inventory, kitchen, …)
 
 ## Resolved audit items (do not reopen)
 
@@ -39,14 +39,16 @@ Backend API routes:
 |---|---|
 | Critical bugs 1–7 | Guarded P&L %, Settings hub fallback, webhook secret modal+clipboard, KDS Ready column, Unicode SMS segments, Reports filter deps, Invoices `"all"` filter |
 | Medium bugs 8–15 | Promo %, Loyalty/Expenses NaN checks, Orders interval via ref, Purchase URLSearchParams, Menu images live, KDS rgba urgency, P&L uses selected `to` date |
-| Hidden nav | Wired in `navConfig.ts` (SMS, Loyalty, Analytics, P&L, Suppliers, Webhooks; Checklist in DEV only) |
+| Hidden nav | Wired in `navConfig.ts` (SMS, Loyalty, Analytics, P&L, Suppliers, Webhooks; Checklist in System) |
 | High/medium pages | Gift Cards, Reviews, Specials, Refunds, Waste, Inventory, Schedules tab, Tables, Shifts, Time Clock, Devices, Referrals, Photos tab |
 | Low pages | Xero, Print Jobs, SMS Promotions tab |
 | Mobile | Breakpoints in `index.css`; drawers/grids/touch targets; z-index scale (`--z-overlay` 40, `--z-modal` 50) |
+| Manager workflows | Orders hold/void/pay-link; Kitchen receive/submit; PR create/merge; GST ledger+adjustment; corporate inquiry status; referral activate; SMS blast requires estimate; photo reorder |
 
 ## Remaining polish (optional)
 
 - Prefer `data-responsive-grid` / `form-grid-2` / `form-grid-3` on new multi-column form layouts
+- Prefer CSS vars (`var(--z-modal)`) over literal `zIndex: 50` in new overlays
 - SharedUI `Input`/`Select` use 44px height; keep new controls at `min-height: 44px`
 - New features: extend modular `src/api/*`, register route in `App.tsx`, add nav in `navConfig.ts`
 

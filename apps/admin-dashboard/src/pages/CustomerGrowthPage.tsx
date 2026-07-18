@@ -4,7 +4,7 @@ import {
   fetchCustomerGrowthMetrics, fetchCustomerSegments, fetchCustomerSegment,
   fetchCustomerDataQuality,
   fetchMarketingAutomation, updateMarketingAutomation,
-  fetchCorporateInquiries, fetchItemPairs,
+  fetchCorporateInquiries, updateCorporateInquiryStatus, fetchItemPairs,
   type CustomerGrowthMetrics, type CustomerSegmentMeta, type CustomerSegmentRow,
   type CustomerDataQualityReport, type MarketingAutomationSettings,
   type CorporateInquiry, type ItemPairRow,
@@ -358,7 +358,24 @@ export function CustomerGrowthPage() {
                     <td style={TD}>{row.company ?? '—'}</td>
                     <td style={TD}>{row.headcount ?? '—'}</td>
                     <td style={{ ...TD, maxWidth: 220, fontSize: 12 }}>{row.notes ?? '—'}</td>
-                    <td style={TD}>{row.status}</td>
+                    <td style={TD}>
+                      <select
+                        value={row.status}
+                        onChange={(e) => {
+                          const status = e.target.value as 'new' | 'contacted' | 'closed';
+                          void updateCorporateInquiryStatus(row.id, status)
+                            .then(() => {
+                              setCorpInquiries((list) => list.map((r) => (r.id === row.id ? { ...r, status } : r)));
+                            })
+                            .catch((err) => setError((err as Error).message));
+                        }}
+                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E0D8', fontSize: 12 }}
+                      >
+                        <option value="new">new</option>
+                        <option value="contacted">contacted</option>
+                        <option value="closed">closed</option>
+                      </select>
+                    </td>
                     <td style={{ ...TD, color: '#9C8E7E' }}>{new Date(row.created_at).toLocaleString()}</td>
                   </tr>
                 ))}

@@ -116,6 +116,22 @@ export async function sendOrderBill(
   });
 }
 
+export async function sendPayLink(
+  id: number,
+): Promise<{ message: string; amount: number; sent_to: string }> {
+  return req(`/orders/${id}/send-pay-link`, { method: 'POST' });
+}
+
+export async function cancelOrder(
+  id: number,
+  reason: string,
+): Promise<{ order: Order; unchanged?: boolean }> {
+  return req(`/orders/${id}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
 // ── KDS ──────────────────────────────────────────────────────────────────────
 
 export type KdsTicket = {

@@ -19,6 +19,9 @@ import {
   fetchKitchenWasteReport,
   fetchKitchenStaffOutputReport,
   fetchKitchenPosReceivingReport,
+  receiveKitchenBatchAll,
+  submitKitchenProductionBatch,
+  cancelKitchenProductionBatch,
   type KitchenHandoverSettings,
   type KitchenProductionBatch,
   type KitchenVariance,
@@ -41,9 +44,12 @@ export default function KitchenProductionPage() {
   const { can } = useCurrentUserPermissions();
   const canManage = can('kitchen.production.manage');
   const canReports = can('kitchen.production.reports') || can('kitchen.production.view_all');
+  const canReceive = can('kitchen.receiving.receive');
+  const canSubmit = can('kitchen.production.submit');
 
   const [tab, setTab] = useState<TabId>('live');
   const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
   const [err, setErr] = useState('');
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [handoverRows, setHandoverRows] = useState<Array<Record<string, unknown>>>([]);
@@ -122,6 +128,56 @@ export default function KitchenProductionPage() {
     }
   };
 
+  const refreshReceiving = async () => {
+    const [p, r] = await Promise.all([
+      fetchKitchenReceivingPending(),
+      canReports ? fetchKitchenPosReceivingReport() : Promise.resolve({ data: [] }),
+    ]);
+    setPending(p.data ?? []);
+    setReceivingRows(r.data ?? []);
+  };
+
+  const handleReceiveAll = async (batchId: number) => {
+    setBusyId(batchId);
+    setErr('');
+    try {
+      await receiveKitchenBatchAll(batchId, { receive_location: 'pos_counter' });
+      await refreshReceiving();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleSubmitBatch = async (batchId: number) => {
+    setBusyId(batchId);
+    setErr('');
+    try {
+      await submitKitchenProductionBatch(batchId);
+      const res = await fetchKitchenProductionBatches();
+      setBatches(res.data ?? []);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCancelBatch = async (batchId: number) => {
+    setBusyId(batchId);
+    setErr('');
+    try {
+      await cancelKitchenProductionBatch(batchId);
+      const res = await fetchKitchenProductionBatches();
+      setBatches(res.data ?? []);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div>
       <PageHeader title="Kitchen Handover" subtitle="Production batches, POS receiving, and variance review" />
@@ -182,11 +238,25 @@ export default function KitchenProductionPage() {
       {!loading && tab === 'batches' && (
         <Card style={{ marginTop: 16 }}>
           {batches.length === 0 ? <p>No batches.</p> : batches.map((b) => (
-            <div key={b.id} style={{ padding: '10px 0', borderBottom: '1px solid #EDE4D4' }}>
-              <strong>{b.batch_no}</strong> · {b.production_type} · {b.status}
-              {b.order?.order_number && b.order?.id ? (
-                <> · <Link to={`/orders?order=${b.order.id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>Order {b.order.order_number}</Link></>
-              ) : null}
+            <div key={b.id} style={{ padding: '10px 0', borderBottom: '1px solid #EDE4D4', display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div>
+                <strong>{b.batch_no}</strong> · {b.production_type} · {b.status}
+                {b.order?.order_number && b.order?.id ? (
+                  <> · <Link to={`/orders?order=${b.order.id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>Order {b.order.order_number}</Link></>
+                ) : null}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {canSubmit && b.status === 'draft' && (
+                  <Button size="sm" disabled={busyId === b.id} onClick={() => void handleSubmitBatch(b.id)}>
+                    {busyId === b.id ? '…' : 'Submit'}
+                  </Button>
+                )}
+                {canManage && !['cancelled', 'received'].includes(b.status) && (
+                  <Button size="sm" variant="secondary" disabled={busyId === b.id} onClick={() => void handleCancelBatch(b.id)}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </Card>
@@ -196,8 +266,21 @@ export default function KitchenProductionPage() {
         <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
           <Card>
             <h3 style={{ marginTop: 0 }}>Pending receive ({pending.length})</h3>
-            {pending.map((b) => (
-              <div key={b.id} style={{ marginBottom: 8 }}>{b.batch_no} — {b.status}</div>
+            {pending.length === 0 ? <p style={{ color: '#8B7355' }}>Nothing waiting for POS receive.</p> : pending.map((b) => (
+              <div key={b.id} style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <strong>{b.batch_no}</strong> — {b.status}
+                  {b.order?.order_number ? ` · Order ${b.order.order_number}` : ''}
+                  <div style={{ fontSize: 12, color: '#8B7355' }}>
+                    {(b.items ?? []).map((i) => `${i.name} × ${i.expected_receive_qty}`).join(' · ') || 'No line items'}
+                  </div>
+                </div>
+                {canReceive && (
+                  <Button size="sm" disabled={busyId === b.id} onClick={() => void handleReceiveAll(b.id)}>
+                    {busyId === b.id ? '…' : 'Receive all'}
+                  </Button>
+                )}
+              </div>
             ))}
           </Card>
           {canReports && (

@@ -180,8 +180,8 @@ export function PromotionsTab() {
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <Btn onClick={handleSend} disabled={sending || !form.message.trim()}>
-              {sending ? 'Sending…' : '📤 Send Blast'}
+            <Btn onClick={handleSend} disabled={sending || !form.message.trim() || !preview}>
+              {sending ? 'Sending…' : preview ? '📤 Send Blast' : 'Estimate first'}
             </Btn>
             <Btn variant="secondary" onClick={() => { setShowForm(false); setPreview(null); }}>Cancel</Btn>
           </div>

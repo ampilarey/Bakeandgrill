@@ -67,11 +67,10 @@ Owner bypasses ALL permission checks automatically.
 `Settings → Roles & Permissions` — per-user permission overrides via `PUT /api/users/{id}/permissions`.
 Frontend uses `usePermissions()` hook → calls `GET /api/auth/me` which includes `permissions[]`.
 
-### Planned (not yet implemented)
-- Migrate remaining `role:` middleware in `api.php` / `api_finance.php` to `permission:` slugs
-- Add customer-token blocking inside `RequirePermission::handle()` (currently only in `RequireRole`)
-- Replace `RoleGuard` with `PermissionGuard` in `App.tsx`
-- Filter sidebar nav by `can(slug)` in `Layout.tsx`
+### Permissions (current)
+- Routes use `permission:` slugs (not `role:` middleware on active routes)
+- `RequirePermission` blocks Customer tokens
+- Admin `App.tsx` uses `PermissionGuard`; sidebar filtered via `canNavItem` in `Layout.tsx` / `navConfig.ts`
 
 ---
 
@@ -86,8 +85,8 @@ Route::prefix('auth/customer') // OTP
 
 // Staff-authenticated block
 Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
-    // All admin routes (Orders, KDS, Inventory, Shifts, Reports, etc.)
-    require __DIR__ . '/api_finance.php'; // invoices, expenses, P&L, forecasts, suppliers
+    // Domain route files under routes/domains/*.php
+    // (orders, finance, marketing, inventory, kitchen, admin_customers, …)
 });
 
 // Customer-authenticated block
@@ -107,7 +106,7 @@ Route::get('/site-settings') + Route::put() + Route::post('/upload') // owner on
 
 **Location:** `App\Domains\Notifications\Services\SmsService`
 
-**Carrier:** Dhiraagu (Maldivian — config `services.dhiraagu` → username, password, api_url, timeout)
+**Carrier:** Dhiraagu via `SmsProviderInterface` → `DhiraaguSmsProvider` (bound in `AppServiceProvider`)
 
 **Key method:** `send(SmsMessage $dto): SmsLog`
 
@@ -120,12 +119,6 @@ Route::get('/site-settings') + Route::put() + Route::post('/upload') // owner on
 **DTO:** `App\Domains\Notifications\DTOs\SmsMessage` — fields: `to`, `message`, `type`, `customerId`, `campaignId`, `referenceType`, `referenceId`, `idempotencyKey`
 
 **Consumers:** `CustomerPortalController`, `ReceiptPageController`, `SmsPromotionController`
-
-**Planned (not yet implemented):**
-- Extract `SmsProviderInterface` contract
-- Create `DhiraaguSmsProvider` implementing it
-- Bind in `AppServiceProvider::register()`
-- Inject via DI instead of direct HTTP calls in `SmsService`
 
 ---
 
@@ -161,17 +154,17 @@ Route::get('/site-settings') + Route::put() + Route::post('/upload') // owner on
 
 ## Admin Dashboard (React)
 
-**Entry:** `App.tsx` → `Routes` → 22 page components in `pages/`
+**Entry:** `App.tsx` → `Routes` → page components in `pages/` (40+)
 
-**Auth flow:** `getMe()` on mount → stores `StaffUser` in state → `AuthGuard` / `RoleGuard` wraps protected routes
+**Auth flow:** `getMe()` on mount → stores `StaffUser` in state → `AuthGuard` / `PermissionGuard` wraps protected routes
 
-**API client:** `api.ts` uses `createApiClient` from `@shared/api` — reads token from `localStorage('admin_token')`, sets `Authorization: Bearer` header
+**API client:** modular `src/api/*` (barrel `api/index.ts`) via `createApiClient` from `@shared/api` — token in `localStorage('admin_token')`
 
-**State:** React `useState` + `useEffect` only. No Redux/Zustand.
+**State:** React `useState` + `useEffect` (and React Query where already used). No Redux/Zustand.
 
-**Styling:** Inline JS objects everywhere. No CSS modules. Tailwind v4 is imported but avoided for component styles due to arbitrary-value rendering issues in v4.
+**Styling:** Inline JS style objects by default; global responsive helpers in `index.css`. Tailwind v4 used sparingly (e.g. Settings).
 
-**UI components:** `components/ui/` — Button, Card, Modal, Badge, Input, Tabs, Toast, Toggle, Spinner, EmptyState, Pagination. Shared layout primitives in `SharedUI.tsx`.
+**UI components:** `components/ui/` — Button, Card, Modal, Badge, Input, Tabs, Toast, Toggle, Spinner, EmptyState, Pagination. Shared layout primitives in `SharedUI.tsx`. Nav from `navConfig.ts`.
 
 **Build output:** `apps/admin-dashboard/dist/` copied to `backend/public/admin/` before every commit.
 

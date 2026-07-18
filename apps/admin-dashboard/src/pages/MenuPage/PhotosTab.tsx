@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Star, Trash2, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, type ItemPhoto } from '../../api';
 
 export function PhotosTab({ itemId }: { itemId: number }) {
@@ -41,6 +41,28 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     } catch (e) { setError((e as Error).message); }
   };
 
+  const movePhoto = async (photoId: number, direction: -1 | 1) => {
+    const sorted = [...photos].sort((a, b) => a.sort_order - b.sort_order);
+    const idx = sorted.findIndex((p) => p.id === photoId);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
+    const a = sorted[idx];
+    const b = sorted[swapIdx];
+    const aOrder = a.sort_order;
+    const bOrder = b.sort_order;
+    try {
+      await Promise.all([
+        updateItemPhoto(itemId, a.id, { sort_order: bOrder }),
+        updateItemPhoto(itemId, b.id, { sort_order: aOrder }),
+      ]);
+      setPhotos((list) => list.map((ph) => {
+        if (ph.id === a.id) return { ...ph, sort_order: bOrder };
+        if (ph.id === b.id) return { ...ph, sort_order: aOrder };
+        return ph;
+      }));
+    } catch (e) { setError((e as Error).message); }
+  };
+
   if (loading) return <div style={{ padding: 24, textAlign: 'center', color: '#9C8E7E', fontSize: 14 }}>Loading photos…</div>;
 
   return (
@@ -79,7 +101,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
-          {photos.map((ph) => (
+          {[...photos].sort((a, b) => a.sort_order - b.sort_order).map((ph, index, sorted) => (
             <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid #D4813A' : '2px solid #E8E0D8' }}>
               <img
                 src={ph.url}
@@ -93,6 +115,24 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                 </div>
               )}
               <div style={{ display: 'flex', gap: 4, padding: '6px 6px 6px' }}>
+                <button
+                  type="button"
+                  title="Move earlier"
+                  disabled={index === 0}
+                  onClick={() => void movePhoto(ph.id, -1)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 6, cursor: index === 0 ? 'not-allowed' : 'pointer', opacity: index === 0 ? 0.4 : 1 }}
+                >
+                  <ChevronLeft size={13} />
+                </button>
+                <button
+                  type="button"
+                  title="Move later"
+                  disabled={index === sorted.length - 1}
+                  onClick={() => void movePhoto(ph.id, 1)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 6, cursor: index === sorted.length - 1 ? 'not-allowed' : 'pointer', opacity: index === sorted.length - 1 ? 0.4 : 1 }}
+                >
+                  <ChevronRight size={13} />
+                </button>
                 {!ph.is_primary && (
                   <button
                     type="button"

@@ -14,9 +14,11 @@ import {
   cancelPurchaseRequest,
   convertPurchaseRequestToExpense,
   convertPurchaseRequestToPurchase,
+  createPurchaseRequest,
   fetchPurchaseRequests,
   getPurchaseRequest,
   laarToMvr,
+  mergePurchaseRequests,
   rejectPurchaseRequest,
   updatePurchaseRequest,
   verifyAllPurchaseRequestItems,
@@ -71,6 +73,13 @@ export default function PurchaseRequestsPage() {
   const [assignTo, setAssignTo] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [showReject, setShowReject] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createTitle, setCreateTitle] = useState('');
+  const [createName, setCreateName] = useState('');
+  const [createQty, setCreateQty] = useState('1');
+  const [createUnit, setCreateUnit] = useState('pcs');
+  const [createPriority, setCreatePriority] = useState<'low' | 'normal' | 'urgent'>('normal');
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
@@ -128,16 +137,78 @@ export default function PurchaseRequestsPage() {
     }
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleCreate = async () => {
+    const qty = parseFloat(createQty);
+    if (!createName.trim() || isNaN(qty) || qty <= 0) {
+      toast.error('Item name and a valid quantity are required.');
+      return;
+    }
+    await runAction(async () => {
+      await createPurchaseRequest({
+        title: createTitle.trim() || undefined,
+        priority: createPriority,
+        items: [{
+          free_text_name: createName.trim(),
+          requested_qty: qty,
+          requested_unit: createUnit.trim() || 'pcs',
+          reason: 'other',
+        }],
+      });
+      toast.success('Purchase request created.');
+      setShowCreate(false);
+      setCreateTitle('');
+      setCreateName('');
+      setCreateQty('1');
+      setTab('pending');
+      setPage(1);
+      await load();
+    });
+  };
+
+  const handleMerge = async () => {
+    if (selectedIds.length < 2) {
+      toast.error('Select at least two requests to merge.');
+      return;
+    }
+    const [targetId, ...sourceIds] = selectedIds;
+    ask({
+      title: 'Merge purchase requests',
+      message: `Merge ${sourceIds.length} request(s) into #${targetId}? Source requests will be closed.`,
+      onConfirm: () => void runAction(async () => {
+        await mergePurchaseRequests(targetId, sourceIds);
+        toast.success('Requests merged.');
+        setSelectedIds([]);
+        await load();
+      }),
+    });
+  };
+
   return (
     <div>
-      <PageHeader title="Purchase Requests" />
+      <PageHeader
+        title="Purchase Requests"
+        action={(
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {can('purchase_requests.create') && (
+              <Btn onClick={() => setShowCreate(true)}>New request</Btn>
+            )}
+            {can('purchase_requests.merge') && tab === 'pending' && selectedIds.length >= 2 && (
+              <Btn variant="secondary" onClick={handleMerge}>Merge selected ({selectedIds.length})</Btn>
+            )}
+          </div>
+        )}
+      />
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
         {TABS.map((t) => (
           <Btn
             key={t.id}
             variant={tab === t.id ? 'primary' : 'secondary'}
-            onClick={() => { setTab(t.id); setPage(1); }}
+            onClick={() => { setTab(t.id); setPage(1); setSelectedIds([]); }}
           >
             {t.label}
           </Btn>
@@ -155,14 +226,25 @@ export default function PurchaseRequestsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
+                {can('purchase_requests.merge') && tab === 'pending' && <th style={TH} />}
                 {['Request', 'Requester', 'Priority', 'Status', 'Items', 'Needed by', ''].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
+                  <th key={h || 'actions'} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
+                  {can('purchase_requests.merge') && tab === 'pending' && (
+                    <td style={TD}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(r.id)}
+                        onChange={() => toggleSelect(r.id)}
+                        aria-label={`Select ${r.request_no}`}
+                      />
+                    </td>
+                  )}
                   <td style={TD}>
                     <div style={{ fontWeight: 700 }}>{r.request_no}</div>
                     {r.title && <div style={{ fontSize: 12, color: '#9C8E7E' }}>{r.title}</div>}
@@ -450,6 +532,37 @@ export default function PurchaseRequestsPage() {
             >
               Reject
             </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {showCreate && (
+        <Modal title="New purchase request" onClose={() => setShowCreate(false)} maxWidth={480}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Title (optional)</label>
+          <input value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }} />
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Item name</label>
+          <input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Cooking oil 5L" style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Qty</label>
+              <input value={createQty} onChange={(e) => setCreateQty(e.target.value)} type="number" min="0.001" step="any" style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Unit</label>
+              <input value={createUnit} onChange={(e) => setCreateUnit(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Priority</label>
+              <select value={createPriority} onChange={(e) => setCreatePriority(e.target.value as 'low' | 'normal' | 'urgent')} style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8' }}>
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Btn>
+            <Btn disabled={actionBusy} onClick={() => void handleCreate()}>{actionBusy ? '…' : 'Create'}</Btn>
           </ModalActions>
         </Modal>
       )}

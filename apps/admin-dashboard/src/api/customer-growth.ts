@@ -184,3 +184,13 @@ export async function fetchCorporateInquiries(params?: { page?: number }): Promi
   const suffix = qs.toString() ? `?${qs}` : '';
   return req(`/admin/customers/corporate-inquiries${suffix}`);
 }
+
+export async function updateCorporateInquiryStatus(
+  id: number,
+  status: 'new' | 'contacted' | 'closed',
+): Promise<{ inquiry: CorporateInquiry }> {
+  return req(`/admin/customers/corporate-inquiries/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}

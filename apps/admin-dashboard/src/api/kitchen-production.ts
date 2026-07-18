@@ -113,3 +113,21 @@ export async function fetchKitchenStaffOutputReport(): Promise<{ data: Array<{ n
 export async function fetchKitchenPosReceivingReport(): Promise<{ data: Array<Record<string, unknown>> }> {
   return req('/kitchen-reports/pos-receiving');
 }
+
+export async function receiveKitchenBatchAll(
+  productionBatchId: number,
+  data?: { receive_location?: string; notes?: string },
+): Promise<{ batch: KitchenProductionBatch }> {
+  return req(`/kitchen-receiving/${productionBatchId}/receive-all`, {
+    method: 'POST',
+    body: JSON.stringify(data ?? {}),
+  });
+}
+
+export async function submitKitchenProductionBatch(id: number): Promise<{ batch: KitchenProductionBatch }> {
+  return req(`/kitchen-production/${id}/submit`, { method: 'POST' });
+}
+
+export async function cancelKitchenProductionBatch(id: number): Promise<{ batch: KitchenProductionBatch }> {
+  return req(`/kitchen-production/${id}/cancel`, { method: 'POST' });
+}

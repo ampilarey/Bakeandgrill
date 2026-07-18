@@ -17,6 +17,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
     Route::get('/segments/{segment}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'segmentCustomers']);
     Route::get('/data-quality', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'dataQuality']);
     Route::get('/corporate-inquiries', [App\Http\Controllers\Api\CorporateInquiryController::class, 'adminIndex']);
+    Route::patch('/corporate-inquiries/{id}', [App\Http\Controllers\Api\CorporateInquiryController::class, 'updateStatus']);
 
     Route::get('/', [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
     Route::get('/{id}/growth-summary', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'growthSummary']);

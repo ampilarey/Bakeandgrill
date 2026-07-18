@@ -509,6 +509,16 @@ export async function fetchAdminReferrals(params?: {
   return req(`/admin/referrals${qs.toString() ? '?' + qs : ''}`);
 }
 
+export async function setReferralCodeActive(
+  id: number,
+  isActive: boolean,
+): Promise<{ code: ReferralCode }> {
+  return req(`/admin/referrals/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_active: isActive }),
+  });
+}
+
 export async function validateReferralCode(
   code: string,
 ): Promise<{ valid: boolean; referee_discount_mvr?: number; message?: string }> {

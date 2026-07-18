@@ -3,7 +3,7 @@ import { MessageSquare } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useSse } from '../hooks/useSse';
 import {
-  fetchOrders, fetchOrder, resumeOrder, sendOrderBill,
+  fetchOrders, fetchOrder, resumeOrder, holdOrder, sendOrderBill, sendPayLink, cancelOrder,
   addOrderPayments, issueRefund,
   getReceiptLinkForOrder, sendReceiptForOrder,
   createInvoiceFromOrder, sendInvoiceToCustomer,
@@ -96,11 +96,15 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const [refundError, setRefundError] = useState('');
   const [billPhoneOverride, setBillPhoneOverride] = useState('');
   const [showBillPhone, setShowBillPhone] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const { state: refundDlg, ask: askRefundConfirm, close: closeRefundDlg } = useConfirmDialog();
   const { can } = useCurrentUserPermissions();
   const canManage = can('orders.manage');
   const canHoldResume = can('pos.hold_resume');
   const canSendBill = can('orders.send_sms_bill');
+  const canSendPayLink = can('orders.send_payment_link');
+  const canVoid = can('orders.void');
   const canRecordPayment = can('pos.ring_sales');
   const canReceipts = can('orders.receipts');
   const canInvoice = can('finance.invoices');
@@ -317,11 +321,36 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             </div>
 
             {/* Action buttons */}
-            {(canManage || canHoldResume || canSendBill || canRecordPayment || canRefund) && (
+            {(canManage || canHoldResume || canSendBill || canSendPayLink || canRecordPayment || canRefund || canVoid) && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
               {canHoldResume && order.status === 'held' && (
                 <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
                   {acting === 'resume' ? '…' : '▶ Resume Order'}
+                </Btn>
+              )}
+              {canHoldResume && ['pending', 'payment_pending', 'in_progress', 'preparing', 'ready'].includes(order.status) && (
+                <Btn small variant="secondary" onClick={() => doAction('hold', () => holdOrder(order.id), 'Order held')}>
+                  {acting === 'hold' ? '…' : '⏸ Hold'}
+                </Btn>
+              )}
+              {canSendPayLink
+                && !['cancelled', 'refunded', 'completed', 'paid'].includes(order.status)
+                && (order.payment_status === 'unpaid' || order.payment_status === 'partial' || !order.paid_at)
+                && !!(order.customer?.phone ?? order.customer_phone) && (
+                <Btn
+                  small
+                  variant="secondary"
+                  onClick={() => doAction('paylink', async () => {
+                    const res = await sendPayLink(order.id);
+                    showToast(`Pay link sent to ${res.sent_to} for MVR ${Number(res.amount).toFixed(2)}.`);
+                  }, 'Pay link')}
+                >
+                  {acting === 'paylink' ? '…' : '🔗 Send Pay Link'}
+                </Btn>
+              )}
+              {canVoid && !['cancelled', 'refunded', 'completed', 'paid', 'partially_refunded'].includes(order.status) && (
+                <Btn small variant="danger" onClick={() => { setShowCancel(true); setCancelReason(''); setActionErr(''); }}>
+                  Void / Cancel
                 </Btn>
               )}
               {canSendBill && SEND_BILL_TYPES.has(order.type) && SEND_BILL_STATUSES.has(order.status) && (
@@ -397,6 +426,39 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 </Btn>
               )}
             </div>
+            )}
+
+            {showCancel && (
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: 12, marginBottom: 16 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#991B1B' }}>Void / cancel this order</p>
+                <input
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Reason (required)"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #FECACA', marginBottom: 8, boxSizing: 'border-box' }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn
+                    small
+                    variant="danger"
+                    disabled={acting === 'cancel'}
+                    onClick={() => {
+                      const reason = cancelReason.trim();
+                      if (!reason) {
+                        setActionErr('A cancel reason is required.');
+                        return;
+                      }
+                      void doAction('cancel', () => cancelOrder(order.id, reason), 'Order cancelled').then(() => {
+                        setShowCancel(false);
+                        setCancelReason('');
+                      });
+                    }}
+                  >
+                    {acting === 'cancel' ? '…' : 'Confirm cancel'}
+                  </Btn>
+                  <Btn small variant="secondary" onClick={() => setShowCancel(false)}>Back</Btn>
+                </div>
+              </div>
             )}
 
             {phone && order.status !== 'cancelled' && (canReceipts || canInvoice) && (

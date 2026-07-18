@@ -9,13 +9,15 @@ import {
   getGstSettings, updateGstSettings, getGstSummary, getGstReconciliation,
   getGstOutputStatement, getGstInputStatement, lockGstPeriod,
   downloadGstSummaryCsv, downloadGstOutputXlsx, downloadGstInputXlsx, downloadGstLedgerCsv,
-  type GstSettings, type GstSummary,
+  getGstLedger, postGstManualAdjustment,
+  type GstSettings, type GstSummary, type GstLedgerEntry,
 } from '../api/gst';
 import { getInvoices, type Invoice } from '../api/finance';
 import { today } from '../utils/dateHelpers';
 
 const mvr = (laar: number) => `MVR ${(laar / 100).toFixed(2)}`;
 const mvrFromDecimal = (amount: number) => `MVR ${Number(amount).toFixed(2)}`;
+const mvrToLaar = (v: string) => Math.round(parseFloat(v || '0') * 100);
 
 function periodRange(period: string): { from: string; to: string } {
   const [y, m] = period.split('-').map(Number);
@@ -38,6 +40,15 @@ export default function GstPage() {
   const [warnings, setWarnings] = useState<GstSummary['warnings']>([]);
   const [taxInvoices, setTaxInvoices] = useState<Invoice[]>([]);
   const [creditNotes, setCreditNotes] = useState<Invoice[]>([]);
+  const [ledger, setLedger] = useState<GstLedgerEntry[]>([]);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerMeta, setLedgerMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [adjDocNo, setAdjDocNo] = useState('');
+  const [adjDate, setAdjDate] = useState(today());
+  const [adjTaxable, setAdjTaxable] = useState('');
+  const [adjTax, setAdjTax] = useState('');
+  const [adjReason, setAdjReason] = useState('');
+  const [adjBusy, setAdjBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -72,7 +83,13 @@ export default function GstPage() {
         getInvoices({ type: 'credit_note', from, to, per_page: 100 }).then((r) => setCreditNotes(r.data));
       }
     }
-  }, [tab, period]);
+    if (tab === 'Ledger') {
+      getGstLedger(period, ledgerPage).then((r) => {
+        setLedger(r.data ?? []);
+        setLedgerMeta(r.meta);
+      }).catch(() => setLedger([]));
+    }
+  }, [tab, period, ledgerPage]);
 
   const saveSettings = async () => {
     if (!settings) return;
@@ -88,7 +105,43 @@ export default function GstPage() {
     }
   };
 
-  const tabs = ['Dashboard', 'Output GST', 'Input GST', 'Tax Invoices', 'Credit Notes', 'Reconciliation', 'Settings'];
+  const postAdjustment = async () => {
+    const taxableLaar = mvrToLaar(adjTaxable);
+    const taxLaar = mvrToLaar(adjTax);
+    if (!adjDocNo.trim() || !adjReason.trim() || isNaN(taxableLaar) || isNaN(taxLaar)) {
+      setMessage('Document no, taxable amount, tax amount, and reason are required.');
+      return;
+    }
+    setAdjBusy(true);
+    try {
+      await postGstManualAdjustment({
+        period_key: period,
+        document_no: adjDocNo.trim(),
+        document_date: adjDate,
+        tax_code: 'standard_8',
+        taxable_value_laar: taxableLaar,
+        tax_laar: taxLaar,
+        total_laar: taxableLaar + taxLaar,
+        reason: adjReason.trim(),
+      });
+      setMessage('Manual GST adjustment posted.');
+      setAdjDocNo('');
+      setAdjTaxable('');
+      setAdjTax('');
+      setAdjReason('');
+      setTab('Ledger');
+      setLedgerPage(1);
+      const r = await getGstLedger(period, 1);
+      setLedger(r.data ?? []);
+      setLedgerMeta(r.meta);
+    } catch (e) {
+      setMessage((e as Error).message || 'Failed to post adjustment.');
+    } finally {
+      setAdjBusy(false);
+    }
+  };
+
+  const tabs = ['Dashboard', 'Output GST', 'Input GST', 'Ledger', 'Tax Invoices', 'Credit Notes', 'Reconciliation', 'Settings'];
 
   return (
     <div>
@@ -174,6 +227,72 @@ export default function GstPage() {
             {JSON.stringify(inputRows, null, 2)}
           </pre>
         </Card>
+      )}
+
+      {tab === 'Ledger' && (
+        <div style={{ marginTop: 16, display: 'grid', gap: 16 }}>
+          <Card style={{ padding: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Manual adjustment</h3>
+            <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 0 }}>
+              Post a correcting ledger entry for period {period}. Amounts in MVR (use negative for reversals).
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+              <label style={{ fontSize: 13 }}>Document no
+                <input value={adjDocNo} onChange={(e) => setAdjDocNo(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+              </label>
+              <label style={{ fontSize: 13 }}>Document date
+                <input type="date" value={adjDate} onChange={(e) => setAdjDate(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+              </label>
+              <label style={{ fontSize: 13 }}>Taxable (MVR)
+                <input value={adjTaxable} onChange={(e) => setAdjTaxable(e.target.value)} placeholder="0.00" style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+              </label>
+              <label style={{ fontSize: 13 }}>Tax (MVR)
+                <input value={adjTax} onChange={(e) => setAdjTax(e.target.value)} placeholder="0.00" style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+              </label>
+            </div>
+            <label style={{ fontSize: 13, display: 'block', marginTop: 10 }}>Reason
+              <input value={adjReason} onChange={(e) => setAdjReason(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid #E8DDD0' }} />
+            </label>
+            <Button onClick={() => void postAdjustment()} disabled={adjBusy} style={{ marginTop: 12 }}>
+              {adjBusy ? 'Posting…' : 'Post adjustment'}
+            </Button>
+          </Card>
+          <Card style={{ padding: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Ledger ({ledgerMeta.total})</h3>
+            {ledger.length === 0 ? (
+              <p style={{ color: '#9C8E7E' }}>No ledger entries for this period.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
+                    {['Doc', 'Date', 'Type', 'Dir', 'Taxable', 'Tax', 'Total'].map((h) => (
+                      <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.map((row) => (
+                    <tr key={row.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                      <td style={{ padding: '8px 6px', fontWeight: 600 }}>{row.document_no}</td>
+                      <td style={{ padding: '8px 6px' }}>{String(row.document_date).slice(0, 10)}</td>
+                      <td style={{ padding: '8px 6px' }}>{row.source_type}</td>
+                      <td style={{ padding: '8px 6px' }}>{row.direction}</td>
+                      <td style={{ padding: '8px 6px' }}>{mvr(row.taxable_value_laar)}</td>
+                      <td style={{ padding: '8px 6px' }}>{mvr(row.tax_laar)}</td>
+                      <td style={{ padding: '8px 6px' }}>{mvr(row.total_laar)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {ledgerMeta.last_page > 1 && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <Button variant="secondary" disabled={ledgerPage <= 1} onClick={() => setLedgerPage((p) => p - 1)}>Prev</Button>
+                <Button variant="secondary" disabled={ledgerPage >= ledgerMeta.last_page} onClick={() => setLedgerPage((p) => p + 1)}>Next</Button>
+              </div>
+            )}
+          </Card>
+        </div>
       )}
 
       {tab === 'Tax Invoices' && (

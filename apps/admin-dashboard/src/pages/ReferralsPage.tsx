@@ -5,13 +5,10 @@ import {
   PageHeader, TableCard, Badge, Btn, Modal, ModalActions,
   Pagination, EmptyState, Spinner, ErrorMsg,
 } from '../components/SharedUI';
-import { fetchAdminReferrals, validateReferralCode, type ReferralCode } from '../api';
+import { fetchAdminReferrals, setReferralCodeActive, validateReferralCode, type ReferralCode } from '../api';
 
-// Page now matches what the backend actually returns:
-// rows are referral *codes* (one per customer), not redemption events.
-// Each row shows owner, total uses, cap, referrer reward + referee discount,
-// and the active toggle. Validate-Code modal calls the public endpoint
-// which now returns `referee_discount_mvr` (not a referrer profile).
+// Rows are referral *codes* (one per customer), not redemption events.
+// Active/inactive can be toggled; Validate-Code uses the public endpoint.
 
 const mvr = (n: number | null | undefined) =>
   n == null ? '—' : `MVR ${Number(n).toFixed(2)}`;
@@ -99,7 +96,22 @@ export default function ReferralsPage() {
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: '#D4813A' }}>{mvr(c.referrer_reward_mvr)}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: '#16a34a' }}>{mvr(c.referee_discount_mvr)}</td>
                   <td style={{ padding: '12px 16px' }}>
-                    <Badge color={c.is_active ? 'green' : 'gray'}>{c.is_active ? 'Active' : 'Inactive'}</Badge>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Badge color={c.is_active ? 'green' : 'gray'}>{c.is_active ? 'Active' : 'Inactive'}</Badge>
+                      <Btn
+                        small
+                        variant="secondary"
+                        onClick={() => {
+                          void setReferralCodeActive(c.id, !c.is_active)
+                            .then((res) => {
+                              setCodes((list) => list.map((row) => (row.id === c.id ? { ...row, is_active: res.code.is_active } : row)));
+                            })
+                            .catch((e) => setError((e as Error).message));
+                        }}
+                      >
+                        {c.is_active ? 'Deactivate' : 'Activate'}
+                      </Btn>
+                    </div>
                   </td>
                 </tr>
               ))}
