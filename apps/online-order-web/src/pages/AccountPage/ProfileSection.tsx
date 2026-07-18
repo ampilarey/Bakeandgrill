@@ -2,7 +2,6 @@ import type { LoyaltyAccount } from '@shared/types';
 import {
   FieldRow, SectionCard, TIER_COLOR, alertStyle, btnStyle, inputStyle,
 } from './accountShared';
-import { OrderHistorySection } from './OrderHistorySection';
 import type { useAccountProfile } from './useAccountProfile';
 
 type ProfileSectionProps = {
@@ -30,41 +29,37 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <OrderHistorySection />
-
-        {loyalty ? (
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 4,
-            padding: '16px 18px',
-            background: TIER_COLOR[loyalty.tier]?.bg ?? '#FEF3E2',
-            border: `1px solid ${TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D'}`,
-            borderRadius: 14,
-          }}>
-            <span style={{ fontSize: 22 }}>⭐</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }}>
-              {loyalty.points_balance.toLocaleString()} pts
-            </span>
-            <span style={{ fontSize: 12, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.75, textTransform: 'capitalize' }}>
-              {loyalty.tier} member
-              {loyalty.lifetime_points != null ? ` · ${loyalty.lifetime_points.toLocaleString()} lifetime` : ''}
-            </span>
-          </div>
-        ) : (
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 4,
-            padding: '16px 18px',
-            background: loyaltyError ? '#FEF2F2' : 'var(--color-surface)',
-            border: loyaltyError ? '1px solid #FECACA' : '1px solid var(--color-border)',
-            borderRadius: 14,
-          }}>
-            <span style={{ fontSize: 22 }}>⭐</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>Loyalty Points</span>
-            {loyaltyError && <span style={{ fontSize: 12, color: '#DC2626' }}>{loyaltyError}</span>}
-            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Earn 1 pt per MVR 1</span>
-          </div>
-        )}
-      </div>
+      {loyalty ? (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 4,
+          padding: '16px 18px',
+          background: TIER_COLOR[loyalty.tier]?.bg ?? '#FEF3E2',
+          border: `1px solid ${TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D'}`,
+          borderRadius: 14,
+        }}>
+          <span style={{ fontSize: 22 }}>⭐</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }}>
+            {loyalty.points_balance.toLocaleString()} pts
+          </span>
+          <span style={{ fontSize: 12, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.75, textTransform: 'capitalize' }}>
+            {loyalty.tier} member
+            {loyalty.lifetime_points != null ? ` · ${loyalty.lifetime_points.toLocaleString()} lifetime` : ''}
+          </span>
+        </div>
+      ) : (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 4,
+          padding: '16px 18px',
+          background: loyaltyError ? '#FEF2F2' : 'var(--color-surface)',
+          border: loyaltyError ? '1px solid #FECACA' : '1px solid var(--color-border)',
+          borderRadius: 14,
+        }}>
+          <span style={{ fontSize: 22 }}>⭐</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>Loyalty Points</span>
+          {loyaltyError && <span style={{ fontSize: 12, color: '#DC2626' }}>{loyaltyError}</span>}
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Earn 1 pt per MVR 1</span>
+        </div>
+      )}
 
       <SectionCard title="Profile">
         {loadingProfile ? (

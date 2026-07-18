@@ -89,9 +89,6 @@ function AppShellChrome() {
         </div>
       )}
 
-      {/* PrayerBar mobile strip portal target (kept across redesign) */}
-      <div id="prayer-strip-root" />
-
       <main className="app-shell__main" id="main-content">
         <Outlet />
       </main>

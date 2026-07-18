@@ -50,8 +50,8 @@ describe('AppShell', () => {
     expect(screen.getByText('Account')).toBeTruthy();
   });
 
-  it('keeps prayer-strip portal root for PrayerBar', () => {
+  it('does not mount legacy prayer-strip portal', () => {
     wrap();
-    expect(document.getElementById('prayer-strip-root')).toBeTruthy();
+    expect(document.getElementById('prayer-strip-root')).toBeNull();
   });
 });

@@ -99,7 +99,7 @@ export function ModeEntryCards() {
 
   return (
     <section
-      aria-label="Choose order mode"
+      aria-label={t('home.mode_region')}
       style={{
         padding: '1rem var(--page-gutter) 1.25rem',
         maxWidth: 'var(--layout-max)',

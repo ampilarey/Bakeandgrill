@@ -25,6 +25,7 @@ import { PrayerBar } from '../components/PrayerBar';
 import { PageHeader } from '../components/shell/PageHeader';
 import { AddressesSection } from './AccountPage/AddressesSection';
 import { ProfileSection } from './AccountPage/ProfileSection';
+import { OrderHistorySection } from './AccountPage/OrderHistorySection';
 import { AccountSettingsBlock, AccountMoreBlock } from './AccountPage/AccountChromeBlocks';
 import {
   SectionCard, TIER_COLOR, btnStyle, inputStyle, statusBadge,
@@ -1059,9 +1060,12 @@ export function AccountPage() {
           {hubRow('📍', t('account.addresses'), () => setPanel('addresses'), true)}
         </SectionCard>
 
-        {/* Orders */}
+        {/* Orders — link + recent list (§21.4) */}
         <SectionCard title={t('account.orders')}>
-          {hubLinkRow('🧾', t('account.link_orders'), '/order-history', true)}
+          {hubLinkRow('🧾', t('account.link_orders'), '/order-history')}
+          <div style={{ padding: '4px 4px 8px' }}>
+            <OrderHistorySection />
+          </div>
         </SectionCard>
 
         {/* Bookings */}

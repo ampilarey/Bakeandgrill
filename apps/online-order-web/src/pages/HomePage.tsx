@@ -230,7 +230,7 @@ export function HomePage() {
           margin: '0 auto',
         }}
       >
-        <PrayerBar variant="banner" />
+        <PrayerBar />
       </div>
 
       {/* ── 3. Stat chips (loyalty / active order / specials) ─────────────── */}
@@ -342,7 +342,7 @@ export function HomePage() {
                   if (!corpForm.contact_name.trim() || !corpForm.phone.trim()) {
                     setCorpMessage({
                       type: 'err',
-                      text: 'Name and phone are required.',
+                      text: t('home.corp_name_required'),
                     });
                     return;
                   }
@@ -352,7 +352,7 @@ export function HomePage() {
                   if (headcount != null && headcount < officeMinGuests) {
                     setCorpMessage({
                       type: 'err',
-                      text: `Minimum ${officeMinGuests} guests for office orders.`,
+                      text: t('home.corp_min_guests').replace('{n}', String(officeMinGuests)),
                     });
                     return;
                   }
@@ -397,7 +397,7 @@ export function HomePage() {
                 )}
                 <input
                   required
-                  placeholder="Your name *"
+                  placeholder={t('home.corp_ph_name')}
                   value={corpForm.contact_name}
                   onChange={(e) =>
                     setCorpForm((f) => ({ ...f, contact_name: e.target.value }))
@@ -406,7 +406,7 @@ export function HomePage() {
                 />
                 <input
                   required
-                  placeholder="Phone *"
+                  placeholder={t('home.corp_ph_phone')}
                   value={corpForm.phone}
                   onChange={(e) =>
                     setCorpForm((f) => ({ ...f, phone: e.target.value }))
@@ -414,7 +414,7 @@ export function HomePage() {
                   style={corpInputStyle}
                 />
                 <input
-                  placeholder="Company / organisation"
+                  placeholder={t('home.corp_ph_company')}
                   value={corpForm.company}
                   onChange={(e) =>
                     setCorpForm((f) => ({ ...f, company: e.target.value }))
@@ -424,7 +424,7 @@ export function HomePage() {
                 <input
                   type="number"
                   min={officeMinGuests}
-                  placeholder={`Headcount (min ${officeMinGuests})`}
+                  placeholder={t('home.corp_ph_headcount').replace('{n}', String(officeMinGuests))}
                   value={corpForm.headcount}
                   onChange={(e) =>
                     setCorpForm((f) => ({ ...f, headcount: e.target.value }))
@@ -432,7 +432,7 @@ export function HomePage() {
                   style={corpInputStyle}
                 />
                 <textarea
-                  placeholder="Event date, dietary needs, delivery address…"
+                  placeholder={t('home.corp_ph_notes')}
                   value={corpForm.notes}
                   onChange={(e) =>
                     setCorpForm((f) => ({ ...f, notes: e.target.value }))
@@ -456,7 +456,7 @@ export function HomePage() {
                     opacity: corpSubmitting ? 0.7 : 1,
                   }}
                 >
-                  {corpSubmitting ? 'Sending…' : 'Request a quote →'}
+                  {corpSubmitting ? t('home.corp_sending') : t('home.corp_submit')}
                 </button>
               </form>
             )}

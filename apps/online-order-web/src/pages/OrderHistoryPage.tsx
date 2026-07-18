@@ -10,14 +10,24 @@ import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LanguageContext';
 import { PageHeader } from '../components/shell/PageHeader';
 
-const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  payment_pending: { label: 'Awaiting payment',  color: 'var(--color-warning)',    bg: 'var(--color-warning-bg)' },
-  pending:         { label: 'Payment received',  color: 'var(--color-primary)',    bg: 'var(--color-primary-light)' },
-  paid:            { label: 'Confirmed',          color: 'var(--color-success)',    bg: 'var(--color-success-bg)' },
-  preparing:       { label: 'Being prepared',    color: 'var(--color-primary)',    bg: 'var(--color-primary-light)' },
-  ready:           { label: 'Ready for pickup',  color: 'var(--color-success)',    bg: 'var(--color-success-bg)' },
-  completed:       { label: 'Completed',         color: 'var(--color-text-muted)', bg: 'var(--color-surface-alt)' },
-  cancelled:       { label: 'Cancelled',         color: 'var(--color-error)',      bg: 'var(--color-error-bg)' },
+const STATUS_KEY: Record<string, string> = {
+  payment_pending: 'order.status.payment_pending',
+  pending: 'order.status.pending',
+  paid: 'order.status.paid',
+  preparing: 'order.status.preparing',
+  ready: 'order.status.ready',
+  completed: 'order.status.completed',
+  cancelled: 'order.status.cancelled',
+};
+
+const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
+  payment_pending: { color: 'var(--color-warning)',    bg: 'var(--color-warning-bg)' },
+  pending:         { color: 'var(--color-primary)',    bg: 'var(--color-primary-light)' },
+  paid:            { color: 'var(--color-success)',    bg: 'var(--color-success-bg)' },
+  preparing:       { color: 'var(--color-primary)',    bg: 'var(--color-primary-light)' },
+  ready:           { color: 'var(--color-success)',    bg: 'var(--color-success-bg)' },
+  completed:       { color: 'var(--color-text-muted)', bg: 'var(--color-surface-alt)' },
+  cancelled:       { color: 'var(--color-error)',      bg: 'var(--color-error-bg)' },
 };
 
 function fmtDate(iso: string) {
@@ -81,9 +91,9 @@ export function OrderHistoryPage() {
         addItem(item, line.quantity, mods);
         added += line.quantity;
       }
-      showToast(`${added} item${added !== 1 ? 's' : ''} added to cart`);
+      showToast(t('orders.reorder_added').replace('{n}', String(added)));
     } catch {
-      showToast('Could not load that order. Please try again.');
+      showToast(t('orders.reorder_fail'));
     } finally {
       setReordering(null);
     }
@@ -94,6 +104,12 @@ export function OrderHistoryPage() {
 
   const typeLabel = (type: string) =>
     type === 'delivery' ? t('mode.delivery') : t('mode.pickup');
+
+  const statusPill = (status: string) => {
+    const style = STATUS_STYLE[status] ?? { color: '#374151', bg: '#f3f4f6' };
+    const key = STATUS_KEY[status];
+    return { ...style, label: key ? t(key) : status };
+  };
 
   const sectionLabel: React.CSSProperties = {
     fontSize: '0.72rem',
@@ -178,7 +194,7 @@ export function OrderHistoryPage() {
               <p style={sectionLabel}>{t('orders.active_section')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {activeOrders.map((order) => {
-                  const s = STATUS_LABEL[order.status] ?? { label: order.status, color: '#374151', bg: '#f3f4f6' };
+                  const s = statusPill(order.status);
                   return (
                     <div
                       key={order.id}
@@ -281,7 +297,7 @@ export function OrderHistoryPage() {
               <p style={sectionLabel}>{t('orders.past_section')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {pastOrders.map((order) => {
-                  const s = STATUS_LABEL[order.status] ?? { label: order.status, color: '#374151', bg: '#f3f4f6' };
+                  const s = statusPill(order.status);
                   const sliced = order.items?.slice(0, 3);
                   const itemSummary = sliced?.map(it => it.item_name).join(', ');
                   const extraCount = (order.items?.length ?? 0) - 3;

@@ -3,14 +3,6 @@ import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../api/client';
 import { useLanguage } from '../context/LanguageContext';
 
-type PrayerBarProps = {
-  /**
-   * `banner` — full §12 Home/Account banner (default). Never portals the mobile strip.
-   * `legacy` — old desktop pill + `#prayer-strip-root` portal strip.
-   */
-  variant?: 'banner' | 'legacy';
-};
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Island {
@@ -176,7 +168,7 @@ function GeoIcon({ spinning }: { spinning: boolean }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function PrayerBar({ variant = 'banner' }: PrayerBarProps) {
+export function PrayerBar() {
   const { t } = useLanguage();
   const [loaded, setLoaded] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
@@ -460,10 +452,6 @@ export function PrayerBar({ variant = 'banner' }: PrayerBarProps) {
 
   // ── Shared pill/strip data ──────────────────────────────────────────────
 
-  const locLabel = island ? makeLabel(island.atollLatin, island.nameLatin) : 'K. Malé';
-
-  const stripRoot = variant === 'legacy' ? document.getElementById('prayer-strip-root') : null;
-
   const dropdown = dropOpen ? createPortal(
     <div
       className="order-hpt-panel"
@@ -517,11 +505,11 @@ export function PrayerBar({ variant = 'banner' }: PrayerBarProps) {
 
   const showOfflineCaption = offline || servedFromCache;
   const cdDisplay = (tick?.cdStr ?? '').replace(/[()]/g, '');
+  const locLabel = island ? makeLabel(island.atollLatin, island.nameLatin) : 'K. Malé';
 
   // ── §12 banner (Home / Account) ─────────────────────────────────────────
-  if (variant === 'banner') {
-    return (
-      <>
+  return (
+    <>
         <section
           className={`prayer-banner${expanded ? ' is-expanded' : ''}${!loaded ? ' is-loading' : ''}`}
           aria-label={t('prayer.aria')}
@@ -622,77 +610,5 @@ export function PrayerBar({ variant = 'banner' }: PrayerBarProps) {
         </section>
         {dropdown}
       </>
-    );
-  }
-
-  // ── Legacy pill + portal strip ──────────────────────────────────────────
-
-  const pill = (
-    <div className={`order-pt-pill${loaded ? ' pt-loaded' : ''}`} aria-label={t('prayer.aria')}>
-      <button
-        type="button"
-        className="order-pt-geo-btn"
-        title={t('prayer.use_location')}
-        disabled={geoSpinning}
-        onClick={e => { e.stopPropagation(); handleGeo(); }}
-      >
-        <GeoIcon spinning={geoSpinning} />
-      </button>
-      <button
-        type="button"
-        className="order-pt-isl-btn"
-        onClick={e => { e.stopPropagation(); openIslands(e.currentTarget); }}
-      >
-        <span>{locLabel}</span>
-        <span className="order-pt-isl-arrow">▾</span>
-      </button>
-      <a href="/prayer-times" className="order-pt-pill-info" onClick={e => e.stopPropagation()}>
-        <span className="order-pt-div">·</span>
-        <span className="order-pt-prayer">{tick?.pName}</span>
-        <span className="order-pt-ptime">{tick?.pTime}</span>
-        <span className="order-pt-cd">{tick?.cdStr}</span>
-        <span className="order-pt-div">·</span>
-        <span className="order-pt-clock">{tick?.clock}</span>
-      </a>
-    </div>
-  );
-
-  const strip = (
-    <div className={`order-pt-strip${loaded ? ' pt-loaded' : ''}`} aria-label={t('prayer.aria')}>
-      <div className="order-pt-strip-controls">
-        <button
-          type="button"
-          className="order-pt-geo-btn"
-          title={t('prayer.use_location')}
-          disabled={geoSpinning}
-          onClick={e => { e.stopPropagation(); handleGeo(); }}
-        >
-          <GeoIcon spinning={geoSpinning} />
-        </button>
-        <button
-          type="button"
-          className="order-pt-isl-btn"
-          onClick={e => { e.stopPropagation(); openIslands(e.currentTarget); }}
-        >
-          <span>{locLabel}</span>
-          <span className="order-pt-isl-arrow">▾</span>
-        </button>
-      </div>
-      <a href="/prayer-times" className="order-pt-strip-info">
-        <span className="order-pt-prayer">{tick?.pName}</span>
-        <span className="order-pt-ptime">{tick?.pTime}</span>
-        <span className="order-pt-cd">{tick?.cdStr}</span>
-        <span className="order-pt-div">·</span>
-        <span className="order-pt-clock">{tick?.clock}</span>
-      </a>
-    </div>
-  );
-
-  return (
-    <>
-      {pill}
-      {stripRoot ? createPortal(strip, stripRoot) : null}
-      {dropdown}
-    </>
   );
 }

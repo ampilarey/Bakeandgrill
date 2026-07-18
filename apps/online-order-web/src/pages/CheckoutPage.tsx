@@ -226,9 +226,9 @@ export function CheckoutPage() {
         <div className="animate-fade-in">
           <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.35 }}>🛒</div>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', fontSize: '1rem' }}>
-            Your cart is empty. Add some items first.
+            {t('checkout.empty_cart')}
           </p>
-          <button style={S.primaryBtn} onClick={() => navigate("/")}>Browse the menu</button>
+          <button style={S.primaryBtn} onClick={() => navigate("/")}>{t('checkout.browse_menu')}</button>
         </div>
       </div>
     );
@@ -236,12 +236,12 @@ export function CheckoutPage() {
 
   const hasPendingReferral = friendReferralApplied?.pending === true;
   const placeLabel = isPlacing
-    ? 'Processing…'
+    ? t('checkout.processing')
     : orderingGateClosed
-      ? 'Online ordering is closed'
+      ? t('checkout.gate_closed')
       : totalLaar <= 0
-        ? 'Place order — no payment due'
-        : `Pay MVR ${laarToMvr(totalLaar)} with BML`;
+        ? t('checkout.place_no_payment')
+        : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(totalLaar)));
 
   // ── Section bodies (bare content — AccordionItem provides title/chrome) ──────
 
@@ -300,7 +300,7 @@ export function CheckoutPage() {
                 fontSize: '0.85rem',
               }}
             >
-              ASAP
+              {t('checkout.asap')}
             </button>
             {pickupSlots.map((slot) => (
               <button
@@ -690,9 +690,9 @@ export function CheckoutPage() {
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
         {[
-          { href: '/terms',   label: 'Terms & Conditions' },
-          { href: '/refund',  label: 'Refund Policy' },
-          { href: '/privacy', label: 'Privacy Policy' },
+          { href: '/terms',   label: t('account.link_terms') },
+          { href: '/refund',  label: t('account.link_refund') },
+          { href: '/privacy', label: t('account.link_privacy') },
         ].map(({ href, label }) => (
           <a key={href} href={href} target="_blank" rel="noopener noreferrer"
             style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
@@ -718,11 +718,11 @@ export function CheckoutPage() {
       </p>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
         <a href={`${waLink}?text=Hi%2C+I+need+help+with+my+order`} target="_blank" rel="noopener noreferrer"
-          style={S.chatBtnWa} aria-label="Contact us on WhatsApp">
-          <WhatsAppIcon /> WhatsApp
+          style={S.chatBtnWa} aria-label={t('checkout.contact_whatsapp')}>
+          <WhatsAppIcon /> {t('home.footer_whatsapp')}
         </a>
-        <a href={viberLink} style={S.chatBtnViber} aria-label="Contact us on Viber">
-          <ViberIcon /> Viber
+        <a href={viberLink} style={S.chatBtnViber} aria-label={t('checkout.contact_viber')}>
+          <ViberIcon /> {t('home.footer_viber')}
         </a>
       </div>
     </div>
@@ -733,7 +733,7 @@ export function CheckoutPage() {
   const bodyFulfillment          = orderType === 'pickup' ? bodyPickupSlot : bodyDelivery;
   const fulfillmentTitle         = orderType === 'pickup' ? t('checkout.acc_pickup') : t('checkout.acc_delivery');
   const fulfillmentSummary       = orderType === 'pickup'
-    ? (pickupSlotAt ? (pickupSlots.find((sl) => sl.starts_at === pickupSlotAt)?.label ?? pickupSlotAt) : 'ASAP')
+    ? (pickupSlotAt ? (pickupSlots.find((sl) => sl.starts_at === pickupSlotAt)?.label ?? pickupSlotAt) : t('checkout.asap'))
     : (delivery.address_line1 || undefined);
 
   // StickyCtaBar above-content: gate banner + terms + error + pending note
@@ -743,8 +743,8 @@ export function CheckoutPage() {
         <div className="banner banner-warning" style={{ marginBottom: 12 }}>
           <span className="banner-icon">🔒</span>
           <div>
-            <p className="banner-title">Online ordering is closed</p>
-            <p className="banner-sub">{onlineGate?.message ?? 'Online ordering is currently unavailable. Please check back later.'}</p>
+            <p className="banner-title">{t('checkout.gate_closed')}</p>
+            <p className="banner-sub">{onlineGate?.message ?? t('checkout.gate_closed_sub')}</p>
           </div>
         </div>
       )}
@@ -756,16 +756,18 @@ export function CheckoutPage() {
           style={{ marginTop: '2px', width: 16, height: 16, accentColor: 'var(--color-primary)', flexShrink: 0 }}
         />
         <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
-          I agree to the <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Terms &amp; Conditions</a>,{' '}
-          <a href="/refund" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Refund Policy</a>, and{' '}
-          <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
+          {t('checkout.terms_prefix')}{' '}
+          <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_terms')}</a>,{' '}
+          <a href="/refund" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_refund')}</a>
+          {t('checkout.terms_and')}{' '}
+          <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_privacy')}</a>.
         </span>
       </label>
       {globalError && (
         <div className="banner banner-error" style={{ marginBottom: 12 }}>
           <span className="banner-icon">⚠️</span>
           <div>
-            <p className="banner-title">Something went wrong</p>
+            <p className="banner-title">{t('error.generic_title')}</p>
             <p className="banner-sub">{globalError}</p>
             {waLink && (
               <a
@@ -778,7 +780,7 @@ export function CheckoutPage() {
                   background: '#dcfce7', padding: '6px 12px', borderRadius: 999, textDecoration: 'none',
                 }}
               >
-                <WhatsAppIcon size={16} /> Message us on WhatsApp
+                <WhatsAppIcon size={16} /> {t('checkout.whatsapp_help')}
               </a>
             )}
           </div>
@@ -786,7 +788,7 @@ export function CheckoutPage() {
       )}
       {hasPendingReferral && (
         <p style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-          ⏳ Referral discount is estimated — final amount confirmed when your order is created.
+          ⏳ {t('checkout.referral_pending')}
         </p>
       )}
     </>
@@ -819,7 +821,7 @@ export function CheckoutPage() {
       {/* ── Branded header ─────────────────────────────────── */}
       <BrandedHeader
         onBack={() => navigate(-1)}
-        backLabel="← Back"
+        backLabel={`← ${t('common.back')}`}
         rightSlot={
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             {loyaltyAccount && loyaltyAvailablePoints(loyaltyAccount) > 0 && (
@@ -834,7 +836,7 @@ export function CheckoutPage() {
             )}
             {customerName && (
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                Hi, {customerName}
+                {t('checkout.hi_name').replace('{name}', customerName)}
               </span>
             )}
           </div>
@@ -851,7 +853,7 @@ export function CheckoutPage() {
             </h1>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0, marginTop: '0.125rem' }}>
               {checkoutSubtitle}
-              {waitMinutes != null && <> · Kitchen wait ~{waitMinutes} min</>}
+              {waitMinutes != null && <> · {t('checkout.kitchen_wait').replace('{n}', String(waitMinutes))}</>}
             </p>
           </div>
         </div>

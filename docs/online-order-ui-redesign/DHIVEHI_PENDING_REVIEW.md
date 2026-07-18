@@ -224,3 +224,45 @@ all `dv` values equal their English counterparts and need native Dhivehi review.
 - `account.logout_confirm`     — confirm dialog text: "Sign out of your account?"
 - `account.link_whatsapp`      — More row: "WhatsApp us"
 - `account.link_viber`         — More row: "Message on Viber"
+
+## Polish pass keys (added Jul 2026)
+
+Home corporate form, checkout chrome, and Account recent-orders list — `dv`
+equals English pending native review.
+
+### Home corporate
+- `home.corp_name_required`
+- `home.corp_min_guests`
+- `home.corp_ph_name`
+- `home.corp_ph_phone`
+- `home.corp_ph_company`
+- `home.corp_ph_headcount`
+- `home.corp_ph_notes`
+- `home.corp_sending`
+- `home.corp_submit`
+- `home.mode_region`
+
+### Checkout chrome
+- `checkout.empty_cart`
+- `checkout.browse_menu`
+- `checkout.processing`
+- `checkout.gate_closed`
+- `checkout.gate_closed_sub`
+- `checkout.place_no_payment`
+- `checkout.pay_bml`
+- `checkout.asap`
+- `checkout.terms_prefix`
+- `checkout.terms_and`
+- `checkout.whatsapp_help`
+- `checkout.referral_pending`
+- `checkout.kitchen_wait`
+- `checkout.hi_name`
+- `checkout.contact_whatsapp`
+- `checkout.contact_viber`
+
+### Account / Orders recent list
+- `orders.recent_title`
+- `orders.see_all`
+- `orders.none_recent`
+- `orders.reorder_added`
+- `orders.reorder_fail`
