@@ -207,7 +207,6 @@ export function HomePage() {
         currentClose={currentClose}
         nextOpenWindow={nextOpenWindow}
         closedDetail={hoursMsg}
-        className="opening-status-badge-hero"
         timeDisplay="24h"
       />
     ) : null;
@@ -221,10 +220,10 @@ export function HomePage() {
         statusBadge={statusBadge}
       />
 
-      {/* ── 2. Prayer banner (§12) — no top portal strip on Home ──────────── */}
+      {/* ── 2. Prayer banner (§12) — compact strip under greeting ─────────── */}
       <div
         style={{
-          padding: '16px var(--page-gutter) 24px',
+          padding: '0.35rem var(--page-gutter) 0.75rem',
           maxWidth: 'var(--layout-max)',
           margin: '0 auto',
         }}

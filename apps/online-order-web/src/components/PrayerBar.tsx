@@ -228,6 +228,7 @@ export function PrayerBar() {
       }
     } catch { /* ignore */ }
 
+    let paintedFromCache = false;
     try {
       const c = localStorage.getItem(cKey);
       if (c) {
@@ -237,15 +238,19 @@ export function PrayerBar() {
           localStorage.removeItem(cKey);
         } else {
           prayersRef.current = parsed;
+          paintedFromCache = true;
           cb(true);
-          // Still prefetch tomorrow in parallel if not yet cached
           if (!tomorrowPrayersRef.current) prefetchTomorrow(islandId, tKey);
-          return;
         }
       }
     } catch { /* ignore */ }
 
-    // Fetch today and tomorrow in parallel
+    // Always refresh from network when online (cache is for instant paint + offline only).
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (!paintedFromCache) cb(false);
+      return;
+    }
+
     Promise.all([
       fetch(`${API_BASE_URL}/prayer-times?island_id=${islandId}&date=${today}`).then(r => r.json()),
       tomorrowPrayersRef.current
@@ -263,7 +268,9 @@ export function PrayerBar() {
         }
         cb(false);
       })
-      .catch(() => cb(false));
+      .catch(() => {
+        if (!paintedFromCache) cb(false);
+      });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prefetchTomorrow = useCallback((islandId: number, tKey: string) => {
@@ -297,7 +304,8 @@ export function PrayerBar() {
       setTick(computeTick(prayersRef.current, tomorrowPrayersRef.current));
       setLoaded(true);
       setUnavailable(false);
-      if (fromCache) setServedFromCache(true);
+      // Cache is an implementation detail — only surface it when the device is offline.
+      setServedFromCache(fromCache && typeof navigator !== 'undefined' && !navigator.onLine);
       startTick();
     } else {
       setPrayerTimes(null);
@@ -503,6 +511,7 @@ export function PrayerBar() {
     });
   };
 
+  // Only when offline — "Showing cached times" while online is noise.
   const showOfflineCaption = offline || servedFromCache;
   const cdDisplay = (tick?.cdStr ?? '').replace(/[()]/g, '');
   const locLabel = island ? makeLabel(island.atollLatin, island.nameLatin) : 'K. Malé';
@@ -536,19 +545,18 @@ export function PrayerBar() {
                   onClick={toggleExpanded}
                 >
                   <span className="prayer-banner-summary-left">
-                    <span className="prayer-banner-title">
-                      {t('prayer.title')}
-                      <span className="prayer-banner-dot">·</span>
-                    </span>
                     <span className="prayer-banner-next">
                       {tick ? (
                         <>
-                          <strong>{tick.pName}</strong> {tick.pTime}
+                          <strong>{tick.pName}</strong>
+                          <span className="prayer-banner-time"> {tick.pTime}</span>
                           <span className="prayer-banner-cd" aria-live="off">
-                            {' '}{t('prayer.next_in').replace('{t}', cdDisplay)}
+                            {' · '}{t('prayer.next_in').replace('{t}', cdDisplay)}
                           </span>
                         </>
-                      ) : null}
+                      ) : (
+                        <span className="prayer-banner-title">{t('prayer.title')}</span>
+                      )}
                     </span>
                   </span>
                   <span className="prayer-banner-chevron" aria-hidden>{expanded ? '⌃' : '▾'}</span>
@@ -564,7 +572,7 @@ export function PrayerBar() {
 
               {showOfflineCaption && (
                 <p className="prayer-banner-caption">
-                  {offline ? t('prayer.offline_cached') : t('prayer.cached')}
+                  {t('prayer.offline_cached')}
                 </p>
               )}
 

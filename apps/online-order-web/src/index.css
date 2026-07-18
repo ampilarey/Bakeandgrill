@@ -1832,20 +1832,20 @@ textarea.field-input {
   }
 }
 
-/* ── Prayer banner (§12) ─────────────────────────────────────────────────── */
+/* ── Prayer banner (§12) — compact single-row strip ──────────────────────── */
 .prayer-banner {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  min-height: 56px;
+  border-radius: var(--radius-lg);
+  min-height: 44px;
   overflow: hidden;
 }
 
 .prayer-banner-skeleton {
-  height: 56px;
+  height: 44px;
   display: flex;
   align-items: center;
-  padding: 0 1rem;
+  padding: 0 0.75rem;
 }
 
 .prayer-banner-skeleton-bar {
@@ -1864,19 +1864,19 @@ textarea.field-input {
 }
 
 .prayer-banner-unavailable {
-  min-height: 56px;
+  min-height: 44px;
   display: flex;
   align-items: center;
-  padding: 0 1rem;
-  font-size: 0.875rem;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
   color: var(--color-text-muted);
 }
 
 .prayer-banner-summary {
   display: flex;
   align-items: stretch;
-  gap: 0.35rem;
-  min-height: 56px;
+  gap: 0.25rem;
+  min-height: 44px;
 }
 
 .prayer-banner-expand {
@@ -1885,28 +1885,30 @@ textarea.field-input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.65rem 0.35rem 0.65rem 1rem;
+  gap: 0.35rem;
+  padding: 0.4rem 0.25rem 0.4rem 0.75rem;
   border: none;
   background: transparent;
   cursor: pointer;
   font-family: inherit;
   text-align: left;
   color: var(--color-text);
+  min-height: 44px;
 }
 
 .prayer-banner-summary-left {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
   min-width: 0;
 }
 
 .prayer-banner-title {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--color-text-muted);
 }
 
@@ -1918,8 +1920,8 @@ textarea.field-input {
 .prayer-banner-island {
   flex-shrink: 0;
   align-self: center;
-  margin-right: 0.5rem;
-  padding: 0.35rem 0.65rem;
+  margin-right: 0.4rem;
+  padding: 0.25rem 0.55rem;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface);
@@ -1932,14 +1934,21 @@ textarea.field-input {
 }
 
 .prayer-banner-next {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--color-text);
-  line-height: 1.3;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .prayer-banner-next strong {
   font-weight: 800;
   color: var(--color-dark);
+}
+
+.prayer-banner-time {
+  font-variant-numeric: tabular-nums;
 }
 
 .prayer-banner-cd {
@@ -1950,15 +1959,22 @@ textarea.field-input {
 .prayer-banner-chevron {
   flex-shrink: 0;
   color: var(--color-text-muted);
-  font-size: 0.85rem;
-  padding-right: 0.35rem;
+  font-size: 0.75rem;
+  padding-right: 0.2rem;
 }
 
 .prayer-banner-caption {
   margin: 0;
-  padding: 0 1rem 0.55rem;
-  font-size: 0.75rem;
+  padding: 0 0.75rem 0.4rem;
+  font-size: 0.6875rem;
   color: var(--color-text-muted);
+}
+
+/* Compact status pill when nested in GreetingHeader (not hero overlay) */
+.greeting-header-status .opening-status-badge {
+  font-size: 0.6875rem;
+  padding: 0.3rem 0.65rem;
+  max-width: 100%;
 }
 
 .prayer-banner-panel {
