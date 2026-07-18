@@ -1,4 +1,5 @@
 import type { LoyaltyAccount } from '@shared/types';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   FieldRow, SectionCard, TIER_COLOR, alertStyle, btnStyle, inputStyle,
 } from './accountShared';
@@ -12,6 +13,7 @@ type ProfileSectionProps = {
 };
 
 export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectionProps) {
+  const { t } = useLanguage();
   const {
     customer,
     loadingProfile,
@@ -39,11 +41,11 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
         }}>
           <span style={{ fontSize: 22 }}>⭐</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E' }}>
-            {loyalty.points_balance.toLocaleString()} pts
+            {t('account.loyalty_pts').replace('{n}', loyalty.points_balance.toLocaleString())}
           </span>
           <span style={{ fontSize: 12, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.75, textTransform: 'capitalize' }}>
-            {loyalty.tier} member
-            {loyalty.lifetime_points != null ? ` · ${loyalty.lifetime_points.toLocaleString()} lifetime` : ''}
+            {t('account.profile_member').replace('{tier}', loyalty.tier)}
+            {loyalty.lifetime_points != null ? ` · ${t('account.profile_lifetime').replace('{n}', loyalty.lifetime_points.toLocaleString())}` : ''}
           </span>
         </div>
       ) : (
@@ -55,20 +57,20 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
           borderRadius: 14,
         }}>
           <span style={{ fontSize: 22 }}>⭐</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>Loyalty Points</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-dark)' }}>{t('account.profile_loyalty_title')}</span>
           {loyaltyError && <span style={{ fontSize: 12, color: '#DC2626' }}>{loyaltyError}</span>}
-          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Earn 1 pt per MVR 1</span>
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t('account.profile_loyalty_rate')}</span>
         </div>
       )}
 
-      <SectionCard title="Profile">
+      <SectionCard title={t('account.profile')}>
         {loadingProfile ? (
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('account.loading')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {profileMsg && <div style={alertStyle(profileMsg.type)}>{profileMsg.text}</div>}
 
-            <FieldRow label="Phone">
+            <FieldRow label={t('account.profile_phone')}>
               <input
                 style={{ ...inputStyle, background: 'var(--color-surface-alt)', color: 'var(--color-text-muted)', cursor: 'not-allowed' }}
                 value={customer?.phone ?? ''}
@@ -76,26 +78,26 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
               />
             </FieldRow>
 
-            <FieldRow label="Name">
+            <FieldRow label={t('account.profile_name')}>
               <input
                 style={inputStyle}
                 value={profileForm.name}
                 onChange={(e) => setProfileForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Your name"
+                placeholder={t('account.profile_name_ph')}
               />
             </FieldRow>
 
-            <FieldRow label="Email">
+            <FieldRow label={t('account.profile_email')}>
               <input
                 type="email"
                 style={inputStyle}
                 value={profileForm.email}
                 onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="you@example.com"
+                placeholder={t('account.profile_email_ph')}
               />
             </FieldRow>
 
-            <FieldRow label="Date of birth">
+            <FieldRow label={t('account.profile_dob')}>
               <input
                 type="date"
                 style={inputStyle}
@@ -104,7 +106,7 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
                 max={new Date().toISOString().slice(0, 10)}
               />
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                Optional — used for birthday loyalty rewards (SMS only if you haven&apos;t opted out).
+                {t('account.profile_dob_hint')}
               </p>
             </FieldRow>
 
@@ -113,17 +115,17 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
               onClick={() => void handleSaveProfile()}
               disabled={savingProfile}
             >
-              {savingProfile ? 'Saving…' : 'Save Changes'}
+              {savingProfile ? t('account.profile_saving') : t('account.profile_save')}
             </button>
           </div>
         )}
       </SectionCard>
 
-      <SectionCard title="Change Password">
+      <SectionCard title={t('account.profile_pw_title')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {pwMsg && <div style={alertStyle(pwMsg.type)}>{pwMsg.text}</div>}
 
-          <FieldRow label="Current Password">
+          <FieldRow label={t('account.profile_pw_current')}>
             <input
               type="password"
               style={inputStyle}
@@ -133,7 +135,7 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
             />
           </FieldRow>
 
-          <FieldRow label="New Password">
+          <FieldRow label={t('account.profile_pw_new')}>
             <input
               type="password"
               style={inputStyle}
@@ -143,7 +145,7 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
             />
           </FieldRow>
 
-          <FieldRow label="Confirm New Password">
+          <FieldRow label={t('account.profile_pw_confirm')}>
             <input
               type="password"
               style={inputStyle}
@@ -158,7 +160,7 @@ export function ProfileSection({ profile, loyalty, loyaltyError }: ProfileSectio
             onClick={() => void handleChangePassword()}
             disabled={savingPw}
           >
-            {savingPw ? 'Changing…' : 'Change Password'}
+            {savingPw ? t('account.profile_pw_changing') : t('account.profile_pw_cta')}
           </button>
         </div>
       </SectionCard>

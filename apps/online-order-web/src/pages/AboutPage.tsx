@@ -1,12 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { interpolateCopy, useSiteSettingsContext } from '../context/SiteSettingsContext';
+import { useLanguage } from '../context/LanguageContext';
 import { PageHeader } from '../components/shell/PageHeader';
 
 export function AboutPage() {
-  usePageTitle('About');
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { settings: s, aboutValues, text } = useSiteSettingsContext();
+  usePageTitle(text('about_page_title', 'About Bake & Grill'));
   const address  = s.business_address  || 'Majeedhee Magu, Malé, Maldives';
   const landmark = s.business_landmark || 'Near the ferry terminal';
   const phone    = s.business_phone    || '+960 912 0011';
@@ -30,7 +32,7 @@ export function AboutPage() {
       </div>
 
       <section style={{ background: 'var(--color-surface-alt)', borderRadius: '20px', padding: '2.5rem', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '1rem' }}>Our Story</h2>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '1rem' }}>{t('about.our_story')}</h2>
         {storyParagraphs.map((para, i) => (
           <p key={i} style={{ color: 'var(--color-text)', fontSize: '1rem', lineHeight: 1.8, marginBottom: i < storyParagraphs.length - 1 ? '1rem' : 0 }}>
             {para}
@@ -55,7 +57,7 @@ export function AboutPage() {
       </section>
 
       <section style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '20px', padding: '2.5rem', textAlign: 'center', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem' }}>Visit Us</h2>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem' }}>{t('about.visit_us')}</h2>
         <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>{address}</p>
         <p style={{ opacity: 0.9, marginBottom: '0.5rem', fontSize: '0.875rem' }}>{landmark}</p>
         <p style={{ opacity: 0.85, marginBottom: '1.5rem', fontSize: '0.875rem' }}>
@@ -66,13 +68,13 @@ export function AboutPage() {
             to="/hours"
             style={{ background: 'var(--color-surface)', color: 'var(--color-primary)', padding: '0.6rem 1.5rem', borderRadius: '999px', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
           >
-            Opening Hours
+            {t('about.opening_hours')}
           </Link>
           <Link
             to="/contact"
             style={{ background: 'rgba(255,255,255,0.2)', color: 'white', padding: '0.6rem 1.5rem', borderRadius: '999px', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.3)' }}
           >
-            Contact Us
+            {t('about.contact_us')}
           </Link>
         </div>
       </section>
@@ -88,7 +90,7 @@ export function AboutPage() {
             fontWeight: 700, fontSize: '1rem', textDecoration: 'none',
           }}
         >
-          Browse Our Menu →
+          {t('about.order_cta')}
         </Link>
       </div>
     </div>

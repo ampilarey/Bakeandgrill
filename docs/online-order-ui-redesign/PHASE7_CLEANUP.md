@@ -61,10 +61,12 @@ All six pages now open with the `PageHeader` component (`components/shell/PageHe
 | Check | Status |
 |---|---|
 | Dead CSS/components grep (`order-mob-`, `cat-sheet-`, `MenuCard`, `ItemModal`, `HeroCarousel`, `OrderStatusBar`) in `apps/online-order-web` src/public | Pass (2026-07-18) |
-| `CACHE_VERSION = 'bg-pwa-v6'` in `public/sw.js` | Pass |
+| `CACHE_VERSION = 'bg-pwa-v8'` in `public/sw.js` | Pass (2026-07-18) |
 | `tsc && vite build` + vitest | Pass (with English-only UI, `fd841d3b`+) |
 | Menu `.menu-grid` 2 cols @390 / no hscroll @320 (ui-audit sweep) | Pass |
 | `apps/online-order-web/src` grep clean for UI `dv` / language switcher | Pass (v2.2) |
+| Mode entry cards use `public/images/mode-*.jpg` with gradient fallback | Pass (2026-07-18) |
+| Long-tail pages (Hours/Contact/About/Account panels) chrome via `t()` | Pass (2026-07-18) |
 
 ## §31 QA + Lighthouse (Manual Owner Checks)
 
@@ -73,10 +75,11 @@ The following are manual checks; no automated Lighthouse scores are recorded her
 - [ ] Navigate to each long-tail page on mobile; verify PageHeader renders correctly with back button
 - [ ] Verify back button on each page returns to previous history entry (`navigate(-1)`)
 - [ ] Confirm no duplicate `<h1>` on any page (browser DevTools Elements panel)
-- [ ] Open DevTools → Application → Service Workers: confirm `bg-pwa-v6` is active and old `bg-pwa-v5` caches are deleted
+- [ ] Open DevTools → Application → Service Workers: confirm `bg-pwa-v8` is active and older caches are deleted
 - [ ] Lighthouse PWA audit: check Installable + Service Worker pass
 - [ ] Lighthouse Performance: no regressions vs Phase 6 baseline
 - [ ] Lighthouse Accessibility: no new violations (heading hierarchy, touch targets)
 - [ ] Smoke-test each deleted component's replacement still works (ProductCard on MenuPage, ItemSheet on item tap, ActiveOrderCapsule on active order)
 - [ ] Confirm no 404s in network tab for removed component files (they were never served directly; this is a build check)
 - [ ] Account ▸ Settings: dark mode only (no EN/Dhivehi language buttons)
+- [ ] Home mode cards show delivery/pickup photos (not emoji fallback)

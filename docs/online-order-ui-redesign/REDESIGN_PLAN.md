@@ -258,7 +258,7 @@ Hierarchy rules: tabs are peers and keep independent scroll positions; standalon
 
 ### 11.2 Component hierarchy
 
-`HomePage` → `GreetingHeader` (uses `useAuth`, `OpeningStatusBadge`) → `PrayerBar` (full banner) → `StatChipsRow` → `PromoCarousel` → `ModeEntryCards` (uses `OrderModeContext`) → `SpecialsCarousel` → `ReorderStrip` → corporate block → `BrandFooter`. All existing data effects on HomePage (`fetchItems`, `fetchOnlineOrderingStatus`, `fetchActiveSpecials`, `fetchFeaturedReviews`, `fetchCustomerOrders`, corporate form) are kept. *(v2.1)* ModeEntryCards imagery = static files under `public/images/` (e.g. `mode-delivery.jpg`, `mode-pickup.jpg`) with cream-placeholder fallback until real photos are supplied; the corporate block keeps its current markup/logic, wrapped in a card (restyle only).
+`HomePage` → `GreetingHeader` (uses `useAuth`, `OpeningStatusBadge`) → `PrayerBar` (full banner) → `StatChipsRow` → `PromoCarousel` → `ModeEntryCards` (uses `OrderModeContext`) → `SpecialsCarousel` → `ReorderStrip` → corporate block → `BrandFooter`. All existing data effects on HomePage (`fetchItems`, `fetchOnlineOrderingStatus`, `fetchActiveSpecials`, `fetchFeaturedReviews`, `fetchCustomerOrders`, corporate form) are kept. *(v2.1)* ModeEntryCards imagery = `public/images/mode-delivery.jpg` + `mode-pickup.jpg` with gradient/emoji fallback on load error; replace those files anytime to swap photography. Corporate block keeps its current markup/logic, wrapped in a card (restyle only).
 
 ### 11.3 Spacing & rules
 

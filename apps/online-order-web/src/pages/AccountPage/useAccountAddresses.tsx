@@ -7,6 +7,7 @@ import {
   setDefaultCustomerAddress,
 } from '../../api';
 import type { AuthCustomer, CustomerAddress } from '../../api';
+import { useLanguage } from '../../context/LanguageContext';
 
 const emptyAddressForm = {
   label: '', address_line1: '', address_line2: '', island: 'Male',
@@ -20,6 +21,7 @@ export function useAccountAddresses(
   customer: AuthCustomer | null,
   customerName: string | null,
 ) {
+  const { t } = useLanguage();
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [addressesError, setAddressesError] = useState('');
@@ -35,19 +37,19 @@ export function useAccountAddresses(
     setAddressesLoading(true);
     fetchCustomerAddresses()
       .then((res) => setAddresses(res.addresses ?? []))
-      .catch((e: Error) => setAddressesError(e.message || 'Failed to load addresses.'))
+      .catch((e: Error) => setAddressesError(e.message || t('account.addr_err_load')))
       .finally(() => {
         setAddressesLoading(false);
         setAddressesLoaded(true);
       });
-  }, [isAuthenticated, authReady, activeTab, addressesLoaded]);
+  }, [isAuthenticated, authReady, activeTab, addressesLoaded, t]);
 
   const reloadAddresses = () => {
     if (!isAuthenticated) return;
     setAddressesLoading(true);
     fetchCustomerAddresses()
       .then((res) => setAddresses(res.addresses ?? []))
-      .catch((e: Error) => setAddressesError(e.message || 'Failed to load addresses.'))
+      .catch((e: Error) => setAddressesError(e.message || t('account.addr_err_load')))
       .finally(() => setAddressesLoading(false));
   };
 
@@ -89,7 +91,7 @@ export function useAccountAddresses(
     if (!isAuthenticated) return;
     if (!addressForm.address_line1.trim() || !addressForm.island.trim()
       || !addressForm.contact_name.trim() || !addressForm.contact_phone.trim()) {
-      setAddressMsg({ type: 'error', text: 'Please fill in address, island, contact name, and phone.' });
+      setAddressMsg({ type: 'error', text: t('account.addr_err_required') });
       return;
     }
     setAddressSaving(true);
@@ -114,21 +116,21 @@ export function useAccountAddresses(
       setShowAddressForm(false);
       setEditingAddressId(null);
       reloadAddresses();
-      setAddressMsg({ type: 'success', text: editingAddressId ? 'Address updated.' : 'Address saved.' });
+      setAddressMsg({ type: 'success', text: editingAddressId ? t('account.addr_ok_updated') : t('account.addr_ok_saved') });
     } catch (e) {
-      setAddressMsg({ type: 'error', text: (e as Error).message || 'Could not save address.' });
+      setAddressMsg({ type: 'error', text: (e as Error).message || t('account.addr_err_save') });
     } finally {
       setAddressSaving(false);
     }
   };
 
   const handleDeleteAddress = async (id: number) => {
-    if (!isAuthenticated || !window.confirm('Delete this address?')) return;
+    if (!isAuthenticated || !window.confirm(t('account.addr_confirm_delete'))) return;
     try {
       await deleteCustomerAddress(id);
       reloadAddresses();
     } catch (e) {
-      setAddressesError((e as Error).message || 'Could not delete address.');
+      setAddressesError((e as Error).message || t('account.addr_err_delete'));
     }
   };
 
@@ -138,7 +140,7 @@ export function useAccountAddresses(
       await setDefaultCustomerAddress(id);
       reloadAddresses();
     } catch (e) {
-      setAddressesError((e as Error).message || 'Could not set default address.');
+      setAddressesError((e as Error).message || t('account.addr_err_default'));
     }
   };
 

@@ -3,12 +3,21 @@ import { Link, useNavigate } from 'react-router-dom';
 import { fetchOpeningHoursStatus, fetchOpeningHoursSchedule } from '../api';
 import type { DaySchedule } from '../api';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
+import { useLanguage } from '../context/LanguageContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/shell/PageHeader';
 
-const DAY_NAMES   = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const DAY_LABELS  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TODAY_IDX   = new Date().getDay();
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+const DAY_KEYS = [
+  'hours.day.sunday',
+  'hours.day.monday',
+  'hours.day.tuesday',
+  'hours.day.wednesday',
+  'hours.day.thursday',
+  'hours.day.friday',
+  'hours.day.saturday',
+] as const;
+const TODAY_IDX = new Date().getDay();
 
 function fmt(time: string) {
   if (!time) return '';
@@ -20,6 +29,7 @@ function fmt(time: string) {
 
 export function HoursPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [isOpen, setIsOpen]     = useState<boolean | null>(null);
   const [message, setMessage]   = useState<string | null>(null);
   const [schedule, setSchedule] = useState<Record<string, DaySchedule> | null>(null);
@@ -28,7 +38,7 @@ export function HoursPage() {
   const address = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
   const waLink = s.business_whatsapp || 'https://wa.me/9609120011';
 
-  usePageTitle('Hours');
+  usePageTitle(text('hours_page_title', 'Opening Hours'));
 
   useEffect(() => {
     fetchOpeningHoursSchedule()
@@ -45,10 +55,14 @@ export function HoursPage() {
       });
   }, []);
 
+  const dayLabels = DAY_KEYS.map((k) => t(k));
+
   const weekRows = DAY_NAMES.map((key, i) => {
-    const row = schedule?.[key] ?? schedule?.[DAY_LABELS[i]] ?? null;
-    const hoursLabel = row ? (row.closed ? 'Closed' : `${fmt(row.open)} – ${fmt(row.close)}`) : 'Hours not available';
-    return { label: DAY_LABELS[i], hoursLabel, isToday: i === TODAY_IDX, closed: row?.closed ?? false };
+    const row = schedule?.[key] ?? schedule?.[dayLabels[i]] ?? null;
+    const hoursLabel = row
+      ? (row.closed ? t('hours.closed') : `${fmt(row.open)} – ${fmt(row.close)}`)
+      : t('hours.unavailable');
+    return { label: dayLabels[i], hoursLabel, isToday: i === TODAY_IDX, closed: row?.closed ?? false };
   });
 
   const openBorderColor = isOpen ? 'rgba(72,199,142,0.35)' : isOpen === false ? 'rgba(255,112,67,0.35)' : 'var(--color-border)';
@@ -59,7 +73,7 @@ export function HoursPage() {
       <PageHeader title={text('hours_page_title', 'Opening Hours')} onBack={() => navigate(-1)} />
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1.5rem var(--page-gutter) 3rem' }}>
       <p style={{ fontSize: '1rem', color: 'var(--color-text-muted)', marginBottom: '2rem' }}>
-        We&apos;re open most days — visit us at {address}.
+        {t('hours.intro').replace('{address}', address)}
       </p>
 
       {/* Live status */}
@@ -81,7 +95,7 @@ export function HoursPage() {
         )}
         <div>
           <p style={{ fontWeight: 700, color: 'var(--color-dark)', fontSize: '1rem', marginBottom: '0.2rem' }}>
-            {isOpen === null ? 'Checking status…' : isOpen ? 'Open Now' : 'Currently Closed'}
+            {isOpen === null ? t('hours.checking') : isOpen ? t('hours.open_now') : t('hours.closed_now')}
           </p>
           {message && <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{message}</p>}
         </div>
@@ -89,7 +103,10 @@ export function HoursPage() {
 
       {/* Weekly schedule */}
       <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', overflow: 'hidden', marginBottom: '2rem' }}>
-        {(loadErr && !schedule ? DAY_LABELS.map((l) => ({ label: l, hoursLabel: '—', isToday: DAY_LABELS[TODAY_IDX] === l, closed: false })) : weekRows).map((row, i) => (
+        {(loadErr && !schedule
+          ? dayLabels.map((l) => ({ label: l, hoursLabel: '—', isToday: dayLabels[TODAY_IDX] === l, closed: false }))
+          : weekRows
+        ).map((row, i) => (
           <div
             key={row.label}
             style={{
@@ -102,7 +119,7 @@ export function HoursPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
               {row.isToday && (
                 <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '999px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Today
+                  {t('hours.today')}
                 </span>
               )}
               <span style={{ fontWeight: row.isToday ? 700 : 500, color: row.isToday ? 'var(--color-primary)' : 'var(--color-dark)', fontSize: '0.925rem' }}>
@@ -118,7 +135,8 @@ export function HoursPage() {
 
       {/* Note */}
       <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-bg)', borderRadius: '12px', padding: '1.25rem', marginBottom: '2rem', fontSize: '0.875rem', color: 'var(--color-warning)', lineHeight: 1.6 }}>
-        <strong>Note:</strong> {text('hours_page_note', 'Hours may vary on public holidays and special occasions. For the latest updates, contact us directly or check our WhatsApp.')}
+        <strong>{t('hours.note_label')}</strong>{' '}
+        {text('hours_page_note', 'Hours may vary on public holidays and special occasions. For the latest updates, contact us directly or check our WhatsApp.')}
       </div>
 
       {/* Actions */}
@@ -132,7 +150,7 @@ export function HoursPage() {
             fontWeight: 700, fontSize: '0.925rem', textDecoration: 'none',
           }}
         >
-          Order Now →
+          {t('hours.order_now')}
         </Link>
         <a
           href={waLink}
@@ -144,7 +162,7 @@ export function HoursPage() {
             borderRadius: '12px', fontWeight: 600, fontSize: '0.925rem', textDecoration: 'none',
           }}
         >
-          WhatsApp Us
+          {t('hours.whatsapp')}
         </a>
       </div>
     </div>

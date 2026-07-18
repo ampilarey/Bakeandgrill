@@ -1,10 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
+import { useLanguage } from '../context/LanguageContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/shell/PageHeader';
 
 export function ContactPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { settings: s, text } = useSiteSettingsContext();
 
   const phone     = s.business_phone   || '+960 912 0011';
@@ -13,13 +15,13 @@ export function ContactPage() {
   const address   = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
   const waLink    = s.business_whatsapp|| 'https://wa.me/9609120011';
 
-  usePageTitle('Contact');
+  usePageTitle(text('contact_page_title', 'Contact Us'));
 
   const CONTACT_ITEMS = [
-    { label: 'Phone',    abbr: 'PH', value: phone,   action: { href: phoneTel,         text: 'Call us' } },
-    { label: 'Email',    abbr: 'EM', value: email,   action: { href: `mailto:${email}`, text: 'Send email' } },
-    { label: 'WhatsApp', abbr: 'WA', value: phone,   action: { href: waLink,            text: 'Message us', external: true } },
-    { label: 'Address',  abbr: 'AD', value: address, action: null },
+    { label: t('contact.phone'),    abbr: 'PH', value: phone,   action: { href: phoneTel,         text: t('contact.call_us') } },
+    { label: t('contact.email'),    abbr: 'EM', value: email,   action: { href: `mailto:${email}`, text: t('contact.send_email') } },
+    { label: t('contact.whatsapp'), abbr: 'WA', value: phone,   action: { href: waLink,            text: t('contact.message_us'), external: true } },
+    { label: t('contact.address'),  abbr: 'AD', value: address, action: null as null },
   ];
 
   return (
@@ -77,10 +79,10 @@ export function ContactPage() {
       <div style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.375rem' }}>
-            Want to visit in person?
+            {t('contact.visit_title')}
           </h3>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-            Check our current opening hours before you head over.
+            {t('contact.visit_sub')}
           </p>
         </div>
         <Link
@@ -92,7 +94,7 @@ export function ContactPage() {
             fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', flexShrink: 0,
           }}
         >
-          See Hours →
+          {t('contact.see_hours')}
         </Link>
       </div>
     </div>

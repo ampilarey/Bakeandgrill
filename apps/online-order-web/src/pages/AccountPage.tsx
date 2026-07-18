@@ -46,9 +46,9 @@ type PanelId =
   | 'deposit';
 
 export function AccountPage() {
-  usePageTitle('My Account');
   const navigate = useNavigate();
   const { t } = useLanguage();
+  usePageTitle(t('account.title'));
   const { isAuthenticated, authReady, setAuth, clearAuth, customerName } = useAuth();
 
   const [panel, setPanel] = useState<PanelId | null>(null);
@@ -125,7 +125,7 @@ export function AccountPage() {
         setLoyalty(account);
         if (tier_progress) setLoyaltyTierProgress(tier_progress);
       })
-      .catch((e: Error) => setLoyaltyError(e.message || 'Failed to load loyalty account.'));
+      .catch((e: Error) => setLoyaltyError(e.message || t('account.err_loyalty')));
   }, [isAuthenticated, authReady]);
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export function AccountPage() {
     setReservationsLoading(true);
     getMyReservations()
       .then((res) => setReservations(res.data ?? []))
-      .catch((e: Error) => setReservationsError(e.message || 'Failed to load reservations.'))
+      .catch((e: Error) => setReservationsError(e.message || t('account.err_reservations')))
       .finally(() => setReservationsLoading(false));
   }, [isAuthenticated, authReady, panel]);
 
@@ -142,7 +142,7 @@ export function AccountPage() {
     setFavouritesLoading(true);
     getMyFavourites()
       .then((res) => setFavourites(res.data ?? []))
-      .catch((e: Error) => setFavouritesError(e.message || 'Failed to load favourites.'))
+      .catch((e: Error) => setFavouritesError(e.message || t('account.err_favourites')))
       .finally(() => setFavouritesLoading(false));
   }, [isAuthenticated, authReady, panel]);
 
@@ -151,7 +151,7 @@ export function AccountPage() {
     setPreOrdersLoading(true);
     getMyPreOrders()
       .then((res) => setPreOrders(res.data ?? []))
-      .catch((e: Error) => setPreOrdersError(e.message || 'Failed to load pre-orders.'))
+      .catch((e: Error) => setPreOrdersError(e.message || t('account.err_preorders')))
       .finally(() => setPreOrdersLoading(false));
   }, [isAuthenticated, authReady, panel]);
 
@@ -171,7 +171,7 @@ export function AccountPage() {
           .filter((o: Order) => o.status === 'completed' && !reviewedOrderIds.has(o.id));
         setReviewableOrders(completed.slice(0, 10));
       })
-      .catch((e: Error) => setReviewsError(e.message || 'Failed to load reviews.'))
+      .catch((e: Error) => setReviewsError(e.message || t('account.err_reviews')))
       .finally(() => setReviewsLoading(false));
   }, [isAuthenticated, authReady, panel, reviewsPage]);
 
@@ -180,7 +180,7 @@ export function AccountPage() {
     setReferralLoading(true);
     getMyReferralCode()
       .then((r) => { setReferralCode(r.code); setReferralUses(r.uses_count); setReferralDiscount(r.referee_discount_mvr); })
-      .catch((e: Error) => setReferralError(e.message || 'Failed to load referral code.'))
+      .catch((e: Error) => setReferralError(e.message || t('account.err_referral')))
       .finally(() => setReferralLoading(false));
   }, [isAuthenticated, authReady, panel]);
 
@@ -189,7 +189,7 @@ export function AccountPage() {
     setCreditLoading(true);
     getCustomerCredit()
       .then((res) => { setCredit(res.credit); setCreditLoaded(true); })
-      .catch((e: Error) => setCreditError(e.message || 'Failed to load credit account.'))
+      .catch((e: Error) => setCreditError(e.message || t('account.err_credit')))
       .finally(() => setCreditLoading(false));
   }, [isAuthenticated, authReady, panel, creditLoaded]);
 
@@ -202,7 +202,7 @@ export function AccountPage() {
         setDepositTransactions(res.transactions ?? []);
         setDepositLoaded(true);
       })
-      .catch((e: Error) => setDepositError(e.message || 'Failed to load deposit account.'))
+      .catch((e: Error) => setDepositError(e.message || t('account.err_deposit')))
       .finally(() => setDepositLoading(false));
   }, [isAuthenticated, authReady, panel, depositLoaded]);
 
@@ -215,7 +215,7 @@ export function AccountPage() {
       await cancelMyReservation(id);
       setReservations((prev) => prev.map((r) => r.id === id ? { ...r, status: 'cancelled' } : r));
     } catch (e) {
-      setReservationsError((e as Error).message || 'Could not cancel reservation.');
+      setReservationsError((e as Error).message || t('account.err_cancel_rsv'));
     } finally {
       setCancellingId(null);
     }
@@ -239,7 +239,7 @@ export function AccountPage() {
   if (!authReady) {
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '3rem var(--page-gutter)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-        Loading…
+        {t('account.loading')}
       </div>
     );
   }
@@ -295,17 +295,17 @@ export function AccountPage() {
           )}
 
           {panel === 'reservations' && (
-            <SectionCard title="My Reservations">
+            <SectionCard title={t('account.rsv_title')}>
               {reservationsLoading ? (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('account.loading')}</p>
               ) : reservationsError ? (
                 <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{reservationsError}</p>
               ) : reservations.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
                   <p style={{ fontSize: 32, margin: '0 0 8px' }}>🗓</p>
-                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No reservations yet.</p>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.rsv_empty')}</p>
                   <Link to="/reservations" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
-                    Book a table →
+                    {t('account.rsv_book')}
                   </Link>
                 </div>
               ) : (
@@ -315,12 +315,12 @@ export function AccountPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>
-                            {new Date(r.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} at {r.time_slot?.slice(0, 5) ?? ''}
+                            {new Date(r.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} {t('account.rsv_at')} {r.time_slot?.slice(0, 5) ?? ''}
                           </span>
                           {statusBadge(r.status)}
                         </div>
                         <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-                          Party of {r.party_size}{r.notes ? ` · ${r.notes}` : ''}
+                          {t('account.rsv_party').replace('{n}', String(r.party_size))}{r.notes ? ` · ${r.notes}` : ''}
                         </span>
                       </div>
                       {['confirmed', 'pending'].includes(r.status) && (
@@ -329,7 +329,7 @@ export function AccountPage() {
                           disabled={cancellingId === r.id}
                           style={{ padding: '6px 14px', border: '1px solid var(--color-error, #dc2626)', borderRadius: 8, background: 'transparent', color: 'var(--color-error, #dc2626)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', opacity: cancellingId === r.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
                         >
-                          {cancellingId === r.id ? 'Cancelling…' : 'Cancel'}
+                          {cancellingId === r.id ? t('account.cancelling') : t('account.cancel')}
                         </button>
                       )}
                     </div>
@@ -340,17 +340,17 @@ export function AccountPage() {
           )}
 
           {panel === 'favourites' && (
-            <SectionCard title="My Favourites">
+            <SectionCard title={t('account.fav_title')}>
               {favouritesLoading ? (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('account.loading')}</p>
               ) : favouritesError ? (
                 <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{favouritesError}</p>
               ) : favourites.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
                   <p style={{ fontSize: 32, margin: '0 0 8px' }}>❤️</p>
-                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No favourites yet.</p>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.fav_empty')}</p>
                   <Link to="/menu" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
-                    Browse the menu →
+                    {t('account.fav_browse')}
                   </Link>
                 </div>
               ) : (
@@ -366,12 +366,12 @@ export function AccountPage() {
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-primary)' }}>MVR {Number(item.base_price).toFixed(2)}</p>
-                        {!item.is_available && <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>Unavailable</p>}
+                        {!item.is_available && <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>{t('account.unavailable')}</p>}
                       </div>
                     </div>
                   ))}
                   <Link to="/menu" style={{ textAlign: 'center', display: 'block', marginTop: 8, fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}>
-                    Add more from the menu →
+                    {t('account.fav_add_more')}
                   </Link>
                 </div>
               )}
@@ -379,17 +379,17 @@ export function AccountPage() {
           )}
 
           {panel === 'preorders' && (
-            <SectionCard title="My Pre-orders & Catering">
+            <SectionCard title={t('account.po_title')}>
               {preOrdersLoading ? (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('account.loading')}</p>
               ) : preOrdersError ? (
                 <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{preOrdersError}</p>
               ) : preOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
                   <p style={{ fontSize: 32, margin: '0 0 8px' }}>📦</p>
-                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No pre-orders yet.</p>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.po_empty')}</p>
                   <Link to="/pre-order" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
-                    Place a pre-order →
+                    {t('account.po_place')}
                   </Link>
                 </div>
               ) : (
@@ -399,17 +399,17 @@ export function AccountPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>
-                            {po.event_name ?? `Pre-order #${po.order_number}`}
+                            {po.event_name ?? t('account.po_fallback').replace('{n}', String(po.order_number))}
                           </span>
                           {statusBadge(po.status)}
                         </div>
                         {po.event_date && (
                           <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-                            Event: {new Date(po.event_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                            {t('account.po_event').replace('{name}', new Date(po.event_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))}
                           </span>
                         )}
                         <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                          Ordered {new Date(po.created_at).toLocaleDateString()}
+                          {t('account.po_ordered').replace('{date}', new Date(po.created_at).toLocaleDateString())}
                         </span>
                       </div>
                       <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
@@ -425,9 +425,9 @@ export function AccountPage() {
           {panel === 'reviews' && (
             <>
               {reviewableOrders.length > 0 && !showReviewForm && (
-                <SectionCard title="Leave a Review">
+                <SectionCard title={t('account.rv_leave')}>
                   <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-                    You have {reviewableOrders.length} completed order{reviewableOrders.length !== 1 ? 's' : ''} waiting for a review.
+                    {t('account.rv_waiting').replace('{n}', String(reviewableOrders.length))}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {reviewableOrders.map((o) => (
@@ -439,7 +439,7 @@ export function AccountPage() {
                           onClick={() => { setReviewOrderId(o.id); setReviewRating(5); setReviewComment(''); setReviewAnon(false); setReviewSubmitError(''); setShowReviewForm(true); }}
                           style={{ fontSize: 12, fontWeight: 700, padding: '6px 14px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}
                         >
-                          ⭐ Review
+                          ⭐ {t('account.rv_cta')}
                         </button>
                       </div>
                     ))}
@@ -448,10 +448,10 @@ export function AccountPage() {
               )}
 
               {showReviewForm && (
-                <SectionCard title="Write a Review">
+                <SectionCard title={t('account.rv_write')}>
                   {reviewSubmitError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{reviewSubmitError}</p>}
                   <div style={{ marginBottom: 14 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-dark)', margin: '0 0 8px' }}>Your Rating</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-dark)', margin: '0 0 8px' }}>{t('account.rv_rating')}</p>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {[1,2,3,4,5].map((star) => (
                         <button key={star} onClick={() => setReviewRating(star)}
@@ -462,26 +462,26 @@ export function AccountPage() {
                     </div>
                   </div>
                   <div style={{ marginBottom: 14 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-dark)', margin: '0 0 6px' }}>Comment (optional)</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-dark)', margin: '0 0 6px' }}>{t('account.rv_comment')}</p>
                     <textarea
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}
                       rows={3}
                       maxLength={1000}
-                      placeholder="Tell us about your experience…"
+                      placeholder={t('account.rv_ph')}
                       style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                     />
                   </div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16, cursor: 'pointer' }}>
                     <input type="checkbox" checked={reviewAnon} onChange={(e) => setReviewAnon(e.target.checked)} />
-                    Post anonymously
+                    {t('account.rv_anon')}
                   </label>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button
                       onClick={() => setShowReviewForm(false)}
                       style={{ flex: 1, padding: '10px', background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-text-muted)' }}
                     >
-                      Cancel
+                      {t('account.cancel')}
                     </button>
                     <button
                       disabled={submittingReview}
@@ -499,26 +499,26 @@ export function AccountPage() {
                             setReviewsTotalPages(res.meta?.last_page ?? 1);
                             setReviewsPage(1);
                           }).finally(() => setReviewsLoading(false));
-                        } catch (e: unknown) { setReviewSubmitError((e as Error).message || 'Failed to submit review.'); }
+                        } catch (e: unknown) { setReviewSubmitError((e as Error).message || t('account.err_submit_review')); }
                         finally { setSubmittingReview(false); }
                       }}
                       style={{ flex: 2, padding: '10px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: submittingReview ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: submittingReview ? 0.7 : 1 }}
                     >
-                      {submittingReview ? 'Submitting…' : 'Submit Review'}
+                      {submittingReview ? t('account.rv_submitting') : t('account.rv_submit')}
                     </button>
                   </div>
                 </SectionCard>
               )}
 
-              <SectionCard title="My Reviews">
+              <SectionCard title={t('account.rv_mine')}>
                 {reviewsLoading ? (
-                  <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('account.loading')}</p>
                 ) : reviewsError ? (
                   <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{reviewsError}</p>
                 ) : reviews.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px 0' }}>
                     <p style={{ fontSize: 32, margin: '0 0 8px' }}>⭐</p>
-                    <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No reviews yet.</p>
+                    <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.rv_empty')}</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -539,7 +539,7 @@ export function AccountPage() {
                         </div>
                         {rv.item && <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--color-dark)' }}>{rv.item.name}</p>}
                         {rv.comment && <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>{rv.comment}</p>}
-                        {rv.is_anonymous && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af' }}>Posted anonymously</p>}
+                        {rv.is_anonymous && <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af' }}>{t('account.rv_posted_anon')}</p>}
                       </div>
                     ))}
                     {reviewsTotalPages > 1 && (
@@ -548,15 +548,15 @@ export function AccountPage() {
                           onClick={() => setReviewsPage((p) => Math.max(1, p - 1))}
                           disabled={reviewsPage <= 1}
                           style={{ ...btnStyle, padding: '6px 14px', fontSize: 12, opacity: reviewsPage <= 1 ? 0.5 : 1, background: '#E5E7EB', color: '#1F2937' }}
-                        >‹ Prev</button>
+                        >{t('account.rv_prev')}</button>
                         <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                          Page {reviewsPage} of {reviewsTotalPages}
+                          {t('account.rv_page').replace('{n}', String(reviewsPage)).replace('{m}', String(reviewsTotalPages))}
                         </span>
                         <button
                           onClick={() => setReviewsPage((p) => Math.min(reviewsTotalPages, p + 1))}
                           disabled={reviewsPage >= reviewsTotalPages}
                           style={{ ...btnStyle, padding: '6px 14px', fontSize: 12, opacity: reviewsPage >= reviewsTotalPages ? 0.5 : 1, background: '#E5E7EB', color: '#1F2937' }}
-                        >Next ›</button>
+                        >{t('account.rv_next')}</button>
                       </div>
                     )}
                   </div>
@@ -579,13 +579,13 @@ export function AccountPage() {
                       {loyalty.tier === 'gold' ? '🥇' : loyalty.tier === 'silver' ? '🥈' : loyalty.tier === 'platinum' ? '💎' : '🥉'}
                     </div>
                     <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', margin: '0 0 4px' }}>
-                      {loyalty.tier} Member
+                      {t('account.loyalty_member').replace('{tier}', loyalty.tier)}
                     </p>
                     <p style={{ fontSize: 36, fontWeight: 900, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', margin: '0 0 4px' }}>
-                      {loyalty.points_balance.toLocaleString()} pts
+                      {t('account.loyalty_pts').replace('{n}', loyalty.points_balance.toLocaleString())}
                     </p>
                     <p style={{ fontSize: 13, color: TIER_COLOR[loyalty.tier]?.text ?? '#92400E', opacity: 0.7, margin: 0 }}>
-                      {loyalty.lifetime_points != null ? `${loyalty.lifetime_points.toLocaleString()} lifetime points earned` : ''}
+                      {loyalty.lifetime_points != null ? t('account.loyalty_lifetime').replace('{n}', loyalty.lifetime_points.toLocaleString()) : ''}
                     </p>
                   </div>
 
@@ -594,7 +594,7 @@ export function AccountPage() {
                       if (loyaltyTierProgress.at_max_tier) {
                         return (
                           <div style={{ textAlign: 'center', padding: '0.75rem', background: 'var(--color-surface-alt)', borderRadius: 12, fontSize: 13, color: 'var(--tier-platinum-text)', fontWeight: 600 }}>
-                            💎 You&apos;ve reached {loyaltyTierProgress.current_tier_name} — the highest tier!
+                            💎 {t('account.loyalty_top').replace('{tier}', loyaltyTierProgress.current_tier_name)}
                           </div>
                         );
                       }
@@ -613,7 +613,9 @@ export function AccountPage() {
                               <div style={{ height: '100%', width: `${(progress * 100).toFixed(1)}%`, background: TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D', borderRadius: 999, transition: 'width 0.4s ease' }} />
                             </div>
                             <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0, textAlign: 'center' }}>
-                              {ptsLeft > 0 ? <><strong>{ptsLeft.toLocaleString()} pts</strong> to reach {loyaltyTierProgress.next_tier_name}</> : `You've reached ${loyaltyTierProgress.next_tier_name}!`}
+                              {ptsLeft > 0
+                                ? t('account.loyalty_to_reach').replace('{n}', ptsLeft.toLocaleString()).replace('{tier}', loyaltyTierProgress.next_tier_name)
+                                : t('account.loyalty_top').replace('{tier}', loyaltyTierProgress.next_tier_name)}
                             </p>
                           </div>
                         );
@@ -621,19 +623,19 @@ export function AccountPage() {
                     }
 
                     const TIERS = [
-                      { key: 'bronze',   label: 'Bronze',   threshold: 0,     next: 1000,  icon: '🥉' },
-                      { key: 'silver',   label: 'Silver',   threshold: 1000,  next: 5000,  icon: '🥈' },
-                      { key: 'gold',     label: 'Gold',     threshold: 5000,  next: 15000, icon: '🥇' },
-                      { key: 'platinum', label: 'Platinum', threshold: 15000, next: null,  icon: '💎' },
+                      { key: 'bronze',   label: t('account.tier.bronze'),   threshold: 0,     next: 1000,  icon: '🥉' },
+                      { key: 'silver',   label: t('account.tier.silver'),   threshold: 1000,  next: 5000,  icon: '🥈' },
+                      { key: 'gold',     label: t('account.tier.gold'),     threshold: 5000,  next: 15000, icon: '🥇' },
+                      { key: 'platinum', label: t('account.tier.platinum'), threshold: 15000, next: null,  icon: '💎' },
                     ];
                     const lifePoints = loyalty.lifetime_points ?? 0;
-                    const currentIdx = TIERS.findIndex((t) => t.key === loyalty.tier);
+                    const currentIdx = TIERS.findIndex((tier) => tier.key === loyalty.tier);
                     const current = TIERS[currentIdx] ?? TIERS[0];
                     const nextTier = TIERS[currentIdx + 1];
                     if (!nextTier) {
                       return (
                         <div style={{ textAlign: 'center', padding: '0.75rem', background: 'var(--color-surface-alt)', borderRadius: 12, fontSize: 13, color: 'var(--tier-platinum-text)', fontWeight: 600 }}>
-                          💎 You've reached Platinum — the highest tier!
+                          💎 {t('account.loyalty_top').replace('{tier}', t('account.tier.platinum'))}
                         </div>
                       );
                     }
@@ -649,18 +651,20 @@ export function AccountPage() {
                           <div style={{ height: '100%', width: `${(progress * 100).toFixed(1)}%`, background: TIER_COLOR[loyalty.tier]?.border ?? '#FCD34D', borderRadius: 999, transition: 'width 0.4s ease' }} />
                         </div>
                         <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0, textAlign: 'center' }}>
-                          {ptsLeft > 0 ? <><strong>{ptsLeft.toLocaleString()} pts</strong> to reach {nextTier.label}</> : `You've reached ${nextTier.label}!`}
+                          {ptsLeft > 0
+                            ? t('account.loyalty_to_reach').replace('{n}', ptsLeft.toLocaleString()).replace('{tier}', nextTier.label)
+                            : t('account.loyalty_top').replace('{tier}', nextTier.label)}
                         </p>
                       </div>
                     );
                   })()}
 
-                  <SectionCard title="How to Earn Points">
+                  <SectionCard title={t('account.loyalty_earn_title')}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {[
-                        { icon: '🛒', label: 'Every MVR 1 spent', detail: 'Earn 1 point on every order' },
-                        { icon: '🎂', label: 'Birthday bonus', detail: 'Extra points on your birthday month' },
-                        { icon: '🎁', label: 'Refer a friend', detail: `Earn bonus points when friends join` },
+                        { icon: '🛒', label: t('account.loyalty_earn_spend'), detail: t('account.loyalty_earn_spend_d') },
+                        { icon: '🎂', label: t('account.loyalty_earn_bday'), detail: t('account.loyalty_earn_bday_d') },
+                        { icon: '🎁', label: t('account.loyalty_earn_ref'), detail: t('account.loyalty_earn_ref_d') },
                       ].map((row) => (
                         <div key={row.label} style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                           <span style={{ fontSize: 26, flexShrink: 0 }}>{row.icon}</span>
@@ -673,13 +677,13 @@ export function AccountPage() {
                     </div>
                   </SectionCard>
 
-                  <SectionCard title="Redeeming Points">
+                  <SectionCard title={t('account.loyalty_redeem_title')}>
                     <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
-                      Apply your points at checkout to get a discount on your next order. Every <strong>100 points = MVR 1</strong> off.
+                      {t('account.loyalty_redeem_blurb').replace('{rate}', t('account.loyalty_redeem_rate'))}
                     </p>
                     {loyalty.points_balance >= 100 && (
                       <div style={{ background: 'var(--color-success-bg, #DCFCE7)', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--color-success, #15803D)', fontWeight: 600 }}>
-                        🎉 You can redeem up to MVR {Math.floor(loyalty.points_balance / 100).toFixed(2)} on your next order!
+                        🎉 {t('account.loyalty_redeem_up_to').replace('{amount}', Math.floor(loyalty.points_balance / 100).toFixed(2))}
                       </div>
                     )}
                   </SectionCard>
@@ -687,7 +691,7 @@ export function AccountPage() {
               ) : (
                 <div style={{ textAlign: 'center', padding: '48px 0' }}>
                   <p style={{ fontSize: 36, margin: '0 0 8px' }}>⭐</p>
-                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>Place your first order to start earning loyalty points.</p>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.loyalty_empty')}</p>
                 </div>
               )}
             </>
@@ -697,13 +701,13 @@ export function AccountPage() {
             <>
               {creditError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{creditError}</p>}
               {creditLoading ? (
-                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>Loading…</div>
+                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>{t('account.loading')}</div>
               ) : !credit ? (
-                <SectionCard title="Credit Account">
+                <SectionCard title={t('account.credit')}>
                   <div style={{ textAlign: 'center', padding: '32px 0' }}>
                     <p style={{ fontSize: 32, margin: '0 0 8px' }}>💳</p>
                     <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>
-                      You do not have an approved credit account. Ask the restaurant if you need to pay on account.
+                      {t('account.credit_none')}
                     </p>
                   </div>
                 </SectionCard>
@@ -720,27 +724,27 @@ export function AccountPage() {
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                       <div>
-                        <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>Balance owed</p>
+                        <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>{t('account.credit_owed')}</p>
                         <p style={{ fontSize: 22, fontWeight: 900, color: '#1E3A8A', margin: 0 }}>MVR {credit.balance_mvr.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>Credit limit</p>
+                        <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>{t('account.credit_limit')}</p>
                         <p style={{ fontSize: 22, fontWeight: 900, color: '#1E3A8A', margin: 0 }}>MVR {credit.limit_mvr.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>Available</p>
+                        <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>{t('account.credit_available')}</p>
                         <p style={{ fontSize: 22, fontWeight: 900, color: '#15803D', margin: 0 }}>MVR {credit.available_mvr.toFixed(2)}</p>
                       </div>
                     </div>
                     <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 13, color: '#1E40AF' }}>
-                      <span><strong>Payment terms:</strong> Net {credit.payment_terms_days} days</span>
+                      <span>{t('account.credit_terms').replace('{n}', String(credit.payment_terms_days))}</span>
                       {credit.next_payment_due_date && (
-                        <span><strong>Next payment due:</strong> {new Date(`${credit.next_payment_due_date}T00:00:00`).toLocaleDateString()}</span>
+                        <span>{t('account.credit_due').replace('{date}', new Date(`${credit.next_payment_due_date}T00:00:00`).toLocaleDateString())}</span>
                       )}
                     </div>
                   </div>
 
-                  <SectionCard title="SMS Payment Reminders">
+                  <SectionCard title={t('account.credit_sms_title')}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>
                       <input
                         type="checkbox"
@@ -753,20 +757,20 @@ export function AccountPage() {
                           setCreditError('');
                           updateCustomerCreditPreferences({ credit_reminder_sms: enabled })
                             .then((res) => setCredit(res.credit))
-                            .catch((err: Error) => setCreditError(err.message || 'Failed to update reminder preference.'))
+                            .catch((err: Error) => setCreditError(err.message || t('account.err_credit_pref')))
                             .finally(() => setReminderSaving(false));
                         }}
                       />
-                      Send SMS reminders before and on payment due dates
+                      {t('account.credit_sms_label')}
                     </label>
                     <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                      Reminders are on by default. Turn off if you prefer email or in-app only.
+                      {t('account.credit_sms_hint')}
                     </p>
                   </SectionCard>
 
-                  <SectionCard title="Open Invoices">
+                  <SectionCard title={t('account.credit_invoices')}>
                     {credit.open_invoices.length === 0 ? (
-                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>No open invoices — your account is clear.</p>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.credit_invoices_empty')}</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {credit.open_invoices.map((inv) => {
@@ -778,20 +782,20 @@ export function AccountPage() {
                             <div>
                               <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-dark)' }}>{inv.invoice_number}</p>
                               <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                {inv.issue_date ? `Issued ${inv.issue_date}` : 'On credit account'}
+                                {inv.issue_date ? t('account.credit_issued').replace('{date}', inv.issue_date) : t('account.credit_on_account')}
                                 {inv.order_id ? ` · Order #${inv.order_id}` : ''}
                               </p>
                               {inv.due_date && (
                                 <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 600, color: overdue ? '#B45309' : 'var(--color-text-muted)' }}>
-                                  {overdue ? 'Overdue — ' : 'Due '}{new Date(`${inv.due_date}T00:00:00`).toLocaleDateString()}
+                                  {(overdue ? t('account.credit_overdue') : t('account.credit_due_short')).replace('{date}', new Date(`${inv.due_date}T00:00:00`).toLocaleDateString())}
                                 </p>
                               )}
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                              <p style={{ margin: 0, fontWeight: 800, fontSize: 15, color: '#B45309' }}>MVR {inv.balance_due_mvr.toFixed(2)} due</p>
+                              <p style={{ margin: 0, fontWeight: 800, fontSize: 15, color: '#B45309' }}>{t('account.credit_mvr_due').replace('{amount}', inv.balance_due_mvr.toFixed(2))}</p>
                               {inv.view_url && (
                                 <a href={inv.view_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--color-primary)', fontWeight: 600 }}>
-                                  View invoice →
+                                  {t('account.credit_view')}
                                 </a>
                               )}
                             </div>
@@ -810,13 +814,13 @@ export function AccountPage() {
             <>
               {depositError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{depositError}</p>}
               {depositLoading ? (
-                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>Loading…</div>
+                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>{t('account.loading')}</div>
               ) : !deposit ? (
-                <SectionCard title="Deposit Balance">
+                <SectionCard title={t('account.deposit')}>
                   <div style={{ textAlign: 'center', padding: '32px 0' }}>
                     <p style={{ fontSize: 32, margin: '0 0 8px' }}>💰</p>
                     <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>
-                      You do not have a prepaid deposit balance. Ask the restaurant if you would like to prepay for faster checkout in-store.
+                      {t('account.deposit_empty')}
                     </p>
                   </div>
                 </SectionCard>
@@ -833,26 +837,26 @@ export function AccountPage() {
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div>
-                        <p style={{ fontSize: 11, color: '#065F46', margin: '0 0 4px', fontWeight: 700 }}>Available balance</p>
+                        <p style={{ fontSize: 11, color: '#065F46', margin: '0 0 4px', fontWeight: 700 }}>{t('account.deposit_balance')}</p>
                         <p style={{ fontSize: 22, fontWeight: 900, color: '#047857', margin: 0 }}>MVR {deposit.balance_mvr.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p style={{ fontSize: 11, color: '#065F46', margin: '0 0 4px', fontWeight: 700 }}>In-store use</p>
+                        <p style={{ fontSize: 11, color: '#065F46', margin: '0 0 4px', fontWeight: 700 }}>{t('account.deposit_instore')}</p>
                         <p style={{ fontSize: 22, fontWeight: 900, color: deposit.can_use ? '#15803D' : '#9CA3AF', margin: 0 }}>
-                          {deposit.can_use ? 'Available' : 'Unavailable'}
+                          {deposit.can_use ? t('account.deposit_available') : t('account.deposit_unavailable')}
                         </p>
                       </div>
                     </div>
                     {deposit.status !== 'active' && (
                       <p style={{ margin: '12px 0 0', fontSize: 13, color: '#B45309' }}>
-                        Your deposit account is {deposit.status}. Contact the restaurant for assistance.
+                        {t('account.deposit_status_note').replace('{status}', deposit.status)}
                       </p>
                     )}
                   </div>
 
-                  <SectionCard title="Recent Activity">
+                  <SectionCard title={t('account.deposit_activity')}>
                     {depositTransactions.length === 0 ? (
-                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>No deposit transactions yet.</p>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.deposit_activity_empty')}</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {depositTransactions.map((tx) => (
@@ -885,7 +889,7 @@ export function AccountPage() {
                                 {tx.direction === 'credit' ? '+' : '−'}MVR {tx.amount_mvr.toFixed(2)}
                               </p>
                               <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
-                                Bal MVR {tx.balance_after_mvr.toFixed(2)}
+                                {t('account.deposit_bal').replace('{amount}', tx.balance_after_mvr.toFixed(2))}
                               </p>
                             </div>
                           </div>
@@ -902,7 +906,7 @@ export function AccountPage() {
             <>
               {referralError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{referralError}</p>}
               {referralLoading ? (
-                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>Loading…</div>
+                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>{t('account.loading')}</div>
               ) : referralCode ? (
                 <>
                   <div style={{
@@ -910,7 +914,7 @@ export function AccountPage() {
                     border: '2px solid #FCD34D', borderRadius: 18, padding: '28px 20px', textAlign: 'center',
                   }}>
                     <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#92400E', margin: '0 0 10px' }}>
-                      Your Referral Code
+                      {t('account.ref_code_title')}
                     </p>
                     <p style={{ fontSize: 34, fontWeight: 900, letterSpacing: '0.15em', color: '#78350F', margin: '0 0 16px', fontFamily: 'monospace' }}>
                       {referralCode}
@@ -923,28 +927,28 @@ export function AccountPage() {
                       }}
                       style={{ ...btnStyle, background: referralCopied ? '#15803D' : '#D97706', fontSize: 13, height: 40, padding: '0 24px' }}
                     >
-                      {referralCopied ? '✓ Copied!' : '📋 Copy Code'}
+                      {referralCopied ? t('account.ref_copied') : t('account.ref_copy')}
                     </button>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '20px 16px', textAlign: 'center' }}>
                       <p style={{ fontSize: 32, fontWeight: 900, color: 'var(--color-primary)', margin: '0 0 4px' }}>{referralUses}</p>
-                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>Friends joined</p>
+                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.ref_friends')}</p>
                     </div>
                     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '20px 16px', textAlign: 'center' }}>
                       <p style={{ fontSize: 32, fontWeight: 900, color: '#15803D', margin: '0 0 4px' }}>MVR {referralDiscount.toFixed(2)}</p>
-                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>Discount per referral</p>
+                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.ref_discount')}</p>
                     </div>
                   </div>
 
-                  <SectionCard title="How Referrals Work">
+                  <SectionCard title={t('account.ref_how')}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                       {[
-                        { step: '1', text: `Share your code "${referralCode}" with friends` },
-                        { step: '2', text: 'They enter your code during checkout' },
-                        { step: '3', text: `They get MVR ${referralDiscount.toFixed(2)} off their first order` },
-                        { step: '4', text: 'You earn bonus loyalty points once they order' },
+                        { step: '1', text: t('account.ref_step1').replace('{code}', referralCode ?? '') },
+                        { step: '2', text: t('account.ref_step2') },
+                        { step: '3', text: t('account.ref_step3').replace('{amount}', referralDiscount.toFixed(2)) },
+                        { step: '4', text: t('account.ref_step4') },
                       ].map(({ step, text }) => (
                         <div key={step} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                           <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
@@ -956,9 +960,9 @@ export function AccountPage() {
                     </div>
                   </SectionCard>
 
-                  <SectionCard title="Share Your Link">
+                  <SectionCard title={t('account.ref_share_title')}>
                     <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-                      Send this link to friends — the referral code is pre-filled for them.
+                      {t('account.ref_share_hint')}
                     </p>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input
@@ -974,7 +978,7 @@ export function AccountPage() {
                         }}
                         style={{ ...btnStyle, padding: '0 16px', fontSize: 12, whiteSpace: 'nowrap' }}
                       >
-                        {referralCopied ? '✓' : 'Copy'}
+                        {referralCopied ? '✓' : t('account.ref_copy_short')}
                       </button>
                     </div>
                   </SectionCard>
@@ -982,7 +986,7 @@ export function AccountPage() {
               ) : (
                 <div style={{ textAlign: 'center', padding: '48px 0' }}>
                   <p style={{ fontSize: 36, margin: '0 0 8px' }}>🎁</p>
-                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>Place your first order to unlock your referral code.</p>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.ref_empty')}</p>
                 </div>
               )}
             </>
@@ -994,7 +998,7 @@ export function AccountPage() {
   }
 
   // ── Hub ──────────────────────────────────────────────────────────────────────
-  const displayName = customerName ?? customer?.name ?? 'there';
+  const displayName = customerName ?? customer?.name ?? t('account.greeting_fallback');
 
   const hubRow = (
     icon: string,

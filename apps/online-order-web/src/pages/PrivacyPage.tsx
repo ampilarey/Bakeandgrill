@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
+import { useLanguage } from '../context/LanguageContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/shell/PageHeader';
 
 export function PrivacyPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { settings: s, text } = useSiteSettingsContext();
   const siteName = s.site_name      || 'Bake & Grill';
   const phone    = s.business_phone || '+960 912 0011';
@@ -13,6 +15,10 @@ export function PrivacyPage() {
   const address  = s.business_address || 'Kalaafaanu Hingun, Malé, Maldives';
   const pageTitle = text('privacy_page_title', 'Privacy Policy');
   const cmsBody = s.legal_privacy_body?.trim();
+  const updatedLabel = t('account.privacy_updated').replace(
+    '{date}',
+    new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' }),
+  );
 
   usePageTitle(pageTitle);
 
@@ -21,7 +27,7 @@ export function PrivacyPage() {
       <>
         <PageHeader title={pageTitle} onBack={() => navigate(-1)} />
         <div style={S.wrap}>
-          <p style={S.updated}><em>Last updated: {new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' })}</em></p>
+          <p style={S.updated}><em>{updatedLabel}</em></p>
           {cmsBody.split(/\n\n+/).filter(Boolean).map((para, i) => (
             <p key={i} style={{ ...S.body, marginBottom: '1.25rem' }}>{para}</p>
           ))}
@@ -34,7 +40,7 @@ export function PrivacyPage() {
     <>
       <PageHeader title={pageTitle} onBack={() => navigate(-1)} />
       <div style={S.wrap}>
-      <p style={S.updated}><em>Last updated: {new Date().toLocaleDateString('en-MV', { year: 'numeric', month: 'long', day: 'numeric' })}</em></p>
+      <p style={S.updated}><em>{updatedLabel}</em></p>
 
       <Section title="Introduction">
         <p>{siteName} ("we", "us", "our") operates the {siteName} café and online ordering system. This Privacy Policy explains how we collect, use, and protect your personal information when you use our services.</p>

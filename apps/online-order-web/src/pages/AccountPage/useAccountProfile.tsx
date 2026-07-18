@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getCustomerMe, updateCustomerProfile, changeCustomerPassword } from '../../api';
 import type { AuthCustomer } from '../../api';
+import { useLanguage } from '../../context/LanguageContext';
 
 export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) {
+  const { t } = useLanguage();
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: '', email: '', date_of_birth: '' });
@@ -25,9 +27,9 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
           date_of_birth: (res.customer as AuthCustomer).date_of_birth ?? '',
         });
       })
-      .catch((e: Error) => setProfileMsg({ type: 'error', text: e.message || 'Failed to load profile.' }))
+      .catch((e: Error) => setProfileMsg({ type: 'error', text: e.message || t('account.profile_err_load') }))
       .finally(() => setLoadingProfile(false));
-  }, [isAuthenticated, authReady]);
+  }, [isAuthenticated, authReady, t]);
 
   const handleSaveProfile = async () => {
     if (!isAuthenticated) return;
@@ -39,9 +41,9 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
         date_of_birth: profileForm.date_of_birth || null,
       });
       setCustomer(res.customer);
-      setProfileMsg({ type: 'success', text: 'Profile updated.' });
+      setProfileMsg({ type: 'success', text: t('account.profile_ok') });
     } catch (e) {
-      setProfileMsg({ type: 'error', text: (e as Error).message || 'Could not save changes.' });
+      setProfileMsg({ type: 'error', text: (e as Error).message || t('account.profile_err_save') });
     } finally {
       setSavingProfile(false);
     }
@@ -50,15 +52,15 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
   const handleChangePassword = async () => {
     if (!isAuthenticated) return;
     if (!pwForm.current_password || !pwForm.new_password) {
-      setPwMsg({ type: 'error', text: 'Please fill in all password fields.' });
+      setPwMsg({ type: 'error', text: t('account.pw_err_all') });
       return;
     }
     if (pwForm.new_password !== pwForm.confirm_password) {
-      setPwMsg({ type: 'error', text: 'New passwords do not match.' });
+      setPwMsg({ type: 'error', text: t('account.pw_err_mismatch') });
       return;
     }
     if (pwForm.new_password.length < 8) {
-      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters.' });
+      setPwMsg({ type: 'error', text: t('account.pw_err_short') });
       return;
     }
     setSavingPw(true); setPwMsg(null);
@@ -68,9 +70,9 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
         new_password: pwForm.new_password,
       });
       setPwForm({ current_password: '', new_password: '', confirm_password: '' });
-      setPwMsg({ type: 'success', text: 'Password changed successfully.' });
+      setPwMsg({ type: 'success', text: t('account.pw_ok') });
     } catch (e) {
-      setPwMsg({ type: 'error', text: (e as Error).message || 'Could not change password. Check your current password.' });
+      setPwMsg({ type: 'error', text: (e as Error).message || t('account.pw_err_change') });
     } finally {
       setSavingPw(false);
     }

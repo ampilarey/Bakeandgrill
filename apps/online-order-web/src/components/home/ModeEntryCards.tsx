@@ -1,8 +1,14 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrderMode } from '../../context/OrderModeContext';
 import { useLanguage } from '../../context/LanguageContext';
 
 type ModeKind = 'delivery' | 'pickup';
+
+const MODE_IMAGES: Record<ModeKind, string> = {
+  delivery: `${import.meta.env.BASE_URL}images/mode-delivery.jpg`,
+  pickup: `${import.meta.env.BASE_URL}images/mode-pickup.jpg`,
+};
 
 type CardProps = {
   kind: ModeKind;
@@ -12,6 +18,7 @@ type CardProps = {
 };
 
 function ModeCard({ kind, label, hint, onClick }: CardProps) {
+  const [imgFailed, setImgFailed] = useState(false);
   const icon = kind === 'delivery' ? '🛵' : '🏪';
   const gradient =
     kind === 'delivery'
@@ -46,9 +53,24 @@ function ModeCard({ kind, label, hint, onClick }: CardProps) {
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 48,
+          position: 'relative',
         }}
       >
-        {icon}
+        {!imgFailed && (
+          <img
+            src={MODE_IMAGES[kind]}
+            alt=""
+            onError={() => setImgFailed(true)}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        )}
+        {imgFailed && icon}
       </div>
       <div style={{ padding: '0.875rem 1rem 1rem' }}>
         <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--color-dark)' }}>
