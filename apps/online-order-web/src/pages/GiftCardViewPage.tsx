@@ -148,6 +148,7 @@ export function GiftCardViewPage() {
 
             <div style={actions}>
               <Link to="/menu" style={primaryBtn}>{t('gift.view_redeem')}</Link>
+              <p style={counterHint}>{t('gift.view_counter')}</p>
               <Link to="/gift-cards" style={secondaryBtn}>{t('gift.back_hub')}</Link>
             </div>
           </>
@@ -327,6 +328,15 @@ const actions: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 10,
+};
+
+const counterHint: CSSProperties = {
+  margin: 0,
+  textAlign: 'center',
+  fontSize: 13,
+  fontWeight: 600,
+  color: 'var(--color-text-muted)',
+  lineHeight: 1.4,
 };
 
 const primaryBtn: CSSProperties = {

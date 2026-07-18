@@ -38,6 +38,8 @@ type Props = {
   /** When true, the panel becomes read-only — used for resumed tickets
    *  where rewards must be applied via the original online checkout. */
   readOnly?: boolean;
+  /** Staff needs promotions.discounts (same as backend staffApply). */
+  canApplyGiftCard?: boolean;
 };
 
 const COLOR = {
@@ -78,11 +80,13 @@ export function CustomerRewardsPanel({
   setAppliedGiftCard,
   orderId = null,
   readOnly = false,
+  canApplyGiftCard = true,
 }: Props) {
   const [summary, setSummary] = useState<PosCustomerSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  // Open by default so cashiers see Gift card without hunting — especially walk-ins.
+  const [expanded, setExpanded] = useState(true);
 
   // Promo state (local — only committed to cart on Apply).
   const [promoCode, setPromoCode] = useState("");
@@ -424,40 +428,44 @@ export function CustomerRewardsPanel({
           )}
 
           {/* ── Gift card (works for walk-ins too) ──────────────────── */}
-          <Section
-            title="Gift card"
-            applied={
-              applied.giftCard
-                ? `${applied.giftCard.code} · MVR ${applied.giftCard.discount.toFixed(2)} of ${applied.giftCard.cardBalance.toFixed(2)} available${
-                    (applied.giftCard.heldBalance ?? 0) > 0
-                      ? ` (${applied.giftCard.heldBalance!.toFixed(2)} held)`
-                      : ''
-                  }`
-                : null
-            }
-            onRemove={applied.giftCard ? () => { void handleRemoveGiftCard(); } : undefined}
-            error={giftError}
-            readOnly={readOnly}
-          >
-            <div style={{ display: "flex", gap: 6 }}>
-              <input
-                value={giftCode}
-                onChange={(e) => { setGiftCode(e.target.value.toUpperCase()); setGiftError(""); }}
-                placeholder="GIFT-XXXX-XXXX"
-                disabled={!!applied.giftCard || readOnly}
-                style={fieldStyle}
-                autoCapitalize="characters"
-              />
-              <button
-                type="button"
-                onClick={handleApplyGiftCard}
-                disabled={!giftCode.trim() || giftBusy || !!applied.giftCard || readOnly}
-                style={primaryBtn(!giftCode.trim() || giftBusy || !!applied.giftCard || readOnly)}
-              >
-                {giftBusy ? "…" : "Apply"}
-              </button>
-            </div>
-          </Section>
+          {canApplyGiftCard && (
+            <Section
+              title="Gift card"
+              hint="Dine-in / takeaway — enter code from SMS or card"
+              applied={
+                applied.giftCard
+                  ? `${applied.giftCard.code} · MVR ${applied.giftCard.discount.toFixed(2)} of ${applied.giftCard.cardBalance.toFixed(2)} available${
+                      (applied.giftCard.heldBalance ?? 0) > 0
+                        ? ` (${applied.giftCard.heldBalance!.toFixed(2)} held)`
+                        : ''
+                    }`
+                  : null
+              }
+              onRemove={applied.giftCard ? () => { void handleRemoveGiftCard(); } : undefined}
+              error={giftError}
+              readOnly={readOnly}
+            >
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  value={giftCode}
+                  onChange={(e) => { setGiftCode(e.target.value.toUpperCase()); setGiftError(""); }}
+                  placeholder="Paste gift code"
+                  disabled={!!applied.giftCard || readOnly}
+                  style={fieldStyle}
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyGiftCard}
+                  disabled={!giftCode.trim() || giftBusy || !!applied.giftCard || readOnly}
+                  style={primaryBtn(!giftCode.trim() || giftBusy || !!applied.giftCard || readOnly)}
+                >
+                  {giftBusy ? "…" : "Apply"}
+                </button>
+              </div>
+            </Section>
+          )}
 
           {/* ── Recent orders ──────────────────────────────────────── */}
           {summary && summary.recent_orders.length > 0 && (
