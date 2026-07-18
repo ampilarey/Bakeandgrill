@@ -11,6 +11,7 @@ class AbandonedCart extends Model
 {
     protected $fillable = [
         'customer_id',
+        'phone',
         'cart_token',
         'items_json',
         'subtotal_laar',

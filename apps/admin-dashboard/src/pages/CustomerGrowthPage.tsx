@@ -283,6 +283,19 @@ export function CustomerGrowthPage() {
               <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Birthday SMS template</label>
               <textarea value={automation.birthday_sms_template} onChange={(e) => setAutomation({ ...automation, birthday_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }} />
 
+              {!automation.abandoned_cart_enabled && (
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: '#FEF3C7',
+                  border: '1px solid #F59E0B',
+                  color: '#92400E',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}>
+                  Abandoned cart recovery is <strong>OFF</strong>. Guest and signed-in carts can be snapshotted, but no reminder SMS will send until you enable this and save.
+                </div>
+              )}
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginTop: 8 }}>
                 <input type="checkbox" checked={automation.abandoned_cart_enabled} onChange={(e) => setAutomation({ ...automation, abandoned_cart_enabled: e.target.checked })} />
                 Abandoned cart recovery SMS

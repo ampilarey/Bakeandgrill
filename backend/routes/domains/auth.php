@@ -45,6 +45,10 @@ Route::prefix('auth/staff')->group(function () {
 | by the Blade login controller (CustomerPortalController).
 |--------------------------------------------------------------------------
 */
+// Guest abandoned-cart snapshot (pre-login). Throttled — phone required.
+Route::post('/cart/snapshot-guest', [App\Http\Controllers\Api\CustomerCartController::class, 'snapshotGuest'])
+    ->middleware('throttle:20,1');
+
 Route::prefix('auth/customer')
     ->group(function () {
         // OTP flow — route throttle is intentionally lenient (IP-based, CGNAT-safe).

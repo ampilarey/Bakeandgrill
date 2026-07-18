@@ -34,6 +34,52 @@ class AbandonedCartTest extends TestCase
         ]);
     }
 
+    public function test_guest_can_snapshot_cart_by_phone(): void
+    {
+        $response = $this->postJson('/api/cart/snapshot-guest', [
+            'phone' => '+9607890123',
+            'items' => [
+                ['id' => 2, 'name' => 'Espresso', 'quantity' => 1, 'price' => 25.00],
+            ],
+            'subtotal_laar' => 2500,
+        ])->assertOk();
+
+        $response->assertJsonStructure(['cart_token', 'snapshot_at']);
+
+        $this->assertDatabaseHas('abandoned_carts', [
+            'phone' => '+9607890123',
+            'subtotal_laar' => 2500,
+        ]);
+    }
+
+    public function test_guest_abandoned_cart_reminder_uses_phone(): void
+    {
+        SiteSetting::set('marketing_abandoned_cart_enabled', '1');
+        SiteSetting::set('marketing_abandoned_cart_delay_minutes', '30');
+        SiteSetting::bust();
+
+        AbandonedCart::create([
+            'customer_id' => null,
+            'phone' => '+9607890456',
+            'cart_token' => (string) \Illuminate\Support\Str::uuid(),
+            'items_json' => [['id' => 1, 'name' => 'Tea', 'quantity' => 1]],
+            'subtotal_laar' => 1500,
+            'snapshot_at' => now()->subMinutes(45),
+        ]);
+
+        $this->artisan('marketing:send-abandoned-cart-reminders')
+            ->assertSuccessful();
+
+        $cart = AbandonedCart::where('phone', '+9607890456')->first();
+        $this->assertNotNull($cart?->reminded_at);
+
+        $this->assertDatabaseHas('sms_logs', [
+            'to' => '+9607890456',
+            'type' => 'promotion',
+            'reference_type' => 'abandoned_cart',
+        ]);
+    }
+
     public function test_abandoned_cart_reminder_sends_once(): void
     {
         SiteSetting::set('marketing_abandoned_cart_enabled', '1');

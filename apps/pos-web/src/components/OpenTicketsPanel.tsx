@@ -193,6 +193,8 @@ export function OpenTicketsPanel({
           onPhoneChange={(phone) => setPhonePrompt((p) => p ? { ...p, phone } : p)}
           onCancel={() => setPhonePrompt(null)}
           onSubmit={submitPhonePrompt}
+          title={phonePrompt.purpose === "pay_link" ? "Send pay link SMS" : "Send bill SMS"}
+          submitLabel={phonePrompt.purpose === "pay_link" ? "Send pay link" : "Send SMS"}
         />
       )}
       {splitFor && (

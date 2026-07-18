@@ -32,29 +32,37 @@ class SendAbandonedCartReminders extends Command
             ->with('customer:id,name,phone,sms_opt_out')
             ->whereNull('reminded_at')
             ->where('snapshot_at', '<=', $eligibleBefore)
-            ->whereHas('customer', fn ($q) => $q
-                ->where('sms_opt_out', false)
-                ->whereNotNull('phone')
-                ->where('phone', '!=', ''))
+            ->where(function ($q): void {
+                $q->whereNotNull('phone')->where('phone', '!=', '')
+                    ->orWhereHas('customer', fn ($c) => $c
+                        ->where('sms_opt_out', false)
+                        ->whereNotNull('phone')
+                        ->where('phone', '!=', ''));
+            })
             ->orderBy('id')
             ->chunkById(50, function ($carts) use ($sms, $marketing, &$sent): void {
                 foreach ($carts as $cart) {
                     $customer = $cart->customer;
-                    if ($customer === null) {
+                    if ($customer?->sms_opt_out) {
+                        continue;
+                    }
+
+                    $to = (string) ($cart->phone ?: $customer?->phone ?: '');
+                    if ($to === '') {
                         continue;
                     }
 
                     $url = $marketing->orderUrl() . '/checkout';
                     $message = $marketing->interpolate($marketing->settings()['abandoned_cart_sms_template'], [
                         'url' => $url,
-                        'name' => $customer->name ?: 'there',
+                        'name' => $customer?->name ?: 'there',
                     ]);
 
                     $sms->send(new SmsMessage(
-                        to: (string) $customer->phone,
+                        to: $to,
                         message: $message,
                         type: 'promotion',
-                        customerId: $customer->id,
+                        customerId: $customer?->id,
                         referenceType: 'abandoned_cart',
                         referenceId: (string) $cart->id,
                         idempotencyKey: "abandoned-cart:{$cart->id}",

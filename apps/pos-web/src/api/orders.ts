@@ -260,8 +260,13 @@ export async function fireOrderToKitchen(orderId: number): Promise<void> {
  */
 export async function sendPayLink(
   orderId: number,
+  phone?: string,
 ): Promise<{ message: string; amount: number; sent_to: string }> {
-  return request(`/orders/${orderId}/send-pay-link`, { method: "POST" });
+  const body = phone ? { phone } : {};
+  return request(`/orders/${orderId}/send-pay-link`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 /**

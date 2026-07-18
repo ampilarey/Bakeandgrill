@@ -16,6 +16,7 @@ export const CUSTOMER_ENDPOINTS = {
   CUSTOMER_CREDIT_PREFERENCES:'/customer/credit/preferences',
   CUSTOMER_PROFILE:           '/customer/profile',
   CUSTOMER_CART_SNAPSHOT:     '/customer/cart/snapshot',
+  CART_SNAPSHOT_GUEST:        '/cart/snapshot-guest',
   CUSTOMER_COMPLETE_PROFILE:  '/customer/complete-profile',
   CUSTOMER_CHANGE_PASSWORD:   '/customer/change-password',
 

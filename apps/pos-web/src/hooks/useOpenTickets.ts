@@ -54,7 +54,11 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
     return () => window.clearTimeout(handle);
   }, [rowMsg]);
 
-  const [phonePrompt, setPhonePrompt] = useState<{ ticket: OpenTicket; phone: string } | null>(null);
+  const [phonePrompt, setPhonePrompt] = useState<{
+    ticket: OpenTicket;
+    phone: string;
+    purpose: "bill" | "pay_link";
+  } | null>(null);
 
   const [activeFilter, setActiveFilter] = useState<OpenTicketsFilterKey>("all");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -139,17 +143,26 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
     }
   };
 
-  const handleSendPayLink = async (t: OpenTicket) => {
+  const doSendPayLink = async (t: OpenTicket, phone?: string) => {
     setBusyId(t.id);
     setRowMsg(null);
     try {
-      const res = await sendPayLink(t.id);
+      const res = await sendPayLink(t.id, phone);
       setRowMsg({ id: t.id, kind: "ok", text: `Pay link sent (MVR ${Number(res.amount).toFixed(2)}) to ${res.sent_to}` });
     } catch (e) {
       setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't send pay link" });
     } finally {
       setBusyId(null);
     }
+  };
+
+  const handleSendPayLink = (t: OpenTicket) => {
+    const linkedPhone = t.customer?.phone ?? null;
+    if (linkedPhone) {
+      void doSendPayLink(t, linkedPhone);
+      return;
+    }
+    setPhonePrompt({ ticket: t, phone: cartCustomerPhone ?? "", purpose: "pay_link" });
   };
 
   const handleStartCooking = async (t: OpenTicket) => {
@@ -241,7 +254,7 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
       void doSendBill(t, linkedPhone);
       return;
     }
-    setPhonePrompt({ ticket: t, phone: cartCustomerPhone ?? "" });
+    setPhonePrompt({ ticket: t, phone: cartCustomerPhone ?? "", purpose: "bill" });
   };
 
   const submitPhonePrompt = async () => {
@@ -249,7 +262,12 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
     const phone = phonePrompt.phone.trim();
     if (!phone) return;
     const ticket = phonePrompt.ticket;
+    const purpose = phonePrompt.purpose;
     setPhonePrompt(null);
+    if (purpose === "pay_link") {
+      await doSendPayLink(ticket, phone);
+      return;
+    }
     await doSendBill(ticket, phone);
   };
 

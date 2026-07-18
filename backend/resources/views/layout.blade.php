@@ -29,6 +29,7 @@
     $siteTagline = \App\Models\SiteSetting::get('site_tagline',     'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.');
     $metaTitle   = \App\Models\SiteSetting::get('meta_title',       $siteName . ' – Café & Online Orders');
     $metaDesc    = \App\Models\SiteSetting::get('meta_description',  'Fresh Dhivehi food, artisan baking, and premium grills in Malé.');
+    $metaKeywords = \App\Models\SiteSetting::get('meta_keywords', 'Bake and Grill, food delivery Maldives, Male restaurant, cafe, grills, online order');
     $ogImage     = \App\Models\SiteSetting::get('og_image',          asset('logo.png'));
     $logoUrl     = \App\Models\SiteSetting::get('logo',              asset('logo.png'));
     $phone       = \App\Models\SiteSetting::get('business_phone',   '+960 912 0011');
@@ -56,7 +57,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', $metaTitle)</title>
     <meta name="description" content="@yield('description', $metaDesc)">
-    <meta name="keywords" content="Bake and Grill, food delivery Maldives, Male restaurant, cafe, grills, online order">
+    <meta name="keywords" content="{{ e($metaKeywords) }}">
     <meta name="author" content="Bake &amp; Grill">
 
     <!-- Open Graph -->

@@ -53,13 +53,31 @@ class OrderPaymentController extends Controller
             return response()->json(['message' => 'Forbidden - staff access only'], 403);
         }
 
+        $request->validate([
+            'phone' => ['nullable', 'string', 'max:30', new MaldivesPhone],
+        ]);
+
         $order = Order::with(['customer', 'payments'])->findOrFail($id);
 
         if ($order->payment_status === 'paid' || $order->status === 'paid') {
             return response()->json(['message' => 'Order is already fully paid.'], 422);
         }
 
-        $phone = $order->customer?->phone;
+        $rawPhone = $request->input('phone');
+        if ($rawPhone !== null && trim((string) $rawPhone) !== '') {
+            $phone = MaldivesPhone::normalize((string) $rawPhone);
+            $customer = Customer::firstOrCreate(
+                ['phone' => $phone],
+                ['loyalty_points' => 0, 'tier' => 'bronze'],
+            );
+            if (!$order->customer_id) {
+                $order->update(['customer_id' => $customer->id]);
+                $order->setRelation('customer', $customer);
+            }
+        } else {
+            $phone = $order->customer?->phone;
+        }
+
         if (!$phone) {
             return response()->json(['message' => 'Attach a customer phone before sending a pay link.'], 422);
         }

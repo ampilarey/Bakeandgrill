@@ -9,6 +9,7 @@ import {
   fetchFeaturedReviews,
   submitCorporateInquiry,
   API_ORIGIN,
+  type FeaturedReview,
 } from '../api';
 import type { Item, DailySpecial, Order } from '../api';
 import { getLoyaltyAccount } from '../api/promotions';
@@ -46,6 +47,7 @@ export function HomePage() {
 
   // ── Data state ─────────────────────────────────────────────────────────────
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
+  const [reviews, setReviews] = useState<FeaturedReview[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
   const [hoursReason, setHoursReason] = useState<
@@ -123,8 +125,9 @@ export function HomePage() {
       })
       .catch(() => {});
 
-    // Fetch reviews but don't render them (wireframe §11 excludes reviews)
-    fetchFeaturedReviews(6).catch(() => {});
+    fetchFeaturedReviews(6)
+      .then((res) => setReviews((res.reviews ?? []).filter((r) => r.comment)))
+      .catch(() => {});
   }, []);
 
   // ── Load recent completed orders for reorder strip ─────────────────────────
@@ -260,6 +263,46 @@ export function HomePage() {
         reorderingId={reorderingId}
         onReorder={(order) => void handleReorder(order)}
       />
+
+      {reviews.length > 0 && (
+        <section
+          style={{
+            padding: '1.25rem var(--page-gutter) 0.5rem',
+            maxWidth: 'var(--layout-max)',
+            margin: '0 auto',
+          }}
+        >
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 0.75rem', color: 'var(--color-dark)' }}>
+            What guests say
+          </h2>
+          <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: 8 }}>
+            {reviews.map((r) => (
+              <article
+                key={r.id}
+                style={{
+                  minWidth: 240,
+                  maxWidth: 280,
+                  flex: '0 0 auto',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 14,
+                  padding: '0.9rem 1rem',
+                }}
+              >
+                <p style={{ margin: '0 0 0.4rem', color: 'var(--color-primary)', fontWeight: 800, letterSpacing: 1 }}>
+                  {'★'.repeat(r.rating)}{'☆'.repeat(Math.max(0, 5 - r.rating))}
+                </p>
+                <p style={{ margin: '0 0 0.5rem', fontSize: 13, lineHeight: 1.45, color: 'var(--color-dark)' }}>
+                  “{r.comment}”
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  — {r.author}{r.item?.name ? ` · ${r.item.name}` : ''}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── 8. Corporate / office catering block ─────────────────────────── */}
       {officeOrdersEnabled && (

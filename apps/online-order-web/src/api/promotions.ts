@@ -63,6 +63,19 @@ export async function snapshotCustomerCart(
   });
 }
 
+export async function snapshotGuestCart(
+  payload: {
+    phone: string;
+    items: Array<{ id: number; name: string; quantity: number; price?: number }>;
+    subtotal_laar?: number;
+  },
+): Promise<{ cart_token: string; snapshot_at: string }> {
+  return request(ENDPOINTS.CART_SNAPSHOT_GUEST, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function releaseLoyaltyHold(orderId: number): Promise<void> {
   await request<void>(`${ENDPOINTS.LOYALTY_HOLD}/${orderId}`, {
     method: 'DELETE',

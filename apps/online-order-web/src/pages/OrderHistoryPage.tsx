@@ -110,6 +110,10 @@ export function OrderHistoryPage() {
   const typeLabel = (type: string) => {
     if (type === 'gift_card') return t('orders.type_gift_card');
     if (type === 'delivery') return t('mode.delivery');
+    if (type === 'dine_in') return t('orders.type_dine_in');
+    if (type === 'takeaway') return t('orders.type_takeaway');
+    if (type === 'online_pickup') return t('orders.type_online_pickup');
+    if (type === 'pickup') return t('orders.type_pickup');
     return t('mode.pickup');
   };
 

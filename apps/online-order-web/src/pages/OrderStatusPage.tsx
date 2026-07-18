@@ -71,7 +71,7 @@ function DriverTracker({ orderId, authenticated }: { orderId: number; authentica
       <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, margin: '0 0 0.5rem', opacity: 0.85 }}>🚀 {t('track.driver.title')}</p>
       {data?.eta_minutes != null && (
         <p style={{ fontSize: 'var(--text-base)', fontWeight: 800, margin: '0 0 0.35rem' }}>
-          {t('track.driver.eta').replace('{n}', String(data.eta_minutes))}
+          {t('track.driver.eta_estimate').replace('{n}', String(data.eta_minutes))}
         </p>
       )}
       {driver && <p style={{ fontSize: 'var(--text-body)', fontWeight: 700, margin: '0 0 0.25rem' }}>🛵 {driver.name}</p>}
@@ -947,6 +947,44 @@ export function OrderStatusPage() {
                     {t('track.contact').replace('{name}', order.delivery_contact_name)}{order.delivery_contact_phone && ` · ${order.delivery_contact_phone}`}
                   </p>
                 )}
+              </div>
+            )}
+
+            {order.type === 'delivery' && order.proof_of_delivery_url && ['delivered', 'completed'].includes(order.status) && (
+              <div style={S.card}>
+                <p style={S.cardTitle}>{t('track.proof_title')}</p>
+                <a
+                  href={order.proof_of_delivery_url.startsWith('http')
+                    ? order.proof_of_delivery_url
+                    : `${API_ORIGIN}${order.proof_of_delivery_url.startsWith('/') ? '' : '/'}${order.proof_of_delivery_url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'block',
+                    borderRadius: '0.75rem',
+                    overflow: 'hidden',
+                    border: '1px solid var(--color-border)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <img
+                    src={order.proof_of_delivery_url.startsWith('http')
+                      ? order.proof_of_delivery_url
+                      : `${API_ORIGIN}${order.proof_of_delivery_url.startsWith('/') ? '' : '/'}${order.proof_of_delivery_url}`}
+                    alt={t('track.proof_view')}
+                    style={{ width: '100%', display: 'block', maxHeight: 280, objectFit: 'cover' }}
+                  />
+                  <p style={{
+                    margin: 0,
+                    padding: '0.65rem 0.85rem',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 700,
+                    color: 'var(--color-primary)',
+                    background: 'var(--color-surface-alt)',
+                  }}>
+                    {t('track.proof_view')}
+                  </p>
+                </a>
               </div>
             )}
 

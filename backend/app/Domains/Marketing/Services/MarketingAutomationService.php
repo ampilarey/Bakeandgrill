@@ -7,6 +7,7 @@ namespace App\Domains\Marketing\Services;
 use App\Models\AbandonedCart;
 use App\Models\Customer;
 use App\Models\SiteSetting;
+use App\Rules\MaldivesPhone;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -84,6 +85,49 @@ final class MarketingAutomationService
 
         $payload = [
             'customer_id' => $customer->id,
+            'phone' => $customer->phone ? (string) $customer->phone : null,
+            'items_json' => $items,
+            'subtotal_laar' => max(0, $subtotalLaar),
+            'snapshot_at' => now(),
+        ];
+
+        if ($existing) {
+            $existing->update($payload);
+
+            return $existing->fresh();
+        }
+
+        return AbandonedCart::create(array_merge($payload, [
+            'cart_token' => (string) Str::uuid(),
+        ]));
+    }
+
+    /**
+     * Guest / pre-login cart snapshot keyed by Maldives phone.
+     * Links to an existing customer when the phone already belongs to one.
+     *
+     * @param list<array<string, mixed>> $items
+     */
+    public function snapshotGuestCart(string $phone, array $items, int $subtotalLaar): AbandonedCart
+    {
+        $normalized = MaldivesPhone::normalize($phone);
+
+        $customer = Customer::query()->where('phone', $normalized)->first();
+
+        $existing = AbandonedCart::query()
+            ->whereNull('reminded_at')
+            ->where(function ($q) use ($normalized, $customer): void {
+                $q->where('phone', $normalized);
+                if ($customer) {
+                    $q->orWhere('customer_id', $customer->id);
+                }
+            })
+            ->latest('snapshot_at')
+            ->first();
+
+        $payload = [
+            'customer_id' => $customer?->id,
+            'phone' => $normalized,
             'items_json' => $items,
             'subtotal_laar' => max(0, $subtotalLaar),
             'snapshot_at' => now(),

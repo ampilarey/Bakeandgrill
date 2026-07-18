@@ -6,18 +6,22 @@ export function PhonePromptModal({
   onPhoneChange,
   onCancel,
   onSubmit,
+  title = "Send bill SMS",
+  submitLabel = "Send SMS",
 }: {
   ticketLabel: string;
   phone: string;
   onPhoneChange: (v: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
+  title?: string;
+  submitLabel?: string;
 }) {
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Send bill — phone number"
+      aria-label={title}
       style={{
         position: "fixed",
         inset: 0,
@@ -46,7 +50,7 @@ export function PhonePromptModal({
         }}
       >
         <div>
-          <div style={{ ...type.subtitle, color: palette.panelInk }}>Send bill SMS</div>
+          <div style={{ ...type.subtitle, color: palette.panelInk }}>{title}</div>
           <div style={{ ...type.bodySm, color: palette.panelMuted, marginTop: 4 }}>
             Ticket: <strong style={{ color: palette.panelInk }}>{ticketLabel}</strong>
           </div>
@@ -73,7 +77,7 @@ export function PhonePromptModal({
         <div style={{ display: "flex", gap: space.s, justifyContent: "flex-end", marginTop: space.xs }}>
           <button type="button" onClick={onCancel} style={btnSecondary()}>Cancel</button>
           <button type="button" onClick={onSubmit} disabled={!phone.trim()} style={btnPrimary(!phone.trim())}>
-            Send SMS
+            {submitLabel}
           </button>
         </div>
       </div>

@@ -134,7 +134,6 @@ export function TicketRow({
   const stage = ticketStage(t.status);
   const isPaid = t.payment_status === "paid";
   const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
-  const hasPhone = !!t.customer?.phone;
 
   const stageBadge = {
     parked: { label: "📋 PARKED", color: "#475569", bg: "#F1F5F9", border: "#CBD5E1", title: "Kitchen has not seen this yet" },
@@ -417,7 +416,7 @@ export function TicketRow({
               </button>
             )}
             {(() => {
-              const showPayLink = isUnpaid && hasPhone && canSendPayLink && smsNotifications.send_pay_link;
+              const showPayLink = isUnpaid && canSendPayLink && smsNotifications.send_pay_link;
               const showBillSms = canSendBill && smsNotifications.send_bill;
               const showMerge = t.payment_status === "unpaid";
               const showSplit = t.payment_status === "unpaid" && (t.items?.length ?? 0) > 1;

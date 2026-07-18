@@ -108,6 +108,23 @@ class PosPayLinkTest extends TestCase
         $this->assertStringNotContainsString('merchants.bankofmaldives', (string) $sms->message);
     }
 
+    public function test_send_pay_link_accepts_phone_and_links_customer(): void
+    {
+        Sanctum::actingAs($this->staffUser, ['staff']);
+
+        $this->order->update(['customer_id' => null]);
+
+        $res = $this->postJson("/api/orders/{$this->order->id}/send-pay-link", [
+            'phone' => '+9607890123',
+        ]);
+        $res->assertOk();
+        $res->assertJsonPath('sent_to', '+9607890123');
+
+        $this->order->refresh();
+        $this->assertNotNull($this->order->customer_id);
+        $this->assertSame('+9607890123', $this->order->customer?->phone);
+    }
+
     public function test_pay_page_shows_order_details(): void
     {
         $receipt = Receipt::ensureForOrder($this->order->fresh('customer'));

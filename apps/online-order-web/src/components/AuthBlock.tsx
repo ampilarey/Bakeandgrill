@@ -10,6 +10,7 @@ import {
   guestSession,
   type AuthCustomer,
 } from "../api";
+import { persistGuestPhone } from "../utils/guestPhone";
 import { useSiteSettingsContext } from "../context/SiteSettingsContext";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -200,6 +201,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     setError("");
     setLoading(true);
     try {
+      persistGuestPhone(phone);
       const res = await checkPhone(phone);
       if (res.has_password) {
         go("password");
@@ -220,6 +222,7 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
     setError("");
     setLoading(true);
     try {
+      persistGuestPhone(phone);
       const res = await guestSession({ phone, name: guestName.trim() });
       onSuccess(displayName(res.customer));
     } catch (e) {
