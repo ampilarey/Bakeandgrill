@@ -53,6 +53,10 @@ class EarnPointsFromOrderListener implements ShouldQueue
             return;
         }
 
+        if ($order->type === 'gift_card') {
+            return;
+        }
+
         try {
             $this->service->earnPointsForOrder($customer, $order);
         } catch (\Throwable $e) {

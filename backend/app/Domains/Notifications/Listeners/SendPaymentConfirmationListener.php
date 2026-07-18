@@ -36,6 +36,10 @@ class SendPaymentConfirmationListener
             return;
         }
 
+        if ($order->type === 'gift_card') {
+            return;
+        }
+
         $this->notifier->notify($order);
     }
 }

@@ -20,6 +20,7 @@ export const linkRowStyle: CSSProperties = {
 };
 
 const MORE_LINKS = [
+  { to: '/gift-cards', key: 'account.link_gift_cards' },
   { to: '/hours',    key: 'account.link_hours' },
   { to: '/contact',  key: 'account.link_contact' },
   { to: '/about',    key: 'account.link_about' },

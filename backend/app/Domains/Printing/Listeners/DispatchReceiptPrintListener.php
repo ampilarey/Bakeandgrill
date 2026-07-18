@@ -43,6 +43,10 @@ class DispatchReceiptPrintListener implements ShouldQueue
             return;
         }
 
+        if ($order->type === 'gift_card') {
+            return;
+        }
+
         try {
             $this->printJobService->dispatchReceiptJobs($order);
         } catch (\Throwable $e) {

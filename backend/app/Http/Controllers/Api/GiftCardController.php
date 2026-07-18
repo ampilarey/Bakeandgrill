@@ -8,10 +8,13 @@ use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
+use App\Domains\Payments\Services\GiftCardIssueService;
+use App\Domains\Payments\Services\GiftCardPurchaseService;
 use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Domains\Payments\Services\GiftCardSmsDelivery;
 use App\Models\Customer;
 use App\Models\GiftCard;
+use App\Models\GiftCardPurchase;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;
 use App\Rules\MaldivesPhone;
@@ -29,6 +32,8 @@ class GiftCardController extends Controller
         private readonly GiftCardSmsDelivery $giftCardSms,
         private readonly GiftCardEmailDelivery $giftCardEmail,
         private readonly GiftCardRedemptionService $giftCardRedemption,
+        private readonly GiftCardIssueService $giftCardIssue,
+        private readonly GiftCardPurchaseService $giftCardPurchase,
         private readonly AuditLogService $audit,
     ) {}
 
@@ -279,28 +284,18 @@ class GiftCardController extends Controller
         ]);
 
         try {
-            $generated = $this->giftCardCodes->generate();
+            $issued = $this->giftCardIssue->issue([
+                'amount' => $validated['amount'],
+                'issued_to_customer_id' => $validated['customer_id'] ?? null,
+                'purchased_by_customer_id' => null,
+                'expires_at' => $validated['expires_at'] ?? null,
+            ]);
         } catch (\RuntimeException) {
             return response()->json(['message' => 'Could not generate a unique gift card code. Please try again.'], 500);
         }
 
-        $card = GiftCard::create([
-            'code_hash' => $generated['hash'],
-            'code_last4' => $generated['last4'],
-            'initial_balance' => $validated['amount'],
-            'current_balance' => $validated['amount'],
-            'issued_to_customer_id' => $validated['customer_id'] ?? null,
-            'purchased_by_customer_id' => null,
-            'status' => 'active',
-            'expires_at' => $validated['expires_at'] ?? null,
-        ]);
-
-        GiftCardTransaction::create([
-            'gift_card_id' => $card->id,
-            'amount' => $validated['amount'],
-            'type' => 'load',
-            'balance_after' => $validated['amount'],
-        ]);
+        $card = $issued['card'];
+        $plain = $issued['plain'];
 
         $this->audit->log(
             'gift_card.issued',
@@ -331,7 +326,7 @@ class GiftCardController extends Controller
             } else {
                 $sent = $this->giftCardSms->send(
                     $card,
-                    $generated['plain'],
+                    $plain,
                     $phone,
                     $validated['sms_note'] ?? null,
                     $validated['customer_id'] ?? null,
@@ -368,7 +363,7 @@ class GiftCardController extends Controller
             } else {
                 $sent = $this->giftCardEmail->send(
                     $card,
-                    $generated['plain'],
+                    $plain,
                     $email,
                     $validated['email_note'] ?? $validated['sms_note'] ?? null,
                 );
@@ -390,10 +385,87 @@ class GiftCardController extends Controller
         }
 
         return response()->json([
-            'gift_card' => array_merge($this->format($card), ['code' => $generated['plain']]),
+            'gift_card' => array_merge($this->format($card), ['code' => $plain]),
             'sms' => $smsResult,
             'email' => $emailResult,
         ], 201);
+    }
+
+    /**
+     * Customer: buy a gift card — creates a payable gift_card order and returns BML URL.
+     */
+    public function purchase(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:'.GiftCardPurchaseService::MIN_AMOUNT, 'max:'.GiftCardPurchaseService::MAX_AMOUNT],
+            'recipient_phone' => ['nullable', 'string', 'max:20', new MaldivesPhone],
+            'recipient_email' => ['nullable', 'email', 'max:200'],
+            'personal_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        /** @var Customer $customer */
+        $customer = $request->user();
+
+        try {
+            $result = $this->giftCardPurchase->start($customer, $validated);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'message' => 'Payment gateway unavailable. Please try again in a moment.',
+                'code' => 'gateway_error',
+            ], 503);
+        }
+
+        return response()->json([
+            'order_id' => $result['order']->id,
+            'order_number' => $result['order']->order_number,
+            'payment_url' => $result['payment_url'],
+            'payment_id' => $result['payment_id'],
+            'amount' => (float) $result['purchase']->amount,
+        ], 201);
+    }
+
+    /**
+     * Customer: poll purchase status after BML return (never returns plaintext code).
+     */
+    public function purchaseStatus(Request $request, int $orderId): JsonResponse
+    {
+        /** @var Customer $customer */
+        $customer = $request->user();
+
+        $order = Order::query()
+            ->where('id', $orderId)
+            ->where('customer_id', $customer->id)
+            ->where('type', 'gift_card')
+            ->firstOrFail();
+
+        $purchase = GiftCardPurchase::query()
+            ->with('giftCard:id,code_last4,initial_balance,current_balance,status,expires_at')
+            ->where('order_id', $order->id)
+            ->first();
+
+        $card = $purchase?->giftCard;
+
+        return response()->json([
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'amount' => (float) ($purchase?->amount ?? $order->total),
+            'issued' => $card !== null,
+            'gift_card' => $card ? [
+                'masked_code' => $card->masked_code,
+                'initial_balance' => (float) $card->initial_balance,
+                'current_balance' => (float) $card->current_balance,
+                'status' => $card->status,
+                'expires_at' => $card->expires_at?->toDateString(),
+            ] : null,
+            'delivery' => [
+                'phone' => $purchase?->recipient_phone,
+                'email' => $purchase?->recipient_email,
+            ],
+        ]);
     }
 
     /**

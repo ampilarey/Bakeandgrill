@@ -743,6 +743,23 @@ export function RewardsPage() {
         ) : (
           <>
             {loyaltyData && <PointsHero loyalty={loyaltyData} t={t} />}
+            <Link
+              to="/gift-cards"
+              style={{
+                display: 'block',
+                textAlign: 'center',
+                padding: '14px 16px',
+                borderRadius: 16,
+                border: '1.5px solid var(--color-border)',
+                background: 'var(--color-surface-alt)',
+                color: 'var(--color-text)',
+                fontWeight: 700,
+                textDecoration: 'none',
+                fontSize: '0.95rem',
+              }}
+            >
+              {t('account.link_gift_cards')} →
+            </Link>
             {referralCode && (
               <ReferralCard code={referralCode} usesCount={referralUses} t={t} />
             )}

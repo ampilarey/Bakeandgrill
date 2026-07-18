@@ -39,6 +39,10 @@ class PaymentConfirmationNotifier
 
     public function notify(Order $order): void
     {
+        if ($order->type === 'gift_card') {
+            return;
+        }
+
         if (!SmsNotificationSettings::isEnabled(SmsNotificationSettings::PAYMENT_CONFIRMED)) {
             Log::info('PaymentConfirmationNotifier: payment confirmation SMS disabled', [
                 'order_id' => $order->id,

@@ -70,6 +70,7 @@ class DomainEventServiceProvider extends EventServiceProvider
         OrderPaid::class => [
             SyncInvoicePaymentOnOrderPaidListener::class,
             RedeemGiftCardOnOrderPaidListener::class,
+            \App\Domains\Payments\Listeners\IssuePurchasedGiftCardOnOrderPaidListener::class,
             DeductInventoryListener::class,
             DeductPreparedStockListener::class,
             DispatchReceiptPrintListener::class,

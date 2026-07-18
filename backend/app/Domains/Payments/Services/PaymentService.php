@@ -446,10 +446,15 @@ class PaymentService
             if ($paidLaar >= $orderLaar && !in_array($order->status, ['paid', 'completed'], true)) {
                 // Online orders held at payment_pending: move to pending so KDS/kitchen can see them.
                 // POS orders already in the kitchen queue go straight to paid.
+                // Gift-card purchases skip the kitchen queue and complete after issue.
                 // Either way the financial state is fully paid — mirror it into
                 // `payment_status` so the POS "Send pay link" / UNPAID badge
                 // logic flips off the moment BML confirms.
-                $newStatus = $order->status === 'payment_pending' ? 'pending' : 'paid';
+                $newStatus = match (true) {
+                    $order->type === 'gift_card' => 'paid',
+                    $order->status === 'payment_pending' => 'pending',
+                    default => 'paid',
+                };
                 $this->orders->updateStatus($order->id, $newStatus, [
                     'paid_at' => now(),
                     'payment_status' => 'paid',
@@ -461,17 +466,20 @@ class PaymentService
                         return;
                     }
 
-                    try {
-                        // Send confirmation SMS/email synchronously — no queue dependency.
-                        $this->confirmationNotifier->notify($freshOrder);
-                    } catch (\Throwable $e) {
-                        Log::error('BML confirmPayment: payment confirmation notify failed', [
-                            'order_id' => $freshOrder->id,
-                            'error' => $e->getMessage(),
-                        ]);
+                    if ($freshOrder->type !== 'gift_card') {
+                        try {
+                            // Send confirmation SMS/email synchronously — no queue dependency.
+                            $this->confirmationNotifier->notify($freshOrder);
+                        } catch (\Throwable $e) {
+                            Log::error('BML confirmPayment: payment confirmation notify failed', [
+                                'order_id' => $freshOrder->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
                     }
 
                     // OrderPaid triggers SendPaymentConfirmationListener as a sync retry fallback.
+                    // For gift_card purchases it also issues + delivers the code.
                     OrderPaid::dispatch(OrderPaidData::fromOrder($freshOrder, true));
                 });
             }

@@ -24,7 +24,7 @@ class PostGstOnOrderPaidListener implements ShouldQueue
     {
         try {
             $order = Order::query()->find($event->data->orderId);
-            if (!$order) {
+            if (!$order || $order->type === 'gift_card') {
                 return;
             }
 

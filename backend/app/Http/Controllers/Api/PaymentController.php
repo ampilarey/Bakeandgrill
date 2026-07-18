@@ -182,6 +182,18 @@ class PaymentController extends Controller
             $baseUrl = '/order/orders';
         }
 
+        if ($orderId) {
+            $giftOrder = Order::query()
+                ->where('id', (int) $orderId)
+                ->where('type', 'gift_card')
+                ->exists();
+            if ($giftOrder) {
+                $orderAppBase = preg_replace('#/orders/?$#', '', rtrim((string) $baseUrl, '/')) ?: '/order';
+
+                return redirect(rtrim($orderAppBase, '/').'/gift-cards/success?orderId='.$orderId.'&payment='.$state);
+            }
+        }
+
         return redirect(rtrim($baseUrl, '/') . '/' . $orderId . '?payment=' . $state);
     }
 

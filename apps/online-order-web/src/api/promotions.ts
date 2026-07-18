@@ -86,6 +86,43 @@ export async function checkGiftCardBalance(
   });
 }
 
+export async function purchaseGiftCard(data: {
+  amount: number;
+  recipient_phone?: string | null;
+  recipient_email?: string | null;
+  personal_note?: string | null;
+}): Promise<{
+  order_id: number;
+  order_number: string;
+  payment_url: string;
+  payment_id: number;
+  amount: number;
+}> {
+  return request('/gift-cards/purchase', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getGiftCardPurchaseStatus(orderId: number): Promise<{
+  order_id: number;
+  order_number: string;
+  status: string;
+  payment_status: string | null;
+  amount: number;
+  issued: boolean;
+  gift_card: {
+    masked_code: string;
+    initial_balance: number;
+    current_balance: number;
+    status: string;
+    expires_at: string | null;
+  } | null;
+  delivery: { phone: string | null; email: string | null };
+}> {
+  return request(`/gift-cards/purchases/${orderId}`);
+}
+
 export async function applyGiftCard(
   orderId: number,
   code: string,

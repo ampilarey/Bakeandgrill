@@ -60,6 +60,7 @@ class KdsController extends Controller
             'kitchenDoneBy:id,name',
         ])
             ->whereIn('status', $statuses)
+            ->where('type', '!=', 'gift_card')
             ->orderBy('created_at')
             ->get()
             ->map(fn (Order $order) => $this->formatKitchenOrder($order));

@@ -69,6 +69,9 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
     // Customer: referral management + gift card on orders
     Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
         Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
+        Route::post('/gift-cards/purchase', [App\Http\Controllers\Api\GiftCardController::class, 'purchase'])
+            ->middleware('throttle:10,1');
+        Route::get('/gift-cards/purchases/{orderId}', [App\Http\Controllers\Api\GiftCardController::class, 'purchaseStatus']);
         Route::post('/orders/{orderId}/apply-gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'applyToOrder']);
         Route::delete('/orders/{orderId}/gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'removeFromOrder']);
         Route::post('/orders/{orderId}/apply-referral', [App\Http\Controllers\Api\ReferralController::class, 'applyToOrder']);
