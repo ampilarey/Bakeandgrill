@@ -1,7 +1,8 @@
 // ── Customer Authentication ────────────────────────────────────────────────────
 import { ENDPOINTS } from '@shared/api';
 import type { Customer } from '@shared/types';
-import { API_ORIGIN, ensureCsrfCookie, request } from './client';
+import { csrfHeadersForMutation } from '@shared/api';
+import { API_ORIGIN, request } from './client';
 
 export type AuthCustomer = Customer & { is_profile_complete: boolean };
 export type AuthResponse = {
@@ -9,12 +10,6 @@ export type AuthResponse = {
   is_new_customer?: boolean;
   message?: string;
 };
-
-function readCookie(name: string): string | null {
-  const m = document.cookie.split('; ').find((r) => r.startsWith(name + '='));
-  if (!m) return null;
-  return decodeURIComponent(m.split('=').slice(1).join('='));
-}
 
 /** End the API customer session (HttpOnly session cookie). */
 export async function logoutCustomerSession(): Promise<void> {
@@ -31,15 +26,11 @@ export async function logoutCustomerSession(): Promise<void> {
  */
 export async function logoutCustomerWebSession(): Promise<void> {
   if (typeof window === 'undefined') return;
-  try {
-    await ensureCsrfCookie();
-  } catch { /* cookie may already exist */ }
-  const xsrf = readCookie('XSRF-TOKEN');
   const headers: Record<string, string> = {
     Accept: 'text/html,application/xhtml+xml',
     'X-Requested-With': 'XMLHttpRequest',
+    ...(await csrfHeadersForMutation(API_ORIGIN)),
   };
-  if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
   await fetch(`${API_ORIGIN}/customer/logout`, { method: 'POST', credentials: 'include', headers });
 }
 
