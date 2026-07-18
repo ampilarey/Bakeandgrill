@@ -69,112 +69,293 @@ export function GiftCardViewPage() {
     try {
       await navigator.clipboard.writeText(data.code);
       setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
     } catch {
       setCopied(false);
     }
   };
 
+  const expiresLabel = data?.expires_at
+    ? t('gift.balance_expires').replace(
+        '{date}',
+        new Date(data.expires_at).toLocaleDateString(undefined, { dateStyle: 'medium' }),
+      )
+    : null;
+
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 0 2rem' }}>
+    <div style={pageWrap}>
       <PageHeader title={t('gift.view_title')} />
-      <div style={{ padding: '0 var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={contentWrap}>
         {loading && (
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-muted)' }}>{t('common.loading')}…</p>
+          <div style={skeletonCard} aria-busy="true" aria-label={t('common.loading')}>
+            <div className="skeleton" style={{ height: 14, width: '40%', borderRadius: 6 }} />
+            <div className="skeleton" style={{ height: 40, width: '55%', borderRadius: 8, marginTop: 20 }} />
+            <div className="skeleton" style={{ height: 16, width: '35%', borderRadius: 6, marginTop: 12 }} />
+          </div>
         )}
 
         {error && !loading && (
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--color-error, #dc2626)', lineHeight: 1.45 }}>
-            {error}
-          </p>
-        )}
-
-        {data && !loading && (
-          <div
-            style={{
-              background: 'var(--color-surface-alt)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 16,
-              padding: 20,
-              textAlign: 'center',
-            }}
-          >
-            <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800 }}>{t('gift.view_title')}</p>
-            {data.from && (
-              <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: 'var(--color-primary)' }}>
-                {data.from}
-              </p>
-            )}
-            {data.personal_note && (
-              <p style={{
-                margin: '0 0 12px',
-                fontSize: 14,
-                fontStyle: 'italic',
-                color: 'var(--color-text)',
-                lineHeight: 1.45,
-              }}>
-                {data.personal_note}
-              </p>
-            )}
-            {data.order_number && (
-              <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)' }}>
-                {data.order_number}
-              </p>
-            )}
-            <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.08em', color: 'var(--color-primary)', fontWeight: 700 }}>
-              {data.code}
+          <div style={errorBox} role="alert">
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-error)' }}>
+              {t('gift.view_title')}
             </p>
-            <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 700 }}>
-              MVR {Number(data.current_balance).toFixed(2)}
-            </p>
-            {data.expires_at && (
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                {t('gift.balance_expires').replace(
-                  '{date}',
-                  new Date(data.expires_at).toLocaleDateString(undefined, { dateStyle: 'medium' }),
-                )}
-              </p>
-            )}
-            <button type="button" onClick={() => void copyCode()} style={copyBtn}>
-              {copied ? t('gift.code_copied') : t('gift.copy_code')}
-            </button>
-            <p style={{ margin: '14px 0 0', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-              {t('gift.view_hint')}
+            <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--color-text)', lineHeight: 1.45 }}>
+              {error}
             </p>
           </div>
         )}
 
-        <Link to="/gift-cards" style={linkBtn}>{t('gift.back_hub')}</Link>
-        <Link to="/menu" style={{ ...linkBtn, background: 'transparent', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' }}>
-          {t('gift.order_food')}
-        </Link>
+        {data && !loading && (
+          <>
+            <div style={previewCard}>
+              <div style={previewTop}>
+                <span style={previewBrand}>{t('gift.preview_brand')}</span>
+                <span style={previewTag}>{t('gift.preview_gift')}</span>
+              </div>
+              <p style={previewAmount}>
+                MVR {Number(data.current_balance).toFixed(0)}
+              </p>
+              <p style={previewBalanceLabel}>{t('gift.view_balance')}</p>
+              {data.from ? (
+                <p style={previewFrom}>{data.from}</p>
+              ) : null}
+              {data.personal_note ? (
+                <p style={previewNote}>{data.personal_note}</p>
+              ) : null}
+              {expiresLabel ? (
+                <p style={previewMeta}>{expiresLabel}</p>
+              ) : null}
+              {data.order_number ? (
+                <p style={previewMeta}>{data.order_number}</p>
+              ) : null}
+            </div>
+
+            <section style={codeSection}>
+              <p style={codeLabel}>{t('gift.view_code_label')}</p>
+              <button
+                type="button"
+                onClick={() => void copyCode()}
+                style={codeBlock}
+                aria-label={t('gift.copy_code')}
+              >
+                <span style={codeText}>{data.code}</span>
+                <span style={copyChip}>
+                  {copied ? t('gift.code_copied') : t('gift.copy_code')}
+                </span>
+              </button>
+              <p style={hintStyle}>{t('gift.view_hint')}</p>
+            </section>
+
+            <div style={actions}>
+              <Link to="/menu" style={primaryBtn}>{t('gift.view_redeem')}</Link>
+              <Link to="/gift-cards" style={secondaryBtn}>{t('gift.back_hub')}</Link>
+            </div>
+          </>
+        )}
+
+        {error && !loading && (
+          <div style={actions}>
+            <Link to="/gift-cards" style={primaryBtn}>{t('gift.back_hub')}</Link>
+            <Link to="/menu" style={secondaryBtn}>{t('gift.order_food')}</Link>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-const copyBtn: CSSProperties = {
-  marginTop: 14,
-  padding: '10px 14px',
-  borderRadius: 10,
-  border: '1.5px solid var(--color-primary)',
-  background: 'transparent',
-  color: 'var(--color-primary)',
-  fontWeight: 700,
-  fontSize: 13,
-  cursor: 'pointer',
-  minHeight: 44,
+const pageWrap: CSSProperties = {
+  maxWidth: 560,
+  margin: '0 auto',
+  padding: '0 0 2rem',
 };
 
-const linkBtn: CSSProperties = {
+const contentWrap: CSSProperties = {
+  padding: '0 var(--page-gutter)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+};
+
+const skeletonCard: CSSProperties = {
+  borderRadius: 20,
+  padding: '1.25rem 1.35rem',
+  background: 'var(--color-surface-alt)',
+  border: '1.5px solid var(--color-border)',
+  minHeight: 160,
+};
+
+const errorBox: CSSProperties = {
+  borderRadius: 16,
+  padding: '1.1rem 1.15rem',
+  background: 'var(--color-error-bg)',
+  border: '1.5px solid rgba(220, 38, 38, 0.25)',
+};
+
+const previewCard: CSSProperties = {
+  borderRadius: 20,
+  padding: '1.35rem 1.4rem',
+  background: 'linear-gradient(145deg, #2A1E0C 0%, #4A3420 55%, #6B4423 100%)',
+  color: '#FFFDF9',
+  boxShadow: '0 12px 28px rgba(42, 30, 12, 0.18)',
+};
+
+const previewTop: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  marginBottom: 18,
+};
+
+const previewBrand: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 800,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+};
+
+const previewTag: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  opacity: 0.7,
+};
+
+const previewAmount: CSSProperties = {
+  margin: 0,
+  fontSize: 40,
+  fontWeight: 900,
+  lineHeight: 1,
+  letterSpacing: '-0.02em',
+  color: '#F5C48A',
+};
+
+const previewBalanceLabel: CSSProperties = {
+  margin: '6px 0 0',
+  fontSize: 12,
+  fontWeight: 600,
+  opacity: 0.65,
+};
+
+const previewFrom: CSSProperties = {
+  margin: '14px 0 0',
+  fontSize: 16,
+  fontWeight: 700,
+};
+
+const previewNote: CSSProperties = {
+  margin: '10px 0 0',
+  fontSize: 14,
+  fontStyle: 'italic',
+  lineHeight: 1.45,
+  opacity: 0.88,
+};
+
+const previewMeta: CSSProperties = {
+  margin: '10px 0 0',
+  fontSize: 12,
+  fontWeight: 600,
+  opacity: 0.5,
+};
+
+const codeSection: CSSProperties = {
+  border: '1.5px solid var(--color-border)',
+  borderRadius: 16,
+  background: 'var(--color-surface)',
+  padding: '1rem 1.1rem',
+};
+
+const codeLabel: CSSProperties = {
+  margin: '0 0 10px',
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+  color: 'var(--color-text-muted)',
+};
+
+const codeBlock: CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 12,
+  padding: '1.1rem 1rem',
+  borderRadius: 14,
+  border: '1.5px dashed var(--color-primary)',
+  background: 'var(--color-primary-light)',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  minHeight: 88,
+};
+
+const codeText: CSSProperties = {
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+  fontSize: 18,
+  fontWeight: 800,
+  letterSpacing: '0.1em',
+  color: 'var(--color-primary-hover)',
+  wordBreak: 'break-all',
+  lineHeight: 1.35,
+  textAlign: 'center',
+};
+
+const copyChip: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 36,
+  padding: '6px 14px',
+  borderRadius: 999,
+  background: 'var(--color-primary)',
+  color: '#fff',
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const hintStyle: CSSProperties = {
+  margin: '12px 0 0',
+  fontSize: 13,
+  color: 'var(--color-text-muted)',
+  lineHeight: 1.45,
+  textAlign: 'center',
+};
+
+const actions: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+};
+
+const primaryBtn: CSSProperties = {
   display: 'block',
   textAlign: 'center',
-  padding: '12px 16px',
-  borderRadius: 12,
+  padding: '14px 16px',
+  borderRadius: 14,
   background: 'var(--color-primary)',
   color: '#fff',
   fontWeight: 700,
   textDecoration: 'none',
+  fontSize: 16,
+  minHeight: 48,
+  boxSizing: 'border-box',
+};
+
+const secondaryBtn: CSSProperties = {
+  display: 'block',
+  textAlign: 'center',
+  padding: '12px 16px',
+  borderRadius: 14,
+  background: 'transparent',
+  color: 'var(--color-primary)',
+  border: '1.5px solid var(--color-primary)',
+  fontWeight: 700,
+  textDecoration: 'none',
   fontSize: 15,
+  minHeight: 48,
+  boxSizing: 'border-box',
 };
 
 export default GiftCardViewPage;
