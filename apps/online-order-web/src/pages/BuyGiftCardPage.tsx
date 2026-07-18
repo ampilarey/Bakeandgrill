@@ -1,10 +1,11 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '../components/shell/PageHeader';
 import { AuthBlock } from '../components/AuthBlock';
+import { getCustomerMe } from '../api/auth';
 import { purchaseGiftCard } from '../api/promotions';
 
 const PRESETS = [100, 200, 500];
@@ -23,13 +24,30 @@ export function BuyGiftCardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (!authReady || !isAuthenticated) return;
+    let cancelled = false;
+    void getCustomerMe()
+      .then((res) => {
+        if (cancelled) return;
+        if (res.customer.phone) setPhone((prev) => prev || res.customer.phone || '');
+        if (res.customer.email) setEmail((prev) => prev || res.customer.email || '');
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [authReady, isAuthenticated]);
+
   const resolvedAmount = customAmount.trim()
     ? parseFloat(customAmount)
     : (amount ?? NaN);
 
   const handlePay = async () => {
-    if (!Number.isFinite(resolvedAmount) || resolvedAmount < 50) {
+    if (!Number.isFinite(resolvedAmount) || resolvedAmount < 50 || resolvedAmount > 5000) {
       setError(t('gift.err_amount'));
+      return;
+    }
+    if (!phone.trim() && !email.trim()) {
+      setError(t('gift.err_contact'));
       return;
     }
     setLoading(true);

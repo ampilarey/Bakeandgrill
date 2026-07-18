@@ -18,6 +18,7 @@ type AppliedGiftCard = {
 };
 
 type Props = {
+  /** Null for walk-ins — gift card still works; promo/loyalty stay hidden. */
   customer: PosCustomer | null;
   /** Cart total BEFORE any rewards are applied — used as the upper
    *  bound on a loyalty redemption preview and on a gift-card debit so
@@ -113,8 +114,6 @@ export function CustomerRewardsPanel({
     return () => { cancelled = true; };
   }, [customer]);
 
-  if (!customer) return null;
-
   const lifetimeOrders = summary?.lifetime.orders_count ?? 0;
   // Bug-053: backend returns total_spent as a Laravel decimal-cast
   // string ("123.45"), not a number. The `?? 0` only catches null/
@@ -122,13 +121,14 @@ export function CustomerRewardsPanel({
   // the panel for any customer with a payment history.
   const lifetimeSpent = Number(summary?.lifetime.total_spent ?? 0);
   const availablePoints = summary?.loyalty.available_points ?? 0;
-  const tier = summary?.loyalty.tier ?? summary?.customer.tier ?? customer.tier ?? "bronze";
+  const tier = summary?.loyalty.tier ?? summary?.customer.tier ?? customer?.tier ?? "bronze";
   const lastPaidAt = summary?.lifetime.last_paid_at;
   const depositBalanceMvr = (summary?.deposit?.balance_laar ?? 0) / 100;
   const depositStatus = summary?.deposit?.status ?? 'active';
   const creditEnabled = summary?.credit?.enabled ?? false;
   const creditAvailableMvr = (summary?.credit?.available_laar ?? 0) / 100;
   const creditBalanceMvr = (summary?.credit?.balance_laar ?? 0) / 100;
+  const hasCustomer = !!customer;
 
   const handleApplyPromo = async () => {
     const code = promoCode.trim().toUpperCase();
@@ -258,16 +258,20 @@ export function CustomerRewardsPanel({
       >
         <div style={{ display: "flex", flexDirection: "column", textAlign: "left", gap: 2 }}>
           <span style={{ fontSize: 12, color: COLOR.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Customer rewards
+            {hasCustomer ? "Customer rewards" : "Gift card"}
           </span>
           <span style={{ fontSize: 13, color: COLOR.text, fontWeight: 600 }}>
-            {loadingSummary
-              ? "Loading customer…"
-              : summary
-                ? `${availablePoints.toLocaleString()} pts · ${tier.toUpperCase()} · ${lifetimeOrders} orders`
-                : summaryError
-                  ? "Could not load customer profile"
-                  : "Tap to view & apply"}
+            {hasCustomer
+              ? (loadingSummary
+                ? "Loading customer…"
+                : summary
+                  ? `${availablePoints.toLocaleString()} pts · ${tier.toUpperCase()} · ${lifetimeOrders} orders`
+                  : summaryError
+                    ? "Could not load customer profile"
+                    : "Tap to view & apply")
+              : (applied.giftCard
+                ? `MVR ${applied.giftCard.discount.toFixed(2)} staged`
+                : "Apply a gift card without attaching a customer")}
           </span>
         </div>
         <span style={{ fontSize: 14, color: COLOR.muted, marginLeft: 8 }}>{expanded ? "▾" : "▸"}</span>
@@ -275,124 +279,128 @@ export function CustomerRewardsPanel({
 
       {expanded && (
         <div style={{ padding: 12, borderTop: `1px solid ${COLOR.border}`, display: "grid", gap: 14 }}>
-          {/* ── At-a-glance customer card ─────────────────────────────── */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 8,
-            padding: 10,
-            borderRadius: 8,
-            background: COLOR.bg,
-          }}>
-            <Stat label="Available points" value={availablePoints.toLocaleString()} />
-            <Stat label="Tier" value={tier.toUpperCase()} />
-            <Stat label="Lifetime orders" value={lifetimeOrders.toLocaleString()} />
-            <Stat label="Lifetime spent" value={`MVR ${lifetimeSpent.toFixed(2)}`} />
-            <Stat
-              label="Deposit balance"
-              value={
-                depositStatus !== 'active'
-                  ? `${depositStatus.toUpperCase()} · MVR ${depositBalanceMvr.toFixed(2)}`
-                  : `MVR ${depositBalanceMvr.toFixed(2)}`
-              }
-            />
-            {creditEnabled && (
-              <Stat
-                label="Credit available"
-                value={
-                  creditBalanceMvr > 0
-                    ? `MVR ${creditAvailableMvr.toFixed(2)} (owed MVR ${creditBalanceMvr.toFixed(2)})`
-                    : `MVR ${creditAvailableMvr.toFixed(2)}`
+          {hasCustomer && (
+            <>
+              {/* ── At-a-glance customer card ─────────────────────────────── */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 8,
+                padding: 10,
+                borderRadius: 8,
+                background: COLOR.bg,
+              }}>
+                <Stat label="Available points" value={availablePoints.toLocaleString()} />
+                <Stat label="Tier" value={tier.toUpperCase()} />
+                <Stat label="Lifetime orders" value={lifetimeOrders.toLocaleString()} />
+                <Stat label="Lifetime spent" value={`MVR ${lifetimeSpent.toFixed(2)}`} />
+                <Stat
+                  label="Deposit balance"
+                  value={
+                    depositStatus !== 'active'
+                      ? `${depositStatus.toUpperCase()} · MVR ${depositBalanceMvr.toFixed(2)}`
+                      : `MVR ${depositBalanceMvr.toFixed(2)}`
+                  }
+                />
+                {creditEnabled && (
+                  <Stat
+                    label="Credit available"
+                    value={
+                      creditBalanceMvr > 0
+                        ? `MVR ${creditAvailableMvr.toFixed(2)} (owed MVR ${creditBalanceMvr.toFixed(2)})`
+                        : `MVR ${creditAvailableMvr.toFixed(2)}`
+                    }
+                  />
+                )}
+                {lastPaidAt && (
+                  <Stat
+                    label="Last visit"
+                    value={fmtRelative(lastPaidAt)}
+                    full
+                  />
+                )}
+                {summary?.customer.internal_notes && (
+                  <Stat label="Note" value={summary.customer.internal_notes} full />
+                )}
+              </div>
+
+              {/* ── Promo code ─────────────────────────────────────────── */}
+              <Section
+                title="Promo code"
+                applied={
+                  applied.promo
+                    ? `${applied.promo.code} · est. MVR ${applied.promo.discount.toFixed(2)}`
+                    : null
                 }
-              />
-            )}
-            {lastPaidAt && (
-              <Stat
-                label="Last visit"
-                value={fmtRelative(lastPaidAt)}
-                full
-              />
-            )}
-            {summary?.customer.internal_notes && (
-              <Stat label="Note" value={summary.customer.internal_notes} full />
-            )}
-          </div>
-
-          {/* ── Promo code ─────────────────────────────────────────── */}
-          <Section
-            title="Promo code"
-            applied={
-              applied.promo
-                ? `${applied.promo.code} · est. MVR ${applied.promo.discount.toFixed(2)}`
-                : null
-            }
-            onRemove={applied.promo ? () => setAppliedPromo(null) : undefined}
-            error={promoError}
-            readOnly={readOnly}
-          >
-            <div style={{ display: "flex", gap: 6 }}>
-              <input
-                value={promoCode}
-                onChange={(e) => { setPromoCode(e.target.value); setPromoError(""); }}
-                placeholder="e.g. WELCOME10"
-                disabled={!!applied.promo || readOnly}
-                style={fieldStyle}
-              />
-              <button
-                type="button"
-                onClick={handleApplyPromo}
-                disabled={!promoCode.trim() || promoBusy || !!applied.promo || readOnly}
-                style={primaryBtn(!promoCode.trim() || promoBusy || !!applied.promo || readOnly)}
+                onRemove={applied.promo ? () => setAppliedPromo(null) : undefined}
+                error={promoError}
+                readOnly={readOnly}
               >
-                {promoBusy ? "…" : "Apply"}
-              </button>
-            </div>
-          </Section>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    value={promoCode}
+                    onChange={(e) => { setPromoCode(e.target.value); setPromoError(""); }}
+                    placeholder="e.g. WELCOME10"
+                    disabled={!!applied.promo || readOnly}
+                    style={fieldStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyPromo}
+                    disabled={!promoCode.trim() || promoBusy || !!applied.promo || readOnly}
+                    style={primaryBtn(!promoCode.trim() || promoBusy || !!applied.promo || readOnly)}
+                  >
+                    {promoBusy ? "…" : "Apply"}
+                  </button>
+                </div>
+              </Section>
 
-          {/* ── Loyalty points ─────────────────────────────────────── */}
-          <Section
-            title="Redeem loyalty points"
-            hint={availablePoints > 0
-              ? `Available: ${availablePoints.toLocaleString()} pts`
-              : "No points available"}
-            applied={
-              applied.loyalty
-                ? `${applied.loyalty.points.toLocaleString()} pts · est. MVR ${applied.loyalty.discount.toFixed(2)}`
-                : null
-            }
-            onRemove={applied.loyalty ? () => setAppliedLoyalty(null) : undefined}
-            error={loyaltyError}
-            readOnly={readOnly}
-          >
-            <div style={{ display: "flex", gap: 6 }}>
-              <input
-                value={loyaltyPoints}
-                onChange={(e) => { setLoyaltyPoints(e.target.value.replace(/\D/g, "")); setLoyaltyError(""); }}
-                placeholder="Points"
-                inputMode="numeric"
-                disabled={availablePoints <= 0 || !!applied.loyalty || readOnly}
-                style={fieldStyle}
-              />
-              <button
-                type="button"
-                onClick={() => setLoyaltyPoints(String(availablePoints))}
-                disabled={availablePoints <= 0 || !!applied.loyalty || readOnly}
-                style={ghostBtn(availablePoints <= 0 || !!applied.loyalty || readOnly)}
+              {/* ── Loyalty points ─────────────────────────────────────── */}
+              <Section
+                title="Redeem loyalty points"
+                hint={availablePoints > 0
+                  ? `Available: ${availablePoints.toLocaleString()} pts`
+                  : "No points available"}
+                applied={
+                  applied.loyalty
+                    ? `${applied.loyalty.points.toLocaleString()} pts · est. MVR ${applied.loyalty.discount.toFixed(2)}`
+                    : null
+                }
+                onRemove={applied.loyalty ? () => setAppliedLoyalty(null) : undefined}
+                error={loyaltyError}
+                readOnly={readOnly}
               >
-                Max
-              </button>
-              <button
-                type="button"
-                onClick={handleApplyLoyalty}
-                disabled={!loyaltyPoints || loyaltyBusy || !!applied.loyalty || readOnly}
-                style={primaryBtn(!loyaltyPoints || loyaltyBusy || !!applied.loyalty || readOnly)}
-              >
-                {loyaltyBusy ? "…" : "Apply"}
-              </button>
-            </div>
-          </Section>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    value={loyaltyPoints}
+                    onChange={(e) => { setLoyaltyPoints(e.target.value.replace(/\D/g, "")); setLoyaltyError(""); }}
+                    placeholder="Points"
+                    inputMode="numeric"
+                    disabled={availablePoints <= 0 || !!applied.loyalty || readOnly}
+                    style={fieldStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLoyaltyPoints(String(availablePoints))}
+                    disabled={availablePoints <= 0 || !!applied.loyalty || readOnly}
+                    style={ghostBtn(availablePoints <= 0 || !!applied.loyalty || readOnly)}
+                  >
+                    Max
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyLoyalty}
+                    disabled={!loyaltyPoints || loyaltyBusy || !!applied.loyalty || readOnly}
+                    style={primaryBtn(!loyaltyPoints || loyaltyBusy || !!applied.loyalty || readOnly)}
+                  >
+                    {loyaltyBusy ? "…" : "Apply"}
+                  </button>
+                </div>
+              </Section>
+            </>
+          )}
 
-          {/* ── Gift card ──────────────────────────────────────────── */}
+          {/* ── Gift card (works for walk-ins too) ──────────────────── */}
           <Section
             title="Gift card"
             applied={

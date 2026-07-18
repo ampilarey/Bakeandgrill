@@ -348,6 +348,8 @@ export interface GiftCard {
   masked_code: string;
   initial_balance: number;
   current_balance: number;
+  available_balance?: number;
+  held_balance?: number;
   status: 'active' | 'depleted' | 'expired' | 'cancelled';
   expires_at: string | null;
   issued_to: { id: number; name: string } | null;

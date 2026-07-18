@@ -51,9 +51,9 @@ final class IssuePurchasedGiftCardOnOrderPaidListener
                     'issued_to_customer_id' => $purchase->purchaser_customer_id,
                 ]);
 
-                $purchase->update(['gift_card_id' => $issued['card']->id]);
-
                 $note = $purchase->personal_note;
+                $smsOk = null;
+                $emailOk = null;
 
                 if ($purchase->recipient_phone) {
                     $sent = $this->sms->send(
@@ -63,7 +63,8 @@ final class IssuePurchasedGiftCardOnOrderPaidListener
                         $note,
                         $purchase->purchaser_customer_id,
                     );
-                    if (!$sent['ok']) {
+                    $smsOk = (bool) $sent['ok'];
+                    if (!$smsOk) {
                         Log::warning('Gift card purchase SMS failed', [
                             'order_id' => $order->id,
                             'error' => $sent['error'],
@@ -78,13 +79,20 @@ final class IssuePurchasedGiftCardOnOrderPaidListener
                         $purchase->recipient_email,
                         $note,
                     );
-                    if (!$sent['ok']) {
+                    $emailOk = (bool) $sent['ok'];
+                    if (!$emailOk) {
                         Log::warning('Gift card purchase email failed', [
                             'order_id' => $order->id,
                             'error' => $sent['error'],
                         ]);
                     }
                 }
+
+                $purchase->update([
+                    'gift_card_id' => $issued['card']->id,
+                    'sms_ok' => $smsOk,
+                    'email_ok' => $emailOk,
+                ]);
 
                 if ($order->status !== 'completed') {
                     $order->update([

@@ -626,6 +626,30 @@ export function useCheckout() {
     setGiftCardHeld(0);
   };
 
+  // Restage pending gift-card preview when cart / other discounts change.
+  useEffect(() => {
+    if (!giftCardApplied?.pending || giftCardBalance == null) return;
+    const referralRoom = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta);
+    const referralBeforeGift = friendReferralApplied
+      ? (friendReferralApplied.pending
+        ? Math.min(friendReferralApplied.configuredLaar ?? friendReferralApplied.discountLaar, referralRoom)
+        : friendReferralApplied.discountLaar)
+      : 0;
+    const room = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - referralBeforeGift);
+    const capped = Math.min(Math.round(giftCardBalance * 100), room);
+    if (capped === giftCardApplied.discountLaar) return;
+    setGiftCardApplied((prev) => (prev?.pending ? { ...prev, discountLaar: capped } : prev));
+  }, [
+    subtotalLaar,
+    promoDelta,
+    loyaltyDelta,
+    giftCardBalance,
+    giftCardApplied?.pending,
+    giftCardApplied?.code,
+    giftCardApplied?.discountLaar,
+    friendReferralApplied,
+  ]);
+
   const handleApplyFriendReferral = async () => {
     if (!isAuthenticated) { setFriendReferralError("Please sign in first."); return; }
     const raw = friendReferralCode.trim().toUpperCase();

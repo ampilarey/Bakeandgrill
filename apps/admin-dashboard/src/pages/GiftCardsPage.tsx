@@ -135,7 +135,10 @@ export default function GiftCardsPage() {
 
   const handleIssue = async () => {
     const amt = parseFloat(amount);
-    if (!amount || isNaN(amt) || amt <= 0) { setIssueError('Enter a valid amount.'); return; }
+    if (!amount || isNaN(amt) || amt < 1 || amt > 5000) {
+      setIssueError('Enter an amount between MVR 1 and 5000.');
+      return;
+    }
     if (sendSms && !customerId && !recipientPhone.trim()) {
       setIssueError('Enter a recipient phone, or pick a customer with a phone on file.');
       return;
@@ -239,7 +242,11 @@ export default function GiftCardsPage() {
   };
 
   const handleCancel = async (card: GiftCard) => {
-    if (!window.confirm(`Cancel gift card ${card.masked_code}? It can no longer be redeemed.`)) return;
+    const held = Number(card.held_balance ?? 0);
+    const heldNote = held > 0
+      ? `\n\nMVR ${held.toFixed(2)} is held on unpaid orders — those holds will be released.`
+      : '';
+    if (!window.confirm(`Cancel gift card ${card.masked_code}? It can no longer be redeemed.${heldNote}`)) return;
     setActionError('');
     try {
       await cancelGiftCard(card.id);
@@ -311,7 +318,12 @@ export default function GiftCardsPage() {
           setIssuedCard(null);
           setIssueError('');
           setIssueSms(null);
+          setIssueEmail(null);
           setSmsResendMsg('');
+          setEmailResendMsg('');
+          setSmsResendPhone('');
+          setEmailResendTo('');
+          setDeliveryResendNote('');
           resetIssueForm();
         }}>+ Issue Gift Card</Btn>}
       />
@@ -414,7 +426,15 @@ export default function GiftCardsPage() {
                   )}
                 </td>
                 <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
-                <td style={{ ...TD, fontWeight: 700, color: card.current_balance > 0 ? '#166534' : '#9C8E7E' }}>MVR {Number(card.current_balance).toFixed(2)}</td>
+                <td style={{ ...TD, fontWeight: 700, color: (card.available_balance ?? card.current_balance) > 0 ? '#166534' : '#9C8E7E' }}>
+                  <div>MVR {Number(card.available_balance ?? card.current_balance).toFixed(2)}</div>
+                  {(Number(card.held_balance ?? 0) > 0 || Number(card.available_balance ?? card.current_balance) !== Number(card.current_balance)) && (
+                    <div style={{ fontSize: 11, fontWeight: 500, color: '#9C8E7E', marginTop: 2 }}>
+                      Ledger {Number(card.current_balance).toFixed(2)}
+                      {Number(card.held_balance ?? 0) > 0 ? ` · held ${Number(card.held_balance).toFixed(2)}` : ''}
+                    </div>
+                  )}
+                </td>
                 <td style={TD}><Badge color={STATUS_COLOR[card.status] ?? 'gray'}>{STATUS_LABEL[card.status] ?? card.status}</Badge></td>
                 <td style={TD}>{card.expires_at ?? '—'}</td>
                 <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{card.created_at ? new Date(card.created_at).toLocaleDateString() : '—'}</td>
@@ -491,7 +511,11 @@ export default function GiftCardsPage() {
         <Modal title={`Ledger · ${ledgerCard.masked_code}`} onClose={() => setLedgerCard(null)}>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
             Status: <strong>{STATUS_LABEL[ledgerCard.status] ?? ledgerCard.status}</strong>
-            {' · '}Balance: MVR {Number(ledgerCard.current_balance).toFixed(2)}
+            {' · '}Available: MVR {Number(ledgerCard.available_balance ?? ledgerCard.current_balance).toFixed(2)}
+            {' · '}Ledger: MVR {Number(ledgerCard.current_balance).toFixed(2)}
+            {Number(ledgerCard.held_balance ?? 0) > 0
+              ? ` · Held: MVR ${Number(ledgerCard.held_balance).toFixed(2)}`
+              : ''}
             {ledgerCard.purchased_by ? ` · Bought by ${ledgerCard.purchased_by.name}` : ''}
           </p>
           {ledgerLoading ? (
@@ -636,7 +660,7 @@ export default function GiftCardsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <label>
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Amount (MVR) *</span>
-                  <Input type="number" min="1" step="0.01" placeholder="50.00" value={amount} onChange={setAmount} />
+                  <Input type="number" min="1" max="5000" step="0.01" placeholder="50.00" value={amount} onChange={setAmount} />
                 </label>
                 <label>
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Customer (optional)</span>

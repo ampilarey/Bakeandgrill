@@ -41,6 +41,54 @@ final class GiftCardRedemptionService
     }
 
     /**
+     * Batch soft-reserve totals for a page of cards (laari keyed by gift_card_id).
+     *
+     * @param  list<int>  $cardIds
+     * @return array<int, int>
+     */
+    public function reservedLaarByCardIds(array $cardIds): array
+    {
+        if ($cardIds === []) {
+            return [];
+        }
+
+        return Order::query()
+            ->selectRaw('gift_card_id, SUM(gift_card_discount_laar) as held_laar')
+            ->whereIn('gift_card_id', $cardIds)
+            ->whereIn('status', self::RESERVING_STATUSES)
+            ->where('gift_card_discount_laar', '>', 0)
+            ->groupBy('gift_card_id')
+            ->pluck('held_laar', 'gift_card_id')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+    }
+
+    /**
+     * Clear gift-card soft holds on unpaid orders (e.g. before cancel).
+     * Caller should recalculate order totals for each returned ID.
+     *
+     * @return list<int>
+     */
+    public function clearSoftReserves(GiftCard $card): array
+    {
+        $orders = Order::query()
+            ->where('gift_card_id', $card->id)
+            ->whereIn('status', self::RESERVING_STATUSES)
+            ->get();
+
+        $ids = [];
+        foreach ($orders as $order) {
+            $order->update([
+                'gift_card_id' => null,
+                'gift_card_discount_laar' => 0,
+            ]);
+            $ids[] = (int) $order->id;
+        }
+
+        return $ids;
+    }
+
+    /**
      * Deduct gift card balance for an order. Must run inside an outer DB transaction.
      *
      * @throws \RuntimeException when the order still claims a gift discount but balance is short

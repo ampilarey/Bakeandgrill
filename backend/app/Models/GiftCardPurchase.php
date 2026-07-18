@@ -17,10 +17,14 @@ class GiftCardPurchase extends Model
         'recipient_email',
         'personal_note',
         'gift_card_id',
+        'sms_ok',
+        'email_ok',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'sms_ok' => 'boolean',
+        'email_ok' => 'boolean',
     ];
 
     public function order(): BelongsTo

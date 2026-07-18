@@ -118,7 +118,12 @@ export async function getGiftCardPurchaseStatus(orderId: number): Promise<{
     status: string;
     expires_at: string | null;
   } | null;
-  delivery: { phone: string | null; email: string | null };
+  delivery: {
+    phone: string | null;
+    email: string | null;
+    sms_ok: boolean | null;
+    email_ok: boolean | null;
+  };
 }> {
   return request(`/gift-cards/purchases/${orderId}`);
 }

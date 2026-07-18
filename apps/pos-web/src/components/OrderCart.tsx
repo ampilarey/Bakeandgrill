@@ -650,13 +650,10 @@ export function OrderCart(p: Props) {
           />
         </div>
 
-        {/* Customer rewards drawer — only renders when a customer is
-            attached AND the cart has items. Loads the customer's loyalty
-            balance + lifetime stats from the new pos-summary endpoint
-            and lets the cashier stage promo / loyalty / gift card
-            against the ticket. Actual server-side apply happens during
-            charge, between createOrder and settleOrder. */}
-        {p.attachedCustomer && p.cartItems.length > 0 && p.canUseRewards !== false && (
+        {/* Rewards drawer — gift card works for walk-ins; promo/loyalty
+            need an attached customer. Server apply still happens during
+            charge between createOrder and settleOrder. */}
+        {p.cartItems.length > 0 && p.canUseRewards !== false && (
           <CustomerRewardsPanel
             customer={p.attachedCustomer}
             taxableSubtotal={p.taxableSubtotal}

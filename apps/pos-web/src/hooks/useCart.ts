@@ -11,6 +11,7 @@ import {
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from "@shared/utils/effectiveDiscount";
 import { effectiveLineTaxRatePercent } from "../utils/posCartTotals";
 import { fetchPublicSiteSettings, fetchGstBootstrap } from "../api";
+import { previewGiftCardDiscount } from "../utils/giftCardPreview";
 
 export type PaymentRow = {
   id: string;
@@ -398,6 +399,39 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     // customer) could legitimately still present the card. Keep it
     // staged unless the cashier explicitly removes it.
   }, []);
+
+  // Keep staged gift-card discount in sync when cart / other discounts change.
+  useEffect(() => {
+    if (!appliedGiftCard) return;
+    const room = Math.max(
+      0,
+      cartSubtotal
+        - discountValue
+        - (appliedPromo?.discount ?? 0)
+        - (appliedLoyalty?.discount ?? 0),
+    );
+    const preview = previewGiftCardDiscount(
+      appliedGiftCard.cardBalance,
+      appliedGiftCard.heldBalance ?? 0,
+      room,
+    );
+    if (!preview.ok) {
+      setAppliedGiftCard(null);
+      return;
+    }
+    if (preview.discount !== appliedGiftCard.discount) {
+      setAppliedGiftCard({ ...appliedGiftCard, discount: preview.discount });
+    }
+  }, [
+    cartSubtotal,
+    discountValue,
+    appliedPromo?.discount,
+    appliedLoyalty?.discount,
+    appliedGiftCard?.code,
+    appliedGiftCard?.cardBalance,
+    appliedGiftCard?.heldBalance,
+    appliedGiftCard?.discount,
+  ]);
 
   return {
     cartItems,

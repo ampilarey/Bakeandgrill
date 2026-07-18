@@ -357,6 +357,52 @@ class GiftCardEnhancementsTest extends TestCase
         $this->getJson('/api/admin/gift-cards', $this->adminHeaders)
             ->assertOk()
             ->assertJsonPath('data.0.purchased_by.id', $buyer->id)
-            ->assertJsonPath('data.0.purchased_by.name', 'Gift Buyer');
+            ->assertJsonPath('data.0.purchased_by.name', 'Gift Buyer')
+            ->assertJsonPath('data.0.available_balance', 100)
+            ->assertJsonPath('data.0.held_balance', 0);
+    }
+
+    public function test_admin_cancel_releases_soft_holds(): void
+    {
+        $card = GiftCard::create([
+            'code_hash' => hash('sha256', 'cancel-hold'),
+            'code_last4' => 'CHLD',
+            'initial_balance' => 80,
+            'current_balance' => 80,
+            'status' => 'active',
+        ]);
+
+        $order = \App\Models\Order::create([
+            'order_number' => 'GC-HOLD-1',
+            'tracking_token' => 'gchold1',
+            'type' => 'dine_in',
+            'status' => 'payment_pending',
+            'subtotal' => 50,
+            'subtotal_laar' => 5000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 50,
+            'total_laar' => 5000,
+            'gift_card_id' => $card->id,
+            'gift_card_discount_laar' => 3000,
+        ]);
+
+        $this->postJson("/api/admin/gift-cards/{$card->id}/cancel", [], $this->adminHeaders)
+            ->assertOk()
+            ->assertJsonPath('gift_card.status', 'cancelled')
+            ->assertJsonPath('released_orders.0', $order->id);
+
+        $order->refresh();
+        $this->assertNull($order->gift_card_id);
+        $this->assertSame(0, (int) $order->gift_card_discount_laar);
+        $this->assertSame('cancelled', $card->fresh()->status);
+    }
+
+    public function test_admin_issue_rejects_amount_over_max(): void
+    {
+        $this->postJson('/api/admin/gift-cards', [
+            'amount' => 5001,
+        ], $this->adminHeaders)
+            ->assertStatus(422);
     }
 }

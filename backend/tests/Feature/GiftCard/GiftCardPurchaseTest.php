@@ -137,6 +137,8 @@ class GiftCardPurchaseTest extends TestCase
 
         Mail::assertSent(GiftCardMail::class, fn (GiftCardMail $mail) => $mail->hasTo('giftbuyer@example.com'));
 
+        $this->assertTrue($purchase->fresh()->sms_ok);
+        $this->assertTrue($purchase->fresh()->email_ok);
         $this->assertSame('completed', $order->fresh()->status);
 
         // Idempotent
@@ -186,5 +188,7 @@ class GiftCardPurchaseTest extends TestCase
 
         $this->assertArrayHasKey('masked_code', $res->json('gift_card'));
         $this->assertArrayNotHasKey('code', $res->json('gift_card'));
+        $this->assertTrue($res->json('delivery.sms_ok'));
+        $this->assertTrue($res->json('delivery.email_ok'));
     }
 }

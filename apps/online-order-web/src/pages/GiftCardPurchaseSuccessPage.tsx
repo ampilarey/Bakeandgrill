@@ -112,9 +112,7 @@ export function GiftCardPurchaseSuccessPage() {
               MVR {Number(status.gift_card.current_balance).toFixed(2)}
             </p>
             <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-              {t('gift.code_sent')
-                .replace('{phone}', status.delivery.phone || '—')
-                .replace('{email}', status.delivery.email || '—')}
+              {deliveryMessage(status, t)}
             </p>
           </div>
         )}
@@ -145,5 +143,42 @@ const linkBtn: CSSProperties = {
   textDecoration: 'none',
   fontSize: 15,
 };
+
+function deliveryMessage(
+  status: Status,
+  t: (key: string) => string,
+): string {
+  const d = status.delivery;
+  const triedSms = d.phone != null && d.phone !== '';
+  const triedEmail = d.email != null && d.email !== '';
+  const smsOk = d.sms_ok === true;
+  const emailOk = d.email_ok === true;
+  const anyOk = smsOk || emailOk;
+  const anyFail =
+    (triedSms && d.sms_ok === false) || (triedEmail && d.email_ok === false);
+
+  if (anyOk && !anyFail) {
+    const dest = [smsOk ? d.phone : null, emailOk ? d.email : null]
+      .filter(Boolean)
+      .join(' / ');
+    return t('gift.delivery_ok').replace('{dest}', dest || '—');
+  }
+
+  if (anyFail || (triedSms || triedEmail)) {
+    const parts: string[] = [];
+    if (triedSms) {
+      parts.push(smsOk ? `SMS ✓ ${d.phone}` : `SMS ✗ ${d.phone}`);
+    }
+    if (triedEmail) {
+      parts.push(emailOk ? `Email ✓ ${d.email}` : `Email ✗ ${d.email}`);
+    }
+    if (anyOk) {
+      return t('gift.delivery_partial').replace('{detail}', parts.join(' · '));
+    }
+    return t('gift.delivery_failed').replace('{order}', status.order_number);
+  }
+
+  return t('gift.delivery_failed').replace('{order}', status.order_number);
+}
 
 export default GiftCardPurchaseSuccessPage;

@@ -261,7 +261,7 @@ class GiftCardController extends Controller
     public function issue(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:1'],
+            'amount' => ['required', 'numeric', 'min:1', 'max:5000'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'expires_at' => ['nullable', 'date'],
             'send_sms' => ['sometimes', 'boolean'],
@@ -464,6 +464,8 @@ class GiftCardController extends Controller
             'delivery' => [
                 'phone' => $purchase?->recipient_phone,
                 'email' => $purchase?->recipient_email,
+                'sms_ok' => $purchase?->sms_ok,
+                'email_ok' => $purchase?->email_ok,
             ],
         ]);
     }
@@ -596,9 +598,13 @@ class GiftCardController extends Controller
         }
 
         $cards = $query->paginate(20);
+        $items = collect($cards->items());
+        $heldByCard = $this->giftCardRedemption->reservedLaarByCardIds(
+            $items->pluck('id')->map(fn ($id) => (int) $id)->all(),
+        );
 
         return response()->json([
-            'data' => collect($cards->items())->map(fn ($c) => $this->format($c)),
+            'data' => $items->map(fn ($c) => $this->format($c, $heldByCard[(int) $c->id] ?? 0)),
             'meta' => [
                 'current_page' => $cards->currentPage(),
                 'last_page' => $cards->lastPage(),
@@ -611,7 +617,7 @@ class GiftCardController extends Controller
 
     // ── Admin: cancel a gift card ─────────────────────────────────────────────
 
-    public function cancel(Request $request, int $id): JsonResponse
+    public function cancel(Request $request, int $id, OrderTotalsCalculator $calc): JsonResponse
     {
         $card = GiftCard::findOrFail($id);
 
@@ -623,19 +629,35 @@ class GiftCardController extends Controller
         }
 
         $previous = $card->status;
-        $card->update(['status' => 'cancelled']);
+        $releasedOrderIds = [];
+
+        DB::transaction(function () use ($card, $calc, &$releasedOrderIds): void {
+            $releasedOrderIds = $this->giftCardRedemption->clearSoftReserves($card);
+            foreach ($releasedOrderIds as $orderId) {
+                $order = Order::query()->find($orderId);
+                if ($order) {
+                    $calc->recalculateAndPersist($order);
+                }
+            }
+            $card->update(['status' => 'cancelled']);
+        });
 
         $this->audit->log(
             'gift_card.cancelled',
             'GiftCard',
             $card->id,
             ['status' => $previous],
-            ['status' => 'cancelled'],
+            ['status' => 'cancelled', 'released_orders' => $releasedOrderIds],
             ['masked_code' => $card->masked_code],
             $request,
         );
 
-        return response()->json(['gift_card' => $this->format($card->fresh(['issuedTo', 'purchasedBy']))]);
+        $fresh = $card->fresh(['issuedTo', 'purchasedBy']);
+
+        return response()->json([
+            'gift_card' => $this->format($fresh, 0),
+            'released_orders' => $releasedOrderIds,
+        ]);
     }
 
     // ── Admin: top-up balance ─────────────────────────────────────────────────
@@ -764,13 +786,18 @@ class GiftCardController extends Controller
         ]);
     }
 
-    private function format(GiftCard $c): array
+    private function format(GiftCard $c, ?int $heldLaar = null): array
     {
+        $held = $heldLaar ?? $this->giftCardRedemption->reservedLaar($c);
+        $available = max(0, $c->balanceLaar() - $held);
+
         return [
             'id' => $c->id,
             'masked_code' => $c->masked_code,
             'initial_balance' => (float) $c->initial_balance,
             'current_balance' => (float) $c->current_balance,
+            'available_balance' => round($available / 100, 2),
+            'held_balance' => round($held / 100, 2),
             'status' => $c->status,
             'expires_at' => $c->expires_at?->toDateString(),
             'created_at' => $c->created_at?->toIso8601String(),

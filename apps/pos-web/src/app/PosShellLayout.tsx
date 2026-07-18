@@ -318,7 +318,13 @@ export function PosShellLayout() {
               serviceChargeLabel={cart.serviceChargeLabel}
               cartTotal={cart.cartTotal}
               chargeTotal={chargeTotal}
-              taxableSubtotal={cart.discountedSubtotal}
+              taxableSubtotal={Math.max(
+                0,
+                cart.cartSubtotal
+                  - cart.discountValue
+                  - (cart.appliedPromo?.discount ?? 0)
+                  - (cart.appliedLoyalty?.discount ?? 0),
+              )}
               deliveryFeeEst={deliveryFeeEst}
               discountValue={cart.discountValue}
               rewardsDiscount={cart.rewardsDiscount}
