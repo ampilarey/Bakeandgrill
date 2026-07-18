@@ -747,6 +747,7 @@ export function useCheckout() {
     setIsPlacing(true);
     setGlobalError("");
     let loyaltyHeldForOrderId: number | null = null;
+    let giftCardAttachedOrderId: number | null = null;
 
     try {
       let orderId: number;
@@ -791,6 +792,9 @@ export function useCheckout() {
       }
 
       setPendingOrderId(orderId);
+      if (giftCardApplied && !giftCardApplied.pending) {
+        giftCardAttachedOrderId = orderId;
+      }
 
       const promoToApply = promoApplied?.pending
         ? promoApplied.code
@@ -849,6 +853,7 @@ export function useCheckout() {
           const gcRes = await applyGiftCard(orderId, giftCardToApply);
           setGiftCardApplied({ code: giftCardToApply, discountLaar: gcRes.discount_laar });
           setGiftCardCode("");
+          giftCardAttachedOrderId = orderId;
         } catch (e) {
           if (loyaltyHeldForOrderId) {
             await releaseLoyaltyHold(loyaltyHeldForOrderId).catch(() => undefined);
@@ -891,6 +896,7 @@ export function useCheckout() {
       if (dueLaar <= 0) {
         // Hold is consumed on zero-balance completion — do not release.
         loyaltyHeldForOrderId = null;
+        giftCardAttachedOrderId = null;
         await completeZeroBalanceOrder(orderId);
         try {
           const historyKey = 'bakegrill_order_history';
@@ -915,8 +921,9 @@ export function useCheckout() {
         throw new Error("Payment could not be started. Please try again in a moment.");
       }
 
-      // Keep hold through BML redirect — OrderPaid consumes it.
+      // Keep holds through BML redirect — OrderPaid consumes them.
       loyaltyHeldForOrderId = null;
+      giftCardAttachedOrderId = null;
 
       // Save to order history in localStorage before leaving the page
       try {
@@ -945,6 +952,10 @@ export function useCheckout() {
     } catch (e) {
       if (loyaltyHeldForOrderId) {
         await releaseLoyaltyHold(loyaltyHeldForOrderId).catch(() => undefined);
+      }
+      if (giftCardAttachedOrderId) {
+        await removeGiftCard(giftCardAttachedOrderId).catch(() => undefined);
+        setGiftCardApplied(null);
       }
       setGlobalError((e as Error).message);
       setIsPlacing(false);

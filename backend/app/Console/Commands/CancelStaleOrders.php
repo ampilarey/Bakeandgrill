@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\Events\OrderCancelled;
+use App\Models\LoyaltyHold;
 use App\Models\Order;
 use App\Services\StockReservationService;
 use Illuminate\Console\Command;
@@ -55,11 +57,16 @@ class CancelStaleOrders extends Command
                 // stock is freed even if queue workers are down).
                 app(StockReservationService::class)->releaseForOrder($order->id);
 
-                // Release any active loyalty hold
-                DB::table('loyalty_holds')
+                // Release loyalty holds properly (decrement points_held).
+                // Do NOT raw-update hold status — that orphans points_held and
+                // makes ReleaseLoyaltyHoldListener a no-op (looks for status=active).
+                $hold = LoyaltyHold::query()
                     ->where('order_id', $order->id)
-                    ->whereNull('released_at')
-                    ->update(['released_at' => now(), 'status' => 'released']);
+                    ->where('status', 'active')
+                    ->first();
+                if ($hold) {
+                    app(LoyaltyLedgerService::class)->releaseHold($hold);
+                }
 
                 Log::info('CancelStaleOrders: cancelled stale payment_pending order', [
                     'order_id' => $order->id,

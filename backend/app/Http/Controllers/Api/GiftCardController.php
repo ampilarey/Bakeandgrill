@@ -162,7 +162,7 @@ class GiftCardController extends Controller
         $validated = $request->validate(['code' => ['required', 'string', 'max:32']]);
 
         $order = Order::query()
-            ->whereIn('status', ['payment_pending', 'pending'])
+            ->whereIn('status', ['payment_pending', 'pending', 'held', 'partial'])
             ->findOrFail($orderId);
 
         return DB::transaction(function () use ($validated, $order, $calc, $request): JsonResponse {
@@ -234,7 +234,7 @@ class GiftCardController extends Controller
         }
 
         $order = Order::query()
-            ->whereIn('status', ['payment_pending', 'pending'])
+            ->whereIn('status', ['payment_pending', 'pending', 'held', 'partial'])
             ->findOrFail($orderId);
 
         $previousCardId = $order->gift_card_id;

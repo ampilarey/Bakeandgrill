@@ -69,6 +69,9 @@ function canQuickAdvanceStatus(status: string, can: (slug?: string) => boolean):
   return false;
 }
 
+const SEND_BILL_TYPES = new Set(['dine_in', 'takeaway', 'online_pickup', 'delivery']);
+const SEND_BILL_STATUSES = new Set(['ready', 'preparing', 'in_progress', 'pending', 'payment_pending', 'held']);
+
 function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   orderId: number;
   onClose: () => void;
@@ -91,6 +94,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const [refundReason, setRefundReason] = useState('');
   const [refundBusy, setRefundBusy] = useState(false);
   const [refundError, setRefundError] = useState('');
+  const [billPhoneOverride, setBillPhoneOverride] = useState('');
+  const [showBillPhone, setShowBillPhone] = useState(false);
   const { state: refundDlg, ask: askRefundConfirm, close: closeRefundDlg } = useConfirmDialog();
   const { can } = useCurrentUserPermissions();
   const canManage = can('orders.manage');
@@ -319,15 +324,18 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   {acting === 'resume' ? '…' : '▶ Resume Order'}
                 </Btn>
               )}
-              {canSendBill && order.type === 'dine_in' && ['ready', 'preparing', 'in_progress', 'pending', 'payment_pending'].includes(order.status) && (
+              {canSendBill && SEND_BILL_TYPES.has(order.type) && SEND_BILL_STATUSES.has(order.status) && (
                 <Btn
                   small
                   variant="secondary"
                   onClick={() => {
-                    const phone = (order.customer?.phone ?? order.customer_phone ?? '').trim();
+                    const attached = (order.customer?.phone ?? order.customer_phone ?? '').trim();
+                    const override = billPhoneOverride.trim();
+                    const phone = override || attached;
                     if (!phone) {
-                      setActionErr('Attach a customer with a phone number before sending the bill SMS.');
-                      showToast('Send Bill needs a customer phone.');
+                      setShowBillPhone(true);
+                      setActionErr('Enter a Maldives mobile number to send the bill SMS.');
+                      showToast('Send Bill needs a phone number.');
                       return;
                     }
                     void (async () => {
@@ -338,6 +346,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                         const sms = res.sms_status;
                         if (sms === 'sent' || sms === 'demo') {
                           showToast(`Bill SMS ${sms === 'demo' ? '(demo) ' : ''}sent to ${phone}.`);
+                          setShowBillPhone(false);
+                          setBillPhoneOverride('');
                         } else if (sms === 'failed') {
                           throw new Error(`Invoice ready but SMS failed for ${phone}.`);
                         } else if (!sms) {
@@ -350,6 +360,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                       } catch (e) {
                         const msg = (e as Error).message;
                         setActionErr(msg);
+                        setShowBillPhone(true);
                         showToast(`Send Bill failed: ${msg}`);
                       } finally {
                         setActing('');
@@ -359,6 +370,19 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 >
                   {acting === 'bill' ? '…' : '🧾 Send Bill'}
                 </Btn>
+              )}
+              {canSendBill && SEND_BILL_TYPES.has(order.type) && SEND_BILL_STATUSES.has(order.status) && (showBillPhone || !(order.customer?.phone ?? order.customer_phone)) && (
+                <input
+                  type="tel"
+                  value={billPhoneOverride}
+                  onChange={(e) => setBillPhoneOverride(e.target.value)}
+                  placeholder="7XXXXXX or +9607XXXXXX"
+                  aria-label="Bill SMS phone"
+                  style={{
+                    flex: '1 1 160px', minWidth: 140, padding: '6px 10px',
+                    borderRadius: 8, border: '1px solid #D6C8B8', fontSize: 13,
+                  }}
+                />
               )}
               {canRecordPayment && !['paid', 'completed', 'cancelled'].includes(order.status) && (
                 <Btn small variant="secondary" onClick={() => { setShowPayment(true); setShowRefund(false); setPayRows([{ method: 'cash', amount: String(parseFloat(String(order.total ?? 0)).toFixed(2)) }]); }}>

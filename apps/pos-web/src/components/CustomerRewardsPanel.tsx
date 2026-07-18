@@ -5,6 +5,7 @@ import {
   validatePromoCode,
 } from "../api";
 import type { PosCustomer, PosCustomerSummary } from "../api";
+import { removeGiftCardFromOrder } from "../api/loyalty";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
 
 type AppliedPromo = { code: string; promotionId: number | null; discount: number };
@@ -32,6 +33,8 @@ type Props = {
   setAppliedPromo: (v: AppliedPromo | null) => void;
   setAppliedLoyalty: (v: AppliedLoyalty | null) => void;
   setAppliedGiftCard: (v: AppliedGiftCard | null) => void;
+  /** When set, gift-card remove hits the server so soft holds clear on open tickets. */
+  orderId?: number | null;
   /** When true, the panel becomes read-only — used for resumed tickets
    *  where rewards must be applied via the original online checkout. */
   readOnly?: boolean;
@@ -73,6 +76,7 @@ export function CustomerRewardsPanel({
   setAppliedPromo,
   setAppliedLoyalty,
   setAppliedGiftCard,
+  orderId = null,
   readOnly = false,
 }: Props) {
   const [summary, setSummary] = useState<PosCustomerSummary | null>(null);
@@ -231,6 +235,25 @@ export function CustomerRewardsPanel({
     } finally {
       setGiftBusy(false);
     }
+  };
+
+  const handleRemoveGiftCard = async () => {
+    if (!applied.giftCard) return;
+    setGiftError("");
+    if (orderId) {
+      setGiftBusy(true);
+      try {
+        await removeGiftCardFromOrder(orderId);
+      } catch (err) {
+        setGiftError((err as Error).message);
+        setGiftBusy(false);
+        return;
+      } finally {
+        setGiftBusy(false);
+      }
+    }
+    setAppliedGiftCard(null);
+    setGiftCode("");
   };
 
   return (
@@ -412,7 +435,7 @@ export function CustomerRewardsPanel({
                   }`
                 : null
             }
-            onRemove={applied.giftCard ? () => setAppliedGiftCard(null) : undefined}
+            onRemove={applied.giftCard ? () => { void handleRemoveGiftCard(); } : undefined}
             error={giftError}
             readOnly={readOnly}
           >

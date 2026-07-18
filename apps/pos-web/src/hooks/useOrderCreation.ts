@@ -12,6 +12,7 @@ import {
   holdOrder,
   lookupBarcode,
   releaseLoyaltyHold,
+  removeGiftCardFromOrder,
   resumeOrder,
   updateOrderItems,
 } from "../api";
@@ -412,6 +413,16 @@ export function useOrderCreation(params: Params) {
         total = res.order.total;
       } catch (err) {
         failures.push(`gift card "${params.appliedGiftCardCode}" (${(err as Error).message})`);
+      }
+    } else if (resumedOrderId === orderId) {
+      // Cashier cleared a staged/server gift card on a resumed ticket —
+      // ensure the soft hold is dropped before settle.
+      try {
+        await removeGiftCardFromOrder(orderId);
+        const fresh = await getOrder(orderId);
+        if (typeof fresh.order.total === "number") total = fresh.order.total;
+      } catch {
+        /* no gift card on order — fine */
       }
     }
 

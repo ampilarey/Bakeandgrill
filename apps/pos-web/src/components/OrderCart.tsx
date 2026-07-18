@@ -665,6 +665,7 @@ export function OrderCart(p: Props) {
             setAppliedPromo={p.setAppliedPromo}
             setAppliedLoyalty={p.setAppliedLoyalty}
             setAppliedGiftCard={p.setAppliedGiftCard}
+            orderId={p.resumedOrderId}
             readOnly={lockedReadOnly}
           />
         )}
