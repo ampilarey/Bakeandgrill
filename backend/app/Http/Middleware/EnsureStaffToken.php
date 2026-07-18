@@ -49,9 +49,9 @@ class EnsureStaffToken
             return response()->json(['message' => 'Forbidden — staff access only.'], 403);
         }
 
-        // Token ability check only when a Bearer token was presented;
-        // session auth (admin SPA) does not carry token abilities.
-        if ($request->bearerToken() && !$user->tokenCan('staff')) {
+        // Token ability check when authenticated via a Sanctum access token
+        // (Bearer PAT or test actingAs). Session cookie auth has no token.
+        if ($user->currentAccessToken() !== null && !$user->tokenCan('staff')) {
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
 

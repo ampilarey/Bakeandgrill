@@ -465,6 +465,13 @@ export function useOrderCreation(params: Params) {
       return false;
     }
 
+    // Gift cards need live available-balance / soft-hold checks. Staging a
+    // discount offline can undercharge if another unpaid order holds the card.
+    if (rewards.gift_card_code) {
+      flashError("Gift cards require a live connection. Remove the gift card or reconnect.");
+      return false;
+    }
+
     const blocked = paymentSnapshot.some((p) => {
       const method = p.method as string;
       return method === "house_account" || method === "wallet" || method === "bml" || method === "online";

@@ -7,12 +7,14 @@ namespace App\Domains\Payments\Listeners;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Models\Order;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
  * Credit gift card balance back when a redeemed order is refunded.
+ *
+ * Runs synchronously (after commit) so refunded balance is restored even if
+ * the queue worker is down — same pattern as payment-confirmation SMS.
  */
-class RestoreGiftCardOnRefundListener implements ShouldQueue
+class RestoreGiftCardOnRefundListener
 {
     public bool $afterCommit = true;
 
