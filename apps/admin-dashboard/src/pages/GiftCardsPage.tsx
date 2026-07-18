@@ -8,11 +8,13 @@ import { CustomerSearch } from '../components/CustomerSearch';
 import {
   fetchGiftCards,
   issueGiftCard,
+  sendGiftCardSms,
   checkGiftCardBalance,
   cancelGiftCard,
   fetchGiftCardTransactions,
   type GiftCard,
   type GiftCardTransaction,
+  type GiftCardSmsResult,
 } from '../api';
 import { Gift, Search, Copy, Check } from 'lucide-react';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
@@ -48,10 +50,18 @@ export default function GiftCardsPage() {
   const [amount, setAmount] = useState('');
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [expiresAt, setExpiresAt] = useState('');
+  const [sendSms, setSendSms] = useState(false);
+  const [recipientPhone, setRecipientPhone] = useState('');
+  const [smsNote, setSmsNote] = useState('');
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState('');
   const [issuedCard, setIssuedCard] = useState<GiftCard | null>(null);
+  const [issueSms, setIssueSms] = useState<GiftCardSmsResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsResendPhone, setSmsResendPhone] = useState('');
+  const [smsResendNote, setSmsResendNote] = useState('');
+  const [smsResendMsg, setSmsResendMsg] = useState('');
 
   const [balanceCode, setBalanceCode] = useState('');
   const [balanceResult, setBalanceResult] = useState<{ masked_code: string; current_balance: number; expires_at: string | null } | null>(null);
@@ -86,18 +96,62 @@ export default function GiftCardsPage() {
 
   useEffect(() => { void load(); }, [page, statusFilter, searchQ]);
 
+  const resetIssueForm = () => {
+    setAmount('');
+    setCustomerId(null);
+    setExpiresAt('');
+    setSendSms(false);
+    setRecipientPhone('');
+    setSmsNote('');
+  };
+
   const handleIssue = async () => {
     const amt = parseFloat(amount);
     if (!amount || isNaN(amt) || amt <= 0) { setIssueError('Enter a valid amount.'); return; }
-    setIssuing(true); setIssueError('');
+    if (sendSms && !customerId && !recipientPhone.trim()) {
+      setIssueError('Enter a recipient phone, or pick a customer with a phone on file.');
+      return;
+    }
+    setIssuing(true); setIssueError(''); setIssueSms(null);
+    const phoneForSms = recipientPhone.trim();
+    const noteForSms = smsNote.trim();
     try {
-      const res = await issueGiftCard({ amount: amt, customer_id: customerId, expires_at: expiresAt || null });
+      const res = await issueGiftCard({
+        amount: amt,
+        customer_id: customerId,
+        expires_at: expiresAt || null,
+        send_sms: sendSms,
+        recipient_phone: sendSms ? (phoneForSms || null) : null,
+        sms_note: sendSms ? (noteForSms || null) : null,
+      });
       setIssuedCard(res.gift_card);
+      setIssueSms(res.sms ?? null);
+      setSmsResendPhone(phoneForSms || res.sms?.phone || '');
+      setSmsResendNote(noteForSms);
       setCopied(false);
-      setAmount(''); setCustomerId(null); setExpiresAt('');
+      resetIssueForm();
       void load();
     } catch (e) { setIssueError((e as Error).message); }
     finally { setIssuing(false); }
+  };
+
+  const handleResendSms = async () => {
+    if (!issuedCard?.code || !smsResendPhone.trim()) {
+      setSmsResendMsg('Enter a phone number to SMS the code.');
+      return;
+    }
+    setSmsSending(true); setSmsResendMsg('');
+    try {
+      const res = await sendGiftCardSms({
+        code: issuedCard.code,
+        recipient_phone: smsResendPhone.trim(),
+        sms_note: smsResendNote || null,
+      });
+      setIssueSms(res.sms);
+      if (res.sms?.phone) setSmsResendPhone(res.sms.phone);
+      setSmsResendMsg(res.message);
+    } catch (e) { setSmsResendMsg((e as Error).message); }
+    finally { setSmsSending(false); }
   };
 
   const handleCheckBalance = async () => {
@@ -152,7 +206,14 @@ export default function GiftCardsPage() {
       {printCard && <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />}
       <PageHeader
         title="Gift Cards"
-        action={<Btn onClick={() => { setIssueOpen(true); setIssuedCard(null); setIssueError(''); setCustomerId(null); }}>+ Issue Gift Card</Btn>}
+        action={<Btn onClick={() => {
+          setIssueOpen(true);
+          setIssuedCard(null);
+          setIssueError('');
+          setIssueSms(null);
+          setSmsResendMsg('');
+          resetIssueForm();
+        }}>+ Issue Gift Card</Btn>}
       />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
       {actionError && <p style={{ color: '#ef4444', marginBottom: 16 }}>{actionError}</p>}
@@ -305,7 +366,7 @@ export default function GiftCardsPage() {
               <Gift size={40} style={{ color: '#D4813A', marginBottom: 16 }} />
               <p style={{ fontWeight: 700, color: '#1C1408', marginBottom: 8 }}>Gift card issued!</p>
               <p style={{ color: '#b45309', fontSize: 12, marginBottom: 10 }}>
-                Full code is shown once — copy or print it now.
+                Full code is shown once — copy, print, or SMS it now.
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
                 <p style={{ fontFamily: 'monospace', fontSize: 18, letterSpacing: '0.08em', color: '#D4813A', fontWeight: 700, margin: 0 }}>
@@ -322,13 +383,56 @@ export default function GiftCardsPage() {
               </div>
               <p style={{ color: '#6B5D4F', fontSize: 14 }}>Balance: MVR {issuedCard.current_balance.toFixed(2)}</p>
               {issuedCard.expires_at && <p style={{ color: '#9C8E7E', fontSize: 13 }}>Expires: {issuedCard.expires_at}</p>}
+
+              {issueSms && (
+                <p style={{
+                  margin: '12px 0 0',
+                  fontSize: 13,
+                  color: issueSms.ok ? '#166534' : '#b91c1c',
+                  fontWeight: 600,
+                }}>
+                  {issueSms.ok
+                    ? `SMS sent to ${issueSms.phone ?? 'recipient'}`
+                    : `SMS not sent: ${issueSms.error ?? 'unknown error'}`}
+                </p>
+              )}
+
+              {issuedCard.code && (
+                <div style={{
+                  marginTop: 16,
+                  padding: 12,
+                  background: '#FEF3E8',
+                  borderRadius: 10,
+                  textAlign: 'left',
+                }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Send / resend SMS</p>
+                  <input
+                    placeholder="7XXXXXX or +9607XXXXXX"
+                    value={smsResendPhone}
+                    onChange={e => setSmsResendPhone(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }}
+                  />
+                  <Btn variant="secondary" onClick={() => void handleResendSms()} disabled={smsSending}>
+                    {smsSending ? 'Sending…' : 'SMS code now'}
+                  </Btn>
+                  {smsResendMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6B5D4F' }}>{smsResendMsg}</p>}
+                </div>
+              )}
+
               <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {issuedCard.code && (
                   <Btn variant="secondary" onClick={() => setPrintCard(printDataFor(issuedCard, issuedCard.code))}>
                     Print card
                   </Btn>
                 )}
-                <Btn onClick={() => { setIssuedCard(null); setIssueOpen(false); }}>Done</Btn>
+                <Btn onClick={() => {
+                  setIssuedCard(null);
+                  setIssueOpen(false);
+                  setIssueSms(null);
+                  setSmsResendPhone('');
+                  setSmsResendNote('');
+                  setSmsResendMsg('');
+                }}>Done</Btn>
               </div>
             </div>
           ) : (
@@ -351,6 +455,36 @@ export default function GiftCardsPage() {
                   <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Expiry date (optional)</span>
                   <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
                 </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408' }}>Send code by SMS</span>
+                </label>
+                {sendSms && (
+                  <>
+                    <label>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+                        Recipient phone {!customerId ? '*' : '(optional if customer has phone)'}
+                      </span>
+                      <Input
+                        type="tel"
+                        placeholder="7XXXXXX or +9607XXXXXX"
+                        value={recipientPhone}
+                        onChange={setRecipientPhone}
+                      />
+                    </label>
+                    <label>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Personal note (optional)</span>
+                      <input
+                        value={smsNote}
+                        onChange={e => setSmsNote(e.target.value)}
+                        maxLength={160}
+                        placeholder="Happy birthday from…"
+                        style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      />
+                    </label>
+                  </>
+                )}
               </div>
               <ModalActions>
                 <Btn variant="secondary" onClick={() => setIssueOpen(false)}>Cancel</Btn>

@@ -7,19 +7,24 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\GiftCardCodeService;
+use App\Domains\Payments\Services\GiftCardSmsDelivery;
+use App\Models\Customer;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;
+use App\Rules\MaldivesPhone;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class GiftCardController extends Controller
 {
     public function __construct(
         private readonly GiftCardCodeService $giftCardCodes,
+        private readonly GiftCardSmsDelivery $giftCardSms,
         private readonly AuditLogService $audit,
     ) {}
 
@@ -229,6 +234,15 @@ class GiftCardController extends Controller
             'amount' => ['required', 'numeric', 'min:1'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'expires_at' => ['nullable', 'date'],
+            'send_sms' => ['sometimes', 'boolean'],
+            'recipient_phone' => [
+                Rule::requiredIf(fn () => $request->boolean('send_sms') && !$request->filled('customer_id')),
+                'nullable',
+                'string',
+                'max:20',
+                new MaldivesPhone,
+            ],
+            'sms_note' => ['nullable', 'string', 'max:160'],
         ]);
 
         try {
@@ -269,9 +283,92 @@ class GiftCardController extends Controller
             $request,
         );
 
+        $smsResult = null;
+        if ($request->boolean('send_sms')) {
+            $phone = $validated['recipient_phone'] ?? null;
+            if (!$phone && !empty($validated['customer_id'])) {
+                $phone = Customer::query()->where('id', $validated['customer_id'])->value('phone');
+            }
+            if (!$phone) {
+                $smsResult = [
+                    'ok' => false,
+                    'phone' => null,
+                    'error' => 'No recipient phone — SMS not sent. Copy the code and send manually.',
+                ];
+            } else {
+                $sent = $this->giftCardSms->send(
+                    $card,
+                    $generated['plain'],
+                    $phone,
+                    $validated['sms_note'] ?? null,
+                    $validated['customer_id'] ?? null,
+                );
+                $smsResult = [
+                    'ok' => $sent['ok'],
+                    'phone' => $sent['phone'],
+                    'error' => $sent['error'],
+                ];
+                $this->audit->log(
+                    $sent['ok'] ? 'gift_card.sms_sent' : 'gift_card.sms_failed',
+                    'GiftCard',
+                    $card->id,
+                    [],
+                    ['phone' => $sent['phone'], 'error' => $sent['error']],
+                    ['masked_code' => $card->masked_code],
+                    $request,
+                );
+            }
+        }
+
         return response()->json([
             'gift_card' => array_merge($this->format($card), ['code' => $generated['plain']]),
+            'sms' => $smsResult,
         ], 201);
+    }
+
+    /**
+     * Send gift-card SMS while staff still has the plaintext code (issue modal).
+     * Body must include the full code — we never store it after issue.
+     */
+    public function sendSms(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:32'],
+            'recipient_phone' => ['required', 'string', 'max:20', new MaldivesPhone],
+            'sms_note' => ['nullable', 'string', 'max:160'],
+        ]);
+
+        $card = $this->giftCardCodes->findByCode($validated['code']);
+        if (!$card || $card->status !== 'active') {
+            return response()->json(['message' => 'Invalid or inactive gift card code.'], 422);
+        }
+
+        $sent = $this->giftCardSms->send(
+            $card,
+            $validated['code'],
+            $validated['recipient_phone'],
+            $validated['sms_note'] ?? null,
+            $card->issued_to_customer_id,
+        );
+
+        $this->audit->log(
+            $sent['ok'] ? 'gift_card.sms_sent' : 'gift_card.sms_failed',
+            'GiftCard',
+            $card->id,
+            [],
+            ['phone' => $sent['phone'], 'error' => $sent['error']],
+            ['masked_code' => $card->masked_code],
+            $request,
+        );
+
+        if (!$sent['ok']) {
+            return response()->json(['message' => $sent['error'] ?? 'SMS send failed.', 'sms' => $sent], 422);
+        }
+
+        return response()->json([
+            'message' => 'Gift card SMS sent.',
+            'sms' => $sent,
+        ]);
     }
 
     // ── Admin: list gift cards ────────────────────────────────────────────────

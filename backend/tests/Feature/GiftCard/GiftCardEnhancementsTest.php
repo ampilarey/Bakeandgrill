@@ -7,6 +7,7 @@ namespace Tests\Feature\GiftCard;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Models\GiftCard;
 use App\Models\GiftCardTransaction;
+use App\Models\SmsLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -103,5 +104,78 @@ class GiftCardEnhancementsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('transactions.0.type', 'load')
             ->assertJsonPath('gift_card.masked_code', $card->masked_code);
+    }
+
+    public function test_issue_with_send_sms_logs_transactional_message(): void
+    {
+        $res = $this->postJson('/api/admin/gift-cards', [
+            'amount' => 75,
+            'send_sms' => true,
+            'recipient_phone' => '+9607890123',
+            'sms_note' => 'Happy birthday!',
+        ], $this->adminHeaders);
+
+        $res->assertCreated()
+            ->assertJsonPath('sms.ok', true)
+            ->assertJsonPath('sms.phone', '+9607890123');
+
+        $code = $res->json('gift_card.code');
+        $this->assertNotEmpty($code);
+
+        $this->assertDatabaseHas('sms_logs', [
+            'reference_type' => 'gift_card',
+            'to' => '+9607890123',
+            'type' => 'transactional',
+        ]);
+
+        $body = SmsLog::query()->where('reference_type', 'gift_card')->latest('id')->value('message');
+        $this->assertStringContainsString($code, (string) $body);
+        $this->assertStringContainsString('MVR 75.00', (string) $body);
+        $this->assertStringContainsString('Happy birthday!', (string) $body);
+    }
+
+    public function test_issue_send_sms_uses_customer_phone_when_recipient_omitted(): void
+    {
+        $customer = $this->makeCustomer(['phone' => '+9607777001']);
+
+        $this->postJson('/api/admin/gift-cards', [
+            'amount' => 40,
+            'customer_id' => $customer->id,
+            'send_sms' => true,
+        ], $this->adminHeaders)
+            ->assertCreated()
+            ->assertJsonPath('sms.ok', true)
+            ->assertJsonPath('sms.phone', '+9607777001');
+
+        $this->assertDatabaseHas('sms_logs', [
+            'reference_type' => 'gift_card',
+            'to' => '+9607777001',
+        ]);
+    }
+
+    public function test_send_sms_endpoint_requires_plaintext_code(): void
+    {
+        $svc = app(GiftCardCodeService::class);
+        $generated = $svc->generate();
+
+        GiftCard::create([
+            'code_hash' => $generated['hash'],
+            'code_last4' => $generated['last4'],
+            'initial_balance' => 50,
+            'current_balance' => 50,
+            'status' => 'active',
+        ]);
+
+        $this->postJson('/api/admin/gift-cards/send-sms', [
+            'code' => $generated['plain'],
+            'recipient_phone' => '+9607890456',
+        ], $this->adminHeaders)
+            ->assertOk()
+            ->assertJsonPath('sms.ok', true);
+
+        $this->assertDatabaseHas('sms_logs', [
+            'reference_type' => 'gift_card',
+            'to' => '+9607890456',
+        ]);
     }
 }

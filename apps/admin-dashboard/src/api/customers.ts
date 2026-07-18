@@ -371,8 +371,29 @@ export async function fetchGiftCards(params?: { page?: number; status?: string; 
   return req(`/admin/gift-cards?${qs}`);
 }
 
-export async function issueGiftCard(data: { amount: number; customer_id?: number | null; expires_at?: string | null }): Promise<{ gift_card: GiftCard }> {
+export type GiftCardSmsResult = {
+  ok: boolean;
+  phone?: string | null;
+  error?: string | null;
+};
+
+export async function issueGiftCard(data: {
+  amount: number;
+  customer_id?: number | null;
+  expires_at?: string | null;
+  send_sms?: boolean;
+  recipient_phone?: string | null;
+  sms_note?: string | null;
+}): Promise<{ gift_card: GiftCard; sms?: GiftCardSmsResult | null }> {
   return req('/admin/gift-cards', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function sendGiftCardSms(data: {
+  code: string;
+  recipient_phone: string;
+  sms_note?: string | null;
+}): Promise<{ message: string; sms: GiftCardSmsResult }> {
+  return req('/admin/gift-cards/send-sms', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function checkGiftCardBalance(code: string): Promise<{ masked_code: string; current_balance: number; expires_at: string | null }> {

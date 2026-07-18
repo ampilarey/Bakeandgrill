@@ -79,6 +79,7 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.manage'])->group(function () {
         Route::get('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'index']);
         Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
+        Route::post('/admin/gift-cards/send-sms', [App\Http\Controllers\Api\GiftCardController::class, 'sendSms']);
         Route::get('/admin/gift-cards/{id}/transactions', [App\Http\Controllers\Api\GiftCardController::class, 'transactions']);
         Route::post('/admin/gift-cards/{id}/cancel', [App\Http\Controllers\Api\GiftCardController::class, 'cancel']);
         Route::get('/admin/referrals', [App\Http\Controllers\Api\ReferralController::class, 'adminIndex']);
