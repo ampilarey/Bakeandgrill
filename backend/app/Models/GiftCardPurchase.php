@@ -22,6 +22,12 @@ class GiftCardPurchase extends Model
         'resend_count',
         'last_resent_at',
         'code_delivery_expires_at',
+        'delivery_code_encrypted',
+        'delivery_recovery_count',
+    ];
+
+    protected $hidden = [
+        'delivery_code_encrypted',
     ];
 
     protected $casts = [
@@ -31,6 +37,7 @@ class GiftCardPurchase extends Model
         'resend_count' => 'integer',
         'last_resent_at' => 'datetime',
         'code_delivery_expires_at' => 'datetime',
+        'delivery_recovery_count' => 'integer',
     ];
 
     public function order(): BelongsTo

@@ -3,19 +3,26 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
 import { PageHeader } from '../components/shell/PageHeader';
 import { AuthBlock } from '../components/AuthBlock';
 import { getGiftCardPurchaseStatus, resendGiftCardPurchaseDelivery } from '../api/promotions';
 
 type Status = Awaited<ReturnType<typeof getGiftCardPurchaseStatus>>;
 
+function deliveryOk(res: Status): boolean {
+  return res.delivery?.sms_ok === true || res.delivery?.email_ok === true;
+}
+
 export function GiftCardPurchaseSuccessPage() {
   usePageTitle('Gift Card');
   const { t } = useLanguage();
   const { isAuthenticated, authReady, setAuth } = useAuth();
+  const site = useSiteSettings();
   const [params] = useSearchParams();
   const orderId = Number(params.get('orderId') || 0);
   const paymentState = params.get('payment') || '';
+  const waBase = site.business_whatsapp || 'https://wa.me/9609120011';
 
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState('');
@@ -30,8 +37,8 @@ export function GiftCardPurchaseSuccessPage() {
     }
     let cancelled = false;
     let tries = 0;
-    // Longer window when return URL said CONFIRMED — server may still be issuing.
-    const maxTries = paymentState === 'CONFIRMED' ? 20 : 8;
+    // Longer window when return URL said CONFIRMED — server may still be issuing / re-delivering.
+    const maxTries = paymentState === 'CONFIRMED' ? 20 : 12;
 
     const poll = async () => {
       try {
@@ -39,7 +46,8 @@ export function GiftCardPurchaseSuccessPage() {
         if (cancelled) return;
         setStatus(res);
         setError('');
-        if (res.issued) {
+        const done = res.issued && (deliveryOk(res) || tries >= maxTries);
+        if (done) {
           setLoading(false);
           return;
         }
@@ -104,6 +112,15 @@ export function GiftCardPurchaseSuccessPage() {
   const canResend = delivery?.can_resend === true;
   const showSmsResend = canResend && !!delivery?.phone;
   const showEmailResend = canResend && !!delivery?.email;
+  const deliveryFailed = !!status?.issued && !deliveryOk(status);
+  const waHref = (() => {
+    const orderNo = status?.order_number || String(orderId);
+    const text = encodeURIComponent(
+      `Hi, I bought a gift card (order ${orderNo}) but did not receive the full code. Please help.`,
+    );
+    const base = waBase.split('?')[0];
+    return `${base}?text=${text}`;
+  })();
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 0 2rem' }}>
@@ -164,15 +181,35 @@ export function GiftCardPurchaseSuccessPage() {
                     {resendBusy === 'email' ? '…' : t('gift.resend_email')}
                   </button>
                 )}
+                {(showSmsResend || showEmailResend) && delivery?.phone && delivery?.email && (
+                  <button
+                    type="button"
+                    disabled={!!resendBusy}
+                    onClick={() => void handleResend('both')}
+                    style={resendBtn}
+                  >
+                    {resendBusy === 'both' ? '…' : t('gift.resend_both')}
+                  </button>
+                )}
               </div>
             )}
             {resendMsg && (
               <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{resendMsg}</p>
             )}
-            {!canResend && status.issued && (delivery?.phone || delivery?.email) && (
+            {canResend && (
               <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
                 {t('gift.resend_window')}
               </p>
+            )}
+            {deliveryFailed && (
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ ...resendBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginTop: 12, textDecoration: 'none' }}
+              >
+                {t('gift.whatsapp_help')}
+              </a>
             )}
           </div>
         )}
@@ -225,8 +262,8 @@ export function GiftCardPurchaseSuccessPage() {
               {t('gift.retry_status')}
             </button>
           )}
-          <Link to="/order-history" style={{ ...linkBtn, background: 'var(--color-surface)', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' }}>
-            {t('gift.view_orders')}
+          <Link to="/gift-cards" style={{ ...linkBtn, background: 'var(--color-surface)', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' }}>
+            {t('gift.back_hub')}
           </Link>
           <Link to="/menu" style={linkBtn}>{t('gift.order_food')}</Link>
           <Link to="/gift-cards/buy" style={{ ...linkBtn, background: 'transparent', color: 'var(--color-primary)', border: '1.5px solid var(--color-primary)' }}>

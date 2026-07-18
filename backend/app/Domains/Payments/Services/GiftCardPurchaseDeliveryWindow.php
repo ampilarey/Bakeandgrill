@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Short-lived encrypted plaintext for customer purchase resend.
- * Never stored on gift_cards — only hashed there. Window is Cache + TTL.
+ * Stored in cache + DB (encrypted) for 48h — never returned via API JSON.
  */
 final class GiftCardPurchaseDeliveryWindow
 {
@@ -27,24 +27,53 @@ final class GiftCardPurchaseDeliveryWindow
     public function store(GiftCardPurchase $purchase, string $plainCode): void
     {
         $expiresAt = now()->addHours(self::TTL_HOURS);
+        $encrypted = Crypt::encryptString($plainCode);
 
-        Cache::put(
-            self::cacheKey((int) $purchase->id),
-            Crypt::encryptString($plainCode),
-            $expiresAt,
-        );
+        try {
+            Cache::put(self::cacheKey((int) $purchase->id), $encrypted, $expiresAt);
+        } catch (\Throwable) {
+            // Redis/file cache optional — DB column is the durable copy.
+        }
 
+        $updates = [];
         if (Schema::hasColumn('gift_card_purchases', 'code_delivery_expires_at')) {
-            $purchase->update([
-                'code_delivery_expires_at' => $expiresAt,
-            ]);
+            $updates['code_delivery_expires_at'] = $expiresAt;
+        }
+        if (Schema::hasColumn('gift_card_purchases', 'delivery_code_encrypted')) {
+            $updates['delivery_code_encrypted'] = $encrypted;
+        }
+        if ($updates !== []) {
+            $purchase->update($updates);
         }
     }
 
     public function plainCode(GiftCardPurchase $purchase): ?string
     {
-        $encrypted = Cache::get(self::cacheKey((int) $purchase->id));
-        if (!is_string($encrypted) || $encrypted === '') {
+        if ($purchase->code_delivery_expires_at && $purchase->code_delivery_expires_at->isPast()) {
+            $this->forget($purchase);
+
+            return null;
+        }
+
+        $encrypted = null;
+        try {
+            $fromCache = Cache::get(self::cacheKey((int) $purchase->id));
+            if (is_string($fromCache) && $fromCache !== '') {
+                $encrypted = $fromCache;
+            }
+        } catch (\Throwable) {
+            // fall through to DB
+        }
+
+        if ($encrypted === null
+            && Schema::hasColumn('gift_card_purchases', 'delivery_code_encrypted')
+            && is_string($purchase->delivery_code_encrypted)
+            && $purchase->delivery_code_encrypted !== ''
+        ) {
+            $encrypted = $purchase->delivery_code_encrypted;
+        }
+
+        if ($encrypted === null) {
             return null;
         }
 
@@ -52,6 +81,23 @@ final class GiftCardPurchaseDeliveryWindow
             return Crypt::decryptString($encrypted);
         } catch (\Throwable) {
             return null;
+        }
+    }
+
+    public function forget(GiftCardPurchase $purchase): void
+    {
+        try {
+            Cache::forget(self::cacheKey((int) $purchase->id));
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        $updates = [];
+        if (Schema::hasColumn('gift_card_purchases', 'delivery_code_encrypted')) {
+            $updates['delivery_code_encrypted'] = null;
+        }
+        if ($updates !== []) {
+            $purchase->update($updates);
         }
     }
 

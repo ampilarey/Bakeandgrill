@@ -65,11 +65,19 @@ final class GiftCardSmsDelivery
             ];
         }
 
+        // SmsService returns a log row even on carrier failure / demo — only
+        // treat carrier-confirmed (or intentional demo) as delivered.
+        $status = $log instanceof SmsLog ? (string) $log->status : '';
+        $ok = in_array($status, ['sent', 'demo'], true);
+        $error = $ok
+            ? null
+            : (($log instanceof SmsLog ? $log->error_message : null) ?: 'SMS send failed.');
+
         return [
-            'ok' => true,
+            'ok' => $ok,
             'phone' => $normalized,
             'sms_log_id' => $log instanceof SmsLog ? $log->id : null,
-            'error' => null,
+            'error' => $error,
         ];
     }
 

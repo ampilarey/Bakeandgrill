@@ -154,6 +154,67 @@ class GiftCardPurchaseTest extends TestCase
         $this->assertSame(1, SmsLog::query()->where('reference_type', 'gift_card')->count());
     }
 
+    public function test_purchase_status_recovers_undelivered_by_reissuing(): void
+    {
+        Mail::fake();
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777017',
+            'email' => 'recover@example.com',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'GC-TEST-RECOVER',
+            'tracking_token' => 'gcrecover',
+            'type' => 'gift_card',
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'customer_id' => $customer->id,
+            'subtotal' => 50,
+            'subtotal_laar' => 5000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 50,
+            'total_laar' => 5000,
+            'paid_at' => now(),
+            'completed_at' => now(),
+        ]);
+
+        $oldCard = \App\Models\GiftCard::create([
+            'code_hash' => hash('sha256', 'OLDCODE'),
+            'code_last4' => 'OLD1',
+            'initial_balance' => 50,
+            'current_balance' => 50,
+            'status' => 'active',
+            'purchased_by_customer_id' => $customer->id,
+            'issued_to_customer_id' => $customer->id,
+        ]);
+
+        GiftCardPurchase::create([
+            'order_id' => $order->id,
+            'purchaser_customer_id' => $customer->id,
+            'amount' => 50,
+            'recipient_phone' => '+9607777017',
+            'recipient_email' => 'recover@example.com',
+            'gift_card_id' => $oldCard->id,
+            'sms_ok' => false,
+            'email_ok' => false,
+            'delivery_recovery_count' => 0,
+        ]);
+
+        // No plaintext in cache/DB — status poll should reissue once and deliver.
+        $this->getJson("/api/gift-cards/purchases/{$order->id}", $this->customerHeaders($customer))
+            ->assertOk()
+            ->assertJsonPath('issued', true);
+
+        $purchase = GiftCardPurchase::where('order_id', $order->id)->first();
+        $this->assertNotNull($purchase);
+        $this->assertNotSame($oldCard->id, $purchase->gift_card_id);
+        $this->assertSame(1, (int) $purchase->delivery_recovery_count);
+        $this->assertSame('cancelled', $oldCard->fresh()->status);
+        $this->assertTrue($purchase->sms_ok === true || $purchase->email_ok === true);
+        Mail::assertSent(GiftCardMail::class);
+    }
+
     public function test_fulfillment_keeps_card_when_delivery_column_missing(): void
     {
         Mail::fake();
@@ -434,7 +495,12 @@ class GiftCardPurchaseTest extends TestCase
             new OrderPaid(OrderPaidData::fromOrder($order, true)),
         );
 
+        $purchase->refresh();
         Cache::forget(GiftCardPurchaseDeliveryWindow::cacheKey((int) $purchase->id));
+        $purchase->update([
+            'code_delivery_expires_at' => now()->subHour(),
+            'delivery_code_encrypted' => null,
+        ]);
 
         $this->postJson(
             "/api/gift-cards/purchases/{$order->id}/resend",

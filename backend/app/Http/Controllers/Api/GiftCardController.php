@@ -464,9 +464,8 @@ class GiftCardController extends Controller
             $order->refresh();
         }
 
-        // Recovery 2: payment confirmed but issue listener missed (return-URL race / error).
-        // Idempotent — safe to retry on every poll while gift_card_id is null.
-        if ($paid && $purchase && !$purchase->gift_card_id) {
+        // Recovery 2: issue if missing; re-deliver / one-time reissue if code never arrived.
+        if ($paid && $purchase) {
             try {
                 app(GiftCardPurchaseFulfillmentService::class)->fulfill($order->fresh() ?? $order);
             } catch (\Throwable $e) {
