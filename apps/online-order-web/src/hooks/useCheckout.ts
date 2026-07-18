@@ -12,7 +12,6 @@ import {
   createLoyaltyHold,
   previewLoyaltyHold,
   getLoyaltyAccount,
-  snapshotCustomerCart,
   getCustomerMe,
   getOrderDetail,
   initiateOnlinePayment,
@@ -365,22 +364,6 @@ export function useCheckout() {
       (item.modifiers ?? []).reduce((ms, m) => ms + Math.round(m.price * 100) * item.quantity, 0),
     0,
   );
-
-  useEffect(() => {
-    if (!isAuthenticated || cart.length === 0) return;
-    const timer = window.setTimeout(() => {
-      snapshotCustomerCart({
-        items: cart.map((item) => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        subtotal_laar: subtotalLaar,
-      }).catch(() => { /* best-effort abandon tracking */ });
-    }, 2000);
-    return () => window.clearTimeout(timer);
-  }, [isAuthenticated, cart, subtotalLaar]);
 
   const deliveryFeeLaar  = orderType === "delivery" ? deliveryFee : 0;
   const promoDelta       = promoApplied?.discountLaar ?? 0;

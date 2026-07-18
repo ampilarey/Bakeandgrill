@@ -10,6 +10,7 @@ import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { OrderModeProvider } from './context/OrderModeContext';
 import { AppShell } from './components/shell/AppShell';
+import { AbandonedCartTracker } from './components/AbandonedCartTracker';
 import { ScrollToTop } from './components/ScrollToTop';
 import './index.css';
 
@@ -68,6 +69,7 @@ ReactDOM.createRoot(rootEl).render(
           <CartProvider>
             <ToastProvider>
             <AuthProvider>
+            <AbandonedCartTracker />
             <OrderModeProvider>
             <BrowserRouter basename="/order">
               <ScrollToTop />

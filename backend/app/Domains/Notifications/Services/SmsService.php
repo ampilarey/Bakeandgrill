@@ -8,6 +8,7 @@ use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Models\Customer;
 use App\Models\SmsLog;
+use App\Rules\MaldivesPhone;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 
@@ -34,7 +35,27 @@ class SmsService
     public function send(SmsMessage $sms): SmsLog
     {
         $estimate = $this->estimate($sms->message);
-        $normalized = $this->normalizePhone($sms->to);
+
+        try {
+            $normalized = $this->normalizePhone($sms->to);
+        } catch (\InvalidArgumentException $e) {
+            return SmsLog::create([
+                'message' => $this->messageForLog($sms),
+                'to' => substr((string) $sms->to, 0, 32),
+                'type' => $sms->type,
+                'status' => 'failed',
+                'encoding' => $estimate['encoding'],
+                'segments' => $estimate['segments'],
+                'cost_estimate_mvr' => 0,
+                'provider' => 'dhiraagu',
+                'customer_id' => $sms->customerId,
+                'campaign_id' => $sms->campaignId,
+                'reference_type' => $sms->referenceType,
+                'reference_id' => $sms->referenceId,
+                'idempotency_key' => $sms->idempotencyKey,
+                'error_message' => 'Invalid Maldivian phone number.',
+            ]);
+        }
 
         // Marketing-class messages: honour the customer opt-out flag. We
         // log a `suppressed` row so the audit trail still shows the call
@@ -222,26 +243,12 @@ class SmsService
 
     public function normalizePhone(string $phone): string
     {
-        $digits = preg_replace('/[^0-9]/', '', $phone);
-
-        if (str_starts_with($digits, '960') && strlen($digits) === 10) {
-            return '+' . $digits;
-        }
-
-        if (strlen($digits) === 7) {
-            return '+960' . $digits;
-        }
-
-        if (strlen($digits) > 7) {
-            return '+960' . substr($digits, -7);
-        }
-
-        return '+960' . str_pad($digits, 7, '0', STR_PAD_LEFT);
+        return MaldivesPhone::normalize($phone);
     }
 
     public function isValidMaldivianNumber(string $normalized): bool
     {
-        return (bool) preg_match('/^\+960[0-9]{7}$/', $normalized);
+        return (bool) preg_match('/^\+960[3679][0-9]{6}$/', $normalized);
     }
 
     /**

@@ -16,6 +16,7 @@ use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyLedger;
 use App\Models\Order;
 use App\Services\AuditLogService;
+use App\Rules\MaldivesPhone;
 use App\Support\OrderSettlement;
 use App\Support\PhoneNormalizer;
 use Illuminate\Http\Request;
@@ -147,24 +148,11 @@ class CustomerController extends Controller
         }
 
         $data = $request->validate([
-            // Accept anything roughly phone-shaped: at least 5 digits with
-            // optional +, spaces, dashes. PhoneNormalizer happily eats
-            // garbage (returns "+960"), so we gate on the raw string
-            // BEFORE handing it to the normalizer.
-            'phone' => ['required', 'string', 'max:30', 'regex:/^\+?[\d\s\-]{5,}$/'],
+            'phone' => ['required', 'string', 'max:30', new MaldivesPhone],
             'name' => 'nullable|string|max:120',
         ]);
 
-        try {
-            $phone = PhoneNormalizer::normalize($data['phone']);
-        } catch (\Throwable $e) {
-            return response()->json(['message' => 'Invalid phone number.'], 422);
-        }
-        // Defensive second check: normalizer must produce more than just
-        // the country code. If it does, the input was effectively empty.
-        if (strlen(preg_replace('/[^0-9]/', '', $phone)) < 8) {
-            return response()->json(['message' => 'Invalid phone number.'], 422);
-        }
+        $phone = MaldivesPhone::normalize($data['phone']);
 
         $customer = Customer::firstOrCreate(
             ['phone' => $phone],

@@ -17,7 +17,7 @@ use App\Models\Order;
 use App\Models\Purchase;
 use App\Models\User;
 use App\Services\AuditLogService;
-use App\Support\PhoneNormalizer;
+use App\Rules\MaldivesPhone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -760,11 +760,11 @@ class InvoiceController extends Controller
     public function sendToCustomer(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'phone' => ['required', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30', new MaldivesPhone],
         ]);
 
         $invoice = Invoice::findOrFail($id);
-        $phone = PhoneNormalizer::normalize($request->phone);
+        $phone = MaldivesPhone::normalize($request->phone);
         $link = rtrim(config('app.url'), '/') . '/invoices/' . $invoice->token;
 
         app(SmsService::class)->send(new SmsMessage(

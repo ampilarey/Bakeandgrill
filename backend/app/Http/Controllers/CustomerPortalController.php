@@ -9,6 +9,7 @@ use App\Domains\Notifications\Services\SmsService;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OtpVerification;
+use App\Rules\MaldivesPhone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -31,13 +32,9 @@ class CustomerPortalController extends Controller
 
     public function requestOtp(Request $request)
     {
-        $request->validate(['phone' => 'required|string']);
+        $request->validate(['phone' => ['required', 'string', new MaldivesPhone]]);
 
         $phone = $this->normalizePhone($request->phone);
-
-        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
-            return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
-        }
 
         // Returning customer with a password → show password form (no SMS cost)
         $customer = Customer::where('phone', $phone)->first();
@@ -88,13 +85,9 @@ class CustomerPortalController extends Controller
 
     public function forgotPassword(Request $request)
     {
-        $request->validate(['phone' => 'required|string']);
+        $request->validate(['phone' => ['required', 'string', new MaldivesPhone]]);
 
         $phone = $this->normalizePhone($request->phone);
-
-        if (!preg_match('/^\+960[0-9]{7}$/', $phone)) {
-            return back()->withErrors(['phone' => 'Please enter a valid Maldivian phone number']);
-        }
 
         $key = 'otp-request:web-reset:' . $phone;
 
@@ -132,7 +125,7 @@ class CustomerPortalController extends Controller
     public function verifyResetOtp(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => ['required', 'string', new MaldivesPhone],
             'otp' => 'required|string|size:6',
         ]);
 
@@ -158,7 +151,7 @@ class CustomerPortalController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => ['required', 'string', new MaldivesPhone],
             'password' => 'required|string|min:6|confirmed',
             'password_confirmation' => 'required|string',
         ]);
@@ -204,7 +197,7 @@ class CustomerPortalController extends Controller
     public function verifyOtp(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => ['required', 'string', new MaldivesPhone],
             'otp' => 'required|string|size:6',
         ]);
 
@@ -266,7 +259,7 @@ class CustomerPortalController extends Controller
     public function passwordLogin(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => ['required', 'string', new MaldivesPhone],
             'password' => 'required|string',
         ]);
 
@@ -394,7 +387,7 @@ class CustomerPortalController extends Controller
 
     private function normalizePhone(string $phone): string
     {
-        return \App\Support\PhoneNormalizer::normalize($phone);
+        return MaldivesPhone::normalize($phone);
     }
 
     /**

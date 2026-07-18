@@ -19,7 +19,7 @@ use App\Models\Order;
 use App\Models\Receipt;
 use App\Services\AuditLogService;
 use App\Services\ShiftAccessService;
-use App\Support\PhoneNormalizer;
+use App\Rules\MaldivesPhone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -236,21 +236,14 @@ class OrderPaymentController extends Controller
         }
 
         $request->validate([
-            // Same shape check as CustomerController@quickCreate — phone
-            // must be at least 5 digits when provided. PhoneNormalizer is
-            // permissive and would otherwise happily turn "!!!" into "+960".
-            'phone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[\d\s\-]{5,}$/'],
+            'phone' => ['nullable', 'string', 'max:30', new MaldivesPhone],
         ]);
 
         $order = Order::with(['items.item', 'customer'])->findOrFail($id);
         $rawPhone = $request->input('phone');
         $phone = null;
         if ($rawPhone !== null && trim((string) $rawPhone) !== '') {
-            try {
-                $phone = PhoneNormalizer::normalize($rawPhone);
-            } catch (\Throwable $e) {
-                return response()->json(['message' => 'Invalid phone number.'], 422);
-            }
+            $phone = MaldivesPhone::normalize((string) $rawPhone);
 
             // Phone provided → link the customer if the order isn't already
             // attached to one. We never overwrite an existing customer link

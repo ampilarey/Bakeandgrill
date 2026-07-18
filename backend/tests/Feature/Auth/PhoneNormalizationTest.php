@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Domains\Notifications\Services\SmsService;
 use App\Rules\MaldivesPhone;
+use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -131,5 +133,37 @@ class PhoneNormalizationTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         MaldivesPhone::normalize('99991234567');
+    }
+
+    public function test_phone_normalizer_matches_maldives_phone_rule(): void
+    {
+        $this->assertSame('+9607654321', PhoneNormalizer::normalize('7654321'));
+        $this->assertSame(
+            MaldivesPhone::normalize('+960 765-4321'),
+            PhoneNormalizer::normalize('+960 765-4321'),
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        PhoneNormalizer::normalize('1234567'); // invalid MV prefix
+    }
+
+    public function test_sms_service_normalize_matches_maldives_phone_rule(): void
+    {
+        $sms = app(SmsService::class);
+        $this->assertSame('+9607654321', $sms->normalizePhone('7654321'));
+        $this->assertTrue($sms->isValidMaldivianNumber('+9607654321'));
+        $this->assertFalse($sms->isValidMaldivianNumber('+9601654321'));
+    }
+
+    public function test_pos_quick_create_rejects_invalid_phone(): void
+    {
+        $headers = $this->staffHeaders($this->makeOwner());
+
+        $this->postJson('/api/customers/quick', [
+            'phone' => '12345',
+            'name' => 'Bad Phone',
+        ], $headers)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['phone']);
     }
 }
