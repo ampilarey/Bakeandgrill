@@ -369,6 +369,61 @@ class GiftCardPurchaseTest extends TestCase
         Mail::assertSent(GiftCardMail::class);
     }
 
+    public function test_purchase_status_reveals_code_when_delivery_failed(): void
+    {
+        Mail::fake();
+        $customer = $this->makeCustomer([
+            'phone' => '+9607777018',
+            'email' => 'reveal@example.com',
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'GC-TEST-REVEAL',
+            'tracking_token' => 'gcreveal',
+            'type' => 'gift_card',
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'customer_id' => $customer->id,
+            'subtotal' => 50,
+            'subtotal_laar' => 5000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
+            'total' => 50,
+            'total_laar' => 5000,
+            'paid_at' => now(),
+            'completed_at' => now(),
+        ]);
+
+        $card = \App\Models\GiftCard::create([
+            'code_hash' => hash('sha256', 'REVEALCODE1234'),
+            'code_last4' => '1234',
+            'initial_balance' => 50,
+            'current_balance' => 50,
+            'status' => 'active',
+            'purchased_by_customer_id' => $customer->id,
+            'issued_to_customer_id' => $customer->id,
+        ]);
+
+        $purchase = GiftCardPurchase::create([
+            'order_id' => $order->id,
+            'purchaser_customer_id' => $customer->id,
+            'amount' => 50,
+            'recipient_phone' => '+9607777018',
+            'recipient_email' => 'reveal@example.com',
+            'gift_card_id' => $card->id,
+            'sms_ok' => false,
+            'email_ok' => false,
+            'delivery_recovery_count' => 1,
+        ]);
+
+        app(GiftCardPurchaseDeliveryWindow::class)->store($purchase, 'ABCD-EFGH-IJKL-MNOP');
+
+        $this->getJson("/api/gift-cards/purchases/{$order->id}", $this->customerHeaders($customer))
+            ->assertOk()
+            ->assertJsonPath('issued', true)
+            ->assertJsonPath('code', 'ABCD-EFGH-IJKL-MNOP');
+    }
+
     public function test_purchase_status_never_exposes_plaintext_code(): void
     {
         Mail::fake();
@@ -409,6 +464,7 @@ class GiftCardPurchaseTest extends TestCase
 
         $this->assertArrayHasKey('masked_code', $res->json('gift_card'));
         $this->assertArrayNotHasKey('code', $res->json('gift_card'));
+        $this->assertNull($res->json('code'));
         $this->assertTrue($res->json('delivery.sms_ok'));
         $this->assertTrue($res->json('delivery.email_ok'));
         $this->assertTrue($res->json('delivery.can_resend'));
@@ -456,7 +512,7 @@ class GiftCardPurchaseTest extends TestCase
             $this->customerHeaders($customer),
         )->assertOk();
 
-        $this->assertArrayNotHasKey('code', $res->json());
+        $this->assertNull($res->json('code'));
         $this->assertSame(1, $res->json('delivery.resend_count'));
         $this->assertGreaterThan($smsBefore, SmsLog::query()->where('reference_type', 'gift_card')->count());
     }

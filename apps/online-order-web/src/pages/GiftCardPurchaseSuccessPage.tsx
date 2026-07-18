@@ -46,7 +46,7 @@ export function GiftCardPurchaseSuccessPage() {
         if (cancelled) return;
         setStatus(res);
         setError('');
-        const done = res.issued && (deliveryOk(res) || tries >= maxTries);
+        const done = res.issued && (deliveryOk(res) || !!res.code || tries >= maxTries);
         if (done) {
           setLoading(false);
           return;
@@ -75,12 +75,33 @@ export function GiftCardPurchaseSuccessPage() {
     setResendMsg('');
     try {
       const res = await resendGiftCardPurchaseDelivery(orderId, channel);
-      setStatus((prev) => (prev ? { ...prev, delivery: res.delivery } : prev));
+      setStatus((prev) => (prev ? {
+        ...prev,
+        delivery: res.delivery,
+        code: res.code ?? (deliveryOk({ ...prev, delivery: res.delivery }) ? null : prev.code),
+      } : prev));
       setResendMsg(t('gift.resend_ok'));
     } catch (e) {
-      setResendMsg((e as Error).message || t('gift.resend_fail'));
+      const body = (e as { body?: { code?: string; delivery?: Status['delivery']; message?: string } }).body;
+      if (body?.delivery || body?.code) {
+        setStatus((prev) => (prev ? {
+          ...prev,
+          delivery: body.delivery ?? prev.delivery,
+          code: body.code ?? prev.code,
+        } : prev));
+      }
+      setResendMsg(body?.message || (e as Error).message || t('gift.resend_fail'));
     } finally {
       setResendBusy(null);
+    }
+  };
+
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setResendMsg(t('gift.code_copied'));
+    } catch {
+      setResendMsg(t('gift.code_copy_fail'));
     }
   };
 
@@ -149,14 +170,32 @@ export function GiftCardPurchaseSuccessPage() {
             <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, color: 'var(--color-text)' }}>
               {t('gift.ready')}
             </p>
-            <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.08em', color: 'var(--color-primary)', fontWeight: 700 }}>
-              {status.gift_card.masked_code}
-            </p>
+            {status.code ? (
+              <>
+                <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t('gift.code_on_screen')}
+                </p>
+                <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.08em', color: 'var(--color-primary)', fontWeight: 700 }}>
+                  {status.code}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void copyCode(status.code!)}
+                  style={{ ...resendBtn, marginTop: 8 }}
+                >
+                  {t('gift.copy_code')}
+                </button>
+              </>
+            ) : (
+              <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 20, letterSpacing: '0.08em', color: 'var(--color-primary)', fontWeight: 700 }}>
+                {status.gift_card.masked_code}
+              </p>
+            )}
             <p style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 700 }}>
               MVR {Number(status.gift_card.current_balance).toFixed(2)}
             </p>
             <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-              {deliveryMessage(status, t)}
+              {status.code ? t('gift.code_on_screen_help') : deliveryMessage(status, t)}
             </p>
 
             {(showSmsResend || showEmailResend) && (

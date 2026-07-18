@@ -27,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class GiftCardController extends Controller
@@ -464,24 +465,42 @@ class GiftCardController extends Controller
             $order->refresh();
         }
 
-        // Recovery 2: issue if missing; re-deliver / one-time reissue if code never arrived.
+        // Recovery 2: issue if missing; re-deliver / one-time reissue only when
+        // we cannot already show/resend the plaintext (avoids hammering SMS).
         if ($paid && $purchase) {
-            try {
-                app(GiftCardPurchaseFulfillmentService::class)->fulfill($order->fresh() ?? $order);
-            } catch (\Throwable $e) {
-                Log::warning('Gift card purchaseStatus fulfill failed', [
-                    'order_id' => $order->id,
-                    'error' => $e->getMessage(),
-                ]);
+            $deliveryAlreadyOk = $purchase->sms_ok === true || $purchase->email_ok === true;
+            $canShowOrResend = $this->deliveryWindow->canResend($purchase);
+            $needsFulfill = !$purchase->gift_card_id
+                || (!$deliveryAlreadyOk && !$canShowOrResend);
+
+            if ($needsFulfill) {
+                try {
+                    app(GiftCardPurchaseFulfillmentService::class)->fulfill($order->fresh() ?? $order);
+                } catch (\Throwable $e) {
+                    Log::warning('Gift card purchaseStatus fulfill failed', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+                $purchase = GiftCardPurchase::query()
+                    ->with('giftCard:id,code_last4,initial_balance,current_balance,status,expires_at')
+                    ->where('order_id', $order->id)
+                    ->first();
+                $order->refresh();
             }
-            $purchase = GiftCardPurchase::query()
-                ->with('giftCard:id,code_last4,initial_balance,current_balance,status,expires_at')
-                ->where('order_id', $order->id)
-                ->first();
-            $order->refresh();
         }
 
         $card = $purchase?->giftCard;
+        $canResend = $purchase ? $this->deliveryWindow->canResend($purchase) : false;
+        $deliveryOk = $purchase
+            && ($purchase->sms_ok === true || $purchase->email_ok === true);
+
+        // If SMS/email both failed, show the full code to the authenticated buyer
+        // while the 48h delivery window is open — otherwise they are stuck.
+        $revealCode = null;
+        if ($purchase && $card && $canResend && !$deliveryOk) {
+            $revealCode = $this->deliveryWindow->plainCode($purchase);
+        }
 
         return response()->json([
             'order_id' => $order->id,
@@ -497,12 +516,14 @@ class GiftCardController extends Controller
                 'status' => $card->status,
                 'expires_at' => $card->expires_at?->toDateString(),
             ] : null,
+            // Only present when delivery failed and window is open — never after successful send.
+            'code' => $revealCode,
             'delivery' => [
                 'phone' => $purchase?->recipient_phone,
                 'email' => $purchase?->recipient_email,
                 'sms_ok' => $purchase?->sms_ok,
                 'email_ok' => $purchase?->email_ok,
-                'can_resend' => $purchase ? $this->deliveryWindow->canResend($purchase) : false,
+                'can_resend' => $canResend,
                 'resend_count' => (int) ($purchase?->resend_count ?? 0),
                 'expires_at' => $purchase?->code_delivery_expires_at?->toIso8601String(),
             ],
@@ -523,90 +544,124 @@ class GiftCardController extends Controller
         ]);
         $channel = $validated['channel'] ?? 'both';
 
-        $order = Order::query()
-            ->where('id', $orderId)
-            ->where('customer_id', $customer->id)
-            ->where('type', 'gift_card')
-            ->firstOrFail();
+        try {
+            $order = Order::query()
+                ->where('id', $orderId)
+                ->where('customer_id', $customer->id)
+                ->where('type', 'gift_card')
+                ->firstOrFail();
 
-        $purchase = GiftCardPurchase::query()
-            ->with('giftCard')
-            ->where('order_id', $order->id)
-            ->where('purchaser_customer_id', $customer->id)
-            ->firstOrFail();
+            $purchase = GiftCardPurchase::query()
+                ->with('giftCard')
+                ->where('order_id', $order->id)
+                ->where('purchaser_customer_id', $customer->id)
+                ->firstOrFail();
 
-        if (!$purchase->gift_card_id || !$purchase->giftCard) {
-            return response()->json(['message' => 'Gift card has not been issued yet.'], 422);
-        }
+            if (!$purchase->gift_card_id || !$purchase->giftCard) {
+                return response()->json(['message' => 'Gift card has not been issued yet.'], 422);
+            }
 
-        if ((int) $purchase->resend_count >= GiftCardPurchaseDeliveryWindow::MAX_RESENDS) {
+            $resendCount = (int) ($purchase->resend_count ?? 0);
+            if ($resendCount >= GiftCardPurchaseDeliveryWindow::MAX_RESENDS) {
+                return response()->json([
+                    'message' => 'Resend limit reached. Contact the restaurant with your order number.',
+                ], 429);
+            }
+
+            $plain = $this->deliveryWindow->plainCode($purchase);
+            if ($plain === null) {
+                return response()->json([
+                    'message' => 'Delivery window expired. Contact the restaurant with your order number.',
+                ], 410);
+            }
+
+            $wantSms = in_array($channel, ['sms', 'both'], true) && (bool) $purchase->recipient_phone;
+            $wantEmail = in_array($channel, ['email', 'both'], true) && (bool) $purchase->recipient_email;
+
+            if (!$wantSms && !$wantEmail) {
+                return response()->json(['message' => 'No delivery channel available for this purchase.'], 422);
+            }
+
+            $card = $purchase->giftCard;
+            $note = $purchase->personal_note;
+            $smsOk = $purchase->sms_ok;
+            $emailOk = $purchase->email_ok;
+            $resendN = $resendCount + 1;
+            $errors = [];
+
+            if ($wantSms) {
+                $sent = $this->giftCardSms->send(
+                    $card,
+                    $plain,
+                    (string) $purchase->recipient_phone,
+                    $note,
+                    $purchase->purchaser_customer_id,
+                    'gift_card_resend:' . $purchase->id . ':sms:' . $resendN,
+                );
+                $smsOk = (bool) $sent['ok'];
+                if (!$smsOk) {
+                    $errors[] = 'SMS: ' . ($sent['error'] ?? 'failed');
+                }
+            }
+
+            if ($wantEmail) {
+                $sent = $this->giftCardEmail->send(
+                    $card,
+                    $plain,
+                    (string) $purchase->recipient_email,
+                    $note,
+                );
+                $emailOk = (bool) $sent['ok'];
+                if (!$emailOk) {
+                    $errors[] = 'Email: ' . ($sent['error'] ?? 'failed');
+                }
+            }
+
+            $updates = [];
+            if (Schema::hasColumn('gift_card_purchases', 'sms_ok')) {
+                $updates['sms_ok'] = $smsOk;
+            }
+            if (Schema::hasColumn('gift_card_purchases', 'email_ok')) {
+                $updates['email_ok'] = $emailOk;
+            }
+            if (Schema::hasColumn('gift_card_purchases', 'resend_count')) {
+                $updates['resend_count'] = $resendN;
+            }
+            if (Schema::hasColumn('gift_card_purchases', 'last_resent_at')) {
+                $updates['last_resent_at'] = now();
+            }
+            if ($updates !== []) {
+                $purchase->update($updates);
+            }
+            $purchase->refresh();
+
+            $deliveryOk = $smsOk === true || $emailOk === true;
+
             return response()->json([
-                'message' => 'Resend limit reached. Contact the restaurant with your order number.',
-            ], 429);
-        }
+                'message' => $deliveryOk
+                    ? 'Delivery resent.'
+                    : ('Could not deliver: ' . implode(' · ', $errors)),
+                'code' => $deliveryOk ? null : $plain,
+                'delivery' => [
+                    'phone' => $purchase->recipient_phone,
+                    'email' => $purchase->recipient_email,
+                    'sms_ok' => $purchase->sms_ok,
+                    'email_ok' => $purchase->email_ok,
+                    'can_resend' => $this->deliveryWindow->canResend($purchase),
+                    'resend_count' => (int) ($purchase->resend_count ?? $resendN),
+                    'expires_at' => $purchase->code_delivery_expires_at?->toIso8601String(),
+                ],
+            ], $deliveryOk ? 200 : 422);
+        } catch (\Throwable $e) {
+            Log::error('Gift card resend failed', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
 
-        $plain = $this->deliveryWindow->plainCode($purchase);
-        if ($plain === null) {
             return response()->json([
-                'message' => 'Delivery window expired. Contact the restaurant with your order number.',
-            ], 410);
+                'message' => 'Could not resend right now. Your code may still be shown below — or WhatsApp us with the order number.',
+            ], 422);
         }
-
-        $wantSms = in_array($channel, ['sms', 'both'], true) && (bool) $purchase->recipient_phone;
-        $wantEmail = in_array($channel, ['email', 'both'], true) && (bool) $purchase->recipient_email;
-
-        if (!$wantSms && !$wantEmail) {
-            return response()->json(['message' => 'No delivery channel available for this purchase.'], 422);
-        }
-
-        $card = $purchase->giftCard;
-        $note = $purchase->personal_note;
-        $smsOk = $purchase->sms_ok;
-        $emailOk = $purchase->email_ok;
-        $resendN = (int) $purchase->resend_count + 1;
-
-        if ($wantSms) {
-            $sent = $this->giftCardSms->send(
-                $card,
-                $plain,
-                $purchase->recipient_phone,
-                $note,
-                $purchase->purchaser_customer_id,
-                'gift_card_resend:' . $purchase->id . ':sms:' . $resendN,
-            );
-            $smsOk = (bool) $sent['ok'];
-        }
-
-        if ($wantEmail) {
-            $sent = $this->giftCardEmail->send(
-                $card,
-                $plain,
-                $purchase->recipient_email,
-                $note,
-            );
-            $emailOk = (bool) $sent['ok'];
-        }
-
-        $purchase->update([
-            'sms_ok' => $smsOk,
-            'email_ok' => $emailOk,
-            'resend_count' => $resendN,
-            'last_resent_at' => now(),
-        ]);
-        $purchase->refresh();
-
-        return response()->json([
-            'message' => 'Delivery resent.',
-            'delivery' => [
-                'phone' => $purchase->recipient_phone,
-                'email' => $purchase->recipient_email,
-                'sms_ok' => $purchase->sms_ok,
-                'email_ok' => $purchase->email_ok,
-                'can_resend' => $this->deliveryWindow->canResend($purchase),
-                'resend_count' => (int) $purchase->resend_count,
-                'expires_at' => $purchase->code_delivery_expires_at?->toIso8601String(),
-            ],
-        ]);
     }
 
     /**
