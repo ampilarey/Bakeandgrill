@@ -136,10 +136,10 @@ export function TicketRow({
   const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
 
   const stageBadge = {
-    parked: { label: "📋 PARKED", color: "#475569", bg: "#F1F5F9", border: "#CBD5E1", title: "Kitchen has not seen this yet" },
-    queued: { label: "⏳ NEW", color: "#1D4ED8", bg: "#EFF6FF", border: "#BFDBFE", title: "Waiting for kitchen to start (KDS Pending)" },
-    cooking: { label: "🍳 COOKING", color: "#A16207", bg: "#FEFCE8", border: "#FDE68A", title: "Kitchen is preparing this" },
-    ready: { label: "✅ READY", color: "#047857", bg: "#ECFDF5", border: "#A7F3D0", title: "Ready for the customer to collect" },
+    parked: { label: "Parked", color: palette.panelMuted, bg: palette.bgAlt, border: palette.borderStrong, title: "Kitchen has not seen this yet" },
+    queued: { label: "New", color: palette.info, bg: palette.infoBg, border: "#BFDBFE", title: "Waiting for kitchen to start (KDS Pending)" },
+    cooking: { label: "Cooking", color: palette.warnDark, bg: palette.warnBg, border: palette.warnBorder, title: "Kitchen is preparing this" },
+    ready: { label: "Ready", color: palette.successDark, bg: palette.successBg, border: palette.successBorder, title: "Ready for the customer to collect" },
   }[stage];
 
   const ageIso = ticketAgeAnchor(t, stage);
@@ -148,11 +148,42 @@ export function TicketRow({
   const isMergeTarget = mergeTargetId === t.id;
   const isMergeCandidate = mergeTargetId !== null && !isMergeTarget;
 
+  const kitchenNote = (() => {
+    if (stage !== "cooking") return null;
+    if ((t as { kitchen_done_at?: string | null }).kitchen_done_at) return "Kitchen done";
+    if (
+      (t as { kitchen_handover_status?: string | null }).kitchen_handover_status === "produced"
+      && !(t as { pos_received_at?: string | null }).pos_received_at
+    ) {
+      return "Awaiting receive";
+    }
+    if (
+      (t as { pos_received_at?: string | null }).pos_received_at
+      || (t as { kitchen_handover_status?: string | null }).kitchen_handover_status === "received"
+    ) {
+      return "Received";
+    }
+    return null;
+  })();
+
+  const typeLabel = posOrderTypeLabel(t.type, t.user?.id);
+  const typeEmoji = posOrderTypeEmoji(t.type, t.user?.id);
+
   const cardClickHandler = mergeTargetId === null
     ? () => onResume(t)
     : isMergeCandidate
       ? () => handlePickMergeSource(t)
       : undefined;
+
+  const badgeBase: CSSProperties = {
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: 0.3,
+    padding: "2px 7px",
+    borderRadius: radius.s,
+    border: "1px solid",
+    whiteSpace: "nowrap",
+  };
 
   return (
     <div
@@ -171,7 +202,7 @@ export function TicketRow({
         padding: space.m,
         borderRadius: radius.l,
         background: isMergeTarget
-          ? "#EFF6FF"
+          ? palette.infoBg
           : ageLevel !== "ok"
             ? ageStyle.bg
             : palette.panel,
@@ -189,128 +220,94 @@ export function TicketRow({
       }}
       onClick={cardClickHandler}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: space.m }}>
+      {/* Primary scan line: name · stage · pay → total */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: space.m }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <div style={{ fontWeight: 700, fontSize: type.body.fontSize, color: palette.panelInk }}>
+            <div style={{
+              fontWeight: 800,
+              fontSize: type.body.fontSize,
+              color: palette.panelInk,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              maxWidth: "100%",
+            }}>
               {t.ticket_name || `Order ${t.order_number}`}
             </div>
             <span
               title={stageBadge.title}
               style={{
-                fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                color: stageBadge.color, background: stageBadge.bg,
-                padding: "2px 6px", borderRadius: 4,
-                border: `1px solid ${stageBadge.border}`,
+                ...badgeBase,
+                color: stageBadge.color,
+                background: stageBadge.bg,
+                borderColor: stageBadge.border,
               }}
             >
               {stageBadge.label}
             </span>
-            {stage === "cooking" && (t as { kitchen_done_at?: string | null }).kitchen_done_at && (
-              <span
-                title="Kitchen marked preparation complete — cashier can mark ready for customer"
-                style={{
-                  fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                  color: "#047857", background: "#ECFDF5",
-                  padding: "2px 6px", borderRadius: 4,
-                  border: "1px solid #A7F3D0",
-                }}
-              >
-                Kitchen done
-              </span>
-            )}
-            {stage === "cooking" && (t as { kitchen_handover_status?: string | null }).kitchen_handover_status === "produced"
-              && !(t as { pos_received_at?: string | null }).pos_received_at && (
-              <span
-                title="Produced — receive from kitchen before marking ready"
-                style={{
-                  fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                  color: "#B45309", background: "#FFFBEB",
-                  padding: "2px 6px", borderRadius: 4,
-                  border: "1px solid #FDE68A",
-                }}
-              >
-                Awaiting receive
-              </span>
-            )}
-            {stage === "cooking" && ((t as { pos_received_at?: string | null }).pos_received_at
-              || (t as { kitchen_handover_status?: string | null }).kitchen_handover_status === "received") && (
-              <span
-                title="Received from kitchen — safe to mark ready"
-                style={{
-                  fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                  color: "#1D4ED8", background: "#EFF6FF",
-                  padding: "2px 6px", borderRadius: 4,
-                  border: "1px solid #BFDBFE",
-                }}
-              >
-                Received
-              </span>
-            )}
-            {ageIso && (
-              <span
-                title={ticketAgeTitle(ageLevel, stage)}
-                style={{
-                  fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                  color: ageStyle.color, background: ageStyle.bg,
-                  padding: "2px 6px", borderRadius: 4,
-                  border: `1px solid ${ageStyle.border}`,
-                }}
-              >
-                ⏱ {formatTicketAge(ageIso)}
-              </span>
-            )}
             {isPaid && (
               <span
                 title="Customer has paid"
                 style={{
-                  fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                  color: "#1E40AF", background: "#EFF6FF",
-                  padding: "2px 6px", borderRadius: 4,
-                  border: "1px solid #BFDBFE",
+                  ...badgeBase,
+                  color: palette.info,
+                  background: palette.infoBg,
+                  borderColor: "#BFDBFE",
                 }}
               >
-                💳 PAID
+                Paid
               </span>
             )}
             {isUnpaid && (
               <span
                 title="Customer has not paid yet"
                 style={{
-                  fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                  color: "#B91C1C", background: "#FEF2F2",
-                  padding: "2px 6px", borderRadius: 4,
-                  border: "1px solid #FECACA",
+                  ...badgeBase,
+                  color: palette.dangerDark,
+                  background: palette.dangerBg,
+                  borderColor: palette.dangerBorder,
                 }}
               >
-                {t.payment_status === "partial" ? "PARTIAL" : "UNPAID"}
-              </span>
-            )}
-            {(t.type === "online_pickup" || t.type === "delivery") && (
-              <span
-                title={posOrderTypeLabel(t.type, t.user?.id) ?? t.type}
-                style={{
-                  fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-                  color: t.type === "delivery" ? "#7C2D12" : "#92400E",
-                  background: t.type === "delivery" ? "#FFF7ED" : "#FFFBEB",
-                  padding: "2px 6px", borderRadius: 4,
-                  border: `1px solid ${t.type === "delivery" ? "#FDBA74" : "#FDE68A"}`,
-                }}
-              >
-                {posOrderTypeEmoji(t.type, t.user?.id)} {posOrderTypeLabel(t.type, t.user?.id)}
+                {t.payment_status === "partial" ? "Partial" : "Unpaid"}
               </span>
             )}
           </div>
-          <div style={{ fontSize: type.caption.fontSize, color: palette.panelMuted, marginTop: 2 }}>
+          <div style={{
+            fontSize: type.caption.fontSize,
+            color: palette.panelMuted,
+            marginTop: 4,
+            lineHeight: 1.35,
+          }}>
             {(t.items?.length ?? 0)} items
+            {typeLabel ? ` · ${typeEmoji ? `${typeEmoji} ` : ""}${typeLabel}` : ""}
             {t.type === "delivery" && t.delivery_island ? ` · ${t.delivery_island}` : ""}
-            {t.user?.name ? ` · by ${t.user.name}` : ""}
-            {t.ticket_note ? ` · ${t.ticket_note}` : ""}
+            {ageIso ? (
+              <span
+                title={ticketAgeTitle(ageLevel, stage)}
+                style={{
+                  color: ageLevel !== "ok" ? ageStyle.color : palette.panelMuted,
+                  fontWeight: ageLevel !== "ok" ? 700 : 500,
+                }}
+              >
+                {` · ${formatTicketAge(ageIso)}`}
+              </span>
+            ) : null}
+            {kitchenNote ? ` · ${kitchenNote}` : ""}
+            {t.user?.name ? ` · ${t.user.name}` : ""}
             {t.customer?.name ? ` · ${t.customer.name}` : ""}
             {t.customer?.phone ? ` · ${t.customer.phone}` : ""}
+            {t.ticket_note ? ` · ${t.ticket_note}` : ""}
           </div>
         </div>
-        <div style={{ fontWeight: 800, fontSize: type.subtitle.fontSize, color: palette.panelInk, whiteSpace: "nowrap" }}>
+        <div style={{
+          fontWeight: 800,
+          fontSize: type.subtitle.fontSize,
+          color: palette.panelInk,
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+          paddingTop: 1,
+        }}>
           MVR {ticketDisplayTotal(t).toFixed(2)}
         </div>
       </div>
@@ -326,7 +323,7 @@ export function TicketRow({
                 confirm
                 confirmLabel="Fire now? Tap to confirm"
               >
-                🍳 Fire to kitchen
+                Fire to kitchen
               </ActionButton>
             )}
             {stage === "queued" && canManageOrderStatus && (
@@ -338,16 +335,16 @@ export function TicketRow({
                   confirm
                   confirmLabel="Start cooking on kitchen display?"
                 >
-                  🍳 Start cooking
+                  Start cooking
                 </ActionButton>
                 <ActionButton
                   onClick={() => handleMarkReady(t)}
                   busy={busy}
-                  bg="#047857"
+                  bg={palette.successDark}
                   confirm
                   confirmLabel="Mark ready and notify customer?"
                 >
-                  ✅ Mark ready
+                  Mark ready
                 </ActionButton>
               </>
             )}
@@ -362,27 +359,26 @@ export function TicketRow({
                       title="Optional when kitchen handover is enabled — Mark ready still works for small cafés"
                       style={{
                         flex: "1 1 100%",
-                        textAlign: "center",
                         padding: "6px 10px",
-                        borderRadius: 8,
-                        fontSize: type.bodySm.fontSize,
+                        borderRadius: radius.m,
+                        fontSize: type.caption.fontSize,
                         fontWeight: 600,
-                        color: "#B45309",
-                        background: "#FFFBEB",
-                        border: "1px dashed #FDE68A",
+                        color: palette.warnDark,
+                        background: palette.warnBg,
+                        border: `1px dashed ${palette.warnBorder}`,
                       }}
                     >
-                      Tip: receive from kitchen when food arrives
+                      Receive from kitchen when food arrives
                     </span>
                   )}
                   <ActionButton
                     onClick={() => handleMarkReady(t)}
                     busy={busy}
-                    bg="#047857"
+                    bg={palette.successDark}
                     confirm
                     confirmLabel="Mark ready and notify customer?"
                   >
-                    ✅ Mark ready
+                    Mark ready
                   </ActionButton>
                 </>
               );
@@ -395,7 +391,7 @@ export function TicketRow({
                 confirm
                 confirmLabel="Confirm collected?"
               >
-                📦 Picked up
+                Picked up
               </ActionButton>
             )}
             {isUnpaid && (
@@ -412,7 +408,7 @@ export function TicketRow({
                   minHeight: 44, fontSize: type.bodySm.fontSize,
                 }}
               >
-                💳 Charge
+                Charge
               </button>
             )}
             {(() => {

@@ -121,28 +121,29 @@ export function OpenTicketsPanel({
       title={mergeTargetId !== null ? "Merge tickets — pick source" : "Active orders"}
       subtitle={subtitle}
       onClose={onClose}
+      toolbar={
+        <>
+          {mergeTargetId !== null && (
+            <MergeModeBanner mergeTargetId={mergeTargetId} onCancel={handleCancelMerge} />
+          )}
+          {mergeTargetId === null && (
+            <OpenTicketsScopeBar listScope={listScope} selectListScope={selectListScope} />
+          )}
+          <OpenTicketsFilterBar
+            allCount={allCount}
+            stageCounts={stageCounts}
+            typeCounts={typeCounts}
+            paymentCounts={paymentCounts}
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+            searchOpen={searchOpen}
+            search={search}
+            setSearch={setSearch}
+            toggleSearchOpen={toggleSearchOpen}
+          />
+        </>
+      }
     >
-      {mergeTargetId !== null && (
-        <MergeModeBanner mergeTargetId={mergeTargetId} onCancel={handleCancelMerge} />
-      )}
-
-      {mergeTargetId === null && (
-        <OpenTicketsScopeBar listScope={listScope} selectListScope={selectListScope} />
-      )}
-
-      <OpenTicketsFilterBar
-        allCount={allCount}
-        stageCounts={stageCounts}
-        typeCounts={typeCounts}
-        paymentCounts={paymentCounts}
-        activeFilter={activeFilter}
-        setActiveFilter={setActiveFilter}
-        searchOpen={searchOpen}
-        search={search}
-        setSearch={setSearch}
-        toggleSearchOpen={toggleSearchOpen}
-      />
-
       {loading && <p style={{ color: palette.panelMuted, fontSize: type.bodySm.fontSize }}>Loading…</p>}
       {err && <p style={{ color: palette.dangerDark, fontSize: type.bodySm.fontSize }}>{err}</p>}
       {!loading && tickets.length === 0 && (
@@ -156,7 +157,7 @@ export function OpenTicketsPanel({
         <EmptyState
           emoji="🔍"
           title="No matches"
-          body="Tap [All] to see every active ticket, or change your search."
+          body="Tap All to see every active ticket, or change your search."
         />
       )}
 

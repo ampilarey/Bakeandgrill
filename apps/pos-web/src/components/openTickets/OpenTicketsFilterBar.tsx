@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { palette, radius, space } from "../../theme";
 import type { OpenTicketsFilterKey } from "../../hooks/useOpenTickets";
-import { FilterDivider, FilterGroup } from "./filterPrimitives";
+import { FilterGroup } from "./filterPrimitives";
 
 type Props = {
   allCount: number;
@@ -27,110 +28,155 @@ export function OpenTicketsFilterBar({
   setSearch,
   toggleSearchOpen,
 }: Props) {
+  const secondaryActive =
+    activeFilter.startsWith("type:") || activeFilter.startsWith("payment:");
+  const [moreOpen, setMoreOpen] = useState(secondaryActive);
+
+  useEffect(() => {
+    if (secondaryActive) setMoreOpen(true);
+  }, [secondaryActive]);
+
   return (
-    <div
-      style={{
-        marginBottom: space.m,
-        padding: space.s,
-        background: "#F8FAFC",
-        borderRadius: radius.m,
-        border: `1px solid ${palette.border}`,
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        flexWrap: "wrap",
-      }}
-    >
-      <FilterGroup
-        activeColor="#0F172A"
-        options={[{ key: "all", label: "All", count: allCount }]}
-        selected={activeFilter}
-        onSelect={() => setActiveFilter("all")}
-      />
-
-      <FilterDivider />
-
-      <FilterGroup
-        activeColor="#0F172A"
-        options={[
-          { key: "stage:queued", label: "⏳ New", count: stageCounts.queued },
-          { key: "stage:cooking", label: "🍳 Cooking", count: stageCounts.cooking },
-          { key: "stage:ready", label: "✅ Ready", count: stageCounts.ready },
-          { key: "stage:parked", label: "📋 Parked", count: stageCounts.parked },
-        ]}
-        selected={activeFilter}
-        onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
-      />
-
-      <FilterDivider />
-
-      <FilterGroup
-        activeColor="#1D4ED8"
-        options={[
-          { key: "type:dine_in", label: "🍽 Dine-in", count: typeCounts.dine_in },
-          { key: "type:takeaway", label: "🥡 Takeaway", count: typeCounts.takeaway },
-          { key: "type:online_pickup", label: "📦 Online Pickup", count: typeCounts.online_pickup },
-          { key: "type:delivery", label: "🚗 Delivery", count: typeCounts.delivery },
-        ]}
-        selected={activeFilter}
-        onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
-      />
-
-      <FilterDivider />
-
-      <FilterGroup
-        options={[
-          { key: "payment:paid", label: "💳 Paid", count: paymentCounts.paid, activeColor: "#15803D" },
-          { key: "payment:unpaid", label: "UNPAID", count: paymentCounts.unpaid, activeColor: "#B91C1C" },
-        ]}
-        selected={activeFilter}
-        onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
-      />
-
-      <div style={{ flex: 1, minWidth: 8 }} />
-
-      <button
-        onClick={toggleSearchOpen}
-        title="Search by name, phone, table, or order #"
+    <div style={{ display: "flex", flexDirection: "column", gap: space.s }}>
+      {/* Primary: stage — what cashiers scan first */}
+      <div
         style={{
-          padding: "6px 10px",
-          borderRadius: 999,
-          border: `1px solid ${searchOpen || search ? "#0F172A" : palette.border}`,
-          background: searchOpen || search ? "#0F172A" : "#fff",
-          color: searchOpen || search ? "#fff" : palette.panelInk,
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-          display: "inline-flex",
+          display: "flex",
           alignItems: "center",
           gap: 6,
+          flexWrap: "wrap",
         }}
       >
-        🔍 Search
-      </button>
+        <FilterGroup
+          compact
+          activeColor={palette.panelInk}
+          options={[{ key: "all", label: "All", count: allCount }]}
+          selected={activeFilter}
+          onSelect={() => setActiveFilter("all")}
+        />
+        <FilterGroup
+          compact
+          activeColor={palette.primary}
+          options={[
+            { key: "stage:queued", label: "New", count: stageCounts.queued },
+            { key: "stage:cooking", label: "Cooking", count: stageCounts.cooking },
+            { key: "stage:ready", label: "Ready", count: stageCounts.ready },
+            { key: "stage:parked", label: "Parked", count: stageCounts.parked },
+          ]}
+          selected={activeFilter}
+          onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
+        />
 
-      {searchOpen && (
-        <div style={{ flexBasis: "100%", marginTop: 6 }}>
-          <input
-            type="search"
-            autoFocus
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name, phone, table, order # or ticket note…"
-            style={{
-              width: "100%",
-              padding: "8px 12px",
-              borderRadius: radius.m,
-              border: `1px solid ${palette.border}`,
-              background: "#fff",
-              color: palette.panelInk,
-              fontSize: 13,
-              fontWeight: 500,
-              outline: "none",
-            }}
+        <div style={{ flex: 1, minWidth: 4 }} />
+
+        <button
+          type="button"
+          onClick={() => setMoreOpen((v) => !v)}
+          title="Type and payment filters"
+          style={{
+            padding: "6px 10px",
+            minHeight: 36,
+            borderRadius: radius.m,
+            border: `1px solid ${moreOpen || secondaryActive ? palette.primary : palette.border}`,
+            background: moreOpen || secondaryActive ? palette.primaryBg : palette.panel,
+            color: moreOpen || secondaryActive ? palette.primaryDark : palette.panelInk,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {moreOpen ? "Less" : "More"}
+          {secondaryActive ? " · on" : ""}
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleSearchOpen}
+          title="Search by name, phone, table, or order #"
+          style={{
+            padding: "6px 10px",
+            minHeight: 36,
+            borderRadius: radius.m,
+            border: `1px solid ${searchOpen || search ? palette.panelInk : palette.border}`,
+            background: searchOpen || search ? palette.panelInk : palette.panel,
+            color: searchOpen || search ? "#fff" : palette.panelInk,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Search
+        </button>
+      </div>
+
+      {/* Secondary: type + payment — tucked away until needed */}
+      {moreOpen && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flexWrap: "wrap",
+            paddingTop: 2,
+          }}
+        >
+          <FilterGroup
+            compact
+            activeColor={palette.info}
+            options={[
+              { key: "type:dine_in", label: "Dine-in", count: typeCounts.dine_in },
+              { key: "type:takeaway", label: "Takeaway", count: typeCounts.takeaway },
+              { key: "type:online_pickup", label: "Pickup", count: typeCounts.online_pickup },
+              { key: "type:delivery", label: "Delivery", count: typeCounts.delivery },
+            ]}
+            selected={activeFilter}
+            onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
+          />
+          <FilterGroup
+            compact
+            options={[
+              {
+                key: "payment:paid",
+                label: "Paid",
+                count: paymentCounts.paid,
+                activeColor: palette.successDark,
+              },
+              {
+                key: "payment:unpaid",
+                label: "Unpaid",
+                count: paymentCounts.unpaid,
+                activeColor: palette.dangerDark,
+              },
+            ]}
+            selected={activeFilter}
+            onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
           />
         </div>
+      )}
+
+      {searchOpen && (
+        <input
+          type="search"
+          autoFocus
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Name, phone, table, order # or ticket note…"
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            minHeight: 44,
+            borderRadius: radius.m,
+            border: `1px solid ${palette.border}`,
+            background: palette.panel,
+            color: palette.panelInk,
+            fontSize: 13,
+            fontWeight: 500,
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+        />
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { palette, radius, space, shadow, btnPrimary, btnSecondary, type, z } from "../../theme";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { ticketDisplayTotal, type OpenTicket } from "../../utils/openTicketUtils";
 
 export function MergeConfirmModal({
@@ -14,6 +15,7 @@ export function MergeConfirmModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const stackTickets = useMediaQuery("(max-width: 480px)");
   const combinedTotal = ticketDisplayTotal(target) + ticketDisplayTotal(source);
   const stageOf = (status: string | null | undefined, firedAt: string | null | undefined): "parked" | "cooking" => {
     if (status === "held" && !firedAt) return "parked";
@@ -96,9 +98,23 @@ export function MergeConfirmModal({
             <strong style={{ color: palette.dangerDark }}> cancelled</strong>.
           </div>
         </div>
-        <div style={{ display: "flex", gap: space.s, alignItems: "stretch" }}>
+        <div style={{
+          display: "flex",
+          flexDirection: stackTickets ? "column" : "row",
+          gap: space.s,
+          alignItems: "stretch",
+        }}>
           {renderTicket(target, "Target — keeps")}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, color: palette.panelMuted, flexShrink: 0 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 18,
+            color: palette.panelMuted,
+            flexShrink: 0,
+            transform: stackTickets ? "rotate(90deg)" : undefined,
+            padding: stackTickets ? "2px 0" : 0,
+          }}>
             ←
           </div>
           {renderTicket(source, "Source — cancelled")}

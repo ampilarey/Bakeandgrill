@@ -10,21 +10,21 @@ export function OpenTicketsScopeBar({ listScope, selectListScope }: Props) {
   return (
     <div
       style={{
-        marginBottom: space.s,
         display: "flex",
         alignItems: "center",
         gap: 6,
         flexWrap: "wrap",
+        marginBottom: space.s,
       }}
     >
       <ScopeChip active={listScope === "all"} onClick={() => selectListScope("all")}>
-        👥 All staff
+        All staff
       </ScopeChip>
       <ScopeChip active={listScope === "mine"} onClick={() => selectListScope("mine")}>
-        👤 Mine
+        Mine
       </ScopeChip>
       <ScopeChip active={listScope === "online"} onClick={() => selectListScope("online")}>
-        📱 Online
+        Online
       </ScopeChip>
     </div>
   );

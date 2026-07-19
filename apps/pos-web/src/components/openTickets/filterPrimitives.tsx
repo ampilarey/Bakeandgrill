@@ -14,11 +14,11 @@ export function ScopeChip({
       type="button"
       onClick={onClick}
       style={{
-        padding: "10px 14px",
-        minHeight: 44,
+        padding: "8px 12px",
+        minHeight: 40,
         borderRadius: radius.m,
-        border: `1px solid ${active ? "#7C3AED" : palette.border}`,
-        background: active ? "#7C3AED" : "#fff",
+        border: `1px solid ${active ? palette.primary : palette.border}`,
+        background: active ? palette.primary : palette.panel,
         color: active ? "#fff" : palette.panelInk,
         fontSize: 13,
         fontWeight: 700,
@@ -36,35 +36,39 @@ export function FilterGroup({
   selected,
   onSelect,
   activeColor: groupActiveColor,
+  compact,
 }: {
   options: ReadonlyArray<{ key: string; label: string; count: number; activeColor?: string }>;
   selected: string;
   onSelect: (key: string) => void;
   activeColor?: string;
+  /** Slightly denser chips for the sticky filter strip. */
+  compact?: boolean;
 }) {
   return (
     <>
       {options.map((opt) => {
         const active = opt.key === selected;
-        const accent = opt.activeColor ?? groupActiveColor ?? "#0F172A";
+        const accent = opt.activeColor ?? groupActiveColor ?? palette.primary;
         return (
           <button
             key={opt.key}
+            type="button"
             onClick={() => onSelect(opt.key)}
             style={{
-              padding: "10px 14px",
-              minHeight: 44,
-              borderRadius: 999,
+              padding: compact ? "6px 10px" : "8px 12px",
+              minHeight: compact ? 36 : 40,
+              borderRadius: radius.m,
               border: `1px solid ${active ? accent : palette.border}`,
-              background: active ? accent : "#fff",
+              background: active ? accent : palette.panel,
               color: active ? "#fff" : palette.panelInk,
-              fontSize: 13,
+              fontSize: compact ? 12 : 13,
               fontWeight: 700,
               cursor: "pointer",
               whiteSpace: "nowrap",
               display: "inline-flex",
               alignItems: "center",
-              gap: 6,
+              gap: 5,
             }}
           >
             <span>{opt.label}</span>
@@ -72,10 +76,10 @@ export function FilterGroup({
               style={{
                 fontSize: 10,
                 fontWeight: 800,
-                background: active ? "rgba(255,255,255,0.18)" : "#E2E8F0",
+                background: active ? "rgba(255,255,255,0.2)" : palette.bgAlt,
                 color: active ? "#fff" : palette.panelMuted,
-                padding: "1px 6px",
-                borderRadius: 999,
+                padding: "1px 5px",
+                borderRadius: radius.s,
                 minWidth: 16,
                 textAlign: "center",
               }}
@@ -93,7 +97,7 @@ export function FilterDivider() {
   return (
     <span
       aria-hidden
-      style={{ width: 1, height: 18, background: palette.border, margin: "0 2px" }}
+      style={{ width: 1, height: 16, background: palette.border, margin: "0 2px", flexShrink: 0 }}
     />
   );
 }

@@ -1,10 +1,19 @@
 import { palette, radius, space, shadow, type } from "../../theme";
 
-export function PanelShell({ title, subtitle, onClose, children, backMode }: {
+export function PanelShell({
+  title,
+  subtitle,
+  onClose,
+  children,
+  toolbar,
+  backMode,
+}: {
   title: string;
   subtitle?: string;
   onClose: () => void;
   children: React.ReactNode;
+  /** Sticky chrome (scope + filters) — stays visible while the list scrolls. */
+  toolbar?: React.ReactNode;
   /** When true, the header action is a back chevron instead of close. */
   backMode?: boolean;
 }) {
@@ -21,12 +30,13 @@ export function PanelShell({ title, subtitle, onClose, children, backMode }: {
       boxShadow: shadow.xs,
     }}>
       <div style={{
-        padding: space.l,
+        padding: `${space.m}px ${space.l}px`,
         borderBottom: `1px solid ${palette.border}`,
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         gap: space.m,
+        flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: space.s, minWidth: 0 }}>
           {backMode && (
@@ -77,7 +87,19 @@ export function PanelShell({ title, subtitle, onClose, children, backMode }: {
           }} aria-label="Close panel">×</button>
         )}
       </div>
-      <div style={{ flex: 1, overflow: "auto", padding: space.l }}>
+
+      {toolbar != null && (
+        <div style={{
+          flexShrink: 0,
+          padding: `${space.s}px ${space.l}px ${space.m}px`,
+          borderBottom: `1px solid ${palette.border}`,
+          background: palette.bg,
+        }}>
+          {toolbar}
+        </div>
+      )}
+
+      <div style={{ flex: 1, overflow: "auto", padding: space.l, minHeight: 0 }}>
         {children}
       </div>
     </div>
