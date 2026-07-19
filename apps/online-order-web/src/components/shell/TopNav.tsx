@@ -8,8 +8,8 @@ import { useActiveOrder } from '../../hooks/useActiveOrder';
 import { SHELL_NAV_TABS } from './navTabs';
 
 /**
- * Tablet/desktop top bar — logo, text links, account, prayer strip.
- * Cart uses FloatingCartBar (logo FAB) when the cart has items.
+ * Tablet/desktop top bar — logo, text links, prayer strip, account.
+ * Cart: Menu ≥900 uses sidebar; elsewhere FloatingCartBar when items exist.
  * Mounted only at ≥768px; BottomNav covers phone.
  */
 export function TopNav() {

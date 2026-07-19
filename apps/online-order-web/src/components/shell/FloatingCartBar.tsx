@@ -5,11 +5,13 @@ import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { CartSheet } from '../CartSheet';
+import { isMenuPath, MENU_CART_SIDEBAR_MQ } from './navTabs';
 
 /**
- * ZUS-style cart FAB (logo + badge + total) → CartSheet.
- * Phone, iPad, and desktop — only when the cart has items.
+ * Logo cart FAB → CartSheet, only when the cart has items.
+ * Hidden on Menu ≥900px where the inline cart sidebar already shows the cart.
  */
 export function FloatingCartBar() {
   const { t } = useLanguage();
@@ -17,11 +19,13 @@ export function FloatingCartBar() {
   const { hideNav, cartSheetOpen, openCartSheet, closeCartSheet } = useShellNav();
   const { settings: s } = useSiteSettingsContext();
   const location = useLocation();
+  const menuHasSidebar = useMediaQuery(MENU_CART_SIDEBAR_MQ);
   const [orderingOpen, setOrderingOpen] = useState(true);
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
 
   const count = cart.reduce((sum, e) => sum + e.quantity, 0);
   const logoSrc = s.logo || '/logo.png';
+  const onMenuWithSidebar = isMenuPath(location.pathname) && menuHasSidebar;
 
   useEffect(() => {
     let cancelled = false;
@@ -43,10 +47,16 @@ export function FloatingCartBar() {
     if (count === 0 && cartSheetOpen) closeCartSheet();
   }, [count, cartSheetOpen, closeCartSheet]);
 
+  // Don't stack FAB over the desktop menu sidebar.
+  useEffect(() => {
+    if (onMenuWithSidebar && cartSheetOpen) closeCartSheet();
+  }, [onMenuWithSidebar, cartSheetOpen, closeCartSheet]);
+
   const showFab =
     !hideNav &&
     count > 0 &&
-    !location.pathname.startsWith('/checkout');
+    !location.pathname.startsWith('/checkout') &&
+    !onMenuWithSidebar;
 
   if (!showFab && !cartSheetOpen) {
     return null;
