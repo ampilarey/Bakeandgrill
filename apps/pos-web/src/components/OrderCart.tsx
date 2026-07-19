@@ -244,7 +244,13 @@ export function OrderCart(p: Props) {
         clearTimerRef.current = null;
       }
       setClearArmed(false);
-      p.onClearCart();
+      // Resumed unpaid: Clear exits resume (same as Cancel) so we don't
+      // sit on an empty "Order #N" shell that also blocked POS updates.
+      if (isResumed && !p.resumedIsPaid) {
+        p.onCancelResume();
+      } else {
+        p.onClearCart();
+      }
     } else {
       setClearArmed(true);
       clearTimerRef.current = window.setTimeout(() => {

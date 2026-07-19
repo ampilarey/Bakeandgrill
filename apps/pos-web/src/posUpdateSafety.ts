@@ -1,6 +1,7 @@
 /** States where a reload would interrupt sales, payments, or shift ops. */
 export type PosUpdateBlockers = {
   cartHasItems: boolean;
+  /** Kept for callers; empty-cart resume alone does not block updates. */
   resumedOrderId: number | null;
   isEditingActive: boolean;
   showCharge: boolean;
@@ -17,10 +18,12 @@ export type PosUpdateBlockers = {
 };
 
 export function isPosUpdateBlocked(blockers: PosUpdateBlockers): boolean {
+  // Do not block on resumedOrderId / isEditingActive alone. Opening an
+  // Active Order then Clear leaves those flags set with an empty cart;
+  // reload is safe (server ticket stays in Orders). Still block when the
+  // cart has lines or a payment/shift modal is open.
   return (
     blockers.cartHasItems
-    || blockers.resumedOrderId !== null
-    || blockers.isEditingActive
     || blockers.showCharge
     || blockers.showSendBill
     || blockers.showSaveTicket

@@ -69,4 +69,46 @@ describe("posUpdateSafety", () => {
       }),
     ).toBe(false);
   });
+
+  it("allows update when resumed ticket cart was cleared", () => {
+    expect(
+      isPosUpdateBlocked({
+        cartHasItems: false,
+        resumedOrderId: 42,
+        isEditingActive: true,
+        showCharge: false,
+        showSendBill: false,
+        showSaveTicket: false,
+        showOpenShift: false,
+        showCloseShift: false,
+        showPreferences: false,
+        isSubmitting: false,
+        pendingPaymentForOrderId: null,
+        offlineQueueCount: 0,
+        offlinePendingCount: 0,
+        shiftCashFormOpen: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("blocks update when resumed ticket still has cart lines", () => {
+    expect(
+      isPosUpdateBlocked({
+        cartHasItems: true,
+        resumedOrderId: 42,
+        isEditingActive: true,
+        showCharge: false,
+        showSendBill: false,
+        showSaveTicket: false,
+        showOpenShift: false,
+        showCloseShift: false,
+        showPreferences: false,
+        isSubmitting: false,
+        pendingPaymentForOrderId: null,
+        offlineQueueCount: 0,
+        offlinePendingCount: 0,
+        shiftCashFormOpen: false,
+      }),
+    ).toBe(true);
+  });
 });
