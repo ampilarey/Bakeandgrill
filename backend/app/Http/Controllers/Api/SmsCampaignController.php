@@ -120,8 +120,9 @@ class SmsCampaignController extends Controller
             'ab_test_enabled' => 'nullable|boolean',
             'ab_split_percent' => 'nullable|integer|min:1|max:99',
             'target_criteria' => 'nullable|array',
+            'target_criteria.segment' => 'nullable|string|in:'.implode(',', array_keys(\App\Domains\Customers\Services\CustomerSegmentationService::SEGMENTS)),
             'target_criteria.tier' => 'nullable|array',
-            'target_criteria.tier.*' => 'in:bronze,silver,gold',
+            'target_criteria.tier.*' => 'in:bronze,silver,gold,platinum',
             'target_criteria.last_order_days' => 'nullable|integer|min:1',
             'target_criteria.opted_in' => 'nullable|boolean',
             'target_criteria.has_loyalty' => 'nullable|boolean',
@@ -157,6 +158,12 @@ class SmsCampaignController extends Controller
             'ab_split_percent' => 'nullable|integer|min:1|max:99',
             'notes' => 'nullable|string|max:500',
             'target_criteria' => 'nullable|array',
+            'target_criteria.segment' => 'nullable|string|in:'.implode(',', array_keys(\App\Domains\Customers\Services\CustomerSegmentationService::SEGMENTS)),
+            'target_criteria.tier' => 'nullable|array',
+            'target_criteria.tier.*' => 'in:bronze,silver,gold,platinum',
+            'target_criteria.last_order_days' => 'nullable|integer|min:1',
+            'target_criteria.opted_in' => 'nullable|boolean',
+            'target_criteria.has_loyalty' => 'nullable|boolean',
             'scheduled_at' => 'nullable|date|after:now',
         ]);
 

@@ -10,6 +10,8 @@ use App\Domains\Customers\Services\CustomerGrowthSummaryService;
 use App\Domains\Customers\Services\CustomerMetricsService;
 use App\Domains\Customers\Services\CustomerSegmentationService;
 use App\Domains\Customers\Services\CustomerSmsActionService;
+use App\Domains\Customers\Services\VipSettingsService;
+use App\Domains\Customers\Services\VipTagSyncService;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\CustomerFollowUpNote;
@@ -27,6 +29,8 @@ class AdminCustomerGrowthController extends Controller
         private readonly CustomerDataQualityService $dataQuality,
         private readonly CustomerGrowthSummaryService $summary,
         private readonly CustomerSmsActionService $smsAction,
+        private readonly VipSettingsService $vipSettings,
+        private readonly VipTagSyncService $vipTagSync,
     ) {}
 
     public function metrics(): JsonResponse
@@ -167,6 +171,36 @@ class AdminCustomerGrowthController extends Controller
                 'id' => $log->id,
                 'status' => $log->status,
             ],
+        ]);
+    }
+
+    public function vipSettings(): JsonResponse
+    {
+        return response()->json(['settings' => $this->vipSettings->all()]);
+    }
+
+    public function updateVipSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'min_spend_mvr' => 'nullable|numeric|min:0|max:1000000',
+            'min_paid_orders' => 'nullable|integer|min:1|max:100',
+            'auto_sync_tag' => 'nullable|boolean',
+        ]);
+
+        return response()->json([
+            'settings' => $this->vipSettings->update($validated),
+            'message' => 'VIP settings saved.',
+        ]);
+    }
+
+    public function syncVipTags(): JsonResponse
+    {
+        $result = $this->vipTagSync->syncAll();
+
+        return response()->json([
+            'message' => 'VIP tags synced.',
+            'synced' => $result['synced'],
+            'vip_count' => $result['vip_count'],
         ]);
     }
 }

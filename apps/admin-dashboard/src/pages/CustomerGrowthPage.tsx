@@ -5,9 +5,10 @@ import {
   fetchCustomerDataQuality,
   fetchMarketingAutomation, updateMarketingAutomation,
   fetchCorporateInquiries, updateCorporateInquiryStatus, fetchItemPairs,
+  fetchVipSettings, updateVipSettings, syncVipTags,
   type CustomerGrowthMetrics, type CustomerSegmentMeta, type CustomerSegmentRow,
   type CustomerDataQualityReport, type MarketingAutomationSettings,
-  type CorporateInquiry, type ItemPairRow,
+  type CorporateInquiry, type ItemPairRow, type VipSettings,
 } from '../api';
 import { Customer360Drawer } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -53,6 +54,10 @@ export function CustomerGrowthPage() {
   const [itemPairs, setItemPairs] = useState<ItemPairRow[]>([]);
   const [pairsMeta, setPairsMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [pairsPage, setPairsPage] = useState(1);
+  const [vipSettings, setVipSettings] = useState<VipSettings | null>(null);
+  const [vipSaving, setVipSaving] = useState(false);
+  const [vipMsg, setVipMsg] = useState('');
+  const [vipSyncing, setVipSyncing] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -110,6 +115,9 @@ export function CustomerGrowthPage() {
     fetchMarketingAutomation()
       .then((r) => setAutomation(r.settings))
       .catch((e: Error) => setAutomationMsg(e.message));
+    fetchVipSettings()
+      .then((r) => setVipSettings(r.settings))
+      .catch((e: Error) => setVipMsg(e.message));
   }, [tab]);
 
   useEffect(() => {
@@ -151,8 +159,52 @@ export function CustomerGrowthPage() {
     }
   };
 
+  const saveVipSettings = async () => {
+    if (!vipSettings) return;
+    setVipSaving(true);
+    setVipMsg('');
+    try {
+      const res = await updateVipSettings({
+        min_spend_mvr: vipSettings.min_spend_mvr,
+        min_paid_orders: vipSettings.min_paid_orders,
+        auto_sync_tag: vipSettings.auto_sync_tag,
+      });
+      setVipSettings(res.settings);
+      setVipMsg('VIP settings saved.');
+      const segRes = await fetchCustomerSegments();
+      setSegments(segRes.segments ?? []);
+      if (canAnalytics) {
+        const m = await fetchCustomerGrowthMetrics();
+        setMetrics(m.metrics);
+      }
+    } catch (e) {
+      setVipMsg((e as Error).message);
+    } finally {
+      setVipSaving(false);
+    }
+  };
+
+  const runVipTagSync = async () => {
+    setVipSyncing(true);
+    setVipMsg('');
+    try {
+      const res = await syncVipTags();
+      setVipMsg(`Synced ${res.synced} tag change(s). ${res.vip_count} VIP customers.`);
+    } catch (e) {
+      setVipMsg((e as Error).message);
+    } finally {
+      setVipSyncing(false);
+    }
+  };
+
   const marketingOptIn = segments.find((s) => s.slug === marketingSegment)?.count ?? 0;
   const marketingOptOut = segments.find((s) => s.slug === 'sms_opt_out')?.count ?? 0;
+  const campaignHandoffQs = new URLSearchParams({
+    tab: 'campaigns',
+    create: '1',
+    segment: marketingSegment,
+    ...(draftSms.trim() ? { message: draftSms.trim() } : {}),
+  });
 
   return (
     <>
@@ -181,12 +233,18 @@ export function CustomerGrowthPage() {
               <StatCard label="Total customers" value={String(metrics.total_customers)} />
               <StatCard label="New (30d)" value={String(metrics.new_customers_30d)} />
               <StatCard label="Active (30d)" value={String(metrics.active_customers_30d)} />
+              <StatCard label="VIP customers" value={String(metrics.vip_customers ?? 0)} />
               <StatCard label="Repeat rate" value={`${metrics.repeat_rate}%`} />
               <StatCard label="Avg LTV" value={`MVR ${metrics.average_lifetime_value.toFixed(0)}`} />
               <StatCard label="Dormant 30d+" value={String(metrics.dormant_30d)} />
               <StatCard label="SMS opt-in" value={String(metrics.sms_opt_in_count)} />
               <StatCard label="Credit exposure" value={`${(metrics.total_credit_balance / 100).toFixed(0)} MVR`} />
             </div>
+            {metrics.vip && (
+              <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 16px' }}>
+                VIP = paid-order spend segment ({metrics.vip.label}). Not the same as loyalty Gold/Platinum (points earn tiers). Configure under Marketing → VIP settings.
+              </p>
+            )}
             <Card>
               <p style={{ margin: '0 0 12px', fontWeight: 700 }}>Weekly trends</p>
               <TableCard>
@@ -323,6 +381,47 @@ export function CustomerGrowthPage() {
           )}
         </Card>
         <Card>
+          <p style={{ margin: '0 0 8px', fontWeight: 700 }}>VIP settings</p>
+          <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 12px', lineHeight: 1.45 }}>
+            VIP is a CRM spend segment (paid orders + lifetime spend). Loyalty Gold/Platinum are separate points-based earn tiers.
+          </p>
+          {vipSettings ? (
+            <div style={{ display: 'grid', gap: 12, maxWidth: 480 }}>
+              <Input
+                label="Minimum lifetime paid spend (MVR)"
+                type="number"
+                value={String(vipSettings.min_spend_mvr)}
+                onChange={(v) => setVipSettings({ ...vipSettings, min_spend_mvr: Number(v) })}
+              />
+              <Input
+                label="Minimum paid orders"
+                type="number"
+                value={String(vipSettings.min_paid_orders)}
+                onChange={(v) => setVipSettings({ ...vipSettings, min_paid_orders: Number(v) })}
+              />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={vipSettings.auto_sync_tag}
+                  onChange={(e) => setVipSettings({ ...vipSettings, auto_sync_tag: e.target.checked })}
+                />
+                Auto-sync VIP customer tag after paid orders
+              </label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Btn onClick={() => void saveVipSettings()} disabled={vipSaving}>
+                  {vipSaving ? 'Saving…' : 'Save VIP settings'}
+                </Btn>
+                <Btn variant="secondary" onClick={() => void runVipTagSync()} disabled={vipSyncing || !vipSettings.auto_sync_tag}>
+                  {vipSyncing ? 'Syncing…' : 'Sync VIP tags now'}
+                </Btn>
+              </div>
+              {vipMsg && <p style={{ fontSize: 13, color: vipMsg.includes('saved') || vipMsg.includes('Synced') ? '#15803d' : '#b91c1c', margin: 0 }}>{vipMsg}</p>}
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: '#9C8E7E' }}>{vipMsg || 'Loading VIP settings…'}</p>
+          )}
+        </Card>
+        <Card>
           <p style={{ margin: '0 0 12px', fontWeight: 700 }}>Segment outreach</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
             <select value={marketingSegment} onChange={(e) => setMarketingSegment(e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #E8E0D8' }}>
@@ -338,13 +437,16 @@ export function CustomerGrowthPage() {
             placeholder="Draft SMS message…"
             style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }}
           />
-          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-            <Link to="/sms" style={{ textDecoration: 'none' }}>
-              <Btn variant="secondary">Open SMS Campaigns →</Btn>
+          <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link to={`/sms?${campaignHandoffQs.toString()}`} style={{ textDecoration: 'none' }}>
+              <Btn variant="secondary">Create SMS campaign for segment →</Btn>
             </Link>
+            {marketingSegment !== 'vip_customers' && (
+              <Btn variant="ghost" onClick={() => setMarketingSegment('vip_customers')}>Target VIP</Btn>
+            )}
           </div>
           <p style={{ fontSize: 12, color: '#9C8E7E', marginTop: 12 }}>
-            Bulk send uses existing SMS Campaigns. Opt-out customers are never included in campaigns when opted_in filter is enabled.
+            Opens SMS Campaigns with this segment preselected. Opt-out customers are excluded when the campaign uses opted-in targeting.
           </p>
         </Card>
         </>

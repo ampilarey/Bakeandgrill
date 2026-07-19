@@ -86,6 +86,8 @@ export type PosCustomerSummary = {
     tier?: string | null;
     internal_notes?: string | null;
     created_at?: string | null;
+    is_vip?: boolean;
+    badges?: string[];
   };
   loyalty: {
     points_balance: number;
@@ -102,6 +104,7 @@ export type PosCustomerSummary = {
     first_paid_at: string | null;
     last_paid_at: string | null;
   };
+  is_vip?: boolean;
   recent_orders: Array<{
     id: number;
     order_number: string;

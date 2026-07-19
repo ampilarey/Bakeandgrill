@@ -19,6 +19,10 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
     Route::get('/corporate-inquiries', [App\Http\Controllers\Api\CorporateInquiryController::class, 'adminIndex']);
     Route::patch('/corporate-inquiries/{id}', [App\Http\Controllers\Api\CorporateInquiryController::class, 'updateStatus']);
 
+    Route::get('/vip-settings', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'vipSettings']);
+    Route::put('/vip-settings', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'updateVipSettings']);
+    Route::post('/vip-tags/sync', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'syncVipTags']);
+
     Route::get('/', [App\Http\Controllers\Api\AdminCustomerController::class, 'index']);
     Route::get('/{id}/growth-summary', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'growthSummary']);
     Route::get('/{id}/activity', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'activity']);

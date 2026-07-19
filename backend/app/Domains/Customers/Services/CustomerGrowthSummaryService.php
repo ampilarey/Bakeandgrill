@@ -18,10 +18,13 @@ final class CustomerGrowthSummaryService
     public function __construct(
         private readonly CustomerCreditService $credit,
         private readonly CustomerSegmentationService $segments,
+        private readonly VipTagSyncService $vipTagSync,
     ) {}
 
     public function summary(Customer $customer, bool $includeCredit = true): array
     {
+        $this->vipTagSync->syncCustomer($customer);
+
         $customer->loadCount('orders');
         $customer->load(['tags', 'loyaltyAccount', 'followUpNotes' => fn ($q) => $q->with('staff:id,name')->whereNull('completed_at')->latest()]);
 

@@ -13,7 +13,8 @@ use InvalidArgumentException;
 
 final class CustomerSegmentationService
 {
-    public const VIP_MIN_SPEND_MVR = 5000;
+    /** @deprecated Use VipSettingsService::DEFAULT_MIN_SPEND_MVR */
+    public const VIP_MIN_SPEND_MVR = VipSettingsService::DEFAULT_MIN_SPEND_MVR;
 
     /** @var array<string, string> */
     public const SEGMENTS = [
@@ -34,16 +35,39 @@ final class CustomerSegmentationService
         'review_customers' => 'Left a review',
     ];
 
+    public function __construct(
+        private readonly VipSettingsService $vipSettings,
+    ) {}
+
     /** @return list<array{slug: string, label: string, count: int}> */
     public function listSegments(): array
     {
         return collect(self::SEGMENTS)->map(function (string $label, string $slug): array {
             return [
                 'slug' => $slug,
-                'label' => $label,
+                'label' => $slug === 'vip_customers' ? $this->vipSettings->segmentLabel() : $label,
                 'count' => $this->segmentCount($slug),
             ];
         })->values()->all();
+    }
+
+    public function customerIsVip(Customer $customer): bool
+    {
+        return $this->isVip($this->paidStatsForCustomer($customer->id));
+    }
+
+    /** @return \Illuminate\Support\Collection<int, int> */
+    public function customerIdsInSegment(string $slug): \Illuminate\Support\Collection
+    {
+        if (!isset(self::SEGMENTS[$slug])) {
+            throw new InvalidArgumentException("Unknown segment: {$slug}");
+        }
+
+        $query = Customer::query();
+        $this->ensurePaidStatsJoin($query);
+        $this->applySegmentFilter($query, $slug);
+
+        return $query->pluck('customers.id')->map(fn ($id) => (int) $id)->values();
     }
 
     /** @param array{search?: string, page?: int, per_page?: int} $filters */
@@ -170,9 +194,11 @@ final class CustomerSegmentationService
             'no_order_yet' => $query->whereRaw('COALESCE(po.orders_count_paid, 0) = 0'),
             'first_time_buyers' => $query->whereRaw('COALESCE(po.orders_count_paid, 0) = 1'),
             'repeat_customers' => $query->whereRaw('COALESCE(po.orders_count_paid, 0) >= 2'),
+            // Inline numeric thresholds (not bindings): leftJoinSub already binds
+            // excluded order statuses; extra ? bindings here collide on SQLite/PDO.
             'vip_customers' => $query
-                ->whereRaw('COALESCE(po.orders_count_paid, 0) >= 2')
-                ->whereRaw('COALESCE(po.total_paid_spend, 0) >= ?', [self::VIP_MIN_SPEND_MVR]),
+                ->whereRaw('COALESCE(po.orders_count_paid, 0) >= '.(int) $this->vipSettings->minPaidOrders())
+                ->whereRaw('COALESCE(po.total_paid_spend, 0) >= '.(float) $this->vipSettings->minSpendMvr()),
             'dormant_30d' => $query
                 ->whereRaw('COALESCE(po.orders_count_paid, 0) >= 1')
                 ->where('po.last_paid_at', '<', now()->subDays(30)),
@@ -248,8 +274,8 @@ final class CustomerSegmentationService
 
     private function isVip(object $stats): bool
     {
-        return (int) ($stats->orders_count_paid ?? 0) >= 2
-            && (float) ($stats->total_paid_spend ?? 0) >= self::VIP_MIN_SPEND_MVR;
+        return (int) ($stats->orders_count_paid ?? 0) >= $this->vipSettings->minPaidOrders()
+            && (float) ($stats->total_paid_spend ?? 0) >= $this->vipSettings->minSpendMvr();
     }
 
     private function isDormant(object $stats, int $days): bool

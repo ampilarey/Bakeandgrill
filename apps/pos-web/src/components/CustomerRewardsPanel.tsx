@@ -123,6 +123,7 @@ export function CustomerRewardsPanel({
   }, [customer]);
 
   const lifetimeOrders = summary?.lifetime.orders_count ?? 0;
+  const isVip = Boolean(summary?.is_vip ?? summary?.customer.is_vip);
   // Bug-053: backend returns total_spent as a Laravel decimal-cast
   // string ("123.45"), not a number. The `?? 0` only catches null/
   // undefined — without Number() the toFixed call below would crash
@@ -287,12 +288,30 @@ export function CustomerRewardsPanel({
           <span style={{ fontSize: 12, color: COLOR.muted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             {hasCustomer ? "Customer rewards" : "Gift card"}
           </span>
-          <span style={{ fontSize: 13, color: COLOR.text, fontWeight: 600 }}>
+          <span style={{ fontSize: 13, color: COLOR.text, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             {hasCustomer
               ? (loadingSummary
                 ? "Loading customer…"
                 : summary
-                  ? `${availablePoints.toLocaleString()} pts · ${tier.toUpperCase()} · ${lifetimeOrders} orders`
+                  ? (
+                    <>
+                      {isVip && (
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          letterSpacing: "0.04em",
+                          color: "#92400E",
+                          background: "#FEF3C7",
+                          border: "1px solid #F59E0B",
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                        }}>
+                          VIP
+                        </span>
+                      )}
+                      <span>{`${availablePoints.toLocaleString()} pts · ${tier.toUpperCase()} · ${lifetimeOrders} orders`}</span>
+                    </>
+                  )
                   : summaryError
                     ? "Could not load customer profile"
                     : "Tap to view & apply")
@@ -318,7 +337,7 @@ export function CustomerRewardsPanel({
                 background: COLOR.bg,
               }}>
                 <Stat label="Available points" value={availablePoints.toLocaleString()} />
-                <Stat label="Tier" value={tier.toUpperCase()} />
+                <Stat label="Tier" value={isVip ? `${tier.toUpperCase()} · VIP` : tier.toUpperCase()} />
                 <Stat label="Lifetime orders" value={lifetimeOrders.toLocaleString()} />
                 <Stat label="Lifetime spent" value={`MVR ${lifetimeSpent.toFixed(2)}`} />
                 <Stat

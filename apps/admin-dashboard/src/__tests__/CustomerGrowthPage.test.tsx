@@ -26,6 +26,13 @@ describe('CustomerGrowthPage', () => {
         active_customers_90d: 70,
         customers_with_paid_orders: 80,
         returning_customers: 35,
+        vip_customers: 3,
+        vip: {
+          min_spend_mvr: 5000,
+          min_paid_orders: 2,
+          auto_sync_tag: true,
+          label: 'VIP customers (≥2 paid orders · ≥MVR 5,000)',
+        },
         repeat_rate: 44,
         total_paid_orders: 200,
         total_paid_revenue: 50000,
@@ -55,6 +62,8 @@ describe('CustomerGrowthPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Total customers')).toBeTruthy();
       expect(screen.getByText('120')).toBeTruthy();
+      expect(screen.getByText('VIP customers')).toBeTruthy();
+      expect(screen.getByText('3')).toBeTruthy();
       expect(screen.getByText('Repeat rate')).toBeTruthy();
       expect(screen.getByText('44%')).toBeTruthy();
     });

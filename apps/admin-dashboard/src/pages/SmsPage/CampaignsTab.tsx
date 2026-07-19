@@ -13,7 +13,28 @@ type PreviewResult = {
   ab_split?: { variant_a: number; variant_b: number };
 };
 
-export function CampaignsTab() {
+type AudiencePreset = 'all' | 'vip_customers' | 'repeat_customers' | 'dormant_30d' | 'sms_opt_in';
+
+type CampaignPrefill = {
+  create?: boolean;
+  segment?: string;
+  message?: string;
+};
+
+const AUDIENCE_OPTIONS: Array<{ value: AudiencePreset; label: string }> = [
+  { value: 'all', label: 'All SMS opt-in customers' },
+  { value: 'vip_customers', label: 'VIP customers (spend segment)' },
+  { value: 'repeat_customers', label: 'Repeat customers (2+ paid orders)' },
+  { value: 'dormant_30d', label: 'Dormant 30+ days' },
+  { value: 'sms_opt_in', label: 'SMS opt-in only' },
+];
+
+function audienceToCriteria(audience: AudiencePreset): Record<string, unknown> {
+  if (audience === 'all') return { opted_in: true };
+  return { segment: audience, opted_in: true };
+}
+
+export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
   const [campaigns, setCampaigns] = useState<SmsCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,6 +47,7 @@ export function CampaignsTab() {
   const [messageB, setMessageB] = useState('');
   const [abEnabled, setAbEnabled] = useState(false);
   const [abSplit, setAbSplit] = useState(50);
+  const [audience, setAudience] = useState<AudiencePreset>('all');
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -37,6 +59,7 @@ export function CampaignsTab() {
     setMessageB('');
     setAbEnabled(false);
     setAbSplit(50);
+    setAudience('all');
     setPreview(null);
   };
 
@@ -54,6 +77,17 @@ export function CampaignsTab() {
 
   useEffect(() => { void load(); }, []);
 
+  useEffect(() => {
+    if (!prefill?.create && !prefill?.segment && !prefill?.message) return;
+    setCreating(true);
+    if (prefill.message) setMessage(prefill.message);
+    const seg = prefill.segment || '';
+    if (AUDIENCE_OPTIONS.some((o) => o.value === seg)) {
+      setAudience(seg as AudiencePreset);
+      setName((prev) => prev || `${AUDIENCE_OPTIONS.find((o) => o.value === seg)?.label ?? seg} campaign`);
+    }
+  }, [prefill?.create, prefill?.segment, prefill?.message]);
+
   const buildPayload = () => ({
     message,
     ...(abEnabled ? {
@@ -61,7 +95,7 @@ export function CampaignsTab() {
       message_variant_b: messageB,
       ab_split_percent: abSplit,
     } : {}),
-    target_criteria: {},
+    target_criteria: audienceToCriteria(audience),
   });
 
   const handlePreview = async () => {
@@ -138,6 +172,22 @@ export function CampaignsTab() {
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Campaign Name</label>
             <Input value={name} onChange={setName} placeholder="e.g. Eid Special Offer" />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Audience</label>
+            <select
+              value={audience}
+              onChange={(e) => { setAudience(e.target.value as AudiencePreset); setPreview(null); }}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 9, border: '1px solid #E8E0D8', fontSize: 14, fontFamily: 'inherit' }}
+            >
+              {AUDIENCE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '6px 0 0' }}>
+              VIP uses the CRM spend segment (not loyalty Gold). Opted-out numbers are always excluded.
+            </p>
           </div>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#1C1408' }}>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Customers\Services\CustomerCreditService;
+use App\Domains\Customers\Services\CustomerSegmentationService;
 use App\Domains\Deposits\Services\CustomerDepositService;
 use App\Domains\Loyalty\Services\PointsCalculator;
 use App\Domains\Reporting\Support\ReportMoneySql;
@@ -257,6 +258,9 @@ class CustomerController extends Controller
                 'paid_at' => $o->paid_at?->toIso8601String(),
             ]);
 
+        $badges = app(CustomerSegmentationService::class)->badgesForCustomer($customer);
+        $isVip = in_array('vip', $badges, true);
+
         return response()->json([
             'customer' => [
                 'id' => (int) $customer->id,
@@ -267,6 +271,8 @@ class CustomerController extends Controller
                 'sms_opt_out' => (bool) $customer->sms_opt_out,
                 'internal_notes' => $customer->internal_notes,
                 'created_at' => $customer->created_at?->toIso8601String(),
+                'is_vip' => $isVip,
+                'badges' => $badges,
             ],
             'loyalty' => array_merge($loyaltyPayload, [
                 'redeem_mvr_per_point' => app(PointsCalculator::class)->redeemRatePerPoint(),
@@ -281,6 +287,7 @@ class CustomerController extends Controller
                     ? $stats->last_paid_at->format(\DateTime::ATOM)
                     : ($stats?->last_paid_at ?? null),
             ],
+            'is_vip' => $isVip,
             'recent_orders' => $recent,
             'credit' => app(CustomerCreditService::class)->creditSummary($customer),
             'deposit' => app(CustomerDepositService::class)->depositSummary($customer),

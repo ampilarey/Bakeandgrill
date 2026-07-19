@@ -9,6 +9,13 @@ export type CustomerGrowthMetrics = {
   active_customers_90d: number;
   customers_with_paid_orders: number;
   returning_customers: number;
+  vip_customers: number;
+  vip?: {
+    min_spend_mvr: number;
+    min_paid_orders: number;
+    auto_sync_tag: boolean;
+    label: string;
+  };
   repeat_rate: number;
   total_paid_orders: number;
   total_paid_revenue: number;
@@ -193,4 +200,28 @@ export async function updateCorporateInquiryStatus(
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
+}
+
+export type VipSettings = {
+  min_spend_mvr: number;
+  min_paid_orders: number;
+  auto_sync_tag: boolean;
+  label: string;
+};
+
+export async function fetchVipSettings(): Promise<{ settings: VipSettings }> {
+  return req('/admin/customers/vip-settings');
+}
+
+export async function updateVipSettings(
+  data: Partial<Pick<VipSettings, 'min_spend_mvr' | 'min_paid_orders' | 'auto_sync_tag'>>,
+): Promise<{ settings: VipSettings; message: string }> {
+  return req('/admin/customers/vip-settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function syncVipTags(): Promise<{ message: string; synced: number; vip_count: number }> {
+  return req('/admin/customers/vip-tags/sync', { method: 'POST' });
 }

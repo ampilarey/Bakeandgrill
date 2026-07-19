@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Zap, Users, FileText, Clock, Cpu, BellRing } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/Layout';
@@ -12,6 +13,8 @@ import { AutomationsTab } from './SmsPage/AutomationsTab';
 import { RecipientsTab } from './SmsPage/RecipientsTab';
 
 type Tab = 'recipients' | 'automations' | 'logs' | 'campaigns' | 'promotions' | 'contacts' | 'templates' | 'scheduled';
+
+const VALID_TABS: Tab[] = ['recipients', 'automations', 'logs', 'campaigns', 'promotions', 'contacts', 'templates', 'scheduled'];
 
 type SmsTabDef = { id: Tab; label: string; icon?: React.ReactNode };
 
@@ -87,8 +90,31 @@ const S = {
 
 export function SmsPage() {
   usePageTitle('SMS');
-  const [tab, setTab] = useState<Tab>('recipients');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab: Tab = tabFromUrl && VALID_TABS.includes(tabFromUrl as Tab)
+    ? (tabFromUrl as Tab)
+    : 'recipients';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const currentSection = sectionForTab(tab);
+
+  const campaignPrefill = useMemo(() => ({
+    create: searchParams.get('create') === '1',
+    segment: searchParams.get('segment') || '',
+    message: searchParams.get('message') || '',
+  }), [searchParams]);
+
+  const selectTab = (next: Tab) => {
+    setTab(next);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('tab', next);
+    if (next !== 'campaigns') {
+      nextParams.delete('create');
+      nextParams.delete('segment');
+      nextParams.delete('message');
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return (
     <>
@@ -100,7 +126,7 @@ export function SmsPage() {
             key={section.id}
             type="button"
             style={S.sectionTab(currentSection.id === section.id)}
-            onClick={() => setTab(section.tabs[0].id)}
+            onClick={() => selectTab(section.tabs[0].id)}
           >
             {section.label}
           </button>
@@ -110,7 +136,7 @@ export function SmsPage() {
       {currentSection.tabs.length > 1 && (
         <div className="tab-scroll-row" style={S.subTabBar}>
           {currentSection.tabs.map(({ id, label, icon }) => (
-            <button key={id} type="button" style={S.tab(tab === id)} onClick={() => setTab(id)}>
+            <button key={id} type="button" style={S.tab(tab === id)} onClick={() => selectTab(id)}>
               {icon}{label}
             </button>
           ))}
@@ -120,7 +146,7 @@ export function SmsPage() {
       {tab === 'recipients'  && <RecipientsTab />}
       {tab === 'automations' && <AutomationsTab />}
       {tab === 'logs'        && <LogsTab />}
-      {tab === 'campaigns'   && <CampaignsTab />}
+      {tab === 'campaigns'   && <CampaignsTab prefill={campaignPrefill} />}
       {tab === 'promotions'  && <PromotionsTab />}
       {tab === 'contacts'    && <ContactsTab />}
       {tab === 'templates'   && <TemplatesTab />}

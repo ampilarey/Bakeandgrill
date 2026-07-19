@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Notifications\Services;
 
+use App\Domains\Customers\Services\CustomerSegmentationService;
 use App\Domains\Notifications\Jobs\SendSmsCampaignRecipientJob;
 use App\Models\Customer;
 use App\Models\SmsCampaign;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Targeting criteria (JSON):
  * {
+ *   "segment": "vip_customers",          // CRM segment slug (CustomerSegmentationService)
  *   "tier": ["gold", "silver"],          // loyalty tier filter
  *   "last_order_days": 30,               // customers who ordered in last N days
  *   "opted_in": true,                    // exclude opted-out (default: true)
@@ -23,7 +25,10 @@ use Illuminate\Support\Facades\DB;
  */
 class BulkSmsService
 {
-    public function __construct(private SmsService $sms) {}
+    public function __construct(
+        private SmsService $sms,
+        private CustomerSegmentationService $segments,
+    ) {}
 
     /**
      * Preview campaign: resolve target audience + estimate cost.
@@ -135,6 +140,21 @@ class BulkSmsService
             $query->where(function ($q): void {
                 $q->whereNull('sms_opt_out')->orWhere('sms_opt_out', false);
             });
+        }
+
+        // CRM segment (e.g. vip_customers) — intersects with other filters
+        if (!empty($criteria['segment'])) {
+            $slug = (string) $criteria['segment'];
+            if (!isset(CustomerSegmentationService::SEGMENTS[$slug])) {
+                return Customer::query()->whereRaw('0 = 1')->get();
+            }
+
+            $ids = $this->segments->customerIdsInSegment($slug);
+            if ($ids->isEmpty()) {
+                return Customer::query()->whereRaw('0 = 1')->get();
+            }
+
+            $query->whereIn('id', $ids->all());
         }
 
         // Loyalty tier filter

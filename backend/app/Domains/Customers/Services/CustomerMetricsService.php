@@ -12,7 +12,13 @@ use Illuminate\Support\Facades\DB;
 
 final class CustomerMetricsService
 {
-    public const VIP_MIN_SPEND_MVR = 5000;
+    /** @deprecated Use VipSettingsService::DEFAULT_MIN_SPEND_MVR */
+    public const VIP_MIN_SPEND_MVR = VipSettingsService::DEFAULT_MIN_SPEND_MVR;
+
+    public function __construct(
+        private readonly CustomerSegmentationService $segments,
+        private readonly VipSettingsService $vipSettings,
+    ) {}
 
     public function dashboard(): array
     {
@@ -26,6 +32,7 @@ final class CustomerMetricsService
             'active_customers_90d' => $this->activeCustomersCount(90),
             'customers_with_paid_orders' => $this->customersWithPaidOrdersCount(),
             'returning_customers' => $this->returningCustomersCount(),
+            'vip_customers' => $this->segments->segmentCount('vip_customers'),
             'total_paid_orders' => $this->paidOrdersBase()->count(),
             'total_paid_revenue' => round((float) $this->paidOrdersBase()->sum('total'), 2),
             'sms_opt_in_count' => Customer::where(fn ($q) => $q->where('sms_opt_out', false)->orWhereNull('sms_opt_out'))->count(),
@@ -47,6 +54,7 @@ final class CustomerMetricsService
         $metrics['dormant_30d'] = $this->dormantCount(30);
         $metrics['dormant_60d'] = $this->dormantCount(60);
         $metrics['dormant_90d'] = $this->dormantCount(90);
+        $metrics['vip'] = $this->vipSettings->all();
         $metrics['trends'] = $this->weeklyTrends(12);
 
         return $metrics;
