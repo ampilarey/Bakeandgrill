@@ -561,6 +561,7 @@ export function usePosApp() {
     setAppliedGiftCard: cart.setAppliedGiftCard,
     onOrderSettled: (orderId, _customerId, customerPhone, _orderType, paidOnCredit) => {
       void refreshOpenTickets();
+      void refreshTables();
       void shift.refreshSummary();
       setReceiptBanner({
         orderId,
