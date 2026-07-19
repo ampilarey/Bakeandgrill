@@ -1601,6 +1601,11 @@ textarea.field-input {
   flex-shrink: 0;
 }
 
+.bottom-nav__icon {
+  position: relative;
+  display: flex;
+}
+
 .bottom-nav__badge {
   position: absolute;
   top: -2px;
@@ -1612,30 +1617,24 @@ textarea.field-input {
   box-shadow: 0 0 0 2px var(--color-mobile-nav-bg);
 }
 
-.bottom-nav__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  line-height: 1;
-}
-
+/* Active-order count — top-right of the Orders icon */
 .bottom-nav__count {
-  min-width: 1.1rem;
-  height: 1.1rem;
-  padding: 0 0.28rem;
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
   border-radius: 999px;
   background: var(--color-primary);
   color: #fff;
   font-size: 0.625rem;
   font-weight: 800;
-  line-height: 1.1rem;
+  line-height: 1.15rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
-}
-
-.bottom-nav__item.is-active .bottom-nav__count,
-.bottom-nav__item[aria-current="page"] .bottom-nav__count {
-  background: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-mobile-nav-bg);
+  pointer-events: none;
 }
 
 .bottom-nav {

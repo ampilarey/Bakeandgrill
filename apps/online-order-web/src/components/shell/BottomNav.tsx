@@ -7,7 +7,7 @@ import { SHELL_NAV_TABS } from './navTabs';
 /**
  * 5-tab bottom navigation — phone only (≤767px).
  * Tablet/desktop use TopNav instead.
- * Active orders show a count next to the Orders label.
+ * Active orders show a count badge on the Orders icon (top-right).
  */
 export function BottomNav() {
   const { t } = useLanguage();
@@ -34,17 +34,15 @@ export function BottomNav() {
                 : undefined
             }
           >
-            <span className="bottom-nav__icon" style={{ position: 'relative', display: 'flex' }}>
+            <span className="bottom-nav__icon">
               <Icon size={24} />
-            </span>
-            <span className="bottom-nav__label">
-              {t(labelKey)}
               {count > 0 && (
                 <span className="bottom-nav__count" aria-hidden>
                   {count > 99 ? '99+' : count}
                 </span>
               )}
             </span>
+            <span>{t(labelKey)}</span>
           </Link>
         );
       })}
