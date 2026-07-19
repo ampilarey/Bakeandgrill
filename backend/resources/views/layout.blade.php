@@ -661,6 +661,13 @@
             min-height: 44px;
             overflow: hidden;
         }
+        /* Author display:flex overrides bare [hidden] in some browsers */
+        .prayer-banner-skeleton[hidden],
+        .prayer-banner-unavailable[hidden],
+        .prayer-banner-body[hidden],
+        .prayer-banner-panel[hidden] {
+            display: none !important;
+        }
         .prayer-banner-skeleton {
             height: 44px;
             display: flex;
@@ -1347,7 +1354,7 @@
         var panel = root.querySelector('[data-pt-panel]');
         var chev = root.querySelector('[data-pt-chevron]');
         if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        if (panel) panel.hidden = !isOpen;
+        setHidden(panel, !isOpen);
         if (chev) chev.textContent = isOpen ? '⌃' : '▾';
     }
 
@@ -1368,20 +1375,27 @@
         });
     }
 
+    function setHidden(el, hide) {
+        if (!el) return;
+        if (hide) el.setAttribute('hidden', '');
+        else el.removeAttribute('hidden');
+        el.hidden = hide;
+    }
+
     function showBanner(isl) {
         eachBanner(function(root) {
             root.classList.remove('is-loading');
             var sk = root.querySelector('[data-pt-skeleton]');
             var un = root.querySelector('[data-pt-unavailable]');
             var body = root.querySelector('[data-pt-body]');
-            if (sk) sk.hidden = true;
+            setHidden(sk, true);
             if (!prayers) {
-                if (un) un.hidden = false;
-                if (body) body.hidden = true;
+                setHidden(un, false);
+                setHidden(body, true);
                 return;
             }
-            if (un) un.hidden = true;
-            if (body) body.hidden = false;
+            setHidden(un, true);
+            setHidden(body, false);
             setExpandedUI(root, expanded);
         });
         tick();
