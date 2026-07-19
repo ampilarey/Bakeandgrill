@@ -382,7 +382,9 @@ export function OrderCart(p: Props) {
             }
             style={{
               flexShrink: 0,
-              position: "relative",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
               padding: "10px 12px",
               borderRadius: 10,
               border: `1px solid ${C.border2}`,
@@ -400,16 +402,13 @@ export function OrderCart(p: Props) {
               <span
                 title={p.openTicketsCritical ? "One or more tickets are critically aged" : undefined}
                 style={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  minWidth: 18,
-                  height: 18,
-                  padding: "0 5px",
+                  minWidth: 20,
+                  height: 20,
+                  padding: "0 6px",
                   borderRadius: 999,
                   background: p.openTicketsCritical ? "#B91C1C" : "#D4813A",
                   color: "#fff",
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: 800,
                   display: "inline-flex",
                   alignItems: "center",
