@@ -47,6 +47,10 @@ class OrderItemController extends Controller
             'items.*.modifiers.*.name' => 'required_with:items.*.modifiers|string|max:255',
             'items.*.modifiers.*.price' => 'required_with:items.*.modifiers|numeric|min:0',
             'reprint_kitchen' => 'nullable|boolean',
+            // Optional ticket meta — POS "Save changes" when cashier switches
+            // Dine-in ↔ Takeaway (or reassigns a table) without item edits.
+            'type' => 'nullable|string|in:dine_in,takeaway,online_pickup,delivery',
+            'restaurant_table_id' => 'nullable|integer|exists:restaurant_tables,id',
         ]);
 
         $reprintKitchen = (bool) ($validated['reprint_kitchen'] ?? true);
@@ -66,18 +70,48 @@ class OrderItemController extends Controller
                 return ['error' => 'Order is fully paid — edits must go through refunds.'];
             }
 
+            $oldType = (string) $order->type;
+            $oldTableId = $order->restaurant_table_id;
+
+            // Replace items first so stock restore/re-deduct uses the
+            // pre-edit order type (dine_in/takeaway vs online reservation).
             $updated = app(OrderCreationService::class)
                 ->replaceOrderItems($order, $validated['items'], $reprintKitchen);
+
+            // Then persist fulfillment meta and recalculate (service charge /
+            // packaging depend on type).
+            if (array_key_exists('type', $validated) && $validated['type'] !== null) {
+                $newType = (string) $validated['type'];
+                $tableId = $newType === 'dine_in'
+                    ? ($validated['restaurant_table_id'] ?? null)
+                    : null;
+                $updated->update([
+                    'type' => $newType,
+                    'restaurant_table_id' => $tableId,
+                ]);
+                $updated = app(\App\Domains\Orders\Services\OrderTotalsCalculator::class)
+                    ->recalculateAndPersist($updated->fresh(['items.item']));
+            } elseif (array_key_exists('restaurant_table_id', $validated) && $updated->type === 'dine_in') {
+                $updated->update([
+                    'restaurant_table_id' => $validated['restaurant_table_id'],
+                ]);
+                $updated = $updated->fresh();
+            }
 
             app(AuditLogService::class)->log(
                 'order.items_replaced',
                 'Order',
                 $updated->id,
-                [],
+                [
+                    'type' => $oldType,
+                    'restaurant_table_id' => $oldTableId,
+                ],
                 [
                     'item_count' => count($validated['items']),
                     'reprint_kitchen' => $reprintKitchen,
                     'new_total' => $updated->total,
+                    'type' => $updated->type,
+                    'restaurant_table_id' => $updated->restaurant_table_id,
                 ],
                 ['source' => 'pos'],
                 $request,
@@ -98,6 +132,8 @@ class OrderItemController extends Controller
                 'total' => (float) $fresh->total,
                 'subtotal' => (float) $fresh->subtotal,
                 'tax_amount' => (float) $fresh->tax_amount,
+                'type' => $fresh->type,
+                'restaurant_table_id' => $fresh->restaurant_table_id,
             ],
         ]);
     }

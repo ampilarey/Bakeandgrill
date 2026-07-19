@@ -296,8 +296,26 @@ export function useOrderCreation(params: Params) {
   const [resumedOrderLabel, setResumedOrderLabel] = useState<string | null>(null);
   /** Backend order type (online_pickup, delivery, …) for fulfillment badges. */
   const [resumedOrderType, setResumedOrderType] = useState<string | null>(null);
+  /** Table on the resumed ticket (dine_in only) — part of dirty detection. */
+  const [resumedTableId, setResumedTableId] = useState<number | null>(null);
   /** Staff who rang the ticket — used to label POS pickup vs app online pickup. */
   const [resumedStaffUserId, setResumedStaffUserId] = useState<number | null>(null);
+
+  const currentTicketType = () => mapOrderType(params.orderType);
+  const currentTicketTableId = () =>
+    currentTicketType() === "dine_in" ? (params.selectedTableId ?? null) : null;
+
+  /** True when items, fulfillment type, or table differ from the resumed snapshot. */
+  const computeTicketDirty = (): boolean => {
+    if (resumedOrderId === null) return false;
+    const itemsDirty = resumedItemsFingerprint !== null
+      && cartFingerprint(params.cartItems) !== resumedItemsFingerprint;
+    const typeDirty = resumedOrderType !== null
+      && currentTicketType() !== resumedOrderType;
+    const resumedTable = resumedOrderType === "dine_in" ? resumedTableId : null;
+    const tableDirty = currentTicketTableId() !== resumedTable;
+    return itemsDirty || typeDirty || tableDirty;
+  };
 
   const staffUserIdFromOrder = (order: { user_id?: number | null; user?: { id?: number } | null }) =>
     order.user_id ?? order.user?.id ?? null;
@@ -654,13 +672,11 @@ export function useOrderCreation(params: Params) {
       if (resumedIsPaid) {
         return false;
       }
-      // Only block charge when the cart actually differs from the
-      // resumed ticket. Opening a ticket (or tapping Edit without
-      // changing lines) must not force a no-op Save.
+      // Only block charge when the cart / type / table actually differs
+      // from the resumed ticket. Opening a ticket (or tapping Edit
+      // without changing anything) must not force a no-op Save.
       if (isEditingActive) {
-        const dirty = resumedItemsFingerprint !== null
-          && cartFingerprint(params.cartItems) !== resumedItemsFingerprint;
-        if (dirty) {
+        if (computeTicketDirty()) {
           flashError(
             "Tap \u201cSave changes\u201d on the resume banner first \u2014 the new total has to be sent to the server before you can charge.",
           );
@@ -686,6 +702,7 @@ export function useOrderCreation(params: Params) {
           setResumedIsPaid(false);
           setResumedOrderLabel(null);
           setResumedOrderType(null);
+          setResumedTableId(null);
           setResumedStaffUserId(null);
           params.clearCart();
           params.setSelectedItem(null);
@@ -1074,6 +1091,7 @@ export function useOrderCreation(params: Params) {
       setResumedIsPaid(true);
       setResumedOrderLabel(label);
       setResumedOrderType(preflight.order.type ?? null);
+      setResumedTableId(preflight.order.restaurant_table_id ?? null);
       setResumedStaffUserId(staffUserIdFromOrder(preflight.order));
       setIsEditingActive(false);
       localStorage.removeItem("pos_last_held_order");
@@ -1094,6 +1112,7 @@ export function useOrderCreation(params: Params) {
 
     setResumedOrderId(orderId);
     setResumedOrderType(response.order.type ?? null);
+    setResumedTableId(response.order.restaurant_table_id ?? null);
     setResumedStaffUserId(staffUserIdFromOrder(response.order));
     setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
@@ -1135,6 +1154,7 @@ export function useOrderCreation(params: Params) {
     setResumedIsPaid(false);
     setResumedOrderLabel(null);
     setResumedOrderType(null);
+    setResumedTableId(null);
     setResumedStaffUserId(null);
     params.clearCart();
     params.setSelectedItem(null);
@@ -1188,12 +1208,22 @@ export function useOrderCreation(params: Params) {
       // in a busy service.
       const currentFp = cartFingerprint(params.cartItems);
       const itemsChanged = resumedItemsFingerprint !== currentFp;
+      const nextType = currentTicketType();
+      const nextTableId = currentTicketTableId();
       const res = await updateOrderItems(resumedOrderId, {
         items,
         reprint_kitchen: itemsChanged,
+        type: nextType,
+        restaurant_table_id: nextTableId,
       });
       setResumedOrderTotal(res.order.total != null ? Number(res.order.total) : null);
       setResumedItemsFingerprint(currentFp);
+      setResumedOrderType(res.order.type ?? nextType);
+      setResumedTableId(
+        res.order.restaurant_table_id !== undefined
+          ? res.order.restaurant_table_id
+          : nextTableId,
+      );
       setIsEditingActive(false);
       return true;
     } catch (err) {
@@ -1287,10 +1317,7 @@ export function useOrderCreation(params: Params) {
     })();
   };
 
-  const hasUnsavedTicketChanges =
-    resumedOrderId !== null
-    && resumedItemsFingerprint !== null
-    && cartFingerprint(params.cartItems) !== resumedItemsFingerprint;
+  const hasUnsavedTicketChanges = computeTicketDirty();
 
   return {
     statusMessage,

@@ -352,8 +352,20 @@ export async function updateOrderItems(
       }>;
     }>;
     reprint_kitchen?: boolean;
+    /** Persist fulfillment change (e.g. dine_in → takeaway) with Save changes. */
+    type?: "dine_in" | "takeaway" | "online_pickup" | "delivery";
+    restaurant_table_id?: number | null;
   },
-): Promise<{ order: { id: number; total: number; subtotal: number; tax_amount: number } }> {
+): Promise<{
+  order: {
+    id: number;
+    total: number;
+    subtotal: number;
+    tax_amount: number;
+    type?: string;
+    restaurant_table_id?: number | null;
+  };
+}> {
   return request(`/orders/${orderId}/items`, {
     method: "PATCH",
     body: JSON.stringify(payload),

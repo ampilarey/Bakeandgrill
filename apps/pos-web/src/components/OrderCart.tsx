@@ -427,8 +427,8 @@ export function OrderCart(p: Props) {
                 ? 'Paid — items are locked. You can still add or change the customer below.'
                 : editing
                   ? (ticketDirty
-                    ? 'Items changed — Save changes to update the ticket (kitchen chit reprints).'
-                    : 'Edit items, then Save changes when you make an update — or Charge as-is.')
+                    ? 'Ticket updated — Save changes before charging (items, order type, or table).'
+                    : 'Edit items or order type, then Save changes when you make an update — or Charge as-is.')
                   : wasHeld
                     ? 'Charge to settle, or Edit to add/remove items.'
                     : 'Charge to take payment, or Edit to modify the ticket.'}
