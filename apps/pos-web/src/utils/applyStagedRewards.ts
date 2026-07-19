@@ -23,10 +23,36 @@ export type ApplyStagedRewardsApi = {
   applyGiftCardToOrder: (
     orderId: number,
     code: string,
-  ) => Promise<{ order: { total: number } }>;
+  ) => Promise<{
+    order: {
+      total: number;
+      gift_card_discount_laar?: number | null;
+      amount_due?: number;
+    };
+    amount_due_laar?: number;
+  }>;
   removeGiftCardFromOrder: (orderId: number) => Promise<unknown>;
-  getOrder: (orderId: number) => Promise<{ order: { total?: number } }>;
+  getOrder: (orderId: number) => Promise<{
+    order: {
+      total?: number;
+      gift_card_discount_laar?: number | null;
+    };
+  }>;
 };
+
+/** Amount still owed after gift-card tender (grand total − GC). */
+export function amountDueFromOrder(order: {
+  total?: number;
+  gift_card_discount_laar?: number | null;
+  amount_due?: number;
+}): number {
+  if (typeof order.amount_due === "number" && Number.isFinite(order.amount_due)) {
+    return Math.max(0, order.amount_due);
+  }
+  const total = typeof order.total === "number" ? order.total : 0;
+  const giftMvr = Math.max(0, (order.gift_card_discount_laar ?? 0) / 100);
+  return Math.round(Math.max(0, total - giftMvr) * 100) / 100;
+}
 
 export type ApplyStagedRewardsResult = {
   total: number;
@@ -76,7 +102,11 @@ export async function applyStagedRewards(
   if (giftCardCode) {
     try {
       const res = await api.applyGiftCardToOrder(orderId, giftCardCode);
-      total = res.order.total;
+      if (typeof res.amount_due_laar === "number") {
+        total = res.amount_due_laar / 100;
+      } else {
+        total = amountDueFromOrder(res.order);
+      }
       didMutate = true;
     } catch (err) {
       failures.push(`gift card "${giftCardCode}" (${(err as Error).message})`);
@@ -91,18 +121,26 @@ export async function applyStagedRewards(
       await api.removeGiftCardFromOrder(orderId);
       didMutate = true;
       const fresh = await api.getOrder(orderId);
-      if (typeof fresh.order.total === "number") total = fresh.order.total;
+      total = amountDueFromOrder(fresh.order);
     } catch {
       /* no gift card on order — fine */
     }
   }
 
-  if (didMutate && (promoCode || (loyaltyPoints && loyaltyPoints > 0) || giftCardCode)) {
+  if (didMutate && (promoCode || (loyaltyPoints && loyaltyPoints > 0) || giftCardCode || staged.appliedGiftCardServerApplied)) {
     try {
       const fresh = await api.getOrder(orderId);
-      if (typeof fresh.order.total === "number") total = fresh.order.total;
+      total = amountDueFromOrder(fresh.order);
     } catch {
       /* keep last-known total */
+    }
+  } else if (staged.appliedGiftCardServerApplied && !didMutate) {
+    // Resumed ticket with server GC — charge remaining due, not full grand total.
+    try {
+      const fresh = await api.getOrder(orderId);
+      total = amountDueFromOrder(fresh.order);
+    } catch {
+      /* keep currentTotal */
     }
   }
 

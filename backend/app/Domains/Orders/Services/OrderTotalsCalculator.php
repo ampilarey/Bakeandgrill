@@ -201,11 +201,15 @@ class OrderTotalsCalculator
      */
     public function recalculateAndPersist(Order $order): Order
     {
+        // Gift cards are tender (payment), not pre-tax discounts — keep the
+        // reserved amount on the order but never feed it into tax allocation.
+        $giftCardTenderLaar = max(0, (int) ($order->gift_card_discount_laar ?? 0));
+
         $discounts = new DiscountsInput(
             promoDiscountLaar: (int) ($order->promo_discount_laar ?? 0),
             loyaltyDiscountLaar: (int) ($order->loyalty_discount_laar ?? 0),
             manualDiscountLaar: (int) ($order->manual_discount_laar ?? 0),
-            giftCardDiscountLaar: (int) ($order->gift_card_discount_laar ?? 0),
+            giftCardDiscountLaar: 0,
             referralDiscountLaar: (int) ($order->referral_discount_laar ?? 0),
         );
 
@@ -224,7 +228,7 @@ class OrderTotalsCalculator
             ? (int) ($order->small_order_fee_laar ?? 0)
             : $this->packagingFeeCalculator->calculateSmallOrder($order, $discountedLaar);
 
-        // Free-delivery threshold uses discounted merchandise (promo/loyalty/gift/referral).
+        // Free-delivery threshold uses discounted merchandise (true discounts only).
         $deliveryFeeLaar = (int) ($order->delivery_fee_laar ?? 0);
         $island = trim((string) ($order->delivery_island ?? ''));
         if (!$feesLocked && ($order->type ?? '') === 'delivery' && $island !== '') {
@@ -234,7 +238,11 @@ class OrderTotalsCalculator
         $tipLaar = (int) round((float) ($order->tip_amount ?? 0) * 100);
         $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar + $packagingLaar + $smallOrderLaar + $deliveryFeeLaar + $tipLaar;
 
-        $order->update(array_merge($breakdown->toOrderAttributes(), [
+        $attrs = $breakdown->toOrderAttributes();
+        // Preserve soft-held gift-card tender; breakdown intentionally zeros it.
+        $attrs['gift_card_discount_laar'] = $giftCardTenderLaar;
+
+        $order->update(array_merge($attrs, [
             'packaging_fee_laar' => $packagingLaar,
             'small_order_fee_laar' => $smallOrderLaar,
             'delivery_fee_laar' => $deliveryFeeLaar,

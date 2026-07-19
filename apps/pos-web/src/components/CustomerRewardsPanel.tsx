@@ -27,10 +27,10 @@ type AppliedGiftCard = {
 type Props = {
   /** Null for walk-ins — gift card still works; promo/loyalty stay hidden. */
   customer: PosCustomer | null;
-  /** Cart total BEFORE any rewards are applied — used as the upper
-   *  bound on a loyalty redemption preview and on a gift-card debit so
-   *  the staged discount can't exceed what the customer actually owes. */
+  /** Cart merchandise after true discounts — loyalty/promo preview cap. */
   taxableSubtotal: number;
+  /** Grand total after tax — gift-card tender is capped against this. */
+  tenderRoom?: number;
   applied: {
     promo: AppliedPromo | null;
     loyalty: AppliedLoyalty | null;
@@ -80,6 +80,7 @@ const COLOR = {
 export function CustomerRewardsPanel({
   customer,
   taxableSubtotal,
+  tenderRoom,
   applied,
   setAppliedPromo,
   setAppliedLoyalty,
@@ -228,7 +229,7 @@ export function CustomerRewardsPanel({
       const res = await checkGiftCardBalance(code);
       const available = Number(res.available_balance ?? res.current_balance);
       const held = Number(res.held_balance ?? 0);
-      const preview = previewGiftCardDiscount(available, held, taxableSubtotal);
+      const preview = previewGiftCardDiscount(available, held, tenderRoom ?? taxableSubtotal);
       if (!preview.ok) {
         setGiftError(preview.error);
         return;

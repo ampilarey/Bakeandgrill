@@ -79,27 +79,38 @@ final class EffectiveDiscount
         return min($subtotalLaar, max(0, array_sum($parts)));
     }
 
-    /** Pre-tax subtotal still available before applying a gift card. */
-    public static function remainingPreTaxBeforeGift(object $order): int
+    /**
+     * Merchandise discount parts only — gift cards are tender (payment), not
+     * pre-tax discounts, so they never reduce the GST / fee base.
+     *
+     * @return array{promo: int, loyalty: int, manual: int, gift_card: int, referral: int}
+     */
+    public static function merchandisePartsFromOrder(object $order): array
     {
-        $sub = self::subtotalLaarFromOrder($order);
         $parts = self::partsFromOrder($order);
         $parts['gift_card'] = 0;
 
-        return max(0, $sub - self::effectiveTotalLaar($sub, $parts));
+        return $parts;
     }
 
-    /** Gift-card laar to debit at redemption (allocated share, not raw field). */
-    public static function giftCardRedeemLaar(object $order): int
+    /**
+     * Remaining merchandise subtotal before a gift-card tender is applied.
+     * Kept for callers that still need pre-tax room among true discounts.
+     */
+    public static function remainingPreTaxBeforeGift(object $order): int
     {
-        $parts = self::partsFromOrder($order);
-        if (($parts['gift_card'] ?? 0) <= 0) {
-            return 0;
-        }
-
         $sub = self::subtotalLaarFromOrder($order);
 
-        return self::allocate($sub, $parts)['gift_card'];
+        return max(0, $sub - self::effectiveTotalLaar($sub, self::merchandisePartsFromOrder($order)));
+    }
+
+    /**
+     * Gift-card laar to debit at redemption — the reserved tender amount
+     * (not a proportional share of merchandise discounts).
+     */
+    public static function giftCardRedeemLaar(object $order): int
+    {
+        return max(0, (int) ($order->gift_card_discount_laar ?? 0));
     }
 
     /**
@@ -125,11 +136,14 @@ final class EffectiveDiscount
         return LaariConverter::toLaar($order->subtotal ?? 0);
     }
 
-    /** Merchandise remaining after allocated discounts (for free-delivery / fee thresholds). */
+    /**
+     * Merchandise remaining after true discounts (promo/loyalty/manual/referral).
+     * Gift-card tender is excluded — used for free-delivery / loyalty earn bases.
+     */
     public static function discountedSubtotalLaarFromOrder(object $order): int
     {
         $sub = self::subtotalLaarFromOrder($order);
 
-        return max(0, $sub - self::effectiveTotalLaar($sub, self::partsFromOrder($order)));
+        return max(0, $sub - self::effectiveTotalLaar($sub, self::merchandisePartsFromOrder($order)));
     }
 }

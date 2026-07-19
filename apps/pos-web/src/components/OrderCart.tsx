@@ -57,6 +57,9 @@ type Props = {
   cartServiceCharge?: number;
   serviceChargeLabel?: string;
   cartPackagingFee?: number;
+  /** Grand total before gift-card tender. */
+  cartGrandTotal?: number;
+  /** Amount due after gift-card tender. */
   cartTotal: number;
   /** Amount due at Charge (includes delivery fee when applicable). */
   chargeTotal: number;
@@ -742,6 +745,7 @@ export function OrderCart(p: Props) {
           <CustomerRewardsPanel
             customer={p.attachedCustomer}
             taxableSubtotal={p.taxableSubtotal}
+            tenderRoom={p.cartGrandTotal ?? p.cartTotal + (p.appliedGiftCard?.discount ?? 0)}
             applied={{
               promo: p.appliedPromo,
               loyalty: p.appliedLoyalty,
@@ -854,7 +858,7 @@ export function OrderCart(p: Props) {
             )}
             {p.appliedGiftCard && (
               <Row
-                label={`Gift card · ${p.appliedGiftCard.code.slice(-6)}`}
+                label={`Gift card tender · ${p.appliedGiftCard.code.slice(-6) || "on ticket"}`}
                 value={`− MVR ${p.appliedGiftCard.discount.toFixed(2)}`}
                 accent={C.primaryDark}
               />

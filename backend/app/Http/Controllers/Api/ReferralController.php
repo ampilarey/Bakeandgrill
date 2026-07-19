@@ -124,10 +124,10 @@ class ReferralController extends Controller
             $subtotalLaar += (int) round((float) $item->total_price * 100);
         }
 
+        // Gift cards are tender — they do not consume merchandise discount room.
         $otherLaar = (int) ($order->promo_discount_laar ?? 0)
             + (int) ($order->loyalty_discount_laar ?? 0)
-            + (int) ($order->manual_discount_laar ?? 0)
-            + (int) ($order->gift_card_discount_laar ?? 0);
+            + (int) ($order->manual_discount_laar ?? 0);
 
         $roomLaar = max(0, $subtotalLaar - $otherLaar);
         $configuredLaar = (int) round((float) $code->referee_discount_mvr * 100);

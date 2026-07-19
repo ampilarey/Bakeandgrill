@@ -11,10 +11,11 @@ function previewCheckoutTotalMvr(
     (sum, line) => sum + Math.round(line.unitMvr * 100) * line.qty,
     0,
   );
+  // Gift cards are tender — excluded from tax base.
   const discountedLaar = discountedSubtotalLaar(subLaar, {
     promo: discountsLaar.promo ?? 0,
     loyalty: discountsLaar.loyalty ?? 0,
-    gift_card: discountsLaar.gift_card ?? 0,
+    gift_card: 0,
     manual: 0,
   });
   const ratio = subLaar > 0 ? discountedLaar / subLaar : 0;
@@ -25,11 +26,13 @@ function previewCheckoutTotalMvr(
     const effective = Math.round(lineLaar * ratio);
     taxLaar += Math.round((effective * rate) / 100);
   }
-  const totalLaar = discountedLaar + taxLaar + deliveryFeeLaar;
+  const giftLaar = discountsLaar.gift_card ?? 0;
+  const grandLaar = discountedLaar + taxLaar + deliveryFeeLaar;
+  const dueLaar = Math.max(0, grandLaar - giftLaar);
   return {
     subtotal: subLaar / 100,
     tax: taxLaar / 100,
-    total: totalLaar / 100,
+    total: dueLaar / 100,
   };
 }
 
@@ -51,5 +54,19 @@ describe("checkoutTotals", () => {
       1500,
     );
     expect(preview.total).toBe(32.4 + 15);
+  });
+
+  it("does not reduce GST when gift card tender is applied", () => {
+    const withoutGift = previewCheckoutTotalMvr(
+      [{ unitMvr: 100, qty: 1, taxRate: 8 }],
+      {},
+    );
+    const withGift = previewCheckoutTotalMvr(
+      [{ unitMvr: 100, qty: 1, taxRate: 8 }],
+      { gift_card: 4000 },
+    );
+    expect(withoutGift.tax).toBe(8);
+    expect(withGift.tax).toBe(8);
+    expect(withGift.total).toBe(withoutGift.total - 40);
   });
 });

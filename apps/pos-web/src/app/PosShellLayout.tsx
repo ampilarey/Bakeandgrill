@@ -317,6 +317,7 @@ export function PosShellLayout() {
               cartServiceCharge={cart.cartServiceCharge}
               serviceChargeLabel={cart.serviceChargeLabel}
               cartPackagingFee={cart.cartPackagingFee}
+              cartGrandTotal={cart.cartGrandTotal}
               cartTotal={cart.cartTotal}
               chargeTotal={chargeTotal}
               taxableSubtotal={Math.max(

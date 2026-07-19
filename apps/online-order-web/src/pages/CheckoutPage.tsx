@@ -172,7 +172,7 @@ export function CheckoutPage() {
     useLoyalty, setUseLoyalty,
     deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, discountedSubtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,
-    serviceChargeLaar, serviceChargeLabel, totalLaar,
+    serviceChargeLaar, serviceChargeLabel, totalLaar, amountDueLaar,
     packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
@@ -239,9 +239,9 @@ export function CheckoutPage() {
     ? t('checkout.processing')
     : orderingGateClosed
       ? t('checkout.gate_closed')
-      : totalLaar <= 0
+      : amountDueLaar <= 0
         ? t('checkout.place_no_payment')
-        : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(totalLaar)));
+        : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar)));
 
   // ── Section bodies (bare content — AccordionItem provides title/chrome) ──────
 
@@ -648,9 +648,6 @@ export function CheckoutPage() {
       {useLoyalty && loyaltyDelta > 0 && (
         <SummaryRow label={t('checkout.loyalty_discount')} value={`− MVR ${laarToMvr(loyaltyDelta)}`} highlight />
       )}
-      {giftCardApplied && giftCardDelta > 0 && (
-        <SummaryRow label={`${t('checkout.gift_card')} (${giftCardApplied.code})`} value={`− MVR ${laarToMvr(giftCardDelta)}`} highlight />
-      )}
       {friendReferralApplied && referralDelta > 0 && (
         <SummaryRow
           label={`${t('checkout.friend_referral')} (${friendReferralApplied.code})${friendReferralApplied.pending ? ' (est.)' : ''}`}
@@ -677,6 +674,15 @@ export function CheckoutPage() {
         <span>{t('checkout.total')}</span>
         <span style={S.totalRowAmount}>MVR {laarToMvr(totalLaar)}</span>
       </div>
+      {giftCardApplied && giftCardDelta > 0 && (
+        <SummaryRow label={`${t('checkout.gift_card')} (${giftCardApplied.code})`} value={`− MVR ${laarToMvr(giftCardDelta)}`} highlight />
+      )}
+      {giftCardApplied && giftCardDelta > 0 && (
+        <div style={{ ...S.totalRow, marginTop: 4 }}>
+          <span>Amount due</span>
+          <span style={S.totalRowAmount}>MVR {laarToMvr(amountDueLaar)}</span>
+        </div>
+      )}
       {isAuthenticated && totalLaar > 0 && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--color-border)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: '0.8rem' }}>⭐</span>

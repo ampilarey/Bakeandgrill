@@ -158,6 +158,21 @@ class PaymentService
 
         $orderTotalLaar = $this->orderTotalLaar($order);
 
+        // Soft-held gift-card tender counts toward the amount already covered
+        // until a gift_card payment row is written at settle.
+        $giftTenderLaar = max(0, (int) ($order->gift_card_discount_laar ?? 0));
+        if ($giftTenderLaar > 0) {
+            $giftPaidLaar = (int) Payment::query()
+                ->where('order_id', $order->id)
+                ->where('method', 'gift_card')
+                ->whereIn('status', ['confirmed', 'paid', 'completed'])
+                ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as t')
+                ->value('t');
+            if ($giftPaidLaar <= 0) {
+                $paidLaar += $giftTenderLaar;
+            }
+        }
+
         return max(0, $orderTotalLaar - $paidLaar);
     }
 
@@ -510,6 +525,20 @@ class PaymentService
             $paidLaar = $this->payments->sumAmountLaarForOrder($order->id, ['paid', 'confirmed', 'completed']);
             $orderLaar = $this->orderTotalLaar($order);
 
+            // Soft-held gift-card tender covers part of the grand total.
+            $giftTenderLaar = max(0, (int) ($order->gift_card_discount_laar ?? 0));
+            if ($giftTenderLaar > 0) {
+                $giftPaidLaar = (int) Payment::query()
+                    ->where('order_id', $order->id)
+                    ->where('method', 'gift_card')
+                    ->whereIn('status', ['paid', 'confirmed', 'completed'])
+                    ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as t')
+                    ->value('t');
+                if ($giftPaidLaar <= 0) {
+                    $paidLaar += $giftTenderLaar;
+                }
+            }
+
             Log::info('BML: Payment confirmed', [
                 'payment_id' => $locked->id,
                 'order_id' => $order->id,
@@ -518,6 +547,25 @@ class PaymentService
             ]);
 
             PaymentConfirmed::dispatch(PaymentConfirmedData::fromPaymentAndOrder($locked, $order));
+
+            if ($giftTenderLaar > 0) {
+                $hasGiftPayment = Payment::query()
+                    ->where('order_id', $order->id)
+                    ->where('method', 'gift_card')
+                    ->whereIn('status', ['paid', 'confirmed', 'completed'])
+                    ->exists();
+                if (!$hasGiftPayment) {
+                    Payment::create([
+                        'order_id' => $order->id,
+                        'method' => 'gift_card',
+                        'amount' => round($giftTenderLaar / 100, 2),
+                        'amount_laar' => $giftTenderLaar,
+                        'status' => 'paid',
+                        'processed_at' => now(),
+                        'idempotency_key' => 'gift_card:tender:' . $order->id,
+                    ]);
+                }
+            }
 
             app(GiftCardRedemptionService::class)->redeemForOrder($order);
 
@@ -641,13 +689,34 @@ class PaymentService
                 throw new \InvalidArgumentException('Not your order.');
             }
 
-            $orderLaar = $this->orderTotalLaar($locked);
-            if ($orderLaar > 0) {
+            // Remaining after soft-held gift-card tender (and any payments).
+            $remainingLaar = $this->getRemainingBalanceLaar($locked);
+            if ($remainingLaar > 0) {
                 throw new \InvalidArgumentException('Order still has an amount due. Pay with card.');
             }
 
             if (in_array($locked->status, ['paid', 'completed', 'cancelled'], true)) {
                 throw new \InvalidArgumentException('Order already finalized.');
+            }
+
+            $giftTenderLaar = max(0, (int) ($locked->gift_card_discount_laar ?? 0));
+            if ($giftTenderLaar > 0) {
+                $hasGiftPayment = Payment::query()
+                    ->where('order_id', $locked->id)
+                    ->where('method', 'gift_card')
+                    ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                    ->exists();
+                if (!$hasGiftPayment) {
+                    Payment::create([
+                        'order_id' => $locked->id,
+                        'method' => 'gift_card',
+                        'amount' => round($giftTenderLaar / 100, 2),
+                        'amount_laar' => $giftTenderLaar,
+                        'status' => 'paid',
+                        'processed_at' => now(),
+                        'idempotency_key' => 'gift_card:tender:' . $locked->id,
+                    ]);
+                }
             }
 
             app(GiftCardRedemptionService::class)->redeemForOrder($locked);

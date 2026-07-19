@@ -572,12 +572,18 @@ export function usePosApp() {
   });
 
   const chargeTotal = useMemo(() => {
-    // Read-only resume: trust the server total the customer was quoted.
+    // Read-only resume: use cart amount-due (grand total − gift tender).
+    // cartTotal already mirrors server remaining after gift-card tender.
     // Once the cashier taps "Edit items", live cart math must win —
     // otherwise CHARGE stays at the old total while GST redraws from
     // the cart and the two numbers disagree.
     if (order.resumedOrderId !== null && !order.isEditingActive) {
-      return order.resumedOrderTotal ?? cart.cartTotal;
+      const gift = cart.appliedGiftCard?.discount ?? 0;
+      const serverGrand = order.resumedOrderTotal;
+      if (serverGrand != null) {
+        return Math.round(Math.max(0, serverGrand - gift) * 100) / 100;
+      }
+      return cart.cartTotal;
     }
     if (orderType === "Delivery" && deliveryFeeEst > 0) {
       return Math.round((cart.cartTotal + deliveryFeeEst) * 100) / 100;
@@ -590,6 +596,7 @@ export function usePosApp() {
     orderType,
     deliveryFeeEst,
     cart.cartTotal,
+    cart.appliedGiftCard?.discount,
   ]);
 
   const handleAttachCustomer = useCallback(async (customer: PosCustomer) => {

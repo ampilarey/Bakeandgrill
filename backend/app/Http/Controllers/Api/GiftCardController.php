@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Orders\Services\OrderTotalsCalculator;
-use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardEmailDelivery;
 use App\Domains\Payments\Services\GiftCardIssueService;
@@ -155,24 +154,26 @@ class GiftCardController extends Controller
                 ], 422);
             }
 
-            $discountLaar = min(
-                $availableLaar,
-                EffectiveDiscount::remainingPreTaxBeforeGift($order),
-            );
+            // Gift card is tender against grand total (after tax), not a pre-tax discount.
+            $order->update(['gift_card_id' => null, 'gift_card_discount_laar' => 0]);
+            $order = $calc->recalculateAndPersist($order->fresh());
+            $dueLaar = max(0, (int) ($order->total_laar ?? 0));
+            $tenderLaar = min($availableLaar, $dueLaar);
 
             $order->update([
                 'gift_card_id' => $card->id,
-                'gift_card_discount_laar' => $discountLaar,
+                'gift_card_discount_laar' => $tenderLaar,
             ]);
 
-            $calc->recalculateAndPersist($order->fresh());
+            $order = $calc->recalculateAndPersist($order->fresh());
 
             return response()->json([
-                'discount_laar' => $discountLaar,
-                'discount_mvr' => number_format($discountLaar / 100, 2),
+                'discount_laar' => $tenderLaar,
+                'discount_mvr' => number_format($tenderLaar / 100, 2),
                 'card_balance' => (float) $card->current_balance,
                 'available_balance' => round($availableLaar / 100, 2),
                 'masked_code' => $card->masked_code,
+                'amount_due_laar' => max(0, (int) ($order->total_laar ?? 0) - $tenderLaar),
             ]);
         });
     }
@@ -228,14 +229,15 @@ class GiftCardController extends Controller
                 ], 422);
             }
 
-            $discountLaar = min(
-                $availableLaar,
-                EffectiveDiscount::remainingPreTaxBeforeGift($order),
-            );
+            // Gift card is tender against grand total (after tax), not a pre-tax discount.
+            $order->update(['gift_card_id' => null, 'gift_card_discount_laar' => 0]);
+            $order = $calc->recalculateAndPersist($order->fresh());
+            $dueLaar = max(0, (int) ($order->total_laar ?? 0));
+            $tenderLaar = min($availableLaar, $dueLaar);
 
             $order->update([
                 'gift_card_id' => $card->id,
-                'gift_card_discount_laar' => $discountLaar,
+                'gift_card_discount_laar' => $tenderLaar,
             ]);
 
             $order = $calc->recalculateAndPersist($order->fresh());
@@ -245,17 +247,20 @@ class GiftCardController extends Controller
                 'Order',
                 $order->id,
                 [],
-                ['gift_card_id' => $card->id, 'discount_laar' => $discountLaar],
+                ['gift_card_id' => $card->id, 'discount_laar' => $tenderLaar],
                 ['masked_code' => $card->masked_code, 'source' => 'pos'],
                 $request,
             );
 
+            $amountDueLaar = max(0, (int) ($order->total_laar ?? 0) - $tenderLaar);
+
             return response()->json([
-                'discount_laar' => $discountLaar,
-                'discount_mvr' => number_format($discountLaar / 100, 2),
+                'discount_laar' => $tenderLaar,
+                'discount_mvr' => number_format($tenderLaar / 100, 2),
                 'card_balance' => (float) $card->current_balance,
                 'available_balance' => round($availableLaar / 100, 2),
                 'masked_code' => $card->masked_code,
+                'amount_due_laar' => $amountDueLaar,
                 'order' => [
                     'id' => (int) $order->id,
                     'total' => (float) $order->total,
@@ -263,6 +268,7 @@ class GiftCardController extends Controller
                     'tax_amount' => (float) $order->tax_amount,
                     'gift_card_discount_laar' => (int) $order->gift_card_discount_laar,
                     'gift_card_masked' => $card->masked_code,
+                    'amount_due' => round($amountDueLaar / 100, 2),
                 ],
             ]);
         });

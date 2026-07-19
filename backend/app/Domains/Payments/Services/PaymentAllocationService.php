@@ -143,6 +143,18 @@ final class PaymentAllocationService
             ->whereIn('status', ['paid', 'completed', 'confirmed'])
             ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as t')
             ->value('t');
+        // Soft-held gift tender counts as covered when no gift_card payment row yet.
+        $giftTenderLaar = max(0, (int) ($order->gift_card_discount_laar ?? 0));
+        if ($giftTenderLaar > 0) {
+            $giftPaid = (int) $order->payments()
+                ->where('method', 'gift_card')
+                ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                ->selectRaw('SUM(COALESCE(amount_laar, ROUND(amount * 100))) as t')
+                ->value('t');
+            if ($giftPaid <= 0) {
+                $alreadyPaidLaar += $giftTenderLaar;
+            }
+        }
         $remainingLaar = max(0, $orderTotalLaarPre - $alreadyPaidLaar);
 
         $incomingLaar = 0;

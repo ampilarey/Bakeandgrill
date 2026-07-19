@@ -391,18 +391,19 @@ export function useCheckout() {
 
   const giftCardDelta    = giftCardApplied?.discountLaar ?? 0;
 
-  const referralRoomLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - giftCardDelta);
+  // Gift cards are tender — they do not consume merchandise discount room.
+  const referralRoomLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta);
   const referralDelta = friendReferralApplied
     ? (friendReferralApplied.pending
       ? Math.min(friendReferralApplied.configuredLaar ?? friendReferralApplied.discountLaar, referralRoomLaar)
       : friendReferralApplied.discountLaar)
     : 0;
 
-  // GST on discounted subtotal — per-line allocation (matches POS / OrderTotalsCalculator).
+  // GST on discounted subtotal — gift card excluded (tender, not pre-tax discount).
   const discountedSubtotalLaar = calcDiscountedSubtotalLaar(subtotalLaar, {
     promo: promoDelta,
     loyalty: loyaltyDelta,
-    gift_card: giftCardDelta,
+    gift_card: 0,
     referral: referralDelta,
   });
 
@@ -518,7 +519,10 @@ export function useCheckout() {
 
   // Inclusive: tax is already inside discountedSubtotalLaar — show taxLaar as info only.
   const taxForTotalLaar = taxInclusive ? 0 : taxLaar;
+  /** Order grand total before gift-card tender (matches server order.total). */
   const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxForTotalLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;
+  /** Amount still owed after gift-card tender. */
+  const amountDueLaar = Math.max(0, totalLaar - giftCardDelta);
 
   const earnPreviewPoints = useMemo(
     () => estimateEarnPointsForSubtotalMvr(discountedSubtotalLaar / 100, earnRatePerMvr, tierMultiplier),
@@ -612,9 +616,8 @@ export function useCheckout() {
       // a 500 MVR card on a 120 MVR order showed "−500" in the
       // summary which freaked customers out).
       const balanceLaar = giftCardBalance ? Math.round(giftCardBalance * 100) : 0;
-      // subtract whatever discounts are already in effect, then cap
-      const orderBeforeGift = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - referralDelta);
-      const capped = Math.min(balanceLaar, orderBeforeGift);
+      // Cap tender against grand total (after tax/fees), not merchandise subtotal.
+      const capped = Math.min(balanceLaar, totalLaar);
       setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: capped, pending: true });
       setGiftCardError("");
       return;
@@ -646,28 +649,18 @@ export function useCheckout() {
     setGiftCardHeld(0);
   };
 
-  // Restage pending gift-card preview when cart / other discounts change.
+  // Restage pending gift-card tender when cart / totals change.
   useEffect(() => {
     if (!giftCardApplied?.pending || giftCardBalance == null) return;
-    const referralRoom = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta);
-    const referralBeforeGift = friendReferralApplied
-      ? (friendReferralApplied.pending
-        ? Math.min(friendReferralApplied.configuredLaar ?? friendReferralApplied.discountLaar, referralRoom)
-        : friendReferralApplied.discountLaar)
-      : 0;
-    const room = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - referralBeforeGift);
-    const capped = Math.min(Math.round(giftCardBalance * 100), room);
+    const capped = Math.min(Math.round(giftCardBalance * 100), totalLaar);
     if (capped === giftCardApplied.discountLaar) return;
     setGiftCardApplied((prev) => (prev?.pending ? { ...prev, discountLaar: capped } : prev));
   }, [
-    subtotalLaar,
-    promoDelta,
-    loyaltyDelta,
+    totalLaar,
     giftCardBalance,
     giftCardApplied?.pending,
     giftCardApplied?.code,
     giftCardApplied?.discountLaar,
-    friendReferralApplied,
   ]);
 
   const handleApplyFriendReferral = async () => {
@@ -924,10 +917,12 @@ export function useCheckout() {
       }
 
       const { order: freshOrder } = await getOrderDetail(orderId);
-      const dueLaar =
+      const grandLaar =
         typeof freshOrder.total_laar === "number"
           ? freshOrder.total_laar
           : Math.round(Number(freshOrder.total) * 100);
+      const giftTenderLaar = Math.max(0, Number(freshOrder.gift_card_discount_laar ?? 0));
+      const dueLaar = Math.max(0, grandLaar - giftTenderLaar);
 
       if (dueLaar <= 0) {
         // Hold is consumed on zero-balance completion — do not release.
@@ -1014,6 +1009,7 @@ export function useCheckout() {
     serviceChargeLaar, serviceChargeLabel: serviceChargePreview.label,
     packagingFeeLaar, packagingFeeLabel, smallOrderFeeLaar, smallOrderFeeLabel,
     totalLaar,
+    amountDueLaar,
     handleApplyPromo, handleRemovePromo, handlePlaceAndPay, handleAuthSuccess,
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardHeld, giftCardDelta,

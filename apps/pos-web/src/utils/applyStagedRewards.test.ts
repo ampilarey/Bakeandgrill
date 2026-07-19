@@ -2,13 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import { applyStagedRewards } from "./applyStagedRewards";
 
 describe("applyStagedRewards", () => {
-  it("skips serverApplied rewards and makes no API calls", async () => {
+  it("skips serverApplied rewards and does not re-apply them", async () => {
     const api = {
       applyPromoToOrder: vi.fn(),
       holdLoyaltyForOrder: vi.fn(),
       applyGiftCardToOrder: vi.fn(),
       removeGiftCardFromOrder: vi.fn(),
-      getOrder: vi.fn(),
+      getOrder: vi.fn().mockResolvedValue({
+        order: { total: 108, gift_card_discount_laar: 4000 },
+      }),
     };
 
     const result = await applyStagedRewards(
@@ -26,14 +28,14 @@ describe("applyStagedRewards", () => {
       { resumedOrderId: 42 },
     );
 
-    expect(result.total).toBe(100);
+    // May GET order to compute amount due (grand − gift tender); never re-apply.
+    expect(result.total).toBe(68);
     expect(result.failures).toEqual([]);
     expect(result.didMutate).toBe(false);
     expect(api.applyPromoToOrder).not.toHaveBeenCalled();
     expect(api.holdLoyaltyForOrder).not.toHaveBeenCalled();
     expect(api.applyGiftCardToOrder).not.toHaveBeenCalled();
     expect(api.removeGiftCardFromOrder).not.toHaveBeenCalled();
-    expect(api.getOrder).not.toHaveBeenCalled();
   });
 
   it("applies freshly staged rewards when serverApplied is false", async () => {

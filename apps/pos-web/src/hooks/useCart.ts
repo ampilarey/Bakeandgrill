@@ -185,24 +185,25 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   const rewardsDiscount = useMemo(() => {
     const promo = appliedPromo?.discount ?? 0;
     const loyalty = appliedLoyalty?.discount ?? 0;
-    const giftCard = appliedGiftCard?.discount ?? 0;
-    return Math.max(0, promo + loyalty + giftCard);
-  }, [appliedPromo, appliedLoyalty, appliedGiftCard]);
+    // Gift card is tender (shown separately) — not a pre-tax discount.
+    return Math.max(0, promo + loyalty);
+  }, [appliedPromo, appliedLoyalty]);
 
   /**
    * Pre-tax discount total and discounted subtotal — mirrors backend
    * EffectiveDiscount allocation when stacked discounts exceed subtotal.
+   * Gift cards are tender and are excluded from the tax base.
    */
   const discountedSubtotal = useMemo(() => {
     const subLaar = Math.round(cartSubtotal * 100);
     const afterLaar = calcDiscountedSubtotalLaar(subLaar, {
       promo: Math.round((appliedPromo?.discount ?? 0) * 100),
       loyalty: Math.round((appliedLoyalty?.discount ?? 0) * 100),
-      gift_card: Math.round((appliedGiftCard?.discount ?? 0) * 100),
+      gift_card: 0,
       manual: Math.round(discountValue * 100),
     });
     return afterLaar / 100;
-  }, [cartSubtotal, appliedPromo, appliedLoyalty, appliedGiftCard, discountValue]);
+  }, [cartSubtotal, appliedPromo, appliedLoyalty, discountValue]);
 
   const totalDiscount = useMemo(
     () => Math.max(0, cartSubtotal - discountedSubtotal),
@@ -276,13 +277,19 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     return laar / 100;
   }, [cartItems, backendOrderType]);
 
-  /** Grand total the customer actually owes (matches server `order.total`, excl. delivery). */
-  const cartTotal = useMemo(() => {
+  /** Order grand total before gift-card tender (matches server `order.total`). */
+  const cartGrandTotal = useMemo(() => {
     // Inclusive: tax is already inside discountedSubtotal — show cartTax as info only.
     // Exclusive: add cartTax on top (OrderTotalsCalculator grandTotal branches).
     const taxForTotal = taxInclusive ? 0 : cartTax;
     return Math.round((discountedSubtotal + cartServiceCharge + taxForTotal + cartPackagingFee) * 100) / 100;
   }, [discountedSubtotal, cartServiceCharge, cartTax, cartPackagingFee, taxInclusive]);
+
+  /** Amount still due after gift-card tender (what Charge collects in cash/card). */
+  const cartTotal = useMemo(() => {
+    const gift = appliedGiftCard?.discount ?? 0;
+    return Math.round(Math.max(0, cartGrandTotal - gift) * 100) / 100;
+  }, [cartGrandTotal, appliedGiftCard?.discount]);
 
   const handleSelectItem = useCallback((item: Item) => {
     setSelectedItem(item);
@@ -423,19 +430,14 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     // staged unless the cashier explicitly removes it.
   }, []);
 
-  // Keep staged gift-card discount in sync when cart / other discounts change.
+  // Keep staged gift-card tender in sync when cart / other discounts change.
+  // Cap against grand total (after tax), not merchandise subtotal.
   useEffect(() => {
     if (!appliedGiftCard) return;
     // Resumed tickets hydrate a display-only gift card (balance unknown) —
     // never re-preview or clear it from client-side room math.
     if (appliedGiftCard.serverApplied) return;
-    const room = Math.max(
-      0,
-      cartSubtotal
-        - discountValue
-        - (appliedPromo?.discount ?? 0)
-        - (appliedLoyalty?.discount ?? 0),
-    );
+    const room = cartGrandTotal;
     const preview = previewGiftCardDiscount(
       appliedGiftCard.cardBalance,
       appliedGiftCard.heldBalance ?? 0,
@@ -449,14 +451,12 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       setAppliedGiftCard({ ...appliedGiftCard, discount: preview.discount });
     }
   }, [
-    cartSubtotal,
-    discountValue,
-    appliedPromo?.discount,
-    appliedLoyalty?.discount,
+    cartGrandTotal,
     appliedGiftCard?.code,
     appliedGiftCard?.cardBalance,
     appliedGiftCard?.heldBalance,
     appliedGiftCard?.discount,
+    appliedGiftCard?.serverApplied,
   ]);
 
   return {
@@ -476,6 +476,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     cartServiceCharge,
     serviceChargeLabel,
     cartPackagingFee,
+    cartGrandTotal,
     cartTotal,
     totalDiscount,
     rewardsDiscount,

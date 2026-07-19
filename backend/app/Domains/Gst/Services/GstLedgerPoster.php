@@ -163,7 +163,7 @@ class GstLedgerPoster
         // Allocate GST against the taxable+tax portion of the order so
         // delivery/packaging/tip fees do not dilute the refund tax share.
         $subtotalLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
-        $parts = EffectiveDiscount::partsFromOrder($order);
+        $parts = EffectiveDiscount::merchandisePartsFromOrder($order);
         $taxableLaar = max(0, $subtotalLaar - EffectiveDiscount::effectiveTotalLaar($subtotalLaar, $parts));
         $taxablePlusTax = max(1, $taxableLaar + $orderTaxLaar);
         $refundTaxLaar = (int) min(
@@ -334,7 +334,8 @@ class GstLedgerPoster
         $subtotalLaar = (int) ($order->subtotal_laar ?? round((float) $order->subtotal * 100));
         $taxLaar = (int) ($order->tax_laar ?? round((float) $order->tax_amount * 100));
 
-        $parts = EffectiveDiscount::partsFromOrder($order);
+        // Gift cards are tender — exclude from taxable-base reduction.
+        $parts = EffectiveDiscount::merchandisePartsFromOrder($order);
         $taxableLaar = max(0, $subtotalLaar - EffectiveDiscount::effectiveTotalLaar($subtotalLaar, $parts));
         // GST supply total = taxable merchandise + tax (excludes delivery/packaging/tip).
         $totalLaar = $taxableLaar + $taxLaar;

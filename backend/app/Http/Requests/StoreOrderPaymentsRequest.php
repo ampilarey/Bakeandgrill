@@ -31,6 +31,7 @@ class StoreOrderPaymentsRequest extends FormRequest
         'customer_deposit',
         'cheque',
         'house_account',
+        'gift_card',
     ];
 
     protected function prepareForValidation(): void

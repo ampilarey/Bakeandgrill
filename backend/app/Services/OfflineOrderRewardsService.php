@@ -6,7 +6,6 @@ namespace App\Services;
 
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
-use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\GiftCardCodeService;
 use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Domains\Promotions\Services\PromotionEvaluator;
@@ -139,14 +138,14 @@ class OfflineOrderRewardsService
                 throw new \RuntimeException('This gift card has no available balance (held on other unpaid orders).');
             }
 
-            $discountLaar = min(
-                $availableLaar,
-                EffectiveDiscount::remainingPreTaxBeforeGift($order),
-            );
+            $order->update(['gift_card_id' => null, 'gift_card_discount_laar' => 0]);
+            $order = $this->calculator->recalculateAndPersist($order->fresh());
+            $dueLaar = max(0, (int) ($order->total_laar ?? 0));
+            $tenderLaar = min($availableLaar, $dueLaar);
 
             $order->update([
                 'gift_card_id' => $card->id,
-                'gift_card_discount_laar' => $discountLaar,
+                'gift_card_discount_laar' => $tenderLaar,
             ]);
 
             $this->calculator->recalculateAndPersist($order->fresh());

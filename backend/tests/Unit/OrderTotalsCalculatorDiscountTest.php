@@ -39,6 +39,37 @@ class OrderTotalsCalculatorDiscountTest extends TestCase
         $this->assertSame(0, $breakdown->discountedSubtotal->amountLaar);
     }
 
+    public function test_gift_card_excluded_from_tax_base_when_not_in_discounts_input(): void
+    {
+        $order = new Order;
+        $order->setRelation('items', collect([
+            $this->lineItem(100.00, 'standard_8'),
+        ]));
+
+        $calculator = new OrderTotalsCalculator;
+        $full = $calculator->calculate(
+            $order,
+            new DiscountsInput,
+            taxRateBp: 800,
+            taxInclusive: false,
+            lockedServiceCharge: ServiceChargeBreakdown::zero(),
+        );
+        // Production recalculateAndPersist passes giftCardDiscountLaar: 0 even when
+        // the order has a soft-held gift tender — tax must match a no-gift order.
+        $asTender = $calculator->calculate(
+            $order,
+            new DiscountsInput(giftCardDiscountLaar: 0),
+            taxRateBp: 800,
+            taxInclusive: false,
+            lockedServiceCharge: ServiceChargeBreakdown::zero(),
+        );
+
+        $this->assertSame($full->tax->amountLaar, $asTender->tax->amountLaar);
+        $this->assertSame($full->grandTotal->amountLaar, $asTender->grandTotal->amountLaar);
+        $this->assertSame(800, $full->tax->amountLaar);
+        $this->assertSame(10800, $full->grandTotal->amountLaar);
+    }
+
     private function lineItem(float $totalMvr, ?string $taxCode = null): OrderItem
     {
         $item = new OrderItem;

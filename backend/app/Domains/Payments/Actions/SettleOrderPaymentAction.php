@@ -87,7 +87,33 @@ final class SettleOrderPaymentAction
                 $order->refresh();
             }
 
-            $this->allocation->assertTenderCap($order, $paymentRows);
+            // Soft-held gift-card tender → payment row so remaining cash/card
+            // only needs to cover order.total − gift tender.
+            $giftTenderLaar = max(0, (int) ($order->gift_card_discount_laar ?? 0));
+            if ($giftTenderLaar > 0) {
+                $hasGiftPayment = Payment::query()
+                    ->where('order_id', $order->id)
+                    ->where('method', 'gift_card')
+                    ->whereIn('status', ['paid', 'completed', 'confirmed'])
+                    ->exists();
+                if (!$hasGiftPayment) {
+                    Payment::firstOrCreate(
+                        ['idempotency_key' => 'gift_card:tender:' . $order->id],
+                        [
+                            'order_id' => $order->id,
+                            'method' => 'gift_card',
+                            'amount' => round($giftTenderLaar / 100, 2),
+                            'amount_laar' => $giftTenderLaar,
+                            'status' => 'paid',
+                            'processed_at' => now(),
+                            'collected_by_user_id' => $collector->id,
+                            'shift_id' => null,
+                        ],
+                    );
+                }
+            }
+
+            $this->allocation->assertTenderCap($order->fresh('payments'), $paymentRows);
 
             $oldStatus = $order->status;
 
