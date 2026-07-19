@@ -37,12 +37,10 @@ export function PanelShell({
       }}
     >
       <div style={{
+        // No safe-area-inset-top here — .pos-topbar already owns the notch inset.
         padding: isNarrow
           ? `${space.s}px ${space.m}px`
           : `${space.m}px ${space.l}px`,
-        paddingTop: isNarrow
-          ? `max(${space.s}px, env(safe-area-inset-top, 0px))`
-          : undefined,
         borderBottom: `1px solid ${palette.border}`,
         display: "flex",
         justifyContent: "space-between",
@@ -140,10 +138,8 @@ export function PanelShell({
         style={{
           flex: 1,
           overflow: "auto",
+          // Bottom safe-area is on .pos-shell — don't pad again here.
           padding: isNarrow ? space.m : space.l,
-          paddingBottom: isNarrow
-            ? `max(${space.l}px, env(safe-area-inset-bottom, 0px))`
-            : space.l,
           minHeight: 0,
           WebkitOverflowScrolling: "touch",
         }}

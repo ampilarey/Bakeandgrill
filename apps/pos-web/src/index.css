@@ -494,12 +494,12 @@ html, body, #root {
     min-height: 44px;
   }
 
-  /* Active Orders — full-bleed + thumb-friendly chip scroller */
+  /* Active Orders — cancel main padding so the panel sits flush under the topbar */
   .pos-open-tickets-shell {
     margin: calc(-1 * var(--pos-main-pad, 8px));
     width: calc(100% + 2 * var(--pos-main-pad, 8px));
     max-width: none;
-    min-height: calc(100% + 2 * var(--pos-main-pad, 8px));
+    align-self: stretch;
   }
   .pos-open-tickets-chip-row {
     display: flex;
