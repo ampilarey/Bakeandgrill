@@ -1,5 +1,22 @@
 import type { ComponentType } from 'react';
-import { HomeIcon, MenuIcon, OrdersIcon } from '../icons';
+import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
+import { MenuIcon, OrdersIcon } from '../icons';
+
+/** Bake & Grill logo for the Home tab (bottom nav). */
+export function BrandHomeIcon({ size = 24 }: { size?: number }) {
+  const { settings } = useSiteSettingsContext();
+  const src = settings.logo || '/logo.png';
+  return (
+    <img
+      className="bottom-nav__brand-logo"
+      src={src}
+      alt=""
+      width={size}
+      height={size}
+      decoding="async"
+    />
+  );
+}
 
 function RewardsIcon({ size = 24 }: { size?: number }) {
   return (
@@ -34,7 +51,7 @@ export const SHELL_NAV_TABS: ShellNavTab[] = [
     to: '/',
     labelKey: 'nav.home',
     match: (p) => p === '/',
-    Icon: HomeIcon,
+    Icon: BrandHomeIcon,
   },
   {
     to: '/menu',
