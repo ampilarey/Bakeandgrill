@@ -9,6 +9,8 @@ type Props = {
   /** @deprecated Active orders are shown on the Orders tab badge — ignored. */
   activeOrder?: { id: number; status: string } | null;
   specialsCount: number;
+  /** Phone shows points beside the account avatar — skip the chip. */
+  hideLoyalty?: boolean;
 };
 
 const chipBase: React.CSSProperties = {
@@ -37,22 +39,24 @@ export function StatChipsRow({
   isAuthenticated,
   loyaltyPoints,
   specialsCount,
+  hideLoyalty = false,
 }: Props) {
   const { t } = useLanguage();
 
-  const loyaltyChip = loading ? (
-    <Skeleton width={140} height={40} radius="var(--radius-full)" />
-  ) : isAuthenticated ? (
-    <Link
-      to="/rewards"
-      style={{ ...chipBase, color: 'var(--color-primary)' }}
-    >
-      <span aria-hidden="true">⭐</span>
-      {loyaltyPoints !== null
-        ? `${loyaltyPoints} ${t('home.chip_rewards')}`
-        : t('home.chip_rewards')}
-    </Link>
-  ) : null;
+  const loyaltyChip =
+    hideLoyalty || (!loading && !isAuthenticated) ? null : loading ? (
+      <Skeleton width={140} height={40} radius="var(--radius-full)" />
+    ) : (
+      <Link
+        to="/rewards"
+        style={{ ...chipBase, color: 'var(--color-primary)' }}
+      >
+        <span aria-hidden="true">⭐</span>
+        {loyaltyPoints !== null
+          ? `${loyaltyPoints} ${t('home.chip_rewards')}`
+          : t('home.chip_rewards')}
+      </Link>
+    );
 
   const specialsChip =
     !loading && specialsCount > 0 ? (

@@ -7,6 +7,9 @@ type Props = {
   isAuthenticated: boolean;
   /** Compact status pill under the greeting (e.g. OpeningStatusBadge). */
   statusBadge?: ReactNode;
+  /** Loyalty points — shown next to account avatar when signed in (mobile). */
+  loyaltyPoints?: number | null;
+  loyaltyLoading?: boolean;
 };
 
 /** True when the "name" is really a phone (no profile name set). */
@@ -33,8 +36,19 @@ function AccountAvatarGlyph({ label }: { label: string | null }) {
   return <>{label.charAt(0).toUpperCase()}</>;
 }
 
-export function GreetingHeader({ customerName, isAuthenticated, statusBadge }: Props) {
+export function GreetingHeader({
+  customerName,
+  isAuthenticated,
+  statusBadge,
+  loyaltyPoints = null,
+  loyaltyLoading = false,
+}: Props) {
   const { t } = useLanguage();
+
+  const pointsLabel =
+    loyaltyPoints !== null
+      ? `${loyaltyPoints} ${t('home.chip_rewards')}`
+      : t('home.chip_rewards');
 
   return (
     <section
@@ -91,52 +105,29 @@ export function GreetingHeader({ customerName, isAuthenticated, statusBadge }: P
           ) : null}
         </div>
 
-        <div style={{ flexShrink: 0 }}>
+        <div className="home-greeting-actions">
           {isAuthenticated ? (
-            <Link
-              to="/account"
-              aria-label={t('nav.account')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                textDecoration: 'none',
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  background: 'var(--color-primary-light)',
-                  border: '2px solid var(--color-primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  color: 'var(--color-primary)',
-                  userSelect: 'none',
-                }}
+            <>
+              {!loyaltyLoading && (
+                <Link
+                  to="/rewards"
+                  className="home-points-pill"
+                  aria-label={pointsLabel}
+                >
+                  <span aria-hidden="true">⭐</span>
+                  <span className="home-points-pill__value">{pointsLabel}</span>
+                </Link>
+              )}
+              <Link
+                to="/account"
+                className="home-account-avatar"
+                aria-label={t('nav.account')}
               >
                 <AccountAvatarGlyph label={customerName} />
-              </div>
-            </Link>
+              </Link>
+            </>
           ) : (
-            <Link
-              to="/account"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                minHeight: 36,
-                padding: '0.35rem 0.8rem',
-                background: 'var(--color-primary)',
-                color: '#fff',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.8125rem',
-                fontWeight: 700,
-                textDecoration: 'none',
-              }}
-            >
+            <Link to="/account" className="home-sign-in-btn">
               {t('home.sign_in')}
             </Link>
           )}

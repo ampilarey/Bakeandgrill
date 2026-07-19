@@ -260,6 +260,8 @@ export function HomePage() {
           <GreetingHeader
             customerName={customerName}
             isAuthenticated={isAuthenticated}
+            loyaltyPoints={loyaltyPoints}
+            loyaltyLoading={chipsLoading}
           />
           <div
             style={{
@@ -270,7 +272,7 @@ export function HomePage() {
           >
             <PrayerBar />
           </div>
-          <StatChipsRow {...chipsProps} />
+          <StatChipsRow {...chipsProps} hideLoyalty />
           {hero}
         </>
       )}
