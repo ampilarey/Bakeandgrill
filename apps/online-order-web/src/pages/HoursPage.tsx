@@ -71,7 +71,7 @@ export function HoursPage() {
   return (
     <>
       <PageHeader title={text('hours_page_title', 'Opening Hours')} onBack={() => navigate(-1)} />
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1.5rem var(--page-gutter) 3rem' }}>
+      <div style={{ maxWidth: 'var(--shell-max)', margin: '0 auto', width: '100%', padding: '1.5rem var(--page-gutter) 3rem' }}>
       <p style={{ fontSize: '1rem', color: 'var(--color-text-muted)', marginBottom: '2rem' }}>
         {t('hours.intro').replace('{address}', address)}
       </p>

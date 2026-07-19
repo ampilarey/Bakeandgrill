@@ -138,7 +138,7 @@ export function OrderHistoryPage() {
   };
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', minHeight: '60vh' }}>
+    <div style={{ maxWidth: 'var(--shell-max)', margin: '0 auto', width: '100%', minHeight: '60vh' }}>
       <PageHeader title={t('nav.orders')} />
 
       {/* Waiting for session check — neutral skeleton, no flash of login form */}

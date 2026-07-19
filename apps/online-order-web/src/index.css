@@ -87,6 +87,8 @@
   --header-height: 68px;       /* sticky header row height */
 
   /* ── Redesign shell metrics (§8.3) — additive; old tokens kept ── */
+  /* Mobile: compact column. Tablet/desktop override below so wide screens
+     are not stuck in a phone-width frame. */
   --shell-max:            640px;
   --bottom-nav-height:    64px;
   --float-cart-height:    72px; /* logo FAB above bottom nav */
@@ -1514,6 +1516,13 @@ textarea.field-input {
   }
 }
 
+@media (min-width: 1024px) {
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+}
+
 .cat-rail {
   width: var(--cat-rail-width);
   flex-shrink: 0;
@@ -1861,9 +1870,31 @@ textarea.field-input {
   .cat-rail__item { font-size: 0; gap: 0; }
 }
 
+/* Widen the app column on larger screens — mobile stays 640px max. */
 @media (min-width: 768px) {
+  :root {
+    --shell-max: 860px;
+  }
+
+  body {
+    background: var(--color-surface-alt);
+  }
+
   .app-shell {
     box-shadow: 0 0 0 1px var(--color-border);
+    background: var(--color-bg);
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --shell-max: 1100px;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --shell-max: 1200px;
   }
 }
 
