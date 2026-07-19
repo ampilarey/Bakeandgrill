@@ -87,7 +87,7 @@
   --header-height: 68px;       /* sticky header row height */
 
   /* ── Redesign shell metrics (§8.3) — additive; old tokens kept ── */
-  /* Mobile: compact column. ≥768 uses --layout-max + TopNav (see desktop shell). */
+  /* Mobile: compact column. ≥768 goes edge-to-edge (see desktop shell). */
   --shell-max:            640px;
   --top-nav-height:       64px;
   --bottom-nav-height:    64px;
@@ -1309,9 +1309,10 @@ textarea.field-input {
   padding-bottom: 0.5rem;
 }
 
-/* Tablet/desktop: TopNav chrome — full layout width, no bottom nav pad */
+/* Tablet/desktop: edge-to-edge shell, no bottom nav pad */
 .app-shell--desktop {
-  max-width: var(--layout-max);
+  max-width: none;
+  width: 100%;
 }
 
 .app-shell--desktop .app-shell__main {
@@ -2203,19 +2204,21 @@ textarea.field-input {
   .cat-rail__item { font-size: 0; gap: 0; }
 }
 
-/* Tablet/desktop shell — full content width up to --layout-max (TopNav chrome). */
+/* Tablet/desktop shell — edge-to-edge (no centered 1280px column). */
 @media (min-width: 768px) {
   :root {
-    --shell-max: var(--layout-max);
+    --layout-max: 100%;
+    --shell-max: 100%;
+    --page-gutter: 1.25rem;
   }
 
   body {
-    background: var(--color-surface-alt);
+    background: var(--color-bg);
   }
 
   .app-shell--desktop {
     background: var(--color-bg);
-    box-shadow: 0 0 0 1px var(--color-border);
+    box-shadow: none;
   }
 
   /* Bottom nav is phone-only; cart FAB stays visible when cart has items */
@@ -2225,10 +2228,10 @@ textarea.field-input {
 
   .float-cart-fab {
     bottom: calc(var(--safe-bottom) + 1.25rem);
-    right: max(var(--page-gutter), calc(50% - (var(--layout-max) / 2) + var(--page-gutter)));
+    right: var(--page-gutter);
   }
 
-  /* Cart/item sheets stay phone-width — don't stretch to --layout-max */
+  /* Cart/item sheets stay phone-width */
   .sheet-panel {
     max-width: min(480px, 100%);
     margin-inline: auto;
