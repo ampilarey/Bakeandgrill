@@ -199,7 +199,6 @@ export function OrderCart(p: Props) {
   const ticketDirty = !!p.hasUnsavedTicketChanges;
   // Paid online tickets stay locked; unpaid resumed tickets are editable.
   const lockedReadOnly = isResumed && (!editing || !!p.resumedIsPaid);
-  const wasHeld = p.resumedFromStatus === "held";
   const onlineFulfillment = isResumed
     && isCustomerAppOrder(p.resumedOrderType, p.resumedStaffUserId);
   const fulfillmentLabel = posOrderTypeLabel(p.resumedOrderType, p.resumedStaffUserId);
