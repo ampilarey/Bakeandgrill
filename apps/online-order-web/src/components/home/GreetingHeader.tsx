@@ -1,63 +1,32 @@
-import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 
 type Props = {
+  /** Usually the 7-digit local phone from AuthContext. */
   customerName: string | null;
   isAuthenticated: boolean;
-  /** Compact status pill under the greeting (e.g. OpeningStatusBadge). */
-  statusBadge?: ReactNode;
-  /** Loyalty points — shown next to account avatar when signed in (mobile). */
-  loyaltyPoints?: number | null;
-  loyaltyLoading?: boolean;
 };
 
-/** True when the "name" is really a phone (no profile name set). */
+/** True when the label is a Maldives local phone (digits only). */
 function isPhoneLabel(value: string | null): boolean {
   if (!value) return false;
   return /^\d{6,}$/.test(value.replace(/[\s-]/g, ''));
 }
 
-function AccountAvatarGlyph({ label }: { label: string | null }) {
-  // Phone-only accounts: first digit ("7") looks like a badge count — use a person mark instead.
-  if (!label || isPhoneLabel(label)) {
-    return (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="2" />
-        <path
-          d="M5 19.5c1.5-3.2 4-4.8 7-4.8s5.5 1.6 7 4.8"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-  return <>{label.charAt(0).toUpperCase()}</>;
-}
-
 /**
- * Phone home header. Brand logo + name → main website (desktop TopNav equivalent).
- * Bottom-nav Home stays the order-app home.
+ * Phone home header: brand → main website; account + phone when signed in.
  */
-export function GreetingHeader({
-  customerName,
-  isAuthenticated,
-  statusBadge,
-  loyaltyPoints = null,
-  loyaltyLoading = false,
-}: Props) {
+export function GreetingHeader({ customerName, isAuthenticated }: Props) {
   const { t } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
   const siteName = s.site_name || 'Bake & Grill';
   const logoSrc = s.logo || '/logo.png';
-
-  const pointsLabel =
-    loyaltyPoints !== null
-      ? `${loyaltyPoints} ${t('home.chip_rewards')}`
-      : t('home.chip_rewards');
+  const phone =
+    isAuthenticated && customerName && isPhoneLabel(customerName)
+      ? customerName.replace(/[\s-]/g, '')
+      : null;
 
   return (
     <section
@@ -73,7 +42,6 @@ export function GreetingHeader({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '0.75rem',
-          marginBottom: '0.65rem',
         }}
       >
         <a
@@ -94,70 +62,30 @@ export function GreetingHeader({
 
         <div className="home-greeting-actions">
           {isAuthenticated ? (
-            <>
-              {!loyaltyLoading && (
-                <Link
-                  to="/rewards"
-                  className="home-points-pill"
-                  aria-label={pointsLabel}
-                >
-                  <span aria-hidden="true">⭐</span>
-                  <span className="home-points-pill__value">{pointsLabel}</span>
-                </Link>
-              )}
-              <Link
-                to="/account"
-                className="home-account-avatar"
-                aria-label={t('nav.account')}
-              >
-                <AccountAvatarGlyph label={customerName} />
-              </Link>
-            </>
+            <Link
+              to="/account"
+              className="home-account-chip"
+              aria-label={phone ? `${t('nav.account')} ${phone}` : t('nav.account')}
+            >
+              {phone ? <span className="home-account-chip__phone">{phone}</span> : null}
+              <span className="home-account-avatar" aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="2" />
+                  <path
+                    d="M5 19.5c1.5-3.2 4-4.8 7-4.8s5.5 1.6 7 4.8"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+            </Link>
           ) : (
             <Link to="/account" className="home-sign-in-btn">
               {t('home.sign_in')}
             </Link>
           )}
         </div>
-      </div>
-
-      <div>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: '1.35rem',
-            fontWeight: 800,
-            color: 'var(--color-dark)',
-            letterSpacing: '-0.02em',
-            lineHeight: 1.25,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {customerName ? (
-            <>
-              {t('home.greeting_hello')},{' '}
-              <span style={{ fontWeight: 800 }}>{customerName}</span>
-            </>
-          ) : (
-            t('home.greeting_hello')
-          )}
-        </h1>
-        <p
-          style={{
-            margin: '0.25rem 0 0',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-muted)',
-          }}
-        >
-          {t('home.greeting_sub')}
-        </p>
-        {statusBadge ? (
-          <div className="greeting-header-status" style={{ marginTop: '0.5rem' }}>
-            {statusBadge}
-          </div>
-        ) : null}
       </div>
     </section>
   );

@@ -257,8 +257,6 @@ export function HomePage() {
           <GreetingHeader
             customerName={customerName}
             isAuthenticated={isAuthenticated}
-            loyaltyPoints={loyaltyPoints}
-            loyaltyLoading={chipsLoading}
           />
           <div
             style={{
