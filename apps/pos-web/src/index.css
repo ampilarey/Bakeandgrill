@@ -483,9 +483,19 @@ html, body, #root {
   }
   .pos-topbar-right { gap: 6px; }
   .pos-status-pill { padding: 6px 8px; font-size: 10px; }
-  .pos-menu-toolbar { flex-wrap: wrap; }
-  .pos-menu-search-form { flex: 1 1 100%; }
-  .pos-menu-refresh-btn { margin-left: auto; }
+  /* Keep search + refresh on one row (was wrapping refresh underneath). */
+  .pos-menu-toolbar {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .pos-menu-search-form {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .pos-menu-refresh-btn {
+    flex-shrink: 0;
+    margin-left: 0;
+  }
   .pos-update-banner {
     margin: 0 8px;
     max-width: calc(100% - 16px);
