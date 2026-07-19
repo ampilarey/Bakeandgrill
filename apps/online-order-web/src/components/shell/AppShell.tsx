@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ActiveOrderProvider } from '../../context/ActiveOrderContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -12,22 +12,15 @@ import { ActiveOrderCapsule } from './ActiveOrderCapsule';
 import { BottomNav } from './BottomNav';
 import { FloatingCartBar } from './FloatingCartBar';
 import { TopNav } from './TopNav';
-import { DESKTOP_SHELL_MQ, isMenuPath, MENU_CART_SIDEBAR_MQ } from './navTabs';
+import { DESKTOP_SHELL_MQ } from './navTabs';
 
 function AppShellChrome() {
   const { t } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
   const { hideNav } = useShellNav();
   const { cart } = useCart();
-  const location = useLocation();
   const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
-  const menuHasSidebar = useMediaQuery(MENU_CART_SIDEBAR_MQ);
   const cartCount = cart.reduce((n, e) => n + e.quantity, 0);
-  const showFloatCartPad =
-    cartCount > 0 &&
-    !hideNav &&
-    !location.pathname.startsWith('/checkout') &&
-    !(isMenuPath(location.pathname) && menuHasSidebar);
 
   const annEnabled = s.announcement_enabled === 'true';
   const annText = (s.announcement_text || '').trim();
@@ -53,7 +46,7 @@ function AppShellChrome() {
   const shellClass = [
     'app-shell',
     isDesktopShell ? 'app-shell--desktop' : '',
-    showFloatCartPad ? 'app-shell--with-cart' : '',
+    cartCount > 0 && !hideNav ? 'app-shell--with-cart' : '',
     hideNav ? 'app-shell--hide-nav' : '',
   ]
     .filter(Boolean)

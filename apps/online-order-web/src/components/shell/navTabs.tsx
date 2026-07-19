@@ -82,10 +82,3 @@ export const SHELL_NAV_TABS: ShellNavTab[] = [
 
 /** Tablet + desktop chrome breakpoint (iPad portrait and up). */
 export const DESKTOP_SHELL_MQ = '(min-width: 768px)';
-
-/** Menu page shows an inline cart sidebar at this width — hide the floating FAB. */
-export const MENU_CART_SIDEBAR_MQ = '(min-width: 900px)';
-
-export function isMenuPath(pathname: string): boolean {
-  return pathname === '/menu' || pathname.startsWith('/menu/');
-}

@@ -953,13 +953,11 @@ textarea.field-input {
 .show-desktop { display: inline !important; }
 .show-mobile { display: none !important; }
 .menu-sidebar { display: block !important; }
-.cart-sidebar { display: block !important; }
 .mobile-category-pills { display: none !important; }
 
 @media (max-width: 900px) {
   .menu-sidebar { display: none !important; }
   .mobile-category-pills { display: flex !important; }
-  .cart-sidebar { display: none !important; }
 }
 
 @media (max-width: 768px) {

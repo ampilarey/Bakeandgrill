@@ -9,7 +9,7 @@ import { SHELL_NAV_TABS } from './navTabs';
 
 /**
  * Tablet/desktop top bar — logo, text links, prayer strip, account.
- * Cart: Menu ≥900 uses sidebar; elsewhere FloatingCartBar when items exist.
+ * Cart uses FloatingCartBar (logo FAB) when the cart has items.
  * Mounted only at ≥768px; BottomNav covers phone.
  */
 export function TopNav() {

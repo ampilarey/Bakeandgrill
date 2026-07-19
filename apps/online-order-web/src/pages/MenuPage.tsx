@@ -17,7 +17,6 @@ import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
 import { MenuThumb } from '../components/menu/MenuThumb';
 import { ItemSheet } from '../components/ItemSheet';
-import { CartDrawer } from '../components/CartDrawer';
 import { SearchOverlay } from '../components/SearchOverlay';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -751,15 +750,6 @@ export function MenuPage() {
             </div>
           )}
         </main>
-
-        {/* ── Desktop cart sidebar ───────────────────────────────── */}
-        <aside
-          id="menu-cart-sidebar"
-          className="cart-sidebar"
-          style={{ width: '280px', flexShrink: 0, position: 'sticky', top: 'var(--menu-header-height)', alignSelf: 'flex-start', maxHeight: 'calc(100vh - var(--menu-header-height) - 20px)', overflowY: 'auto', padding: '1rem 0' }}
-        >
-          <CartDrawer isOpen={isOpen ?? true} closedMessage={closedMessage} />
-        </aside>
       </div>
 
       <SearchOverlay
