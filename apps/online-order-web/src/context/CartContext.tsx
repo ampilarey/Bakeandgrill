@@ -12,12 +12,17 @@ export type CartEntry = {
   variantPrice?: number | null;
   /** Original catalog price before special, for strikethrough display. */
   originalPrice?: number | null;
+  packagingOptionId?: number | null;
+  packagingOptionName?: string | null;
+  packagingFee?: number | null;
+  packagingFeeMode?: 'per_unit' | 'per_line' | null;
 };
 
 export type UpdateEntryInput = {
   quantity: number;
   modifiers?: Modifier[];
   variant?: Variant | null;
+  packagingOptionId?: number | null;
   /** Defaults to the line's existing item. */
   item?: Item;
 };
@@ -25,11 +30,17 @@ export type UpdateEntryInput = {
 interface CartContextValue {
   cart: CartEntry[];
   cartTotal: number;
-  addItem: (item: Item, quantity: number, modifiers?: Modifier[], variant?: Variant | null) => void;
+  addItem: (
+    item: Item,
+    quantity: number,
+    modifiers?: Modifier[],
+    variant?: Variant | null,
+    packagingOptionId?: number | null,
+  ) => void;
   updateQuantity: (index: number, quantity: number) => void;
   /**
    * Edit a cart line in place (Item sheet edit mode). Merges into an identical
-   * existing line when item+variant+modifiers match another index.
+   * existing line when item+variant+modifiers+packaging match another index.
    */
   updateEntry: (index: number, data: UpdateEntryInput) => void;
   clearCart: () => void;
@@ -37,14 +48,15 @@ interface CartContextValue {
   refreshPricesFromMenu: (items: Item[]) => void;
 }
 
-/** Stable key for merge identity (item + variant + sorted modifier ids). */
+/** Stable key for merge identity (item + variant + mods + packaging). */
 export function cartLineKey(
   itemId: number,
   variantId: number | null | undefined,
   modifiers: Modifier[],
+  packagingOptionId?: number | null,
 ): string {
   const modKey = [...modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',');
-  return `${itemId}|${variantId ?? ''}|${modKey}`;
+  return `${itemId}|${variantId ?? ''}|${modKey}|p${packagingOptionId ?? 0}`;
 }
 
 function priceSnapshot(item: Item, variant?: Variant | null) {
@@ -59,7 +71,32 @@ function priceSnapshot(item: Item, variant?: Variant | null) {
   return { unitPrice, originalPrice };
 }
 
-const CART_VERSION = 4;
+function packagingSnapshot(item: Item, packagingOptionId?: number | null) {
+  const mode = item.packaging_fee_mode === 'per_line' ? 'per_line' as const : 'per_unit' as const;
+  const options = item.packaging_options ?? [];
+  let opt = packagingOptionId != null
+    ? options.find((o) => o.id === packagingOptionId)
+    : undefined;
+  if (!opt && options.length > 0) {
+    opt = options.find((o) => o.is_default) ?? options[0];
+  }
+  if (opt) {
+    return {
+      packagingOptionId: opt.id,
+      packagingOptionName: opt.name ?? null,
+      packagingFee: Math.max(0, Number(opt.fee) || 0),
+      packagingFeeMode: mode,
+    };
+  }
+  return {
+    packagingOptionId: null as number | null,
+    packagingOptionName: null as string | null,
+    packagingFee: Math.max(0, Number(item.packaging_fee ?? 0) || 0),
+    packagingFeeMode: mode,
+  };
+}
+
+const CART_VERSION = 5;
 const CART_KEY = 'bakegrill_cart';
 
 type StoredCart = {
@@ -72,6 +109,10 @@ type StoredCart = {
     variantName?: string | null;
     variantPrice?: number | null;
     originalPrice?: number | null;
+    packagingOptionId?: number | null;
+    packagingOptionName?: string | null;
+    packagingFee?: number | null;
+    packagingFeeMode?: 'per_unit' | 'per_line' | null;
   }>;
 };
 
@@ -87,15 +128,22 @@ function loadCart(): CartEntry[] {
       localStorage.removeItem(CART_KEY);
       return [];
     }
-    return (parsed.entries ?? []).map((e) => ({
-      item: e.item,
-      quantity: e.quantity || 1,
-      modifiers: e.modifiers ?? [],
-      variantId: e.variantId ?? null,
-      variantName: e.variantName ?? null,
-      variantPrice: e.variantPrice ?? null,
-      originalPrice: e.originalPrice ?? null,
-    }));
+    return (parsed.entries ?? []).map((e) => {
+      const packaging = packagingSnapshot(e.item, e.packagingOptionId);
+      return {
+        item: e.item,
+        quantity: e.quantity || 1,
+        modifiers: e.modifiers ?? [],
+        variantId: e.variantId ?? null,
+        variantName: e.variantName ?? null,
+        variantPrice: e.variantPrice ?? null,
+        originalPrice: e.originalPrice ?? null,
+        packagingOptionId: e.packagingOptionId ?? packaging.packagingOptionId,
+        packagingOptionName: e.packagingOptionName ?? packaging.packagingOptionName,
+        packagingFee: e.packagingFee ?? packaging.packagingFee,
+        packagingFeeMode: e.packagingFeeMode ?? packaging.packagingFeeMode,
+      };
+    });
   } catch {
     return [];
   }
@@ -112,6 +160,10 @@ function saveCart(cart: CartEntry[]): void {
       variantName: e.variantName ?? null,
       variantPrice: e.variantPrice ?? null,
       originalPrice: e.originalPrice ?? null,
+      packagingOptionId: e.packagingOptionId ?? null,
+      packagingOptionName: e.packagingOptionName ?? null,
+      packagingFee: e.packagingFee ?? null,
+      packagingFeeMode: e.packagingFeeMode ?? null,
     })),
   };
   try {
@@ -133,13 +185,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('cart_cleared', handler);
   }, []);
 
-  const addItem = useCallback((item: Item, quantity: number, modifiers: Modifier[] = [], variant?: Variant | null) => {
+  const addItem = useCallback((
+    item: Item,
+    quantity: number,
+    modifiers: Modifier[] = [],
+    variant?: Variant | null,
+    packagingOptionId?: number | null,
+  ) => {
     if (quantity < 1) return;
     setCart((prev) => {
       const variantId = variant?.id ?? null;
-      const key = cartLineKey(item.id, variantId, modifiers);
+      const packaging = packagingSnapshot(item, packagingOptionId);
+      const key = cartLineKey(item.id, variantId, modifiers, packaging.packagingOptionId);
       const idx = prev.findIndex(
-        (e) => cartLineKey(e.item.id, e.variantId, e.modifiers) === key,
+        (e) => cartLineKey(e.item.id, e.variantId, e.modifiers, e.packagingOptionId) === key,
       );
 
       if (idx >= 0) {
@@ -160,6 +219,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           variantName: variant?.name ?? null,
           variantPrice: unitPrice,
           originalPrice,
+          ...packaging,
         },
       ];
     });
@@ -198,11 +258,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : null)
           : data.variant;
       const variantId = variant?.id ?? null;
+      const packaging = packagingSnapshot(
+        item,
+        data.packagingOptionId !== undefined
+          ? data.packagingOptionId
+          : current.packagingOptionId,
+      );
       const { unitPrice, originalPrice } = priceSnapshot(item, variant);
-      const key = cartLineKey(item.id, variantId, modifiers);
+      const key = cartLineKey(item.id, variantId, modifiers, packaging.packagingOptionId);
 
       const mergeIdx = prev.findIndex(
-        (e, i) => i !== index && cartLineKey(e.item.id, e.variantId, e.modifiers) === key,
+        (e, i) =>
+          i !== index
+          && cartLineKey(e.item.id, e.variantId, e.modifiers, e.packagingOptionId) === key,
       );
 
       const updated: CartEntry = {
@@ -213,6 +281,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         variantName: variant?.name ?? null,
         variantPrice: unitPrice,
         originalPrice,
+        ...packaging,
       };
 
       if (mergeIdx >= 0) {
@@ -221,13 +290,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         next[adjustedMerge] = {
           ...next[adjustedMerge],
           quantity: next[adjustedMerge].quantity + data.quantity,
-          // Keep freshest price/item snapshot on the surviving line
           item,
           variantId,
           variantName: variant?.name ?? null,
           variantPrice: unitPrice,
           originalPrice,
           modifiers,
+          ...packaging,
         };
         return next;
       }
@@ -261,11 +330,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
             ? Number(variant.original_price)
             : null)
           : (fresh.special?.original_price != null ? Number(fresh.special.original_price) : null);
+        const packaging = packagingSnapshot(fresh, entry.packagingOptionId);
         return {
           ...entry,
           item: fresh,
           variantPrice: unitPrice,
           originalPrice,
+          ...packaging,
         };
       }),
     );

@@ -337,7 +337,24 @@ class GstLedgerPoster
         // Gift cards are tender — exclude from taxable-base reduction.
         $parts = EffectiveDiscount::merchandisePartsFromOrder($order);
         $taxableLaar = max(0, $subtotalLaar - EffectiveDiscount::effectiveTotalLaar($subtotalLaar, $parts));
-        // GST supply total = taxable merchandise + tax (excludes delivery/packaging/tip).
+
+        // Taxable packaging principal (when setting on) is part of GST supply.
+        $packagingLaar = max(0, (int) ($order->packaging_fee_laar ?? 0));
+        if ($packagingLaar > 0 && app(\App\Domains\Orders\Services\PackagingFeeCalculator::class)->packagingFeeTaxable()) {
+            $taxInclusive = $this->settings->taxInclusive();
+            $packagingTaxLaar = $this->tax->calculateLineTaxLaar(
+                $packagingLaar,
+                GstTaxCode::Standard8->value,
+                $taxInclusive,
+            );
+            if ($taxInclusive) {
+                $taxableLaar += max(0, $packagingLaar - $packagingTaxLaar);
+            } else {
+                $taxableLaar += $packagingLaar;
+            }
+        }
+
+        // GST supply total = taxable base + tax (excludes delivery/tip; packaging included when taxable).
         $totalLaar = $taxableLaar + $taxLaar;
 
         if ($totalLaar <= 0) {

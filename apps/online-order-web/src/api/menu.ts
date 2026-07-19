@@ -103,12 +103,19 @@ export type CheckoutFeesPreview = {
   packaging_fee_label: string;
   small_order_fee_laar: number;
   small_order_fee_label: string;
+  packaging_fee_taxable?: boolean;
 };
 
 export async function fetchCheckoutFeesPreview(
   orderType: 'delivery' | 'online_pickup' | 'takeaway',
   discountedSubtotalLaar: number,
-  lines: Array<{ item_id: number; quantity: number }> = [],
+  lines: Array<{
+    item_id: number;
+    quantity: number;
+    packaging_option_id?: number | null;
+    packaging_fee?: number | null;
+    packaging_fee_mode?: 'per_unit' | 'per_line' | null;
+  }> = [],
 ): Promise<CheckoutFeesPreview> {
   return request<CheckoutFeesPreview>(ENDPOINTS.ORDERING_CHECKOUT_FEES_PREVIEW, {
     method: 'POST',
@@ -139,6 +146,13 @@ async function fetchItemsForChannel(ch: SalesChannel): Promise<MenuItem[]> {
     ...item,
     base_price: Number(item.base_price),
     packaging_fee: Number(item.packaging_fee ?? 0),
+    packaging_fee_mode: item.packaging_fee_mode === 'per_line' ? 'per_line' as const : 'per_unit' as const,
+    packaging_options: (item.packaging_options ?? []).map((o) => ({
+      ...o,
+      fee: Number(o.fee ?? 0),
+      is_default: !!o.is_default,
+      sort_order: Number(o.sort_order ?? 0),
+    })),
     modifiers: item.modifiers?.map((m) => ({ ...m, price: Number(m.price) })),
     variants: item.variants?.map((v) => ({
       ...v,
@@ -279,6 +293,7 @@ export type GstBootstrap = {
   tax_inclusive: boolean;
   gst_registered: boolean;
   currency: string;
+  packaging_fee_taxable?: boolean;
 };
 
 let gstBootstrapCache: GstBootstrap | null = null;
@@ -297,6 +312,7 @@ export async function fetchGstBootstrap(): Promise<GstBootstrap> {
       tax_inclusive: false,
       gst_registered: false,
       currency: 'MVR',
+      packaging_fee_taxable: true,
     };
   }
 }

@@ -13,6 +13,7 @@ export type OfflineOrderRecord = {
     item_id: number;
     quantity: number;
     variant_id?: number;
+    packaging_option_id?: number;
     unit_price: number;
     name?: string;
     modifiers?: Array<{ modifier_id: number; name?: string; price?: number }>;

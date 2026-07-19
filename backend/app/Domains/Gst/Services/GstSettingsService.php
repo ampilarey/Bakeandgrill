@@ -88,6 +88,10 @@ class GstSettingsService
             'currency' => $s->currency,
             'sector' => $s->sector,
             'accounting_basis' => $s->accounting_basis,
+            'packaging_fee_taxable' => filter_var(
+                \App\Models\SiteSetting::get('packaging_fee_taxable', '1'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
         ];
     }
 

@@ -53,12 +53,13 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
     });
   };
 
-  const handleUpdateEntry = (variant?: Variant | null) => {
+  const handleUpdateEntry = (variant?: Variant | null, packagingOptionId?: number | null) => {
     if (!editLine) return;
     updateEntry(editLine.index, {
       quantity: editQty,
       modifiers: editMods,
       variant: variant ?? null,
+      packagingOptionId,
       item: editLine.entry.item,
     });
     setEditLine(null);
@@ -370,6 +371,7 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           onClose={() => setEditLine(null)}
           editIndex={editLine.index}
           initialVariantId={editLine.entry.variantId ?? null}
+          initialPackagingOptionId={editLine.entry.packagingOptionId ?? null}
           onUpdateEntry={handleUpdateEntry}
         />
       )}

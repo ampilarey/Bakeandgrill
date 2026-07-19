@@ -14,12 +14,13 @@ export type ItemSheetProps = {
   qty: number;
   selectedModifiers: Modifier[];
   onToggleModifier: (modifier: Modifier) => void;
-  onAddToCart: (variant?: Variant | null) => void;
+  onAddToCart: (variant?: Variant | null, packagingOptionId?: number | null) => void;
   onClose: () => void;
   /** Cart edit-in-place */
   editIndex?: number | null;
   initialVariantId?: number | null;
-  onUpdateEntry?: (variant?: Variant | null) => void;
+  initialPackagingOptionId?: number | null;
+  onUpdateEntry?: (variant?: Variant | null, packagingOptionId?: number | null) => void;
 };
 
 export function ItemSheet({
@@ -32,18 +33,27 @@ export function ItemSheet({
   onClose,
   editIndex = null,
   initialVariantId = null,
+  initialPackagingOptionId = null,
   onUpdateEntry,
 }: ItemSheetProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
   const { addItem } = useCart();
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
+  const packagingOptions = (item.packaging_options ?? [])
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const showPackagingPicker = packagingOptions.length > 1;
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(() => {
     if (!item.has_variants || activeVariants.length === 0) return null;
     if (initialVariantId != null) {
       return activeVariants.find((v) => v.id === initialVariantId) ?? null;
     }
     return activeVariants.length === 1 ? activeVariants[0] : null;
+  });
+  const [selectedPackagingId, setSelectedPackagingId] = useState<number | null>(() => {
+    if (initialPackagingOptionId != null) return initialPackagingOptionId;
+    return packagingOptions.find((o) => o.is_default)?.id ?? packagingOptions[0]?.id ?? null;
   });
 
   const modifierTotal = selectedModifiers.reduce((s, m) => s + Number(m.price), 0);
@@ -56,7 +66,8 @@ export function ItemSheet({
       : null)
     : (item.special?.original_price != null ? Number(item.special.original_price) : null);
   const totalPrice = catalogPrice + modifierTotal;
-  const canAdd = !item.has_variants || selectedVariant !== null;
+  const canAdd = (!item.has_variants || selectedVariant !== null)
+    && (!showPackagingPicker || selectedPackagingId != null);
 
   const [reviews, setReviews] = useState<ItemReview[]>([]);
   const [avgRating, setAvgRating] = useState<number | null>(null);
@@ -95,6 +106,16 @@ export function ItemSheet({
     setSelectedVariant(activeVariants.length === 1 ? activeVariants[0] : null);
   }, [item.id, initialVariantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (initialPackagingOptionId != null) {
+      setSelectedPackagingId(initialPackagingOptionId);
+      return;
+    }
+    setSelectedPackagingId(
+      packagingOptions.find((o) => o.is_default)?.id ?? packagingOptions[0]?.id ?? null,
+    );
+  }, [item.id, initialPackagingOptionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-focus close button and trap focus within modal (BUG-09)
   useEffect(() => {
     if (!open) return;
@@ -130,8 +151,8 @@ export function ItemSheet({
 
   const isEdit = editIndex != null && editIndex >= 0;
   const handleConfirm = () => {
-    if (isEdit && onUpdateEntry) onUpdateEntry(selectedVariant);
-    else onAddToCart(selectedVariant);
+    if (isEdit && onUpdateEntry) onUpdateEntry(selectedVariant, selectedPackagingId);
+    else onAddToCart(selectedVariant, selectedPackagingId);
   };
 
   return (
@@ -279,6 +300,44 @@ export function ItemSheet({
             {!selectedVariant && (
               <p style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '0.4rem' }}>Please select an option to continue.</p>
             )}
+          </div>
+        )}
+
+        {showPackagingPicker && (
+          <div style={{ marginBottom: '1.25rem' }}>
+            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-dark)', marginBottom: '0.75rem' }}>
+              Packaging <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {packagingOptions.map((opt) => {
+                const isSelected = selectedPackagingId === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSelectedPackagingId(opt.id)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: `2px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: '999px',
+                      background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                      color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                      fontWeight: isSelected ? 700 : 500,
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.15s',
+                    }}
+                    aria-pressed={isSelected}
+                  >
+                    {opt.name}
+                    <span style={{ marginLeft: '0.35rem', fontSize: '0.8rem', fontWeight: 600, color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                      {Number(opt.fee) > 0 ? `+MVR ${Number(opt.fee).toFixed(2)}` : 'No fee'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

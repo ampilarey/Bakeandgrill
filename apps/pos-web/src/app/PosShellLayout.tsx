@@ -767,7 +767,7 @@ export function PosShellLayout() {
           warning and occasionally desynced the modal on iPad. */}
       {notePickerKey !== null && (() => {
         const line = cart.cartItems.find(
-          (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === notePickerKey,
+          (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) === notePickerKey,
         );
         if (!line) {
           return null;
@@ -787,15 +787,15 @@ export function PosShellLayout() {
               // duplicates: if there's already another line with the
               // exact same item/variant/modifiers/notes combo, merge
               // quantities into it and drop the original.
-              const newKey = makeCartKey(line.id, line.modifiers, line.variant_id, selected);
+              const newKey = makeCartKey(line.id, line.modifiers, line.variant_id, selected, line.packaging_option_id);
               cart.setCartItems(
                 cart.cartItems
                   .map((ci) => (ci === line ? { ...ci, notes: selected } : ci))
                   .reduce<typeof cart.cartItems>((acc, ci) => {
-                    const k = makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes);
+                    const k = makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id);
                     if (k === newKey) {
                       const existing = acc.find(
-                        (a) => makeCartKey(a.id, a.modifiers, a.variant_id, a.notes) === newKey,
+                        (a) => makeCartKey(a.id, a.modifiers, a.variant_id, a.notes, a.packaging_option_id) === newKey,
                       );
                       if (existing) {
                         existing.quantity += ci.quantity;

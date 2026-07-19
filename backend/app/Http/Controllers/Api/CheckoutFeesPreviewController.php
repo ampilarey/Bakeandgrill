@@ -25,6 +25,9 @@ class CheckoutFeesPreviewController extends Controller
             'lines' => ['sometimes', 'nullable', 'array'],
             'lines.*.item_id' => ['required_with:lines', 'integer', 'min:1'],
             'lines.*.quantity' => ['required_with:lines', 'numeric', 'min:0'],
+            'lines.*.packaging_option_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'lines.*.packaging_fee' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'lines.*.packaging_fee_mode' => ['sometimes', 'nullable', 'string', 'in:per_unit,per_line'],
         ]);
 
         $lines = is_array($validated['lines'] ?? null) ? $validated['lines'] : [];

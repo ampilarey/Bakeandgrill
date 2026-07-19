@@ -16,11 +16,12 @@ export type PosOfflineSyncPayload = {
       item_id: number;
       quantity: number;
       variant_id?: number;
+      packaging_option_id?: number;
       unit_price: number;
       modifiers?: Array<{ modifier_id: number; name?: string; price?: number }>;
       notes?: string;
     }>;
-    totals: { subtotal: number; tax: number; total: number };
+    totals: { subtotal: number; tax: number; total: number; packaging?: number };
     payment: {
       method: 'cash' | 'card' | 'qr' | 'bank_transfer';
       amount: number;

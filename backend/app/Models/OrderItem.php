@@ -27,6 +27,10 @@ class OrderItem extends Model
         'tax_rate',
         'tax_code',
         'notes',
+        'packaging_option_id',
+        'packaging_fee',
+        'packaging_fee_mode',
+        'packaging_option_name',
         'status',
         'kitchen_produced_qty',
         'kitchen_received_qty',
@@ -36,6 +40,7 @@ class OrderItem extends Model
         'order_id' => 'integer',
         'item_id' => 'integer',
         'variant_id' => 'integer',
+        'packaging_option_id' => 'integer',
         'kitchen_produced_qty' => 'float',
         'kitchen_received_qty' => 'float',
         'quantity' => 'integer',
@@ -43,6 +48,7 @@ class OrderItem extends Model
         'original_unit_price' => 'decimal:2',
         'daily_special_id' => 'integer',
         'total_price' => 'decimal:2',
+        'packaging_fee' => 'decimal:2',
         'tax_rate' => 'decimal:2',
     ];
 
@@ -69,5 +75,10 @@ class OrderItem extends Model
     public function modifiers(): HasMany
     {
         return $this->hasMany(OrderItemModifier::class);
+    }
+
+    public function packagingOption(): BelongsTo
+    {
+        return $this->belongsTo(ItemPackagingOption::class, 'packaging_option_id');
     }
 }

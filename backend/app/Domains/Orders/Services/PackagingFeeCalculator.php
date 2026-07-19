@@ -14,8 +14,12 @@ class PackagingFeeCalculator
 
     public const MAX_FIXED_MVR = 500.0;
 
+    public function __construct(
+        private readonly PackagingOptionResolver $optionResolver = new PackagingOptionResolver,
+    ) {}
+
     /**
-     * Per-item packaging fee × quantity for non-dine-in orders.
+     * Packaging principal in laari for non-dine-in orders.
      * `$discountedSubtotalLaar` is unused (kept for call-site compatibility).
      */
     public function calculatePackaging(Order $order, int $discountedSubtotalLaar = 0): int
@@ -34,7 +38,7 @@ class PackagingFeeCalculator
     }
 
     /**
-     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null}>  $lines
+     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}>  $lines
      */
     public function previewPackagingForOrderType(string $orderType, array $lines = []): int
     {
@@ -69,12 +73,13 @@ class PackagingFeeCalculator
     }
 
     /**
-     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null}>  $lines
+     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}>  $lines
      * @return array{
      *   packaging_fee_laar: int,
      *   packaging_fee_label: string,
      *   small_order_fee_laar: int,
      *   small_order_fee_label: string,
+     *   packaging_fee_taxable: bool,
      * }
      */
     public function previewCheckoutFees(string $orderType, int $discountedSubtotalLaar, array $lines = []): array
@@ -84,12 +89,18 @@ class PackagingFeeCalculator
             'packaging_fee_label' => $this->stringSetting('packaging_fee_label', 'Packaging fee'),
             'small_order_fee_laar' => $this->previewSmallOrderForOrderType($orderType, $discountedSubtotalLaar),
             'small_order_fee_label' => 'Small order fee',
+            'packaging_fee_taxable' => $this->packagingFeeTaxable(),
         ];
     }
 
     public function orderTypeEligible(string $orderType): bool
     {
         return in_array($orderType, ['takeaway', 'online_pickup', 'delivery'], true);
+    }
+
+    public function packagingFeeTaxable(): bool
+    {
+        return $this->boolSetting('packaging_fee_taxable', true);
     }
 
     /**
@@ -99,6 +110,7 @@ class PackagingFeeCalculator
     {
         return [
             'packaging_label' => $this->stringSetting('packaging_fee_label', 'Packaging fee'),
+            'packaging_fee_taxable' => $this->packagingFeeTaxable(),
             'small_order_enabled' => $this->boolSetting('small_order_fee_enabled', false),
             'small_order_threshold_mvr' => (float) $this->stringSetting('small_order_fee_threshold_mvr', '50'),
             'small_order_amount_mvr' => (float) $this->stringSetting('small_order_fee_amount_mvr', '10'),
@@ -113,7 +125,7 @@ class PackagingFeeCalculator
     }
 
     /**
-     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null}>  $lines
+     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}>  $lines
      */
     public function sumPackagingForOrderType(string $orderType, array $lines): int
     {
@@ -121,34 +133,31 @@ class PackagingFeeCalculator
             return 0;
         }
 
-        $feesByItemId = $this->resolvePackagingFeesMvr($lines);
+        $resolved = $this->resolveLineFees($lines);
         $totalLaar = 0;
 
-        foreach ($lines as $line) {
-            $itemId = (int) ($line['item_id'] ?? 0);
-            if ($itemId <= 0) {
-                continue;
-            }
-
+        foreach ($resolved as $line) {
             $qty = max(0, (int) round((float) ($line['quantity'] ?? 0)));
             if ($qty <= 0) {
                 continue;
             }
 
-            $feeMvr = $feesByItemId[$itemId] ?? 0.0;
+            $feeMvr = (float) ($line['packaging_fee'] ?? 0);
             if ($feeMvr <= 0) {
                 continue;
             }
 
-            $feeLaar = (int) round($feeMvr * 100);
-            $totalLaar += $feeLaar * $qty;
+            $feeLaar = (int) round(min(self::MAX_FIXED_MVR, max(0, $feeMvr)) * 100);
+            $mode = $this->optionResolver->normalizeMode($line['packaging_fee_mode'] ?? PackagingOptionResolver::MODE_PER_UNIT);
+            $units = $mode === PackagingOptionResolver::MODE_PER_LINE ? 1 : $qty;
+            $totalLaar += $feeLaar * $units;
         }
 
         return max(0, $totalLaar);
     }
 
     /**
-     * @return list<array{item_id: int, quantity: float}>
+     * @return list<array{item_id: int, quantity: float, packaging_fee: float, packaging_fee_mode: string, packaging_option_id: int|null}>
      */
     private function linesFromOrder(Order $order): array
     {
@@ -160,50 +169,106 @@ class PackagingFeeCalculator
             if ($itemId <= 0) {
                 continue;
             }
-            $lines[] = [
+            $row = [
                 'item_id' => $itemId,
                 'quantity' => (float) ($orderItem->quantity ?? 0),
+                'packaging_option_id' => $orderItem->packaging_option_id !== null
+                    ? (int) $orderItem->packaging_option_id
+                    : null,
             ];
+            // Legacy rows (pre-options) have null option + zero fee column default —
+            // omit snapshot so we re-resolve from the catalog item.
+            $snapFee = (float) ($orderItem->packaging_fee ?? 0);
+            $hasSnapshot = $orderItem->packaging_option_id !== null
+                || $snapFee > 0
+                || filled($orderItem->packaging_option_name);
+            if ($hasSnapshot) {
+                $row['packaging_fee'] = $snapFee;
+                $row['packaging_fee_mode'] = (string) ($orderItem->packaging_fee_mode ?? PackagingOptionResolver::MODE_PER_UNIT);
+            }
+            $lines[] = $row;
         }
 
         return $lines;
     }
 
     /**
-     * @param  list<array{item_id?: int, packaging_fee?: float|int|string|null}>  $lines
-     * @return array<int, float> item_id => packaging_fee MVR
+     * Prefer snapshotted fee/mode on each line; otherwise resolve from catalog.
+     *
+     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}>  $lines
+     * @return list<array{item_id: int, quantity: float, packaging_fee: float, packaging_fee_mode: string, packaging_option_id: int|null}>
      */
-    private function resolvePackagingFeesMvr(array $lines): array
+    private function resolveLineFees(array $lines): array
     {
-        $fees = [];
-        $missingIds = [];
+        $needResolve = [];
+        foreach ($lines as $i => $line) {
+            $hasSnapshot = array_key_exists('packaging_fee', $line)
+                && $line['packaging_fee'] !== null
+                && $line['packaging_fee'] !== '';
+            if (!$hasSnapshot) {
+                $needResolve[$i] = true;
+            }
+        }
 
-        foreach ($lines as $line) {
+        $itemsById = [];
+        if ($needResolve !== []) {
+            $ids = [];
+            foreach (array_keys($needResolve) as $i) {
+                $id = (int) ($lines[$i]['item_id'] ?? 0);
+                if ($id > 0) {
+                    $ids[] = $id;
+                }
+            }
+            if ($ids !== []) {
+                $itemsById = Item::query()
+                    ->with(['packagingOptions' => fn ($q) => $q->orderBy('sort_order')->orderBy('id')])
+                    ->whereIn('id', array_values(array_unique($ids)))
+                    ->get()
+                    ->keyBy('id');
+            }
+        }
+
+        $out = [];
+        foreach ($lines as $i => $line) {
             $itemId = (int) ($line['item_id'] ?? 0);
-            if ($itemId <= 0 || array_key_exists($itemId, $fees)) {
+            if ($itemId <= 0) {
                 continue;
             }
 
-            if (array_key_exists('packaging_fee', $line) && $line['packaging_fee'] !== null && $line['packaging_fee'] !== '') {
-                $fees[$itemId] = max(0.0, (float) $line['packaging_fee']);
+            $qty = (float) ($line['quantity'] ?? 0);
+            $optionId = isset($line['packaging_option_id']) && $line['packaging_option_id'] !== null && $line['packaging_option_id'] !== ''
+                ? (int) $line['packaging_option_id']
+                : null;
+
+            if (isset($needResolve[$i])) {
+                $item = $itemsById[$itemId] ?? null;
+                if ($item === null) {
+                    continue;
+                }
+                $resolved = $this->optionResolver->resolve($item, $optionId);
+                $out[] = [
+                    'item_id' => $itemId,
+                    'quantity' => $qty,
+                    'packaging_fee' => $resolved['packaging_fee'],
+                    'packaging_fee_mode' => $resolved['packaging_fee_mode'],
+                    'packaging_option_id' => $resolved['packaging_option_id'],
+                ];
 
                 continue;
             }
 
-            $missingIds[] = $itemId;
+            $out[] = [
+                'item_id' => $itemId,
+                'quantity' => $qty,
+                'packaging_fee' => max(0.0, (float) $line['packaging_fee']),
+                'packaging_fee_mode' => $this->optionResolver->normalizeMode(
+                    $line['packaging_fee_mode'] ?? PackagingOptionResolver::MODE_PER_UNIT,
+                ),
+                'packaging_option_id' => $optionId,
+            ];
         }
 
-        if ($missingIds !== []) {
-            $fromDb = Item::query()
-                ->whereIn('id', array_values(array_unique($missingIds)))
-                ->pluck('packaging_fee', 'id');
-
-            foreach ($missingIds as $id) {
-                $fees[$id] = max(0.0, (float) ($fromDb[$id] ?? 0));
-            }
-        }
-
-        return $fees;
+        return $out;
     }
 
     /**

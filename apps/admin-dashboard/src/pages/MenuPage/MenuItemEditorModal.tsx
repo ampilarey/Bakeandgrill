@@ -5,7 +5,7 @@ import { Btn, ErrorMsg, Input, Modal } from '../../components/Layout';
 import { ItemSearch, type MenuItemSelection } from '../../components/ItemSearch';
 import { Field, FormTextarea, ImageUploadField } from './menuFormPrimitives';
 import {
-  emptyVariantRow, SALES_CHANNELS, type ItemForm, type VariantRow,
+  emptyPackagingOptionRow, emptyVariantRow, SALES_CHANNELS, type ItemForm, type VariantRow,
 } from './menuItemForm';
 import { PhotosTab } from './PhotosTab';
 
@@ -316,13 +316,103 @@ export function MenuItemEditorModal({
               </div>
             )}
 
-            <div>
-              <Field label="Packaging fee (MVR)">
-                <Input value={form.packaging_fee} onChange={(v) => set('packaging_fee', v)} type="number" placeholder="0.00" />
-              </Field>
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#9C8E7E' }}>
-                Charged per unit on takeaway, pickup &amp; delivery. 0 = no packaging charge.
+            <div style={{ padding: '12px 14px', background: '#F8F6F3', borderRadius: 10, border: '1px solid #E8E0D8' }}>
+              <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Packaging</p>
+              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <Field label="Charge mode">
+                  <select
+                    value={form.packaging_fee_mode}
+                    onChange={(e) => set('packaging_fee_mode', e.target.value as 'per_unit' | 'per_line')}
+                    style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 14 }}
+                  >
+                    <option value="per_unit">Per unit (× qty)</option>
+                    <option value="per_line">Per line (once)</option>
+                  </select>
+                </Field>
+                <Field label="Fallback fee (MVR)">
+                  <Input value={form.packaging_fee} onChange={(v) => set('packaging_fee', v)} type="number" placeholder="0.00" />
+                </Field>
+              </div>
+              <p style={{ margin: '0 0 10px', fontSize: 12, color: '#9C8E7E' }}>
+                Fallback applies when this item has no packaging options. Dine-in is never charged.
               </p>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: '#6B5B4F' }}>Options (optional)</p>
+              {form.packaging_options.map((row, idx) => (
+                <div
+                  key={row._key}
+                  style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 80px 44px', gap: 8, alignItems: 'end', marginBottom: 8 }}
+                >
+                  <Field label={idx === 0 ? 'Name' : ' '}>
+                    <Input
+                      value={row.name}
+                      onChange={(v) => {
+                        const next = form.packaging_options.map((r, i) => (i === idx ? { ...r, name: v } : r));
+                        set('packaging_options', next);
+                      }}
+                      placeholder="e.g. Standard bag"
+                    />
+                  </Field>
+                  <Field label={idx === 0 ? 'Fee (MVR)' : ' '}>
+                    <Input
+                      value={row.fee}
+                      onChange={(v) => {
+                        const next = form.packaging_options.map((r, i) => (i === idx ? { ...r, fee: v } : r));
+                        set('packaging_options', next);
+                      }}
+                      type="number"
+                      placeholder="0.00"
+                    />
+                  </Field>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, minHeight: 44, cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="packaging_default"
+                      checked={row.is_default}
+                      onChange={() => {
+                        set(
+                          'packaging_options',
+                          form.packaging_options.map((r, i) => ({ ...r, is_default: i === idx })),
+                        );
+                      }}
+                    />
+                    Default
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = form.packaging_options.filter((_, i) => i !== idx);
+                      if (next.length > 0 && !next.some((r) => r.is_default)) {
+                        next[0] = { ...next[0], is_default: true };
+                      }
+                      set('packaging_options', next);
+                    }}
+                    style={{
+                      minHeight: 44, border: '1px solid #E8E0D8', borderRadius: 8,
+                      background: '#fff', cursor: 'pointer', fontSize: 16, color: '#9C8E7E',
+                    }}
+                    aria-label="Remove packaging option"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [
+                    ...form.packaging_options,
+                    emptyPackagingOptionRow(form.packaging_options.length === 0),
+                  ];
+                  set('packaging_options', next);
+                }}
+                style={{
+                  marginTop: 4, minHeight: 40, padding: '0 12px', borderRadius: 8,
+                  border: '1px dashed #C4B5A5', background: 'transparent',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#6B5B4F',
+                }}
+              >
+                + Add packaging option
+              </button>
             </div>
 
             {!form.has_variants && (

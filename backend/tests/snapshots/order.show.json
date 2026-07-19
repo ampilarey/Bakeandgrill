@@ -101,6 +101,10 @@
                 "daily_special_id": null,
                 "kitchen_produced_qty": null,
                 "kitchen_received_qty": null,
+                "packaging_option_id": null,
+                "packaging_fee": "0.00",
+                "packaging_fee_mode": "per_unit",
+                "packaging_option_name": null,
                 "modifiers": []
             }
         ],

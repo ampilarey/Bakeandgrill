@@ -18,7 +18,11 @@ type Props = {
   toggleModifier: (mod: Modifier) => void;
   addToCart: (
     item: Item,
-    opts?: { variant?: Variant | null; modifiers?: Modifier[] },
+    opts?: {
+      variant?: Variant | null;
+      modifiers?: Modifier[];
+      packagingOptionId?: number | null;
+    },
   ) => void;
   clearSelectedItem: () => void;
 
@@ -520,11 +524,12 @@ export function MenuGrid({
               const wasPrice = originalItemPrice(item);
               const hasMods = (item.modifiers?.length ?? 0) > 0;
               const hasVariants = item.has_variants;
-              // For items without modifiers OR variants, tap = direct add to cart.
-              // Otherwise tap opens the configure panel for modifier selection.
+              const hasPackagingChoices = (item.packaging_options?.length ?? 0) > 1;
+              // For items without modifiers, variants, or packaging choices,
+              // tap = direct add to cart. Otherwise open configure.
               const onClick = () => {
                 if (readOnly) return;
-                if (hasMods || hasVariants) handleSelectItem(item);
+                if (hasMods || hasVariants || hasPackagingChoices) handleSelectItem(item);
                 else addToCart(item);
               };
               return (
@@ -593,14 +598,17 @@ export function MenuGrid({
         )}
       </div>
 
-      {/* Configure modal — shows when an item with modifiers/variants is tapped */}
+      {/* Configure modal — modifiers / variants / packaging choices */}
       {selectedItem && (
         <ConfigurePanel
           item={selectedItem}
           selectedModifiers={selectedModifiers}
           toggleModifier={toggleModifier}
-          onAdd={(variant) => {
-            addToCart(selectedItem, { variant: variant ?? undefined });
+          onAdd={(variant, packagingOptionId) => {
+            addToCart(selectedItem, {
+              variant: variant ?? undefined,
+              packagingOptionId,
+            });
             clearSelectedItem();
           }}
           onClose={clearSelectedItem}
@@ -628,11 +636,16 @@ function ConfigurePanel({
   /** When the item has variants, the chosen variant is passed back so
    *  the cart can record the correct id/name/price. For items without
    *  variants we pass `null` and `addToCart` falls back to base_price. */
-  onAdd: (variant: Variant | null) => void;
+  onAdd: (variant: Variant | null, packagingOptionId?: number | null) => void;
   onClose: () => void;
 }) {
   const c = tileColor(item.category_id);
   const mods = item.modifiers ?? [];
+  const packagingOptions = useMemo(
+    () => (item.packaging_options ?? []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+    [item],
+  );
+  const showPackagingPicker = packagingOptions.length > 1;
   const variants = useMemo(
     () => (item.has_variants ? (item.variants ?? []).filter((v) => v.is_active) : []),
     [item],
@@ -641,16 +654,20 @@ function ConfigurePanel({
   // When modifiers exist alongside variants we pre-select the default
   // variant so the cashier can flip through modifier chips and then
   // tap the bottom Add button to commit. In the one-tap-add case
-  // (variants but NO modifiers) we deliberately leave the choice
-  // empty — the first variant tap IS the add, and pre-selecting one
-  // confuses cashiers ("Large is highlighted but the cart didn't
-  // update?").
-  const oneTapMode = item.has_variants && mods.length === 0;
+  // (variants but NO modifiers and no packaging choice) we deliberately
+  // leave the choice empty — the first variant tap IS the add.
+  const oneTapMode = item.has_variants && mods.length === 0 && !showPackagingPicker;
   const [chosenVariantId, setChosenVariantId] = useState<number | null>(() => {
     if (!item.has_variants) return null;
     if (oneTapMode) return null;
     const def = variants[0];
     return def?.id ?? null;
+  });
+  const [chosenPackagingId, setChosenPackagingId] = useState<number | null>(() => {
+    if (!showPackagingPicker) {
+      return packagingOptions.find((o) => o.is_default)?.id ?? packagingOptions[0]?.id ?? null;
+    }
+    return packagingOptions.find((o) => o.is_default)?.id ?? packagingOptions[0]?.id ?? null;
   });
 
   const chosenVariant = variants.find((v) => v.id === chosenVariantId) ?? null;
@@ -768,13 +785,12 @@ function ConfigurePanel({
                 }}>
                   {variants.map((v) => {
                     const active = chosenVariantId === v.id;
-                    const oneTapAdd = mods.length === 0;
                     return (
                       <button
                         key={v.id}
                         onClick={() => {
                           setChosenVariantId(v.id);
-                          if (oneTapAdd) onAdd(v);
+                          if (oneTapMode) onAdd(v, chosenPackagingId);
                         }}
                         style={{
                           padding: '14px 14px',
@@ -842,10 +858,56 @@ function ConfigurePanel({
             </div>
           )}
 
+          {showPackagingPicker && (
+            <div>
+              <div style={sectionLabel}>Packaging</div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: 8,
+              }}>
+                {packagingOptions.map((opt) => {
+                  const active = chosenPackagingId === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setChosenPackagingId(opt.id)}
+                      style={{
+                        padding: '14px 14px',
+                        borderRadius: 10,
+                        border: `2px solid ${active ? C.text : C.border2}`,
+                        background: active ? C.text : '#FFFFFF',
+                        color: active ? '#FFFFFF' : C.text,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                        minHeight: 64,
+                      }}
+                    >
+                      <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2 }}>
+                        {opt.name}
+                      </span>
+                      <span style={{
+                        fontSize: 13, fontWeight: 700,
+                        opacity: active ? 0.95 : 0.85,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {Number(opt.fee) > 0 ? `+MVR ${Number(opt.fee).toFixed(2)}` : 'No fee'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Defensive fallback — shouldn't fire in practice because the
               tile-tap handler only opens this modal when there are
-              modifiers OR variants. */}
-          {!item.has_variants && mods.length === 0 && (
+              modifiers, variants, or packaging choices. */}
+          {!item.has_variants && mods.length === 0 && !showPackagingPicker && (
             <div style={{ fontSize: 13, color: C.muted }}>
               Nothing to configure — tap "Add to ticket" to drop it on the order.
             </div>
@@ -892,7 +954,7 @@ function ConfigurePanel({
                 Cancel
               </button>
               <button
-                onClick={() => onAdd(chosenVariant)}
+                onClick={() => onAdd(chosenVariant, chosenPackagingId)}
                 disabled={!canAdd}
                 title={needsVariant ? 'Pick a size/option to continue' : undefined}
                 style={{

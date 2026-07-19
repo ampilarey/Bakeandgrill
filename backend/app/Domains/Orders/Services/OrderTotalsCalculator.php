@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Orders\Services;
 
 use App\Domains\Delivery\Services\DeliveryFeeCalculator;
+use App\Domains\Gst\Enums\GstTaxCode;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Orders\DTOs\DiscountsInput;
@@ -236,11 +237,34 @@ class OrderTotalsCalculator
         }
 
         $tipLaar = (int) round((float) ($order->tip_amount ?? 0) * 100);
-        $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar + $packagingLaar + $smallOrderLaar + $deliveryFeeLaar + $tipLaar;
 
         $attrs = $breakdown->toOrderAttributes();
         // Preserve soft-held gift-card tender; breakdown intentionally zeros it.
         $attrs['gift_card_discount_laar'] = $giftCardTenderLaar;
+
+        // Packaging tax (optional site setting). Exclusive: add GST on packaging
+        // principal into tax_laar + grand total. Inclusive: fee embeds GST —
+        // extract into tax_laar only (do not add again to total).
+        $taxInclusive = $this->gstSettings->taxInclusive();
+        $packagingTaxLaar = 0;
+        if ($packagingLaar > 0 && $this->packagingFeeCalculator->packagingFeeTaxable()) {
+            $packagingTaxLaar = $this->gstTax->calculateLineTaxLaar(
+                $packagingLaar,
+                GstTaxCode::Standard8->value,
+                $taxInclusive,
+            );
+            $attrs['tax_laar'] = (int) ($attrs['tax_laar'] ?? 0) + $packagingTaxLaar;
+            $attrs['tax_amount'] = round(((int) $attrs['tax_laar']) / 100, 2);
+        }
+
+        $totalWithExtrasLaar = $breakdown->grandTotal->amountLaar
+            + $packagingLaar
+            + $smallOrderLaar
+            + $deliveryFeeLaar
+            + $tipLaar;
+        if (!$taxInclusive && $packagingTaxLaar > 0) {
+            $totalWithExtrasLaar += $packagingTaxLaar;
+        }
 
         $order->update(array_merge($attrs, [
             'packaging_fee_laar' => $packagingLaar,

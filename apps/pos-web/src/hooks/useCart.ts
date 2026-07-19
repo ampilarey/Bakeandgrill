@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CartItem, Item, Modifier, Variant } from "../types";
+import type { CartItem, Item, Modifier, PackagingOption, Variant } from "../types";
 import type { PosCustomer } from "../api";
 import type { PosOrderType } from "../orderTypes";
 import {
@@ -9,7 +9,7 @@ import {
   type ServiceChargePublicConfig,
 } from "@shared/utils/serviceCharge";
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from "@shared/utils/effectiveDiscount";
-import { effectiveLineTaxRatePercent } from "../utils/posCartTotals";
+import { effectiveLineTaxRatePercent, packagingTaxLaar } from "../utils/posCartTotals";
 import { fetchPublicSiteSettings, fetchGstBootstrap } from "../api";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
 
@@ -55,15 +55,59 @@ export function originalItemPrice(item: Item, variant?: Variant | null): number 
  * burgers with different notes must stay separate lines because they
  * print differently on the kitchen ticket and a single qty:2 would
  * lose the per-portion instruction.
+ *
+ * Packaging option is also part of the key — Standard vs Large bag
+ * must stay separate lines so fees and kitchen tickets stay accurate.
  */
 export const makeCartKey = (
   itemId: number,
   modifiers: Modifier[],
   variantId?: number | null,
   notes?: string[],
+  packagingOptionId?: number | null,
 ) =>
   `${itemId}-v${variantId ?? 0}-${modifiers.map((m) => m.id).sort().join(",")}` +
-  `-n${(notes ?? []).slice().sort().join("|")}`;
+  `-n${(notes ?? []).slice().sort().join("|")}` +
+  `-p${packagingOptionId ?? 0}`;
+
+/** Resolve packaging snapshot from catalog options (or legacy item fee). */
+export function resolvePackagingSnapshot(
+  item: Pick<Item, "packaging_fee" | "packaging_fee_mode" | "packaging_options">,
+  packagingOptionId?: number | null,
+): {
+  packaging_fee: number;
+  packaging_fee_mode: "per_unit" | "per_line";
+  packaging_option_id: number | null;
+  packaging_option_name: string | null;
+} {
+  const mode = item.packaging_fee_mode === "per_line" ? "per_line" : "per_unit";
+  const options = (item.packaging_options ?? []).filter(
+    (o): o is PackagingOption => o != null && Number.isFinite(Number(o.id)),
+  );
+  let opt: PackagingOption | undefined;
+  if (packagingOptionId != null) {
+    opt = options.find((o) => o.id === packagingOptionId);
+  }
+  if (!opt && options.length > 0) {
+    opt = options.find((o) => o.is_default) ?? options[0];
+  }
+  if (opt) {
+    const fee = Number(opt.fee);
+    return {
+      packaging_fee: Number.isFinite(fee) ? Math.max(0, fee) : 0,
+      packaging_fee_mode: mode,
+      packaging_option_id: opt.id,
+      packaging_option_name: opt.name ?? null,
+    };
+  }
+  const parsed = item.packaging_fee != null ? parseFloat(String(item.packaging_fee)) : 0;
+  return {
+    packaging_fee: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
+    packaging_fee_mode: mode,
+    packaging_option_id: null,
+    packaging_option_name: null,
+  };
+}
 
 export function mapPosOrderType(type: PosOrderType): "dine_in" | "takeaway" | "online_pickup" | "delivery" {
   if (type === "Dine-in") return "dine_in";
@@ -132,6 +176,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   const [serviceChargeConfig, setServiceChargeConfig] = useState<ServiceChargePublicConfig | null>(null);
   const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
   const [taxInclusive, setTaxInclusive] = useState(false);
+  const [packagingFeeTaxable, setPackagingFeeTaxable] = useState(true);
 
   useEffect(() => {
     fetchPublicSiteSettings()
@@ -141,10 +186,12 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       .then((b) => {
         setDefaultTaxRatePercent(b.tax_rate_percent);
         setTaxInclusive(!!b.tax_inclusive);
+        setPackagingFeeTaxable(b.packaging_fee_taxable !== false);
       })
       .catch(() => {
         setDefaultTaxRatePercent(8);
         setTaxInclusive(false);
+        setPackagingFeeTaxable(true);
       });
   }, []);
 
@@ -248,6 +295,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
         buckets,
       );
     }
+    // Packaging GST is computed after cartPackagingFee — folded in below.
     return taxLaar / 100;
   }, [cartItems, cartSubtotal, discountedSubtotal, serviceChargeConfig, backendOrderType, effectiveLineTaxRate, taxInclusive]);
 
@@ -272,18 +320,30 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       if (!(feeMvr > 0)) continue;
       const qty = Math.max(0, Math.round(item.quantity));
       if (qty <= 0) continue;
-      laar += Math.round(feeMvr * 100) * qty;
+      const feeLaar = Math.round(feeMvr * 100);
+      const units = item.packaging_fee_mode === "per_line" ? 1 : qty;
+      laar += feeLaar * units;
     }
     return laar / 100;
   }, [cartItems, backendOrderType]);
 
+  /** Item/SC tax + optional packaging GST (mirrors OrderTotalsCalculator). */
+  const cartTaxWithPackaging = useMemo(() => {
+    let taxLaar = Math.round(cartTax * 100);
+    if (packagingFeeTaxable && cartPackagingFee > 0) {
+      taxLaar += packagingTaxLaar(cartPackagingFee, defaultTaxRatePercent, taxInclusive);
+    }
+    return taxLaar / 100;
+  }, [cartTax, packagingFeeTaxable, cartPackagingFee, defaultTaxRatePercent, taxInclusive]);
+
   /** Order grand total before gift-card tender (matches server `order.total`). */
   const cartGrandTotal = useMemo(() => {
-    // Inclusive: tax is already inside discountedSubtotal — show cartTax as info only.
-    // Exclusive: add cartTax on top (OrderTotalsCalculator grandTotal branches).
-    const taxForTotal = taxInclusive ? 0 : cartTax;
+    // Inclusive: tax is already inside discountedSubtotal / packaging fee —
+    // show cartTaxWithPackaging as info only.
+    // Exclusive: add tax on top (OrderTotalsCalculator grandTotal branches).
+    const taxForTotal = taxInclusive ? 0 : cartTaxWithPackaging;
     return Math.round((discountedSubtotal + cartServiceCharge + taxForTotal + cartPackagingFee) * 100) / 100;
-  }, [discountedSubtotal, cartServiceCharge, cartTax, cartPackagingFee, taxInclusive]);
+  }, [discountedSubtotal, cartServiceCharge, cartTaxWithPackaging, cartPackagingFee, taxInclusive]);
 
   /** Amount still due after gift-card tender (what Charge collects in cash/card). */
   const cartTotal = useMemo(() => {
@@ -314,7 +374,11 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   const addToCart = useCallback(
     (
       item: Item,
-      opts?: { variant?: Variant | null; modifiers?: Modifier[] },
+      opts?: {
+        variant?: Variant | null;
+        modifiers?: Modifier[];
+        packagingOptionId?: number | null;
+      },
     ) => {
       // Variant precedence: explicit override > what the cashier picked
       // in the Configure modal > the item's default.
@@ -328,14 +392,29 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
         opts?.modifiers ??
         (selectedItem?.id === item.id ? selectedModifiers : []);
 
+      const packaging = resolvePackagingSnapshot(item, opts?.packagingOptionId);
+
       // New line is always added with empty `notes`, so the comparison
       // key intentionally uses [] — that way tapping the same item
       // twice still merges to qty 2, but a line that previously had
       // a note attached stays separate (different key suffix).
-      const key = makeCartKey(item.id, modifiers, chosenVariant?.id, []);
+      const key = makeCartKey(
+        item.id,
+        modifiers,
+        chosenVariant?.id,
+        [],
+        packaging.packaging_option_id,
+      );
       setCartItems((curr) => {
         const existing = curr.find(
-          (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === key,
+          (ci) =>
+            makeCartKey(
+              ci.id,
+              ci.modifiers,
+              ci.variant_id,
+              ci.notes,
+              ci.packaging_option_id,
+            ) === key,
         );
         if (existing) {
           return curr.map((ci) =>
@@ -351,8 +430,6 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
         }));
         const parsedTaxRate =
           item.tax_rate != null ? parseFloat(String(item.tax_rate)) : 0;
-        const parsedPackaging =
-          item.packaging_fee != null ? parseFloat(String(item.packaging_fee)) : 0;
         return [
           ...curr,
           {
@@ -361,7 +438,10 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
             price: parsedPrice,
             quantity: 1,
             modifiers: parsedModifiers,
-            packaging_fee: Number.isFinite(parsedPackaging) ? Math.max(0, parsedPackaging) : 0,
+            packaging_fee: packaging.packaging_fee,
+            packaging_fee_mode: packaging.packaging_fee_mode,
+            packaging_option_id: packaging.packaging_option_id,
+            packaging_option_name: packaging.packaging_option_name,
             variant_id: chosenVariant?.id ?? null,
             variant_name: chosenVariant?.name ?? null,
             tax_rate: Number.isFinite(parsedTaxRate) ? parsedTaxRate : 0,
@@ -383,7 +463,13 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     setCartItems((curr) =>
       curr
         .map((item) =>
-          makeCartKey(item.id, item.modifiers, item.variant_id, item.notes) === itemKey
+          makeCartKey(
+            item.id,
+            item.modifiers,
+            item.variant_id,
+            item.notes,
+            item.packaging_option_id,
+          ) === itemKey
             ? { ...item, quantity: item.quantity + delta }
             : item,
         )
@@ -472,7 +558,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     setPayments,
     cartSubtotal,
     discountedSubtotal,
-    cartTax,
+    cartTax: cartTaxWithPackaging,
     cartServiceCharge,
     serviceChargeLabel,
     cartPackagingFee,

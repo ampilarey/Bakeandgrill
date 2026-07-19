@@ -28,6 +28,7 @@ class Item extends Model
         'image_url',
         'base_price',
         'packaging_fee',
+        'packaging_fee_mode',
         'has_variants',
         'cost',
         'tax_rate',
@@ -76,6 +77,16 @@ class Item extends Model
         return $this->belongsToMany(Modifier::class, 'item_modifier')
             ->withPivot(['is_required', 'max_quantity'])
             ->withTimestamps();
+    }
+
+    public function packagingOptions(): HasMany
+    {
+        return $this->hasMany(ItemPackagingOption::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function activePackagingOptions(): HasMany
+    {
+        return $this->packagingOptions()->where('is_active', true);
     }
 
     public function recipe(): HasOne

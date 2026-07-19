@@ -9,7 +9,12 @@ import { useLanguage } from '../../context/LanguageContext';
 export type ProductCardProps = {
   item: Item;
   onSelectItem: (item: Item, qty: number) => void;
-  onAddToCart: (item: Item, quantity: number, variant?: Variant | null) => void;
+  onAddToCart: (
+    item: Item,
+    quantity: number,
+    variant?: Variant | null,
+    packagingOptionId?: number | null,
+  ) => void;
   isFavourite?: boolean;
   onToggleFavourite?: (itemId: number) => void;
 };
@@ -30,6 +35,8 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
   const { t } = useLanguage();
   const [quantity, setQuantity] = useState(1);
   const [imgError, setImgError] = useState(false);
+  const needsConfigure =
+    !!item.has_variants || (item.packaging_options?.length ?? 0) > 1;
 
   const imgSrc = (!imgError && item.image_url)
     ? item.image_url.startsWith('http')
@@ -264,8 +271,8 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
             >
               {t('menu.out_of_stock')}
             </button>
-          ) : item.has_variants ? (
-            /* Variant items: − qty + on left, + opens modal on right */
+          ) : needsConfigure ? (
+            /* Variant / packaging-choice items: − qty + on left, Add opens modal */
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <div style={{
                 display: 'flex', alignItems: 'center',
@@ -348,8 +355,8 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
             </div>
           )}
 
-          {/* Customise link if has modifiers (only for non-variant products) */}
-          {!isUnavailable && !item.has_variants && item.modifiers && item.modifiers.length > 0 && (
+          {/* Customise link if has modifiers (only for quick-add products) */}
+          {!isUnavailable && !needsConfigure && item.modifiers && item.modifiers.length > 0 && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onSelectItem(item, quantity); }}

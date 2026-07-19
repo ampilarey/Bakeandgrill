@@ -203,6 +203,10 @@ export async function getOrder(orderId: number): Promise<{
       /** Legacy percent snapshot — POS GST math prefers tax_code. */
       tax_rate?: number | string | null;
       tax_code?: string | null;
+      packaging_fee?: number | null;
+      packaging_fee_mode?: "per_unit" | "per_line" | null;
+      packaging_option_id?: number | null;
+      packaging_option_name?: string | null;
       /** Free-form kitchen note (e.g. "No salt · Extra spicy"). The
        *  POS joins selected quick-note chips with " · " before saving;
        *  on resume we split back on " · " so the chip picker shows
@@ -344,6 +348,7 @@ export async function updateOrderItems(
       name: string;
       quantity: number;
       variant_id?: number | null;
+      packaging_option_id?: number | null;
       notes?: string;
       modifiers?: Array<{
         modifier_id?: number | null;

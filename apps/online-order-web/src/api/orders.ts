@@ -19,6 +19,7 @@ export type DeliveryOrderPayload = {
     item_id: number;
     quantity: number;
     variant_id?: number;
+    packaging_option_id?: number;
     modifiers?: Array<{ modifier_id: number }>;
   }>;
   delivery_address_line1: string;
@@ -53,7 +54,13 @@ export async function fetchCustomerOrders(signal?: AbortSignal): Promise<{ data:
 
 export async function createCustomerOrder(
   payload: {
-    items: Array<{ item_id: number; quantity: number; variant_id?: number; modifiers?: Array<{ modifier_id: number; quantity?: number }> }>;
+    items: Array<{
+      item_id: number;
+      quantity: number;
+      variant_id?: number;
+      packaging_option_id?: number;
+      modifiers?: Array<{ modifier_id: number; quantity?: number }>;
+    }>;
     customer_notes?: string;
     type?: string;
     pickup_slot_at?: string;

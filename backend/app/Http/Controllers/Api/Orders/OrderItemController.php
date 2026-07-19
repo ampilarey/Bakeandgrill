@@ -45,6 +45,7 @@ class OrderItemController extends Controller
             'items.*.name' => 'required|string|max:255',
             'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.variant_id' => 'nullable|integer',
+            'items.*.packaging_option_id' => 'nullable|integer|exists:item_packaging_options,id',
             'items.*.notes' => 'nullable|string|max:500',
             'items.*.modifiers' => 'nullable|array',
             'items.*.modifiers.*.modifier_id' => 'nullable|integer',

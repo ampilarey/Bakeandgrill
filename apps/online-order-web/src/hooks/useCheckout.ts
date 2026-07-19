@@ -57,6 +57,8 @@ export type CartItem = {
   taxRate?: number;
   taxCode?: string | null;
   packagingFee?: number;
+  packagingFeeMode?: 'per_unit' | 'per_line' | null;
+  packagingOptionId?: number | null;
 };
 
 export type OrderType = "pickup" | "delivery";
@@ -129,11 +131,15 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
         tax_rate?: number | null;
         tax_code?: string | null;
         packaging_fee?: number | string | null;
+        packaging_fee_mode?: string | null;
       };
       quantity: number;
       modifiers?: Array<{ id: number; name: string; price: number | string }>;
       variantId?: number | null;
       variantPrice?: number | null;
+      packagingOptionId?: number | null;
+      packagingFee?: number | null;
+      packagingFeeMode?: 'per_unit' | 'per_line' | null;
     }> = Array.isArray(parsed) ? parsed : (parsed?.entries ?? []);
     return entries.map((e) => ({
       id:        e.item?.id ?? (e as unknown as CartItem).id,
@@ -144,7 +150,12 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
       variantId: e.variantId ?? null,
       taxRate:   Number(e.item?.tax_rate ?? 0),
       taxCode:   e.item?.tax_code ?? null,
-      packagingFee: Math.max(0, Number(e.item?.packaging_fee ?? 0)),
+      packagingFee: Math.max(0, Number(e.packagingFee ?? e.item?.packaging_fee ?? 0)),
+      packagingFeeMode:
+        e.packagingFeeMode === 'per_line' || e.item?.packaging_fee_mode === 'per_line'
+          ? 'per_line' as const
+          : 'per_unit' as const,
+      packagingOptionId: e.packagingOptionId ?? null,
     }));
   } catch { return []; }
 }
@@ -189,16 +200,19 @@ export function useCheckout() {
   const [loyaltyProgramMessage, setLoyaltyProgramMessage] = useState('');
   const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
   const [taxInclusive, setTaxInclusive] = useState(false);
+  const [packagingFeeTaxable, setPackagingFeeTaxable] = useState(true);
 
   useEffect(() => {
     fetchGstBootstrap()
       .then((b) => {
         setDefaultTaxRatePercent(b.tax_rate_percent);
         setTaxInclusive(!!b.tax_inclusive);
+        setPackagingFeeTaxable(b.packaging_fee_taxable !== false);
       })
       .catch(() => {
         setDefaultTaxRatePercent(8);
         setTaxInclusive(false);
+        setPackagingFeeTaxable(true);
       });
   }, []);
 
@@ -485,13 +499,24 @@ export function useCheckout() {
   const scTaxLaar = taxInclusive
     ? 0
     : serviceChargeTaxLaarByBuckets(serviceChargeConfig, serviceChargeLaar, taxBuckets);
-  const taxLaar = itemTaxLaar + scTaxLaar;
+  let packagingTaxLaar = 0;
+  if (packagingFeeTaxable && packagingFeeLaar > 0 && defaultTaxRatePercent > 0) {
+    packagingTaxLaar = taxInclusive
+      ? Math.round((packagingFeeLaar * defaultTaxRatePercent) / (100 + defaultTaxRatePercent))
+      : Math.round((packagingFeeLaar * defaultTaxRatePercent) / 100);
+  }
+  const taxLaar = itemTaxLaar + scTaxLaar + packagingTaxLaar;
 
   useEffect(() => {
     const feeOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
     const lines = cart.map((item) => ({
       item_id: item.id,
       quantity: item.quantity,
+      ...(item.packagingOptionId != null
+        ? { packaging_option_id: item.packagingOptionId }
+        : {}),
+      packaging_fee: item.packagingFee ?? 0,
+      packaging_fee_mode: item.packagingFeeMode ?? 'per_unit',
     }));
     // Instant local estimate from cart snapshots; server preview overwrites.
     let localPackLaar = 0;
@@ -500,7 +525,9 @@ export function useCheckout() {
       if (!(feeMvr > 0)) continue;
       const qty = Math.max(0, Math.round(item.quantity));
       if (qty <= 0) continue;
-      localPackLaar += Math.round(feeMvr * 100) * qty;
+      const feeLaar = Math.round(feeMvr * 100);
+      const units = item.packagingFeeMode === 'per_line' ? 1 : qty;
+      localPackLaar += feeLaar * units;
     }
     setPackagingFeeLaar(localPackLaar);
 
@@ -510,6 +537,9 @@ export function useCheckout() {
         setPackagingFeeLabel(res.packaging_fee_label ?? 'Packaging fee');
         setSmallOrderFeeLaar(res.small_order_fee_laar ?? 0);
         setSmallOrderFeeLabel(res.small_order_fee_label ?? 'Small order fee');
+        if (res.packaging_fee_taxable != null) {
+          setPackagingFeeTaxable(!!res.packaging_fee_taxable);
+        }
       })
       .catch(() => {
         setPackagingFeeLaar(localPackLaar);
@@ -517,7 +547,8 @@ export function useCheckout() {
       });
   }, [orderType, discountedSubtotalLaar, cart]);
 
-  // Inclusive: tax is already inside discountedSubtotalLaar — show taxLaar as info only.
+  // Inclusive: tax is already inside discountedSubtotalLaar / packaging fee —
+  // show taxLaar as info only. Exclusive: add tax (incl. packaging GST).
   const taxForTotalLaar = taxInclusive ? 0 : taxLaar;
   /** Order grand total before gift-card tender (matches server order.total). */
   const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxForTotalLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;
@@ -791,6 +822,7 @@ export function useCheckout() {
             item_id: item.id,
             quantity: item.quantity,
             variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
+            packaging_option_id: item.packagingOptionId ?? undefined,
             modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
           })),
           delivery_address_line1: delivery.address_line1,
@@ -811,6 +843,7 @@ export function useCheckout() {
             item_id: item.id,
             quantity: item.quantity,
             variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
+            packaging_option_id: item.packagingOptionId ?? undefined,
             modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
           })),
           type: "online_pickup",

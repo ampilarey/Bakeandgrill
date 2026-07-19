@@ -7,6 +7,8 @@ export type GstBootstrap = {
   gst_registered: boolean;
   currency: string;
   sector?: string;
+  /** When true, packaging principal is GST-rated (standard rate). */
+  packaging_fee_taxable?: boolean;
 };
 
 let _gstBootstrapCache: GstBootstrap | null = null;
@@ -25,6 +27,7 @@ export async function fetchGstBootstrap(): Promise<GstBootstrap> {
       tax_inclusive: false,
       gst_registered: false,
       currency: "MVR",
+      packaging_fee_taxable: true,
     };
   }
 }

@@ -408,9 +408,9 @@ export function MenuPage() {
       return exists ? prev.filter((m) => m.id !== mod.id) : [...prev, mod];
     });
   };
-  const handleModalAdd = (variant?: Variant | null) => {
+  const handleModalAdd = (variant?: Variant | null, packagingOptionId?: number | null) => {
     if (!selectedItem) return;
-    addItem(selectedItem, selectedQty, selectedModifiers, variant ?? null);
+    addItem(selectedItem, selectedQty, selectedModifiers, variant ?? null, packagingOptionId);
     const label = variant ? `${selectedItem.name} (${variant.name})` : selectedItem.name;
     showToast(`${label} added to cart`);
     setSelectedItem(null);
@@ -423,8 +423,8 @@ export function MenuPage() {
       <ProductCard
         item={item}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
-        onAddToCart={(it, qty, variant) => {
-          addItem(it, qty, [], variant ?? null);
+        onAddToCart={(it, qty, variant, packagingOptionId) => {
+          addItem(it, qty, [], variant ?? null, packagingOptionId);
           showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`);
         }}
         isFavourite={favouriteIds.has(item.id)}
@@ -757,8 +757,8 @@ export function MenuPage() {
         items={items}
         categories={categories}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
-        onAddToCart={(it, qty, variant) => {
-          addItem(it, qty, [], variant ?? null);
+        onAddToCart={(it, qty, variant, packagingOptionId) => {
+          addItem(it, qty, [], variant ?? null, packagingOptionId);
           showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`);
         }}
         onSelectCategory={(categoryId) => {

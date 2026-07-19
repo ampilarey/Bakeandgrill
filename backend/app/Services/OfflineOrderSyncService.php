@@ -307,6 +307,10 @@ class OfflineOrderSyncService
                 $normalized['variant_id'] = (int) $item['variant_id'];
             }
 
+            if (!empty($item['packaging_option_id'])) {
+                $normalized['packaging_option_id'] = (int) $item['packaging_option_id'];
+            }
+
             if (!empty($item['modifiers'])) {
                 $normalized['modifiers'] = $item['modifiers'];
             }

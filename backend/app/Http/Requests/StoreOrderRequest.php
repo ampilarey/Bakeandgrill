@@ -44,6 +44,7 @@ class StoreOrderRequest extends FormRequest
             // string up to 255 chars so it's also future-proof for
             // typed notes from other channels (e.g. online order).
             'items.*.notes' => 'nullable|string|max:255',
+            'items.*.packaging_option_id' => 'nullable|integer|exists:item_packaging_options,id',
         ];
     }
 }

@@ -12,9 +12,21 @@ export type VariantRow = MenuVariant & { _key: string };
 
 export type ComboRow = { item_id: string; item_name?: string; quantity: string; is_optional: boolean };
 
+export type PackagingOptionRow = {
+  _key: string;
+  id?: number;
+  name: string;
+  name_dv: string;
+  fee: string;
+  is_default: boolean;
+};
+
 export type ItemForm = {
   name: string; name_dv: string; description: string; sku: string;
-  image_url: string; base_price: string; packaging_fee: string; tax_code: string;
+  image_url: string; base_price: string; packaging_fee: string;
+  packaging_fee_mode: 'per_unit' | 'per_line';
+  packaging_options: PackagingOptionRow[];
+  tax_code: string;
   sort_order: string; is_active: boolean; is_available: boolean;
   category_id: string;
   menu_group_id: string;
@@ -30,6 +42,16 @@ export type ItemForm = {
   dietary_tags: string;
   allergens: string;
 };
+
+export function emptyPackagingOptionRow(isDefault = false): PackagingOptionRow {
+  return {
+    _key: String(Date.now() + Math.random()),
+    name: '',
+    name_dv: '',
+    fee: '0',
+    is_default: isDefault,
+  };
+}
 
 export function emptyVariantRow(): VariantRow {
   return { _key: String(Date.now() + Math.random()), name: '', price: 0, cost: null, sku: null, track_stock: false, stock_qty: 0, low_stock_threshold: 5, is_active: true, sort_order: 0 };
@@ -55,6 +77,15 @@ export function itemToForm(item: MenuItem): ItemForm {
     image_url: item.image_url ?? '',
     base_price: String(item.base_price),
     packaging_fee: item.packaging_fee != null ? String(item.packaging_fee) : '0',
+    packaging_fee_mode: item.packaging_fee_mode === 'per_line' ? 'per_line' : 'per_unit',
+    packaging_options: (item.packaging_options ?? []).map((o) => ({
+      _key: String(o.id ?? Math.random()),
+      id: o.id,
+      name: o.name ?? '',
+      name_dv: o.name_dv ?? '',
+      fee: String(o.fee ?? 0),
+      is_default: !!o.is_default,
+    })),
     tax_code: item.tax_code ?? (item.tax_rate && Number(item.tax_rate) > 0 ? 'standard_8' : 'out_of_scope'),
     sort_order: item.sort_order != null ? String(item.sort_order) : '',
     is_active: item.is_active,
@@ -89,6 +120,18 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     image_url: form.image_url.trim() || null,
     base_price: parseFloat(form.base_price) || 0,
     packaging_fee: Math.max(0, parseFloat(form.packaging_fee) || 0),
+    packaging_fee_mode: form.packaging_fee_mode,
+    packaging_options: form.packaging_options
+      .filter((row) => row.name.trim() !== '')
+      .map((row, i) => ({
+        ...(row.id != null ? { id: row.id } : {}),
+        name: row.name.trim(),
+        name_dv: row.name_dv.trim() || null,
+        fee: Math.max(0, parseFloat(row.fee) || 0),
+        is_default: !!row.is_default,
+        sort_order: i,
+        is_active: true,
+      })),
     has_variants: form.has_variants,
     tax_code: form.tax_code,
     sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
@@ -137,7 +180,8 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
 export function emptyItemForm(selectedCat: number | null): ItemForm {
   return {
     name: '', name_dv: '', description: '', sku: '', image_url: '',
-    base_price: '', packaging_fee: '0', tax_code: 'standard_8', sort_order: '',
+    base_price: '', packaging_fee: '0', packaging_fee_mode: 'per_unit', packaging_options: [],
+    tax_code: 'standard_8', sort_order: '',
     is_active: true, is_available: true,
     category_id: selectedCat != null ? String(selectedCat) : '',
     menu_group_id: '1',

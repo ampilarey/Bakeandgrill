@@ -397,7 +397,7 @@ class OrderCreationService
 
         // Pre-load all referenced items in a single query to avoid N+1
         $itemIds = array_column($items, 'item_id');
-        $itemMap = Item::with(['variants', 'modifiers'])
+        $itemMap = Item::with(['variants', 'modifiers', 'packagingOptions'])
             ->where('is_active', true)
             ->where('is_available', true)
             ->whereIn('id', $itemIds)
@@ -507,6 +507,14 @@ class OrderCreationService
                 $notes = null;
             }
 
+            $packagingOptionId = isset($itemPayload['packaging_option_id'])
+                ? (int) $itemPayload['packaging_option_id']
+                : null;
+            if ($packagingOptionId !== null && $packagingOptionId <= 0) {
+                $packagingOptionId = null;
+            }
+            $packaging = app(PackagingOptionResolver::class)->resolve($itemModel, $packagingOptionId);
+
             $orderItem = OrderItem::create([
                 'order_id' => $order->id,
                 'item_id' => $itemModel->id,
@@ -521,6 +529,10 @@ class OrderCreationService
                 'tax_rate' => (float) $itemModel->tax_rate,
                 'tax_code' => $itemModel->tax_code ?? 'standard_8',
                 'notes' => $notes,
+                'packaging_option_id' => $packaging['packaging_option_id'],
+                'packaging_fee' => $packaging['packaging_fee'],
+                'packaging_fee_mode' => $packaging['packaging_fee_mode'],
+                'packaging_option_name' => $packaging['packaging_option_name'],
                 'status' => 'pending',
             ]);
 

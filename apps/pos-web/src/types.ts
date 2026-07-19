@@ -5,6 +5,7 @@ export type {
   Variant,
   Category,
   CartItem,
+  PackagingOption,
   RestaurantTable,
   StaffLoginResponse,
   StaffUser,

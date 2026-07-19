@@ -144,7 +144,7 @@ function cartFingerprint(items: CartItem[]): string {
       const notes = Array.isArray(it.notes)
         ? [...it.notes].sort().join("|")
         : (it.notes as unknown as string | undefined) ?? "";
-      return `${it.id || 0}|${it.variant_id ?? 0}|q${it.quantity}|m${mods}|n${notes}`;
+      return `${it.id || 0}|${it.variant_id ?? 0}|p${it.packaging_option_id ?? 0}|q${it.quantity}|m${mods}|n${notes}`;
     })
     .sort()
     .join(";");
@@ -391,6 +391,9 @@ export function useOrderCreation(params: Params) {
         name: item.name,
         quantity: item.quantity,
         ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
+        ...(item.packaging_option_id != null
+          ? { packaging_option_id: item.packaging_option_id }
+          : {}),
         modifiers: item.modifiers.map((m) => ({ modifier_id: m.id, name: m.name, price: m.price })),
         ...(item.notes && item.notes.length > 0
           ? { notes: item.notes.join(" · ") }
@@ -562,6 +565,9 @@ export function useOrderCreation(params: Params) {
           item_id: item.id,
           quantity: item.quantity,
           ...(item.variant_id != null ? { variant_id: item.variant_id } : {}),
+          ...(item.packaging_option_id != null
+            ? { packaging_option_id: item.packaging_option_id }
+            : {}),
           unit_price: lineUnitPrice(item),
           name: item.name,
           modifiers: (item.modifiers ?? []).map((m) => ({
@@ -1037,6 +1043,11 @@ export function useOrderCreation(params: Params) {
       quantity: Number(item.quantity ?? 0),
       variant_id: item.variant_id ?? null,
       variant_name: item.variant_name ?? null,
+      packaging_fee: item.packaging_fee != null ? Number(item.packaging_fee) : 0,
+      packaging_fee_mode:
+        item.packaging_fee_mode === "per_line" ? "per_line" : "per_unit",
+      packaging_option_id: item.packaging_option_id ?? null,
+      packaging_option_name: item.packaging_option_name ?? null,
       modifiers: item.modifiers?.map((m) => ({
         id: m.modifier_id ?? 0,
         name: m.modifier_name,
@@ -1212,6 +1223,7 @@ export function useOrderCreation(params: Params) {
         name: it.name,
         quantity: it.quantity,
         variant_id: it.variant_id ?? null,
+        packaging_option_id: it.packaging_option_id ?? null,
         notes: Array.isArray(it.notes) && it.notes.length > 0 ? it.notes.join(" · ") : undefined,
         modifiers: (it.modifiers ?? []).map((m) => ({
           modifier_id: m.id || null,

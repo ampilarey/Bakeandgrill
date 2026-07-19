@@ -37,7 +37,7 @@ class PosMenuBuilder
             ->get(['id', 'name', 'name_dv', 'sort_order', 'image_url']);
 
         $query = Item::query()
-            ->with(['category:id,name', 'variants', 'modifiers'])
+            ->with(['category:id,name', 'variants', 'modifiers', 'packagingOptions'])
             ->where('is_active', true);
         $this->kitchenMenuResolver->scopeItemsForChannel($query, $channel, null, true);
 
@@ -136,6 +136,8 @@ class PosMenuBuilder
                 'image_url' => $item->display_image_url,
                 'base_price' => $item->base_price,
                 'packaging_fee' => (float) ($item->packaging_fee ?? 0),
+                'packaging_fee_mode' => (string) ($item->packaging_fee_mode ?? 'per_unit'),
+                'packaging_options' => app(\App\Domains\Catalog\Services\PackagingOptionsSyncService::class)->serializeActive($item),
                 'tax_rate' => $item->tax_rate,
                 'is_available' => $item->is_available,
                 'snoozed_until' => $item->snoozed_until?->toIso8601String(),

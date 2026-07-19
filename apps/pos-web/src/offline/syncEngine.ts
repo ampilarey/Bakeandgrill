@@ -34,6 +34,9 @@ function toApiPayload(orders: OfflineOrderRecord[]): PosOfflineSyncPayload["orde
       item_id: it.item_id,
       quantity: it.quantity,
       ...(it.variant_id != null ? { variant_id: it.variant_id } : {}),
+      ...(it.packaging_option_id != null
+        ? { packaging_option_id: it.packaging_option_id }
+        : {}),
       unit_price: it.unit_price,
       ...(it.modifiers ? { modifiers: it.modifiers } : {}),
       ...(it.notes ? { notes: it.notes } : {}),

@@ -48,7 +48,7 @@ class ItemController extends Controller
         // Public /items route — POS passes view=pos without staff middleware.
         $isPosView = $request->query('view') === 'pos';
 
-        $with = ['category', 'variants', 'modifiers'];
+        $with = ['category', 'variants', 'modifiers', 'packagingOptions'];
         if ($isAdmin && !$isPosView) {
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
@@ -125,6 +125,8 @@ class ItemController extends Controller
                 'image_url' => $item->display_image_url,
                 'base_price' => $item->base_price,
                 'packaging_fee' => (float) ($item->packaging_fee ?? 0),
+                'packaging_fee_mode' => (string) ($item->packaging_fee_mode ?? 'per_unit'),
+                'packaging_options' => app(\App\Domains\Catalog\Services\PackagingOptionsSyncService::class)->serializeActive($item),
                 'tax_rate' => $item->tax_rate,
                 'tax_code' => $item->tax_code ?? 'standard_8',
                 'is_available' => $item->is_available,
@@ -303,7 +305,8 @@ class ItemController extends Controller
         $variantsData = $data['variants'] ?? null;
         $channelRows = $data['channel_availability'] ?? null;
         $comboRows = $data['combo_items'] ?? null;
-        unset($data['variants'], $data['modifier_ids'], $data['channel_availability'], $data['combo_items']);
+        $packagingOptions = $data['packaging_options'] ?? null;
+        unset($data['variants'], $data['modifier_ids'], $data['channel_availability'], $data['combo_items'], $data['packaging_options']);
 
         $item = Item::create($data);
 
@@ -313,6 +316,10 @@ class ItemController extends Controller
 
         if ($variantsData !== null) {
             $variantSync->sync($item, $variantsData);
+        }
+
+        if ($packagingOptions !== null) {
+            app(\App\Domains\Catalog\Services\PackagingOptionsSyncService::class)->sync($item, $packagingOptions);
         }
 
         // Seed channel availability so the item actually appears on the
@@ -375,7 +382,7 @@ class ItemController extends Controller
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
 
-        $item = Item::with(['category', 'variants', 'modifiers'])
+        $item = Item::with(['category', 'variants', 'modifiers', 'packagingOptions'])
             ->where('is_active', true)
             ->findOrFail($id);
 
@@ -396,6 +403,8 @@ class ItemController extends Controller
             'image_url' => $item->display_image_url,
             'base_price' => $item->base_price,
             'packaging_fee' => (float) ($item->packaging_fee ?? 0),
+            'packaging_fee_mode' => (string) ($item->packaging_fee_mode ?? 'per_unit'),
+            'packaging_options' => app(\App\Domains\Catalog\Services\PackagingOptionsSyncService::class)->serializeActive($item),
             'tax_rate' => $item->tax_rate,
             'tax_code' => $item->tax_code ?? 'standard_8',
             'is_available' => $item->is_available,
@@ -466,7 +475,8 @@ class ItemController extends Controller
         }
         $variantsData = $data['variants'] ?? null;
         $comboRows = $data['combo_items'] ?? null;
-        unset($data['channel_availability'], $data['variants'], $data['modifier_ids'], $data['combo_items']);
+        $packagingOptions = $data['packaging_options'] ?? null;
+        unset($data['channel_availability'], $data['variants'], $data['modifier_ids'], $data['combo_items'], $data['packaging_options']);
         $item->update($data);
 
         if ($request->has('modifier_ids')) {
@@ -475,6 +485,10 @@ class ItemController extends Controller
 
         if ($variantsData !== null) {
             $variantSync->sync($item, $variantsData);
+        }
+
+        if ($packagingOptions !== null) {
+            app(\App\Domains\Catalog\Services\PackagingOptionsSyncService::class)->sync($item, $packagingOptions);
         }
 
         if ($request->has('channel_availability')) {
@@ -545,7 +559,7 @@ class ItemController extends Controller
             $lookupBarcode = $itemCode;   // look up item by the short code
         }
 
-        $item = Item::with(['category', 'variants', 'modifiers'])
+        $item = Item::with(['category', 'variants', 'modifiers', 'packagingOptions'])
             ->where(function ($q) use ($lookupBarcode) {
                 $q->where('barcode', $lookupBarcode)
                     ->orWhere('sku', $lookupBarcode);

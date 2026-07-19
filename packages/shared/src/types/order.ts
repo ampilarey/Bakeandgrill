@@ -54,6 +54,10 @@ export type OrderItem = {
   notes?: string | null;
   status?: string;
   modifiers?: OrderItemModifier[];
+  packaging_fee?: number | null;
+  packaging_fee_mode?: "per_unit" | "per_line" | null;
+  packaging_option_id?: number | null;
+  packaging_option_name?: string | null;
 };
 
 export type OrderPaymentSettlement = {

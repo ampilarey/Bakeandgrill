@@ -46,8 +46,10 @@ export type MenuItem = {
   name_dv?: string | null;
   description?: string | null;
   base_price: number;
-  /** Per-unit packaging fee in MVR (charged on takeaway/pickup/delivery). */
+  /** Fallback per-unit packaging fee in MVR when the item has no options. */
   packaging_fee?: number;
+  packaging_fee_mode?: "per_unit" | "per_line";
+  packaging_options?: PackagingOption[];
   has_variants?: boolean;
   variants?: Variant[];
   image_url?: string | null;
@@ -97,14 +99,26 @@ export type ComboItemEntry = {
   unit_price: number;
 };
 
+export type PackagingOption = {
+  id: number;
+  name: string;
+  name_dv?: string | null;
+  fee: number;
+  is_default: boolean;
+  sort_order: number;
+};
+
 export type CartItem = {
   id: number;
   name: string;
   price: number;
   quantity: number;
   modifiers: Modifier[];
-  /** Snapshot of item packaging fee (MVR per unit) at add-to-cart time. */
+  /** Snapshot of resolved packaging fee (MVR per unit) at add-to-cart time. */
   packaging_fee?: number;
+  packaging_fee_mode?: "per_unit" | "per_line";
+  packaging_option_id?: number | null;
+  packaging_option_name?: string | null;
   image_url?: string | null;
   variant_id?: number | null;
   variant_name?: string | null;

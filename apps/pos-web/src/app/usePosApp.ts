@@ -425,7 +425,7 @@ export function usePosApp() {
   useEffect(() => {
     if (notePickerKey === null) return;
     const exists = cart.cartItems.some(
-      (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === notePickerKey,
+      (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) === notePickerKey,
     );
     if (!exists) {
       setNotePickerKey(null);

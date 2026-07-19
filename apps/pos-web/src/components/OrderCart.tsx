@@ -291,8 +291,8 @@ export function OrderCart(p: Props) {
     // hasn't re-rendered yet at the moment the child fires this.
     const indexAtRemoval = p.cartItems.findIndex(
       (ci) =>
-        makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) ===
-        makeCartKey(removed.id, removed.modifiers, removed.variant_id, removed.notes),
+        makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) ===
+        makeCartKey(removed.id, removed.modifiers, removed.variant_id, removed.notes, removed.packaging_option_id),
     );
     setRecentlyRemoved({
       item: removed,
@@ -856,7 +856,7 @@ export function OrderCart(p: Props) {
         ) : (
           p.cartItems.map((item) => (
             <CartLine
-              key={makeCartKey(item.id, item.modifiers, item.variant_id, item.notes)}
+              key={makeCartKey(item.id, item.modifiers, item.variant_id, item.notes, item.packaging_option_id)}
               item={item}
               cartItems={p.cartItems}
               setCartItems={p.setCartItems}
@@ -1150,7 +1150,7 @@ function CartLine({
   isResumed: boolean;
   onLineRemoved?: (removed: CartItem) => void;
 }) {
-  const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id, item.notes);
+  const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id, item.notes, item.packaging_option_id);
   const unitPrice = Number(item.price ?? 0) +
     item.modifiers.reduce((s, m) => s + Number(m.price ?? 0), 0);
   const lineTotal = unitPrice * item.quantity;
@@ -1187,7 +1187,7 @@ function CartLine({
   const removeLine = () => {
     setCartItems(
       cartItems.filter(
-        (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) !== itemKey,
+        (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) !== itemKey,
       ),
     );
     // Surface the removed line to the parent so it can show the
@@ -1290,7 +1290,7 @@ function CartLine({
                 setCartItems(
                   cartItems
                     .map((ci) =>
-                      makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === itemKey
+                      makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) === itemKey
                         ? { ...ci, quantity: ci.quantity - 1 }
                         : ci,
                     )
@@ -1314,7 +1314,7 @@ function CartLine({
               onClick={() =>
                 setCartItems(
                   cartItems.map((ci) =>
-                    makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes) === itemKey
+                    makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) === itemKey
                       ? { ...ci, quantity: ci.quantity + 1 }
                       : ci,
                   ),
@@ -1350,6 +1350,16 @@ function CartLine({
                     fontSize: 11, color: C.muted, fontWeight: 500,
                   }}>
                     {' '}· {item.variant_name}
+                  </span>
+                )}
+                {item.packaging_option_name && (
+                  <span style={{
+                    fontSize: 11, color: C.muted, fontWeight: 500,
+                  }}>
+                    {' '}· {item.packaging_option_name}
+                    {Number(item.packaging_fee ?? 0) > 0
+                      ? ` +${Number(item.packaging_fee).toFixed(2)}`
+                      : ''}
                   </span>
                 )}
                 {showUnit && (

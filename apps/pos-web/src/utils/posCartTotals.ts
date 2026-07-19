@@ -12,6 +12,7 @@ export type PosCartLine = {
   tax_code?: string | null;
   modifiers?: Array<{ price: number }>;
   packaging_fee?: number | null;
+  packaging_fee_mode?: "per_unit" | "per_line" | null;
 };
 
 export type CartTaxOptions = {
@@ -20,6 +21,10 @@ export type CartTaxOptions = {
   serviceChargeConfig?: ServiceChargePublicConfig | null;
   /** Backend order type for SC apply flags (e.g. dine_in, takeaway). */
   orderType?: string;
+  /** When true, fold packaging GST into the tax preview (default true). */
+  packagingFeeTaxable?: boolean;
+  /** Packaging principal in MVR (already order-type gated). */
+  packagingFeeMvr?: number;
 };
 
 export function lineUnitPrice(item: PosCartLine): number {
@@ -111,7 +116,26 @@ export function cartTaxMvr(
       buckets,
     );
   }
+  const packagingFeeMvr = options.packagingFeeMvr ?? 0;
+  const packagingTaxable = options.packagingFeeTaxable !== false;
+  if (packagingTaxable && packagingFeeMvr > 0 && defaultTaxRatePercent > 0) {
+    taxLaar += packagingTaxLaar(packagingFeeMvr, defaultTaxRatePercent, taxInclusive);
+  }
   return taxLaar / 100;
+}
+
+/** GST on packaging principal — mirrors GstTaxCalculator::calculateLineTaxLaar. */
+export function packagingTaxLaar(
+  packagingFeeMvr: number,
+  taxRatePercent: number,
+  taxInclusive: boolean,
+): number {
+  if (!(packagingFeeMvr > 0) || !(taxRatePercent > 0)) return 0;
+  const laar = Math.round(packagingFeeMvr * 100);
+  if (taxInclusive) {
+    return Math.round((laar * taxRatePercent) / (100 + taxRatePercent));
+  }
+  return Math.round((laar * taxRatePercent) / 100);
 }
 
 /** @deprecated Prefer cartTaxMvr — kept for call sites that assume exclusive-only. */
@@ -137,7 +161,9 @@ export function cartPackagingFeeMvr(
     if (!(feeMvr > 0)) continue;
     const qty = Math.max(0, Math.round(item.quantity));
     if (qty <= 0) continue;
-    laar += Math.round(feeMvr * 100) * qty;
+    const feeLaar = Math.round(feeMvr * 100);
+    const units = item.packaging_fee_mode === "per_line" ? 1 : qty;
+    laar += feeLaar * units;
   }
   return laar / 100;
 }

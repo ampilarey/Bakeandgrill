@@ -89,18 +89,28 @@ describe("posCartTotals", () => {
     const items = [{ price: 100, quantity: 1, packaging_fee: 5 }];
     const sub = cartSubtotalFromLines(items);
     const discounted = sub;
+    const packaging = cartPackagingFeeMvr(items, "takeaway");
     const tax = cartTaxMvr(items, sub, discounted, 8, {
       taxInclusive: false,
       serviceChargeConfig: taxableSc,
       orderType: "takeaway",
+      packagingFeeMvr: packaging,
+      packagingFeeTaxable: true,
     });
     const sc = cartServiceChargeMvr(taxableSc, "takeaway", discounted);
-    const packaging = cartPackagingFeeMvr(items, "takeaway");
-    // SC = 10% of 100 = 10; item tax = 8; SC tax = 0.8; packaging = 5
+    // SC = 10% of 100 = 10; item tax = 8; SC tax = 0.8; packaging GST = 0.4; packaging = 5
     expect(sc).toBe(10);
-    expect(tax).toBe(8.8);
+    expect(tax).toBe(9.2);
     expect(packaging).toBe(5);
-    expect(cartGrandTotalMvr(discounted, tax, sc, packaging, false)).toBe(123.8);
+    expect(cartGrandTotalMvr(discounted, tax, sc, packaging, false)).toBe(124.2);
+  });
+
+  it("per_line packaging is charged once regardless of qty", () => {
+    const items = [
+      { price: 10, quantity: 3, packaging_fee: 5, packaging_fee_mode: "per_line" as const },
+    ];
+    expect(cartPackagingFeeMvr(items, "takeaway")).toBe(5);
+    expect(cartPackagingFeeMvr(items, "dine_in")).toBe(0);
   });
 
   it("inclusive: total = discountedSubtotal + SC + packaging; tax extracted; no SC tax", () => {

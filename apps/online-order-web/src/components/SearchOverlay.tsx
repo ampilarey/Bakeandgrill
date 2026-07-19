@@ -14,7 +14,12 @@ type Props = {
   items: Item[];
   categories: Category[];
   onSelectItem: (item: Item, qty: number) => void;
-  onAddToCart: (item: Item, quantity: number, variant?: Variant | null) => void;
+  onAddToCart: (
+    item: Item,
+    quantity: number,
+    variant?: Variant | null,
+    packagingOptionId?: number | null,
+  ) => void;
   onSelectCategory: (categoryId: number) => void;
   favouriteIds: Set<number>;
   onToggleFavourite?: (itemId: number) => void;

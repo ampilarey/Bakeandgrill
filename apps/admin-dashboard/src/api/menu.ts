@@ -50,6 +50,16 @@ export type MenuItem = {
   image_url?: string | null;
   base_price: number;
   packaging_fee?: number;
+  packaging_fee_mode?: 'per_unit' | 'per_line';
+  packaging_options?: Array<{
+    id?: number;
+    name: string;
+    name_dv?: string | null;
+    fee: number;
+    is_default: boolean;
+    sort_order: number;
+    is_active?: boolean;
+  }>;
   cost?: number | null;
   recipe_cost?: number | null;
   effective_cost?: number | null;
@@ -90,6 +100,16 @@ export type MenuItemPayload = {
   image_url?: string | null;
   base_price: number;
   packaging_fee?: number;
+  packaging_fee_mode?: 'per_unit' | 'per_line';
+  packaging_options?: Array<{
+    id?: number;
+    name: string;
+    name_dv?: string | null;
+    fee: number;
+    is_default: boolean;
+    sort_order: number;
+    is_active?: boolean;
+  }>;
   has_variants?: boolean;
   variants?: MenuVariant[];
   tax_rate?: number | null;

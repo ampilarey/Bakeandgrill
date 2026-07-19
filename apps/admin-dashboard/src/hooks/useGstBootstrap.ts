@@ -8,6 +8,7 @@ export interface GstBootstrap {
   gst_registered: boolean;
   currency: string;
   sector: string;
+  packaging_fee_taxable?: boolean;
 }
 
 let cached: GstBootstrap | null = null;
