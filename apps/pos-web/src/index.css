@@ -431,6 +431,13 @@ html, body, #root {
     box-sizing: border-box;
     background: #FFFFFF;
   }
+  .pos-cart.pos-cart--dock .pos-cart-dock-items {
+    transform: translateY(-2px);
+  }
+  .pos-cart.pos-cart--dock .pos-cart-dock-amount {
+    margin-top: 3px;
+    transform: translateY(1px);
+  }
 
   /* Expanded sheet — full cart as bottom sheet (customer-picker pattern). */
   .pos-cart-sheet-backdrop.pos-cart-sheet-backdrop--open {

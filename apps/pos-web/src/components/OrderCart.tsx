@@ -357,16 +357,22 @@ export function OrderCart(p: Props) {
             display: "flex", alignItems: "center", gap: 8,
           }}
         >
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.muted }}>
+          <span className="pos-cart-dock-summary" style={{ flex: 1, minWidth: 0 }}>
+            <span
+              className="pos-cart-dock-items"
+              style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.muted }}
+            >
               {p.cartItems.length === 0
                 ? "Cart empty"
                 : `${itemCount} item${itemCount === 1 ? "" : "s"}`}
             </span>
-            <span style={{
-              display: "block", fontSize: 16, fontWeight: 800, color: C.text,
-              fontVariantNumeric: "tabular-nums",
-            }}>
+            <span
+              className="pos-cart-dock-amount"
+              style={{
+                display: "block", fontSize: 16, fontWeight: 800, color: C.text,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               MVR {p.chargeTotal.toFixed(2)}
             </span>
           </span>
