@@ -16,8 +16,16 @@ import { isGiftCardOrder } from '../utils/giftCardOrder';
 
 const ACTIVE = new Set(['payment_pending', 'pending', 'paid', 'preparing', 'ready']);
 
+function isActiveFoodOrder(o: Order): boolean {
+  return ACTIVE.has(o.status) && !isGiftCardOrder(o);
+}
+
 function findActiveFoodOrder(orders: Order[]): Order | null {
-  return orders.find((o) => ACTIVE.has(o.status) && !isGiftCardOrder(o)) ?? null;
+  return orders.find(isActiveFoodOrder) ?? null;
+}
+
+function countActiveFoodOrders(orders: Order[]): number {
+  return orders.reduce((n, o) => n + (isActiveFoodOrder(o) ? 1 : 0), 0);
 }
 
 function isOrder(v: unknown): v is Order {
@@ -59,6 +67,8 @@ type ActiveOrderContextValue = {
   order: Order | null | undefined;
   activeOrder: Order | null;
   hasActiveOrder: boolean;
+  /** Count of active food orders (for bottom-nav badge). */
+  activeOrderCount: number;
   loading: boolean;
 };
 
@@ -68,6 +78,7 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, authReady } = useAuth();
   const location = useLocation();
   const [order, setOrder] = useState<Order | null | undefined>(undefined);
+  const [activeOrderCount, setActiveOrderCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /** True after the first successful/failed resolve (not undefined). */
   const loadedRef = useRef(false);
@@ -78,15 +89,23 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
     location.pathname.startsWith('/checkout') ||
     location.pathname.startsWith('/orders/');
 
-  const applyOrder = useCallback((next: Order | null) => {
+  const applyOrders = useCallback((orders: Order[]) => {
     loadedRef.current = true;
+    const next = findActiveFoodOrder(orders);
+    const count = countActiveFoodOrders(orders);
     setOrder((prev) => (sameActiveOrder(prev, next) ? prev : next));
+    setActiveOrderCount((prev) => (prev === count ? prev : count));
+  }, []);
+
+  const clearActive = useCallback(() => {
+    loadedRef.current = true;
+    setOrder(null);
+    setActiveOrderCount(0);
   }, []);
 
   useEffect(() => {
     if (skip) {
-      loadedRef.current = true;
-      setOrder(null);
+      clearActive();
       return;
     }
 
@@ -95,11 +114,10 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
     const load = () => {
       fetchCustomerOrders(controller.signal)
         .then((res) => {
-          const orders = normalizeOrders(res);
-          applyOrder(findActiveFoodOrder(orders));
+          applyOrders(normalizeOrders(res));
         })
         .catch((err) => {
-          if (err.name !== 'AbortError') applyOrder(null);
+          if (err.name !== 'AbortError') clearActive();
         });
     };
 
@@ -110,7 +128,7 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
       controller.abort();
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isAuthenticated, authReady, skip, applyOrder]);
+  }, [isAuthenticated, authReady, skip, applyOrders, clearActive]);
 
   // Reload once per navigation — do NOT depend on `order` (new object identity
   // every response would self-trigger a fetch loop).
@@ -119,14 +137,13 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
     fetchCustomerOrders(controller.signal)
       .then((res) => {
-        const orders = normalizeOrders(res);
-        applyOrder(findActiveFoodOrder(orders));
+        applyOrders(normalizeOrders(res));
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') applyOrder(null);
+        if (err.name !== 'AbortError') clearActive();
       });
     return () => controller.abort();
-  }, [location.pathname, skip, applyOrder]);
+  }, [location.pathname, skip, applyOrders, clearActive]);
 
   const activeOrder =
     order && isActiveOrderStatus(order.status) && !isGiftCardOrder(order) ? order : null;
@@ -136,9 +153,10 @@ export function ActiveOrderProvider({ children }: { children: ReactNode }) {
       order,
       activeOrder,
       hasActiveOrder: activeOrder != null,
+      activeOrderCount: activeOrder != null ? Math.max(activeOrderCount, 1) : 0,
       loading: order === undefined,
     }),
-    [order, activeOrder],
+    [order, activeOrder, activeOrderCount],
   );
 
   return (

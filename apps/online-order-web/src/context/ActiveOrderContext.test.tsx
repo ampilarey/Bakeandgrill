@@ -76,6 +76,7 @@ describe('ActiveOrderProvider', () => {
       expect(result.current.activeOrder?.id).toBe(42);
     });
     expect(result.current.activeOrder?.type).not.toBe('gift_card');
+    expect(result.current.activeOrderCount).toBe(1);
   });
 
   it('does not schedule an immediate refetch when an active order resolves', async () => {

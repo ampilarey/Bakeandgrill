@@ -1511,7 +1511,7 @@ textarea.field-input {
   }
 }
 
-/* ── Home desktop stack (phone uses inline GreetingHeader layout) ───── */
+/* ── Home stack helpers ─────────────────────────────────────────────── */
 .home-prayer-wrap {
   padding: 0.5rem var(--page-gutter) 0.65rem;
   max-width: var(--layout-max);
@@ -1519,9 +1519,15 @@ textarea.field-input {
 }
 
 .home-stat-chips {
-  padding: 0.85rem var(--page-gutter) 0.35rem;
+  padding: 0.5rem var(--page-gutter) 0.65rem;
   max-width: var(--layout-max);
   margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .home-stat-chips {
+    padding: 0.85rem var(--page-gutter) 0.35rem;
+  }
 }
 
 .home-stat-chips__row {
@@ -1604,6 +1610,32 @@ textarea.field-input {
   border-radius: 999px;
   background: var(--color-primary);
   box-shadow: 0 0 0 2px var(--color-mobile-nav-bg);
+}
+
+.bottom-nav__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  line-height: 1;
+}
+
+.bottom-nav__count {
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1.1rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.bottom-nav__item.is-active .bottom-nav__count,
+.bottom-nav__item[aria-current="page"] .bottom-nav__count {
+  background: var(--color-primary);
 }
 
 .bottom-nav {

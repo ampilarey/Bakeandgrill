@@ -20,7 +20,6 @@ import { PrayerBar } from '../components/PrayerBar';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useActiveOrder } from '../hooks/useActiveOrder';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { DESKTOP_SHELL_MQ } from '../components/shell/navTabs';
 
@@ -85,7 +84,6 @@ export function HomePage() {
   } = useSiteSettingsContext();
   const { isAuthenticated, authReady, customerName } = useAuth();
   const { t } = useLanguage();
-  const { activeOrder } = useActiveOrder();
   /** Desktop/iPad home chrome; phone keeps the original greeting stack. */
   const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
   const reorderFetched = useRef(false);
@@ -216,7 +214,7 @@ export function HomePage() {
   const statusBadge =
     isOpen !== null ? (
       <OpeningStatusBadge
-        className={isDesktopShell ? 'opening-status-badge-hero' : undefined}
+        className="opening-status-badge-hero"
         open={isOpen}
         reason={hoursReason}
         currentClose={currentClose}
@@ -230,38 +228,38 @@ export function HomePage() {
     loading: chipsLoading,
     isAuthenticated,
     loyaltyPoints,
-    activeOrder: activeOrder
-      ? { id: activeOrder.id, status: activeOrder.status }
-      : null,
     specialsCount: specials.length,
   };
+
+  const hero = (
+    <PromoCarousel
+      slides={heroSlides}
+      apiOrigin={API_ORIGIN}
+      logoSrc={logoSrc}
+      siteName={siteName}
+      fallbackTitle={text('home_hero_fallback_title', '')}
+      fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
+      statusSlot={statusBadge}
+    />
+  );
 
   return (
     <div className="home-page">
       {isDesktopShell ? (
         <>
-          {/* Desktop/iPad: tight stack — prayer → hero (status on banner) → chips */}
+          {/* Desktop/iPad: prayer → hero (status on banner) → chips */}
           <div className="home-prayer-wrap">
             <PrayerBar />
           </div>
-          <PromoCarousel
-            slides={heroSlides}
-            apiOrigin={API_ORIGIN}
-            logoSrc={logoSrc}
-            siteName={siteName}
-            fallbackTitle={text('home_hero_fallback_title', '')}
-            fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
-            statusSlot={statusBadge}
-          />
-          <StatChipsRow {...chipsProps} compact />
+          {hero}
+          <StatChipsRow {...chipsProps} />
         </>
       ) : (
         <>
-          {/* Phone: original stack — greeting → prayer → chips → hero */}
+          {/* Phone: greeting → prayer → chips → hero (status on banner) */}
           <GreetingHeader
             customerName={customerName}
             isAuthenticated={isAuthenticated}
-            statusBadge={statusBadge}
           />
           <div
             style={{
@@ -273,14 +271,7 @@ export function HomePage() {
             <PrayerBar />
           </div>
           <StatChipsRow {...chipsProps} />
-          <PromoCarousel
-            slides={heroSlides}
-            apiOrigin={API_ORIGIN}
-            logoSrc={logoSrc}
-            siteName={siteName}
-            fallbackTitle={text('home_hero_fallback_title', '')}
-            fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
-          />
+          {hero}
         </>
       )}
 

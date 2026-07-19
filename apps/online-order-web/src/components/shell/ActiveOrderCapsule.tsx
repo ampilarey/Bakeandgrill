@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { useShellNav } from '../../context/ShellNavContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { isActiveOrderStatus, useActiveOrder } from '../../hooks/useActiveOrder';
+import { DESKTOP_SHELL_MQ } from './navTabs';
 
 const STATUS_KEYS: Record<string, string> = {
   payment_pending: 'order.status.payment_pending',
@@ -14,20 +16,22 @@ const STATUS_KEYS: Record<string, string> = {
 };
 
 /**
- * AppShell pill above the floating cart (Home + Orders).
+ * Desktop/iPad pill above the content (Home + Orders).
+ * Phone uses the Orders tab count in BottomNav instead.
  */
 export function ActiveOrderCapsule() {
   const { t } = useLanguage();
   const { hideNav } = useShellNav();
   const location = useLocation();
   const { activeOrder } = useActiveOrder();
+  const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
 
   const onHomeOrOrders =
     location.pathname === '/' ||
     location.pathname === '/order-history' ||
     location.pathname.startsWith('/order-history/');
 
-  if (hideNav || !onHomeOrOrders || !activeOrder) return null;
+  if (!isDesktopShell || hideNav || !onHomeOrOrders || !activeOrder) return null;
 
   const statusKey = STATUS_KEYS[activeOrder.status];
   const statusLabel = statusKey ? t(statusKey) : activeOrder.status;
