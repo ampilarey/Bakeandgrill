@@ -378,6 +378,7 @@ export function PosShellLayout() {
               onOpenTickets={() => setPane("open_tickets")}
               canRingSales={canRingSales}
               canHoldResume={canHoldResume}
+              canViewActiveOrders={canViewActiveOrders}
               canApplyDiscount={canApplyDiscount}
               canUseRewards={canUseRewards}
               canSendBill={canSendBill}

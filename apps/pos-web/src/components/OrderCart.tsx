@@ -129,6 +129,7 @@ type Props = {
 
   canRingSales?: boolean;
   canHoldResume?: boolean;
+  canViewActiveOrders?: boolean;
   canApplyDiscount?: boolean;
   canUseRewards?: boolean;
   canSendBill?: boolean;
@@ -367,6 +368,60 @@ export function OrderCart(p: Props) {
             <span style={{ fontSize: 18, color: C.muted, flexShrink: 0 }} aria-hidden>▴</span>
           )}
         </button>
+        {/* Always visible on the mobile dock — empty cart can't expand to
+            reach the in-cart Active orders button. */}
+        {p.canViewActiveOrders !== false && (
+          <button
+            type="button"
+            onClick={p.onOpenTickets}
+            disabled={p.isSubmitting}
+            aria-label={
+              p.openTicketsCount > 0
+                ? `Active orders, ${p.openTicketsCount}`
+                : "Active orders"
+            }
+            style={{
+              flexShrink: 0,
+              position: "relative",
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: `1px solid ${C.border2}`,
+              background: "#fff",
+              color: C.text,
+              fontWeight: 800,
+              fontSize: 12,
+              cursor: p.isSubmitting ? "not-allowed" : "pointer",
+              minHeight: 44,
+              opacity: p.isSubmitting ? 0.6 : 1,
+            }}
+          >
+            Orders
+            {p.openTicketsCount > 0 && (
+              <span
+                title={p.openTicketsCritical ? "One or more tickets are critically aged" : undefined}
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  minWidth: 18,
+                  height: 18,
+                  padding: "0 5px",
+                  borderRadius: 999,
+                  background: p.openTicketsCritical ? "#B91C1C" : "#D4813A",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  lineHeight: 1,
+                }}
+              >
+                {p.openTicketsCount > 99 ? "99+" : p.openTicketsCount}
+              </span>
+            )}
+          </button>
+        )}
         {p.canRingSales !== false && !p.resumedIsPaid && (
           <button
             type="button"
