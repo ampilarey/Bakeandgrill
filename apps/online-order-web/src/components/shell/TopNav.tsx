@@ -1,48 +1,31 @@
 import { Link, useLocation } from 'react-router-dom';
+import { PrayerBar } from '../PrayerBar';
 import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useActiveOrder } from '../../hooks/useActiveOrder';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { SHELL_NAV_TABS } from './navTabs';
 
 /**
- * Tablet/desktop top bar — logo, text links, account, cart.
+ * Tablet/desktop top bar — logo, text links, account, prayer strip.
+ * Cart uses FloatingCartBar (logo FAB) when the cart has items.
  * Mounted only at ≥768px; BottomNav covers phone.
  */
 export function TopNav() {
   const { t } = useLanguage();
-  const { hideNav, openCartSheet, cartSheetOpen } = useShellNav();
+  const { hideNav } = useShellNav();
   const { settings: s } = useSiteSettingsContext();
-  const { cart, cartTotal } = useCart();
   const { isAuthenticated, customerName } = useAuth();
   const location = useLocation();
   const { hasActiveOrder } = useActiveOrder();
-  /** Menu page already shows cart-sidebar at this width — don't open a sheet over it. */
-  const menuHasSidebar = useMediaQuery('(min-width: 900px)');
 
   if (hideNav) return null;
 
   const siteName = s.site_name || 'Bake & Grill';
   const logoSrc = s.logo || '/logo.png';
-  const count = cart.reduce((sum, e) => sum + e.quantity, 0);
-  const onCheckout = location.pathname.startsWith('/checkout');
-  const onMenu = location.pathname === '/menu' || location.pathname.startsWith('/menu/');
   const onAccount =
     location.pathname === '/account' || location.pathname.startsWith('/account/');
-
-  const handleCartClick = () => {
-    if (onMenu && menuHasSidebar) {
-      document.getElementById('menu-cart-sidebar')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      });
-      return;
-    }
-    openCartSheet();
-  };
 
   const accountLabel = (() => {
     if (!isAuthenticated) return t('home.sign_in');
@@ -102,34 +85,10 @@ export function TopNav() {
           >
             {accountLabel}
           </Link>
-
-          {!onCheckout && (
-            <button
-              type="button"
-              className="top-nav__cart"
-              onClick={handleCartClick}
-              aria-expanded={onMenu && menuHasSidebar ? undefined : cartSheetOpen}
-              aria-label={
-                count > 0
-                  ? `${t('cart.view')} — ${count} — ${Math.round(cartTotal)}/-`
-                  : t('cart.view')
-              }
-              disabled={count === 0}
-            >
-              <span className="top-nav__cart-label">{t('cart.view')}</span>
-              {count > 0 && (
-                <>
-                  <span className="top-nav__cart-count" aria-hidden>
-                    {count > 99 ? '99+' : count}
-                  </span>
-                  <span className="top-nav__cart-total" aria-hidden>
-                    {Math.round(cartTotal)}/-
-                  </span>
-                </>
-              )}
-            </button>
-          )}
         </div>
+      </div>
+      <div className="top-nav__prayer">
+        <PrayerBar />
       </div>
     </header>
   );

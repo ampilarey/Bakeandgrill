@@ -247,10 +247,7 @@ export function HomePage() {
     <div className="home-page">
       {isDesktopShell ? (
         <>
-          {/* Desktop/iPad: prayer → hero (status on banner) → chips */}
-          <div className="home-prayer-wrap">
-            <PrayerBar />
-          </div>
+          {/* Desktop/iPad: prayer lives in TopNav; hero → chips */}
           {hero}
           <StatChipsRow {...chipsProps} />
         </>

@@ -46,7 +46,7 @@ function AppShellChrome() {
   const shellClass = [
     'app-shell',
     isDesktopShell ? 'app-shell--desktop' : '',
-    cartCount > 0 && !hideNav && !isDesktopShell ? 'app-shell--with-cart' : '',
+    cartCount > 0 && !hideNav ? 'app-shell--with-cart' : '',
     hideNav ? 'app-shell--hide-nav' : '',
   ]
     .filter(Boolean)
@@ -137,7 +137,7 @@ function AuthNameHydration() {
 }
 
 /**
- * App chrome: TopNav (≥768) or BottomNav (phone), outlet, capsule, cart sheet/FAB.
+ * App chrome: TopNav (≥768) or BottomNav (phone), outlet, capsule, floating cart FAB.
  * No global marketing footer (rehomed to Account / BrandFooter).
  */
 export function AppShell() {

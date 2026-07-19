@@ -91,7 +91,7 @@
   --shell-max:            640px;
   --top-nav-height:       64px;
   --bottom-nav-height:    64px;
-  --float-cart-height:    72px; /* logo FAB above bottom nav (phone only) */
+  --float-cart-height:    72px; /* logo FAB clearance (all breakpoints when cart has items) */
   --safe-bottom:          env(safe-area-inset-bottom, 0px);
   --cat-rail-width:       90px;
   --menu-header-height:   112px;
@@ -1320,6 +1320,10 @@ textarea.field-input {
   padding-bottom: 2rem;
 }
 
+.app-shell--desktop.app-shell--with-cart .app-shell__main {
+  padding-bottom: calc(var(--float-cart-height) + 1.5rem);
+}
+
 .app-shell--desktop.app-shell--hide-nav .app-shell__main {
   padding-bottom: 0.5rem;
 }
@@ -1415,51 +1419,14 @@ textarea.field-input {
   flex-shrink: 0;
 }
 
-.top-nav__cart {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-height: 44px;
-  padding: 0.45rem 1rem;
-  border-radius: 999px;
-  border: 1.5px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+.top-nav__prayer {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: 0 var(--page-gutter) 0.65rem;
 }
 
-.top-nav__cart:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-light);
-}
-
-.top-nav__cart:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.top-nav__cart-count {
-  min-width: 1.35rem;
-  height: 1.35rem;
-  padding: 0 0.35rem;
-  border-radius: 999px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 800;
-  line-height: 1.35rem;
-  text-align: center;
-}
-
-.top-nav__cart-total {
-  font-variant-numeric: tabular-nums;
-  color: var(--color-primary);
+.top-nav__prayer .prayer-banner {
+  margin: 0;
 }
 
 .top-nav__actions {
@@ -1500,9 +1467,6 @@ textarea.field-input {
   .top-nav__link {
     padding: 0.4rem 0.55rem;
     font-size: 0.85rem;
-  }
-  .top-nav__cart-label {
-    display: none;
   }
   .top-nav__account {
     padding: 0.4rem 0.55rem;
@@ -1642,6 +1606,10 @@ textarea.field-input {
   left: auto;
   right: var(--page-gutter);
   transform: none;
+}
+
+.app-shell--desktop.app-shell--with-cart .active-order-capsule {
+  bottom: calc(var(--float-cart-height) + 1rem);
 }
 
 .active-order-capsule__text {
@@ -2220,10 +2188,14 @@ textarea.field-input {
     box-shadow: 0 0 0 1px var(--color-border);
   }
 
-  /* Phone FAB / bottom nav are not mounted ≥768; keep CSS hide as safety net */
-  .bottom-nav,
-  .float-cart-fab {
+  /* Bottom nav is phone-only; cart FAB stays visible when cart has items */
+  .bottom-nav {
     display: none !important;
+  }
+
+  .float-cart-fab {
+    bottom: calc(var(--safe-bottom) + 1.25rem);
+    right: max(var(--page-gutter), calc(50% - (var(--layout-max) / 2) + var(--page-gutter)));
   }
 
   /* Cart/item sheets stay phone-width — don't stretch to --layout-max */
