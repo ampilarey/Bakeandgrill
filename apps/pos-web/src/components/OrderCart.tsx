@@ -110,9 +110,10 @@ type Props = {
   /** Staff user id on the resumed ticket — distinguishes POS pickup from app orders. */
   resumedStaffUserId?: number | null;
   /** True when the cashier opened the resumed ticket via "Edit" (vs.
-   *  via a direct Charge action). Unlocks cart mutations and surfaces
-   *  the "💾 Save changes" button. */
+   *  via a direct Charge action). Unlocks cart mutations. */
   isEditingActive?: boolean;
+  /** True when resumed cart lines differ from the ticket loaded from the server. */
+  hasUnsavedTicketChanges?: boolean;
   /** Cashier flipped from read-only resumed mode into edit mode (e.g.
    *  tapped "Edit items" on the resume banner). */
   onUnlockEdit?: () => void;
@@ -201,6 +202,7 @@ export function OrderCart(p: Props) {
   // become usable again. The Save Changes button at the bottom
   // pushes the edits back to the server.
   const editing = isResumed && !!p.isEditingActive && !p.resumedIsPaid;
+  const ticketDirty = !!p.hasUnsavedTicketChanges;
   // "Lock cart for read-only" — charge-only resumes and paid-online view.
   const lockedReadOnly = isResumed && (!editing || !!p.resumedIsPaid);
   const wasHeld = p.resumedFromStatus === "held";
@@ -424,7 +426,9 @@ export function OrderCart(p: Props) {
               {p.resumedIsPaid
                 ? 'Paid — items are locked. You can still add or change the customer below.'
                 : editing
-                  ? 'Add or remove items, then Save changes. Kitchen chit will reprint.'
+                  ? (ticketDirty
+                    ? 'Items changed — Save changes to update the ticket (kitchen chit reprints).'
+                    : 'Edit items, then Save changes when you make an update — or Charge as-is.')
                   : wasHeld
                     ? 'Charge to settle, or Edit to add/remove items.'
                     : 'Charge to take payment, or Edit to modify the ticket.'}
@@ -446,7 +450,7 @@ export function OrderCart(p: Props) {
                 ✏️ Edit items
               </button>
             )}
-            {editing && p.onSaveActiveChanges && (
+            {editing && ticketDirty && p.onSaveActiveChanges && (
               <button
                 onClick={p.onSaveActiveChanges}
                 disabled={p.isSubmitting || p.cartItems.length === 0}

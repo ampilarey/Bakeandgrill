@@ -354,6 +354,7 @@ export function PosShellLayout() {
               resumedOrderType={order.resumedOrderType}
               resumedStaffUserId={order.resumedStaffUserId}
               isEditingActive={order.isEditingActive}
+              hasUnsavedTicketChanges={order.hasUnsavedTicketChanges}
               onUnlockEdit={() => order.setIsEditingActive(true)}
               onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(refreshOpenTickets)}
               onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
@@ -473,15 +474,12 @@ export function PosShellLayout() {
             smsNotifications={smsNotifications}
             onClose={() => setPane(shiftOpen && canRingSales ? "sales" : canAccessOps ? "ops" : "shift_history")}
             onResume={(t) => {
-              // Tap-to-open active ticket: load the order into the main
-              // POS cart in edit mode (cart unlocked, "Save changes"
-              // button appears) so the cashier can add/remove items
-              // before charging. For PARKED tickets edit mode is the
-              // natural fit; for COOKING/READY it lets the cashier
-              // patch a missed line without re-ringing the whole
-              // ticket. Surfaces resume errors instead of swallowing
-              // them so the cashier sees what went wrong.
-              order.handleEditActiveTicket(t.id)
+              // Tap-to-open: load into charge-ready resumed mode (not
+              // edit). Cashier can Charge immediately, or tap Edit
+              // items — Save changes only appears after a real cart
+              // change. Surfaces resume errors so the cashier sees
+              // what went wrong.
+              order.handleResumeTicket(t.id)
                 .then(() => {
                   setPane("sales");
                   void refreshOpenTickets();

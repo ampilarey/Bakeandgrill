@@ -654,11 +654,19 @@ export function useOrderCreation(params: Params) {
       if (resumedIsPaid) {
         return false;
       }
+      // Only block charge when the cart actually differs from the
+      // resumed ticket. Opening a ticket (or tapping Edit without
+      // changing lines) must not force a no-op Save.
       if (isEditingActive) {
-        flashError(
-          "Tap \u201cSave changes\u201d on the resume banner first \u2014 the new total has to be sent to the server before you can charge.",
-        );
-        return false;
+        const dirty = resumedItemsFingerprint !== null
+          && cartFingerprint(params.cartItems) !== resumedItemsFingerprint;
+        if (dirty) {
+          flashError(
+            "Tap \u201cSave changes\u201d on the resume banner first \u2014 the new total has to be sent to the server before you can charge.",
+          );
+          return false;
+        }
+        setIsEditingActive(false);
       }
       setIsSubmitting(true);
       try {
@@ -1089,6 +1097,7 @@ export function useOrderCreation(params: Params) {
     setResumedStaffUserId(staffUserIdFromOrder(response.order));
     setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
+    setIsEditingActive(false);
     localStorage.removeItem("pos_last_held_order");
     setLastHeldOrderId(null);
     return { isPaid: false };
@@ -1278,6 +1287,11 @@ export function useOrderCreation(params: Params) {
     })();
   };
 
+  const hasUnsavedTicketChanges =
+    resumedOrderId !== null
+    && resumedItemsFingerprint !== null
+    && cartFingerprint(params.cartItems) !== resumedItemsFingerprint;
+
   return {
     statusMessage,
     setStatusMessage,
@@ -1293,6 +1307,7 @@ export function useOrderCreation(params: Params) {
     resumedFromStatus,
     isEditingActive,
     setIsEditingActive,
+    hasUnsavedTicketChanges,
     resumedIsPaid,
     resumedOrderLabel,
     resumedOrderType,

@@ -100,8 +100,8 @@ export function CustomerRewardsPanel({
   const [summary, setSummary] = useState<PosCustomerSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState("");
-  // Open by default so cashiers see Gift card without hunting — especially walk-ins.
-  const [expanded, setExpanded] = useState(true);
+  // Collapsed by default — expand when the cashier needs rewards.
+  const [expanded, setExpanded] = useState(false);
 
   // Promo state (local — only committed to cart on Apply).
   const [promoCode, setPromoCode] = useState("");
