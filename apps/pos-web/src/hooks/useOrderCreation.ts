@@ -31,6 +31,7 @@ import type { PaymentRow } from "./useCart";
 import type { PosCustomer } from "../api";
 import type { PosDeliveryDetails, PosOrderType } from "../orderTypes";
 import { normalizeMvPhone, resolveDeliveryDetails, validateDeliveryDetails } from "../orderTypes";
+import { applyStagedRewards as applyStagedRewardsUtil } from "../utils/applyStagedRewards";
 
 type OrderType = PosOrderType;
 
@@ -141,6 +142,10 @@ type Params = {
   appliedPromoCode: string | null;
   appliedLoyaltyPoints: number | null;
   appliedGiftCardCode: string | null;
+  /** When true, reward was hydrated from a resumed server order — skip re-apply. */
+  appliedPromoServerApplied?: boolean;
+  appliedLoyaltyServerApplied?: boolean;
+  appliedGiftCardServerApplied?: boolean;
   clearCart: () => void;
   setCartItems: (items: CartItem[]) => void;
   setSelectedItem: (item: Item | null) => void;
@@ -163,13 +168,23 @@ type Params = {
    *  the customer thought they had. Optional (callers that haven't
    *  wired the setters yet just skip the hydration). */
   setDiscountAmount?: (s: string) => void;
-  setAppliedPromo?: (p: { code: string; promotionId: number | null; discount: number } | null) => void;
-  setAppliedLoyalty?: (l: { points: number; discount: number } | null) => void;
+  setAppliedPromo?: (p: {
+    code: string;
+    promotionId: number | null;
+    discount: number;
+    serverApplied?: boolean;
+  } | null) => void;
+  setAppliedLoyalty?: (l: {
+    points: number;
+    discount: number;
+    serverApplied?: boolean;
+  } | null) => void;
   setAppliedGiftCard?: (g: {
     code: string;
     discount: number;
     cardBalance: number;
     heldBalance?: number;
+    serverApplied?: boolean;
   } | null) => void;
   onOrderSettled?: (
     orderId: number,
@@ -378,64 +393,28 @@ export function useOrderCreation(params: Params) {
    * order is already created and must be settled one way or another.
    */
   const applyStagedRewards = async (orderId: number, currentTotal: number): Promise<number> => {
-    let total = currentTotal;
-    // Bug-050: collect every reward failure into one combined
-    // message instead of overwriting each other (and silently
-    // disappearing). Previously a failed promo, then a failed
-    // gift card, would each call setStatusMessage and the
-    // second wiped the first — the cashier saw "Gift card
-    // failed" and settled the order assuming the promo had
-    // applied. Combined here so the cashier sees a single
-    // sticky banner listing every reward that didn't take and
-    // can decide whether to renegotiate with the customer
-    // before tendering.
-    const failures: string[] = [];
-
-    if (params.appliedPromoCode) {
-      try {
-        await applyPromoToOrder(orderId, params.appliedPromoCode);
-      } catch (err) {
-        failures.push(`promo "${params.appliedPromoCode}" (${(err as Error).message})`);
-      }
-    }
-
-    if (params.appliedLoyaltyPoints && params.appliedLoyaltyPoints > 0) {
-      try {
-        const res = await holdLoyaltyForOrder(orderId, params.appliedLoyaltyPoints);
-        total = res.order.total;
-      } catch (err) {
-        failures.push(`loyalty redemption (${(err as Error).message})`);
-      }
-    }
-
-    if (params.appliedGiftCardCode) {
-      try {
-        const res = await applyGiftCardToOrder(orderId, params.appliedGiftCardCode);
-        total = res.order.total;
-      } catch (err) {
-        failures.push(`gift card "${params.appliedGiftCardCode}" (${(err as Error).message})`);
-      }
-    } else if (resumedOrderId === orderId) {
-      // Cashier cleared a staged/server gift card on a resumed ticket —
-      // ensure the soft hold is dropped before settle.
-      try {
-        await removeGiftCardFromOrder(orderId);
-        const fresh = await getOrder(orderId);
-        if (typeof fresh.order.total === "number") total = fresh.order.total;
-      } catch {
-        /* no gift card on order — fine */
-      }
-    }
-
-    // Final read — handles the promo case where we don't get the order
-    // back inline (apply-promo returns a discount, not a fresh totals
-    // payload). Cheap GET; only fires when we actually applied something.
-    if (params.appliedPromoCode || params.appliedLoyaltyPoints || params.appliedGiftCardCode) {
-      try {
-        const fresh = await getOrder(orderId);
-        if (typeof fresh.order.total === "number") total = fresh.order.total;
-      } catch { /* keep last-known total */ }
-    }
+    // Bug-050: collect every reward failure into one combined banner.
+    // serverApplied rewards (hydrated on resume) are skipped — already on the order.
+    const { total, failures } = await applyStagedRewardsUtil(
+      orderId,
+      currentTotal,
+      {
+        appliedPromoCode: params.appliedPromoCode,
+        appliedLoyaltyPoints: params.appliedLoyaltyPoints,
+        appliedGiftCardCode: params.appliedGiftCardCode,
+        appliedPromoServerApplied: params.appliedPromoServerApplied,
+        appliedLoyaltyServerApplied: params.appliedLoyaltyServerApplied,
+        appliedGiftCardServerApplied: params.appliedGiftCardServerApplied,
+      },
+      {
+        applyPromoToOrder,
+        holdLoyaltyForOrder,
+        applyGiftCardToOrder,
+        removeGiftCardFromOrder,
+        getOrder,
+      },
+      { resumedOrderId },
+    );
 
     if (failures.length > 0) {
       flashError(
@@ -703,7 +682,12 @@ export function useOrderCreation(params: Params) {
           params.clearCart();
           params.setSelectedItem(null);
           params.onOrderSettled?.(settledOrderId, cid, cphone, settledType, paidOnCreditFromRows(paymentSnapshot));
-        } else if ((params.appliedLoyaltyPoints ?? 0) > 0) {
+        } else if (
+          (params.appliedLoyaltyPoints ?? 0) > 0
+          && !params.appliedLoyaltyServerApplied
+        ) {
+          // Only release holds we created in this charge attempt.
+          // serverApplied loyalty already has a hold from the earlier save.
           await releaseLoyaltyHold(resumedOrderId).catch(() => undefined);
         }
         return settled;
@@ -1028,20 +1012,22 @@ export function useOrderCreation(params: Params) {
     if (params.setAppliedGiftCard) {
       const gcCode = response.order.gift_card_code ?? response.order.gift_card_masked ?? null;
       const gcDiscountLaar = response.order.gift_card_discount_laar ?? 0;
+      // Display-only on resume — masked codes are not re-applicable.
       params.setAppliedGiftCard(gcCode && gcDiscountLaar > 0
-        ? { code: gcCode, discount: gcDiscountLaar / 100, cardBalance: 0 }
+        ? { code: gcCode, discount: gcDiscountLaar / 100, cardBalance: 0, serverApplied: true }
         : null);
     }
     if (params.setAppliedLoyalty) {
       const loyaltyDiscountLaar = response.order.loyalty_discount_laar ?? 0;
+      // Display amounts only — never re-send placeholder points on charge.
       params.setAppliedLoyalty(loyaltyDiscountLaar > 0
-        ? { points: 1, discount: loyaltyDiscountLaar / 100 }
+        ? { points: 0, discount: loyaltyDiscountLaar / 100, serverApplied: true }
         : null);
     }
     if (params.setAppliedPromo) {
       const promoDiscountLaar = response.order.promo_discount_laar ?? 0;
       params.setAppliedPromo(promoDiscountLaar > 0
-        ? { code: 'applied', promotionId: null, discount: promoDiscountLaar / 100 }
+        ? { code: "", promotionId: null, discount: promoDiscountLaar / 100, serverApplied: true }
         : null);
     }
 

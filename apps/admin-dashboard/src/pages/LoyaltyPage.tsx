@@ -101,7 +101,8 @@ function AdjustModal({ account, onClose, onDone }: {
 
   const submit = async () => {
     const d = parseInt(delta, 10);
-    if (isNaN(d) || d === 0 || !reason) { setError('Delta and reason are required.'); return; }
+    if (isNaN(d) || d === 0 || !reason.trim()) { setError('Delta and reason are required.'); return; }
+    if (Math.abs(d) > 100000) { setError('Adjustment cannot exceed ±100,000 points.'); return; }
     setError('');
     setLoading(true);
     try {
@@ -125,6 +126,7 @@ function AdjustModal({ account, onClose, onDone }: {
         <div>
           <label style={FIELD.label}>Points (use − to deduct)</label>
           <Input value={delta} onChange={setDelta} placeholder="e.g. 100 or -50" type="number" />
+          <p style={FIELD.hint}>Max ±100,000 points per adjustment.</p>
         </div>
         <div>
           <label style={FIELD.label}>Reason</label>
@@ -167,12 +169,30 @@ function ProgramSettingsPanel() {
 
   const save = async () => {
     if (!settings) return;
+    const earn = Number(settings.earn_rate_per_mvr);
+    const redeemRate = Number(settings.redeem_rate_points_per_mvr);
+    const maxPct = Number(settings.max_redeem_percent);
+    if (!(earn > 0) || earn > 1000) {
+      setError('Earn rate must be greater than 0 and at most 1000.');
+      return;
+    }
+    if (!(redeemRate >= 1) || redeemRate > 1000) {
+      setError('Redeem rate must be between 1 and 1000 points per MVR.');
+      return;
+    }
+    if (!(maxPct >= 1) || maxPct > 100) {
+      setError('Max redeem percent must be between 1 and 100.');
+      return;
+    }
     setSaving(true);
     setError('');
     setSaved('');
     try {
       const res = await updateLoyaltySettings({
         ...settings,
+        earn_rate_per_mvr: earn,
+        redeem_rate_points_per_mvr: redeemRate,
+        max_redeem_percent: maxPct,
         program_starts_at: settings.program_starts_at || null,
         program_ends_at: settings.program_ends_at || null,
       });

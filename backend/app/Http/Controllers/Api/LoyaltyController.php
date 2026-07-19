@@ -320,11 +320,11 @@ class LoyaltyController extends Controller
     {
         $validated = $request->validate([
             'enabled' => 'sometimes|boolean',
-            'earn_rate_per_mvr' => 'sometimes|numeric|min:0',
-            'redeem_rate_points_per_mvr' => 'sometimes|integer|min:1',
+            'earn_rate_per_mvr' => 'sometimes|numeric|gt:0|max:1000',
+            'redeem_rate_points_per_mvr' => 'sometimes|integer|min:1|max:1000',
             'min_redeem_points' => 'sometimes|integer|min:1',
             'max_redeem_points' => 'sometimes|integer|min:1',
-            'max_redeem_percent' => 'sometimes|numeric|min:0|max:100',
+            'max_redeem_percent' => 'sometimes|numeric|min:1|max:100',
             'hold_ttl_minutes' => 'sometimes|integer|min:1|max:1440',
             'tiers_enabled' => 'sometimes|boolean',
             'points_expiry_days' => 'sometimes|integer|min:0|max:3650',
@@ -416,7 +416,7 @@ class LoyaltyController extends Controller
     public function adminAdjust(Request $request, int $customerId): JsonResponse
     {
         $request->validate([
-            'delta' => 'required|integer|not_in:0',
+            'delta' => 'required|integer|not_in:0|min:-100000|max:100000',
             'reason' => 'required|string|max:255',
         ]);
 

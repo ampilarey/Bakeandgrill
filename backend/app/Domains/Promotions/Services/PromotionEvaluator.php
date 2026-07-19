@@ -46,6 +46,12 @@ class PromotionEvaluator
             return $this->reject('Promo code is not valid or has expired.');
         }
 
+        // Campaign-wide max_uses: confirmed redemptions + pending draft reservations
+        // on other non-cancelled orders (mirrors per-customer pending accounting).
+        if ($promotion->max_uses && self::campaignUsageIncludingPending($promotion, $order->id) >= (int) $promotion->max_uses) {
+            return $this->reject('Promo code is not valid or has expired.');
+        }
+
         // Customer-restricted promo: only the designated customer may use it.
         if ($promotion->restricted_customer_id !== null) {
             if ($customerId === null || (int) $promotion->restricted_customer_id !== $customerId) {
@@ -173,6 +179,28 @@ class PromotionEvaluator
         }
 
         return LaariConverter::toLaar($cheapestItem->unit_price);
+    }
+
+    /**
+     * Confirmed redemptions_count + draft OrderPromotion rows on other
+     * non-cancelled/non-refunded orders (excluding $excludeOrderId).
+     */
+    public static function campaignUsageIncludingPending(Promotion $promotion, ?int $excludeOrderId = null): int
+    {
+        $confirmed = (int) $promotion->redemptions_count;
+
+        $pendingQuery = OrderPromotion::where('promotion_id', $promotion->id)
+            ->where('status', 'draft')
+            ->whereHas(
+                'order',
+                fn ($q) => $q->whereNotIn('status', ['cancelled', 'refunded']),
+            );
+
+        if ($excludeOrderId !== null) {
+            $pendingQuery->where('order_id', '!=', $excludeOrderId);
+        }
+
+        return $confirmed + (int) $pendingQuery->count();
     }
 
     private function reject(string $message): array

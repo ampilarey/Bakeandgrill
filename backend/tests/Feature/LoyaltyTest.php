@@ -187,4 +187,43 @@ class LoyaltyTest extends TestCase
         $this->service->reverseEarnForRefund($this->order, 1.0, 42);
         $this->assertSame(0, (int) $account->fresh()->points_balance);
     }
+
+    public function test_reverse_redeem_for_refund_restores_points(): void
+    {
+        $this->earnEnoughPoints(500);
+        $pointsToRedeem = 200;
+        $hold = $this->service->createOrRefreshHold($this->customer, $this->order, $pointsToRedeem);
+        $this->service->consumeHold($hold);
+
+        $account = LoyaltyAccount::where('customer_id', $this->customer->id)->first();
+        $balanceAfterRedeem = (int) $account->points_balance;
+
+        $this->service->reverseRedeemForRefund($this->order, 1.0, 77);
+        $account->refresh();
+        $this->assertSame($balanceAfterRedeem + $pointsToRedeem, (int) $account->points_balance);
+
+        // Idempotent — same refund id must not double-credit
+        $this->service->reverseRedeemForRefund($this->order, 1.0, 77);
+        $this->assertSame($balanceAfterRedeem + $pointsToRedeem, (int) $account->fresh()->points_balance);
+    }
+
+    public function test_reverse_redeem_for_partial_refund_is_proportional(): void
+    {
+        $this->earnEnoughPoints(500);
+        $pointsToRedeem = 200;
+        $hold = $this->service->createOrRefreshHold($this->customer, $this->order, $pointsToRedeem);
+        $this->service->consumeHold($hold);
+
+        $account = LoyaltyAccount::where('customer_id', $this->customer->id)->first();
+        $balanceAfterRedeem = (int) $account->points_balance;
+
+        $this->service->reverseRedeemForRefund($this->order, 0.5, 88);
+        $account->refresh();
+        $this->assertSame($balanceAfterRedeem + 100, (int) $account->points_balance);
+
+        // Second half restores the remainder without exceeding original consume
+        $this->service->reverseRedeemForRefund($this->order, 0.5, 89);
+        $account->refresh();
+        $this->assertSame($balanceAfterRedeem + $pointsToRedeem, (int) $account->points_balance);
+    }
 }

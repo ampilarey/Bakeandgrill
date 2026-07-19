@@ -113,16 +113,20 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     code: string;
     promotionId: number | null;
     discount: number;
+    /** Hydrated from a resumed server order — display only; do not re-apply. */
+    serverApplied?: boolean;
   } | null>(null);
   const [appliedLoyalty, setAppliedLoyalty] = useState<{
     points: number;
     discount: number;
+    serverApplied?: boolean;
   } | null>(null);
   const [appliedGiftCard, setAppliedGiftCard] = useState<{
     code: string;
     discount: number;
     cardBalance: number;
     heldBalance?: number;
+    serverApplied?: boolean;
   } | null>(null);
 
   const [serviceChargeConfig, setServiceChargeConfig] = useState<ServiceChargePublicConfig | null>(null);
@@ -422,6 +426,9 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   // Keep staged gift-card discount in sync when cart / other discounts change.
   useEffect(() => {
     if (!appliedGiftCard) return;
+    // Resumed tickets hydrate a display-only gift card (balance unknown) —
+    // never re-preview or clear it from client-side room math.
+    if (appliedGiftCard.serverApplied) return;
     const room = Math.max(
       0,
       cartSubtotal

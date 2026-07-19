@@ -33,4 +33,12 @@ class EloquentPromotionRepository implements PromotionRepositoryInterface
             ->where('id', $promotionId)
             ->increment('redemptions_count');
     }
+
+    public function decrementRedemptionsCount(int $promotionId): void
+    {
+        DB::table('promotions')
+            ->where('id', $promotionId)
+            ->where('redemptions_count', '>', 0)
+            ->decrement('redemptions_count');
+    }
 }

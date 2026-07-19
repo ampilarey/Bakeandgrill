@@ -93,7 +93,7 @@ final class DiscountCardController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'type' => ['required', 'in:percentage,fixed'],
-            'discount_value' => ['required', 'integer', 'min:1'],
+            'discount_value' => ['required', 'integer', 'min:1', 'max:500000'],
             'min_order_laar' => ['sometimes', 'integer', 'min:0'],
             'starts_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date'],

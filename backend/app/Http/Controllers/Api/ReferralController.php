@@ -29,6 +29,7 @@ class ReferralController extends Controller
                 'code' => strtoupper(Str::random(8)),
                 'referrer_reward_mvr' => config('loyalty.referral.referrer_reward_mvr'),
                 'referee_discount_mvr' => config('loyalty.referral.referee_discount_mvr'),
+                'max_uses' => (int) config('loyalty.referral.max_uses', 20),
                 'is_active' => true,
             ],
         );
@@ -98,6 +99,24 @@ class ReferralController extends Controller
 
         if (Referral::where('referral_code_id', $code->id)->where('referee_customer_id', $customer->id)->exists()) {
             return response()->json(['message' => 'You have already used this referral code.'], 422);
+        }
+
+        // Config-gated: referee must have no prior paid orders (default ON).
+        if (config('loyalty.referral.first_order_only', true)) {
+            $priorPaid = Order::query()
+                ->where('customer_id', $customer->id)
+                ->where('id', '!=', $order->id)
+                ->where(function ($q) {
+                    $q->where('payment_status', 'paid')
+                        ->orWhereIn('status', ['paid', 'completed']);
+                })
+                ->exists();
+
+            if ($priorPaid) {
+                return response()->json([
+                    'message' => 'Referral discounts are only available on your first paid order.',
+                ], 422);
+            }
         }
 
         $subtotalLaar = 0;

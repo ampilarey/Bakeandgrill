@@ -7,6 +7,7 @@ namespace App\Domains\Promotions\Listeners;
 use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Promotions\Repositories\PromotionRepositoryInterface;
 use App\Models\OrderPromotion;
+use App\Models\Promotion;
 use App\Models\PromotionRedemption;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -40,9 +41,18 @@ class ConsumePromoRedemptionsListener
         try {
             DB::transaction(function () use ($orderId, $customerId, $draftPromotions): void {
                 foreach ($draftPromotions as $orderPromo) {
+                    $promo = Promotion::query()
+                        ->where('id', $orderPromo->promotion_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$promo) {
+                        continue;
+                    }
+
                     $idempotencyKey = 'promo:redeem:' . $orderId . ':' . $orderPromo->promotion_id;
 
-                    PromotionRedemption::firstOrCreate(
+                    $redemption = PromotionRedemption::firstOrCreate(
                         ['idempotency_key' => $idempotencyKey],
                         [
                             'promotion_id' => $orderPromo->promotion_id,
@@ -50,18 +60,32 @@ class ConsumePromoRedemptionsListener
                             'customer_id' => $customerId,
                             'discount_laar' => $orderPromo->discount_laar,
                             'redeemed_at' => now(),
+                            'status' => 'active',
                         ],
                     );
 
                     $orderPromo->update(['status' => 'consumed']);
 
-                    $this->promotions->incrementRedemptionsCount($orderPromo->promotion_id);
+                    // Only bump the counter for a newly created redemption (idempotent retries).
+                    if ($redemption->wasRecentlyCreated) {
+                        // Race lost after payment: still honor the quoted discount, but warn.
+                        if ($promo->max_uses && (int) $promo->redemptions_count >= (int) $promo->max_uses) {
+                            Log::warning('Promo over-redemption after payment — discount honored', [
+                                'promotion_id' => $promo->id,
+                                'order_id' => $orderId,
+                                'redemptions_count' => $promo->redemptions_count,
+                                'max_uses' => $promo->max_uses,
+                            ]);
+                        }
 
-                    Log::info('Promo redeemed', [
-                        'promotion_id' => $orderPromo->promotion_id,
-                        'order_id' => $orderId,
-                        'discount_laar' => $orderPromo->discount_laar,
-                    ]);
+                        $this->promotions->incrementRedemptionsCount($orderPromo->promotion_id);
+
+                        Log::info('Promo redeemed', [
+                            'promotion_id' => $orderPromo->promotion_id,
+                            'order_id' => $orderId,
+                            'discount_laar' => $orderPromo->discount_laar,
+                        ]);
+                    }
                 }
             });
         } catch (\Throwable $e) {

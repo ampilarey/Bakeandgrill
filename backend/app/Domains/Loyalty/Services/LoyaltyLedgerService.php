@@ -300,6 +300,76 @@ class LoyaltyLedgerService
     }
 
     /**
+     * Re-credit points that were consumed as a redemption when an order is refunded
+     * (proportional). Caps at originally consumed minus prior restores. Idempotent per refund.
+     */
+    public function reverseRedeemForRefund(Order $order, float $refundRatio, int $refundId): void
+    {
+        if ($refundRatio <= 0 || !$order->customer_id) {
+            return;
+        }
+
+        $consumedPoints = (int) abs((int) LoyaltyLedger::query()
+            ->where('order_id', $order->id)
+            ->where('customer_id', $order->customer_id)
+            ->where('type', 'redeem')
+            ->where('points', '<', 0)
+            ->sum('points'));
+
+        if ($consumedPoints <= 0) {
+            return;
+        }
+
+        $idempotencyKey = 'loyalty:redeem_reverse:' . $order->id . ':' . $refundId;
+
+        DB::transaction(function () use ($order, $refundRatio, $consumedPoints, $idempotencyKey): void {
+            if ($this->ledgerRepo->existsByIdempotencyKey($idempotencyKey)) {
+                return;
+            }
+
+            $account = LoyaltyAccount::where('customer_id', $order->customer_id)
+                ->lockForUpdate()
+                ->first();
+            if (!$account) {
+                return;
+            }
+
+            $alreadyRestored = (int) LoyaltyLedger::query()
+                ->where('order_id', $order->id)
+                ->where('customer_id', $order->customer_id)
+                ->where('idempotency_key', 'like', 'loyalty:redeem_reverse:' . $order->id . ':%')
+                ->where('points', '>', 0)
+                ->sum('points');
+
+            $remaining = max(0, $consumedPoints - $alreadyRestored);
+            if ($remaining <= 0) {
+                return;
+            }
+
+            $toRestore = (int) floor($consumedPoints * min(1.0, $refundRatio));
+            $toRestore = min($remaining, max(0, $toRestore));
+            if ($toRestore <= 0) {
+                return;
+            }
+
+            $balanceAfter = (int) $account->points_balance + $toRestore;
+
+            $this->ledgerRepo->createEntry([
+                'idempotency_key' => $idempotencyKey,
+                'customer_id' => $order->customer_id,
+                'order_id' => $order->id,
+                'type' => 'adjust',
+                'points' => $toRestore,
+                'balance_after' => $balanceAfter,
+                'notes' => 'Redemption restored for refund on order ' . $order->order_number,
+                'occurred_at' => now(),
+            ]);
+
+            $this->accountRepo->updateBalance((int) $order->customer_id, $balanceAfter);
+        });
+    }
+
+    /**
      * Claw back earned points when a completed order is refunded (proportional).
      * No-op if earn was never recorded. Never drives balance below 0.
      */

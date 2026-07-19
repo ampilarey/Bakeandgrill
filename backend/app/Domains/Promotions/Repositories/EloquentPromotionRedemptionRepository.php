@@ -12,6 +12,10 @@ class EloquentPromotionRedemptionRepository implements PromotionRedemptionReposi
     {
         return PromotionRedemption::where('promotion_id', $promotionId)
             ->where('customer_id', $customerId)
+            ->where(function ($q) {
+                // Pre-migration rows have null status; treat as active.
+                $q->where('status', 'active')->orWhereNull('status');
+            })
             ->count();
     }
 }

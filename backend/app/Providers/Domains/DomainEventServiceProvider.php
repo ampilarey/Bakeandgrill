@@ -15,6 +15,7 @@ use App\Domains\Inventory\Listeners\RestoreInventoryOnRefundListener;
 use App\Domains\Loyalty\Listeners\ConsumeLoyaltyHoldListener;
 use App\Domains\Loyalty\Listeners\EarnPointsFromOrderListener;
 use App\Domains\Loyalty\Listeners\ReleaseLoyaltyHoldListener;
+use App\Domains\Loyalty\Listeners\RestoreLoyaltyRedemptionOnRefundListener;
 use App\Domains\Loyalty\Listeners\ReverseLoyaltyEarnOnRefundListener;
 use App\Domains\Marketing\Listeners\DecrementDailySpecialSoldCountListener;
 use App\Domains\Marketing\Listeners\IncrementDailySpecialSoldCountListener;
@@ -39,6 +40,7 @@ use App\Domains\Payments\Listeners\SyncInvoicePaymentOnOrderPaidListener;
 use App\Domains\Printing\Listeners\DispatchKitchenPrintListener;
 use App\Domains\Printing\Listeners\DispatchReceiptPrintListener;
 use App\Domains\Promotions\Listeners\ConsumePromoRedemptionsListener;
+use App\Domains\Promotions\Listeners\ReleasePromoRedemptionOnRefundListener;
 use App\Domains\Promotions\Listeners\ReleasePromoReservationListener;
 use App\Domains\Realtime\Listeners\PublishOrderStatusToRedisListener;
 use App\Domains\Reservations\Events\ReservationCreated;
@@ -115,6 +117,8 @@ class DomainEventServiceProvider extends EventServiceProvider
             \App\Domains\Deposits\Listeners\ReverseDepositOnRefundListener::class,
             \App\Domains\Payments\Listeners\RestoreGiftCardOnRefundListener::class,
             ReverseLoyaltyEarnOnRefundListener::class,
+            RestoreLoyaltyRedemptionOnRefundListener::class,
+            ReleasePromoRedemptionOnRefundListener::class,
             DecrementDailySpecialSoldCountListener::class,
             PostGstOnRefundListener::class,
             DispatchWebhookOnDomainEvent::class,

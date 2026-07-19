@@ -19,12 +19,20 @@ class PromotionRedemption extends Model
         'order_id',
         'customer_id',
         'discount_laar',
+        'status',
         'redeemed_at',
+        'released_at',
     ];
 
     protected $casts = [
         'redeemed_at' => 'datetime',
+        'released_at' => 'datetime',
     ];
+
+    public function isActive(): bool
+    {
+        return ($this->status ?? 'active') === 'active';
+    }
 
     public function promotion(): BelongsTo
     {

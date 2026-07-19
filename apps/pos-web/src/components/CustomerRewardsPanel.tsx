@@ -8,14 +8,20 @@ import type { PosCustomer, PosCustomerSummary } from "../api";
 import { removeGiftCardFromOrder } from "../api/loyalty";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
 
-type AppliedPromo = { code: string; promotionId: number | null; discount: number };
-type AppliedLoyalty = { points: number; discount: number };
+type AppliedPromo = {
+  code: string;
+  promotionId: number | null;
+  discount: number;
+  serverApplied?: boolean;
+};
+type AppliedLoyalty = { points: number; discount: number; serverApplied?: boolean };
 type AppliedGiftCard = {
   code: string;
   discount: number;
   /** Available (spendable) balance used for the preview cap. */
   cardBalance: number;
   heldBalance?: number;
+  serverApplied?: boolean;
 };
 
 type Props = {
@@ -375,7 +381,7 @@ export function CustomerRewardsPanel({
                 title="Promo code"
                 applied={
                   applied.promo
-                    ? `${applied.promo.code} · est. MVR ${applied.promo.discount.toFixed(2)}`
+                    ? `${applied.promo.serverApplied ? "On ticket" : applied.promo.code} · MVR ${applied.promo.discount.toFixed(2)}`
                     : null
                 }
                 onRemove={applied.promo ? () => setAppliedPromo(null) : undefined}
@@ -409,7 +415,7 @@ export function CustomerRewardsPanel({
                   : "No points available"}
                 applied={
                   applied.loyalty
-                    ? `${applied.loyalty.points.toLocaleString()} pts · est. MVR ${applied.loyalty.discount.toFixed(2)}`
+                    ? `${applied.loyalty.serverApplied ? "On ticket" : `${applied.loyalty.points.toLocaleString()} pts`} · MVR ${applied.loyalty.discount.toFixed(2)}`
                     : null
                 }
                 onRemove={applied.loyalty ? () => setAppliedLoyalty(null) : undefined}

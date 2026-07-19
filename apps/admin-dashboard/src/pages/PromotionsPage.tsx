@@ -63,6 +63,10 @@ function PromotionForm({
     if (!form.name.trim() || !form.code.trim()) { setError('Name and code are required.'); return; }
     if (form.discount_value <= 0) { setError('Discount value must be greater than 0.'); return; }
     if (form.type === 'percentage' && form.discount_value > 100) { setError('Percentage discount cannot exceed 100%.'); return; }
+    if (form.type === 'fixed' && form.discount_value > 500000) {
+      setError('Fixed discount cannot exceed MVR 5000.');
+      return;
+    }
     if (form.min_order_laar != null && form.min_order_laar < 0) { setError('Minimum order amount cannot be negative.'); return; }
     if (form.starts_at && form.expires_at && form.starts_at >= form.expires_at) {
       setError('Expiry date must be after start date.'); return;

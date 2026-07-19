@@ -17,13 +17,19 @@ import {
 type OrderType = PosOrderType;
 const ORDER_TYPES = POS_ORDER_TYPES;
 
-type AppliedPromo = { code: string; promotionId: number | null; discount: number };
-type AppliedLoyalty = { points: number; discount: number };
+type AppliedPromo = {
+  code: string;
+  promotionId: number | null;
+  discount: number;
+  serverApplied?: boolean;
+};
+type AppliedLoyalty = { points: number; discount: number; serverApplied?: boolean };
 type AppliedGiftCard = {
   code: string;
   discount: number;
   cardBalance: number;
   heldBalance?: number;
+  serverApplied?: boolean;
 };
 
 type Props = {

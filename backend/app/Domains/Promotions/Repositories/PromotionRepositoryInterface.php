@@ -16,4 +16,6 @@ interface PromotionRepositoryInterface
     public function findById(int $id): ?Promotion;
 
     public function incrementRedemptionsCount(int $promotionId): void;
+
+    public function decrementRedemptionsCount(int $promotionId): void;
 }

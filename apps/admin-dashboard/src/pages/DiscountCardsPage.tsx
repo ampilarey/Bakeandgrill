@@ -115,6 +115,10 @@ export default function DiscountCardsPage() {
       setIssueError('Percentage must be 1–100.');
       return;
     }
+    if (type === 'fixed' && discount_value > 500000) {
+      setIssueError('Fixed discount cannot exceed MVR 5000.');
+      return;
+    }
 
     setIssuing(true);
     setIssueError('');

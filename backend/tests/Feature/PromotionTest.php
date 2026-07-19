@@ -215,6 +215,84 @@ class PromotionTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_max_uses_rejects_second_draft_reservation(): void
+    {
+        $this->createPromo(['max_uses' => 1, 'code' => 'ONCE']);
+        $order1 = $this->createOrder();
+        $order2 = $this->createOrder();
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson("/api/orders/{$order1->id}/apply-promo", ['code' => 'ONCE'])->assertOk();
+        $this->postJson("/api/orders/{$order2->id}/apply-promo", ['code' => 'ONCE'])->assertStatus(422);
+    }
+
+    public function test_max_uses_consume_path_blocks_second_paid_order(): void
+    {
+        $promo = $this->createPromo(['max_uses' => 1, 'code' => 'ONCEPAY']);
+        $order1 = $this->createOrder();
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson("/api/orders/{$order1->id}/apply-promo", ['code' => 'ONCEPAY'])->assertOk();
+
+        $fresh = $order1->fresh();
+        $payableAmount = max((float) $fresh->total, (float) $fresh->subtotal, 0.01);
+        $this->postJson("/api/orders/{$order1->id}/payments", [
+            'payments' => [['method' => 'cash', 'amount' => $payableAmount]],
+            'print_receipt' => false,
+        ])->assertOk();
+
+        $this->assertEquals(1, $promo->fresh()->redemptions_count);
+
+        $order2 = $this->createOrder();
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson("/api/orders/{$order2->id}/apply-promo", ['code' => 'ONCEPAY'])->assertStatus(422);
+    }
+
+    public function test_full_refund_releases_promo_redemption_for_reuse(): void
+    {
+        $promo = $this->createPromo(['max_uses' => 1, 'code' => 'REFUNDONCE', 'max_uses_per_customer' => 1]);
+        $order = $this->createOrder();
+        $order->update(['customer_id' => $this->customer->id]);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson("/api/orders/{$order->id}/apply-promo", ['code' => 'REFUNDONCE'])->assertOk();
+
+        $fresh = $order->fresh();
+        $payableAmount = max((float) $fresh->total, (float) $fresh->subtotal, 0.01);
+        $this->postJson("/api/orders/{$order->id}/payments", [
+            'payments' => [['method' => 'cash', 'amount' => $payableAmount]],
+            'print_receipt' => false,
+        ])->assertOk();
+
+        $this->assertEquals(1, $promo->fresh()->redemptions_count);
+
+        $order->refresh()->update(['status' => 'refunded']);
+        app(\App\Domains\Promotions\Listeners\ReleasePromoRedemptionOnRefundListener::class)->handle(
+            new \App\Domains\Orders\Events\OrderRefunded(
+                new \App\Domains\Orders\DTOs\OrderRefundedData(
+                    refundId: 1,
+                    orderId: $order->id,
+                    orderNumber: (string) $order->order_number,
+                    amount: (float) $order->total,
+                    reason: 'test',
+                    refundRatio: 1.0,
+                ),
+            ),
+        );
+
+        $this->assertEquals(0, $promo->fresh()->redemptions_count);
+        $this->assertEquals(
+            'released',
+            \App\Models\PromotionRedemption::where('order_id', $order->id)->value('status'),
+        );
+
+        // Same customer can apply again after full refund released the slot.
+        $order2 = $this->createOrder();
+        $order2->update(['customer_id' => $this->customer->id]);
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson("/api/orders/{$order2->id}/apply-promo", ['code' => 'REFUNDONCE'])->assertOk();
+    }
+
     // ─── Authorization matrix ────────────────────────────────────────────────
 
     public function test_staff_with_discounts_permission_can_apply_promo(): void

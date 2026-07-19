@@ -56,6 +56,9 @@ final class DiscountCardIssueService
         if ($type === 'fixed' && $value < 100) {
             throw new \InvalidArgumentException('Fixed discount must be at least MVR 1.');
         }
+        if ($type === 'fixed' && $value > 500000) {
+            throw new \InvalidArgumentException('Fixed discount cannot exceed MVR 5000.');
+        }
 
         $maxUses = max(1, (int) ($data['max_uses_per_card'] ?? 1));
         $minOrder = max(0, (int) ($data['min_order_laar'] ?? 0));

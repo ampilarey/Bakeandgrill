@@ -141,14 +141,26 @@ class PromotionController extends Controller
         // Track whether the promo was actually persisted so we can return the
         // correct status if the order was concurrently locked into a terminal state.
         $applied = false;
+        $rejectMessage = null;
 
-        DB::transaction(function () use ($order, $orderId, $promotion, $result, $idempotencyKey, &$applied): void {
+        DB::transaction(function () use ($order, $orderId, $promotion, $result, $idempotencyKey, &$applied, &$rejectMessage): void {
             // Re-lock the order row inside the transaction to prevent race conditions.
             $order = Order::lockForUpdate()->findOrFail($orderId);
 
             if (in_array($order->status, ['paid', 'completed', 'cancelled', 'partial'], true)) {
                 // Order transitioned to a terminal/partial state between the pre-check and the lock.
                 // $applied stays false; caller will receive a 409.
+                return;
+            }
+
+            // Lock the promotion and enforce campaign-wide max_uses under concurrency
+            // (confirmed redemptions + pending drafts on other open orders).
+            $lockedPromo = Promotion::query()->where('id', $promotion->id)->lockForUpdate()->firstOrFail();
+            if ($lockedPromo->max_uses
+                && PromotionEvaluator::campaignUsageIncludingPending($lockedPromo, $order->id) >= (int) $lockedPromo->max_uses
+            ) {
+                $rejectMessage = 'Promo code is not valid or has expired.';
+
                 return;
             }
 
@@ -178,6 +190,10 @@ class PromotionController extends Controller
             $this->calculator->recalculateAndPersist($order);
             $applied = true;
         });
+
+        if ($rejectMessage !== null) {
+            return response()->json(['message' => $rejectMessage], 422);
+        }
 
         if (!$applied) {
             return response()->json(['message' => 'Order is no longer modifiable.'], 409);
@@ -299,6 +315,14 @@ class PromotionController extends Controller
             'scope' => 'in:order,item',
             'restricted_customer_id' => 'nullable|integer|exists:customers,id',
         ]);
+
+        // Fixed promos are stored in laari — hard cap MVR 5000.
+        if (($validated['type'] ?? '') === 'fixed' && (int) $validated['discount_value'] > 500000) {
+            return response()->json([
+                'message' => 'Fixed discount cannot exceed MVR 5000.',
+                'errors' => ['discount_value' => ['Fixed discount cannot exceed MVR 5000.']],
+            ], 422);
+        }
 
         $promotion = Promotion::create($validated);
 
