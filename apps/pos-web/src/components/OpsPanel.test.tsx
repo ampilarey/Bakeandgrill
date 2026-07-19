@@ -97,7 +97,7 @@ describe("OpsPanel", () => {
       />,
     );
 
-    expect(screen.getByText(/Suppliers, Reports, and SMS marketing are in the/i)).toBeTruthy();
+    expect(screen.getByText(/Suppliers, full Reports, and SMS marketing are in the/i)).toBeTruthy();
     expect(screen.getByText(/Admin dashboard/i)).toBeTruthy();
   });
 

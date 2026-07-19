@@ -153,17 +153,19 @@ export const z = {
 } as const;
 
 // ── Breakpoints ────────────────────────────────────────────────────────
-// Tablet landscape is the primary design target. Phone support is
-// improved via index.css (menu-first stack, larger touch targets,
-// responsive ops/history panels) for backup / emergency use.
+// Keep in sync with Bug-020 tiers in src/index.css.
+// Tablet landscape is the primary design target; phone/portrait uses
+// the stacked dock-cart layout for backup / emergency use.
 
 export const bp = {
-  /** Charge fullscreen + narrow tablet. */
-  sm: 820,
-  /** Phone + iPad portrait — stacked sales layout. */
+  /** Small-phone topbar tweaks. */
+  xs: 480,
+  /** Stacked phone/portrait — dock cart, charge fullscreen, sheets. */
   md: 840,
-  /** Tablet landscape / small desktop. */
+  /** Narrow side cart (360px). */
   lg: 1100,
+  /** Desktop polish — cart 460, tiles 140. */
+  xl: 1400,
 } as const;
 
 // ── Common style helpers ──────────────────────────────────────────────

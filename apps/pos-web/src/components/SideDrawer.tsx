@@ -20,6 +20,8 @@ type Props = {
   onSelect: (id: string) => void;
   cashierName?: string;
   shiftLabel?: string;
+  /** Mobile replacement for the hidden topbar sales chip (≤840px). */
+  shiftSalesSummary?: string | null;
   appVersion?: string;
   appBuild?: string;
   updatePending?: boolean;
@@ -39,6 +41,7 @@ export function SideDrawer({
   onSelect,
   cashierName,
   shiftLabel,
+  shiftSalesSummary,
   appVersion,
   appBuild,
   updatePending,
@@ -88,6 +91,20 @@ export function SideDrawer({
           <div style={{ fontWeight: 800, fontSize: 16 }}>{cashierName ?? "Cashier"}</div>
           {shiftLabel && (
             <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>{shiftLabel}</div>
+          )}
+          {shiftSalesSummary && (
+            <div style={{
+              marginTop: 10,
+              padding: "8px 10px",
+              borderRadius: 8,
+              background: "#1E293B",
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#F8FAFC",
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              {shiftSalesSummary}
+            </div>
           )}
         </header>
 

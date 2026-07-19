@@ -264,7 +264,7 @@ export function PosShellLayout() {
       )}
 
       {/* Main body */}
-      <main className="pos-main" style={{ flex: 1, display: 'flex', minHeight: 0, padding: 12, gap: 12 }}>
+      <main className="pos-main">
         {pane === 'sales' && (
           !shiftOpen ? (
             <div style={{
@@ -569,6 +569,11 @@ export function PosShellLayout() {
         active={pane}
         cashierName={cashierName}
         shiftLabel={shift.current ? `Shift #${shift.current.id} · MVR ${Number(shift.summary?.cash_drawer.expected_cash ?? 0).toFixed(2)} in drawer` : 'No open shift'}
+        shiftSalesSummary={
+          shift.summary
+            ? `${shift.summary.sales_summary.order_count} orders · MVR ${Number(shift.summary.sales_summary.net_sales ?? 0).toFixed(0)}`
+            : (!shiftOpen && canEnterPosShell ? 'No open shift' : null)
+        }
         appVersion={POS_BUILD_INFO.version}
         appBuild={POS_BUILD_INFO.build}
         updatePending={posUpdate.updateAvailable}

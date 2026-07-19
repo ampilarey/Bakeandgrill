@@ -285,12 +285,11 @@ export function ChargeOverlay({
       style={{
         position: "fixed", inset: 0, zIndex: z.overlay,
         background: "rgba(15,23,42,0.65)",
-        display: "flex", alignItems: "stretch", justifyContent: "stretch",
       }}
     >
       <div className="pos-charge" style={{
-        margin: "auto", background: "#fff", width: "100%", maxWidth: 760, maxHeight: "100%",
-        borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column",
+        background: "#fff",
+        overflow: "hidden",
       }}>
         {/* Header */}
         <div className="pos-charge-header" style={{
@@ -310,10 +309,7 @@ export function ChargeOverlay({
         </div>
 
         {/* Body */}
-        <div className="pos-charge-grid" style={{
-          flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: 0,
-          gap: 0,
-        }}>
+        <div className="pos-charge-grid">
           {/* LEFT: total + change */}
           <div className="pos-charge-summary" style={{
             padding: 24, display: "flex", flexDirection: "column",

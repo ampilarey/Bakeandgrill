@@ -5,6 +5,7 @@ import { makeCartKey } from "../hooks/useCart";
 import type { PosCustomer, PosCustomerAddress } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { palette } from "../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel, isCustomerAppOrder } from "../orderTypeLabels";
 import {
@@ -164,6 +165,26 @@ export function OrderCart(p: Props) {
   const isDelivery = p.orderType === "Delivery";
   const deliveryFeeEst = isDelivery ? (p.deliveryFeeEst ?? 0) : 0;
   const isResumed = p.resumedOrderId !== null;
+  /** Stacked phone/portrait only — skip dock on short landscape (side cart). */
+  const isNarrowStack = useMediaQuery("(max-width: 840px) and (min-height: 501px)");
+  const [cartExpanded, setCartExpanded] = useState(false);
+  const itemCount = p.cartItems.reduce((n, i) => n + (i.quantity || 1), 0);
+
+  useEffect(() => {
+    if (p.cartItems.length === 0) setCartExpanded(false);
+  }, [p.cartItems.length]);
+
+  useEffect(() => {
+    if (!isNarrowStack) setCartExpanded(false);
+  }, [isNarrowStack]);
+
+  const dockMode = isNarrowStack && !cartExpanded;
+  const sheetMode = isNarrowStack && cartExpanded;
+  const cartClassName = [
+    "pos-cart",
+    dockMode ? "pos-cart--dock" : "",
+    sheetMode ? "pos-cart--sheet" : "",
+  ].filter(Boolean).join(" ");
   const orderLabel = p.resumedOrderLabel ?? `#${p.resumedOrderId}`;
   // When the cashier opened a ticket via "Edit" we relax the resumed
   // read-only restrictions so qty +/-, kitchen notes, and Clear all
@@ -288,25 +309,82 @@ export function OrderCart(p: Props) {
   };
 
   return (
+    <>
+    {sheetMode && (
+      <button
+        type="button"
+        className="pos-cart-sheet-backdrop pos-cart-sheet-backdrop--open"
+        aria-label="Collapse cart"
+        onClick={() => setCartExpanded(false)}
+      />
+    )}
     <aside
-      className="pos-cart"
+      className={cartClassName}
       aria-label="Order cart"
       style={{
-        // Bug-020: bumped from 380 → 420 so 16-char item names
-        // and modifier rows stop wrapping awkwardly on iPad Mini
-        // landscape (1133px viewport). Index.css narrows this
-        // down on portrait & smaller phones.
-        width: 420,
-        flexShrink: 0,
         background: C.panel,
         borderRadius: 14,
         border: `1px solid ${C.border}`,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
         boxShadow: '0 2px 8px rgba(15,23,42,0.06)',
       }}
     >
+      <div className="pos-cart-dock-bar" role="group" aria-label="Cart summary">
+        <button
+          type="button"
+          onClick={() => {
+            if (p.cartItems.length === 0) return;
+            setCartExpanded(true);
+          }}
+          aria-expanded={cartExpanded}
+          aria-label={p.cartItems.length === 0 ? "Cart empty" : "Expand cart"}
+          style={{
+            flex: 1, minWidth: 0, minHeight: 44, padding: 0,
+            border: "none", background: "transparent", cursor: p.cartItems.length === 0 ? "default" : "pointer",
+            textAlign: "left", font: "inherit", color: "inherit",
+            display: "flex", alignItems: "center", gap: 8,
+          }}
+        >
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.muted }}>
+              {p.cartItems.length === 0
+                ? "Cart empty — tap menu to add"
+                : `${itemCount} item${itemCount === 1 ? "" : "s"}`}
+            </span>
+            <span style={{
+              display: "block", fontSize: 16, fontWeight: 800, color: C.text,
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              MVR {p.chargeTotal.toFixed(2)}
+            </span>
+          </span>
+          {p.cartItems.length > 0 && (
+            <span style={{ fontSize: 18, color: C.muted, flexShrink: 0 }} aria-hidden>▴</span>
+          )}
+        </button>
+        {p.canRingSales !== false && !p.resumedIsPaid && (
+          <button
+            type="button"
+            onClick={() => { if (!checkoutDisabled) p.onCheckout(); }}
+            disabled={checkoutDisabled}
+            style={{
+              flexShrink: 0,
+              padding: "12px 16px",
+              borderRadius: 10,
+              border: "none",
+              background: checkoutDisabled ? C.successDisabled : C.success,
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: 13,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              cursor: checkoutDisabled ? "not-allowed" : "pointer",
+              minHeight: 44,
+            }}
+          >
+            {p.isSubmitting ? "…" : "Charge"}
+          </button>
+        )}
+      </div>
       {/* ── Resumed-ticket banner ─────────────────────────────────
             Two modes:
               editing=true  → cart unlocked, "💾 Save changes" + "Cancel"
@@ -927,8 +1005,22 @@ export function OrderCart(p: Props) {
           </span>
         </button>
         )}
+        {sheetMode && (
+          <button
+            type="button"
+            onClick={() => setCartExpanded(false)}
+            style={{
+              marginTop: 8, width: "100%", padding: "10px 12px", borderRadius: 8,
+              background: "#FFFFFF", border: `1px solid ${C.border2}`,
+              fontSize: 12, fontWeight: 700, color: C.muted, cursor: "pointer",
+            }}
+          >
+            ▾ Collapse cart
+          </button>
+        )}
       </div>
     </aside>
+    </>
   );
 }
 

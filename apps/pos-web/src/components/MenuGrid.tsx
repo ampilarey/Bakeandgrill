@@ -299,10 +299,7 @@ export function MenuGrid({
   }, [saleScopedItems, search]);
 
   return (
-    <section className="pos-menu" style={{
-      flex: 1, minWidth: 0,
-      display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
+    <section className="pos-menu">
       {/* Top bar: search + barcode form */}
       <div className="pos-menu-toolbar">
         <form
@@ -516,11 +513,7 @@ export function MenuGrid({
             </div>
           </div>
         ) : (
-          <div className="pos-menu-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-            gap: 10,
-          }}>
+          <div className="pos-menu-grid">
             {visibleItems.map((item) => {
               const c = tileColor(item.category_id);
               const price = effectiveItemPrice(item);
@@ -686,16 +679,8 @@ function ConfigurePanel({
       className="pos-configure-backdrop"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
+        background: 'rgba(15,23,42,0.45)',
         zIndex: z.modalBackdrop,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
-        paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
-        paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
-        paddingLeft: 'max(16px, env(safe-area-inset-left, 0px))',
-        boxSizing: 'border-box',
       }}
       role="dialog"
       aria-modal="true"
@@ -706,13 +691,6 @@ function ConfigurePanel({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: '#FFFFFF',
-          borderRadius: 16,
-          width: '100%',
-          maxWidth: 480,
-          maxHeight: 'min(78dvh, 640px)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
           boxShadow: '0 20px 48px rgba(15,23,42,0.22)',
         }}
       >
