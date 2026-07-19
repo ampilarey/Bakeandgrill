@@ -478,11 +478,22 @@ export function usePosApp() {
     } catch { /* best-effort */ }
   }, [isLoggedIn]);
 
+  // Badge used to wait 5s so menu/shift could win the network — after a
+  // POS update that left Active Orders blank for several seconds. Fetch
+  // immediately, then poll; also refresh when returning to the tab.
   useEffect(() => {
     if (!isLoggedIn) return;
-    const handle = window.setTimeout(() => { void refreshOpenTickets(); }, 5000);
-    return () => window.clearTimeout(handle);
-  }, [refreshOpenTickets, pane, shift.current?.id, isLoggedIn]);
+    void refreshOpenTickets();
+    const poll = window.setInterval(() => { void refreshOpenTickets(); }, 30_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void refreshOpenTickets();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshOpenTickets, shift.current?.id, isLoggedIn]);
 
   // Sync role from /auth/me — deferred so menu + shift win the network on login.
   // staffLogin already caches role/permissions; this refreshes them quietly.
