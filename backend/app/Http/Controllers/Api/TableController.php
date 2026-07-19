@@ -46,26 +46,27 @@ class TableController extends Controller
         $tableIds = $tables->pluck('id')->all();
         $activeOrderMap = [];
         if (!empty($tableIds)) {
-            $activeOrderMap = Order::select('id', 'restaurant_table_id', 'order_number', 'total', 'status')
+            $activeOrderMap = Order::select('id', 'restaurant_table_id', 'order_number', 'total', 'status', 'ticket_name')
                 ->whereIn('restaurant_table_id', $tableIds)
-                ->whereIn('status', RestaurantTable::ACTIVE_ORDER_STATUSES)
+                ->whereIn('status', RestaurantTable::SEAT_OWNING_STATUSES)
                 ->orderByDesc('id')
                 ->get()
                 ->groupBy('restaurant_table_id')
                 ->map(fn ($group) => $group->first());
         }
 
-        // Self-heal stale floor status: "occupied" with no active ticket
-        // (common after Charge before seat-release was wired) and the
-        // inverse if a ticket exists but status was left available.
+        // Source of truth = seat-owning orders. Denormalized status is a cache.
+        // Never clobber reserved/closed when the seat is empty.
         $toAvailable = [];
         $toOccupied = [];
         foreach ($tables as $t) {
             $hasActive = isset($activeOrderMap[$t->id]);
-            if ($hasActive && $t->status !== 'occupied') {
-                $toOccupied[] = $t->id;
-                $t->status = 'occupied';
-            } elseif (!$hasActive && $t->status !== 'available') {
+            if ($hasActive) {
+                if ($t->status !== 'occupied') {
+                    $toOccupied[] = $t->id;
+                    $t->status = 'occupied';
+                }
+            } elseif ($t->status === 'occupied') {
                 $toAvailable[] = $t->id;
                 $t->status = 'available';
             }
@@ -79,11 +80,19 @@ class TableController extends Controller
 
         $payload = $tables->map(function ($t) use ($activeOrderMap) {
             $active = $activeOrderMap[$t->id] ?? null;
+            // Response status always matches linked open check (UI never lies).
+            $status = $active ? 'occupied' : (
+                in_array($t->status, ['reserved', 'closed'], true) ? $t->status : 'available'
+            );
 
             return array_merge($t->toArray(), [
+                'status' => $status,
                 'current_order_id' => $active?->id,
                 'current_order_number' => $active?->order_number,
                 'current_order_total' => $active ? (float) $active->total : null,
+                'current_order_label' => $active
+                    ? ($active->ticket_name ?: $active->order_number)
+                    : null,
             ]);
         });
 
@@ -381,9 +390,6 @@ class TableController extends Controller
 
     private function findActiveOrder(int $tableId): ?Order
     {
-        return Order::where('restaurant_table_id', $tableId)
-            ->whereIn('status', RestaurantTable::ACTIVE_ORDER_STATUSES)
-            ->latest('id')
-            ->first();
+        return RestaurantTable::findActiveOrder($tableId);
     }
 }

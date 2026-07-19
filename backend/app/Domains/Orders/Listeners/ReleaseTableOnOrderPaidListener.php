@@ -10,24 +10,22 @@ use App\Models\RestaurantTable;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Free the dine-in seat once the ticket is paid. Without this, table.status
- * stayed "occupied" after Charge even though no active order remained.
+ * Free the dine-in seat once the ticket is paid.
+ * Clears restaurant_table_id so "linked" always means an open check.
  */
 final class ReleaseTableOnOrderPaidListener
 {
     public function handle(OrderPaid $event): void
     {
         try {
-            $tableId = Order::query()
-                ->whereKey($event->data->orderId)
-                ->value('restaurant_table_id');
-
-            if ($tableId === null) {
+            $order = Order::query()->find($event->data->orderId);
+            if ($order === null || $order->restaurant_table_id === null) {
                 return;
             }
 
-            // Paid ticket no longer counts as active — release if nothing else sits here.
-            RestaurantTable::releaseIfNoActiveOrders((int) $tableId, $event->data->orderId);
+            $tableId = (int) $order->restaurant_table_id;
+            $order->update(['restaurant_table_id' => null]);
+            RestaurantTable::syncOccupancy($tableId);
         } catch (\Throwable $e) {
             Log::warning('ReleaseTableOnOrderPaidListener failed', [
                 'order_id' => $event->data->orderId,

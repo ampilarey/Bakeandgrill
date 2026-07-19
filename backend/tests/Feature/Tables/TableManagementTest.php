@@ -206,6 +206,66 @@ class TableManagementTest extends TestCase
         $this->assertSame('available', $table->fresh()->status);
     }
 
+    public function test_list_marks_occupied_when_active_order_linked(): void
+    {
+        $table = $this->createTable('T-LINKED');
+        // Stale cache: available even though an open check owns the seat.
+        $table->update(['status' => 'available']);
+
+        $this->openTableRequest($table->id)->assertCreated();
+        $table->update(['status' => 'available']);
+
+        $this->getJson('/api/tables', $this->managerHeaders)
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $table->id,
+                'status' => 'occupied',
+            ]);
+
+        $this->assertSame('occupied', $table->fresh()->status);
+        $this->assertNotNull(
+            collect($this->getJson('/api/tables', $this->managerHeaders)->json('tables'))
+                ->firstWhere('id', $table->id)['current_order_id'] ?? null,
+        );
+    }
+
+    public function test_cannot_create_second_order_on_same_table(): void
+    {
+        $category = Category::create(['name' => 'Food', 'slug' => 'table-dupe-food', 'is_active' => true]);
+        $item = Item::create([
+            'category_id' => $category->id,
+            'name' => 'Dupe Burger',
+            'base_price' => 15.00,
+            'sku' => 'TBL-DUPE-1',
+            'is_active' => true,
+            'is_available' => true,
+        ]);
+        $table = $this->createTable('T-DUPE-ORDER');
+
+        $shift = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson('/api/shifts/open', ['opening_cash' => 50], $this->managerHeaders);
+        $this->assertTrue($shift->isSuccessful(), 'shift open: '.$shift->getContent());
+
+        $first = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson('/api/orders', [
+                'type' => 'dine_in',
+                'restaurant_table_id' => $table->id,
+                'print' => false,
+                'items' => [['item_id' => $item->id, 'quantity' => 1]],
+            ], $this->managerHeaders);
+        $this->assertSame(201, $first->status(), 'first order: '.$first->getContent());
+
+        $second = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson('/api/orders', [
+                'type' => 'dine_in',
+                'restaurant_table_id' => $table->id,
+                'print' => false,
+                'items' => [['item_id' => $item->id, 'quantity' => 1]],
+            ], $this->managerHeaders);
+        $this->assertSame(422, $second->status(), 'second order: '.$second->getContent());
+        $this->assertStringContainsString('Table already has an open order', $second->getContent());
+    }
+
     public function test_charging_dine_in_order_releases_table(): void
     {
         $category = Category::create(['name' => 'Food', 'slug' => 'table-pay-food', 'is_active' => true]);
@@ -246,6 +306,7 @@ class TableManagementTest extends TestCase
 
         $this->assertSame('paid', Order::findOrFail($orderId)->status);
         $this->assertSame('available', $table->fresh()->status);
+        $this->assertNull(Order::findOrFail($orderId)->restaurant_table_id);
     }
 
     // ── Merge tables ──────────────────────────────────────────────────────────

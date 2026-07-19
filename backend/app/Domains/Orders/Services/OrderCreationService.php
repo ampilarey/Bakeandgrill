@@ -93,6 +93,13 @@ class OrderCreationService
         $firedAt = $printKitchen ? now() : null;
 
         return DB::transaction(function () use ($payload, $user, $device, $shiftId, $printKitchen, $initialStatus, $firedAt): Order {
+            $tableId = !empty($payload['restaurant_table_id'])
+                ? (int) $payload['restaurant_table_id']
+                : null;
+            if ($tableId !== null && RestaurantTable::findActiveOrder($tableId) !== null) {
+                abort(422, 'Table already has an open order.');
+            }
+
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'type' => $payload['type'],
@@ -105,7 +112,7 @@ class OrderCreationService
                 // unpaid until addPayments runs — keeps one source of truth.
                 'payment_status' => 'unpaid',
                 'fired_at' => $firedAt,
-                'restaurant_table_id' => $payload['restaurant_table_id'] ?? null,
+                'restaurant_table_id' => $tableId,
                 'customer_id' => $payload['customer_id'] ?? null,
                 'user_id' => $user?->id,
                 'device_id' => $device?->id,
@@ -160,8 +167,8 @@ class OrderCreationService
 
             $order->load(['items.modifiers']);
 
-            if (!empty($payload['restaurant_table_id'])) {
-                RestaurantTable::markOccupied((int) $payload['restaurant_table_id']);
+            if ($tableId !== null) {
+                RestaurantTable::claimForOrder($tableId, (int) $order->id);
             }
 
             DB::afterCommit(function () use ($order, $payload, $printKitchen): void {

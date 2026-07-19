@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Card, Field, Overlay } from "./OpenShiftModal";
 import type { PosCustomer } from "../api";
 import type { RestaurantTable } from "../types";
+import { formatTableOption, tableIsInUse } from "../utils/tableLabels";
 
 import type { PosOrderType } from "../orderTypes";
 
@@ -181,11 +182,14 @@ export function SaveTicketModal({
               }}
             >
               <option value="">No table</option>
-              {tables.map((t) => (
-                <option key={t.id} value={t.id}>
-                  Table {t.name} ({t.status})
-                </option>
-              ))}
+              {tables.map((t) => {
+                const blocked = tableIsInUse(t) && t.id !== selectedTableId;
+                return (
+                  <option key={t.id} value={t.id} disabled={blocked}>
+                    {formatTableOption(t)}
+                  </option>
+                );
+              })}
             </select>
             {selectedTableId != null && orderType !== "Dine-in" && (
               <div style={{

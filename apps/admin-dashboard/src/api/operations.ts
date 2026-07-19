@@ -161,6 +161,7 @@ export interface RestaurantTable {
   current_order_id: number | null;
   current_order_number: string | null;
   current_order_total: number | null;
+  current_order_label?: string | null;
   is_active: boolean;
 }
 

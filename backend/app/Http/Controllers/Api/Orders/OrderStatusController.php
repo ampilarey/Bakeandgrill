@@ -361,12 +361,11 @@ class OrderStatusController extends Controller
                 }
             }
 
-            // Free up the dine-in table if no other active order still sits on it.
+            // Detach + free the seat so cancelled tickets don't keep the table linked.
             if ($order->restaurant_table_id) {
-                RestaurantTable::releaseIfNoActiveOrders(
-                    (int) $order->restaurant_table_id,
-                    (int) $order->id,
-                );
+                $tableId = (int) $order->restaurant_table_id;
+                $order->update(['restaurant_table_id' => null]);
+                RestaurantTable::syncOccupancy($tableId);
             }
 
             app(AuditLogService::class)->log(

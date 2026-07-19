@@ -157,17 +157,16 @@ class OrderItemController extends Controller
                     ->recalculateAndPersist($updated->fresh(['items.item']));
             }
 
-            // Floor map: free the prior seat when this ticket leaves it
-            // (dine_in → takeaway/delivery, or move to another table).
+            // Floor map: seat ownership follows restaurant_table_id.
             $newTableId = $updated->restaurant_table_id !== null
                 ? (int) $updated->restaurant_table_id
                 : null;
             $prevTableId = $oldTableId !== null ? (int) $oldTableId : null;
             if ($prevTableId !== null && $prevTableId !== $newTableId) {
-                RestaurantTable::releaseIfNoActiveOrders($prevTableId);
+                RestaurantTable::syncOccupancy($prevTableId);
             }
             if ($newTableId !== null && (string) $updated->type === 'dine_in') {
-                RestaurantTable::markOccupied($newTableId);
+                RestaurantTable::claimForOrder($newTableId, (int) $updated->id);
             }
 
             app(AuditLogService::class)->log(

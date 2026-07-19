@@ -241,14 +241,8 @@ class AdminMaintenanceService
             return;
         }
 
-        $hasOtherActive = Order::where('restaurant_table_id', $order->restaurant_table_id)
-            ->where('id', '!=', $order->id)
-            ->whereNotIn('status', ['cancelled', 'completed', 'refunded'])
-            ->exists();
-
-        if (!$hasOtherActive) {
-            RestaurantTable::where('id', $order->restaurant_table_id)
-                ->update(['status' => 'available']);
-        }
+        $tableId = (int) $order->restaurant_table_id;
+        $order->update(['restaurant_table_id' => null]);
+        RestaurantTable::syncOccupancy($tableId);
     }
 }

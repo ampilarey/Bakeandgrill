@@ -130,4 +130,9 @@ export type RestaurantTable = {
   location?: string | null;
   notes?: string | null;
   is_active: boolean;
+  /** Seat-owning open check — source of truth for "in use". */
+  current_order_id?: number | null;
+  current_order_number?: string | null;
+  current_order_total?: number | null;
+  current_order_label?: string | null;
 };

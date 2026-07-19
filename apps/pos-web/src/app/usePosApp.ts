@@ -708,10 +708,19 @@ export function usePosApp() {
     return () => { cancelled = true; };
   }, [showCharge, cart.attachedCustomer?.id, canUseCredit, canUseWallet]);
 
+  // Keep floor occupancy fresh across terminals (Save / Charge / Close).
   useEffect(() => {
     if (!isLoggedIn) return;
-    const handle = window.setTimeout(() => { void refreshTables(); }, 4000);
-    return () => window.clearTimeout(handle);
+    void refreshTables();
+    const poll = window.setInterval(() => { void refreshTables(); }, 20_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void refreshTables();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [isLoggedIn, refreshTables]);
 
   useEffect(() => {
@@ -914,6 +923,7 @@ export function usePosApp() {
       await order.handleSaveTicket(name, note, fireToKitchen);
       setShowSaveTicket(false);
       void refreshOpenTickets();
+      void refreshTables();
     } catch {
       /* handleSaveTicket already surfaced the error banner */
     }

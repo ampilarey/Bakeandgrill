@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CartItem, RestaurantTable } from "../types";
+import { formatTableOption, tableIsInUse } from "../utils/tableLabels";
 import type { PaymentRow } from "../hooks/useCart";
 import { makeCartKey } from "../hooks/useCart";
 import type { PosCustomer, PosCustomerAddress } from "../api";
@@ -580,6 +581,7 @@ export function OrderCart(p: Props) {
             <select
               value={p.selectedTableId ?? ""}
               onChange={(e) => p.setSelectedTableId(e.target.value ? Number(e.target.value) : null)}
+              disabled={lockedReadOnly}
               style={{
                 width: '100%', padding: '10px 12px',
                 borderRadius: 8, border: `1px solid ${C.border2}`,
@@ -587,14 +589,24 @@ export function OrderCart(p: Props) {
               }}
             >
               <option value="">Select table</option>
-              {p.tables.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} ({t.status})</option>
-              ))}
+              {p.tables.map((t) => {
+                const ours = p.resumedOrderId != null && t.current_order_id === p.resumedOrderId;
+                const inUse = tableIsInUse(t);
+                // Other tickets' seats stay selectable only when already chosen
+                // (resume edge cases); otherwise block double-booking in the UI.
+                const blocked = inUse && !ours && t.id !== p.selectedTableId;
+                return (
+                  <option key={t.id} value={t.id} disabled={blocked}>
+                    {formatTableOption(t, { ourOrderId: p.resumedOrderId })}
+                  </option>
+                );
+              })}
             </select>
             {p.selectedTableId != null && (p.onOpenTable || p.onCloseTable || p.onMergeTables) && (
               <TableFloorActions
                 tables={p.tables}
                 selectedTableId={p.selectedTableId}
+                ourOrderId={p.resumedOrderId}
                 onOpenTable={p.onOpenTable}
                 onCloseTable={p.onCloseTable}
                 onMergeTables={p.onMergeTables}
@@ -1370,6 +1382,7 @@ function CartLine({
 function TableFloorActions({
   tables,
   selectedTableId,
+  ourOrderId,
   onOpenTable,
   onCloseTable,
   onMergeTables,
@@ -1377,6 +1390,7 @@ function TableFloorActions({
 }: {
   tables: RestaurantTable[];
   selectedTableId: number;
+  ourOrderId?: number | null;
   onOpenTable?: (id: number) => Promise<void>;
   onCloseTable?: (id: number) => Promise<void>;
   onMergeTables?: (sourceId: number, targetId: number) => Promise<void>;
@@ -1386,7 +1400,8 @@ function TableFloorActions({
   const [err, setErr] = useState("");
   const [mergeTargetId, setMergeTargetId] = useState<number | "">("");
   const selected = tables.find((t) => t.id === selectedTableId);
-  const mergeTargets = tables.filter((t) => t.id !== selectedTableId && t.status === "occupied");
+  const selectedInUse = selected ? tableIsInUse(selected) : false;
+  const mergeTargets = tables.filter((t) => t.id !== selectedTableId && tableIsInUse(t));
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -1405,8 +1420,11 @@ function TableFloorActions({
 
   return (
     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: selectedInUse ? "#B45309" : "#15803d" }}>
+        {formatTableOption(selected, { ourOrderId })}
+      </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {selected.status === "available" && onOpenTable && (
+        {!selectedInUse && onOpenTable && (
           <button
             type="button"
             disabled={busy}
@@ -1416,7 +1434,7 @@ function TableFloorActions({
             Open check
           </button>
         )}
-        {selected.status === "occupied" && onCloseTable && (
+        {selectedInUse && onCloseTable && (
           <button
             type="button"
             disabled={busy}
@@ -1427,7 +1445,7 @@ function TableFloorActions({
           </button>
         )}
       </div>
-      {selected.status === "occupied" && onMergeTables && mergeTargets.length > 0 && (
+      {selectedInUse && onMergeTables && mergeTargets.length > 0 && (
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <select
             value={mergeTargetId}
@@ -1439,7 +1457,7 @@ function TableFloorActions({
           >
             <option value="">Merge into…</option>
             {mergeTargets.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+              <option key={t.id} value={t.id}>{formatTableOption(t)}</option>
             ))}
           </select>
           <button
