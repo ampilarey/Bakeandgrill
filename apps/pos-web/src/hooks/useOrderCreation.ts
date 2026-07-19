@@ -30,7 +30,12 @@ import type { CartItem, Item } from "../types";
 import type { PaymentRow } from "./useCart";
 import type { PosCustomer } from "../api";
 import type { PosDeliveryDetails, PosOrderType } from "../orderTypes";
-import { normalizeMvPhone, resolveDeliveryDetails, validateDeliveryDetails } from "../orderTypes";
+import {
+  EMPTY_DELIVERY_DETAILS,
+  normalizeMvPhone,
+  resolveDeliveryDetails,
+  validateDeliveryDetails,
+} from "../orderTypes";
 import { applyStagedRewards as applyStagedRewardsUtil } from "../utils/applyStagedRewards";
 
 type OrderType = PosOrderType;
@@ -41,6 +46,41 @@ const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup"
   if (type === "Delivery") return "delivery";
   return "takeaway";
 };
+
+function deliveryFingerprint(d: PosDeliveryDetails | null | undefined): string {
+  const x = d ?? EMPTY_DELIVERY_DETAILS;
+  return [
+    x.addressLine1.trim(),
+    x.addressLine2.trim(),
+    x.island.trim(),
+    x.contactName.trim(),
+    normalizeMvPhone(x.contactPhone.trim()),
+    x.notes.trim(),
+    x.locationLink.trim(),
+  ].join("|");
+}
+
+function deliveryDetailsFromOrder(order: {
+  type?: string | null;
+  delivery_address_line1?: string | null;
+  delivery_address_line2?: string | null;
+  delivery_island?: string | null;
+  delivery_contact_name?: string | null;
+  delivery_contact_phone?: string | null;
+  delivery_notes?: string | null;
+  delivery_location_link?: string | null;
+}): PosDeliveryDetails {
+  if (order.type !== "delivery") return { ...EMPTY_DELIVERY_DETAILS };
+  return {
+    addressLine1: order.delivery_address_line1 ?? "",
+    addressLine2: order.delivery_address_line2 ?? "",
+    island: order.delivery_island ?? "Male",
+    contactName: order.delivery_contact_name ?? "",
+    contactPhone: order.delivery_contact_phone ?? "",
+    notes: order.delivery_notes ?? "",
+    locationLink: order.delivery_location_link ?? "",
+  };
+}
 
 /**
  * Payment row sent to the server: strings are parsed into numbers and any
@@ -298,6 +338,8 @@ export function useOrderCreation(params: Params) {
   const [resumedOrderType, setResumedOrderType] = useState<string | null>(null);
   /** Table on the resumed ticket (dine_in only) — part of dirty detection. */
   const [resumedTableId, setResumedTableId] = useState<number | null>(null);
+  /** Delivery address snapshot from resume — dirty when the form diverges. */
+  const [resumedDeliveryFingerprint, setResumedDeliveryFingerprint] = useState<string | null>(null);
   /** Staff who rang the ticket — used to label POS pickup vs app online pickup. */
   const [resumedStaffUserId, setResumedStaffUserId] = useState<number | null>(null);
 
@@ -305,7 +347,7 @@ export function useOrderCreation(params: Params) {
   const currentTicketTableId = () =>
     currentTicketType() === "dine_in" ? (params.selectedTableId ?? null) : null;
 
-  /** True when items, fulfillment type, or table differ from the resumed snapshot. */
+  /** True when items, fulfillment type, table, or delivery address differ. */
   const computeTicketDirty = (): boolean => {
     if (resumedOrderId === null) return false;
     const itemsDirty = resumedItemsFingerprint !== null
@@ -314,7 +356,10 @@ export function useOrderCreation(params: Params) {
       && currentTicketType() !== resumedOrderType;
     const resumedTable = resumedOrderType === "dine_in" ? resumedTableId : null;
     const tableDirty = currentTicketTableId() !== resumedTable;
-    return itemsDirty || typeDirty || tableDirty;
+    const deliveryDirty = currentTicketType() === "delivery"
+      && resumedDeliveryFingerprint !== null
+      && deliveryFingerprint(params.deliveryDetails) !== resumedDeliveryFingerprint;
+    return itemsDirty || typeDirty || tableDirty || deliveryDirty;
   };
 
   const staffUserIdFromOrder = (order: { user_id?: number | null; user?: { id?: number } | null }) =>
@@ -703,6 +748,7 @@ export function useOrderCreation(params: Params) {
           setResumedOrderLabel(null);
           setResumedOrderType(null);
           setResumedTableId(null);
+          setResumedDeliveryFingerprint(null);
           setResumedStaffUserId(null);
           params.clearCart();
           params.setSelectedItem(null);
@@ -984,25 +1030,10 @@ export function useOrderCreation(params: Params) {
       const mapped = typeMap[response.order.type ?? ""];
       if (mapped) params.setOrderType(mapped);
     }
-    if (response.order.type === "delivery" && params.setDeliveryDetails) {
-      const o = response.order as {
-        delivery_address_line1?: string | null;
-        delivery_address_line2?: string | null;
-        delivery_island?: string | null;
-        delivery_contact_name?: string | null;
-        delivery_contact_phone?: string | null;
-        delivery_notes?: string | null;
-        delivery_location_link?: string | null;
-      };
-      params.setDeliveryDetails({
-        addressLine1: o.delivery_address_line1 ?? "",
-        addressLine2: o.delivery_address_line2 ?? "",
-        island: o.delivery_island ?? "Male",
-        contactName: o.delivery_contact_name ?? "",
-        contactPhone: o.delivery_contact_phone ?? "",
-        notes: o.delivery_notes ?? "",
-        locationLink: o.delivery_location_link ?? "",
-      });
+    if (params.setDeliveryDetails) {
+      // Clear leftover address from a previous delivery ticket so a
+      // later switch to Delivery only dirties after the cashier types.
+      params.setDeliveryDetails(deliveryDetailsFromOrder(response.order));
     }
     if (params.setSelectedTableId) {
       params.setSelectedTableId(response.order.restaurant_table_id ?? null);
@@ -1092,6 +1123,7 @@ export function useOrderCreation(params: Params) {
       setResumedOrderLabel(label);
       setResumedOrderType(preflight.order.type ?? null);
       setResumedTableId(preflight.order.restaurant_table_id ?? null);
+      setResumedDeliveryFingerprint(deliveryFingerprint(deliveryDetailsFromOrder(preflight.order)));
       setResumedStaffUserId(staffUserIdFromOrder(preflight.order));
       setIsEditingActive(false);
       localStorage.removeItem("pos_last_held_order");
@@ -1113,6 +1145,7 @@ export function useOrderCreation(params: Params) {
     setResumedOrderId(orderId);
     setResumedOrderType(response.order.type ?? null);
     setResumedTableId(response.order.restaurant_table_id ?? null);
+    setResumedDeliveryFingerprint(deliveryFingerprint(deliveryDetailsFromOrder(response.order)));
     setResumedStaffUserId(staffUserIdFromOrder(response.order));
     setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
@@ -1155,6 +1188,7 @@ export function useOrderCreation(params: Params) {
     setResumedOrderLabel(null);
     setResumedOrderType(null);
     setResumedTableId(null);
+    setResumedDeliveryFingerprint(null);
     setResumedStaffUserId(null);
     params.clearCart();
     params.setSelectedItem(null);
@@ -1210,11 +1244,41 @@ export function useOrderCreation(params: Params) {
       const itemsChanged = resumedItemsFingerprint !== currentFp;
       const nextType = currentTicketType();
       const nextTableId = currentTicketTableId();
+      const deliveryPayload = nextType === "delivery"
+        ? resolveDeliveryDetails(
+          params.deliveryDetails ?? EMPTY_DELIVERY_DETAILS,
+          {
+            name: params.customerName,
+            phone: params.customerPhone,
+          },
+        )
+        : null;
+      if (deliveryPayload) {
+        const deliveryErr = validateDeliveryDetails(deliveryPayload, {
+          name: params.customerName,
+          phone: params.customerPhone,
+        });
+        if (deliveryErr) {
+          flashError(deliveryErr);
+          return false;
+        }
+      }
       const res = await updateOrderItems(resumedOrderId, {
         items,
         reprint_kitchen: itemsChanged,
         type: nextType,
         restaurant_table_id: nextTableId,
+        ...(deliveryPayload
+          ? {
+            delivery_address_line1: deliveryPayload.addressLine1.trim(),
+            delivery_address_line2: deliveryPayload.addressLine2.trim() || null,
+            delivery_island: deliveryPayload.island.trim(),
+            delivery_contact_name: deliveryPayload.contactName.trim(),
+            delivery_contact_phone: normalizeMvPhone(deliveryPayload.contactPhone.trim()),
+            delivery_notes: deliveryPayload.notes.trim() || null,
+            delivery_location_link: deliveryPayload.locationLink.trim() || null,
+          }
+          : {}),
       });
       setResumedOrderTotal(res.order.total != null ? Number(res.order.total) : null);
       setResumedItemsFingerprint(currentFp);
@@ -1224,6 +1288,9 @@ export function useOrderCreation(params: Params) {
           ? res.order.restaurant_table_id
           : nextTableId,
       );
+      setResumedDeliveryFingerprint(deliveryFingerprint(
+        deliveryPayload ?? EMPTY_DELIVERY_DETAILS,
+      ));
       setIsEditingActive(false);
       return true;
     } catch (err) {

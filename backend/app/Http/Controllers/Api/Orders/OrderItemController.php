@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Orders;
 
+use App\Domains\Delivery\Services\DeliveryFeeCalculator;
 use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\Events\OrderCancelled;
+use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -48,9 +51,16 @@ class OrderItemController extends Controller
             'items.*.modifiers.*.price' => 'required_with:items.*.modifiers|numeric|min:0',
             'reprint_kitchen' => 'nullable|boolean',
             // Optional ticket meta — POS "Save changes" when cashier switches
-            // Dine-in ↔ Takeaway (or reassigns a table) without item edits.
+            // fulfillment mode, table, or delivery address without item edits.
             'type' => 'nullable|string|in:dine_in,takeaway,online_pickup,delivery',
             'restaurant_table_id' => 'nullable|integer|exists:restaurant_tables,id',
+            'delivery_address_line1' => 'nullable|string|max:255',
+            'delivery_address_line2' => 'nullable|string|max:255',
+            'delivery_island' => 'nullable|string|max:100',
+            'delivery_contact_name' => 'nullable|string|max:100',
+            'delivery_contact_phone' => ['nullable', 'string', 'max:30', 'regex:/^(\+?960)?[379]\d{6}$/'],
+            'delivery_notes' => 'nullable|string|max:500',
+            'delivery_location_link' => 'nullable|url|max:2048',
         ]);
 
         $reprintKitchen = (bool) ($validated['reprint_kitchen'] ?? true);
@@ -78,24 +88,61 @@ class OrderItemController extends Controller
             $updated = app(OrderCreationService::class)
                 ->replaceOrderItems($order, $validated['items'], $reprintKitchen);
 
-            // Then persist fulfillment meta and recalculate (service charge /
-            // packaging depend on type).
+            $meta = [];
+            $newType = array_key_exists('type', $validated) && $validated['type'] !== null
+                ? (string) $validated['type']
+                : (string) $updated->type;
+
             if (array_key_exists('type', $validated) && $validated['type'] !== null) {
-                $newType = (string) $validated['type'];
-                $tableId = $newType === 'dine_in'
+                $meta['type'] = $newType;
+                $meta['restaurant_table_id'] = $newType === 'dine_in'
                     ? ($validated['restaurant_table_id'] ?? null)
                     : null;
-                $updated->update([
-                    'type' => $newType,
-                    'restaurant_table_id' => $tableId,
-                ]);
-                $updated = app(\App\Domains\Orders\Services\OrderTotalsCalculator::class)
+            } elseif (array_key_exists('restaurant_table_id', $validated) && $newType === 'dine_in') {
+                $meta['restaurant_table_id'] = $validated['restaurant_table_id'];
+            }
+
+            if ($newType === 'delivery') {
+                foreach ([
+                    'delivery_address_line1',
+                    'delivery_address_line2',
+                    'delivery_island',
+                    'delivery_contact_name',
+                    'delivery_contact_phone',
+                    'delivery_notes',
+                    'delivery_location_link',
+                ] as $field) {
+                    if (array_key_exists($field, $validated)) {
+                        $meta[$field] = $validated[$field];
+                    }
+                }
+
+                $island = (string) ($meta['delivery_island'] ?? $updated->delivery_island ?? '');
+                if ($island !== '') {
+                    $feeLaar = app(DeliveryFeeCalculator::class)->calculateLaar(
+                        $island,
+                        EffectiveDiscount::discountedSubtotalLaarFromOrder($updated),
+                    );
+                    $meta['delivery_fee'] = round($feeLaar / 100, 2);
+                    $meta['delivery_fee_laar'] = $feeLaar;
+                }
+            } elseif (array_key_exists('type', $validated) && $validated['type'] !== null) {
+                // Leaving delivery — clear address/fee so stale rows don't linger.
+                $meta['delivery_address_line1'] = null;
+                $meta['delivery_address_line2'] = null;
+                $meta['delivery_island'] = null;
+                $meta['delivery_contact_name'] = null;
+                $meta['delivery_contact_phone'] = null;
+                $meta['delivery_notes'] = null;
+                $meta['delivery_location_link'] = null;
+                $meta['delivery_fee'] = 0;
+                $meta['delivery_fee_laar'] = 0;
+            }
+
+            if ($meta !== []) {
+                $updated->update($meta);
+                $updated = app(OrderTotalsCalculator::class)
                     ->recalculateAndPersist($updated->fresh(['items.item']));
-            } elseif (array_key_exists('restaurant_table_id', $validated) && $updated->type === 'dine_in') {
-                $updated->update([
-                    'restaurant_table_id' => $validated['restaurant_table_id'],
-                ]);
-                $updated = $updated->fresh();
             }
 
             app(AuditLogService::class)->log(

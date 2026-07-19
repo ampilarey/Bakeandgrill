@@ -90,4 +90,38 @@ class UpdateOrderItemsMetaTest extends TestCase
         $this->assertSame('takeaway', $order->type);
         $this->assertNull($order->restaurant_table_id);
     }
+
+    public function test_save_changes_can_switch_to_delivery_with_address(): void
+    {
+        $create = $this->postJson('/api/orders', [
+            'type' => 'takeaway',
+            'device_identifier' => $this->device->identifier,
+            'print' => false,
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ])->assertCreated();
+
+        $orderId = (int) $create->json('order.id');
+
+        $this->patchJson("/api/orders/{$orderId}/items", [
+            'items' => [[
+                'item_id' => $this->item->id,
+                'name' => $this->item->name,
+                'quantity' => 1,
+            ]],
+            'reprint_kitchen' => false,
+            'type' => 'delivery',
+            'delivery_address_line1' => '1 Test Street',
+            'delivery_island' => 'Male',
+            'delivery_contact_name' => 'Aisha',
+            'delivery_contact_phone' => '+9607901234',
+        ])
+            ->assertOk()
+            ->assertJsonPath('order.type', 'delivery');
+
+        $order = Order::findOrFail($orderId);
+        $this->assertSame('delivery', $order->type);
+        $this->assertSame('1 Test Street', $order->delivery_address_line1);
+        $this->assertSame('Male', $order->delivery_island);
+        $this->assertSame('Aisha', $order->delivery_contact_name);
+    }
 }

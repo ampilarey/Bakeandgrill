@@ -9,6 +9,7 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import { palette } from "../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel, isCustomerAppOrder } from "../orderTypeLabels";
 import {
+  EMPTY_DELIVERY_DETAILS,
   POS_ORDER_TYPES,
   type PosDeliveryDetails,
   type PosOrderType,
@@ -427,8 +428,8 @@ export function OrderCart(p: Props) {
                 ? 'Paid — items are locked. You can still add or change the customer below.'
                 : editing
                   ? (ticketDirty
-                    ? 'Ticket updated — Save changes before charging (items, order type, or table).'
-                    : 'Edit items or order type, then Save changes when you make an update — or Charge as-is.')
+                    ? 'Ticket updated — Save changes before charging (items, type, table, or delivery address).'
+                    : 'Edit items, type, or delivery details, then Save when you change something — or Charge as-is.')
                   : wasHeld
                     ? 'Charge to settle, or Edit to add/remove items.'
                     : 'Charge to take payment, or Edit to modify the ticket.'}
@@ -571,7 +572,15 @@ export function OrderCart(p: Props) {
               <button
                 type="button"
                 onClick={() => {
-                  p.setOrderType(pendingOrderType);
+                  const next = pendingOrderType;
+                  p.setOrderType(next);
+                  // Fresh delivery form when entering Delivery; clear
+                  // stale address when leaving it.
+                  if (next === "Delivery" && p.orderType !== "Delivery") {
+                    p.setDeliveryDetails({ ...EMPTY_DELIVERY_DETAILS });
+                  } else if (next !== "Delivery") {
+                    p.setDeliveryDetails({ ...EMPTY_DELIVERY_DETAILS });
+                  }
                   setPendingOrderType(null);
                 }}
                 style={{

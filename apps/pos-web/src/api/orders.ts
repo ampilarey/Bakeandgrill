@@ -355,6 +355,13 @@ export async function updateOrderItems(
     /** Persist fulfillment change (e.g. dine_in → takeaway) with Save changes. */
     type?: "dine_in" | "takeaway" | "online_pickup" | "delivery";
     restaurant_table_id?: number | null;
+    delivery_address_line1?: string | null;
+    delivery_address_line2?: string | null;
+    delivery_island?: string | null;
+    delivery_contact_name?: string | null;
+    delivery_contact_phone?: string | null;
+    delivery_notes?: string | null;
+    delivery_location_link?: string | null;
   },
 ): Promise<{
   order: {
@@ -364,6 +371,8 @@ export async function updateOrderItems(
     tax_amount: number;
     type?: string;
     restaurant_table_id?: number | null;
+    delivery_address_line1?: string | null;
+    delivery_island?: string | null;
   };
 }> {
   return request(`/orders/${orderId}/items`, {
