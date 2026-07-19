@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useShellNav } from '../../context/ShellNavContext';
@@ -8,7 +9,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { SHELL_NAV_TABS } from './navTabs';
 
 /**
- * Tablet/desktop top bar — logo, text links, cart button.
+ * Tablet/desktop top bar — logo, text links, account, cart.
  * Mounted only at ≥768px; BottomNav covers phone.
  */
 export function TopNav() {
@@ -16,6 +17,7 @@ export function TopNav() {
   const { hideNav, openCartSheet, cartSheetOpen } = useShellNav();
   const { settings: s } = useSiteSettingsContext();
   const { cart, cartTotal } = useCart();
+  const { isAuthenticated, customerName } = useAuth();
   const location = useLocation();
   const { hasActiveOrder } = useActiveOrder();
   /** Menu page already shows cart-sidebar at this width — don't open a sheet over it. */
@@ -28,6 +30,8 @@ export function TopNav() {
   const count = cart.reduce((sum, e) => sum + e.quantity, 0);
   const onCheckout = location.pathname.startsWith('/checkout');
   const onMenu = location.pathname === '/menu' || location.pathname.startsWith('/menu/');
+  const onAccount =
+    location.pathname === '/account' || location.pathname.startsWith('/account/');
 
   const handleCartClick = () => {
     if (onMenu && menuHasSidebar) {
@@ -39,6 +43,14 @@ export function TopNav() {
     }
     openCartSheet();
   };
+
+  const accountLabel = (() => {
+    if (!isAuthenticated) return t('home.sign_in');
+    if (customerName && !/^\d{6,}$/.test(customerName.replace(/[\s-]/g, ''))) {
+      return customerName.split(/\s+/)[0];
+    }
+    return t('nav.account');
+  })();
 
   return (
     <header className="top-nav">
@@ -82,32 +94,42 @@ export function TopNav() {
           })}
         </nav>
 
-        {!onCheckout && (
-          <button
-            type="button"
-            className="top-nav__cart"
-            onClick={handleCartClick}
-            aria-expanded={onMenu && menuHasSidebar ? undefined : cartSheetOpen}
-            aria-label={
-              count > 0
-                ? `${t('cart.view')} — ${count} — ${Math.round(cartTotal)}/-`
-                : t('cart.view')
-            }
-            disabled={count === 0}
+        <div className="top-nav__actions">
+          <Link
+            to="/account"
+            className={`top-nav__account${onAccount ? ' is-active' : ''}`}
+            aria-current={onAccount ? 'page' : undefined}
           >
-            <span className="top-nav__cart-label">{t('cart.view')}</span>
-            {count > 0 && (
-              <>
-                <span className="top-nav__cart-count" aria-hidden>
-                  {count > 99 ? '99+' : count}
-                </span>
-                <span className="top-nav__cart-total" aria-hidden>
-                  {Math.round(cartTotal)}/-
-                </span>
-              </>
-            )}
-          </button>
-        )}
+            {accountLabel}
+          </Link>
+
+          {!onCheckout && (
+            <button
+              type="button"
+              className="top-nav__cart"
+              onClick={handleCartClick}
+              aria-expanded={onMenu && menuHasSidebar ? undefined : cartSheetOpen}
+              aria-label={
+                count > 0
+                  ? `${t('cart.view')} — ${count} — ${Math.round(cartTotal)}/-`
+                  : t('cart.view')
+              }
+              disabled={count === 0}
+            >
+              <span className="top-nav__cart-label">{t('cart.view')}</span>
+              {count > 0 && (
+                <>
+                  <span className="top-nav__cart-count" aria-hidden>
+                    {count > 99 ? '99+' : count}
+                  </span>
+                  <span className="top-nav__cart-total" aria-hidden>
+                    {Math.round(cartTotal)}/-
+                  </span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );

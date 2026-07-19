@@ -1,1 +1,0 @@
-import{u as s,j as a}from"./index-D_83abKs.js";function e({width:e="100%",height:t="1rem",radius:l,className:o,style:i,label:r}){const{t:n}=s(),d=r??n("common.loading");return a.jsx("span",{className:"skeleton-block"+(o?` ${o}`:""),style:{width:e,height:t,borderRadius:l,...i},role:"status","aria-label":d})}export{e as S};

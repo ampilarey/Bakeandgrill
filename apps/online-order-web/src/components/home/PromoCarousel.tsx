@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import type { HeroSlideRow } from '../../context/SiteSettingsContext';
@@ -52,6 +52,8 @@ type Props = {
   fallbackSubtitle?: string;
   logoSrc?: string;
   siteName?: string;
+  /** Ordering open/closed pill — sits on the hero (top-right). */
+  statusSlot?: ReactNode;
 };
 
 /**
@@ -60,7 +62,7 @@ type Props = {
  * - Respects prefers-reduced-motion.
  * - Zero slides → static cream fallback card (never collapses).
  * - Broken image → cream + logo fallback per slide.
- * - Does NOT render a statusSlot (status is in GreetingHeader).
+ * - Optional statusSlot overlays the top of the hero.
  */
 export function PromoCarousel({
   slides,
@@ -70,6 +72,7 @@ export function PromoCarousel({
   fallbackSubtitle,
   logoSrc = '/logo.png',
   siteName = 'Bake & Grill',
+  statusSlot,
 }: Props) {
   const { t } = useLanguage();
   const [idx, setIdx] = useState(0);
@@ -134,6 +137,7 @@ export function PromoCarousel({
           role="status"
           aria-label={t('common.loading')}
         />
+        {statusSlot}
       </div>
     );
   }
@@ -155,6 +159,7 @@ export function PromoCarousel({
         }}
         aria-label={t('home.promo_region')}
       >
+        {statusSlot}
         <img
           src={logoSrc}
           alt={siteName}
@@ -183,6 +188,7 @@ export function PromoCarousel({
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
+      {statusSlot}
       {/* Sliding track */}
       <div
         style={{

@@ -209,10 +209,11 @@ export function HomePage() {
     }
   };
 
-  // ── Opening status badge (passed into GreetingHeader) ─────────────────────
+  // Ordering status lives on the hero (not a separate greeting block).
   const statusBadge =
     isOpen !== null ? (
       <OpeningStatusBadge
+        className="opening-status-badge-hero"
         open={isOpen}
         reason={hoursReason}
         currentClose={currentClose}
@@ -223,26 +224,30 @@ export function HomePage() {
     ) : null;
 
   return (
-    <div>
-      {/* ── 1. Greeting + avatar/sign-in + opening badge ──────────────────── */}
+    <div className="home-page">
+      {/* Phone: compact account control. Desktop/iPad: TopNav has Sign in / Account. */}
       <GreetingHeader
         customerName={customerName}
         isAuthenticated={isAuthenticated}
-        statusBadge={statusBadge}
       />
 
-      {/* ── 2. Prayer banner (§12) — compact strip under greeting ─────────── */}
-      <div
-        style={{
-          padding: '0.35rem var(--page-gutter) 0.75rem',
-          maxWidth: 'var(--layout-max)',
-          margin: '0 auto',
-        }}
-      >
+      {/* Prayer strip — tight under chrome so hero sits higher */}
+      <div className="home-prayer-wrap">
         <PrayerBar />
       </div>
 
-      {/* ── 3. Stat chips (loyalty / active order / specials) ─────────────── */}
+      {/* Hero first — ordering open/closed pill on the banner */}
+      <PromoCarousel
+        slides={heroSlides}
+        apiOrigin={API_ORIGIN}
+        logoSrc={logoSrc}
+        siteName={siteName}
+        fallbackTitle={text('home_hero_fallback_title', '')}
+        fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
+        statusSlot={statusBadge}
+      />
+
+      {/* Only useful chips (points when signed in, active order, specials) */}
       <StatChipsRow
         loading={chipsLoading}
         isAuthenticated={isAuthenticated}
@@ -255,17 +260,7 @@ export function HomePage() {
         specialsCount={specials.length}
       />
 
-      {/* ── 4. Promo carousel (16:9) ──────────────────────────────────────── */}
-      <PromoCarousel
-        slides={heroSlides}
-        apiOrigin={API_ORIGIN}
-        logoSrc={logoSrc}
-        siteName={siteName}
-        fallbackTitle={text('home_hero_fallback_title', '')}
-        fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
-      />
-
-      {/* ── 5. Mode entry cards (Delivery / Pickup) ───────────────────────── */}
+      {/* Mode entry cards (Delivery / Pickup) */}
       <ModeEntryCards />
 
       {/* ── 5b. Trust strip (CMS) ─────────────────────────────────────────── */}

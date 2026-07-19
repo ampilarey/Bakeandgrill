@@ -37,6 +37,10 @@ function activeOrderLabel(status: string): string {
   return map[status] ?? status;
 }
 
+/**
+ * Utility chips under the hero — only when there is something useful to show.
+ * Guest "Sign in to earn points" removed (noise). Empty "No active order" omitted.
+ */
 export function StatChipsRow({
   loading,
   isAuthenticated,
@@ -46,28 +50,20 @@ export function StatChipsRow({
 }: Props) {
   const { t } = useLanguage();
 
+  const showLoyalty = isAuthenticated;
+  const showActive = Boolean(activeOrder);
+  const showSpecials = !loading && specialsCount > 0;
+
+  if (!loading && !showLoyalty && !showActive && !showSpecials) {
+    return null;
+  }
+
   return (
-    <div
-      style={{
-        padding: '0 var(--page-gutter) 0.75rem',
-        maxWidth: 'var(--layout-max)',
-        margin: '0 auto',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          gap: '0.625rem',
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-          paddingBottom: 2,
-        }}
-      >
-        {/* Chip 1 — Loyalty */}
+    <div className="home-stat-chips">
+      <div className="home-stat-chips__row">
         {loading ? (
           <Skeleton width={140} height={40} radius="var(--radius-full)" />
-        ) : isAuthenticated ? (
+        ) : showLoyalty ? (
           <Link
             to="/rewards"
             style={{ ...chipBase, color: 'var(--color-primary)' }}
@@ -77,17 +73,8 @@ export function StatChipsRow({
               ? `${loyaltyPoints} ${t('home.chip_rewards')}`
               : t('home.chip_rewards')}
           </Link>
-        ) : (
-          <Link
-            to="/account"
-            style={{ ...chipBase, color: 'var(--color-text-muted)' }}
-          >
-            <span aria-hidden="true">⭐</span>
-            {t('home.chip_sign_in_points')}
-          </Link>
-        )}
+        ) : null}
 
-        {/* Chip 2 — Active order */}
         {loading ? (
           <Skeleton width={160} height={40} radius="var(--radius-full)" />
         ) : activeOrder ? (
@@ -103,15 +90,9 @@ export function StatChipsRow({
             <span aria-hidden="true">📦</span>
             {activeOrderLabel(activeOrder.status)}
           </Link>
-        ) : (
-          <span style={{ ...chipBase, color: 'var(--color-text-muted)' }}>
-            <span aria-hidden="true">📦</span>
-            {t('home.chip_no_order')}
-          </span>
-        )}
+        ) : null}
 
-        {/* Chip 3 — Specials (only when there are some) */}
-        {!loading && specialsCount > 0 && (
+        {showSpecials && (
           <Link
             to="/menu"
             style={{ ...chipBase, color: 'var(--color-text)' }}
