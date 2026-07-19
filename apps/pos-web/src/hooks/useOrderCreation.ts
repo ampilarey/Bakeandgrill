@@ -321,11 +321,8 @@ export function useOrderCreation(params: Params) {
    */
   const [resumedFromStatus, setResumedFromStatus] = useState<string | null>(null);
   /**
-   * Edit-on-tap mode flag — set when the cashier opens an active order
-   * for editing (not just for charging). Allows cart edits while
-   * resumed AND unlocks the "💾 Save changes" button that pushes the
-   * cart's items back to the server. Cleared on cancel-resume,
-   * save-changes, or successful charge.
+   * Unpaid resumed tickets open editable. Cleared on cancel-resume or
+   * successful charge. Paid online tickets stay view-only (false).
    */
   const [isEditingActive, setIsEditingActive] = useState(false);
   /** True when the resumed ticket was already paid (e.g. online BML).
@@ -717,17 +714,11 @@ export function useOrderCreation(params: Params) {
       if (resumedIsPaid) {
         return false;
       }
-      // Only block charge when the cart / type / table actually differs
-      // from the resumed ticket. Opening a ticket (or tapping Edit
-      // without changing anything) must not force a no-op Save.
-      if (isEditingActive) {
-        if (computeTicketDirty()) {
-          flashError(
-            "Tap \u201cSave changes\u201d on the resume banner first \u2014 the new total has to be sent to the server before you can charge.",
-          );
-          return false;
-        }
-        setIsEditingActive(false);
+      // Persist any local edits before settling so Charge never uses a
+      // stale server total. No-op when the ticket is clean.
+      if (computeTicketDirty()) {
+        const saved = await handleSaveActiveChanges();
+        if (!saved) return false;
       }
       setIsSubmitting(true);
       try {
@@ -1149,7 +1140,8 @@ export function useOrderCreation(params: Params) {
     setResumedStaffUserId(staffUserIdFromOrder(response.order));
     setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
-    setIsEditingActive(false);
+    // Active tickets open editable — Save appears only when dirty.
+    setIsEditingActive(true);
     localStorage.removeItem("pos_last_held_order");
     setLastHeldOrderId(null);
     return { isPaid: false };
@@ -1195,26 +1187,17 @@ export function useOrderCreation(params: Params) {
   };
 
   /**
-   * "Tap to edit" pathway — same as handleResumeTicket but flips the
-   * cart into edit-mode so the cashier can add/remove items before
-   * either saving (handleSaveActiveChanges) or charging (handleCharge).
-   * Used by the OpenTicketsPanel when the cashier taps the row itself
-   * (vs. tapping a specific action button).
+   * Open an active ticket for edit/charge. Unpaid tickets resume
+   * editable; paid tickets stay view-only.
    */
   const handleEditActiveTicket = async (orderId: number): Promise<void> => {
-    const { isPaid } = await handleResumeTicket(orderId);
-    if (!isPaid) setIsEditingActive(true);
+    await handleResumeTicket(orderId);
   };
 
   /**
-   * Push the cart's current line items back to the active order. The
-   * server replaces all items, recalculates totals, and optionally
-   * reprints the kitchen chit (we set reprint=true when items differ).
-   * Used by the "💾 Save changes" button in the cart.
-   *
-   * Leaves the cashier in resumed mode so they can still tap Charge
-   * after saving — saves a back-and-forth between Active orders and
-   * cart for "add a side, then take payment" workflows.
+   * Push the cart's current lines + fulfillment meta back to the
+   * active order. Used by "💾 Save" and by Charge when the ticket is
+   * dirty. Stays in editable resumed mode after a successful save.
    */
   const handleSaveActiveChanges = async (): Promise<boolean> => {
     if (resumedOrderId === null) return false;
@@ -1291,7 +1274,8 @@ export function useOrderCreation(params: Params) {
       setResumedDeliveryFingerprint(deliveryFingerprint(
         deliveryPayload ?? EMPTY_DELIVERY_DETAILS,
       ));
-      setIsEditingActive(false);
+      // Stay editable so the cashier can keep tweaking or Charge next.
+      setIsEditingActive(true);
       return true;
     } catch (err) {
       flashError(`Couldn't save changes: ${(err as Error).message}`);

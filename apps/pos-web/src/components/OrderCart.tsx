@@ -110,14 +110,10 @@ type Props = {
   resumedOrderType?: string | null;
   /** Staff user id on the resumed ticket — distinguishes POS pickup from app orders. */
   resumedStaffUserId?: number | null;
-  /** True when the cashier opened the resumed ticket via "Edit" (vs.
-   *  via a direct Charge action). Unlocks cart mutations. */
+  /** Unpaid resumed tickets are editable; paid online stays view-only. */
   isEditingActive?: boolean;
-  /** True when resumed cart lines differ from the ticket loaded from the server. */
+  /** True when resumed cart / type / table / delivery differ from the server. */
   hasUnsavedTicketChanges?: boolean;
-  /** Cashier flipped from read-only resumed mode into edit mode (e.g.
-   *  tapped "Edit items" on the resume banner). */
-  onUnlockEdit?: () => void;
   /** Push the edited cart back to the server (PATCH /orders/{id}/items). */
   onSaveActiveChanges?: () => void;
   onCancelResume: () => void;
@@ -198,13 +194,10 @@ export function OrderCart(p: Props) {
     sheetMode ? "pos-cart--sheet" : "",
   ].filter(Boolean).join(" ");
   const orderLabel = p.resumedOrderLabel ?? `#${p.resumedOrderId}`;
-  // When the cashier opened a ticket via "Edit" we relax the resumed
-  // read-only restrictions so qty +/-, kitchen notes, and Clear all
-  // become usable again. The Save Changes button at the bottom
-  // pushes the edits back to the server.
-  const editing = isResumed && !!p.isEditingActive && !p.resumedIsPaid;
+  // Unpaid active tickets open editable; Save appears when dirty.
+  const editing = isResumed && !p.resumedIsPaid && !!p.isEditingActive;
   const ticketDirty = !!p.hasUnsavedTicketChanges;
-  // "Lock cart for read-only" — charge-only resumes and paid-online view.
+  // Paid online tickets stay locked; unpaid resumed tickets are editable.
   const lockedReadOnly = isResumed && (!editing || !!p.resumedIsPaid);
   const wasHeld = p.resumedFromStatus === "held";
   const onlineFulfillment = isResumed
@@ -399,58 +392,37 @@ export function OrderCart(p: Props) {
         )}
       </div>
       {/* ── Resumed-ticket banner ─────────────────────────────────
-            Two modes:
-              editing=true  → cart unlocked, "💾 Save changes" + "Cancel"
-              editing=false → read-only banner, "✏️ Edit items" + "Cancel"
-            Copy adapts to whether the ticket came from `held` (parked)
-            or a live status (cooking/ready), since Cancel behaves
-            differently for each (re-hold vs. drop-local). */}
+            Unpaid: editable immediately; Save only when dirty.
+            Paid online: view-only. Cancel re-holds held tickets. */}
       {isResumed && (
         <div style={{
           padding: '10px 14px',
-          background: p.resumedIsPaid ? '#ECFDF5' : editing ? '#EFF6FF' : '#FFFBEB',
-          borderBottom: `1px solid ${p.resumedIsPaid ? '#A7F3D0' : editing ? '#BFDBFE' : '#FDE68A'}`,
+          background: p.resumedIsPaid ? '#ECFDF5' : ticketDirty ? '#EFF6FF' : '#FFFBEB',
+          borderBottom: `1px solid ${p.resumedIsPaid ? '#A7F3D0' : ticketDirty ? '#BFDBFE' : '#FDE68A'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           flexWrap: 'wrap',
         }}>
           <div style={{
             fontSize: 12,
-            color: p.resumedIsPaid ? '#065F46' : editing ? '#1E3A8A' : '#92400E',
+            color: p.resumedIsPaid ? '#065F46' : ticketDirty ? '#1E3A8A' : '#92400E',
             lineHeight: 1.4, minWidth: 0, flex: 1,
           }}>
             <div style={{ fontWeight: 800 }}>
               {p.resumedIsPaid
                 ? `✅ Paid online: ${orderLabel}`
-                : `${editing ? '✏️ Editing' : '🎫 Resumed'}: Order ${orderLabel}`}
+                : `🎫 Order ${orderLabel}`}
             </div>
             <div style={{ marginTop: 2 }}>
               {p.resumedIsPaid
                 ? 'Paid — items are locked. You can still add or change the customer below.'
-                : editing
-                  ? (ticketDirty
-                    ? 'Ticket updated — Save changes before charging (items, type, table, or delivery address).'
-                    : 'Edit items, type, or delivery details, then Save when you change something — or Charge as-is.')
+                : ticketDirty
+                  ? 'Unsaved changes — Save, or Charge (auto-saves first).'
                   : wasHeld
-                    ? 'Charge to settle, or Edit to add/remove items.'
-                    : 'Charge to take payment, or Edit to modify the ticket.'}
+                    ? 'Edit freely, then Save or Charge.'
+                    : 'Edit freely, then Save or Charge.'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            {!editing && !p.resumedIsPaid && p.onUnlockEdit && (
-              <button
-                onClick={p.onUnlockEdit}
-                disabled={p.isSubmitting}
-                style={{
-                  padding: '6px 10px', borderRadius: 6,
-                  background: '#fff', border: '1px solid #FBBF24',
-                  fontSize: 11, fontWeight: 700, color: '#92400E',
-                  cursor: p.isSubmitting ? 'not-allowed' : 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                ✏️ Edit items
-              </button>
-            )}
             {editing && ticketDirty && p.onSaveActiveChanges && (
               <button
                 onClick={p.onSaveActiveChanges}
@@ -464,7 +436,7 @@ export function OrderCart(p: Props) {
                   opacity: (p.isSubmitting || p.cartItems.length === 0) ? 0.6 : 1,
                 }}
               >
-                💾 Save changes
+                💾 Save
               </button>
             )}
             <button
@@ -472,8 +444,8 @@ export function OrderCart(p: Props) {
               disabled={p.isSubmitting}
               style={{
                 padding: '6px 10px', borderRadius: 6,
-                background: '#fff', border: `1px solid ${editing ? '#93C5FD' : '#FBBF24'}`,
-                fontSize: 11, fontWeight: 700, color: editing ? '#1E40AF' : '#92400E',
+                background: '#fff', border: `1px solid ${ticketDirty ? '#93C5FD' : '#FBBF24'}`,
+                fontSize: 11, fontWeight: 700, color: ticketDirty ? '#1E40AF' : '#92400E',
                 cursor: p.isSubmitting ? 'not-allowed' : 'pointer',
                 whiteSpace: 'nowrap',
               }}
@@ -494,7 +466,7 @@ export function OrderCart(p: Props) {
           <button
             onClick={handleClearTap}
             disabled={p.cartItems.length === 0 || lockedReadOnly}
-            title={lockedReadOnly ? 'Tap "Edit items" on the resume banner to make changes' : undefined}
+            title={lockedReadOnly ? 'Paid ticket — items are locked' : undefined}
             style={{
               fontSize: 12, fontWeight: clearArmed ? 800 : 600,
               color: clearArmed ? '#fff' : C.muted,

@@ -355,7 +355,6 @@ export function PosShellLayout() {
               resumedStaffUserId={order.resumedStaffUserId}
               isEditingActive={order.isEditingActive}
               hasUnsavedTicketChanges={order.hasUnsavedTicketChanges}
-              onUnlockEdit={() => order.setIsEditingActive(true)}
               onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(refreshOpenTickets)}
               onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
               onClearCart={handleClearCart}
@@ -434,12 +433,7 @@ export function PosShellLayout() {
               barcode={order.barcode}
               setBarcode={order.setBarcode}
               onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, cart.addToCart)}
-              // Bug-055: the menu was disabled the moment ANY ticket
-              // was resumed, including edit mode — the cashier
-              // couldn't add items even though the cart was unlocked.
-              // Lock the menu only in charge-only resume (where the
-              // cart is read-only). In edit mode the cashier MUST be
-              // able to tap items to add them to the open ticket.
+              // Lock the menu only for paid online view-only resumes.
               readOnly={order.resumedOrderId !== null && !order.isEditingActive}
               onRefreshMenu={refreshAll}
               isRefreshingMenu={isRefreshingAll || menu.isRefreshing}

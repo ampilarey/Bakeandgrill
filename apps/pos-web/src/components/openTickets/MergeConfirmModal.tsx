@@ -25,7 +25,7 @@ export function MergeConfirmModal({
     targetStage !== sourceStage
       ? targetStage === "parked"
         ? "Source has already been fired to the kitchen — those items are being prepared. The merged ticket will be PARKED, so it won't appear on the KDS until you fire it. The cooks may finish the source items before you charge."
-        : "Target is already cooking — its kitchen chit has been printed. The newly merged items WILL NOT auto-reprint. Open the merged ticket and tap 'Edit items' to reprint if the cooks need to see them."
+        : "Target is already cooking — its kitchen chit has been printed. The newly merged items WILL NOT auto-reprint. Open the merged ticket, tweak a line if needed, and Save to reprint for the cooks."
       : null;
   const renderTicket = (t: OpenTicket, label: "Target — keeps" | "Source — cancelled") => (
     <div

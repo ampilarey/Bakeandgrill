@@ -572,11 +572,8 @@ export function usePosApp() {
   });
 
   const chargeTotal = useMemo(() => {
-    // Read-only resume: use cart amount-due (grand total − gift tender).
-    // cartTotal already mirrors server remaining after gift-card tender.
-    // Once the cashier taps "Edit items", live cart math must win —
-    // otherwise CHARGE stays at the old total while GST redraws from
-    // the cart and the two numbers disagree.
+    // Paid/view-only resume: prefer server grand total − gift tender.
+    // Editable resumes use live cart math so Charge matches the cart.
     if (order.resumedOrderId !== null && !order.isEditingActive) {
       const gift = cart.appliedGiftCard?.discount ?? 0;
       const serverGrand = order.resumedOrderTotal;
