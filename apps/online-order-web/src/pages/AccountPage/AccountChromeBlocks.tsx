@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useTheme } from '../../hooks/useTheme';
 import { PrayerBar } from '../../components/PrayerBar';
+import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { SectionCard } from './accountShared';
 
 export const linkRowStyle: CSSProperties = {
@@ -119,7 +120,14 @@ export function AccountMoreBlock() {
     contactLinks.push({ label: t('account.link_viber'), href: settings.business_viber });
   }
 
-  const allLinks = [
+  const allLinks: {
+    label: string;
+    url: string;
+    external: boolean;
+    /** Leave /order SPA for Blade site (same tab). */
+    leaveApp?: boolean;
+  }[] = [
+    { label: t('account.link_website'), url: MAIN_WEBSITE_HREF, external: false, leaveApp: true },
     ...MORE_LINKS.map(({ to, key }) => ({ label: t(key), url: to, external: false })),
     ...legal.map((l) => ({ label: l.label ?? '', url: l.url ?? '#', external: false })),
     ...contactLinks.map((l) => ({ label: l.label, url: l.href, external: true })),
@@ -127,7 +135,7 @@ export function AccountMoreBlock() {
 
   return (
     <SectionCard title={t('account.more_links')}>
-      {allLinks.map(({ label, url, external }, i) => {
+      {allLinks.map(({ label, url, external, leaveApp }, i) => {
         const style: CSSProperties = {
           ...linkRowStyle,
           borderBottom: i === allLinks.length - 1 ? 'none' : '1px solid var(--color-border)',
@@ -135,6 +143,16 @@ export function AccountMoreBlock() {
         const chevron = (
           <span aria-hidden="true" style={{ color: 'var(--color-text-muted)' }}>▸</span>
         );
+
+        if (leaveApp) {
+          return (
+            <a key={url + i} href={url} style={style}>
+              <span>{label}</span>
+              {chevron}
+            </a>
+          );
+        }
+
         const isInternal = !external && url.startsWith('/') && !url.startsWith('//');
 
         if (isInternal) {

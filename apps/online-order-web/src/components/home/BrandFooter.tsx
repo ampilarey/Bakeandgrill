@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { WhatsAppIcon, ViberIcon } from '../icons';
 import { useLanguage } from '../../context/LanguageContext';
+import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 
 type Props = {
   whatsappLink: string;
@@ -35,19 +36,23 @@ export function BrandFooter({
         {/* Logo + thanks */}
         <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
           {logoSrc && (
-            <img
-              src={logoSrc}
-              alt={siteName ?? 'Bake & Grill'}
-              style={{
-                height: 40,
-                objectFit: 'contain',
-                marginBottom: '0.875rem',
-                opacity: 0.9,
-                filter: 'brightness(1.4)',
-                display: 'block',
-                margin: '0 auto 0.875rem',
-              }}
-            />
+            <a
+              href={MAIN_WEBSITE_HREF}
+              aria-label={t('header.website_aria').replace('{name}', siteName ?? 'Bake & Grill')}
+              style={{ display: 'block', margin: '0 auto 0.875rem', width: 'fit-content' }}
+            >
+              <img
+                src={logoSrc}
+                alt=""
+                style={{
+                  height: 40,
+                  objectFit: 'contain',
+                  opacity: 0.9,
+                  filter: 'brightness(1.4)',
+                  display: 'block',
+                }}
+              />
+            </a>
           )}
           <p
             style={{

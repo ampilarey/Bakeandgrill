@@ -118,6 +118,8 @@ const TRANSLATIONS: Translations = {
   "header.back_menu": "← Menu",
   "header.back_home": "← Home",
   "header.home_aria": "{name} — Home",
+  "header.website_aria": "{name} — Main website",
+  "account.link_website": "Main website",
   "status.open": "Online ordering open",
   "status.open_closes": "Online ordering open · Closes {time}",
   "status.closed": "Online ordering closed",

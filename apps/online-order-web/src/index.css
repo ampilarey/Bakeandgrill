@@ -1506,6 +1506,36 @@ textarea.field-input {
   }
 }
 
+/* ── Home greeting (phone): brand → main website ───────────────────── */
+.home-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--touch-target);
+  min-width: 0;
+  text-decoration: none;
+  color: var(--color-dark);
+  flex-shrink: 1;
+}
+
+.home-brand-link__logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+.home-brand-link__name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Home greeting (phone): points pill + account avatar ────────────── */
 .home-greeting-actions {
   display: flex;

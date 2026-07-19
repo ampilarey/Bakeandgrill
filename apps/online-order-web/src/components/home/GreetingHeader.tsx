@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
+import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
+import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 
 type Props = {
   customerName: string | null;
@@ -36,6 +38,10 @@ function AccountAvatarGlyph({ label }: { label: string | null }) {
   return <>{label.charAt(0).toUpperCase()}</>;
 }
 
+/**
+ * Phone home header. Brand logo + name → main website (desktop TopNav equivalent).
+ * Bottom-nav Home stays the order-app home.
+ */
 export function GreetingHeader({
   customerName,
   isAuthenticated,
@@ -44,6 +50,9 @@ export function GreetingHeader({
   loyaltyLoading = false,
 }: Props) {
   const { t } = useLanguage();
+  const { settings: s } = useSiteSettingsContext();
+  const siteName = s.site_name || 'Bake & Grill';
+  const logoSrc = s.logo || '/logo.png';
 
   const pointsLabel =
     loyaltyPoints !== null
@@ -53,7 +62,7 @@ export function GreetingHeader({
   return (
     <section
       style={{
-        padding: '1rem var(--page-gutter) 0.35rem',
+        padding: '0.75rem var(--page-gutter) 0.35rem',
         maxWidth: 'var(--layout-max)',
         margin: '0 auto',
       }}
@@ -61,49 +70,27 @@ export function GreetingHeader({
       <div
         style={{
           display: 'flex',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           justifyContent: 'space-between',
           gap: '0.75rem',
+          marginBottom: '0.65rem',
         }}
       >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: '1.35rem',
-              fontWeight: 800,
-              color: 'var(--color-dark)',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.25,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {customerName ? (
-              <>
-                {t('home.greeting_hello')},{' '}
-                <span style={{ fontWeight: 800 }}>{customerName}</span>
-              </>
-            ) : (
-              t('home.greeting_hello')
-            )}
-          </h1>
-          <p
-            style={{
-              margin: '0.25rem 0 0',
-              fontSize: '0.875rem',
-              color: 'var(--color-text-muted)',
-            }}
-          >
-            {t('home.greeting_sub')}
-          </p>
-          {statusBadge ? (
-            <div className="greeting-header-status" style={{ marginTop: '0.5rem' }}>
-              {statusBadge}
-            </div>
-          ) : null}
-        </div>
+        <a
+          href={MAIN_WEBSITE_HREF}
+          className="home-brand-link"
+          aria-label={t('header.website_aria').replace('{name}', siteName)}
+        >
+          <img
+            src={logoSrc}
+            alt=""
+            width={36}
+            height={36}
+            className="home-brand-link__logo"
+            decoding="async"
+          />
+          <span className="home-brand-link__name">{siteName}</span>
+        </a>
 
         <div className="home-greeting-actions">
           {isAuthenticated ? (
@@ -132,6 +119,45 @@ export function GreetingHeader({
             </Link>
           )}
         </div>
+      </div>
+
+      <div>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: '1.35rem',
+            fontWeight: 800,
+            color: 'var(--color-dark)',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.25,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {customerName ? (
+            <>
+              {t('home.greeting_hello')},{' '}
+              <span style={{ fontWeight: 800 }}>{customerName}</span>
+            </>
+          ) : (
+            t('home.greeting_hello')
+          )}
+        </h1>
+        <p
+          style={{
+            margin: '0.25rem 0 0',
+            fontSize: '0.875rem',
+            color: 'var(--color-text-muted)',
+          }}
+        >
+          {t('home.greeting_sub')}
+        </p>
+        {statusBadge ? (
+          <div className="greeting-header-status" style={{ marginTop: '0.5rem' }}>
+            {statusBadge}
+          </div>
+        ) : null}
       </div>
     </section>
   );

@@ -5,10 +5,12 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useActiveOrder } from '../../hooks/useActiveOrder';
+import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { SHELL_NAV_TABS } from './navTabs';
 
 /**
  * Tablet/desktop top bar — logo, text links, prayer strip, account.
+ * Brand (logo + name) leaves the order app for the main website.
  * Cart uses FloatingCartBar (logo FAB) when the cart has items.
  * Mounted only at ≥768px; BottomNav covers phone.
  */
@@ -38,10 +40,10 @@ export function TopNav() {
   return (
     <header className="top-nav">
       <div className="top-nav__inner">
-        <Link
-          to="/"
+        <a
+          href={MAIN_WEBSITE_HREF}
           className="top-nav__brand"
-          aria-label={t('header.home_aria').replace('{name}', siteName)}
+          aria-label={t('header.website_aria').replace('{name}', siteName)}
         >
           <img
             className="top-nav__logo"
@@ -52,7 +54,7 @@ export function TopNav() {
             decoding="async"
           />
           <span className="top-nav__brand-name">{siteName}</span>
-        </Link>
+        </a>
 
         <nav className="top-nav__links" aria-label={t('nav.aria')}>
           {SHELL_NAV_TABS.map(({ to, labelKey, match, showActiveOrderBadge }) => {
