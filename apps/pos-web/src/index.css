@@ -558,10 +558,11 @@ html, body, #root {
     padding-bottom: 0;
   }
 
-  /* Charge overlay — full screen (aligned with stack breakpoint). */
+  /* Charge overlay — full-screen phone layout: compact due strip,
+   * scrollable tender/numpad, sticky Confirm footer. */
   .pos-charge-overlay {
     align-items: stretch;
-    background: #fff;
+    background: #0F172A;
   }
   .pos-charge {
     margin: 0;
@@ -571,18 +572,34 @@ html, body, #root {
     height: 100dvh;
     max-height: 100dvh;
     border-radius: 0;
+    display: flex;
+    flex-direction: column;
   }
   .pos-charge-grid {
     grid-template-columns: 1fr;
     gap: 0;
     margin: 0;
     padding: 0;
-    overflow-y: auto;
+    flex: 1 1 auto;
     min-height: 0;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
   }
   .pos-charge-tenders {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+  .pos-charge-tender-btn {
+    min-height: 52px !important;
+    padding: 14px 8px !important;
+    font-size: 15px !important;
+    border-radius: 12px !important;
+    touch-action: manipulation;
+  }
+  .pos-charge-tender-btn--active {
+    box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.45);
   }
   .pos-charge-confirm-label {
     display: flex;
@@ -592,54 +609,117 @@ html, body, #root {
     font-size: 14px;
   }
   .pos-charge-header {
-    padding: 6px 14px 6px;
-    padding-top: max(6px, env(safe-area-inset-top, 0px));
+    padding: 10px 16px 8px;
+    padding-top: max(10px, env(safe-area-inset-top, 0px));
     flex-shrink: 0;
-    border-bottom: none;
+    border-bottom: 1px solid #E2E8F0 !important;
+    background: #fff;
   }
   .pos-charge-header h2 {
-    font-size: 17px;
+    font-size: 18px !important;
+    font-weight: 800;
     line-height: 1.2;
   }
   .pos-charge-close-btn {
-    min-width: 40px;
-    min-height: 40px;
-    margin: -4px -6px -4px 0;
+    min-width: 44px;
+    min-height: 44px;
+    margin: -4px -8px -4px 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 10px;
+    font-size: 26px !important;
   }
   .pos-charge-summary {
-    padding: 12px 14px 14px;
+    padding: 14px 16px 16px !important;
     margin-top: 0;
-    justify-content: flex-start;
+    justify-content: flex-start !important;
     flex-shrink: 0;
+    background:
+      radial-gradient(120% 80% at 100% 0%, rgba(212, 129, 58, 0.22), transparent 55%),
+      #0F172A !important;
   }
   .pos-charge-breakdown {
-    margin-bottom: 10px;
-    padding: 5px 8px;
-    font-size: 11px;
-    row-gap: 2px;
+    margin-bottom: 10px !important;
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    row-gap: 3px !important;
+  }
+  .pos-charge-amounts--cash {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 12px;
+    align-items: end;
   }
   .pos-charge-due-label,
   .pos-charge-change-label {
-    font-size: 11px;
+    font-size: 10px !important;
+    letter-spacing: 0.1em !important;
   }
   .pos-charge-due-value {
-    margin-top: 4px;
-    font-size: 27px;
-    line-height: 1.05;
+    margin-top: 4px !important;
+    font-size: 30px !important;
+    line-height: 1.05 !important;
   }
   .pos-charge-change-label {
-    margin-top: 16px;
+    margin-top: 0 !important;
   }
   .pos-charge-change-value {
-    margin-top: 4px;
-    font-size: 23px;
-    line-height: 1.05;
+    margin-top: 4px !important;
+    font-size: 26px !important;
+    line-height: 1.05 !important;
   }
   .pos-charge-tender {
-    padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 14px 14px 18px !important;
+    gap: 12px !important;
+    overflow: visible !important;
+  }
+  .pos-charge-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .pos-charge-quick-btn {
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  .pos-charge-quick-exact {
+    bottom: 4px;
+    font-size: 9px;
+  }
+  .pos-cash-numpad {
+    gap: 8px !important;
+    margin-top: 12px !important;
+  }
+  .pos-cash-numpad-key {
+    min-height: 56px !important;
+    font-size: 22px !important;
+    border-radius: 12px !important;
+  }
+  .pos-charge-footer {
+    flex-shrink: 0;
+    padding: 12px 14px !important;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    border-top: 1px solid #E2E8F0;
+    background: #fff;
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
+  }
+  .pos-charge-footer-actions {
+    gap: 10px !important;
+  }
+  .pos-charge-cancel,
+  .pos-charge-confirm {
+    min-height: 52px !important;
+    border-radius: 14px !important;
+    font-size: 16px !important;
+    touch-action: manipulation;
+  }
+  .pos-charge-confirm {
+    flex: 2.4 !important;
   }
 }
 

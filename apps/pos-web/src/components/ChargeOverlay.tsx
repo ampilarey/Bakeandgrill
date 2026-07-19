@@ -345,28 +345,32 @@ export function ChargeOverlay({
                 )}
               </div>
             )}
-            <p className="pos-charge-due-label" style={{ margin: 0, fontSize: 12, fontWeight: 600,
-              textTransform: "uppercase", letterSpacing: "0.08em", color: "#94A3B8" }}>
-              Amount due
-            </p>
-            <p className="pos-charge-due-value" style={{ margin: "8px 0 0", fontSize: 48, fontWeight: 800, letterSpacing: "-0.02em" }}>
-              MVR {total.toFixed(2)}
-            </p>
-
-            {method === "cash" && (
-              <>
-                <p className="pos-charge-change-label" style={{ margin: "28px 0 0", fontSize: 12, fontWeight: 600,
+            <div className={`pos-charge-amounts${method === "cash" ? " pos-charge-amounts--cash" : ""}`}>
+              <div className="pos-charge-due-block">
+                <p className="pos-charge-due-label" style={{ margin: 0, fontSize: 12, fontWeight: 600,
                   textTransform: "uppercase", letterSpacing: "0.08em", color: "#94A3B8" }}>
-                  Change due
+                  Amount due
                 </p>
-                <p className="pos-charge-change-value" style={{
-                  margin: "8px 0 0", fontSize: 40, fontWeight: 800,
-                  color: change > 0 ? "#FCD34D" : "#fff",
-                }}>
-                  MVR {change.toFixed(2)}
+                <p className="pos-charge-due-value" style={{ margin: "8px 0 0", fontSize: 48, fontWeight: 800, letterSpacing: "-0.02em" }}>
+                  MVR {total.toFixed(2)}
                 </p>
-              </>
-            )}
+              </div>
+
+              {method === "cash" && (
+                <div className="pos-charge-change-block">
+                  <p className="pos-charge-change-label" style={{ margin: "28px 0 0", fontSize: 12, fontWeight: 600,
+                    textTransform: "uppercase", letterSpacing: "0.08em", color: "#94A3B8" }}>
+                    Change due
+                  </p>
+                  <p className="pos-charge-change-value" style={{
+                    margin: "8px 0 0", fontSize: 40, fontWeight: 800,
+                    color: change > 0 ? "#FCD34D" : "#fff",
+                  }}>
+                    MVR {change.toFixed(2)}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* RIGHT: tender + amount entry */}
@@ -387,6 +391,8 @@ export function ChargeOverlay({
                 {baseMethods.map((m) => (
                   <button
                     key={m}
+                    type="button"
+                    className={`pos-charge-tender-btn${method === m ? " pos-charge-tender-btn--active" : ""}`}
                     onClick={() => setMethod(m)}
                     style={{
                       padding: "12px 6px", borderRadius: 10,
@@ -562,7 +568,7 @@ export function ChargeOverlay({
         </div>
 
         {/* Footer */}
-        <div style={{
+        <div className="pos-charge-footer" style={{
           padding: 16, borderTop: "1px solid #E2E8F0", background: "#fff",
           display: "flex", flexDirection: "column", gap: 10,
         }}>
@@ -581,13 +587,19 @@ export function ChargeOverlay({
               ⛔ {errorMessage}
             </div>
           )}
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={onClose} disabled={submitting} style={{
+          <div className="pos-charge-footer-actions" style={{ display: "flex", gap: 10 }}>
+            <button
+              type="button"
+              className="pos-charge-cancel"
+              onClick={onClose}
+              disabled={submitting}
+              style={{
               flex: 1, padding: "14px 18px", borderRadius: 12,
               background: "#fff", border: "1px solid #CBD5E1", color: "#475569",
               fontWeight: 600, fontSize: 15, cursor: "pointer",
             }}>Cancel</button>
             <button
+              type="button"
               className="pos-charge-confirm"
               onClick={confirm}
               disabled={(!enough && !splitValid && !canConfirmAccountTender) || submitting || creditOverLimit || walletOverLimit}

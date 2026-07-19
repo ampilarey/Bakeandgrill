@@ -138,10 +138,13 @@ function DecimalNumpad({ onPress }: { onPress: (k: string) => void }) {
   ];
 
   return (
-    <div style={{
-      marginTop: 10,
-      display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6,
-    }}>
+    <div
+      className="pos-cash-numpad"
+      style={{
+        marginTop: 10,
+        display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6,
+      }}
+    >
       {keys.map(({ k, label, variant }) => {
         const isMuted = variant === "muted";
         const isDanger = variant === "danger";
@@ -152,6 +155,7 @@ function DecimalNumpad({ onPress }: { onPress: (k: string) => void }) {
           <button
             key={k}
             type="button"
+            className="pos-cash-numpad-key"
             onClick={() => onPress(k)}
             aria-label={k === "back" ? "Backspace" : `Digit ${label}`}
             style={{
