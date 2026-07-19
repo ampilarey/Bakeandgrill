@@ -1511,56 +1511,15 @@ textarea.field-input {
   }
 }
 
-/* ── Home: tight stack under TopNav / phone account bar ─────────────── */
-.home-account-bar {
-  padding: 0.5rem var(--page-gutter) 0;
-  max-width: var(--layout-max);
-  margin: 0 auto;
-}
-
-.home-account-bar__inner {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.home-account-bar__avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--color-primary-light);
-  border: 2px solid var(--color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--color-primary);
-  text-decoration: none;
-  user-select: none;
-}
-
-.home-account-bar__sign-in {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 0.35rem 0.8rem;
-  background: var(--color-primary);
-  color: #fff;
-  border-radius: var(--radius-full);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
+/* ── Home desktop stack (phone uses inline GreetingHeader layout) ───── */
 .home-prayer-wrap {
-  padding: 0.35rem var(--page-gutter) 0.5rem;
+  padding: 0.5rem var(--page-gutter) 0.65rem;
   max-width: var(--layout-max);
   margin: 0 auto;
 }
 
 .home-stat-chips {
-  padding: 0.75rem var(--page-gutter) 0.25rem;
+  padding: 0.85rem var(--page-gutter) 0.35rem;
   max-width: var(--layout-max);
   margin: 0 auto;
 }
@@ -1576,21 +1535,6 @@ textarea.field-input {
 
 .home-stat-chips__row::-webkit-scrollbar {
   display: none;
-}
-
-/* Tablet/desktop: TopNav owns account — drop phone account row; hero closer to chrome */
-@media (min-width: 768px) {
-  .home-account-bar {
-    display: none;
-  }
-
-  .home-prayer-wrap {
-    padding: 0.5rem var(--page-gutter) 0.65rem;
-  }
-
-  .home-stat-chips {
-    padding: 0.85rem var(--page-gutter) 0.35rem;
-  }
 }
 
 .active-order-capsule {

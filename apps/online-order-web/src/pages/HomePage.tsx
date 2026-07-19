@@ -21,6 +21,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useActiveOrder } from '../hooks/useActiveOrder';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { DESKTOP_SHELL_MQ } from '../components/shell/navTabs';
 
 import { GreetingHeader } from '../components/home/GreetingHeader';
 import { StatChipsRow } from '../components/home/StatChipsRow';
@@ -84,6 +86,8 @@ export function HomePage() {
   const { isAuthenticated, authReady, customerName } = useAuth();
   const { t } = useLanguage();
   const { activeOrder } = useActiveOrder();
+  /** Desktop/iPad home chrome; phone keeps the original greeting stack. */
+  const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
   const reorderFetched = useRef(false);
   const loyaltyFetched = useRef(false);
 
@@ -209,11 +213,10 @@ export function HomePage() {
     }
   };
 
-  // Ordering status lives on the hero (not a separate greeting block).
   const statusBadge =
     isOpen !== null ? (
       <OpeningStatusBadge
-        className="opening-status-badge-hero"
+        className={isDesktopShell ? 'opening-status-badge-hero' : undefined}
         open={isOpen}
         reason={hoursReason}
         currentClose={currentClose}
@@ -223,44 +226,64 @@ export function HomePage() {
       />
     ) : null;
 
+  const chipsProps = {
+    loading: chipsLoading,
+    isAuthenticated,
+    loyaltyPoints,
+    activeOrder: activeOrder
+      ? { id: activeOrder.id, status: activeOrder.status }
+      : null,
+    specialsCount: specials.length,
+  };
+
   return (
     <div className="home-page">
-      {/* Phone: compact account control. Desktop/iPad: TopNav has Sign in / Account. */}
-      <GreetingHeader
-        customerName={customerName}
-        isAuthenticated={isAuthenticated}
-      />
+      {isDesktopShell ? (
+        <>
+          {/* Desktop/iPad: tight stack — prayer → hero (status on banner) → chips */}
+          <div className="home-prayer-wrap">
+            <PrayerBar />
+          </div>
+          <PromoCarousel
+            slides={heroSlides}
+            apiOrigin={API_ORIGIN}
+            logoSrc={logoSrc}
+            siteName={siteName}
+            fallbackTitle={text('home_hero_fallback_title', '')}
+            fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
+            statusSlot={statusBadge}
+          />
+          <StatChipsRow {...chipsProps} compact />
+        </>
+      ) : (
+        <>
+          {/* Phone: original stack — greeting → prayer → chips → hero */}
+          <GreetingHeader
+            customerName={customerName}
+            isAuthenticated={isAuthenticated}
+            statusBadge={statusBadge}
+          />
+          <div
+            style={{
+              padding: '0.35rem var(--page-gutter) 0.75rem',
+              maxWidth: 'var(--layout-max)',
+              margin: '0 auto',
+            }}
+          >
+            <PrayerBar />
+          </div>
+          <StatChipsRow {...chipsProps} />
+          <PromoCarousel
+            slides={heroSlides}
+            apiOrigin={API_ORIGIN}
+            logoSrc={logoSrc}
+            siteName={siteName}
+            fallbackTitle={text('home_hero_fallback_title', '')}
+            fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
+          />
+        </>
+      )}
 
-      {/* Prayer strip — tight under chrome so hero sits higher */}
-      <div className="home-prayer-wrap">
-        <PrayerBar />
-      </div>
-
-      {/* Hero first — ordering open/closed pill on the banner */}
-      <PromoCarousel
-        slides={heroSlides}
-        apiOrigin={API_ORIGIN}
-        logoSrc={logoSrc}
-        siteName={siteName}
-        fallbackTitle={text('home_hero_fallback_title', '')}
-        fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
-        statusSlot={statusBadge}
-      />
-
-      {/* Only useful chips (points when signed in, active order, specials) */}
-      <StatChipsRow
-        loading={chipsLoading}
-        isAuthenticated={isAuthenticated}
-        loyaltyPoints={loyaltyPoints}
-        activeOrder={
-          activeOrder
-            ? { id: activeOrder.id, status: activeOrder.status }
-            : null
-        }
-        specialsCount={specials.length}
-      />
-
-      {/* Mode entry cards (Delivery / Pickup) */}
       <ModeEntryCards />
 
       {/* ── 5b. Trust strip (CMS) ─────────────────────────────────────────── */}

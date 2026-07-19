@@ -8,6 +8,11 @@ type Props = {
   loyaltyPoints: number | null;
   activeOrder: { id: number; status: string } | null;
   specialsCount: number;
+  /**
+   * Desktop/iPad home: skip guest "Sign in to earn points" and empty
+   * "No active order" filler. Phone keeps the full chip row.
+   */
+  compact?: boolean;
 };
 
 const chipBase: React.CSSProperties = {
@@ -37,70 +42,101 @@ function activeOrderLabel(status: string): string {
   return map[status] ?? status;
 }
 
-/**
- * Utility chips under the hero — only when there is something useful to show.
- * Guest "Sign in to earn points" removed (noise). Empty "No active order" omitted.
- */
 export function StatChipsRow({
   loading,
   isAuthenticated,
   loyaltyPoints,
   activeOrder,
   specialsCount,
+  compact = false,
 }: Props) {
   const { t } = useLanguage();
 
-  const showLoyalty = isAuthenticated;
-  const showActive = Boolean(activeOrder);
-  const showSpecials = !loading && specialsCount > 0;
+  const loyaltyChip = loading ? (
+    <Skeleton width={140} height={40} radius="var(--radius-full)" />
+  ) : isAuthenticated ? (
+    <Link
+      to="/rewards"
+      style={{ ...chipBase, color: 'var(--color-primary)' }}
+    >
+      <span aria-hidden="true">⭐</span>
+      {loyaltyPoints !== null
+        ? `${loyaltyPoints} ${t('home.chip_rewards')}`
+        : t('home.chip_rewards')}
+    </Link>
+  ) : compact ? null : (
+    <Link
+      to="/account"
+      style={{ ...chipBase, color: 'var(--color-text-muted)' }}
+    >
+      <span aria-hidden="true">⭐</span>
+      {t('home.chip_sign_in_points')}
+    </Link>
+  );
 
-  if (!loading && !showLoyalty && !showActive && !showSpecials) {
+  const orderChip = loading ? (
+    <Skeleton width={160} height={40} radius="var(--radius-full)" />
+  ) : activeOrder ? (
+    <Link
+      to={`/orders/${activeOrder.id}`}
+      style={{
+        ...chipBase,
+        background: 'var(--color-primary)',
+        border: 'none',
+        color: '#fff',
+      }}
+    >
+      <span aria-hidden="true">📦</span>
+      {activeOrderLabel(activeOrder.status)}
+    </Link>
+  ) : compact ? null : (
+    <span style={{ ...chipBase, color: 'var(--color-text-muted)' }}>
+      <span aria-hidden="true">📦</span>
+      {t('home.chip_no_order')}
+    </span>
+  );
+
+  const specialsChip =
+    !loading && specialsCount > 0 ? (
+      <Link
+        to="/menu"
+        style={{ ...chipBase, color: 'var(--color-text)' }}
+      >
+        <span aria-hidden="true">🔥</span>
+        {`${specialsCount} ${t('home.chip_specials')}`}
+      </Link>
+    ) : null;
+
+  if (
+    compact &&
+    !loading &&
+    !loyaltyChip &&
+    !orderChip &&
+    !specialsChip
+  ) {
     return null;
   }
 
   return (
-    <div className="home-stat-chips">
-      <div className="home-stat-chips__row">
-        {loading ? (
-          <Skeleton width={140} height={40} radius="var(--radius-full)" />
-        ) : showLoyalty ? (
-          <Link
-            to="/rewards"
-            style={{ ...chipBase, color: 'var(--color-primary)' }}
-          >
-            <span aria-hidden="true">⭐</span>
-            {loyaltyPoints !== null
-              ? `${loyaltyPoints} ${t('home.chip_rewards')}`
-              : t('home.chip_rewards')}
-          </Link>
-        ) : null}
-
-        {loading ? (
-          <Skeleton width={160} height={40} radius="var(--radius-full)" />
-        ) : activeOrder ? (
-          <Link
-            to={`/orders/${activeOrder.id}`}
-            style={{
-              ...chipBase,
-              background: 'var(--color-primary)',
-              border: 'none',
-              color: '#fff',
-            }}
-          >
-            <span aria-hidden="true">📦</span>
-            {activeOrderLabel(activeOrder.status)}
-          </Link>
-        ) : null}
-
-        {showSpecials && (
-          <Link
-            to="/menu"
-            style={{ ...chipBase, color: 'var(--color-text)' }}
-          >
-            <span aria-hidden="true">🔥</span>
-            {`${specialsCount} ${t('home.chip_specials')}`}
-          </Link>
-        )}
+    <div className={compact ? 'home-stat-chips' : undefined} style={compact ? undefined : {
+      padding: '0 var(--page-gutter) 0.75rem',
+      maxWidth: 'var(--layout-max)',
+      margin: '0 auto',
+    }}>
+      <div
+        className={compact ? 'home-stat-chips__row' : undefined}
+        style={compact ? undefined : {
+          display: 'flex',
+          gap: '0.625rem',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          paddingBottom: 2,
+        }}
+      >
+        {loyaltyChip}
+        {orderChip}
+        {specialsChip}
       </div>
     </div>
   );
