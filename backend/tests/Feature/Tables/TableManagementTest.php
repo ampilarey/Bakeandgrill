@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Tables;
 
+use App\Models\Category;
 use App\Models\Device;
+use App\Models\Item;
 use App\Models\Order;
 use App\Models\RestaurantTable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -185,6 +187,65 @@ class TableManagementTest extends TestCase
         $order = Order::findOrFail($orderId);
         $this->assertNull($order->restaurant_table_id);
         $this->assertNotSame('cancelled', $order->status);
+    }
+
+    public function test_list_heals_occupied_table_with_no_active_order(): void
+    {
+        $table = $this->createTable('T-STALE');
+        $table->update(['status' => 'occupied']);
+
+        $this->getJson('/api/tables', $this->managerHeaders)
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $table->id,
+                'name' => 'T-STALE',
+                'status' => 'available',
+                'current_order_id' => null,
+            ]);
+
+        $this->assertSame('available', $table->fresh()->status);
+    }
+
+    public function test_charging_dine_in_order_releases_table(): void
+    {
+        $category = Category::create(['name' => 'Food', 'slug' => 'table-pay-food', 'is_active' => true]);
+        $item = Item::create([
+            'category_id' => $category->id,
+            'name' => 'Table Burger',
+            'base_price' => 20.00,
+            'sku' => 'TBL-PAY-1',
+            'is_active' => true,
+            'is_available' => true,
+        ]);
+
+        $table = $this->createTable('T-PAY-RELEASE');
+
+        $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson('/api/shifts/open', ['opening_cash' => 50], $this->managerHeaders)
+            ->assertCreated();
+
+        $create = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson('/api/orders', [
+                'type' => 'dine_in',
+                'restaurant_table_id' => $table->id,
+                'print' => false,
+                'items' => [['item_id' => $item->id, 'quantity' => 1]],
+            ], $this->managerHeaders)
+            ->assertCreated();
+
+        $orderId = (int) $create->json('order.id');
+        $total = (float) $create->json('order.total');
+        $this->assertSame('occupied', $table->fresh()->status);
+
+        $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson("/api/orders/{$orderId}/payments", [
+                'payments' => [['method' => 'cash', 'amount' => $total]],
+                'print_receipt' => false,
+            ], $this->managerHeaders)
+            ->assertOk();
+
+        $this->assertSame('paid', Order::findOrFail($orderId)->status);
+        $this->assertSame('available', $table->fresh()->status);
     }
 
     // ── Merge tables ──────────────────────────────────────────────────────────

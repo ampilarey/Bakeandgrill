@@ -361,18 +361,12 @@ class OrderStatusController extends Controller
                 }
             }
 
-            // Free up the dine-in table if no other active order still
-            // sits on it. Only checks for non-terminal sibling orders —
-            // a long-since-completed ticket on the same table is fine.
+            // Free up the dine-in table if no other active order still sits on it.
             if ($order->restaurant_table_id) {
-                $hasOtherActive = Order::where('restaurant_table_id', $order->restaurant_table_id)
-                    ->where('id', '!=', $order->id)
-                    ->whereNotIn('status', ['cancelled', 'completed', 'refunded'])
-                    ->exists();
-                if (!$hasOtherActive) {
-                    RestaurantTable::where('id', $order->restaurant_table_id)
-                        ->update(['status' => 'available']);
-                }
+                RestaurantTable::releaseIfNoActiveOrders(
+                    (int) $order->restaurant_table_id,
+                    (int) $order->id,
+                );
             }
 
             app(AuditLogService::class)->log(

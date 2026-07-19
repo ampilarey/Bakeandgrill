@@ -13,6 +13,7 @@ use App\Models\Item;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
+use App\Models\RestaurantTable;
 use App\Models\Shift;
 use App\Services\PrintJobService;
 use App\Services\StockManagementService;
@@ -158,6 +159,10 @@ class OrderCreationService
             }
 
             $order->load(['items.modifiers']);
+
+            if (!empty($payload['restaurant_table_id'])) {
+                RestaurantTable::markOccupied((int) $payload['restaurant_table_id']);
+            }
 
             DB::afterCommit(function () use ($order, $payload, $printKitchen): void {
                 DeferAfterResponse::run(function () use ($order, $printKitchen): void {

@@ -48,14 +48,33 @@ class TableController extends Controller
         if (!empty($tableIds)) {
             $activeOrderMap = Order::select('id', 'restaurant_table_id', 'order_number', 'total', 'status')
                 ->whereIn('restaurant_table_id', $tableIds)
-                ->whereIn('status', [
-                    'pending', 'in_progress', 'held', 'partial',
-                    'confirmed', 'preparing', 'ready',
-                ])
+                ->whereIn('status', RestaurantTable::ACTIVE_ORDER_STATUSES)
                 ->orderByDesc('id')
                 ->get()
                 ->groupBy('restaurant_table_id')
                 ->map(fn ($group) => $group->first());
+        }
+
+        // Self-heal stale floor status: "occupied" with no active ticket
+        // (common after Charge before seat-release was wired) and the
+        // inverse if a ticket exists but status was left available.
+        $toAvailable = [];
+        $toOccupied = [];
+        foreach ($tables as $t) {
+            $hasActive = isset($activeOrderMap[$t->id]);
+            if ($hasActive && $t->status !== 'occupied') {
+                $toOccupied[] = $t->id;
+                $t->status = 'occupied';
+            } elseif (!$hasActive && $t->status !== 'available') {
+                $toAvailable[] = $t->id;
+                $t->status = 'available';
+            }
+        }
+        if ($toAvailable !== []) {
+            RestaurantTable::whereIn('id', $toAvailable)->update(['status' => 'available']);
+        }
+        if ($toOccupied !== []) {
+            RestaurantTable::whereIn('id', $toOccupied)->update(['status' => 'occupied']);
         }
 
         $payload = $tables->map(function ($t) use ($activeOrderMap) {
