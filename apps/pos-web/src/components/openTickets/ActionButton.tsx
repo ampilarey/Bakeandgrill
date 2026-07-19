@@ -13,6 +13,7 @@ export function ActionButton({
   children,
   confirm = false,
   confirmLabel = "Tap again to confirm",
+  grow = false,
 }: {
   onClick: () => void;
   busy: boolean;
@@ -20,6 +21,8 @@ export function ActionButton({
   children: React.ReactNode;
   confirm?: boolean;
   confirmLabel?: React.ReactNode;
+  /** Stretch to fill the action row (mobile ticket cards). */
+  grow?: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const timerRef = useRef<number | null>(null);
@@ -82,6 +85,7 @@ export function ActionButton({
         border: pending ? "2px solid #FBBF24" : "none",
         boxSizing: "border-box",
         cursor: busy ? "not-allowed" : "pointer",
+        flex: grow ? "1 1 auto" : undefined,
       }}
     >
       {busy ? "…" : pending ? confirmLabel : children}

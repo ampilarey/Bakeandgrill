@@ -493,6 +493,36 @@ html, body, #root {
   .pos-ticket-action-btn {
     min-height: 44px;
   }
+
+  /* Active Orders — full-bleed + thumb-friendly chip scroller */
+  .pos-open-tickets-shell {
+    margin: calc(-1 * var(--pos-main-pad, 8px));
+    width: calc(100% + 2 * var(--pos-main-pad, 8px));
+    max-width: none;
+    min-height: calc(100% + 2 * var(--pos-main-pad, 8px));
+  }
+  .pos-open-tickets-chip-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .pos-open-tickets-chip-row::-webkit-scrollbar {
+    display: none;
+  }
+  .pos-open-tickets-chip-row > button {
+    flex-shrink: 0;
+  }
+  .pos-open-tickets-meta-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .pos-cart-delivery-row {
     flex-direction: column;
   }

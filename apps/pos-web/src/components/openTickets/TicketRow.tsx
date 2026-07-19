@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { palette, radius, space, btnPrimary, btnSecondary, type, z } from "../../theme";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { posOrderTypeEmoji, posOrderTypeLabel } from "../../orderTypeLabels";
 import {
   formatTicketAge,
@@ -62,6 +63,7 @@ export function TicketRow({
   handleStartMerge,
   handlePickMergeSource,
 }: TicketRowProps) {
+  const isNarrow = useMediaQuery("(max-width: 840px)");
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -199,7 +201,7 @@ export function TicketRow({
         ? "Open ticket in main POS to add/remove items, charge, etc."
         : undefined}
       style={{
-        padding: space.m,
+        padding: isNarrow ? space.m : space.m,
         borderRadius: radius.l,
         background: isMergeTarget
           ? palette.infoBg
@@ -215,26 +217,53 @@ export function TicketRow({
         }`,
         display: "flex",
         flexDirection: "column",
-        gap: space.s,
+        gap: isNarrow ? space.m : space.s,
         cursor: cardClickHandler ? "pointer" : "default",
+        boxShadow: isNarrow ? "0 1px 3px rgba(15,23,42,0.06)" : undefined,
       }}
       onClick={cardClickHandler}
     >
       {/* Primary scan line: name · stage · pay → total */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: space.m }}>
+      <div style={{
+        display: "flex",
+        flexDirection: isNarrow ? "column" : "row",
+        justifyContent: "space-between",
+        alignItems: isNarrow ? "stretch" : "flex-start",
+        gap: isNarrow ? 6 : space.m,
+      }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: isNarrow ? "space-between" : "flex-start",
+            gap: 8,
+          }}>
             <div style={{
               fontWeight: 800,
-              fontSize: type.body.fontSize,
+              fontSize: isNarrow ? 16 : type.body.fontSize,
               color: palette.panelInk,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              maxWidth: "100%",
+              minWidth: 0,
+              flex: 1,
             }}>
               {t.ticket_name || `Order ${t.order_number}`}
             </div>
+            {isNarrow && (
+              <div style={{
+                fontWeight: 800,
+                fontSize: 16,
+                color: palette.panelInk,
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                fontVariantNumeric: "tabular-nums",
+              }}>
+                MVR {ticketDisplayTotal(t).toFixed(2)}
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
             <span
               title={stageBadge.title}
               style={{
@@ -273,12 +302,15 @@ export function TicketRow({
               </span>
             )}
           </div>
-          <div style={{
-            fontSize: type.caption.fontSize,
-            color: palette.panelMuted,
-            marginTop: 4,
-            lineHeight: 1.35,
-          }}>
+          <div
+            className={isNarrow ? "pos-open-tickets-meta-clamp" : undefined}
+            style={{
+              fontSize: type.caption.fontSize,
+              color: palette.panelMuted,
+              marginTop: 6,
+              lineHeight: 1.35,
+            }}
+          >
             {(t.items?.length ?? 0)} items
             {typeLabel ? ` · ${typeEmoji ? `${typeEmoji} ` : ""}${typeLabel}` : ""}
             {t.type === "delivery" && t.delivery_island ? ` · ${t.delivery_island}` : ""}
@@ -294,25 +326,31 @@ export function TicketRow({
               </span>
             ) : null}
             {kitchenNote ? ` · ${kitchenNote}` : ""}
-            {t.user?.name ? ` · ${t.user.name}` : ""}
+            {!isNarrow && t.user?.name ? ` · ${t.user.name}` : ""}
             {t.customer?.name ? ` · ${t.customer.name}` : ""}
             {t.customer?.phone ? ` · ${t.customer.phone}` : ""}
             {t.ticket_note ? ` · ${t.ticket_note}` : ""}
           </div>
         </div>
-        <div style={{
-          fontWeight: 800,
-          fontSize: type.subtitle.fontSize,
-          color: palette.panelInk,
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-          paddingTop: 1,
-        }}>
-          MVR {ticketDisplayTotal(t).toFixed(2)}
-        </div>
+        {!isNarrow && (
+          <div style={{
+            fontWeight: 800,
+            fontSize: type.subtitle.fontSize,
+            color: palette.panelInk,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+            paddingTop: 1,
+          }}>
+            MVR {ticketDisplayTotal(t).toFixed(2)}
+          </div>
+        )}
       </div>
 
-      <div style={{ display: "flex", gap: space.xs, flexWrap: "wrap" }}>
+      <div style={{
+        display: "flex",
+        gap: space.s,
+        flexWrap: "wrap",
+      }}>
         {mergeTargetId === null && (
           <>
             {stage === "parked" && canHoldResume && (
@@ -322,8 +360,9 @@ export function TicketRow({
                 bg="#A16207"
                 confirm
                 confirmLabel="Fire now? Tap to confirm"
+                grow={isNarrow}
               >
-                Fire to kitchen
+                {isNarrow ? "Fire" : "Fire to kitchen"}
               </ActionButton>
             )}
             {stage === "queued" && canManageOrderStatus && (
@@ -334,8 +373,9 @@ export function TicketRow({
                   bg="#A16207"
                   confirm
                   confirmLabel="Start cooking on kitchen display?"
+                  grow={isNarrow}
                 >
-                  Start cooking
+                  {isNarrow ? "Cook" : "Start cooking"}
                 </ActionButton>
                 <ActionButton
                   onClick={() => handleMarkReady(t)}
@@ -343,8 +383,9 @@ export function TicketRow({
                   bg={palette.successDark}
                   confirm
                   confirmLabel="Mark ready and notify customer?"
+                  grow={isNarrow}
                 >
-                  Mark ready
+                  {isNarrow ? "Ready" : "Mark ready"}
                 </ActionButton>
               </>
             )}
@@ -377,8 +418,9 @@ export function TicketRow({
                     bg={palette.successDark}
                     confirm
                     confirmLabel="Mark ready and notify customer?"
+                    grow={isNarrow}
                   >
-                    Mark ready
+                    {isNarrow ? "Ready" : "Mark ready"}
                   </ActionButton>
                 </>
               );
@@ -390,8 +432,9 @@ export function TicketRow({
                 bg="#0F766E"
                 confirm
                 confirmLabel="Confirm collected?"
+                grow={isNarrow}
               >
-                Picked up
+                {isNarrow ? "Collected" : "Picked up"}
               </ActionButton>
             )}
             {isUnpaid && (
@@ -405,10 +448,32 @@ export function TicketRow({
                 style={{
                   ...btnPrimary(busy),
                   padding: `${space.s}px ${space.m}px`,
-                  minHeight: 44, fontSize: type.bodySm.fontSize,
+                  minHeight: 44,
+                  fontSize: type.bodySm.fontSize,
+                  flex: isNarrow ? "1 1 auto" : undefined,
                 }}
               >
                 Charge
+              </button>
+            )}
+            {isNarrow && mergeTargetId === null && !isUnpaid && (
+              <button
+                className="pos-ticket-action-btn"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onResume(t);
+                }}
+                disabled={busy}
+                style={{
+                  ...btnSecondary(busy),
+                  padding: `${space.s}px ${space.m}px`,
+                  minHeight: 44,
+                  fontSize: type.bodySm.fontSize,
+                  flex: "1 1 auto",
+                }}
+              >
+                Open
               </button>
             )}
             {(() => {
@@ -432,7 +497,7 @@ export function TicketRow({
                 cursor: busy ? "not-allowed" : "pointer",
               };
               return (
-                <div ref={moreRef} style={{ position: "relative" }}>
+                <div ref={moreRef} style={{ position: "relative", flexShrink: 0 }}>
                   <button
                     ref={moreBtnRef}
                     type="button"
@@ -455,7 +520,7 @@ export function TicketRow({
                     aria-expanded={moreOpen}
                     aria-haspopup="menu"
                   >
-                    More ▾
+                    More
                   </button>
                   {moreOpen && moreMenuStyle && (
                     <div

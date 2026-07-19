@@ -1,4 +1,5 @@
 import { palette, radius, space, shadow, type } from "../../theme";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 export function PanelShell({
   title,
@@ -17,20 +18,31 @@ export function PanelShell({
   /** When true, the header action is a back chevron instead of close. */
   backMode?: boolean;
 }) {
+  const isNarrow = useMediaQuery("(max-width: 840px)");
+  const useBack = backMode ?? isNarrow;
+
   return (
-    <div style={{
-      flex: 1,
-      minHeight: 0,
-      background: palette.panel,
-      borderRadius: radius.xl,
-      border: `1px solid ${palette.border}`,
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden",
-      boxShadow: shadow.xs,
-    }}>
+    <div
+      className={isNarrow ? "pos-open-tickets-shell" : undefined}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        background: palette.panel,
+        borderRadius: isNarrow ? 0 : radius.xl,
+        border: isNarrow ? "none" : `1px solid ${palette.border}`,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        boxShadow: isNarrow ? "none" : shadow.xs,
+      }}
+    >
       <div style={{
-        padding: `${space.m}px ${space.l}px`,
+        padding: isNarrow
+          ? `${space.s}px ${space.m}px`
+          : `${space.m}px ${space.l}px`,
+        paddingTop: isNarrow
+          ? `max(${space.s}px, env(safe-area-inset-top, 0px))`
+          : undefined,
         borderBottom: `1px solid ${palette.border}`,
         display: "flex",
         justifyContent: "space-between",
@@ -38,14 +50,14 @@ export function PanelShell({
         gap: space.m,
         flexShrink: 0,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: space.s, minWidth: 0 }}>
-          {backMode && (
+        <div style={{ display: "flex", alignItems: "center", gap: space.s, minWidth: 0, flex: 1 }}>
+          {useBack && (
             <button
               type="button"
               onClick={onClose}
               style={{
-                background: "none",
-                border: "none",
+                background: palette.bgAlt,
+                border: `1px solid ${palette.border}`,
                 color: palette.panelInk,
                 fontSize: 22,
                 cursor: "pointer",
@@ -53,7 +65,7 @@ export function PanelShell({
                 padding: 6,
                 minHeight: 44,
                 minWidth: 44,
-                borderRadius: 8,
+                borderRadius: radius.m,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -64,12 +76,34 @@ export function PanelShell({
               ‹
             </button>
           )}
-          <div style={{ minWidth: 0 }}>
-            <div style={{ ...type.subtitle, color: palette.panelInk }}>{title}</div>
-            {subtitle && <div style={{ ...type.caption, color: palette.panelMuted, marginTop: 2 }}>{subtitle}</div>}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{
+              ...type.subtitle,
+              color: palette.panelInk,
+              fontSize: isNarrow ? 17 : type.subtitle.fontSize,
+            }}>
+              {title}
+            </div>
+            {subtitle && !isNarrow && (
+              <div style={{ ...type.caption, color: palette.panelMuted, marginTop: 2 }}>
+                {subtitle}
+              </div>
+            )}
+            {subtitle && isNarrow && (
+              <div style={{
+                ...type.caption,
+                color: palette.panelMuted,
+                marginTop: 2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {subtitle}
+              </div>
+            )}
           </div>
         </div>
-        {!backMode && (
+        {!useBack && (
           <button onClick={onClose} style={{
             background: "none",
             border: "none",
@@ -91,7 +125,9 @@ export function PanelShell({
       {toolbar != null && (
         <div style={{
           flexShrink: 0,
-          padding: `${space.s}px ${space.l}px ${space.m}px`,
+          padding: isNarrow
+            ? `${space.s}px ${space.m}px`
+            : `${space.s}px ${space.l}px ${space.m}px`,
           borderBottom: `1px solid ${palette.border}`,
           background: palette.bg,
         }}>
@@ -99,7 +135,19 @@ export function PanelShell({
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: "auto", padding: space.l, minHeight: 0 }}>
+      <div
+        className={isNarrow ? "pos-open-tickets-list" : undefined}
+        style={{
+          flex: 1,
+          overflow: "auto",
+          padding: isNarrow ? space.m : space.l,
+          paddingBottom: isNarrow
+            ? `max(${space.l}px, env(safe-area-inset-bottom, 0px))`
+            : space.l,
+          minHeight: 0,
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         {children}
       </div>
     </div>

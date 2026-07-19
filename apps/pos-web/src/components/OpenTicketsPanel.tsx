@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { palette, type } from "../theme";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { type OpenTicket, useOpenTickets } from "../hooks/useOpenTickets";
 import {
   ticketDisplayTotal,
@@ -91,6 +92,7 @@ export function OpenTicketsPanel({
 
   const [voidPrompt, setVoidPrompt] = useState<{ ticket: OpenTicket; reason: string } | null>(null);
   const [voidBusy, setVoidBusy] = useState(false);
+  const isNarrow = useMediaQuery("(max-width: 840px)");
 
   const handleConfirmVoid = async () => {
     if (!voidPrompt) return;
@@ -109,16 +111,16 @@ export function OpenTicketsPanel({
 
   const subtitle =
     mergeTargetId !== null
-      ? `Tap any other ticket to preview the merge (you'll confirm before anything changes)`
+      ? (isNarrow ? "Tap another ticket to merge" : "Tap any other ticket to preview the merge (you'll confirm before anything changes)")
       : listScope === "all"
-        ? "All staff — parked, cooking, and ready-for-pickup"
+        ? (isNarrow ? "All staff tickets" : "All staff — parked, cooking, and ready-for-pickup")
         : listScope === "online"
-          ? "Online orders — pickup and delivery from the ordering app"
-          : "My tickets — ones I created on this shift";
+          ? (isNarrow ? "Online pickup & delivery" : "Online orders — pickup and delivery from the ordering app")
+          : (isNarrow ? "My tickets this shift" : "My tickets — ones I created on this shift");
 
   return (
     <PanelShell
-      title={mergeTargetId !== null ? "Merge tickets — pick source" : "Active orders"}
+      title={mergeTargetId !== null ? "Merge tickets" : "Active orders"}
       subtitle={subtitle}
       onClose={onClose}
       toolbar={

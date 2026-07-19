@@ -15,7 +15,7 @@ export function TicketList({
   ...rowProps
 }: Props) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: space.s }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: space.m }}>
       {filteredTickets.map((t) => (
         <TicketRow
           key={t.id}

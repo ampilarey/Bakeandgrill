@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { palette, radius, space } from "../../theme";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import type { OpenTicketsFilterKey } from "../../hooks/useOpenTickets";
 import { FilterGroup } from "./filterPrimitives";
 
@@ -28,6 +29,7 @@ export function OpenTicketsFilterBar({
   setSearch,
   toggleSearchOpen,
 }: Props) {
+  const isNarrow = useMediaQuery("(max-width: 840px)");
   const secondaryActive =
     activeFilter.startsWith("type:") || activeFilter.startsWith("payment:");
   const [moreOpen, setMoreOpen] = useState(secondaryActive);
@@ -36,17 +38,18 @@ export function OpenTicketsFilterBar({
     if (secondaryActive) setMoreOpen(true);
   }, [secondaryActive]);
 
+  const chipRowStyle = isNarrow
+    ? undefined
+    : {
+        display: "flex" as const,
+        alignItems: "center" as const,
+        gap: 6,
+        flexWrap: "wrap" as const,
+      };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: space.s }}>
-      {/* Primary: stage — what cashiers scan first */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className={isNarrow ? "pos-open-tickets-chip-row" : undefined} style={chipRowStyle}>
         <FilterGroup
           compact
           activeColor={palette.panelInk}
@@ -67,7 +70,7 @@ export function OpenTicketsFilterBar({
           onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}
         />
 
-        <div style={{ flex: 1, minWidth: 4 }} />
+        {!isNarrow && <div style={{ flex: 1, minWidth: 4 }} />}
 
         <button
           type="button"
@@ -84,6 +87,7 @@ export function OpenTicketsFilterBar({
             fontWeight: 700,
             cursor: "pointer",
             whiteSpace: "nowrap",
+            flexShrink: 0,
           }}
         >
           {moreOpen ? "Less" : "More"}
@@ -105,23 +109,15 @@ export function OpenTicketsFilterBar({
             fontWeight: 700,
             cursor: "pointer",
             whiteSpace: "nowrap",
+            flexShrink: 0,
           }}
         >
           Search
         </button>
       </div>
 
-      {/* Secondary: type + payment — tucked away until needed */}
       {moreOpen && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            flexWrap: "wrap",
-            paddingTop: 2,
-          }}
-        >
+        <div className={isNarrow ? "pos-open-tickets-chip-row" : undefined} style={chipRowStyle}>
           <FilterGroup
             compact
             activeColor={palette.info}
@@ -162,7 +158,7 @@ export function OpenTicketsFilterBar({
           autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Name, phone, table, order # or ticket note…"
+          placeholder={isNarrow ? "Name, phone, table, #…" : "Name, phone, table, order # or ticket note…"}
           style={{
             width: "100%",
             padding: "10px 12px",
@@ -171,7 +167,7 @@ export function OpenTicketsFilterBar({
             border: `1px solid ${palette.border}`,
             background: palette.panel,
             color: palette.panelInk,
-            fontSize: 13,
+            fontSize: 16, // 16px avoids iOS zoom-on-focus
             fontWeight: 500,
             outline: "none",
             boxSizing: "border-box",
