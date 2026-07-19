@@ -541,18 +541,21 @@ html, body, #root {
     grid-template-columns: 1fr;
   }
 
-  /* Configure item — bottom sheet on touch widths. */
+  /* Configure item — keep centered on phones (not a bottom sheet). */
   .pos-configure-backdrop {
-    align-items: flex-end;
-    padding: 0;
-    padding-top: env(safe-area-inset-top, 0px);
+    align-items: center;
+    justify-content: center;
+    padding: max(12px, env(safe-area-inset-top, 0px))
+             max(12px, env(safe-area-inset-right, 0px))
+             max(12px, env(safe-area-inset-bottom, 0px))
+             max(12px, env(safe-area-inset-left, 0px));
   }
   .pos-configure-panel {
-    max-width: none;
-    width: 100%;
-    max-height: min(85dvh, 720px);
-    border-radius: 16px 16px 0 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    width: min(100%, 420px);
+    max-width: 420px;
+    max-height: min(78dvh, 640px);
+    border-radius: 16px;
+    padding-bottom: 0;
   }
 
   /* Charge overlay — full screen (aligned with stack breakpoint). */
