@@ -9,8 +9,9 @@ use App\Models\Order;
 /**
  * Public order-tracking links embedded in SMS / email.
  *
- * Uses /order/track/{tracking_token} (path-only) so mobile SMS clients
- * don't strip the ?tok= query param from legacy /orders/{id}?tok= links.
+ * Path-only /order/track/{token} so mobile SMS clients don't strip query
+ * params. Laravel serves the order SPA; React OrderStatusPage loads the
+ * order via GET /api/orders/track/{token} (no login required).
  */
 final class OrderTrackingUrl
 {

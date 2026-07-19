@@ -10,6 +10,7 @@ use App\Domains\Orders\Events\OrderCreated;
 use App\Enums\OrderType;
 use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
+use App\Support\OrderTrackingUrl;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -70,7 +71,7 @@ class SendOrderConfirmationListener implements ShouldQueue
             return;
         }
 
-        $url = rtrim(config('app.url'), '/') . '/order/orders/' . $order->id . '?tok=' . $order->tracking_token;
+        $url = OrderTrackingUrl::for($order);
 
         // SMS — idempotency key prevents duplicate sends on queue retry
         try {

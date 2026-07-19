@@ -77,9 +77,8 @@ ReactDOM.createRoot(rootEl).render(
               <ScrollToTop />
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
-                  {/* Standalone pages — no Layout wrapper. Declared BEFORE
-                      the Layout catch-all so /track/:token isn't swallowed
-                      by the nested path="*" NotFound route. */}
+                  {/* Standalone pages — no AppShell. /track/:token is the SMS
+                      cold-open URL (path token; Laravel serves this SPA shell). */}
                   <Route path="checkout" element={<ErrorBoundary inline><CheckoutPage /></ErrorBoundary>} />
                   <Route path="track/:trackingToken" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
                   <Route path="orders/:orderId" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
