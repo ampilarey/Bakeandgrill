@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Device;
 use App\Models\Item;
 use App\Models\Order;
+use App\Models\RestaurantTable;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -91,6 +92,44 @@ class UpdateOrderItemsMetaTest extends TestCase
         $order = Order::findOrFail($orderId);
         $this->assertSame('takeaway', $order->type);
         $this->assertNull($order->restaurant_table_id);
+    }
+
+    public function test_leaving_dine_in_releases_occupied_table(): void
+    {
+        $table = RestaurantTable::create([
+            'name' => 'T-RELEASE',
+            'capacity' => 4,
+            'status' => 'available',
+            'is_active' => true,
+        ]);
+
+        $create = $this->postJson('/api/orders', [
+            'type' => 'dine_in',
+            'restaurant_table_id' => $table->id,
+            'device_identifier' => $this->device->identifier,
+            'print' => false,
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ])->assertCreated();
+
+        $orderId = (int) $create->json('order.id');
+        $table->update(['status' => 'occupied']);
+        $this->assertSame('occupied', $table->fresh()->status);
+
+        $this->patchJson("/api/orders/{$orderId}/items", [
+            'items' => [[
+                'item_id' => $this->item->id,
+                'name' => $this->item->name,
+                'quantity' => 1,
+            ]],
+            'reprint_kitchen' => false,
+            'type' => 'takeaway',
+        ])
+            ->assertOk()
+            ->assertJsonPath('order.type', 'takeaway');
+
+        $order = Order::findOrFail($orderId);
+        $this->assertNull($order->restaurant_table_id);
+        $this->assertSame('available', $table->fresh()->status);
     }
 
     public function test_save_changes_can_switch_to_delivery_with_address(): void

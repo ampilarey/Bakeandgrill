@@ -12,6 +12,7 @@ use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\RestaurantTable;
 use App\Services\AuditLogService;
 use App\Services\OrderCreationService;
 use Illuminate\Http\JsonResponse;
@@ -154,6 +155,19 @@ class OrderItemController extends Controller
                 $updated->update($meta);
                 $updated = app(OrderTotalsCalculator::class)
                     ->recalculateAndPersist($updated->fresh(['items.item']));
+            }
+
+            // Floor map: free the prior seat when this ticket leaves it
+            // (dine_in → takeaway/delivery, or move to another table).
+            $newTableId = $updated->restaurant_table_id !== null
+                ? (int) $updated->restaurant_table_id
+                : null;
+            $prevTableId = $oldTableId !== null ? (int) $oldTableId : null;
+            if ($prevTableId !== null && $prevTableId !== $newTableId) {
+                RestaurantTable::releaseIfNoActiveOrders($prevTableId);
+            }
+            if ($newTableId !== null && (string) $updated->type === 'dine_in') {
+                RestaurantTable::markOccupied($newTableId);
             }
 
             app(AuditLogService::class)->log(

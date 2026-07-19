@@ -355,7 +355,10 @@ export function PosShellLayout() {
               resumedStaffUserId={order.resumedStaffUserId}
               isEditingActive={order.isEditingActive}
               hasUnsavedTicketChanges={order.hasUnsavedTicketChanges}
-              onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(refreshOpenTickets)}
+              onSaveActiveChanges={() => void order.handleSaveActiveChanges().then(() => {
+                void refreshOpenTickets();
+                void refreshTables();
+              })}
               onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
               onClearCart={handleClearCart}
               onSaveTicket={() => {
