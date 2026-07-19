@@ -38,11 +38,30 @@ function wrap(initial = '/') {
   );
 }
 
+function mockMatchMedia(matches: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
 describe('AppShell', () => {
-  it('renders 5-tab bottom nav with t() labels', async () => {
+  it('renders 5-tab bottom nav with t() labels on phone', async () => {
+    mockMatchMedia(false);
     wrap();
     expect(screen.getByText('home-body')).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeTruthy();
+    expect(document.querySelector('.bottom-nav')).toBeTruthy();
+    expect(document.querySelector('.top-nav')).toBeNull();
     expect(screen.getByText('Home')).toBeTruthy();
     expect(screen.getByText('Menu')).toBeTruthy();
     expect(screen.getByText('Orders')).toBeTruthy();
@@ -51,7 +70,18 @@ describe('AppShell', () => {
     expect(screen.queryByText('Account')).toBeNull();
   });
 
+  it('renders top nav instead of bottom nav on tablet/desktop', () => {
+    mockMatchMedia(true);
+    wrap();
+    expect(document.querySelector('.top-nav')).toBeTruthy();
+    expect(document.querySelector('.bottom-nav')).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeTruthy();
+    expect(screen.getByText('Home')).toBeTruthy();
+    expect(screen.getByText('Menu')).toBeTruthy();
+  });
+
   it('does not mount legacy prayer-strip portal', () => {
+    mockMatchMedia(false);
     wrap();
     expect(document.getElementById('prayer-strip-root')).toBeNull();
   });

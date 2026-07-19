@@ -6,16 +6,20 @@ import { useLanguage } from '../../context/LanguageContext';
 import { ShellNavProvider, useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useCart } from '../../context/CartContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getCustomerMe } from '../../api';
 import { ActiveOrderCapsule } from './ActiveOrderCapsule';
 import { BottomNav } from './BottomNav';
 import { FloatingCartBar } from './FloatingCartBar';
+import { TopNav } from './TopNav';
+import { DESKTOP_SHELL_MQ } from './navTabs';
 
 function AppShellChrome() {
   const { t } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
   const { hideNav } = useShellNav();
   const { cart } = useCart();
+  const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
   const cartCount = cart.reduce((n, e) => n + e.quantity, 0);
 
   const annEnabled = s.announcement_enabled === 'true';
@@ -41,7 +45,8 @@ function AppShellChrome() {
 
   const shellClass = [
     'app-shell',
-    cartCount > 0 && !hideNav ? 'app-shell--with-cart' : '',
+    isDesktopShell ? 'app-shell--desktop' : '',
+    cartCount > 0 && !hideNav && !isDesktopShell ? 'app-shell--with-cart' : '',
     hideNav ? 'app-shell--hide-nav' : '',
   ]
     .filter(Boolean)
@@ -54,6 +59,8 @@ function AppShellChrome() {
       <a href="#main-content" className="skip-link">
         {t('common.skip_content')}
       </a>
+
+      {isDesktopShell && <TopNav />}
 
       {annEnabled && annText && (
         <div
@@ -95,7 +102,7 @@ function AppShellChrome() {
 
       <ActiveOrderCapsule />
       <FloatingCartBar />
-      <BottomNav />
+      {!isDesktopShell && <BottomNav />}
     </div>
   );
 }
@@ -130,8 +137,8 @@ function AuthNameHydration() {
 }
 
 /**
- * App chrome: announcement, outlet, active-order capsule, floating cart, 5-tab nav.
- * No global header/footer (rehomed to Account / BrandFooter in later phases).
+ * App chrome: TopNav (≥768) or BottomNav (phone), outlet, capsule, cart sheet/FAB.
+ * No global marketing footer (rehomed to Account / BrandFooter).
  */
 export function AppShell() {
   return (

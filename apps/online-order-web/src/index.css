@@ -87,11 +87,11 @@
   --header-height: 68px;       /* sticky header row height */
 
   /* ── Redesign shell metrics (§8.3) — additive; old tokens kept ── */
-  /* Mobile: compact column. Tablet/desktop override below so wide screens
-     are not stuck in a phone-width frame. */
+  /* Mobile: compact column. ≥768 uses --layout-max + TopNav (see desktop shell). */
   --shell-max:            640px;
+  --top-nav-height:       64px;
   --bottom-nav-height:    64px;
-  --float-cart-height:    72px; /* logo FAB above bottom nav */
+  --float-cart-height:    72px; /* logo FAB above bottom nav (phone only) */
   --safe-bottom:          env(safe-area-inset-bottom, 0px);
   --cat-rail-width:       90px;
   --menu-header-height:   112px;
@@ -1301,7 +1301,7 @@ textarea.field-input {
 }
 
 .app-shell--with-cart .app-shell__main {
-  /* Logo FAB overlays bottom-left — keep modest clearance, not a full bar */
+  /* Logo FAB overlays bottom — keep modest clearance, not a full bar */
   padding-bottom: calc(
     var(--bottom-nav-height) + var(--safe-bottom) + 1.5rem
   );
@@ -1309,6 +1309,170 @@ textarea.field-input {
 
 .app-shell--hide-nav .app-shell__main {
   padding-bottom: 0.5rem;
+}
+
+/* Tablet/desktop: TopNav chrome — full layout width, no bottom nav pad */
+.app-shell--desktop {
+  max-width: var(--layout-max);
+}
+
+.app-shell--desktop .app-shell__main {
+  padding-bottom: 2rem;
+}
+
+.app-shell--desktop.app-shell--hide-nav .app-shell__main {
+  padding-bottom: 0.5rem;
+}
+
+/* ── Top nav (≥768, mounted from AppShell) ───────────────────────── */
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  flex-shrink: 0;
+  background: var(--color-header-bg);
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.top-nav__inner {
+  height: var(--top-nav-height);
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: 0 var(--page-gutter);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.top-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: var(--color-dark);
+  flex-shrink: 0;
+  min-height: var(--touch-target);
+}
+
+.top-nav__logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: contain;
+  display: block;
+}
+
+.top-nav__brand-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+}
+
+.top-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+}
+
+.top-nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+
+.top-nav__link:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.top-nav__link.is-active,
+.top-nav__link[aria-current="page"] {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.top-nav__link-badge {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.top-nav__cart {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.top-nav__cart:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.top-nav__cart:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.top-nav__cart-count {
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.35rem;
+  text-align: center;
+}
+
+.top-nav__cart-total {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
+}
+
+@media (max-width: 900px) {
+  .top-nav__brand-name {
+    display: none;
+  }
+  .top-nav__link {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.85rem;
+  }
+  .top-nav__cart-label {
+    display: none;
+  }
 }
 
 .active-order-capsule {
@@ -1334,13 +1498,21 @@ textarea.field-input {
   font-weight: 600;
 }
 
-/* Lift order capsule above the logo FAB when cart has items */
+/* Lift order capsule above the logo FAB when cart has items (phone) */
 .app-shell--with-cart .active-order-capsule {
   bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 8px);
 }
 
 .app-shell:not(.app-shell--with-cart) .active-order-capsule {
   bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 8px);
+}
+
+.app-shell--desktop .active-order-capsule {
+  bottom: 1.25rem;
+  max-width: min(420px, calc(100% - 2 * var(--page-gutter)));
+  left: auto;
+  right: var(--page-gutter);
+  transform: none;
 }
 
 .active-order-capsule__text {
@@ -1870,31 +2042,31 @@ textarea.field-input {
   .cat-rail__item { font-size: 0; gap: 0; }
 }
 
-/* Widen the app column on larger screens — mobile stays 640px max. */
+/* Tablet/desktop shell — full content width up to --layout-max (TopNav chrome). */
 @media (min-width: 768px) {
   :root {
-    --shell-max: 860px;
+    --shell-max: var(--layout-max);
   }
 
   body {
     background: var(--color-surface-alt);
   }
 
-  .app-shell {
-    box-shadow: 0 0 0 1px var(--color-border);
+  .app-shell--desktop {
     background: var(--color-bg);
+    box-shadow: 0 0 0 1px var(--color-border);
   }
-}
 
-@media (min-width: 1024px) {
-  :root {
-    --shell-max: 1100px;
+  /* Phone FAB / bottom nav are not mounted ≥768; keep CSS hide as safety net */
+  .bottom-nav,
+  .float-cart-fab {
+    display: none !important;
   }
-}
 
-@media (min-width: 1280px) {
-  :root {
-    --shell-max: 1200px;
+  /* Cart/item sheets stay phone-width — don't stretch to --layout-max */
+  .sheet-panel {
+    max-width: min(480px, 100%);
+    margin-inline: auto;
   }
 }
 

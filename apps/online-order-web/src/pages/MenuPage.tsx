@@ -754,6 +754,7 @@ export function MenuPage() {
 
         {/* ── Desktop cart sidebar ───────────────────────────────── */}
         <aside
+          id="menu-cart-sidebar"
           className="cart-sidebar"
           style={{ width: '280px', flexShrink: 0, position: 'sticky', top: 'var(--menu-header-height)', alignSelf: 'flex-start', maxHeight: 'calc(100vh - var(--menu-header-height) - 20px)', overflowY: 'auto', padding: '1rem 0' }}
         >
