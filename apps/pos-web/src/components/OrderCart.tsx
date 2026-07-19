@@ -354,7 +354,7 @@ export function OrderCart(p: Props) {
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: C.muted }}>
               {p.cartItems.length === 0
-                ? "Cart empty — tap menu to add"
+                ? "Cart empty"
                 : `${itemCount} item${itemCount === 1 ? "" : "s"}`}
             </span>
             <span style={{
