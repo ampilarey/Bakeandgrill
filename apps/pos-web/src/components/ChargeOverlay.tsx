@@ -18,6 +18,7 @@ type Props = {
   tax?: number;
   serviceCharge?: number;
   serviceChargeLabel?: string;
+  packagingFee?: number;
   /** Optional delivery fee line (POS phone-in delivery). */
   deliveryFee?: number;
   /** Show Credit Account tender when customer is approved for credit. */
@@ -71,6 +72,7 @@ export function ChargeOverlay({
   tax,
   serviceCharge,
   serviceChargeLabel,
+  packagingFee,
   deliveryFee,
   creditEligible = false,
   creditAvailableMvr = 0,
@@ -100,6 +102,7 @@ export function ChargeOverlay({
       || (tax ?? 0) > 0
       || (discount ?? 0) > 0
       || (serviceCharge ?? 0) > 0
+      || (packagingFee ?? 0) > 0
       || (deliveryFee ?? 0) > 0
     ));
   const [method, setMethod] = useState<ChargeMethod>("cash");
@@ -330,6 +333,9 @@ export function ChargeOverlay({
                 )}
                 {(serviceCharge ?? 0) > 0 && (
                   <Line label={serviceChargeLabel ?? "Service charge"} value={serviceCharge ?? 0} />
+                )}
+                {(packagingFee ?? 0) > 0 && (
+                  <Line label="Packaging" value={packagingFee ?? 0} />
                 )}
                 {(deliveryFee ?? 0) > 0 && (
                   <Line label="Delivery fee" value={deliveryFee ?? 0} />

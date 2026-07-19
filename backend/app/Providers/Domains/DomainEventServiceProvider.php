@@ -45,6 +45,8 @@ use App\Domains\Reservations\Events\ReservationCreated;
 use App\Domains\Reservations\Listeners\SendReservationConfirmationListener;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Domains\Shifts\Events\ShiftOpened;
+use App\Domains\Catering\Events\CateringRequestSubmitted;
+use App\Domains\Catering\Listeners\SendCateringRequestStaffSmsListener;
 use App\Domains\Sms\Listeners\SendNewCustomerNotificationListener;
 use App\Domains\Sms\Listeners\SendStaffOrderNotificationListener;
 use App\Domains\Webhooks\Listeners\DispatchWebhookOnDomainEvent;
@@ -137,6 +139,10 @@ class DomainEventServiceProvider extends EventServiceProvider
         CustomerCreated::class => [
             DispatchWebhookOnDomainEvent::class,
             SendNewCustomerNotificationListener::class,
+        ],
+
+        CateringRequestSubmitted::class => [
+            SendCateringRequestStaffSmsListener::class,
         ],
 
         // Fires on every status change — real-time SSE, push notifications, customer SMS

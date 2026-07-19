@@ -50,6 +50,7 @@ export function buildLocalReceiptHtml(order: OfflineOrderRecord): string {
 <div class="muted">${escapeHtml(new Date(order.created_at_local).toLocaleString())}</div>
 <div class="muted">Payment: ${escapeHtml(order.payment.method)} · MVR ${order.payment.amount.toFixed(2)}</div>
 <table><thead><tr><th>Item</th><th style="text-align:right">MVR</th></tr></thead><tbody>${lines}</tbody></table>
+${(order.totals.packaging ?? 0) > 0 ? `<div class="muted" style="display:flex;justify-content:space-between;margin-top:8px"><span>Packaging</span><span>MVR ${Number(order.totals.packaging).toFixed(2)}</span></div>` : ""}
 <div class="total"><span>Total</span><span>MVR ${order.totals.total.toFixed(2)}</span></div>
 </div>
 <div class="footer"><strong>${BRAND.name}</strong>Thank you for your order</div>

@@ -18,7 +18,7 @@ export type OfflineOrderRecord = {
     modifiers?: Array<{ modifier_id: number; name?: string; price?: number }>;
     notes?: string;
   }>;
-  totals: { subtotal: number; tax: number; total: number };
+  totals: { subtotal: number; tax: number; total: number; packaging?: number };
   payment: {
     method: "cash" | "card" | "qr" | "bank_transfer";
     amount: number;

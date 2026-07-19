@@ -19,7 +19,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class KitchenMenuResolver
 {
-    public const CHANNELS = ['dine_in', 'takeaway', 'online_pickup', 'delivery'];
+    public const CHANNELS = ['dine_in', 'takeaway', 'online_pickup', 'delivery', 'catering'];
+
+    /** Channels that can create sellable orders (never includes catering). */
+    public const ORDERING_CHANNELS = ['dine_in', 'takeaway', 'online_pickup', 'delivery'];
 
     public function __construct(
         private readonly DeliveryGateService $deliveryGate,
@@ -27,12 +30,14 @@ final class KitchenMenuResolver
 
     public function channelForOrderType(string $orderType): string
     {
+        // Catering is availability-only — never map an order type to it.
         return match ($orderType) {
             'dine_in' => 'dine_in',
             'takeaway' => 'takeaway',
             'online_pickup' => 'online_pickup',
             'delivery' => 'delivery',
             'preorder' => 'online_pickup',
+            'catering' => 'online_pickup',
             default => 'online_pickup',
         };
     }
@@ -70,6 +75,10 @@ final class KitchenMenuResolver
         $at ??= now();
 
         if (!$item->is_active || !$item->is_available) {
+            return false;
+        }
+
+        if ($item->isSnoozed($at)) {
             return false;
         }
 

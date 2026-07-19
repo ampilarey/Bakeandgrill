@@ -6,6 +6,8 @@ import type { useOps } from "../hooks/useOps";
 vi.mock("../api", () => ({
   fetchPreparedStock: vi.fn().mockResolvedValue({ items: [] }),
   adjustPreparedStock: vi.fn(),
+  fetchPosMenu: vi.fn().mockResolvedValue({ categories: [], items: [] }),
+  snoozeItem: vi.fn(),
 }));
 
 type OpsState = ReturnType<typeof useOps>;
@@ -83,6 +85,7 @@ describe("OpsPanel", () => {
 
     expect(screen.getByRole("button", { name: /Inventory/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Menu stock/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /86 today/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Refunds/i })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Suppliers/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Reports/i })).toBeNull();

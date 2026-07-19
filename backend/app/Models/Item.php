@@ -27,12 +27,14 @@ class Item extends Model
         'barcode',
         'image_url',
         'base_price',
+        'packaging_fee',
         'has_variants',
         'cost',
         'tax_rate',
         'tax_code',
         'is_active',
         'is_available',
+        'snoozed_until',
         'sort_order',
         'stock_quantity',
         'low_stock_threshold',
@@ -122,10 +124,12 @@ class Item extends Model
         'menu_group_id' => 'integer',
         'is_active' => 'boolean',
         'is_available' => 'boolean',
+        'snoozed_until' => 'datetime',
         'has_variants' => 'boolean',
         'track_stock' => 'boolean',
         'allow_pre_order' => 'boolean',
         'base_price' => 'decimal:2',
+        'packaging_fee' => 'decimal:2',
         'cost' => 'decimal:2',
         'tax_rate' => 'decimal:2',
         'stock_quantity' => 'integer',
@@ -171,6 +175,18 @@ class Item extends Model
         return (float) $this->base_price;
     }
 
+    /** True while an "86 today" snooze is active. */
+    public function isSnoozed(?\DateTimeInterface $at = null): bool
+    {
+        if ($this->snoozed_until === null) {
+            return false;
+        }
+
+        $at ??= now();
+
+        return $this->snoozed_until->gt($at);
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Item $item): void {
@@ -187,7 +203,7 @@ class Item extends Model
                         'channel' => $channel,
                     ],
                     [
-                        'is_enabled' => true,
+                        'is_enabled' => $channel !== 'catering',
                         'valid_from' => null,
                         'valid_until' => null,
                     ],

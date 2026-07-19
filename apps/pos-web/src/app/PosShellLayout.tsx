@@ -316,6 +316,7 @@ export function PosShellLayout() {
               cartTax={cart.cartTax}
               cartServiceCharge={cart.cartServiceCharge}
               serviceChargeLabel={cart.serviceChargeLabel}
+              cartPackagingFee={cart.cartPackagingFee}
               cartTotal={cart.cartTotal}
               chargeTotal={chargeTotal}
               taxableSubtotal={Math.max(
@@ -538,6 +539,7 @@ export function PosShellLayout() {
               shiftOpen,
             }}
             onRequestItem={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
+            onMenuRefresh={() => void refreshAll()}
           />
         )}
 
@@ -644,6 +646,7 @@ export function PosShellLayout() {
           tax={cart.cartTax}
           serviceCharge={cart.cartServiceCharge}
           serviceChargeLabel={cart.serviceChargeLabel}
+          packagingFee={cart.cartPackagingFee}
           deliveryFee={
             orderType === "Delivery" && order.resumedOrderId === null
               ? deliveryFeeEst

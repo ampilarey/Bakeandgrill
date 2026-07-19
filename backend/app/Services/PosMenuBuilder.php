@@ -26,7 +26,7 @@ class PosMenuBuilder
      */
     public function build(string $channel): array
     {
-        if (!in_array($channel, KitchenMenuResolver::CHANNELS, true)) {
+        if (!in_array($channel, KitchenMenuResolver::ORDERING_CHANNELS, true)) {
             $channel = 'dine_in';
         }
 
@@ -135,8 +135,10 @@ class PosMenuBuilder
                 'sku' => $item->sku,
                 'image_url' => $item->display_image_url,
                 'base_price' => $item->base_price,
+                'packaging_fee' => (float) ($item->packaging_fee ?? 0),
                 'tax_rate' => $item->tax_rate,
                 'is_available' => $item->is_available,
+                'snoozed_until' => $item->snoozed_until?->toIso8601String(),
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
                 'category_id' => $item->category_id,
@@ -206,6 +208,15 @@ class PosMenuBuilder
                 'available' => false,
                 'reason_code' => 'item_unavailable',
                 'reason_message' => 'This item is currently unavailable.',
+                'available_stock' => null,
+            ];
+        }
+
+        if ($item->isSnoozed($at)) {
+            return [
+                'available' => false,
+                'reason_code' => 'snoozed',
+                'reason_message' => 'Unavailable today',
                 'available_stock' => null,
             ];
         }

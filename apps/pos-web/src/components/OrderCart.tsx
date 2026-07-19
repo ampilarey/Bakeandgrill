@@ -50,6 +50,7 @@ type Props = {
   cartTax: number;
   cartServiceCharge?: number;
   serviceChargeLabel?: string;
+  cartPackagingFee?: number;
   cartTotal: number;
   /** Amount due at Charge (includes delivery fee when applicable). */
   chargeTotal: number;
@@ -825,7 +826,7 @@ export function OrderCart(p: Props) {
             common case is GST/TGST on every item, so 99% of tickets land
             here). Without it the Charge button shows only the subtotal
             and the cashier under-collects from the customer. */}
-        {p.cartItems.length > 0 && (p.discountValue > 0 || p.cartTax > 0 || p.rewardsDiscount > 0 || (p.cartServiceCharge ?? 0) > 0) && (
+        {p.cartItems.length > 0 && (p.discountValue > 0 || p.cartTax > 0 || p.rewardsDiscount > 0 || (p.cartServiceCharge ?? 0) > 0 || (p.cartPackagingFee ?? 0) > 0) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
             <Row label="Subtotal" value={`MVR ${p.cartSubtotal.toFixed(2)}`} />
             {p.discountValue > 0 && (
@@ -856,6 +857,12 @@ export function OrderCart(p: Props) {
               <Row
                 label={p.serviceChargeLabel ?? "Service charge"}
                 value={`MVR ${(p.cartServiceCharge ?? 0).toFixed(2)}`}
+              />
+            )}
+            {(p.cartPackagingFee ?? 0) > 0 && (
+              <Row
+                label="Packaging"
+                value={`MVR ${(p.cartPackagingFee ?? 0).toFixed(2)}`}
               />
             )}
             {p.cartTax > 0 && (

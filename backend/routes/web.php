@@ -73,10 +73,12 @@ Route::redirect('/checkout', '/order/', 301);
 // Pre-Orders (Event Orders)
 use App\Http\Controllers\PreOrderController;
 
-// Pre-order now lives in the React app — redirect Blade route
-Route::redirect('/pre-order', '/order/pre-order', 301)->name('pre-order.create');
-// Keep POST fallback during transition
-Route::post('/pre-order', [PreOrderController::class, 'store'])->name('pre-order.store');
+// Catering & events (replaces public pre-order create flow)
+Route::redirect('/pre-order', '/order/catering', 301)->name('pre-order.create');
+Route::redirect('/order/pre-order', '/order/catering', 301);
+Route::post('/pre-order', function () {
+    return redirect('/order/catering', 301);
+})->name('pre-order.store');
 Route::get('/pre-order/{id}/confirmation', [PreOrderController::class, 'confirmation'])->name('pre-order.confirmation');
 
 // Receipt pages

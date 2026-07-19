@@ -63,6 +63,16 @@ export async function adjustPreparedStock(
   });
 }
 
+export async function snoozeItem(
+  itemId: number,
+  until: "end_of_day" | null,
+): Promise<{ message: string; item: { id: number; name: string; snoozed_until: string | null; is_snoozed: boolean } }> {
+  return request(`/items/${itemId}/snooze`, {
+    method: "PATCH",
+    body: JSON.stringify({ until }),
+  });
+}
+
 export async function fetchSuppliers(): Promise<{
   suppliers: { data: Array<{ id: number; name: string }> };
 }> {

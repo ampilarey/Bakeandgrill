@@ -44,6 +44,7 @@ export const PUBLIC_ENDPOINTS = {
   PICKUP_SLOTS:                '/ordering/pickup-slots',
   REVIEWS_FEATURED:            '/reviews/featured',
   CORPORATE_INQUIRIES:         '/corporate-inquiries',
+  CATERING_REQUESTS:           '/catering-requests',
   WAIT_TIME:                 '/wait-time',
 
   // Promo / referral validation that doesn't require auth

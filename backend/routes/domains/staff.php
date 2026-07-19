@@ -61,7 +61,7 @@ if (routes_domain_section_is('staff', 'protected') && !routes_domain_loaded('sta
     });
     Route::prefix('admin/settings/packaging-fee')->middleware('permission:settings.update')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'show']);
-        Route::patch('/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'update']);
+        Route::match(['put', 'patch'], '/', [App\Http\Controllers\Api\PackagingFeeSettingsController::class, 'update']);
     });
     Route::prefix('admin/gst/settings')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\GstSettingsController::class, 'show'])

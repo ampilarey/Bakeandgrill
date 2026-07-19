@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Orders\Services;
 
+use App\Models\Item;
 use App\Models\Order;
 use App\Models\SiteSetting;
 
@@ -13,9 +14,18 @@ class PackagingFeeCalculator
 
     public const MAX_FIXED_MVR = 500.0;
 
-    public function calculatePackaging(Order $order, int $discountedSubtotalLaar): int
+    /**
+     * Per-item packaging fee × quantity for non-dine-in orders.
+     * `$discountedSubtotalLaar` is unused (kept for call-site compatibility).
+     */
+    public function calculatePackaging(Order $order, int $discountedSubtotalLaar = 0): int
     {
-        return $this->previewPackagingForOrderType((string) ($order->type ?? ''), $discountedSubtotalLaar);
+        unset($discountedSubtotalLaar);
+
+        return $this->sumPackagingForOrderType(
+            (string) ($order->type ?? ''),
+            $this->linesFromOrder($order),
+        );
     }
 
     public function calculateSmallOrder(Order $order, int $discountedSubtotalLaar): int
@@ -23,40 +33,12 @@ class PackagingFeeCalculator
         return $this->previewSmallOrderForOrderType((string) ($order->type ?? ''), $discountedSubtotalLaar);
     }
 
-    public function previewPackagingForOrderType(string $orderType, int $discountedSubtotalLaar): int
+    /**
+     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null}>  $lines
+     */
+    public function previewPackagingForOrderType(string $orderType, array $lines = []): int
     {
-        if ($discountedSubtotalLaar <= 0) {
-            return 0;
-        }
-
-        if (!$this->boolSetting('packaging_fee_enabled', false)) {
-            return 0;
-        }
-
-        if (!$this->orderTypeEligible($orderType)) {
-            return 0;
-        }
-
-        $type = $this->stringSetting('packaging_fee_type', 'fixed');
-        if (!in_array($type, ['percent', 'fixed'], true)) {
-            return 0;
-        }
-
-        $value = (float) $this->stringSetting('packaging_fee_value', '0');
-        if ($value < 0) {
-            return 0;
-        }
-
-        if ($type === 'percent') {
-            $value = min($value, self::MAX_PERCENT);
-            $rateBp = (int) round($value * 100);
-
-            return max(0, (int) round($discountedSubtotalLaar * $rateBp / 10000));
-        }
-
-        $value = min($value, self::MAX_FIXED_MVR);
-
-        return max(0, (int) round($value * 100));
+        return $this->sumPackagingForOrderType($orderType, $lines);
     }
 
     public function previewSmallOrderForOrderType(string $orderType, int $discountedSubtotalLaar): int
@@ -87,6 +69,7 @@ class PackagingFeeCalculator
     }
 
     /**
+     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null}>  $lines
      * @return array{
      *   packaging_fee_laar: int,
      *   packaging_fee_label: string,
@@ -94,10 +77,10 @@ class PackagingFeeCalculator
      *   small_order_fee_label: string,
      * }
      */
-    public function previewCheckoutFees(string $orderType, int $discountedSubtotalLaar): array
+    public function previewCheckoutFees(string $orderType, int $discountedSubtotalLaar, array $lines = []): array
     {
         return [
-            'packaging_fee_laar' => $this->previewPackagingForOrderType($orderType, $discountedSubtotalLaar),
+            'packaging_fee_laar' => $this->previewPackagingForOrderType($orderType, $lines),
             'packaging_fee_label' => $this->stringSetting('packaging_fee_label', 'Packaging fee'),
             'small_order_fee_laar' => $this->previewSmallOrderForOrderType($orderType, $discountedSubtotalLaar),
             'small_order_fee_label' => 'Small order fee',
@@ -106,11 +89,7 @@ class PackagingFeeCalculator
 
     public function orderTypeEligible(string $orderType): bool
     {
-        return match ($orderType) {
-            'delivery' => $this->boolSetting('packaging_fee_apply_delivery', false),
-            'online_pickup' => $this->boolSetting('packaging_fee_apply_online_pickup', false),
-            default => false,
-        };
+        return in_array($orderType, ['takeaway', 'online_pickup', 'delivery'], true);
     }
 
     /**
@@ -119,12 +98,7 @@ class PackagingFeeCalculator
     public function currentSettings(): array
     {
         return [
-            'packaging_enabled' => $this->boolSetting('packaging_fee_enabled', false),
             'packaging_label' => $this->stringSetting('packaging_fee_label', 'Packaging fee'),
-            'packaging_type' => $this->stringSetting('packaging_fee_type', 'fixed'),
-            'packaging_value' => (float) $this->stringSetting('packaging_fee_value', '0'),
-            'packaging_apply_delivery' => $this->boolSetting('packaging_fee_apply_delivery', true),
-            'packaging_apply_online_pickup' => $this->boolSetting('packaging_fee_apply_online_pickup', true),
             'small_order_enabled' => $this->boolSetting('small_order_fee_enabled', false),
             'small_order_threshold_mvr' => (float) $this->stringSetting('small_order_fee_threshold_mvr', '50'),
             'small_order_amount_mvr' => (float) $this->stringSetting('small_order_fee_amount_mvr', '10'),
@@ -136,6 +110,100 @@ class PackagingFeeCalculator
     public function orderingMaxPer15Min(): int
     {
         return max(0, (int) $this->stringSetting('ordering_max_per_15min', '0'));
+    }
+
+    /**
+     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null}>  $lines
+     */
+    public function sumPackagingForOrderType(string $orderType, array $lines): int
+    {
+        if (!$this->orderTypeEligible($orderType) || $lines === []) {
+            return 0;
+        }
+
+        $feesByItemId = $this->resolvePackagingFeesMvr($lines);
+        $totalLaar = 0;
+
+        foreach ($lines as $line) {
+            $itemId = (int) ($line['item_id'] ?? 0);
+            if ($itemId <= 0) {
+                continue;
+            }
+
+            $qty = max(0, (int) round((float) ($line['quantity'] ?? 0)));
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $feeMvr = $feesByItemId[$itemId] ?? 0.0;
+            if ($feeMvr <= 0) {
+                continue;
+            }
+
+            $feeLaar = (int) round($feeMvr * 100);
+            $totalLaar += $feeLaar * $qty;
+        }
+
+        return max(0, $totalLaar);
+    }
+
+    /**
+     * @return list<array{item_id: int, quantity: float}>
+     */
+    private function linesFromOrder(Order $order): array
+    {
+        $order->loadMissing('items');
+
+        $lines = [];
+        foreach ($order->items as $orderItem) {
+            $itemId = (int) ($orderItem->item_id ?? 0);
+            if ($itemId <= 0) {
+                continue;
+            }
+            $lines[] = [
+                'item_id' => $itemId,
+                'quantity' => (float) ($orderItem->quantity ?? 0),
+            ];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @param  list<array{item_id?: int, packaging_fee?: float|int|string|null}>  $lines
+     * @return array<int, float> item_id => packaging_fee MVR
+     */
+    private function resolvePackagingFeesMvr(array $lines): array
+    {
+        $fees = [];
+        $missingIds = [];
+
+        foreach ($lines as $line) {
+            $itemId = (int) ($line['item_id'] ?? 0);
+            if ($itemId <= 0 || array_key_exists($itemId, $fees)) {
+                continue;
+            }
+
+            if (array_key_exists('packaging_fee', $line) && $line['packaging_fee'] !== null && $line['packaging_fee'] !== '') {
+                $fees[$itemId] = max(0.0, (float) $line['packaging_fee']);
+
+                continue;
+            }
+
+            $missingIds[] = $itemId;
+        }
+
+        if ($missingIds !== []) {
+            $fromDb = Item::query()
+                ->whereIn('id', array_values(array_unique($missingIds)))
+                ->pluck('packaging_fee', 'id');
+
+            foreach ($missingIds as $id) {
+                $fees[$id] = max(0.0, (float) ($fromDb[$id] ?? 0));
+            }
+        }
+
+        return $fees;
     }
 
     /**

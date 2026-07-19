@@ -49,7 +49,7 @@ Route::get('/ordering/delivery-status', [App\Http\Controllers\Api\DeliveryStatus
 Route::get('/ordering/delivery-fee-preview', [App\Http\Controllers\Api\DeliveryFeePreviewController::class, 'show'])
     ->middleware('throttle:120,1');
 
-Route::get('/ordering/checkout-fees-preview', [App\Http\Controllers\Api\CheckoutFeesPreviewController::class, 'show'])
+Route::match(['get', 'post'], '/ordering/checkout-fees-preview', [App\Http\Controllers\Api\CheckoutFeesPreviewController::class, 'show'])
     ->middleware('throttle:120,1');
 
 Route::get('/ordering/pickup-slots', [App\Http\Controllers\Api\PickupSlotController::class, 'index'])

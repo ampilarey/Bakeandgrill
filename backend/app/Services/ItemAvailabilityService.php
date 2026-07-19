@@ -50,6 +50,14 @@ class ItemAvailabilityService
             return AvailabilityResult::unavailable('item_unavailable', 'This item is currently unavailable.');
         }
 
+        if ($item->isSnoozed($at)) {
+            return AvailabilityResult::unavailable(
+                'snoozed',
+                'Unavailable today',
+                availableFrom: $item->snoozed_until?->toIso8601String(),
+            );
+        }
+
         // 2. Channel + menu-group check
         if (!$this->menuResolver->isItemVisibleForChannel($item, $channel, $at)) {
             return AvailabilityResult::unavailable(

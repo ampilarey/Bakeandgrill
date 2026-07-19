@@ -17,6 +17,7 @@ use App\Services\ItemAvailabilityService;
 use App\Services\RecipeCostCalculator;
 use App\Services\SpecialPricingService;
 use App\Services\VariantSyncService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -91,7 +92,10 @@ class ItemController extends Controller
 
         // Filter by availability (public only)
         if (!$isAdmin && $request->has('available_only')) {
-            $query->where('is_available', true);
+            $query->where('is_available', true)
+                ->where(function ($q) {
+                    $q->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', now());
+                });
         }
 
         $perPage = $isPosView
@@ -120,9 +124,11 @@ class ItemController extends Controller
                 'sku' => $item->sku,
                 'image_url' => $item->display_image_url,
                 'base_price' => $item->base_price,
+                'packaging_fee' => (float) ($item->packaging_fee ?? 0),
                 'tax_rate' => $item->tax_rate,
                 'tax_code' => $item->tax_code ?? 'standard_8',
                 'is_available' => $item->is_available,
+                'snoozed_until' => $item->snoozed_until?->toIso8601String(),
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
                 'category_id' => $item->category_id,
@@ -340,7 +346,8 @@ class ItemController extends Controller
             foreach (KitchenMenuResolver::CHANNELS as $channel) {
                 ItemChannelAvailability::query()->firstOrCreate(
                     ['item_id' => $item->id, 'channel' => $channel],
-                    ['is_enabled' => true],
+                    // Catering is opt-in; ordering channels default on.
+                    ['is_enabled' => $channel !== 'catering'],
                 );
             }
         }
@@ -388,6 +395,7 @@ class ItemController extends Controller
             'description' => $item->description,
             'image_url' => $item->display_image_url,
             'base_price' => $item->base_price,
+            'packaging_fee' => (float) ($item->packaging_fee ?? 0),
             'tax_rate' => $item->tax_rate,
             'tax_code' => $item->tax_code ?? 'standard_8',
             'is_available' => $item->is_available,
@@ -596,6 +604,39 @@ class ItemController extends Controller
         return response()->json([
             'message' => 'Item availability updated',
             'item' => $item,
+        ]);
+    }
+
+    /**
+     * PATCH /api/items/{id}/snooze
+     * Body: { until: 'end_of_day' | null } — null clears the 86 snooze.
+     */
+    public function snooze(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'until' => ['present', 'nullable', 'string', 'in:end_of_day'],
+        ]);
+
+        $item = Item::query()->findOrFail($id);
+
+        if ($validated['until'] === null) {
+            $item->update(['snoozed_until' => null]);
+        } else {
+            $item->update([
+                'snoozed_until' => now()->timezone(config('app.timezone'))->endOfDay(),
+            ]);
+        }
+
+        $item->refresh();
+
+        return response()->json([
+            'message' => $item->snoozed_until ? 'Item marked unavailable today.' : 'Item restored.',
+            'item' => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'snoozed_until' => $item->snoozed_until?->toIso8601String(),
+                'is_snoozed' => $item->isSnoozed(),
+            ],
         ]);
     }
 

@@ -258,10 +258,24 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
 
   const serviceChargeLabel = serviceChargeConfig?.label ?? "Service charge";
 
+  /** Packaging fee (MVR) — derived from cart lines; zero for dine-in. */
+  const cartPackagingFee = useMemo(() => {
+    if (backendOrderType === "dine_in") return 0;
+    let laar = 0;
+    for (const item of cartItems) {
+      const feeMvr = Number(item.packaging_fee ?? 0);
+      if (!(feeMvr > 0)) continue;
+      const qty = Math.max(0, Math.round(item.quantity));
+      if (qty <= 0) continue;
+      laar += Math.round(feeMvr * 100) * qty;
+    }
+    return laar / 100;
+  }, [cartItems, backendOrderType]);
+
   /** Grand total the customer actually owes (matches server `order.total`, excl. delivery). */
   const cartTotal = useMemo(
-    () => Math.round((discountedSubtotal + cartServiceCharge + cartTax) * 100) / 100,
-    [discountedSubtotal, cartServiceCharge, cartTax],
+    () => Math.round((discountedSubtotal + cartServiceCharge + cartTax + cartPackagingFee) * 100) / 100,
+    [discountedSubtotal, cartServiceCharge, cartTax, cartPackagingFee],
   );
 
   const handleSelectItem = useCallback((item: Item) => {
@@ -324,6 +338,8 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
         }));
         const parsedTaxRate =
           item.tax_rate != null ? parseFloat(String(item.tax_rate)) : 0;
+        const parsedPackaging =
+          item.packaging_fee != null ? parseFloat(String(item.packaging_fee)) : 0;
         return [
           ...curr,
           {
@@ -332,6 +348,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
             price: parsedPrice,
             quantity: 1,
             modifiers: parsedModifiers,
+            packaging_fee: Number.isFinite(parsedPackaging) ? Math.max(0, parsedPackaging) : 0,
             variant_id: chosenVariant?.id ?? null,
             variant_name: chosenVariant?.name ?? null,
             tax_rate: Number.isFinite(parsedTaxRate) ? parsedTaxRate : 0,
@@ -449,6 +466,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     cartTax,
     cartServiceCharge,
     serviceChargeLabel,
+    cartPackagingFee,
     cartTotal,
     totalDiscount,
     rewardsDiscount,

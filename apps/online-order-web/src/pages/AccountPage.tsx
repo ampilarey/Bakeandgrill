@@ -388,7 +388,7 @@ export function AccountPage() {
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
                   <p style={{ fontSize: 32, margin: '0 0 8px' }}>📦</p>
                   <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.po_empty')}</p>
-                  <Link to="/pre-order" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
+                  <Link to="/catering" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: 'var(--color-primary)', fontWeight: 700 }}>
                     {t('account.po_place')}
                   </Link>
                 </div>
@@ -1074,7 +1074,7 @@ export function AccountPage() {
 
         {/* Bookings */}
         <SectionCard title={t('account.bookings')}>
-          {hubLinkRow('📦', t('account.link_preorder'), '/pre-order')}
+          {hubLinkRow('📦', t('account.link_preorder'), '/catering')}
           {hubRow('🗓', t('account.link_reservations'), () => setPanel('reservations'), true)}
         </SectionCard>
 

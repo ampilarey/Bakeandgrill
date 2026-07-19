@@ -49,6 +49,7 @@ export type MenuItem = {
   sku?: string | null;
   image_url?: string | null;
   base_price: number;
+  packaging_fee?: number;
   cost?: number | null;
   recipe_cost?: number | null;
   effective_cost?: number | null;
@@ -88,6 +89,7 @@ export type MenuItemPayload = {
   sku?: string | null;
   image_url?: string | null;
   base_price: number;
+  packaging_fee?: number;
   has_variants?: boolean;
   variants?: MenuVariant[];
   tax_rate?: number | null;

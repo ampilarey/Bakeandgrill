@@ -46,6 +46,8 @@ export type MenuItem = {
   name_dv?: string | null;
   description?: string | null;
   base_price: number;
+  /** Per-unit packaging fee in MVR (charged on takeaway/pickup/delivery). */
+  packaging_fee?: number;
   has_variants?: boolean;
   variants?: Variant[];
   image_url?: string | null;
@@ -55,6 +57,8 @@ export type MenuItem = {
   stock_quantity?: number | null;
   is_active?: boolean;
   is_available?: boolean;
+  /** ISO datetime — item is 86'd / unavailable until this time. */
+  snoozed_until?: string | null;
   /** Wave C — optional public aliases from GET /api/items */
   available_now?: boolean;
   unavailable_reason?: string | null;
@@ -99,6 +103,8 @@ export type CartItem = {
   price: number;
   quantity: number;
   modifiers: Modifier[];
+  /** Snapshot of item packaging fee (MVR per unit) at add-to-cart time. */
+  packaging_fee?: number;
   image_url?: string | null;
   variant_id?: number | null;
   variant_name?: string | null;

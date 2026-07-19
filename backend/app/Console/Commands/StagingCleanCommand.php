@@ -73,7 +73,7 @@ class StagingCleanCommand extends Command
         'daily_special_sold_count_logs',
         'daily_special_sold_count_refund_logs',
         'item_pair_stats',
-        'corporate_inquiries',
+        'catering_requests',
         'driver_locations',
         'supplier_ratings',
         'supplier_price_history',

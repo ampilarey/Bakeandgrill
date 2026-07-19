@@ -316,6 +316,15 @@ export function MenuItemEditorModal({
               </div>
             )}
 
+            <div>
+              <Field label="Packaging fee (MVR)">
+                <Input value={form.packaging_fee} onChange={(v) => set('packaging_fee', v)} type="number" placeholder="0.00" />
+              </Field>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+                Charged per unit on takeaway, pickup &amp; delivery. 0 = no packaging charge.
+              </p>
+            </div>
+
             {!form.has_variants && (
               <div style={{ padding: '12px 14px', background: '#F8F6F3', borderRadius: 10, border: '1px solid #E8E0D8' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: form.is_combo ? 12 : 0 }}>

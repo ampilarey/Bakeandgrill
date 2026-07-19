@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { adjustPreparedStock, fetchPreparedStock, type PreparedStockRow } from "../api";
+import {
+  adjustPreparedStock,
+  fetchPosMenu,
+  fetchPreparedStock,
+  snoozeItem,
+  type PreparedStockRow,
+} from "../api";
+import type { Item } from "../types";
 import type { useOps } from "../hooks/useOps";
 
 type OpsState = ReturnType<typeof useOps>;
-type Tab = "inventory" | "prepared" | "refunds";
+type Tab = "inventory" | "prepared" | "availability" | "refunds";
 
 const C = {
   bg: "#F5F6F8",
@@ -33,8 +40,12 @@ type OpsPermissions = {
  * refunds (when a shift is open). Suppliers, reports, and SMS marketing
  * live in the Admin dashboard — a pointer in the left rail reminds staff.
  */
-export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onRequestItem?: () => void }) {
-  const { permissions, onRequestItem, ...ops } = props;
+export function OpsPanel(props: OpsState & {
+  permissions?: OpsPermissions;
+  onRequestItem?: () => void;
+  onMenuRefresh?: () => void;
+}) {
+  const { permissions, onRequestItem, onMenuRefresh, ...ops } = props;
   const [tab, setTab] = useState<Tab>("inventory");
 
   const lowStockCount = useMemo(
@@ -49,6 +60,7 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onReq
   const tabs: Array<{ id: Tab; label: string; icon: string; badge?: string }> = [
     ...(showInv ? [{ id: "inventory" as Tab, label: "Inventory", icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined }] : []),
     ...(showPrepared ? [{ id: "prepared" as Tab, label: "Menu stock", icon: "🥐" }] : []),
+    ...(showPrepared ? [{ id: "availability" as Tab, label: "86 today", icon: "🚫" }] : []),
     ...(showRefunds ? [{ id: "refunds" as Tab, label: "Refunds", icon: "↩️" }] : []),
   ];
 
@@ -118,9 +130,119 @@ export function OpsPanel(props: OpsState & { permissions?: OpsPermissions; onReq
       }}>
         {activeTab === "inventory"  && <InventoryTab ops={ops} onRequestItem={onRequestItem} />}
         {activeTab === "prepared"   && <PreparedStockTab setOpsMessage={ops.setOpsMessage} />}
+        {activeTab === "availability" && (
+          <AvailabilityTab setOpsMessage={ops.setOpsMessage} onMenuRefresh={onMenuRefresh} />
+        )}
         {activeTab === "refunds"    && <RefundsTab ops={ops} />}
       </div>
     </div>
+  );
+}
+
+function AvailabilityTab({
+  setOpsMessage,
+  onMenuRefresh,
+}: {
+  setOpsMessage: (msg: string) => void;
+  onMenuRefresh?: () => void;
+}) {
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    fetchPosMenu("dine_in")
+      .then((res) => setItems(res.items ?? []))
+      .catch(() => setOpsMessage("Unable to load menu items."))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((i) => i.name.toLowerCase().includes(q));
+  }, [items, search]);
+
+  const toggle = async (item: Item) => {
+    const snoozed = item.snoozed_until != null && new Date(item.snoozed_until).getTime() > Date.now();
+    setBusyId(item.id);
+    try {
+      const res = await snoozeItem(item.id, snoozed ? null : "end_of_day");
+      setItems((prev) => prev.map((row) => (
+        row.id === item.id
+          ? { ...row, snoozed_until: res.item.snoozed_until }
+          : row
+      )));
+      setOpsMessage(res.message);
+      onMenuRefresh?.();
+    } catch (e) {
+      setOpsMessage((e as Error).message || "Unable to update availability.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <>
+      <Header
+        title="86 today"
+        subtitle="Mark items unavailable until end of day. They return automatically tomorrow."
+      />
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search menu…"
+        style={{
+          minHeight: 44, borderRadius: 10, border: `1px solid ${C.border}`,
+          padding: "0 12px", fontSize: 14, width: "100%", maxWidth: 360,
+        }}
+      />
+      {loading ? (
+        <p style={{ color: C.muted, fontSize: 13 }}>Loading…</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {filtered.map((item) => {
+            const snoozed = item.snoozed_until != null && new Date(item.snoozed_until).getTime() > Date.now();
+            return (
+              <div
+                key={item.id}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                  padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.border}`,
+                  background: snoozed ? "#FEF2F2" : C.panel,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{item.name}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                    {snoozed ? "Unavailable today" : "Available"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={busyId === item.id}
+                  onClick={() => void toggle(item)}
+                  style={{
+                    minHeight: 40, padding: "0 14px", borderRadius: 8, border: "none",
+                    background: snoozed ? C.success : C.danger, color: "#fff",
+                    fontWeight: 700, fontSize: 12, cursor: "pointer",
+                  }}
+                >
+                  {busyId === item.id ? "…" : snoozed ? "Restore" : "86 today"}
+                </button>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <p style={{ color: C.muted, fontSize: 13 }}>No items match.</p>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 

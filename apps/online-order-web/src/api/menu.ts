@@ -106,14 +106,18 @@ export type CheckoutFeesPreview = {
 };
 
 export async function fetchCheckoutFeesPreview(
-  orderType: 'delivery' | 'online_pickup',
+  orderType: 'delivery' | 'online_pickup' | 'takeaway',
   discountedSubtotalLaar: number,
+  lines: Array<{ item_id: number; quantity: number }> = [],
 ): Promise<CheckoutFeesPreview> {
-  const qs = new URLSearchParams({
-    order_type: orderType,
-    discounted_subtotal_laar: String(Math.max(0, discountedSubtotalLaar)),
+  return request<CheckoutFeesPreview>(ENDPOINTS.ORDERING_CHECKOUT_FEES_PREVIEW, {
+    method: 'POST',
+    body: JSON.stringify({
+      order_type: orderType,
+      discounted_subtotal_laar: Math.max(0, discountedSubtotalLaar),
+      lines,
+    }),
   });
-  return request<CheckoutFeesPreview>(`${ENDPOINTS.ORDERING_CHECKOUT_FEES_PREVIEW}?${qs}`);
 }
 
 export async function fetchCategories(): Promise<{ data: Category[] }> {
@@ -134,6 +138,7 @@ async function fetchItemsForChannel(ch: SalesChannel): Promise<MenuItem[]> {
   return (res.data ?? []).map((item) => ({
     ...item,
     base_price: Number(item.base_price),
+    packaging_fee: Number(item.packaging_fee ?? 0),
     modifiers: item.modifiers?.map((m) => ({ ...m, price: Number(m.price) })),
     variants: item.variants?.map((v) => ({
       ...v,

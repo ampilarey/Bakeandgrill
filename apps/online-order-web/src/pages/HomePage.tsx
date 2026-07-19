@@ -7,7 +7,6 @@ import {
   fetchCustomerOrders,
   getReorderPayload,
   fetchFeaturedReviews,
-  submitCorporateInquiry,
   API_ORIGIN,
   type FeaturedReview,
 } from '../api';
@@ -33,17 +32,6 @@ import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
 import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
 
-const corpInputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.75rem 1rem',
-  border: '1.5px solid var(--color-border)',
-  borderRadius: '10px',
-  fontSize: '0.9rem',
-  fontFamily: 'inherit',
-  background: 'var(--color-surface)',
-  boxSizing: 'border-box',
-};
-
 export function HomePage() {
   const navigate = useNavigate();
   const { addItem, clearCart } = useCart();
@@ -62,19 +50,6 @@ export function HomePage() {
   const [reorderingId, setReorderingId] = useState<number | null>(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
   const [chipsLoading, setChipsLoading] = useState(true);
-  const [corpForm, setCorpForm] = useState({
-    contact_name: '',
-    phone: '',
-    company: '',
-    headcount: '',
-    notes: '',
-  });
-  const [corpSubmitting, setCorpSubmitting] = useState(false);
-  const [corpMessage, setCorpMessage] = useState<{
-    type: 'ok' | 'err';
-    text: string;
-  } | null>(null);
-
   const {
     settings: s,
     heroSlides,
@@ -98,10 +73,6 @@ export function HomePage() {
     s.office_orders_headline || t('home.corp_headline_default');
   const officeSubtext =
     s.office_orders_subtext || t('home.corp_sub_default');
-  const officeMinGuests = Math.max(
-    1,
-    parseInt(s.office_orders_min_guests ?? '10', 10) || 10,
-  );
   const logoSrc = s.logo || '/logo.png';
   const siteName = s.site_name || 'Bake & Grill';
 
@@ -377,161 +348,24 @@ export function HomePage() {
               </p>
             </div>
 
-            {corpMessage?.type === 'ok' ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '1.5rem',
-                  background: 'var(--color-success-bg)',
-                  borderRadius: 'var(--radius-xl)',
-                  border: '1px solid rgba(16,185,129,0.25)',
-                }}
-              >
-                <p
-                  style={{
-                    fontWeight: 700,
-                    color: 'var(--color-success)',
-                    margin: '0 0 0.35rem',
-                  }}
-                >
-                  {t('home.corporate_thanks')}
-                </p>
-                <p
-                  style={{
-                    fontSize: '0.85rem',
-                    color: 'var(--color-text-muted)',
-                    margin: 0,
-                  }}
-                >
-                  {corpMessage.text}
-                </p>
-              </div>
-            ) : (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setCorpMessage(null);
-                  if (!corpForm.contact_name.trim() || !corpForm.phone.trim()) {
-                    setCorpMessage({
-                      type: 'err',
-                      text: t('home.corp_name_required'),
-                    });
-                    return;
-                  }
-                  const headcount = corpForm.headcount
-                    ? parseInt(corpForm.headcount, 10)
-                    : undefined;
-                  if (headcount != null && headcount < officeMinGuests) {
-                    setCorpMessage({
-                      type: 'err',
-                      text: t('home.corp_min_guests').replace('{n}', String(officeMinGuests)),
-                    });
-                    return;
-                  }
-                  setCorpSubmitting(true);
-                  try {
-                    const res = await submitCorporateInquiry({
-                      contact_name: corpForm.contact_name.trim(),
-                      phone: corpForm.phone.trim(),
-                      company: corpForm.company.trim() || undefined,
-                      headcount,
-                      notes: corpForm.notes.trim() || undefined,
-                    });
-                    setCorpMessage({ type: 'ok', text: res.message });
-                    setCorpForm({
-                      contact_name: '',
-                      phone: '',
-                      company: '',
-                      headcount: '',
-                      notes: '',
-                    });
-                  } catch (err) {
-                    setCorpMessage({
-                      type: 'err',
-                      text: (err as Error).message,
-                    });
-                  } finally {
-                    setCorpSubmitting(false);
-                  }
-                }}
-                style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
-              >
-                {corpMessage?.type === 'err' && (
-                  <p
-                    style={{
-                      color: 'var(--color-error)',
-                      fontSize: '0.85rem',
-                      margin: 0,
-                    }}
-                  >
-                    {corpMessage.text}
-                  </p>
-                )}
-                <input
-                  required
-                  placeholder={t('home.corp_ph_name')}
-                  value={corpForm.contact_name}
-                  onChange={(e) =>
-                    setCorpForm((f) => ({ ...f, contact_name: e.target.value }))
-                  }
-                  style={corpInputStyle}
-                />
-                <input
-                  required
-                  placeholder={t('home.corp_ph_phone')}
-                  value={corpForm.phone}
-                  onChange={(e) =>
-                    setCorpForm((f) => ({ ...f, phone: e.target.value }))
-                  }
-                  style={corpInputStyle}
-                />
-                <input
-                  placeholder={t('home.corp_ph_company')}
-                  value={corpForm.company}
-                  onChange={(e) =>
-                    setCorpForm((f) => ({ ...f, company: e.target.value }))
-                  }
-                  style={corpInputStyle}
-                />
-                <input
-                  type="number"
-                  min={officeMinGuests}
-                  placeholder={t('home.corp_ph_headcount').replace('{n}', String(officeMinGuests))}
-                  value={corpForm.headcount}
-                  onChange={(e) =>
-                    setCorpForm((f) => ({ ...f, headcount: e.target.value }))
-                  }
-                  style={corpInputStyle}
-                />
-                <textarea
-                  placeholder={t('home.corp_ph_notes')}
-                  value={corpForm.notes}
-                  onChange={(e) =>
-                    setCorpForm((f) => ({ ...f, notes: e.target.value }))
-                  }
-                  rows={3}
-                  style={{ ...corpInputStyle, resize: 'vertical' }}
-                />
-                <button
-                  type="submit"
-                  disabled={corpSubmitting}
-                  style={{
-                    padding: '0.875rem',
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontWeight: 700,
-                    fontSize: '0.95rem',
-                    cursor: corpSubmitting ? 'wait' : 'pointer',
-                    fontFamily: 'inherit',
-                    opacity: corpSubmitting ? 0.7 : 1,
-                  }}
-                >
-                  {corpSubmitting ? t('home.corp_sending') : t('home.corp_submit')}
-                </button>
-              </form>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate('/catering')}
+              style={{
+                width: '100%',
+                padding: '0.875rem',
+                background: 'var(--color-primary)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Request catering quote
+            </button>
           </div>
         </section>
       )}

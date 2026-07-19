@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Marketing;
 
-use App\Models\CorporateInquiry;
+use App\Models\CateringRequest;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Order;
@@ -39,7 +39,7 @@ class Wave11GrowthTest extends TestCase
             ->assertJsonPath('reviews.0.comment', 'Best hedhikaa in Malé!');
     }
 
-    public function test_corporate_inquiry_store(): void
+    public function test_corporate_inquiry_store_legacy_alias(): void
     {
         $this->postJson('/api/corporate-inquiries', [
             'contact_name' => 'Aisha',
@@ -51,19 +51,21 @@ class Wave11GrowthTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('inquiry.id', 1);
 
-        $this->assertDatabaseHas('corporate_inquiries', [
+        $this->assertDatabaseHas('catering_requests', [
             'contact_name' => 'Aisha',
             'company' => 'Island Tech',
             'headcount' => 25,
+            'occasion' => 'office_breakfast',
         ]);
     }
 
     public function test_admin_can_list_corporate_inquiries(): void
     {
         $owner = $this->makeOwner();
-        CorporateInquiry::create([
+        CateringRequest::create([
             'contact_name' => 'Test Lead',
             'phone' => '7999999',
+            'occasion' => 'other',
             'status' => 'new',
         ]);
 

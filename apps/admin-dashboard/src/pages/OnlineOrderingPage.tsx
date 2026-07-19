@@ -750,39 +750,19 @@ export default function OnlineOrderingPage() {
       {section === 'fees' && (<>
       {feeSettings && (
         <div style={S.card}>
-          <p style={S.sectionTitle}>Packaging & order limits</p>
+          <p style={S.sectionTitle}>Order fees & limits</p>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9C8E7E' }}>
+            Packaging is set per menu item. This page only controls the receipt label, small-order fee, and order caps.
+          </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <input type="checkbox" checked={feeSettings.packaging_enabled} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_enabled: e.target.checked })} />
-              Packaging fee enabled
-            </label>
             <div>
               <label style={S.label}>Packaging label</label>
               <input style={S.input} value={feeSettings.packaging_label} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_label: e.target.value })} />
             </div>
             <div>
-              <label style={S.label}>Type</label>
-              <select style={S.input} value={feeSettings.packaging_type} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_type: e.target.value as 'percent' | 'fixed' })}>
-                <option value="fixed">Fixed MVR</option>
-                <option value="percent">Percent</option>
-              </select>
-            </div>
-            <div>
-              <label style={S.label}>Value</label>
-              <input style={S.input} type="number" min={0} step={0.01} value={feeSettings.packaging_value} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_value: parseFloat(e.target.value) || 0 })} />
-            </div>
-            <div>
               <label style={S.label}>Max orders / 15 min (0 = unlimited)</label>
               <input style={S.input} type="number" min={0} max={500} value={feeSettings.ordering_max_per_15min} onChange={(e) => setFeeSettings({ ...feeSettings, ordering_max_per_15min: parseInt(e.target.value, 10) || 0 })} />
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <input type="checkbox" checked={feeSettings.packaging_apply_delivery} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_apply_delivery: e.target.checked })} />
-              Packaging on delivery
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <input type="checkbox" checked={feeSettings.packaging_apply_online_pickup} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_apply_online_pickup: e.target.checked })} />
-              Packaging on online pickup
-            </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
               <input type="checkbox" checked={feeSettings.small_order_enabled} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_enabled: e.target.checked })} />
               Small-order fee below threshold

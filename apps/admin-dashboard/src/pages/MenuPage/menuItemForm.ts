@@ -5,6 +5,7 @@ export const SALES_CHANNELS = [
   { id: 'takeaway', label: 'Takeaway (POS)' },
   { id: 'online_pickup', label: 'Online pickup' },
   { id: 'delivery', label: 'Delivery' },
+  { id: 'catering', label: 'Catering (inquiry only)' },
 ] as const;
 
 export type VariantRow = MenuVariant & { _key: string };
@@ -13,7 +14,7 @@ export type ComboRow = { item_id: string; item_name?: string; quantity: string; 
 
 export type ItemForm = {
   name: string; name_dv: string; description: string; sku: string;
-  image_url: string; base_price: string; tax_code: string;
+  image_url: string; base_price: string; packaging_fee: string; tax_code: string;
   sort_order: string; is_active: boolean; is_available: boolean;
   category_id: string;
   menu_group_id: string;
@@ -36,7 +37,7 @@ export function emptyVariantRow(): VariantRow {
 
 function channelsFromItem(item: MenuItem): Record<string, boolean> {
   const base: Record<string, boolean> = {
-    dine_in: true, takeaway: true, online_pickup: true, delivery: true,
+    dine_in: true, takeaway: true, online_pickup: true, delivery: true, catering: false,
   };
   if (!item.channel_availabilities?.length) return base;
   for (const r of item.channel_availabilities) {
@@ -53,6 +54,7 @@ export function itemToForm(item: MenuItem): ItemForm {
     sku: item.sku ?? '',
     image_url: item.image_url ?? '',
     base_price: String(item.base_price),
+    packaging_fee: item.packaging_fee != null ? String(item.packaging_fee) : '0',
     tax_code: item.tax_code ?? (item.tax_rate && Number(item.tax_rate) > 0 ? 'standard_8' : 'out_of_scope'),
     sort_order: item.sort_order != null ? String(item.sort_order) : '',
     is_active: item.is_active,
@@ -86,6 +88,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     sku: form.sku.trim() || null,
     image_url: form.image_url.trim() || null,
     base_price: parseFloat(form.base_price) || 0,
+    packaging_fee: Math.max(0, parseFloat(form.packaging_fee) || 0),
     has_variants: form.has_variants,
     tax_code: form.tax_code,
     sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
@@ -134,11 +137,11 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
 export function emptyItemForm(selectedCat: number | null): ItemForm {
   return {
     name: '', name_dv: '', description: '', sku: '', image_url: '',
-    base_price: '', tax_code: 'standard_8', sort_order: '',
+    base_price: '', packaging_fee: '0', tax_code: 'standard_8', sort_order: '',
     is_active: true, is_available: true,
     category_id: selectedCat != null ? String(selectedCat) : '',
     menu_group_id: '1',
-    channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true },
+    channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true, catering: false },
     has_variants: false, variants: [],
     is_combo: false, combo_discount_pct: '', combo_items: [],
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',

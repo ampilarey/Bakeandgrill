@@ -27,23 +27,8 @@ class PackagingFeeSettingsController extends Controller
     {
         $data = $request->validated();
 
-        if (array_key_exists('packaging_enabled', $data)) {
-            SiteSetting::set('packaging_fee_enabled', $data['packaging_enabled'] ? '1' : '0');
-        }
         if (array_key_exists('packaging_label', $data)) {
             SiteSetting::set('packaging_fee_label', trim((string) ($data['packaging_label'] ?? 'Packaging fee')));
-        }
-        if (array_key_exists('packaging_type', $data)) {
-            SiteSetting::set('packaging_fee_type', $data['packaging_type']);
-        }
-        if (array_key_exists('packaging_value', $data)) {
-            SiteSetting::set('packaging_fee_value', (string) $data['packaging_value']);
-        }
-        if (array_key_exists('packaging_apply_delivery', $data)) {
-            SiteSetting::set('packaging_fee_apply_delivery', $data['packaging_apply_delivery'] ? '1' : '0');
-        }
-        if (array_key_exists('packaging_apply_online_pickup', $data)) {
-            SiteSetting::set('packaging_fee_apply_online_pickup', $data['packaging_apply_online_pickup'] ? '1' : '0');
         }
         if (array_key_exists('small_order_enabled', $data)) {
             SiteSetting::set('small_order_fee_enabled', $data['small_order_enabled'] ? '1' : '0');
@@ -65,7 +50,7 @@ class PackagingFeeSettingsController extends Controller
         SiteSetting::bust();
 
         return response()->json([
-            'message' => 'Packaging fee settings saved.',
+            'message' => 'Fee settings saved.',
             'settings' => $this->calculator->currentSettings(),
         ]);
     }

@@ -10,22 +10,29 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * GET /api/ordering/checkout-fees-preview
+ * GET|POST /api/ordering/checkout-fees-preview
  *
  * Public preview for packaging + small-order fees so online checkout matches server totals.
+ * Packaging is per-item × qty; pass cart `lines` so the fee can be computed without a saved order.
  */
 class CheckoutFeesPreviewController extends Controller
 {
     public function show(Request $request, PackagingFeeCalculator $calculator): JsonResponse
     {
         $validated = $request->validate([
-            'order_type' => ['required', 'string', 'in:delivery,online_pickup'],
+            'order_type' => ['required', 'string', 'in:delivery,online_pickup,takeaway'],
             'discounted_subtotal_laar' => ['required', 'integer', 'min:0'],
+            'lines' => ['sometimes', 'nullable', 'array'],
+            'lines.*.item_id' => ['required_with:lines', 'integer', 'min:1'],
+            'lines.*.quantity' => ['required_with:lines', 'numeric', 'min:0'],
         ]);
+
+        $lines = is_array($validated['lines'] ?? null) ? $validated['lines'] : [];
 
         $fees = $calculator->previewCheckoutFees(
             $validated['order_type'],
             (int) $validated['discounted_subtotal_laar'],
+            $lines,
         );
 
         return response()->json($fees);

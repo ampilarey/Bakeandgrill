@@ -4,23 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
-class CorporateInquiry extends Model
+/**
+ * @deprecated Use CateringRequest. Kept as a thin alias for older code/tests.
+ */
+class CorporateInquiry extends CateringRequest
 {
-    protected $fillable = [
-        'company',
-        'contact_name',
-        'phone',
-        'email',
-        'event_date',
-        'headcount',
-        'notes',
-        'status',
-    ];
-
-    protected $casts = [
-        'event_date' => 'date',
-        'headcount' => 'integer',
-    ];
+    protected $table = 'catering_requests';
 }

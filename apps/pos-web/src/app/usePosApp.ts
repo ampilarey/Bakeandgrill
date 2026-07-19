@@ -523,6 +523,7 @@ export function usePosApp() {
     setDeliveryDetails,
     cartItems:     cart.cartItems,
     cartTotal:     cart.cartTotal,
+    cartPackagingFee: cart.cartPackagingFee,
     cartSubtotal:  cart.cartSubtotal,
     cartTax:       cart.cartTax,
     payments:      cart.payments,

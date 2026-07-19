@@ -1008,7 +1008,7 @@
                     if (e.key === 'Escape') closeMobMore();
                 });
             }
-            ['/order/pre-order', '/hours', '/contact'].forEach((p) => {
+            ['/order/catering', '/hours', '/contact'].forEach((p) => {
                 if (path === p || path.startsWith(p + '/')) mobMoreBtn?.classList.add('active');
             });
         });
@@ -1028,7 +1028,7 @@
         </a>
         <nav class="header-nav" aria-label="Main navigation">
             <a href="/order/menu">Menu</a>
-            <a href="/order/pre-order">Pre-Order</a>
+            <a href="/order/catering">Catering &amp; Events</a>
             <div class="more-wrap">
                 <button type="button" id="moreBtn" class="more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="morePanel">
                     More <span class="more-arrow">▼</span>
@@ -1170,7 +1170,7 @@
             <h4>{{ $footerQuickLinksHeading }}</h4>
             <a href="/">Home</a>
             <a href="/order/menu">Order Online</a>
-            <a href="/order/pre-order">Pre-Order (Events)</a>
+            <a href="/order/catering">Catering &amp; Events</a>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
         </div>
@@ -1210,8 +1210,8 @@
 </svg>
 <div id="mobMoreBackdrop" class="mob-more-backdrop" aria-hidden="true"></div>
 <div id="mobMoreSheet" class="mob-more-sheet" role="menu" aria-label="More links">
-    <a href="/order/pre-order" role="menuitem">
-        <svg aria-hidden="true"><use href="#mob-nav-preorder"/></svg>Pre-order
+    <a href="/order/catering" role="menuitem">
+        <svg aria-hidden="true"><use href="#mob-nav-preorder"/></svg>Catering &amp; Events
     </a>
     <a href="/hours" role="menuitem">
         <svg aria-hidden="true"><use href="#mob-nav-clock"/></svg>Hours

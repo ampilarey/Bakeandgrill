@@ -18,12 +18,7 @@ class UpdatePackagingFeeSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'packaging_enabled' => 'sometimes|boolean',
             'packaging_label' => 'nullable|string|max:50',
-            'packaging_type' => 'sometimes|string|in:percent,fixed',
-            'packaging_value' => 'sometimes|numeric|min:0',
-            'packaging_apply_delivery' => 'sometimes|boolean',
-            'packaging_apply_online_pickup' => 'sometimes|boolean',
             'small_order_enabled' => 'sometimes|boolean',
             'small_order_threshold_mvr' => 'sometimes|numeric|min:0',
             'small_order_amount_mvr' => 'sometimes|numeric|min:0',
@@ -36,28 +31,15 @@ class UpdatePackagingFeeSettingsRequest extends FormRequest
     {
         $validator->after(function (Validator $v): void {
             $data = $v->getData();
-            $enabled = (bool) ($data['packaging_enabled'] ?? false);
-            $type = (string) ($data['packaging_type'] ?? 'fixed');
-            $value = (float) ($data['packaging_value'] ?? 0);
+            $threshold = (float) ($data['small_order_threshold_mvr'] ?? 0);
+            $amount = (float) ($data['small_order_amount_mvr'] ?? 0);
 
-            if ($enabled && trim((string) ($data['packaging_label'] ?? '')) === '') {
-                $v->errors()->add('packaging_label', 'Label is required when packaging fee is enabled.');
+            if ($threshold > PackagingFeeCalculator::MAX_FIXED_MVR) {
+                $v->errors()->add('small_order_threshold_mvr', 'Threshold cannot exceed MVR ' . PackagingFeeCalculator::MAX_FIXED_MVR . '.');
             }
 
-            if ($type === 'percent' && $value > PackagingFeeCalculator::MAX_PERCENT) {
-                $v->errors()->add('packaging_value', 'Percentage cannot exceed ' . PackagingFeeCalculator::MAX_PERCENT . '%.');
-            }
-
-            if ($type === 'fixed' && $value > PackagingFeeCalculator::MAX_FIXED_MVR) {
-                $v->errors()->add('packaging_value', 'Fixed amount cannot exceed MVR ' . PackagingFeeCalculator::MAX_FIXED_MVR . '.');
-            }
-
-            if ($enabled) {
-                $any = ($data['packaging_apply_delivery'] ?? false)
-                    || ($data['packaging_apply_online_pickup'] ?? false);
-                if (!$any) {
-                    $v->errors()->add('packaging_apply_delivery', 'Select at least one order type when packaging fee is enabled.');
-                }
+            if ($amount > PackagingFeeCalculator::MAX_FIXED_MVR) {
+                $v->errors()->add('small_order_amount_mvr', 'Fee cannot exceed MVR ' . PackagingFeeCalculator::MAX_FIXED_MVR . '.');
             }
         });
     }

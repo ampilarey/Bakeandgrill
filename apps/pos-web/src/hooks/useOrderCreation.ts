@@ -123,6 +123,7 @@ type Params = {
   cartTotal: number;
   cartSubtotal: number;
   cartTax: number;
+  cartPackagingFee?: number;
   payments: PaymentRow[];
   discountAmount: string;
   customerId: number | null;
@@ -535,6 +536,9 @@ export function useOrderCreation(params: Params) {
           subtotal: params.cartSubtotal,
           tax: params.cartTax,
           total: params.cartTotal,
+          ...(params.cartPackagingFee && params.cartPackagingFee > 0
+            ? { packaging: params.cartPackagingFee }
+            : {}),
         },
         payment: {
           method: offlineMethod,

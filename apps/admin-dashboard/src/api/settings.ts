@@ -180,12 +180,7 @@ export async function updatePaymentCommissionSettings(payload: {
 // ── Packaging fee & ordering caps ─────────────────────────────────────────────
 
 export type PackagingFeeSettings = {
-  packaging_enabled: boolean;
   packaging_label: string;
-  packaging_type: 'percent' | 'fixed';
-  packaging_value: number;
-  packaging_apply_delivery: boolean;
-  packaging_apply_online_pickup: boolean;
   small_order_enabled: boolean;
   small_order_threshold_mvr: number;
   small_order_amount_mvr: number;

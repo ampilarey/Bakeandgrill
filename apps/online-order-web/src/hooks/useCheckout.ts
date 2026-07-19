@@ -56,6 +56,7 @@ export type CartItem = {
   modifiers?: Array<{ id: number; name: string; price: number }>;
   taxRate?: number;
   taxCode?: string | null;
+  packagingFee?: number;
 };
 
 export type OrderType = "pickup" | "delivery";
@@ -127,6 +128,7 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
         base_price: number | string;
         tax_rate?: number | null;
         tax_code?: string | null;
+        packaging_fee?: number | string | null;
       };
       quantity: number;
       modifiers?: Array<{ id: number; name: string; price: number | string }>;
@@ -142,6 +144,7 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
       variantId: e.variantId ?? null,
       taxRate:   Number(e.item?.tax_rate ?? 0),
       taxCode:   e.item?.tax_code ?? null,
+      packagingFee: Math.max(0, Number(e.item?.packaging_fee ?? 0)),
     }));
   } catch { return []; }
 }
@@ -470,7 +473,22 @@ export function useCheckout() {
 
   useEffect(() => {
     const feeOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
-    fetchCheckoutFeesPreview(feeOrderType, discountedSubtotalLaar)
+    const lines = cart.map((item) => ({
+      item_id: item.id,
+      quantity: item.quantity,
+    }));
+    // Instant local estimate from cart snapshots; server preview overwrites.
+    let localPackLaar = 0;
+    for (const item of cart) {
+      const feeMvr = Number(item.packagingFee ?? 0);
+      if (!(feeMvr > 0)) continue;
+      const qty = Math.max(0, Math.round(item.quantity));
+      if (qty <= 0) continue;
+      localPackLaar += Math.round(feeMvr * 100) * qty;
+    }
+    setPackagingFeeLaar(localPackLaar);
+
+    fetchCheckoutFeesPreview(feeOrderType, discountedSubtotalLaar, lines)
       .then((res) => {
         setPackagingFeeLaar(res.packaging_fee_laar ?? 0);
         setPackagingFeeLabel(res.packaging_fee_label ?? 'Packaging fee');
@@ -478,10 +496,10 @@ export function useCheckout() {
         setSmallOrderFeeLabel(res.small_order_fee_label ?? 'Small order fee');
       })
       .catch(() => {
-        setPackagingFeeLaar(0);
+        setPackagingFeeLaar(localPackLaar);
         setSmallOrderFeeLaar(0);
       });
-  }, [orderType, discountedSubtotalLaar]);
+  }, [orderType, discountedSubtotalLaar, cart]);
 
   const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;
 

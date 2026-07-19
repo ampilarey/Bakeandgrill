@@ -129,10 +129,9 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
         Route::get('/customer/orders/{orderId}/reorder', [App\Http\Controllers\Api\FavoritesController::class, 'reorder']);
     });
 
-    // ─── Pre-Orders (Event / Catering orders) ────────────────────────────────────
+    // ─── Pre-Orders (historical read-only; new requests use /catering-requests) ──
     Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
         Route::get('/customer/pre-orders', [App\Http\Controllers\Api\PreOrderApiController::class, 'index']);
-        Route::post('/customer/pre-orders', [App\Http\Controllers\Api\PreOrderApiController::class, 'store']);
     });
 }
 

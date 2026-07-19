@@ -16,6 +16,9 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
     Route::get('/segments', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'listSegments']);
     Route::get('/segments/{segment}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'segmentCustomers']);
     Route::get('/data-quality', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'dataQuality']);
+    Route::get('/catering-requests', [App\Http\Controllers\Api\CateringRequestController::class, 'adminIndex']);
+    Route::patch('/catering-requests/{id}', [App\Http\Controllers\Api\CateringRequestController::class, 'update']);
+    // Legacy aliases
     Route::get('/corporate-inquiries', [App\Http\Controllers\Api\CorporateInquiryController::class, 'adminIndex']);
     Route::patch('/corporate-inquiries/{id}', [App\Http\Controllers\Api\CorporateInquiryController::class, 'updateStatus']);
 

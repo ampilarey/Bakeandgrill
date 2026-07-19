@@ -41,6 +41,7 @@ class UpdateItemRequest extends FormRequest
             'barcode' => 'nullable|string|max:100|unique:items,barcode,' . $itemId,
             'image_url' => 'nullable|url',
             'base_price' => 'sometimes|numeric|min:0',
+            'packaging_fee' => 'sometimes|numeric|min:0|max:500',
             'has_variants' => 'sometimes|boolean',
             'cost' => 'nullable|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
@@ -57,7 +58,7 @@ class UpdateItemRequest extends FormRequest
             'menu_group_id' => 'nullable|integer|exists:menu_groups,id',
             // Channel availability
             'channel_availability' => 'sometimes|array',
-            'channel_availability.*.channel' => 'required_with:channel_availability|string|in:dine_in,takeaway,online_pickup,delivery',
+            'channel_availability.*.channel' => 'required_with:channel_availability|string|in:dine_in,takeaway,online_pickup,delivery,catering',
             'channel_availability.*.is_enabled' => 'sometimes|boolean',
             'channel_availability.*.valid_from' => 'nullable|date',
             'channel_availability.*.valid_until' => 'nullable|date',

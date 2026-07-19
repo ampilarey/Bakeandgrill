@@ -90,6 +90,37 @@ describe("runOfflineSync", () => {
     );
   });
 
+  it("includes packaging in takeaway offline totals payload", async () => {
+    const withPackaging = {
+      ...baseOrder,
+      totals: { subtotal: 25, tax: 2, packaging: 3, total: 30 },
+      payment: { method: "cash" as const, amount: 30 },
+    };
+    vi.mocked(getPendingOfflineOrders)
+      .mockResolvedValueOnce([withPackaging])
+      .mockResolvedValueOnce([]);
+    vi.mocked(syncOfflineOrders).mockResolvedValue({
+      results: [
+        {
+          local_order_id: "local-1",
+          status: "synced",
+          server_order_id: 100,
+          server_order_number: "BG-0100",
+        },
+      ],
+    });
+
+    await runOfflineSync(true);
+    expect(syncOfflineOrders).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "takeaway",
+          totals: expect.objectContaining({ packaging: 3, total: 30 }),
+        }),
+      ]),
+    );
+  });
+
   it("backs off after network failure", async () => {
     vi.mocked(getPendingOfflineOrders)
       .mockResolvedValueOnce([baseOrder])
