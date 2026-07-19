@@ -95,7 +95,6 @@ export function MenuPage() {
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
-  const [closedMessage, setClosedMessage] = useState<string | null>(null);
   const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
@@ -166,8 +165,6 @@ export function MenuPage() {
         setNextOpenWindow(gate.next_open_window ?? null);
         setDeliveryAvailable(gate.delivery_available ?? true);
         setNextDeliveryWindow(gate.next_delivery_window ?? null);
-        const closedMsg = gate.message?.trim();
-        setClosedMessage(gate.open ? null : (closedMsg || 'Online ordering is currently closed.'));
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
