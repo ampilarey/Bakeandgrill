@@ -77,6 +77,10 @@ export function TopNav() {
           })}
         </nav>
 
+        <div className="top-nav__prayer">
+          <PrayerBar />
+        </div>
+
         <div className="top-nav__actions">
           <Link
             to="/account"
@@ -86,9 +90,6 @@ export function TopNav() {
             {accountLabel}
           </Link>
         </div>
-      </div>
-      <div className="top-nav__prayer">
-        <PrayerBar />
       </div>
     </header>
   );
