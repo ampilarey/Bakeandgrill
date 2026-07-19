@@ -185,17 +185,26 @@ class TableController extends Controller
     public function close(CloseTableRequest $request, $id)
     {
         $table = RestaurantTable::findOrFail($id);
-
-        $activeOrder = $this->findActiveOrder($table->id);
-        if ($activeOrder) {
-            return response()->json([
-                'message' => 'Cannot close table — unpaid order exists.',
-                'order_id' => $activeOrder->id,
-            ], 422);
-        }
-
         $oldStatus = $table->status;
-        $table->update(['status' => 'available']);
+
+        // Floor close is seat management only — payment is not required.
+        // Detach any in-flight tickets so the seat can reopen, but leave
+        // those orders intact (still chargeable from Open Tickets).
+        $detachedOrderIds = DB::transaction(function () use ($table) {
+            $ids = Order::query()
+                ->where('restaurant_table_id', $table->id)
+                ->whereIn('status', RestaurantTable::ACTIVE_ORDER_STATUSES)
+                ->pluck('id')
+                ->all();
+
+            if ($ids !== []) {
+                Order::whereIn('id', $ids)->update(['restaurant_table_id' => null]);
+            }
+
+            $table->update(['status' => 'available']);
+
+            return $ids;
+        });
 
         app(AuditLogService::class)->log(
             'table.closed',
@@ -203,11 +212,11 @@ class TableController extends Controller
             $table->id,
             ['status' => $oldStatus],
             ['status' => 'available'],
-            [],
+            ['detached_order_ids' => $detachedOrderIds],
             $request,
         );
 
-        return response()->json(['table' => $table]);
+        return response()->json(['table' => $table->fresh()]);
     }
 
     public function merge(MergeTablesRequest $request)
@@ -354,15 +363,7 @@ class TableController extends Controller
     private function findActiveOrder(int $tableId): ?Order
     {
         return Order::where('restaurant_table_id', $tableId)
-            ->whereIn('status', [
-                'pending',
-                'in_progress',
-                'held',
-                'partial',
-                'confirmed',
-                'preparing',
-                'ready',
-            ])
+            ->whereIn('status', RestaurantTable::ACTIVE_ORDER_STATUSES)
             ->latest('id')
             ->first();
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Tables;
 
 use App\Models\Device;
+use App\Models\Order;
 use App\Models\RestaurantTable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -166,17 +167,24 @@ class TableManagementTest extends TestCase
             ->assertStatus(200);
     }
 
-    public function test_closing_table_with_unpaid_order_is_rejected(): void
+    public function test_closing_table_with_unpaid_order_detaches_and_frees_seat(): void
     {
-        $table = $this->createTable('T-CLOSE-BLOCK');
+        $table = $this->createTable('T-CLOSE-ANYTIME');
 
         // Open the table — creates an unpaid dine_in order
-        $this->openTableRequest($table->id)->assertStatus(201);
+        $opened = $this->openTableRequest($table->id)->assertStatus(201);
+        $orderId = (int) $opened->json('order.id');
 
-        // Close is rejected until order is paid
+        // Close is allowed without payment — frees the seat, keeps the order
         $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
             ->postJson("/api/tables/{$table->id}/close", [], $this->managerHeaders)
-            ->assertStatus(422);
+            ->assertStatus(200)
+            ->assertJsonPath('table.status', 'available');
+
+        $this->assertSame('available', $table->fresh()->status);
+        $order = Order::findOrFail($orderId);
+        $this->assertNull($order->restaurant_table_id);
+        $this->assertNotSame('cancelled', $order->status);
     }
 
     // ── Merge tables ──────────────────────────────────────────────────────────
