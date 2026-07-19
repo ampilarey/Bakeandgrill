@@ -1,4 +1,9 @@
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from "@shared/utils/effectiveDiscount";
+import {
+  previewServiceCharge,
+  serviceChargeTaxLaarByBuckets,
+  type ServiceChargePublicConfig,
+} from "@shared/utils/serviceCharge";
 
 export type PosCartLine = {
   price: number;
@@ -6,6 +11,15 @@ export type PosCartLine = {
   tax_rate?: number;
   tax_code?: string | null;
   modifiers?: Array<{ price: number }>;
+  packaging_fee?: number | null;
+};
+
+export type CartTaxOptions = {
+  /** When true, extract embedded GST; when false, add on top (default). */
+  taxInclusive?: boolean;
+  serviceChargeConfig?: ServiceChargePublicConfig | null;
+  /** Backend order type for SC apply flags (e.g. dine_in, takeaway). */
+  orderType?: string;
 };
 
 export function lineUnitPrice(item: PosCartLine): number {
@@ -54,32 +68,100 @@ export function discountedSubtotalMvr(
   return afterLaar / 100;
 }
 
-/** Tax-exclusive GST on discounted line bases (matches useCart / backend allocation). */
+/**
+ * Per-line GST mirroring useCart.cartTax / OrderTotalsCalculator.
+ * Inclusive: extract embedded tax. Exclusive: add tax; optionally include SC tax.
+ */
+export function cartTaxMvr(
+  items: PosCartLine[],
+  cartSubtotal: number,
+  discountedSubtotal: number,
+  defaultTaxRatePercent: number,
+  options: CartTaxOptions = {},
+): number {
+  if (cartSubtotal <= 0) return 0;
+  const taxInclusive = !!options.taxInclusive;
+  const subtotalLaar = Math.round(cartSubtotal * 100);
+  const discountedLaar = Math.round(discountedSubtotal * 100);
+  const discountRatio = subtotalLaar > 0 ? discountedLaar / subtotalLaar : 0;
+  let taxLaar = 0;
+  const buckets: Array<{ ratePercent: number; laar: number }> = [];
+  for (const item of items) {
+    const rate = effectiveLineTaxRatePercent(item, defaultTaxRatePercent);
+    if (rate <= 0) continue;
+    const lineGrossLaar = Math.round(lineUnitPrice(item) * item.quantity * 100);
+    const effectiveLaar = Math.round(lineGrossLaar * discountRatio);
+    if (effectiveLaar <= 0) continue;
+    if (taxInclusive) {
+      taxLaar += Math.round((effectiveLaar * rate) / (100 + rate));
+    } else {
+      taxLaar += Math.round((effectiveLaar * rate) / 100);
+    }
+    buckets.push({ ratePercent: rate, laar: effectiveLaar });
+  }
+  if (options.serviceChargeConfig && !taxInclusive) {
+    const scPreview = previewServiceCharge(
+      options.serviceChargeConfig,
+      options.orderType ?? "dine_in",
+      discountedLaar,
+    );
+    taxLaar += serviceChargeTaxLaarByBuckets(
+      options.serviceChargeConfig,
+      scPreview.amountLaar,
+      buckets,
+    );
+  }
+  return taxLaar / 100;
+}
+
+/** @deprecated Prefer cartTaxMvr — kept for call sites that assume exclusive-only. */
 export function cartTaxExclusiveMvr(
   items: PosCartLine[],
   cartSubtotal: number,
   discountedSubtotal: number,
   defaultTaxRatePercent: number,
 ): number {
-  if (cartSubtotal <= 0) return 0;
-  const subtotalLaar = Math.round(cartSubtotal * 100);
-  const discountedLaar = Math.round(discountedSubtotal * 100);
-  const discountRatio = subtotalLaar > 0 ? discountedLaar / subtotalLaar : 0;
-  let taxLaar = 0;
-  for (const item of items) {
-    const rate = effectiveLineTaxRatePercent(item, defaultTaxRatePercent);
-    if (rate <= 0) continue;
-    const lineGrossLaar = Math.round(lineUnitPrice(item) * item.quantity * 100);
-    const effectiveLaar = Math.round(lineGrossLaar * discountRatio);
-    taxLaar += Math.round((effectiveLaar * rate) / 100);
-  }
-  return taxLaar / 100;
+  return cartTaxMvr(items, cartSubtotal, discountedSubtotal, defaultTaxRatePercent, {
+    taxInclusive: false,
+  });
 }
 
+export function cartPackagingFeeMvr(
+  items: PosCartLine[],
+  orderType: string,
+): number {
+  if (orderType === "dine_in") return 0;
+  let laar = 0;
+  for (const item of items) {
+    const feeMvr = Number(item.packaging_fee ?? 0);
+    if (!(feeMvr > 0)) continue;
+    const qty = Math.max(0, Math.round(item.quantity));
+    if (qty <= 0) continue;
+    laar += Math.round(feeMvr * 100) * qty;
+  }
+  return laar / 100;
+}
+
+export function cartServiceChargeMvr(
+  config: ServiceChargePublicConfig | null | undefined,
+  orderType: string,
+  discountedSubtotal: number,
+): number {
+  if (!config) return 0;
+  return previewServiceCharge(config, orderType, Math.round(discountedSubtotal * 100)).amount;
+}
+
+/**
+ * Grand total mirroring useCart.cartTotal.
+ * Inclusive: do not add tax (already in discountedSubtotal). Packaging always added.
+ */
 export function cartGrandTotalMvr(
   discountedSubtotal: number,
   taxMvr: number,
   serviceChargeMvr = 0,
+  packagingFeeMvr = 0,
+  taxInclusive = false,
 ): number {
-  return Math.round((discountedSubtotal + serviceChargeMvr + taxMvr) * 100) / 100;
+  const taxForTotal = taxInclusive ? 0 : taxMvr;
+  return Math.round((discountedSubtotal + serviceChargeMvr + taxForTotal + packagingFeeMvr) * 100) / 100;
 }

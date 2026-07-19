@@ -111,14 +111,14 @@ describe("runOfflineSync", () => {
     });
 
     await runOfflineSync(true);
-    expect(syncOfflineOrders).toHaveBeenCalledWith(
-      expect.arrayContaining([
+    expect(syncOfflineOrders).toHaveBeenCalledWith({
+      orders: expect.arrayContaining([
         expect.objectContaining({
           type: "takeaway",
           totals: expect.objectContaining({ packaging: 3, total: 30 }),
         }),
       ]),
-    );
+    });
   });
 
   it("backs off after network failure", async () => {

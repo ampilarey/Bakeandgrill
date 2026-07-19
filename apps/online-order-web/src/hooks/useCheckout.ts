@@ -188,11 +188,18 @@ export function useCheckout() {
   const [tierMultiplier, setTierMultiplier] = useState(1);
   const [loyaltyProgramMessage, setLoyaltyProgramMessage] = useState('');
   const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
+  const [taxInclusive, setTaxInclusive] = useState(false);
 
   useEffect(() => {
     fetchGstBootstrap()
-      .then((b) => setDefaultTaxRatePercent(b.tax_rate_percent))
-      .catch(() => setDefaultTaxRatePercent(8));
+      .then((b) => {
+        setDefaultTaxRatePercent(b.tax_rate_percent);
+        setTaxInclusive(!!b.tax_inclusive);
+      })
+      .catch(() => {
+        setDefaultTaxRatePercent(8);
+        setTaxInclusive(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -465,10 +472,18 @@ export function useCheckout() {
       (item.modifiers ?? []).reduce((ms, m) => ms + Math.round(m.price * 100) * item.quantity, 0);
     const effectiveLaar = Math.round(itemLaar * discountRatio);
     if (effectiveLaar <= 0) continue;
-    itemTaxLaar += Math.round((effectiveLaar * rate) / 100);
+    if (taxInclusive) {
+      // Extract embedded tax: amount * r / (100 + r)
+      itemTaxLaar += Math.round((effectiveLaar * rate) / (100 + rate));
+    } else {
+      itemTaxLaar += Math.round((effectiveLaar * rate) / 100);
+    }
     taxBuckets.push({ ratePercent: rate, laar: effectiveLaar });
   }
-  const scTaxLaar = serviceChargeTaxLaarByBuckets(serviceChargeConfig, serviceChargeLaar, taxBuckets);
+  // Backend skips service-charge tax in the inclusive branch.
+  const scTaxLaar = taxInclusive
+    ? 0
+    : serviceChargeTaxLaarByBuckets(serviceChargeConfig, serviceChargeLaar, taxBuckets);
   const taxLaar = itemTaxLaar + scTaxLaar;
 
   useEffect(() => {
@@ -501,7 +516,9 @@ export function useCheckout() {
       });
   }, [orderType, discountedSubtotalLaar, cart]);
 
-  const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;
+  // Inclusive: tax is already inside discountedSubtotalLaar — show taxLaar as info only.
+  const taxForTotalLaar = taxInclusive ? 0 : taxLaar;
+  const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxForTotalLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;
 
   const earnPreviewPoints = useMemo(
     () => estimateEarnPointsForSubtotalMvr(discountedSubtotalLaar / 100, earnRatePerMvr, tierMultiplier),
@@ -531,9 +548,10 @@ export function useCheckout() {
         const p = validation.promotion as { type?: string; discount_type?: string; discount_value: number };
         const pType = p.type ?? p.discount_type ?? "";
         let estLaar = 0;
-        if (pType === "fixed") {
-          estLaar = Math.min(p.discount_value, totalLaar);
-        } else if (pType === "percentage") {
+        if (pType === "FIXED" || pType === "fixed") {
+          // discount_value is laari for fixed promos; backend caps at merchandise subtotal.
+          estLaar = Math.min(p.discount_value, subtotalLaar);
+        } else if (pType === "PERCENTAGE" || pType === "percentage") {
           estLaar = Math.round(subtotalLaar * p.discount_value / 100);
         }
         setPromoApplied({ code: promoCode.trim().toUpperCase(), discountLaar: estLaar, pending: true });

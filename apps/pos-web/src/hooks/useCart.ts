@@ -273,10 +273,12 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   }, [cartItems, backendOrderType]);
 
   /** Grand total the customer actually owes (matches server `order.total`, excl. delivery). */
-  const cartTotal = useMemo(
-    () => Math.round((discountedSubtotal + cartServiceCharge + cartTax + cartPackagingFee) * 100) / 100,
-    [discountedSubtotal, cartServiceCharge, cartTax, cartPackagingFee],
-  );
+  const cartTotal = useMemo(() => {
+    // Inclusive: tax is already inside discountedSubtotal — show cartTax as info only.
+    // Exclusive: add cartTax on top (OrderTotalsCalculator grandTotal branches).
+    const taxForTotal = taxInclusive ? 0 : cartTax;
+    return Math.round((discountedSubtotal + cartServiceCharge + taxForTotal + cartPackagingFee) * 100) / 100;
+  }, [discountedSubtotal, cartServiceCharge, cartTax, cartPackagingFee, taxInclusive]);
 
   const handleSelectItem = useCallback((item: Item) => {
     setSelectedItem(item);
