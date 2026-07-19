@@ -103,6 +103,7 @@
             "pos.view_all_station_orders",
             "pos.view_this_device_orders",
             "promotions.apply_promo_code",
+            "promotions.discount_cards",
             "promotions.discounts",
             "promotions.gift_cards",
             "promotions.manage",

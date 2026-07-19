@@ -9,9 +9,11 @@
             "sku": "GRL-001",
             "image_url": null,
             "base_price": "30.00",
+            "packaging_fee": 0,
             "tax_rate": "0.00",
             "tax_code": "standard_8",
             "is_available": true,
+            "snoozed_until": null,
             "is_active": true,
             "sort_order": 0,
             "category_id": "__VOLATILE__",
@@ -40,8 +42,12 @@
                 "available": true,
                 "reason_code": null,
                 "reason_message": null,
-                "available_stock": null
-            }
+                "available_stock": null,
+                "available_from": null
+            },
+            "available_now": true,
+            "unavailable_reason": null,
+            "available_from": null
         }
     ],
     "first_page_url": "http://localhost:8000/api/items?page=1",

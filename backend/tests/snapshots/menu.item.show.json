@@ -6,6 +6,7 @@
         "description": null,
         "image_url": null,
         "base_price": "30.00",
+        "packaging_fee": 0,
         "tax_rate": "0.00",
         "tax_code": "standard_8",
         "is_available": true,
@@ -16,6 +17,16 @@
         },
         "has_variants": false,
         "variants": [],
-        "modifiers": []
+        "modifiers": [],
+        "availability": {
+            "available": true,
+            "reason_code": null,
+            "reason_message": null,
+            "available_stock": null,
+            "available_from": null
+        },
+        "available_now": true,
+        "unavailable_reason": null,
+        "available_from": null
     }
 }
