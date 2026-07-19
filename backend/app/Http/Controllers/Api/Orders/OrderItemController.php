@@ -83,15 +83,26 @@ class OrderItemController extends Controller
             $oldType = (string) $order->type;
             $oldTableId = $order->restaurant_table_id;
 
-            // Replace items first so stock restore/re-deduct uses the
-            // pre-edit order type (dine_in/takeaway vs online reservation).
-            $updated = app(OrderCreationService::class)
-                ->replaceOrderItems($order, $validated['items'], $reprintKitchen);
-
             $meta = [];
             $newType = array_key_exists('type', $validated) && $validated['type'] !== null
                 ? (string) $validated['type']
-                : (string) $updated->type;
+                : (string) $order->type;
+
+            // Pass target type + staff user into replace so channel assert
+            // uses dine_in/takeaway when leaving delivery (avoids rejecting
+            // with "Delivery is paused"), and POS phone-in delivery can
+            // ignore the public delivery gate. Stock restore still keys
+            // off the prior type inside replaceOrderItems.
+            $updated = app(OrderCreationService::class)
+                ->replaceOrderItems(
+                    $order,
+                    $validated['items'],
+                    $reprintKitchen,
+                    $request->user(),
+                    array_key_exists('type', $validated) && $validated['type'] !== null
+                        ? $newType
+                        : null,
+                );
 
             if (array_key_exists('type', $validated) && $validated['type'] !== null) {
                 $meta['type'] = $newType;

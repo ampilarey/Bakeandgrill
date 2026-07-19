@@ -9,8 +9,10 @@ use App\Models\Device;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Role;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Tests\Concerns\PreparesPosApi;
 use Tests\TestCase;
@@ -123,5 +125,66 @@ class UpdateOrderItemsMetaTest extends TestCase
         $this->assertSame('1 Test Street', $order->delivery_address_line1);
         $this->assertSame('Male', $order->delivery_island);
         $this->assertSame('Aisha', $order->delivery_contact_name);
+    }
+
+    public function test_save_changes_can_leave_delivery_while_delivery_paused(): void
+    {
+        SiteSetting::updateOrCreate(['key' => 'delivery_accepting_orders'], [
+            'value' => '1',
+            'type' => 'boolean',
+            'group' => 'Test',
+            'label' => 'delivery_accepting_orders',
+            'is_public' => true,
+        ]);
+        Cache::forget('site_setting.delivery_accepting_orders');
+
+        $create = $this->postJson('/api/orders', [
+            'type' => 'takeaway',
+            'device_identifier' => $this->device->identifier,
+            'print' => false,
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ])->assertCreated();
+
+        $orderId = (int) $create->json('order.id');
+
+        $this->patchJson("/api/orders/{$orderId}/items", [
+            'items' => [[
+                'item_id' => $this->item->id,
+                'name' => $this->item->name,
+                'quantity' => 1,
+            ]],
+            'reprint_kitchen' => false,
+            'type' => 'delivery',
+            'delivery_address_line1' => '1 Test Street',
+            'delivery_island' => 'Male',
+            'delivery_contact_name' => 'Aisha',
+            'delivery_contact_phone' => '+9607901234',
+        ])->assertOk();
+
+        SiteSetting::updateOrCreate(['key' => 'delivery_accepting_orders'], [
+            'value' => '0',
+            'type' => 'boolean',
+            'group' => 'Test',
+            'label' => 'delivery_accepting_orders',
+            'is_public' => true,
+        ]);
+        Cache::forget('site_setting.delivery_accepting_orders');
+
+        $this->patchJson("/api/orders/{$orderId}/items", [
+            'items' => [[
+                'item_id' => $this->item->id,
+                'name' => $this->item->name,
+                'quantity' => 1,
+            ]],
+            'reprint_kitchen' => false,
+            'type' => 'dine_in',
+        ])
+            ->assertOk()
+            ->assertJsonPath('order.type', 'dine_in');
+
+        $order = Order::findOrFail($orderId);
+        $this->assertSame('dine_in', $order->type);
+        $this->assertNull($order->delivery_address_line1);
+        $this->assertSame(0, (int) $order->delivery_fee_laar);
     }
 }

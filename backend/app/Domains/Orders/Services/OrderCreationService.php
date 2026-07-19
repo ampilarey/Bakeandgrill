@@ -233,9 +233,23 @@ class OrderCreationService
      * (we don't lock inside because the controller already does, and
      * we want a single source of truth for the lock window).
      */
-    public function replaceOrderItems(Order $order, array $items, bool $reprintKitchen = true): Order
-    {
-        $updated = DB::transaction(function () use ($order, $items): Order {
+    /**
+     * @param  object|null  $user  Staff actor — when present, POS phone-in
+     *                             delivery skips the public delivery gate.
+     * @param  string|null  $effectiveType  Target fulfillment type for the
+     *                                      re-add (channel assert + stock
+     *                                      deduct). Stock restore always uses
+     *                                      the order's prior type. When null,
+     *                                      keeps the current order type.
+     */
+    public function replaceOrderItems(
+        Order $order,
+        array $items,
+        bool $reprintKitchen = true,
+        ?object $user = null,
+        ?string $effectiveType = null,
+    ): Order {
+        $updated = DB::transaction(function () use ($order, $items, $user, $effectiveType): Order {
             // Restore POS-deducted stock BEFORE soft-deleting the old lines,
             // otherwise the subsequent addOrderItems re-deducts and we leak
             // inventory on every "Save changes" tap.
@@ -248,7 +262,12 @@ class OrderCreationService
             // repeated edit of the same line can't double-restore. The
             // re-add path uses keys based on the NEW order_item id, so
             // restore + re-deduct keys never collide.
-            $isPosOrder = !in_array($order->type, ['online_pickup', 'delivery'], true);
+            //
+            // Always key restore/release off the PRIOR type — switching
+            // delivery → dine_in must release reservations, not attempt a
+            // POS restore that was never deducted.
+            $previousType = (string) $order->type;
+            $isPosOrder = !in_array($previousType, ['online_pickup', 'delivery'], true);
             if ($isPosOrder) {
                 $stockService = app(StockManagementService::class);
                 $existingItems = $order->items()->get();
@@ -304,7 +323,14 @@ class OrderCreationService
             // sees a clean slate when it re-runs.
             $order->setRelation('items', collect());
 
-            $this->addOrderItems($order, $items);
+            // Channel assert + stock deduct must use the *target* type
+            // (e.g. leaving delivery while the public gate is paused).
+            // In-memory only — the controller persists type/meta after this.
+            if ($effectiveType !== null && $effectiveType !== '') {
+                $order->type = $effectiveType;
+            }
+
+            $this->addOrderItems($order, $items, $user);
 
             // addOrderItems writes new rows to the DB but leaves the
             // in-memory relation empty (we cleared it above). Force a
@@ -319,23 +345,29 @@ class OrderCreationService
         // the final persisted lines/totals (never a mid-transaction empty
         // items relation that could rewrite the bill to MVR 0).
         DB::afterCommit(function () use ($updated, $reprintKitchen): void {
+            $fresh = $updated->fresh(['items.modifiers']);
+            if ($fresh === null) {
+                return;
+            }
+
             try {
                 app(\App\Http\Controllers\Api\InvoiceController::class)
-                    ->syncOpenSaleInvoiceFromOrder($updated);
+                    ->syncOpenSaleInvoiceFromOrder($fresh);
             } catch (\Throwable $e) {
                 logger()->warning('replaceOrderItems: invoice sync failed', [
-                    'order_id' => $updated->id,
+                    'order_id' => $fresh->id,
                     'error' => $e->getMessage(),
                 ]);
             }
 
-            if ($reprintKitchen && !in_array($updated->type, ['online_pickup', 'delivery'], true)) {
+            // Fresh type so delivery → dine_in/takeaway still reprints.
+            if ($reprintKitchen && !in_array((string) $fresh->type, ['online_pickup', 'delivery'], true)) {
                 try {
                     app(PrintJobService::class)
-                        ->enqueueKitchen($updated->fresh(['items.modifiers']), 'replaceItems');
+                        ->enqueueKitchen($fresh, 'replaceItems');
                 } catch (\Throwable $e) {
                     logger()->warning('replaceOrderItems: kitchen reprint enqueue failed', [
-                        'order_id' => $updated->id,
+                        'order_id' => $fresh->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
