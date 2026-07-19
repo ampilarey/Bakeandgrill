@@ -31,7 +31,9 @@ class StoreOrderPaymentsRequest extends FormRequest
         'customer_deposit',
         'cheque',
         'house_account',
-        'gift_card',
+        // gift_card is NOT client-postable — SettleOrderPaymentAction /
+        // PaymentService mint the tender row server-side from
+        // order.gift_card_discount_laar (idempotency_key gift_card:tender:{id}).
     ];
 
     protected function prepareForValidation(): void

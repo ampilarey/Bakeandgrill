@@ -52,6 +52,15 @@ final class SettleOrderPaymentAction
             $order = Order::with('payments')->lockForUpdate()->findOrFail($orderId);
             $paymentRows = $validated['payments'];
 
+            // Defense in depth: gift_card rows are created only via the
+            // soft-hold firstOrCreate below. Client POSTs must never mint them
+            // (would mark the order paid without debiting a card).
+            foreach ($paymentRows as $row) {
+                if (($row['method'] ?? '') === 'gift_card') {
+                    abort(422, 'gift_card is not a client-postable method');
+                }
+            }
+
             $allIdempotentReplay = count($paymentRows) > 0 && collect($paymentRows)->every(function (array $row): bool {
                 $key = $row['idempotency_key'] ?? null;
 
