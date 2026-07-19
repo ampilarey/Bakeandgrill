@@ -94,9 +94,9 @@ class LoyaltyLedgerService
 
             $discountLaar = $this->calculator->discountLaarForPoints($pointsToRedeem);
 
-            // Cap against merchandise after other discounts (not order total with delivery/fees).
+            // Cap against merchandise after true discounts (gift-card tender excluded).
             $subLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
-            $parts = EffectiveDiscount::partsFromOrder($order);
+            $parts = EffectiveDiscount::merchandisePartsFromOrder($order);
             $parts['loyalty'] = 0;
             $redeemBaseLaar = max(0, $subLaar - EffectiveDiscount::effectiveTotalLaar($subLaar, $parts));
             $maxDiscountLaar = (int) floor($redeemBaseLaar * $this->calculator->maxRedeemPercent() / 100);

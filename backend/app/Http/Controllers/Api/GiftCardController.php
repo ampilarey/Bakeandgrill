@@ -26,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
@@ -43,12 +44,6 @@ class GiftCardController extends Controller
     ) {}
 
     // ── Public: check balance ─────────────────────────────────────────────────
-
-    /** @deprecated Prefer POST /gift-cards/balance (code in body avoids URL logging). */
-    public function balance(string $code): JsonResponse
-    {
-        return $this->balanceResponse($code);
-    }
 
     public function balancePost(Request $request): JsonResponse
     {
@@ -134,7 +129,7 @@ class GiftCardController extends Controller
             ->whereIn('status', ['payment_pending', 'pending'])
             ->firstOrFail();
 
-        return DB::transaction(function () use ($validated, $order, $calc): JsonResponse {
+        return DB::transaction(function () use ($validated, $order, $calc, $request): JsonResponse {
             $card = $this->giftCardCodes->findActiveByCodeForUpdate($validated['code']);
 
             if (!$card) {
@@ -167,6 +162,20 @@ class GiftCardController extends Controller
 
             $order = $calc->recalculateAndPersist($order->fresh());
 
+            $this->audit->log(
+                'gift_card.applied',
+                'Order',
+                $order->id,
+                [],
+                ['gift_card_id' => $card->id, 'discount_laar' => $tenderLaar],
+                [
+                    'masked_code' => $card->masked_code,
+                    'source' => 'customer',
+                    'customer_id' => (int) $request->user()->id,
+                ],
+                $request,
+            );
+
             return response()->json([
                 'discount_laar' => $tenderLaar,
                 'discount_mvr' => number_format($tenderLaar / 100, 2),
@@ -187,8 +196,24 @@ class GiftCardController extends Controller
             ->whereIn('status', ['payment_pending', 'pending'])
             ->firstOrFail();
 
+        $previousCardId = $order->gift_card_id;
+        $previousDiscount = (int) ($order->gift_card_discount_laar ?? 0);
+
         $order->update(['gift_card_id' => null, 'gift_card_discount_laar' => 0]);
         $calc->recalculateAndPersist($order->fresh());
+
+        $this->audit->log(
+            'gift_card.removed',
+            'Order',
+            $order->id,
+            ['gift_card_id' => $previousCardId, 'gift_card_discount_laar' => $previousDiscount],
+            ['gift_card_id' => null, 'gift_card_discount_laar' => 0],
+            [
+                'source' => 'customer',
+                'customer_id' => (int) $request->user()->id,
+            ],
+            $request,
+        );
 
         return response()->json(['message' => 'Gift card removed.']);
     }
@@ -450,13 +475,17 @@ class GiftCardController extends Controller
             'amount' => ['required', 'numeric', 'min:' . GiftCardPurchaseService::MIN_AMOUNT, 'max:' . GiftCardPurchaseService::MAX_AMOUNT],
             'recipient_phone' => ['nullable', 'string', 'max:20', new MaldivesPhone],
             'recipient_email' => ['nullable', 'email', 'max:200'],
-            'personal_note' => ['nullable', 'string', 'max:500'],
+            'personal_note' => ['nullable', 'string', 'max:160'],
             'sender_name' => ['nullable', 'string', 'max:80'],
             'send_anonymously' => ['sometimes', 'boolean'],
         ]);
 
         /** @var Customer $customer */
         $customer = $request->user();
+
+        if ($throttle = $this->giftCardRecipientThrottle($validated)) {
+            return $throttle;
+        }
 
         try {
             $result = $this->giftCardPurchase->start($customer, $validated);
@@ -468,6 +497,25 @@ class GiftCardController extends Controller
                 'code' => 'gateway_error',
             ], 503);
         }
+
+        $this->audit->log(
+            'gift_card.purchased',
+            'Order',
+            $result['order']->id,
+            [],
+            [
+                'amount' => (float) $result['purchase']->amount,
+                'purchase_id' => $result['purchase']->id,
+            ],
+            [
+                'source' => 'customer',
+                'customer_id' => (int) $customer->id,
+                'recipient_phone' => $validated['recipient_phone'] ?? null,
+                'recipient_email' => $validated['recipient_email'] ?? null,
+                'has_note' => filled($validated['personal_note'] ?? null),
+            ],
+            $request,
+        );
 
         return response()->json([
             'order_id' => $result['order']->id,
@@ -722,6 +770,26 @@ class GiftCardController extends Controller
 
         $deliveryOk = $smsOk === true || $emailOk === true;
 
+        $this->audit->log(
+            $deliveryOk ? 'gift_card.resent' : 'gift_card.resend_failed',
+            'GiftCard',
+            (int) $purchase->gift_card_id,
+            [],
+            [
+                'sms_ok' => $smsOk,
+                'email_ok' => $emailOk,
+                'channel' => $channel,
+                'resend_count' => (int) ($purchase->resend_count ?? $resendN),
+            ],
+            [
+                'source' => 'customer',
+                'customer_id' => (int) $customer->id,
+                'order_id' => $order->id,
+                'masked_code' => $purchase->giftCard?->masked_code,
+            ],
+            $request,
+        );
+
         return response()->json([
             'message' => $deliveryOk
                 ? 'Delivery resent to the recipient.'
@@ -736,6 +804,39 @@ class GiftCardController extends Controller
                 'expires_at' => $purchase->code_delivery_expires_at?->toIso8601String(),
             ],
         ], $deliveryOk ? 200 : 422);
+    }
+
+    /**
+     * Cap personalised gift-card deliveries per recipient (phone/email) so a
+     * paid purchase path can't spam the same number/address with notes.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function giftCardRecipientThrottle(array $validated): ?JsonResponse
+    {
+        $keys = [];
+        if (!empty($validated['recipient_phone'])) {
+            $keys[] = 'gc-rcpt-phone:' . preg_replace('/\D+/', '', (string) $validated['recipient_phone']);
+        }
+        if (!empty($validated['recipient_email'])) {
+            $keys[] = 'gc-rcpt-email:' . strtolower(trim((string) $validated['recipient_email']));
+        }
+
+        foreach ($keys as $key) {
+            if (RateLimiter::tooManyAttempts($key, 3)) {
+                $seconds = RateLimiter::availableIn($key);
+
+                return response()->json([
+                    'message' => "Too many gift cards to this recipient. Try again in {$seconds} seconds.",
+                ], 429);
+            }
+        }
+
+        foreach ($keys as $key) {
+            RateLimiter::hit($key, 3600);
+        }
+
+        return null;
     }
 
     /**

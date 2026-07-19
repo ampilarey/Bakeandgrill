@@ -45,6 +45,16 @@ class PointsCalculatorTest extends TestCase
         $this->assertGreaterThan(0, $this->calc->minRedeemPoints());
     }
 
+    public function test_preview_redemption_caps_by_max_percent_of_merchandise(): void
+    {
+        // 1000 points → MVR 10.00 = 1000 laari at default rate, but 50% of
+        // MVR 10.00 merchandise (1000 laari) = 500 laari max.
+        $preview = $this->calc->previewRedemption(1000, 5000, 1000);
+
+        $this->assertSame(500, $preview['discount_laar']);
+        $this->assertSame(500, $preview['points']);
+    }
+
     public function test_earn_uses_discounted_merchandise_not_gross_total(): void
     {
         // Gross total includes GST; earn must use discounted food subtotal only.

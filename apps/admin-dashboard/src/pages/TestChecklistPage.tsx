@@ -195,7 +195,7 @@ const SECTIONS = [
       'Referral code can be validated (/api/referrals/validate)',
       'Referrer reward and referee discount values come from config (not hardcoded)',
       'Admin can view all referrals in Admin → Loyalty → Referrals',
-      'Gift card balance can be checked by code (/api/gift-cards/:code/balance)',
+      'Gift card balance can be checked by code (POST /api/gift-cards/balance)',
       'Admin can issue a new gift card',
       'Admin can list all gift cards',
     ],

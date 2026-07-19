@@ -177,7 +177,7 @@ class OfflineOrderSyncService
 
                 $rewardsPayload = $payload['rewards'] ?? null;
                 if (is_array($rewardsPayload) && $rewardsPayload !== []) {
-                    $order = $this->rewards->apply($order, $rewardsPayload);
+                    $order = $this->rewards->apply($order, $rewardsPayload, $user);
                 }
 
                 if (!$this->totalsMatch($order, $clientTotals)) {

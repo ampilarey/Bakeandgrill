@@ -119,10 +119,9 @@ class PromotionController extends Controller
             }
         }
 
-        // Block apply on 'partial' — payment has already been collected and
-        // lowering the total via a discount would make total < amount paid, causing
-        // an accounting discrepancy. Staff must handle adjustments manually.
-        if (in_array($order->status, ['paid', 'completed', 'cancelled', 'partial'], true)) {
+        // Block apply once payment has started — lowering the total would make
+        // total < amount paid. Staff must handle adjustments manually.
+        if ($this->promoNotModifiable($order)) {
             return response()->json(['message' => 'Cannot apply promo to this order.'], 422);
         }
 
@@ -147,7 +146,7 @@ class PromotionController extends Controller
             // Re-lock the order row inside the transaction to prevent race conditions.
             $order = Order::lockForUpdate()->findOrFail($orderId);
 
-            if (in_array($order->status, ['paid', 'completed', 'cancelled', 'partial'], true)) {
+            if ($this->promoNotModifiable($order)) {
                 // Order transitioned to a terminal/partial state between the pre-check and the lock.
                 // $applied stays false; caller will receive a 409.
                 return;
@@ -230,7 +229,7 @@ class PromotionController extends Controller
             }
         }
 
-        if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+        if ($this->promoNotModifiable($order)) {
             return response()->json(['message' => 'Cannot modify promo on this order.'], 422);
         }
 
@@ -241,8 +240,8 @@ class PromotionController extends Controller
         DB::transaction(function () use ($orderId, $promotionId, &$removed): void {
             $order = Order::lockForUpdate()->findOrFail($orderId);
 
-            // Re-check terminal state under the lock.
-            if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+            // Re-check terminal/partial state under the lock.
+            if ($this->promoNotModifiable($order)) {
                 return; // $removed stays false; caller returns 409.
             }
 
@@ -267,6 +266,66 @@ class PromotionController extends Controller
         return response()->json(['message' => 'Promo removed.']);
     }
 
+    /**
+     * POS cart preview — evaluates a promo against cart lines (or an existing
+     * order) without persisting. Clients must never trust the returned amount
+     * as a charge authority; apply still recomputes server-side.
+     */
+    public function posPreview(Request $request): JsonResponse
+    {
+        if (!$request->user()?->tokenCan('staff')) {
+            return response()->json(['message' => 'Forbidden - staff access only'], 403);
+        }
+        if (!$request->user()->hasPermission('promotions.discounts')) {
+            return response()->json(['message' => 'You do not have permission to apply discounts.'], 403);
+        }
+
+        $request->validate([
+            'code' => 'required|string|max:50',
+            'order_id' => 'nullable|integer|exists:orders,id',
+            'customer_id' => 'nullable|integer|exists:customers,id',
+            'items' => 'nullable|array|min:1',
+            'items.*.item_id' => 'required_with:items|integer|exists:items,id',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.unit_price' => 'required_with:items|numeric|min:0',
+            'items.*.total_price' => 'nullable|numeric|min:0',
+        ]);
+
+        if ($request->filled('order_id')) {
+            $order = Order::with('items.item')->findOrFail($request->integer('order_id'));
+            $result = $this->evaluator->evaluate(
+                $request->input('code'),
+                $order,
+                $request->integer('customer_id') ?: $order->customer_id,
+            );
+        } else {
+            $items = $request->input('items', []);
+            if (!is_array($items) || $items === []) {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'Provide order_id or cart items.',
+                    'discount_laar' => 0,
+                ]);
+            }
+
+            $result = $this->evaluator->evaluateForCart(
+                $request->input('code'),
+                $items,
+                $request->filled('customer_id') ? $request->integer('customer_id') : null,
+            );
+        }
+
+        return response()->json([
+            'valid' => $result['valid'],
+            'message' => $result['message'],
+            'discount_laar' => $result['discount_laar'],
+            'discount_mvr' => number_format($result['discount_laar'] / 100, 2),
+            'promotion' => $result['promotion']
+                ? $result['promotion']->only('id', 'name', 'type', 'discount_value', 'scope')
+                : null,
+        ]);
+    }
+
     // ─── Admin Endpoints ─────────────────────────────────────────────────────
 
     public function adminIndex(Request $request): JsonResponse
@@ -281,6 +340,19 @@ class PromotionController extends Controller
             ->paginate(50);
 
         return response()->json($promotions);
+    }
+
+    /**
+     * Promo apply/remove is blocked once kitchen/payment status means money
+     * has been collected (or the ticket is otherwise terminal).
+     */
+    private function promoNotModifiable(Order $order): bool
+    {
+        if (in_array($order->status, ['paid', 'completed', 'cancelled', 'partial'], true)) {
+            return true;
+        }
+
+        return in_array((string) ($order->payment_status ?? ''), ['partial', 'partially_paid', 'paid'], true);
     }
 
     // ─── Internal authorization guard (defense-in-depth) ─────────────────────

@@ -60,20 +60,19 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
     Route::post('/referrals/validate', [App\Http\Controllers\Api\ReferralController::class, 'validate'])
         ->middleware('throttle:30,1');
 
-    // Public: gift card balance check + SMS view link (token, not the card code)
+    // Public: gift card balance check + SMS view link (token, not the card code).
+    // Balance is POST-only — code in the URL would hit access logs.
     Route::post('/gift-cards/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balancePost'])
         ->middleware('throttle:10,1');
     Route::get('/gift-cards/view/{token}', [App\Http\Controllers\Api\GiftCardController::class, 'viewByToken'])
         ->middleware('throttle:30,1')
         ->where('token', '[A-Za-z0-9]{32,64}');
-    Route::get('/gift-cards/{code}/balance', [App\Http\Controllers\Api\GiftCardController::class, 'balance'])
-        ->middleware('throttle:10,1');
 
     // Customer: referral management + gift card on orders
     Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
         Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
         Route::post('/gift-cards/purchase', [App\Http\Controllers\Api\GiftCardController::class, 'purchase'])
-            ->middleware('throttle:10,1');
+            ->middleware('throttle:5,10');
         Route::get('/gift-cards/purchases/{orderId}', [App\Http\Controllers\Api\GiftCardController::class, 'purchaseStatus']);
         Route::post('/gift-cards/purchases/{orderId}/resend', [App\Http\Controllers\Api\GiftCardController::class, 'resendPurchaseDelivery'])
             ->middleware('throttle:5,10');
@@ -87,8 +86,10 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:promotions.manage'])->group(function () {
         Route::get('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'index']);
         Route::post('/admin/gift-cards', [App\Http\Controllers\Api\GiftCardController::class, 'issue']);
-        Route::post('/admin/gift-cards/send-sms', [App\Http\Controllers\Api\GiftCardController::class, 'sendSms']);
-        Route::post('/admin/gift-cards/send-email', [App\Http\Controllers\Api\GiftCardController::class, 'sendEmail']);
+        Route::post('/admin/gift-cards/send-sms', [App\Http\Controllers\Api\GiftCardController::class, 'sendSms'])
+            ->middleware('throttle:10,1');
+        Route::post('/admin/gift-cards/send-email', [App\Http\Controllers\Api\GiftCardController::class, 'sendEmail'])
+            ->middleware('throttle:10,1');
         Route::get('/admin/gift-cards/{id}/transactions', [App\Http\Controllers\Api\GiftCardController::class, 'transactions']);
         Route::post('/admin/gift-cards/{id}/cancel', [App\Http\Controllers\Api\GiftCardController::class, 'cancel']);
         Route::post('/admin/gift-cards/{id}/top-up', [App\Http\Controllers\Api\GiftCardController::class, 'topUp']);

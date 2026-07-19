@@ -143,7 +143,7 @@ test.describe('API rate limiting', () => {
   test('gift card balance endpoint rate-limits after many requests', async ({ request }) => {
     const results: number[] = [];
     for (let i = 0; i < 12; i++) {
-      const res = await request.get('/api/gift-cards/FAKECODE/balance');
+      const res = await request.post('/api/gift-cards/balance', { data: { code: 'FAKECODE' } });
       results.push(res.status());
     }
     // At least one of the later requests should return 404 (not found is fine)

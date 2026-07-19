@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import {
   checkGiftCardBalance,
   fetchCustomerSummary,
-  validatePromoCode,
+  previewLoyaltyRedeem,
+  previewPromoForCart,
 } from "../api";
 import type { PosCustomer, PosCustomerSummary } from "../api";
+import type { PromoPreviewLine } from "../api/loyalty";
 import { removeGiftCardFromOrder } from "../api/loyalty";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
 
@@ -29,6 +31,10 @@ type Props = {
   customer: PosCustomer | null;
   /** Cart merchandise after true discounts — loyalty/promo preview cap. */
   taxableSubtotal: number;
+  /** Cart lines for server promo preview (item_id + unit prices). */
+  cartLines?: PromoPreviewLine[];
+  /** Manual cashier discount in MVR — used for loyalty % cap preview. */
+  manualDiscountMvr?: number;
   /** Grand total after tax — gift-card tender is capped against this. */
   tenderRoom?: number;
   applied: {
@@ -68,18 +74,20 @@ const COLOR = {
  * loyalty balance / tier / lifetime stats fetched from the new
  * `/api/customers/{id}/pos-summary` endpoint, and lets the cashier
  * stage three reward types:
- *   - Promo code   (validated against /api/promotions/validate)
+ *   - Promo code   (previewed via /api/pos/promos/preview)
  *   - Loyalty pts  (previewed via /api/pos/loyalty/preview)
  *   - Gift card    (available balance via POST /api/gift-cards/balance)
  *
  * NONE of these hit the server's apply endpoints yet — each one stores
- * an "estimated discount" object back into useCart state. The actual
- * apply happens in `useOrderCreation::applyStagedRewards` after the
- * order is created and before payment is settled.
+ * a server-estimated discount back into useCart state. The actual apply
+ * happens in `useOrderCreation::applyStagedRewards` after the order is
+ * created and before payment is settled (code/points only).
  */
 export function CustomerRewardsPanel({
   customer,
   taxableSubtotal,
+  cartLines = [],
+  manualDiscountMvr = 0,
   tenderRoom,
   applied,
   setAppliedPromo,
@@ -149,39 +157,29 @@ export function CustomerRewardsPanel({
   const handleApplyPromo = async () => {
     const code = promoCode.trim().toUpperCase();
     if (!code) return;
+    if (!orderId && cartLines.length === 0) {
+      setPromoError("Add items before applying a promo.");
+      return;
+    }
     setPromoBusy(true);
     setPromoError("");
     try {
-      const res = await validatePromoCode(code);
+      const res = await previewPromoForCart({
+        code,
+        orderId: orderId ?? null,
+        customerId: customer?.id ?? null,
+        items: orderId ? undefined : cartLines,
+      });
       if (!res.valid) {
         setPromoError(res.message ?? "Invalid code.");
         return;
       }
-      // Without an order_id the server can't compute the exact
-      // discount, but a percentage promo's discount is roughly
-      // `subtotal * discount_value / 100` and a fixed promo is
-      // `discount_value` directly. Use a conservative estimate so the
-      // cashier sees the right ballpark on the Charge button.
-      //
-      // M11 reconciliation: this is intentionally a CLIENT estimate.
-      // Once Save Ticket / Charge happens, useOrderCreation calls
-      // applyStagedRewards which hits the real /apply endpoint and
-      // re-reads the order.total back from the server — and the
-      // Charge overlay (C5 fix) now uses resumedOrderTotal so any
-      // estimate drift is corrected the moment the order is created.
-      // Promoting this to a true preview API would require sending
-      // the full cart to a new /pos/promos/preview endpoint; tracked
-      // as a follow-up but no longer a correctness risk after C5+H6.
-      let estimate = 0;
-      if (res.promotion) {
-        if (res.promotion.type === "percentage") {
-          estimate = (taxableSubtotal * Number(res.promotion.discount_value)) / 100;
-        } else if (res.promotion.type === "fixed") {
-          // discount_value on fixed promos is stored in laari.
-          estimate = Number(res.promotion.discount_value) / 100;
-        }
-      }
-      setAppliedPromo({ code, promotionId: null, discount: Math.max(0, estimate) });
+      const discountMvr = Math.max(0, (res.discount_laar ?? 0) / 100);
+      setAppliedPromo({
+        code,
+        promotionId: res.promotion?.id ?? null,
+        discount: discountMvr,
+      });
       setPromoCode("");
     } catch (err) {
       setPromoError((err as Error).message);
@@ -200,18 +198,32 @@ export function CustomerRewardsPanel({
       setLoyaltyError(`Customer only has ${availablePoints.toLocaleString()} points available.`);
       return;
     }
+    if (!customer?.id && !orderId) {
+      setLoyaltyError("Attach a customer before redeeming points.");
+      return;
+    }
     setLoyaltyBusy(true);
     setLoyaltyError("");
     try {
-      // We don't have an order_id yet (the cart hasn't been turned into
-      // an order). Estimate locally using the discount-per-point ratio
-      // from the dashboard. The server re-caps everything on the real
-      // hold so we never over-redeem.
-      const discountPerPoint = summary?.loyalty
-        ? estimateDiscountPerPoint(summary)
-        : 0.01;
-      const estimate = Math.min(points * discountPerPoint, taxableSubtotal);
-      setAppliedLoyalty({ points, discount: Math.max(0, estimate) });
+      // taxableSubtotal already excludes staged promo/manual/loyalty — rebuild
+      // merchandise so the server can apply the same % cap as the real hold.
+      const merchandiseMvr =
+        taxableSubtotal
+        + (applied.promo?.discount ?? 0)
+        + manualDiscountMvr
+        + (applied.loyalty?.discount ?? 0);
+      const res = await previewLoyaltyRedeem({
+        points,
+        orderId: orderId ?? null,
+        customerId: customer?.id ?? null,
+        merchandiseSubtotalLaar: orderId ? undefined : Math.round(Math.max(0, merchandiseMvr) * 100),
+        promoDiscountLaar: orderId ? undefined : Math.round(Math.max(0, applied.promo?.discount ?? 0) * 100),
+        manualDiscountLaar: orderId ? undefined : Math.round(Math.max(0, manualDiscountMvr) * 100),
+      });
+      setAppliedLoyalty({
+        points: res.points,
+        discount: Math.max(0, res.discount_laar / 100),
+      });
       setLoyaltyPoints("");
     } catch (err) {
       setLoyaltyError((err as Error).message);
@@ -531,16 +543,6 @@ export function CustomerRewardsPanel({
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Roughly estimate the discount-per-point ratio so the cart can show a
- *  preview without an extra server round-trip. The server caps the
- *  actual discount when the hold is placed, so an over-estimate here
- *  becomes a smaller real discount — never an under-charge. */
-function estimateDiscountPerPoint(s: PosCustomerSummary): number {
-  const rate = s.loyalty.redeem_mvr_per_point;
-  if (typeof rate === 'number' && rate > 0) return rate;
-  return 0.01;
-}
 
 function fmtRelative(iso: string): string {
   try {

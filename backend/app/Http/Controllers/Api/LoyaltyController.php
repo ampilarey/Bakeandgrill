@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Loyalty\Services\PointsCalculator;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\LoyaltyAccount;
@@ -203,28 +204,78 @@ class LoyaltyController extends Controller
 
         $request->validate([
             'points' => 'required|integer|min:1',
-            'order_id' => 'required|integer|exists:orders,id',
+            'order_id' => 'nullable|integer|exists:orders,id',
+            'customer_id' => 'nullable|integer|exists:customers,id',
+            'merchandise_subtotal_laar' => 'nullable|integer|min:0',
+            'promo_discount_laar' => 'nullable|integer|min:0',
+            'manual_discount_laar' => 'nullable|integer|min:0',
         ]);
 
-        $order = Order::find($request->integer('order_id'));
-        if (!$order) {
-            return response()->json(['message' => 'Order not found.'], 404);
-        }
-        if (!$order->customer_id) {
-            return response()->json(['message' => 'Attach a customer to the ticket before redeeming points.'], 422);
+        $request->validate([
+            'order_id' => [
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    if ($value === null && (!$request->filled('customer_id') || !$request->filled('merchandise_subtotal_laar'))) {
+                        $fail('Provide order_id, or customer_id with merchandise_subtotal_laar.');
+                    }
+                },
+            ],
+        ]);
+
+        $customerId = null;
+        $redeemBaseLaar = 0;
+
+        if ($request->filled('order_id')) {
+            $order = Order::find($request->integer('order_id'));
+            if (!$order) {
+                return response()->json(['message' => 'Order not found.'], 404);
+            }
+            if (!$order->customer_id) {
+                return response()->json(['message' => 'Attach a customer to the ticket before redeeming points.'], 422);
+            }
+            $customerId = (int) $order->customer_id;
+
+            $subLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
+            $parts = EffectiveDiscount::merchandisePartsFromOrder($order);
+            $parts['loyalty'] = 0;
+            $redeemBaseLaar = max(0, $subLaar - EffectiveDiscount::effectiveTotalLaar($subLaar, $parts));
+        } else {
+            $customerId = $request->integer('customer_id');
+            $subLaar = $request->integer('merchandise_subtotal_laar');
+            $parts = [
+                'promo' => $request->integer('promo_discount_laar'),
+                'loyalty' => 0,
+                'manual' => $request->integer('manual_discount_laar'),
+                'gift_card' => 0,
+                'referral' => 0,
+            ];
+            $redeemBaseLaar = max(0, $subLaar - EffectiveDiscount::effectiveTotalLaar($subLaar, $parts));
         }
 
         /** @var Customer $customer */
-        $customer = Customer::findOrFail($order->customer_id);
+        $customer = Customer::findOrFail($customerId);
         $account = $this->service->accountFor($customer);
-        $points = min($request->integer('points'), $account->availablePoints());
-        $discountLaar = $this->calculator->discountLaarForPoints($points);
+        $available = $account->availablePoints();
+
+        $minRedeem = $this->calculator->minRedeemPoints();
+        if ($request->integer('points') < $minRedeem) {
+            return response()->json([
+                'message' => "Minimum redemption is {$minRedeem} points.",
+            ], 422);
+        }
+
+        $preview = $this->calculator->previewRedemption(
+            $request->integer('points'),
+            $available,
+            $redeemBaseLaar,
+        );
 
         return response()->json([
-            'points' => $points,
-            'discount_laar' => $discountLaar,
-            'discount_mvr' => number_format($discountLaar / 100, 2),
-            'available_points' => $account->availablePoints(),
+            'points' => $preview['points'],
+            'discount_laar' => $preview['discount_laar'],
+            'discount_mvr' => number_format($preview['discount_laar'] / 100, 2),
+            'available_points' => $available,
+            'min_redeem_points' => $minRedeem,
+            'max_redeem_percent' => $this->calculator->maxRedeemPercent(),
         ]);
     }
 

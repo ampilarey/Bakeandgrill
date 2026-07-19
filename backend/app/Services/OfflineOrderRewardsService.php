@@ -12,10 +12,12 @@ use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderPromotion;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Applies staged POS rewards during offline sync (promo → loyalty → gift card).
+ * Permission checks mirror the online POS apply endpoints.
  */
 class OfflineOrderRewardsService
 {
@@ -28,22 +30,31 @@ class OfflineOrderRewardsService
     /**
      * @param array<string, mixed> $rewards
      */
-    public function apply(Order $order, array $rewards): Order
+    public function apply(Order $order, array $rewards, User $user): Order
     {
         $order = $order->fresh(['items.item']);
 
         if ($promo = trim((string) ($rewards['promo_code'] ?? ''))) {
+            if (!$user->hasPermission('promotions.discounts')) {
+                throw new \RuntimeException('You do not have permission to apply discounts.');
+            }
             $this->applyPromo($order, $promo);
             $order = $order->fresh(['items.item']);
         }
 
         $points = (int) ($rewards['loyalty_points'] ?? 0);
         if ($points > 0) {
+            if (!$user->hasPermission('loyalty.redeem')) {
+                throw new \RuntimeException('You do not have permission to redeem loyalty points.');
+            }
             $this->applyLoyalty($order, $points);
             $order = $order->fresh(['items.item']);
         }
 
         if ($gift = trim((string) ($rewards['gift_card_code'] ?? ''))) {
+            if (!$user->hasPermission('promotions.discounts')) {
+                throw new \RuntimeException('You do not have permission to apply discounts.');
+            }
             $this->applyGiftCard($order, $gift);
             $order = $order->fresh(['items.item']);
         }

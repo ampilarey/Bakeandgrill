@@ -111,18 +111,6 @@ class GiftCardStockTest extends TestCase
     {
         ['code' => $code] = $this->makeGiftCard(['current_balance' => 75, 'initial_balance' => 75]);
 
-        $response = $this->getJson('/api/gift-cards/' . urlencode($code) . '/balance')
-            ->assertStatus(200);
-
-        $this->assertEquals(75, $response->json('current_balance'));
-        $this->assertArrayHasKey('masked_code', $response->json());
-        $this->assertArrayNotHasKey('code', $response->json());
-    }
-
-    public function test_post_balance_check_returns_current_balance(): void
-    {
-        ['code' => $code] = $this->makeGiftCard(['current_balance' => 75, 'initial_balance' => 75]);
-
         $response = $this->postJson('/api/gift-cards/balance', ['code' => $code])
             ->assertStatus(200);
 
@@ -204,7 +192,7 @@ class GiftCardStockTest extends TestCase
 
     public function test_balance_check_returns_404_for_unknown_code(): void
     {
-        $this->getJson('/api/gift-cards/FAKE-CODE-1234/balance')
+        $this->postJson('/api/gift-cards/balance', ['code' => 'FAKE-CODE-1234'])
             ->assertStatus(404);
     }
 
@@ -216,7 +204,7 @@ class GiftCardStockTest extends TestCase
             'status' => 'depleted',
         ]);
 
-        $this->getJson('/api/gift-cards/' . urlencode($code) . '/balance')
+        $this->postJson('/api/gift-cards/balance', ['code' => $code])
             ->assertStatus(404);
     }
 
@@ -229,17 +217,23 @@ class GiftCardStockTest extends TestCase
             'expires_at' => now()->subDay(),
         ]);
 
-        $this->getJson('/api/gift-cards/' . urlencode($code) . '/balance')
+        $this->postJson('/api/gift-cards/balance', ['code' => $code])
+            ->assertStatus(404);
+    }
+
+    public function test_get_balance_by_code_route_is_removed(): void
+    {
+        $this->getJson('/api/gift-cards/FAKE-CODE-1234/balance')
             ->assertStatus(404);
     }
 
     public function test_balance_check_throttles_after_limit(): void
     {
         for ($i = 0; $i < 10; $i++) {
-            $this->getJson('/api/gift-cards/FAKE-CODE-1234/balance');
+            $this->postJson('/api/gift-cards/balance', ['code' => 'FAKE-CODE-1234']);
         }
 
-        $this->getJson('/api/gift-cards/FAKE-CODE-1234/balance')
+        $this->postJson('/api/gift-cards/balance', ['code' => 'FAKE-CODE-1234'])
             ->assertStatus(429);
     }
 

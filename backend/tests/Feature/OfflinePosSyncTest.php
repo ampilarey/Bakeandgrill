@@ -343,6 +343,37 @@ class OfflinePosSyncTest extends TestCase
         $this->assertLessThan(50.0, (float) $order->total);
     }
 
+    public function test_sync_rejects_promo_rewards_without_permission(): void
+    {
+        Promotion::create([
+            'name' => 'Offline Save Denied',
+            'code' => 'OFFDENY',
+            'type' => 'fixed',
+            'discount_value' => 500,
+            'is_active' => true,
+            'stackable' => false,
+        ]);
+
+        $this->staff->revokePermission('promotions.discounts');
+        $this->staff->unsetRelation('permissions');
+        $this->staff->unsetRelation('role');
+
+        $payload = $this->buildOrderPayload('cash', 50.0);
+        $payload['rewards'] = ['promo_code' => 'OFFDENY'];
+        // Client still claims full-price totals; sync must fail on permission
+        // before totals matching matters.
+        $payload['totals'] = $this->referenceTotals;
+        $payload['payment']['amount'] = $payload['totals']['total'];
+
+        $response = $this->syncPayload([$payload]);
+        $response->assertOk();
+        $this->assertSame('failed', $response->json('results.0.status'));
+        $this->assertStringContainsString(
+            'permission',
+            strtolower((string) $response->json('results.0.message')),
+        );
+    }
+
     /**
      * @param array<int, array<string, mixed>> $orders
      */

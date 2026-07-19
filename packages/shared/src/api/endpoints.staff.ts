@@ -15,6 +15,7 @@ export const STAFF_ENDPOINTS = {
   POS_LOYALTY_PREVIEW:         '/pos/loyalty/preview',
   POS_LOYALTY_HOLD:            '/pos/loyalty/hold',
   POS_LOYALTY_RELEASE:         (orderId: number) => `/pos/loyalty/hold/${orderId}`,
+  POS_PROMOS_PREVIEW:          '/pos/promos/preview',
   POS_ORDER_GIFT_CARD:         (orderId: number) => `/pos/orders/${orderId}/gift-card`,
 
   // Order ops (POS hold / resume / payments)

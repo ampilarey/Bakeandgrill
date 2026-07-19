@@ -6,7 +6,9 @@ namespace App\Domains\Promotions\Services;
 
 use App\Domains\Promotions\Repositories\PromotionRedemptionRepositoryInterface;
 use App\Domains\Promotions\Repositories\PromotionRepositoryInterface;
+use App\Models\Item;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
 use App\Support\LaariConverter;
@@ -34,6 +36,33 @@ class PromotionEvaluator
      */
     public function evaluate(string $code, Order $order, ?int $customerId = null): array
     {
+        return $this->evaluateAgainstOrder($code, $order, $customerId, $order->id);
+    }
+
+    /**
+     * Preview a promo against POS cart lines without persisting an order.
+     *
+     * @param  array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}>  $lines
+     * @return array{valid: bool, discount_laar: int, message: string, promotion: ?Promotion}
+     */
+    public function evaluateForCart(string $code, array $lines, ?int $customerId = null): array
+    {
+        if ($lines === []) {
+            return $this->reject('Cart is empty.');
+        }
+
+        return $this->evaluateAgainstOrder($code, $this->ephemeralOrderFromLines($lines), $customerId, null);
+    }
+
+    /**
+     * @return array{valid: bool, discount_laar: int, message: string, promotion: ?Promotion}
+     */
+    private function evaluateAgainstOrder(
+        string $code,
+        Order $order,
+        ?int $customerId,
+        ?int $excludeOrderId,
+    ): array {
         $normalizedCode = strtoupper(trim($code));
 
         $promotion = $this->promotionRepo->findByCodeWithRelations($normalizedCode, ['targets']);
@@ -48,7 +77,7 @@ class PromotionEvaluator
 
         // Campaign-wide max_uses: confirmed redemptions + pending draft reservations
         // on other non-cancelled orders (mirrors per-customer pending accounting).
-        if ($promotion->max_uses && self::campaignUsageIncludingPending($promotion, $order->id) >= (int) $promotion->max_uses) {
+        if ($promotion->max_uses && self::campaignUsageIncludingPending($promotion, $excludeOrderId) >= (int) $promotion->max_uses) {
             return $this->reject('Promo code is not valid or has expired.');
         }
 
@@ -60,7 +89,7 @@ class PromotionEvaluator
         }
 
         $order->loadMissing('items');
-        $subtotalLaar = (int) round($order->subtotal * 100);
+        $subtotalLaar = (int) ($order->subtotal_laar ?? round((float) $order->subtotal * 100));
 
         if ($subtotalLaar < $promotion->min_order_laar) {
             $minMvr = number_format($promotion->min_order_laar / 100, 2);
@@ -76,18 +105,20 @@ class PromotionEvaluator
             // current one. Without this check, a customer could open 5 carts, apply the
             // "once per customer" promo to all 5 before any payment is confirmed, and end
             // up with multiple redemptions.
-            $pendingUsage = OrderPromotion::where('promotion_id', $promotion->id)
-                ->where('order_id', '!=', $order->id)
+            $pendingQuery = OrderPromotion::where('promotion_id', $promotion->id)
                 ->where('status', 'draft')
                 ->whereHas(
                     'order',
                     fn ($q) => $q
                         ->where('customer_id', $customerId)
                         ->whereNotIn('status', ['cancelled', 'refunded']),
-                )
-                ->count();
+                );
 
-            if ($confirmedUsage + $pendingUsage >= $promotion->max_uses_per_customer) {
+            if ($excludeOrderId !== null) {
+                $pendingQuery->where('order_id', '!=', $excludeOrderId);
+            }
+
+            if ($confirmedUsage + $pendingQuery->count() >= $promotion->max_uses_per_customer) {
                 return $this->reject('You have already used this promo code the maximum number of times.');
             }
         }
@@ -104,6 +135,49 @@ class PromotionEvaluator
             'message' => 'Promo code applied successfully.',
             'promotion' => $promotion,
         ];
+    }
+
+    /**
+     * @param  array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}>  $lines
+     */
+    private function ephemeralOrderFromLines(array $lines): Order
+    {
+        $itemIds = collect($lines)->pluck('item_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $catalog = Item::query()->whereIn('id', $itemIds)->get()->keyBy('id');
+
+        $orderItems = collect();
+        $subtotalLaar = 0;
+
+        foreach ($lines as $line) {
+            $itemId = (int) ($line['item_id'] ?? 0);
+            if ($itemId <= 0) {
+                continue;
+            }
+
+            $qty = max(1, (int) ($line['quantity'] ?? 1));
+            $unitPrice = round((float) ($line['unit_price'] ?? 0), 2);
+            $totalPrice = array_key_exists('total_price', $line)
+                ? round((float) $line['total_price'], 2)
+                : round($unitPrice * $qty, 2);
+            $subtotalLaar += LaariConverter::toLaar($totalPrice);
+
+            $orderItem = new OrderItem([
+                'item_id' => $itemId,
+                'quantity' => $qty,
+                'unit_price' => $unitPrice,
+                'total_price' => $totalPrice,
+            ]);
+            $orderItem->setRelation('item', $catalog->get($itemId));
+            $orderItems->push($orderItem);
+        }
+
+        $order = new Order([
+            'subtotal' => $subtotalLaar / 100,
+            'subtotal_laar' => $subtotalLaar,
+        ]);
+        $order->setRelation('items', $orderItems);
+
+        return $order;
     }
 
     private function calculateDiscount(Promotion $promo, Order $order, int $subtotalLaar): int

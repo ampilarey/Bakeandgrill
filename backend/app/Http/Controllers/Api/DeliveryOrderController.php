@@ -102,8 +102,12 @@ class DeliveryOrderController extends Controller
         ], $delivery->toArray());
 
         // Pass null as the "staff user" when request is from a customer
-        // to avoid setting user_id = customer.id (FK would fail)
+        // to avoid setting user_id = customer.id (FK would fail). Customers
+        // must never send a manual discount — strip it before create.
         $staffUser = $isCustomer ? null : $authUser;
+        if ($isCustomer) {
+            $payload['discount_amount'] = 0;
+        }
 
         $order = DB::transaction(function () use ($payload, $staffUser, $delivery): Order {
             $order = $this->orderCreation->createFromPayload($payload, $staffUser);

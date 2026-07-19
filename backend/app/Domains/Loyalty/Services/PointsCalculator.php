@@ -91,4 +91,30 @@ class PointsCalculator
     {
         return $this->settings->maxRedeemPercent();
     }
+
+    /**
+     * Preview a loyalty redemption with the same caps as createOrRefreshHold
+     * (available balance, max points, max % of merchandise-after-other-discounts).
+     *
+     * @return array{points: int, discount_laar: int}
+     */
+    public function previewRedemption(int $requestedPoints, int $availablePoints, int $redeemBaseLaar): array
+    {
+        $maxRedeem = min($this->maxRedeemPoints(), max(0, $availablePoints));
+        $points = min(max(0, $requestedPoints), $maxRedeem);
+        $discountLaar = $this->discountLaarForPoints($points);
+
+        $maxDiscountLaar = (int) floor(max(0, $redeemBaseLaar) * $this->maxRedeemPercent() / 100);
+        if ($discountLaar > $maxDiscountLaar) {
+            $discountLaar = $maxDiscountLaar;
+            $points = $this->pointsNeededForDiscountLaar($discountLaar);
+            $points = min($points, $maxRedeem);
+            $discountLaar = $this->discountLaarForPoints($points);
+        }
+
+        return [
+            'points' => $points,
+            'discount_laar' => $discountLaar,
+        ];
+    }
 }

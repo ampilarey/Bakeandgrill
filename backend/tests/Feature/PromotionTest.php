@@ -449,4 +449,40 @@ class PromotionTest extends TestCase
         // Promo discount field should be zeroed out
         $this->assertEquals(0, (int) $order->fresh()->promo_discount_laar);
     }
+
+    public function test_remove_promo_on_partial_payment_status_is_rejected(): void
+    {
+        $promo = $this->createPromo();
+        $order = $this->createOrder();
+
+        $this->staff->grantPermission('promotions.discounts');
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->postJson("/api/orders/{$order->id}/apply-promo", ['code' => 'SAVE10'])->assertOk();
+
+        $order->update(['payment_status' => 'partial']);
+
+        $this->deleteJson("/api/orders/{$order->id}/promo/{$promo->id}")
+            ->assertStatus(422);
+    }
+
+    public function test_pos_promo_preview_returns_server_discount_for_cart_lines(): void
+    {
+        $this->createPromo(['type' => 'fixed', 'discount_value' => 500]);
+        $this->staff->grantPermission('promotions.discounts');
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $this->postJson('/api/pos/promos/preview', [
+            'code' => 'SAVE10',
+            'items' => [
+                [
+                    'item_id' => $this->item->id,
+                    'quantity' => 1,
+                    'unit_price' => (float) $this->item->base_price,
+                ],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('valid', true)
+            ->assertJsonPath('discount_laar', 500);
+    }
 }

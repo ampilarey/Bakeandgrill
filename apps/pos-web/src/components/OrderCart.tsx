@@ -745,6 +745,17 @@ export function OrderCart(p: Props) {
           <CustomerRewardsPanel
             customer={p.attachedCustomer}
             taxableSubtotal={p.taxableSubtotal}
+            cartLines={p.cartItems.map((item) => {
+              const unit =
+                item.price + item.modifiers.reduce((sum, m) => sum + m.price, 0);
+              return {
+                item_id: item.id,
+                quantity: item.quantity,
+                unit_price: unit,
+                total_price: Math.round(unit * item.quantity * 100) / 100,
+              };
+            })}
+            manualDiscountMvr={p.discountValue}
             tenderRoom={p.cartGrandTotal ?? p.cartTotal + (p.appliedGiftCard?.discount ?? 0)}
             applied={{
               promo: p.appliedPromo,

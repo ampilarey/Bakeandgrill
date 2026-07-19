@@ -19,6 +19,37 @@ export async function validatePromoCode(
   });
 }
 
+export type PromoPreviewLine = {
+  item_id: number;
+  quantity: number;
+  unit_price: number;
+  total_price?: number;
+};
+
+/** Server-side promo preview for the POS cart (or an existing order). */
+export async function previewPromoForCart(input: {
+  code: string;
+  items?: PromoPreviewLine[];
+  customerId?: number | null;
+  orderId?: number | null;
+}): Promise<{
+  valid: boolean;
+  message?: string;
+  discount_laar: number;
+  discount_mvr: string;
+  promotion?: { id?: number; name: string; type: string; discount_value: number; scope: string } | null;
+}> {
+  return request("/pos/promos/preview", {
+    method: "POST",
+    body: JSON.stringify({
+      code: input.code,
+      ...(input.orderId != null ? { order_id: input.orderId } : {}),
+      ...(input.customerId != null ? { customer_id: input.customerId } : {}),
+      ...(input.items && input.items.length > 0 ? { items: input.items } : {}),
+    }),
+  });
+}
+
 /** Apply a previously-validated promo code to an existing order. Server
  *  enforces the staff `promotions.discounts` permission. */
 export async function applyPromoToOrder(
@@ -31,21 +62,36 @@ export async function applyPromoToOrder(
   });
 }
 
-/** Preview how much a loyalty redemption would discount the order without
- *  actually placing the hold. Server caps `points` at the customer's
- *  current available balance. */
-export async function previewLoyaltyRedeem(
-  orderId: number,
-  points: number,
-): Promise<{
+/** Preview how much a loyalty redemption would discount without placing a hold.
+ *  Prefer cart context (customer + merchandise) when the ticket is not yet created. */
+export async function previewLoyaltyRedeem(input: {
+  points: number;
+  orderId?: number | null;
+  customerId?: number | null;
+  merchandiseSubtotalLaar?: number;
+  promoDiscountLaar?: number;
+  manualDiscountLaar?: number;
+}): Promise<{
   points: number;
   discount_laar: number;
   discount_mvr: string;
   available_points: number;
+  min_redeem_points?: number;
+  max_redeem_percent?: number;
+  message?: string;
 }> {
   return request("/pos/loyalty/preview", {
     method: "POST",
-    body: JSON.stringify({ order_id: orderId, points }),
+    body: JSON.stringify({
+      points: input.points,
+      ...(input.orderId != null ? { order_id: input.orderId } : {}),
+      ...(input.customerId != null ? { customer_id: input.customerId } : {}),
+      ...(input.merchandiseSubtotalLaar != null
+        ? { merchandise_subtotal_laar: input.merchandiseSubtotalLaar }
+        : {}),
+      ...(input.promoDiscountLaar != null ? { promo_discount_laar: input.promoDiscountLaar } : {}),
+      ...(input.manualDiscountLaar != null ? { manual_discount_laar: input.manualDiscountLaar } : {}),
+    }),
   });
 }
 

@@ -91,6 +91,9 @@ if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orde
         Route::post('/loyalty/hold', [App\Http\Controllers\Api\LoyaltyController::class, 'posHold']);
         Route::delete('/loyalty/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'posReleaseHold']);
 
+        Route::post('/promos/preview', [App\Http\Controllers\Api\PromotionController::class, 'posPreview'])
+            ->middleware('throttle:60,1');
+
         Route::post('/orders/{orderId}/gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'staffApplyToOrder']);
         Route::delete('/orders/{orderId}/gift-card', [App\Http\Controllers\Api\GiftCardController::class, 'staffRemoveFromOrder']);
     });
