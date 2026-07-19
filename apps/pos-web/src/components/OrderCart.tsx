@@ -672,7 +672,7 @@ export function OrderCart(p: Props) {
                 const blocked = inUse && !ours;
                 return (
                   <option key={t.id} value={t.id} disabled={blocked}>
-                    {formatTableOption(t, { ourOrderId: p.resumedOrderId })}
+                    {t.name}
                   </option>
                 );
               })}

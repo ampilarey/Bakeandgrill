@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, Field, Overlay } from "./OpenShiftModal";
 import type { PosCustomer } from "../api";
 import type { RestaurantTable } from "../types";
-import { formatTableOption, tableIsInUse } from "../utils/tableLabels";
+import { tableIsInUse } from "../utils/tableLabels";
 
 import type { PosOrderType } from "../orderTypes";
 
@@ -203,7 +203,7 @@ export function SaveTicketModal({
                 const blocked = tableIsInUse(t);
                 return (
                   <option key={t.id} value={t.id} disabled={blocked}>
-                    {formatTableOption(t)}
+                    {t.name}
                   </option>
                 );
               })}
