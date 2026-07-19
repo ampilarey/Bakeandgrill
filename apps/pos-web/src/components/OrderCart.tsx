@@ -417,9 +417,7 @@ export function OrderCart(p: Props) {
                 ? 'Paid — items are locked. You can still add or change the customer below.'
                 : ticketDirty
                   ? 'Unsaved changes — Save, or Charge (auto-saves first).'
-                  : wasHeld
-                    ? 'Edit freely, then Save or Charge.'
-                    : 'Edit freely, then Save or Charge.'}
+                  : 'Edit freely, then Save or Charge.'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
