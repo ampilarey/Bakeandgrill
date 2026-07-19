@@ -195,6 +195,9 @@ export function OrderCart(p: Props) {
     dockMode ? "pos-cart--dock" : "",
     sheetMode ? "pos-cart--sheet" : "",
   ].filter(Boolean).join(" ");
+  const selectedTableName = p.selectedTableId != null
+    ? (p.tables.find((t) => t.id === p.selectedTableId)?.name ?? null)
+    : null;
   const orderLabel = p.resumedOrderLabel ?? `#${p.resumedOrderId}`;
   // Unpaid active tickets open editable; Save appears when dirty.
   const editing = isResumed && !p.resumedIsPaid && !!p.isEditingActive;
@@ -364,7 +367,14 @@ export function OrderCart(p: Props) {
             >
               {p.cartItems.length === 0
                 ? "Cart empty"
-                : `${itemCount} item${itemCount === 1 ? "" : "s"}`}
+                : (
+                  <>
+                    {`${itemCount} item${itemCount === 1 ? "" : "s"}`}
+                    {selectedTableName ? (
+                      <span style={{ color: C.text }}>{`, ${selectedTableName}`}</span>
+                    ) : null}
+                  </>
+                )}
             </span>
             <span
               className="pos-cart-dock-amount"
