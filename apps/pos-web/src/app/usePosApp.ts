@@ -308,6 +308,10 @@ export function usePosApp() {
     setDeliveryDetails(EMPTY_DELIVERY_DETAILS);
     setCustomerAddresses([]);
     setSelectedDeliveryAddressId("manual");
+    // Drop sticky seat selection — otherwise the next Save ticket
+    // pre-fills "Table 1" (etc.) for every new order and Active Orders
+    // all look like the same table.
+    setSelectedTableId(null);
   }, [cart]);
 
   const [deliveryFeeEst, setDeliveryFeeEst] = useState(0);

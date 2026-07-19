@@ -301,6 +301,19 @@ export function TicketRow({
                 {t.payment_status === "partial" ? "Partial" : "Unpaid"}
               </span>
             )}
+            {t.table?.name ? (
+              <span
+                title={t.table.location ? `Table ${t.table.name} · ${t.table.location}` : `Table ${t.table.name}`}
+                style={{
+                  ...badgeBase,
+                  color: "#9A3412",
+                  background: "#FFF7ED",
+                  borderColor: "#FDBA74",
+                }}
+              >
+                🍽 {t.table.name}
+              </span>
+            ) : null}
           </div>
           <div
             className={isNarrow ? "pos-open-tickets-meta-clamp" : undefined}

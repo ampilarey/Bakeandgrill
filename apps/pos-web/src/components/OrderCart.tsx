@@ -652,9 +652,8 @@ export function OrderCart(p: Props) {
               {p.tables.map((t) => {
                 const ours = p.resumedOrderId != null && t.current_order_id === p.resumedOrderId;
                 const inUse = tableIsInUse(t);
-                // Other tickets' seats stay selectable only when already chosen
-                // (resume edge cases); otherwise block double-booking in the UI.
-                const blocked = inUse && !ours && t.id !== p.selectedTableId;
+                // Never keep another ticket's seat selectable via sticky selection.
+                const blocked = inUse && !ours;
                 return (
                   <option key={t.id} value={t.id} disabled={blocked}>
                     {formatTableOption(t, { ourOrderId: p.resumedOrderId })}

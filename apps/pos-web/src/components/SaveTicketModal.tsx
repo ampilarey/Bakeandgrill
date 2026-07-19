@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Field, Overlay } from "./OpenShiftModal";
 import type { PosCustomer } from "../api";
 import type { RestaurantTable } from "../types";
@@ -7,6 +7,22 @@ import { formatTableOption, tableIsInUse } from "../utils/tableLabels";
 import type { PosOrderType } from "../orderTypes";
 
 type OrderType = PosOrderType;
+
+function composeTicketName(
+  customer: PosCustomer | null,
+  table: RestaurantTable | null,
+  defaultName?: string,
+): string {
+  const parts: string[] = [];
+  if (customer?.name) parts.push(customer.name);
+  if (table) parts.push(`Table ${table.name}`);
+  if (parts.length === 0 && customer?.phone) parts.push(customer.phone);
+  if (parts.length === 0 && defaultName) parts.push(defaultName);
+  if (parts.length === 0) {
+    parts.push(`Ticket ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
+  }
+  return parts.join(" · ");
+}
 
 type Props = {
   /** Customer currently attached to the cart (via CustomerPicker). Used
@@ -82,17 +98,10 @@ export function SaveTicketModal({
    *
    * "Aisha · Table 4" beats "Ticket 14:32" every time.
    */
-  const suggestedName = useMemo(() => {
-    const parts: string[] = [];
-    if (attachedCustomer?.name) parts.push(attachedCustomer.name);
-    if (currentTable) parts.push(`Table ${currentTable.name}`);
-    if (parts.length === 0 && attachedCustomer?.phone) parts.push(attachedCustomer.phone);
-    if (parts.length === 0 && defaultName) parts.push(defaultName);
-    if (parts.length === 0) {
-      parts.push(`Ticket ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
-    }
-    return parts.join(" · ");
-  }, [attachedCustomer, currentTable, defaultName]);
+  const suggestedName = useMemo(
+    () => composeTicketName(attachedCustomer, currentTable, defaultName),
+    [attachedCustomer, currentTable, defaultName],
+  );
 
   const [name, setName] = useState(suggestedName);
   const [note, setNote] = useState("");
@@ -106,6 +115,20 @@ export function SaveTicketModal({
   const [fireToKitchen, setFireToKitchen] = useState(
     orderType === "Pickup" || orderType === "Delivery",
   );
+
+  // Sticky seat from a previous ticket must not pre-fill another park
+  // as "Table 1" when that seat is already owned by an open check.
+  useEffect(() => {
+    if (selectedTableId == null) return;
+    const sticky = tables.find((t) => t.id === selectedTableId);
+    if (!sticky || !tableIsInUse(sticky)) return;
+    setSelectedTableId(null);
+    setName((prev) => {
+      const next = composeTicketName(attachedCustomer, null, defaultName);
+      const stale = composeTicketName(attachedCustomer, sticky, defaultName);
+      return prev === stale || prev.trim() === "" ? next : prev;
+    });
+  }, [attachedCustomer, defaultName, selectedTableId, setSelectedTableId, tables]);
 
   const submit = async () => {
     const n = name.trim();
@@ -126,14 +149,8 @@ export function SaveTicketModal({
     // immediately — but only if the cashier hasn't already typed
     // a custom name we'd be overwriting.
     if (name === suggestedName || name.trim() === "") {
-      // Manually recompute since `suggestedName` is memoised on the
-      // pre-update state; build the new string inline.
       const newTable = tables.find((t) => t.id === id) ?? null;
-      const parts: string[] = [];
-      if (attachedCustomer?.name) parts.push(attachedCustomer.name);
-      if (newTable) parts.push(`Table ${newTable.name}`);
-      if (parts.length === 0 && attachedCustomer?.phone) parts.push(attachedCustomer.phone);
-      setName(parts.length > 0 ? parts.join(" · ") : suggestedName);
+      setName(composeTicketName(attachedCustomer, newTable, defaultName));
     }
   };
 
@@ -183,7 +200,7 @@ export function SaveTicketModal({
             >
               <option value="">No table</option>
               {tables.map((t) => {
-                const blocked = tableIsInUse(t) && t.id !== selectedTableId;
+                const blocked = tableIsInUse(t);
                 return (
                   <option key={t.id} value={t.id} disabled={blocked}>
                     {formatTableOption(t)}
