@@ -31,6 +31,7 @@
             "devices.approve",
             "devices.manage",
             "devices.view",
+            "events.manage",
             "finance.cash_manage",
             "finance.expenses",
             "finance.invoices",

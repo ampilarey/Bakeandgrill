@@ -8,6 +8,24 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 */
 
+// Events pipeline — list/show/update: any of events.manage | customers.manage (BC)
+Route::middleware(['auth:sanctum', 'staff.token', 'permission.any:events.manage,customers.manage'])
+    ->prefix('admin/customers')
+    ->group(function () {
+        Route::get('/catering-requests', [App\Http\Controllers\Api\CateringRequestController::class, 'adminIndex']);
+        Route::get('/catering-requests/{id}', [App\Http\Controllers\Api\CateringRequestController::class, 'adminShow']);
+        Route::patch('/catering-requests/{id}', [App\Http\Controllers\Api\CateringRequestController::class, 'update']);
+    });
+
+// Phase 3 quote actions — events.manage only
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:events.manage'])
+    ->prefix('admin/customers')
+    ->group(function () {
+        Route::put('/catering-requests/{id}/lines', [App\Http\Controllers\Api\CateringRequestController::class, 'replaceLines']);
+        Route::post('/catering-requests/{id}/send-quote', [App\Http\Controllers\Api\CateringRequestController::class, 'sendQuote']);
+        Route::post('/catering-requests/{id}/duplicate', [App\Http\Controllers\Api\CateringRequestController::class, 'duplicate']);
+    });
+
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage'])->prefix('admin/customers')->group(function () {
     Route::middleware('permission:customers.analytics')->group(function () {
         Route::get('/metrics', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'metrics']);
@@ -16,9 +34,6 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
     Route::get('/segments', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'listSegments']);
     Route::get('/segments/{segment}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'segmentCustomers']);
     Route::get('/data-quality', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'dataQuality']);
-    Route::get('/catering-requests', [App\Http\Controllers\Api\CateringRequestController::class, 'adminIndex']);
-    Route::get('/catering-requests/{id}', [App\Http\Controllers\Api\CateringRequestController::class, 'adminShow']);
-    Route::patch('/catering-requests/{id}', [App\Http\Controllers\Api\CateringRequestController::class, 'update']);
     // Legacy aliases
     Route::get('/corporate-inquiries', [App\Http\Controllers\Api\CorporateInquiryController::class, 'adminIndex']);
     Route::patch('/corporate-inquiries/{id}', [App\Http\Controllers\Api\CorporateInquiryController::class, 'updateStatus']);

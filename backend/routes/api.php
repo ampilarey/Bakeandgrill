@@ -96,6 +96,9 @@ Route::get('/receipts/{token}', [ReceiptController::class, 'show']);
 Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback'])
     ->middleware('throttle:10,10');
 
+Route::get('/event-quotes/{token}', [App\Http\Controllers\Api\EventQuoteController::class, 'show'])
+    ->middleware('throttle:30,1');
+
 Route::post('/customer/sms/opt-out', [CustomerController::class, 'optOut'])
     ->middleware('throttle:5,10');
 

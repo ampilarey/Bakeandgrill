@@ -195,6 +195,7 @@ final class PermissionCatalog
             ['group' => 'Finance', 'slug' => 'finance.profit_loss', 'name' => 'Profit & loss'],
             ['group' => 'Reservations', 'slug' => 'reservations.view', 'name' => 'View reservations'],
             ['group' => 'Reservations', 'slug' => 'reservations.manage', 'name' => 'Manage reservations'],
+            ['group' => 'Events', 'slug' => 'events.manage', 'name' => 'Manage events & catering quotes', 'description' => 'Edit event lines, send quotes, fire events to kitchen'],
             ['group' => 'Delivery', 'slug' => 'delivery.view', 'name' => 'View deliveries'],
             ['group' => 'Delivery', 'slug' => 'delivery.manage', 'name' => 'Manage deliveries'],
 

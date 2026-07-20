@@ -43,6 +43,7 @@ const WasteLogsPage           = lazyWithRetry(() => import('./pages/WasteLogsPag
 const CustomersPage           = lazyWithRetry(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })));
 const CustomerGrowthPage      = lazyWithRetry(() => import('./pages/CustomerGrowthPage').then((m) => ({ default: m.CustomerGrowthPage })));
 const CateringPage            = lazyWithRetry(() => import('./pages/CateringPage').then((m) => ({ default: m.CateringPage })));
+const CateringDetailPage      = lazyWithRetry(() => import('./pages/CateringDetailPage').then((m) => ({ default: m.CateringDetailPage })));
 const InventoryPage           = lazyWithRetry(() => import('./pages/InventoryPage'));
 const TablesPage              = lazyWithRetry(() => import('./pages/TablesPage'));
 const ActivityPage            = lazyWithRetry(() => import('./pages/ActivityPage'));
@@ -370,8 +371,13 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="catering" element={
-                  <PermissionGuard user={user} permission="customers.manage">
+                  <PermissionGuard user={user} permissions={['events.manage', 'customers.manage']}>
                     <CateringPage />
+                  </PermissionGuard>
+                } />
+                <Route path="catering/:id" element={
+                  <PermissionGuard user={user} permissions={['events.manage', 'customers.manage']}>
+                    <CateringDetailPage />
                   </PermissionGuard>
                 } />
                 <Route path="customers" element={

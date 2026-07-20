@@ -36,6 +36,13 @@ class CateringRequest extends Model
     protected $fillable = [
         'customer_id',
         'reference',
+        'quote_token',
+        'quote_sent_at',
+        'quote_expires_at',
+        'quote_payment_laar',
+        'quote_is_deposit',
+        'quote_version',
+        'quote_subtotal_laar',
         'company',
         'occasion',
         'event_type',
@@ -76,6 +83,12 @@ class CateringRequest extends Model
         'contacted_at' => 'datetime',
         'quoted_at' => 'datetime',
         'confirmed_at' => 'datetime',
+        'quote_sent_at' => 'datetime',
+        'quote_expires_at' => 'datetime',
+        'quote_payment_laar' => 'integer',
+        'quote_is_deposit' => 'boolean',
+        'quote_version' => 'integer',
+        'quote_subtotal_laar' => 'integer',
     ];
 
     public function customer(): BelongsTo

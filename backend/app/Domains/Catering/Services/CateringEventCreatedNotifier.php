@@ -65,11 +65,7 @@ class CateringEventCreatedNotifier
 
     private function notifyStaff(CateringRequest $request, string $ref, string $baseKey): void
     {
-        // Phase 3: prefer fromEventsManagePermission(); for now settings fallback.
-        $targets = $this->recipients->fromEventsManagePermission();
-        if ($targets === []) {
-            $targets = $this->recipients->fromSettingsFallback();
-        }
+        $targets = $this->recipients->forCreated();
 
         $date = $request->event_date?->toDateString() ?? 'TBD';
         $headcount = $request->headcount ?? '?';

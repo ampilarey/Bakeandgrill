@@ -18,6 +18,7 @@ class CateringRequestLine extends Model
         'unit_price',
         'notes',
         'is_custom',
+        'price_needs_review',
         'sort_order',
     ];
 
@@ -25,6 +26,7 @@ class CateringRequestLine extends Model
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'is_custom' => 'boolean',
+        'price_needs_review' => 'boolean',
         'sort_order' => 'integer',
     ];
 

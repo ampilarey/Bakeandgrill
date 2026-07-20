@@ -93,6 +93,7 @@ export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
   { slug: 'devices.view', gates: 'List devices & print queue', typical: 'Manager' },
   { slug: 'devices.approve', gates: 'Approve pending POS/KDS devices', typical: 'Owner' },
   { slug: 'settings.update', gates: 'Online ordering & delivery operational settings', typical: 'Manager' },
+  { slug: 'events.manage', gates: 'Event quote editor, send quotes, event staff appointment', typical: 'Manager, appointed staff' },
   { slug: 'website.manage', gates: 'Website CMS, system health, full settings hub', typical: 'Owner' },
   { slug: 'roles_permissions.manage', gates: 'Edit role defaults & user overrides', typical: 'Owner' },
 ];

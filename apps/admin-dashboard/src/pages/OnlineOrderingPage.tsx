@@ -42,6 +42,7 @@ const PAGE_SECTIONS = [
   { id: 'gates', label: 'Gates & Schedule' },
   { id: 'pickup', label: 'Pickup Slots' },
   { id: 'fees', label: 'Fees' },
+  { id: 'events', label: 'Catering & Events' },
 ] as const;
 
 type PageSection = (typeof PAGE_SECTIONS)[number]['id'];
@@ -197,7 +198,9 @@ export default function OnlineOrderingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const sectionParam = searchParams.get('section');
   const section: PageSection =
-    sectionParam === 'fees' || sectionParam === 'pickup' ? sectionParam : 'gates';
+    sectionParam === 'fees' || sectionParam === 'pickup' || sectionParam === 'events'
+      ? sectionParam
+      : 'gates';
 
   const setSection = (next: PageSection) => {
     if (next === 'gates') {
@@ -226,6 +229,13 @@ export default function OnlineOrderingPage() {
   const [pickupMinutes, setPickupMinutes] = useState('30');
   const [pickupCapacity, setPickupCapacity] = useState('8');
   const [pickupSaving, setPickupSaving] = useState(false);
+
+  const [cateringNotifyPhone, setCateringNotifyPhone] = useState('');
+  const [cateringNotifyEmail, setCateringNotifyEmail] = useState('');
+  const [cateringMinLeadHours, setCateringMinLeadHours] = useState('24');
+  const [cateringQuoteValidDays, setCateringQuoteValidDays] = useState('7');
+  const [cateringQuoteMinHours, setCateringQuoteMinHours] = useState('24');
+  const [cateringSaving, setCateringSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -263,6 +273,11 @@ export default function OnlineOrderingPage() {
       if (minutes) setPickupMinutes(minutes);
       const capacity = byKey('pickup_slot_capacity');
       if (capacity) setPickupCapacity(capacity);
+      setCateringNotifyPhone(byKey('catering_notify_phone') ?? '');
+      setCateringNotifyEmail(byKey('catering_notify_email') ?? '');
+      setCateringMinLeadHours(byKey('catering_min_lead_hours') ?? '24');
+      setCateringQuoteValidDays(byKey('catering_quote_valid_days') ?? '7');
+      setCateringQuoteMinHours(byKey('catering_quote_min_hours_before_event') ?? '24');
     }).finally(() => setScheduleLoading(false));
     getPackagingFeeSettings()
       .then(({ settings }) => setFeeSettings(settings))
@@ -306,6 +321,39 @@ export default function OnlineOrderingPage() {
       showToast('Failed to save fee settings.', 'err');
     } finally {
       setFeeSaving(false);
+    }
+  };
+
+  const saveCateringSettings = async () => {
+    const lead = parseInt(cateringMinLeadHours, 10);
+    const validDays = parseInt(cateringQuoteValidDays, 10);
+    const minHours = parseInt(cateringQuoteMinHours, 10);
+    if (!Number.isFinite(lead) || lead < 0 || lead > 720) {
+      showToast('Min lead hours must be 0–720.', 'err');
+      return;
+    }
+    if (!Number.isFinite(validDays) || validDays < 1 || validDays > 60) {
+      showToast('Quote valid days must be 1–60.', 'err');
+      return;
+    }
+    if (!Number.isFinite(minHours) || minHours < 0 || minHours > 168) {
+      showToast('Quote cutoff hours must be 0–168.', 'err');
+      return;
+    }
+    setCateringSaving(true);
+    try {
+      await updateSiteSettings({
+        catering_notify_phone: cateringNotifyPhone.trim(),
+        catering_notify_email: cateringNotifyEmail.trim(),
+        catering_min_lead_hours: String(lead),
+        catering_quote_valid_days: String(validDays),
+        catering_quote_min_hours_before_event: String(minHours),
+      });
+      showToast('Catering & events settings saved.');
+    } catch {
+      showToast('Failed to save catering settings.', 'err');
+    } finally {
+      setCateringSaving(false);
     }
   };
 
@@ -794,6 +842,76 @@ export default function OnlineOrderingPage() {
         <PaymentCommissionSettings />
       </div>
       </>)}
+
+      {section === 'events' && (
+        <div style={S.card} data-testid="catering-events-settings">
+          <p style={S.sectionTitle}>Catering & Events</p>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9C8E7E', lineHeight: 1.5 }}>
+            Notify fallbacks when no event staff are online, lead time for new requests, and quote link validity.
+            Appoint handlers via Roles & Permissions → <code>events.manage</code>.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <div>
+              <label style={S.label}>Notify phone (fallback)</label>
+              <input
+                style={S.input}
+                value={cateringNotifyPhone}
+                onChange={(e) => setCateringNotifyPhone(e.target.value)}
+                placeholder="7XXXXXX"
+              />
+            </div>
+            <div>
+              <label style={S.label}>Notify email (fallback)</label>
+              <input
+                style={S.input}
+                type="email"
+                value={cateringNotifyEmail}
+                onChange={(e) => setCateringNotifyEmail(e.target.value)}
+                placeholder="events@…"
+              />
+            </div>
+            <div>
+              <label style={S.label}>Min lead hours</label>
+              <input
+                style={S.input}
+                type="number"
+                min={0}
+                max={720}
+                value={cateringMinLeadHours}
+                onChange={(e) => setCateringMinLeadHours(e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={S.label}>Quote valid (days)</label>
+              <input
+                style={S.input}
+                type="number"
+                min={1}
+                max={60}
+                value={cateringQuoteValidDays}
+                onChange={(e) => setCateringQuoteValidDays(e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={S.label}>Quote cutoff before event (hours)</label>
+              <input
+                style={S.input}
+                type="number"
+                min={0}
+                max={168}
+                value={cateringQuoteMinHours}
+                onChange={(e) => setCateringQuoteMinHours(e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <button type="button" style={S.btnPrimary} onClick={() => void saveCateringSettings()} disabled={cateringSaving}>
+              <Save size={14} />
+              {cateringSaving ? 'Saving…' : 'Save catering settings'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

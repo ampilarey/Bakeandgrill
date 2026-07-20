@@ -81,7 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/customers',        icon: Users,      label: 'Customers',       permission: 'customers.manage',    description: 'Customer database' },
       { to: '/customers/growth', icon: BarChart2,  label: 'Customer Growth', permission: 'customers.manage',    description: 'Metrics, segments & CRM' },
-      { to: '/catering',         icon: ConciergeBell, label: 'Catering',     permission: 'customers.manage',    description: 'Office & event quote requests' },
+      { to: '/catering',         icon: ConciergeBell, label: 'Events & Catering', permissions: ['events.manage', 'customers.manage'], description: 'Event orders, quotes & catering pipeline' },
       { to: '/loyalty',          icon: Heart,      label: 'Loyalty',         permission: 'loyalty.manage',      description: 'Points & rewards' },
       { to: '/gift-cards',       icon: Gift,       label: 'Gift Cards',      permission: 'promotions.manage',   description: 'Issue & manage cards' },
       { to: '/discount-cards',   icon: CreditCard, label: 'Discount Cards', permission: 'promotions.discount_cards', description: 'Owner-issued % / fixed cards' },
