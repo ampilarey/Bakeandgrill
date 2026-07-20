@@ -1,6 +1,6 @@
 # Catering & Events Ordering System — Implementation Plan
 
-> Date: 2026-07-20 (rev 4: menu / channel / workflow decoupled into an explicit architecture rule) · Status: approved design, ready for implementation
+> Date: 2026-07-20 (rev 5: + binding dual-workflow UX rule — context chooses the workflow) · Status: approved design, ready for implementation
 > Implementation is executed **phase by phase** — each phase below is a self-contained prompt for a coding agent (Cursor). Do not start a later phase before the earlier one is merged and green.
 
 ---
@@ -54,6 +54,17 @@ Event orders are deliberately **NOT mixed into Active Orders**. Active Orders is
 - **Actions are gated by `events.manage`**: fire to kitchen on the event day, settle the balance, cancel. Everyone can see; only appointed staff can act. The admin decides who by granting the permission.
 - **Shift interplay (verified in code)**: `ShiftController::close` reconciles cash only and never blocks on open orders — so event orders can never block a shift close; no special-casing is needed. A balance collected at the POS attaches to the collecting cashier's open shift via the existing `payments.shift_id`, so each shift's cash reconciles correctly. Online (BML) event payments carry no shift, like all online payments.
 - **Event-day flow**: kitchen print/KDS stays suppressed until an appointed staff member taps **"Send to kitchen"** on the Events tab. (Auto-fire at a configurable `preparation_start` time is a later nice-to-have, not in scope.)
+
+### Dual-workflow UX rule (binding — for items available in BOTH immediate and event ordering)
+
+**The context chooses the workflow, never the product page.** The normal menu/cart is "order now"; the event wizard is "order for an event". The two carts are fully separate and NEVER mix — an item added from the menu (including from the Events & Catering section) is always an immediate order; an item added inside the wizard is always an event line. Do NOT implement dual primary actions ("Order now" / "Order for event") on item sheets — one context-appropriate primary button only.
+
+Three safety nets prevent customers picking the wrong flow:
+1. **Item-sheet cross-link**: when a catering-flagged item is viewed in the NORMAL flow, show a small secondary line under Add-to-cart: "Planning an event? Order this for a future date →" linking to `/order/events?add={itemId}` — the wizard opens with that item preselected in the draft.
+2. **Cart banner**: when the normal cart contains any catering-flagged item, show a passive, NON-blocking banner: "Ordering for a future event? Use Event ordering for quotes, deposits and scheduling →". Never block checkout — selling a tray today is legitimate.
+3. **Wizard reverse link**: a small "Need it today instead? Order from the menu →" link in the wizard.
+
+Catering-only items (e.g. a buffet package) need none of this — they exist only in the wizard, so there is no choice to present. POS is unaffected: cashiers always ring immediate sales; event orders are managed (not created) at the POS via the Events tab.
 
 ### Menu selection & display (explicit UI spec)
 - **POS**: "Events & Catering" is a distinct, visually badged category tab at the END of MenuGrid (channel-filtered), de-emphasized by default; catering items carry a small badge on their cart lines. The normal menu remains the default view.
@@ -145,6 +156,7 @@ TASKS:
 7. Retirements: delete the unrouted PreOrderApiController::store method; remove the IDOR route GET /pre-order/{id}/confirmation + PreOrderController::confirmation + its blade (historical pre-orders were already imported into catering_requests); remove dead corporate-inquiry API clients (apps/online-order-web submitCorporateInquiry in src/api/menu.ts, apps/admin-dashboard fetchCorporateInquiries/updateCorporateInquiryStatus in src/api/customer-growth.ts). Keep the backend legacy /api/corporate-inquiries POST alias (old clients).
 8. Admin: CateringPage list must render draft rows (status filter includes draft) showing line count + custom-line count; full editing arrives in Phase 3 — read-only line display is enough here (GET /admin/customers/catering-requests/{id} returns lines).
 9. Entry points (adoption map 4B/4C): main website — layout.blade.php "Catering & Events" nav link → /order/events; home.blade.php gets a lightweight "Events & Catering" section (blurb + "Browse catering menu" and "Plan your event" CTAs, copy via the existing CMS site-settings pattern); contact.blade.php gets a "Planning an event?" CTA. Order app — HomePage office-catering block retitled "Events & catering" with CTA → /order/events (keep officeOrdersEnabled gating); add an "Events" entry to the app navigation alongside Reservations/Catering links.
+10. Dual-workflow UX (section 2 rule — binding): (a) the wizard accepts /order/events?add={itemId} and opens with that catering item preselected (qty 1) in the draft; invalid/non-catering ids are ignored gracefully; (b) ItemSheet in the NORMAL flow shows, for catering-flagged items only, a secondary line under Add-to-cart: "Planning an event? Order this for a future date →" linking to the preselect URL; (c) the normal cart shows a passive non-blocking banner when it contains any catering-flagged item: "Ordering for a future event? Use Event ordering for quotes, deposits and scheduling →" (never blocks checkout); (d) the wizard has a small "Need it today instead? Order from the menu →" link. Do NOT implement dual primary buttons anywhere. Vitest: preselect param handling, ItemSheet link visibility (catering vs normal item), banner appears/disappears with cart contents.
 
 TESTS: feature — draft creation with mixed catalog+custom lines (prices resolved server-side, client-sent prices ignored/rejected), lead-time validation, reference number uniqueness, created-notification SMS+email dispatched idempotently, email-OTP channel works and SMS stays default, authenticated customers skip OTP, IDOR route now 404s, legacy corporate alias still accepts. Vitest — wizard tabbed item picker (catering default), custom-line add/remove, step flow. Full suites green.
 
