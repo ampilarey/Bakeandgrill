@@ -1,18 +1,34 @@
 import { useRef, useState } from 'react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/Layout';
+import { ImageCropModal } from './ImageCropModal';
 
 export function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropName, setCropName] = useState('menu-image.jpg');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = async (file: File) => {
+  const openCropper = (file: File) => {
     setUploadError('');
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropName(file.name || 'menu-image.jpg');
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const closeCropper = () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  };
+
+  const uploadCropped = async (file: File) => {
     setUploading(true);
+    setUploadError('');
     try {
       const { url } = await uploadMenuImage(file);
       onChange(url);
+      closeCropper();
     } catch (e) {
       setUploadError((e as Error).message);
     } finally {
@@ -26,7 +42,7 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
         <Input
           value={value}
           onChange={onChange}
-          placeholder="https://… or upload below"
+          placeholder="https://… or upload & crop below"
         />
         <button
           type="button"
@@ -34,11 +50,11 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
           disabled={uploading}
           style={{
             flexShrink: 0, padding: '8px 14px', background: '#F8F6F3',
-            border: '1px solid #E8E0D8', borderRadius: 8, cursor: 'pointer',
+            border: '1px solid #E8E0D8', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: 13, fontWeight: 600, color: '#6B5D4F', whiteSpace: 'nowrap',
           }}
         >
-          {uploading ? '⏳ Uploading…' : '📁 Upload'}
+          {uploading ? '⏳ Uploading…' : '📁 Upload & crop'}
         </button>
         <input
           ref={inputRef}
@@ -47,18 +63,30 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
           style={{ display: 'none' }}
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) void handleFile(file);
+            if (file) openCropper(file);
             e.target.value = '';
           }}
         />
       </div>
+      <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>
+        Uploads open a 4:3 crop tool so every item photo matches the online menu card.
+      </p>
       {uploadError && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{uploadError}</p>}
       {value && (
         <img
           src={value}
           alt="preview"
-          style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8' }}
+          style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8' }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
+      {cropSrc && (
+        <ImageCropModal
+          imageSrc={cropSrc}
+          fileName={cropName}
+          title="Crop item image"
+          onCancel={closeCropper}
+          onConfirm={uploadCropped}
         />
       )}
     </div>

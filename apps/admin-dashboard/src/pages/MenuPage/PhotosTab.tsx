@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, type ItemPhoto } from '../../api';
+import { ImageCropModal } from './ImageCropModal';
 
 export function PhotosTab({ itemId }: { itemId: number }) {
   const [photos, setPhotos] = useState<ItemPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropName, setCropName] = useState('item-photo.jpg');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -24,12 +27,25 @@ export function PhotosTab({ itemId }: { itemId: number }) {
 
   useEffect(() => { void load(); }, [itemId]);
 
+  const openCropper = (file: File) => {
+    setError('');
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropName(file.name || 'item-photo.jpg');
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const closeCropper = () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  };
+
   const handleUpload = async (file: File) => {
     setUploading(true); setError('');
     try {
       const { photo } = await uploadItemPhoto(itemId, file);
       if (!photo) throw new Error('Upload succeeded but no photo was returned.');
       setPhotos((p) => [...p, photo]);
+      closeCropper();
     } catch (e) { setError((e as Error).message); }
     finally { setUploading(false); }
   };
@@ -88,8 +104,11 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         }}
       >
         <Upload size={15} />
-        {uploading ? 'Uploading…' : 'Upload Photo'}
+        {uploading ? 'Uploading…' : 'Upload & crop photo'}
       </button>
+      <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
+        Same 4:3 crop as the main Image — only the framed area is saved for the website.
+      </p>
       <input
         ref={fileRef}
         type="file"
@@ -97,10 +116,19 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         style={{ display: 'none' }}
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) void handleUpload(f);
+          if (f) openCropper(f);
           e.target.value = '';
         }}
       />
+      {cropSrc && (
+        <ImageCropModal
+          imageSrc={cropSrc}
+          fileName={cropName}
+          title="Crop gallery photo"
+          onCancel={closeCropper}
+          onConfirm={handleUpload}
+        />
+      )}
 
       {photos.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#9C8E7E', padding: '20px 0', fontSize: 13 }}>
