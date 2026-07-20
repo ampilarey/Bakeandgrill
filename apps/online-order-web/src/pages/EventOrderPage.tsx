@@ -80,10 +80,6 @@ export function EventOrderPage() {
     setLeadHours(24);
   }, []);
 
-  useEffect(() => {
-    if (!eventDate) setEventDate(minEventDateInput(leadHours));
-  }, [leadHours, eventDate]);
-
   const localPhoneDigits = (raw: string | null | undefined): string => {
     const digits = (raw ?? '').replace(/\D/g, '');
     const local = digits.startsWith('960') && digits.length === 10 ? digits.slice(3) : digits;
