@@ -3,7 +3,7 @@ import { Crop, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/Layout';
 import { ImageCropModal } from './ImageCropModal';
-import { loadImageAsObjectUrl, resolveMediaUrl } from './mediaUrl';
+import { fileToDataUrl, loadImageAsDataUrl, resolveMediaUrl } from './mediaUrl';
 
 export function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
@@ -12,24 +12,21 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
   const [cropName, setCropName] = useState('menu-image.jpg');
   const [previewKey, setPreviewKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const ownsObjectUrl = useRef(false);
 
-  const openCropSrc = (src: string, fileName: string, isObjectUrl: boolean) => {
+  const closeCropper = () => setCropSrc(null);
+
+  const openCropperFromFile = async (file: File) => {
     setUploadError('');
-    if (cropSrc && ownsObjectUrl.current) URL.revokeObjectURL(cropSrc);
-    ownsObjectUrl.current = isObjectUrl;
-    setCropName(fileName);
-    setCropSrc(src);
-  };
-
-  const closeCropper = () => {
-    if (cropSrc && ownsObjectUrl.current) URL.revokeObjectURL(cropSrc);
-    ownsObjectUrl.current = false;
-    setCropSrc(null);
-  };
-
-  const openCropperFromFile = (file: File) => {
-    openCropSrc(URL.createObjectURL(file), file.name || 'menu-image.jpg', true);
+    setUploading(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setCropName(file.name || 'menu-image.jpg');
+      setCropSrc(dataUrl);
+    } catch (e) {
+      setUploadError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const openCropperFromExisting = async () => {
@@ -37,8 +34,9 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
     setUploadError('');
     setUploading(true);
     try {
-      const objectUrl = await loadImageAsObjectUrl(value.trim());
-      openCropSrc(objectUrl, 'menu-image.jpg', true);
+      const dataUrl = await loadImageAsDataUrl(value.trim());
+      setCropName('menu-image.jpg');
+      setCropSrc(dataUrl);
     } catch (e) {
       setUploadError((e as Error).message);
     } finally {
@@ -62,7 +60,9 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
     }
   };
 
-  const previewSrc = value ? `${resolveMediaUrl(value)}${value.includes('?') ? '&' : '?'}v=${previewKey}` : '';
+  const previewSrc = value
+    ? `${resolveMediaUrl(value)}${value.includes('?') ? '&' : '?'}v=${previewKey}`
+    : '';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -109,7 +109,7 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
           style={{ display: 'none' }}
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) openCropperFromFile(file);
+            if (file) void openCropperFromFile(file);
             e.target.value = '';
           }}
         />
@@ -124,11 +124,7 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
           src={previewSrc}
           alt="Item thumbnail preview"
           style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8', background: '#F8F6F3' }}
-          onError={(e) => {
-            const el = e.target as HTMLImageElement;
-            el.style.outline = '1px solid #fca5a5';
-            el.alt = 'Preview failed to load';
-          }}
+          onError={() => setUploadError('Preview failed to load. On the server run: php artisan storage:link')}
         />
       )}
       {cropSrc && (

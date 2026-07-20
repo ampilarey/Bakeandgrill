@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Crop, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, type ItemPhoto } from '../../api';
 import { ImageCropModal } from './ImageCropModal';
-import { loadImageAsObjectUrl, resolveMediaUrl } from './mediaUrl';
+import { fileToDataUrl, loadImageAsDataUrl, resolveMediaUrl } from './mediaUrl';
 
 export function PhotosTab({ itemId }: { itemId: number }) {
   const [photos, setPhotos] = useState<ItemPhoto[]>([]);
@@ -13,7 +13,6 @@ export function PhotosTab({ itemId }: { itemId: number }) {
   const [cropName, setCropName] = useState('item-photo.jpg');
   const [replacingPhoto, setReplacingPhoto] = useState<ItemPhoto | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const ownsObjectUrl = useRef(false);
 
   const load = async () => {
     setLoading(true);
@@ -30,32 +29,34 @@ export function PhotosTab({ itemId }: { itemId: number }) {
 
   useEffect(() => { void load(); }, [itemId]);
 
-  const openCropSrc = (src: string, fileName: string, isObjectUrl: boolean, replace: ItemPhoto | null) => {
-    setError('');
-    if (cropSrc && ownsObjectUrl.current) URL.revokeObjectURL(cropSrc);
-    ownsObjectUrl.current = isObjectUrl;
-    setCropName(fileName);
-    setReplacingPhoto(replace);
-    setCropSrc(src);
-  };
-
   const closeCropper = () => {
-    if (cropSrc && ownsObjectUrl.current) URL.revokeObjectURL(cropSrc);
-    ownsObjectUrl.current = false;
     setCropSrc(null);
     setReplacingPhoto(null);
   };
 
-  const openCropperFromFile = (file: File) => {
-    openCropSrc(URL.createObjectURL(file), file.name || 'item-photo.jpg', true, null);
+  const openCropperFromFile = async (file: File) => {
+    setError('');
+    setUploading(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setCropName(file.name || 'item-photo.jpg');
+      setReplacingPhoto(null);
+      setCropSrc(dataUrl);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const openCropperFromExisting = async (photo: ItemPhoto) => {
     setUploading(true);
     setError('');
     try {
-      const objectUrl = await loadImageAsObjectUrl(photo.url);
-      openCropSrc(objectUrl, `item-photo-${photo.id}.jpg`, true, photo);
+      const dataUrl = await loadImageAsDataUrl(photo.url);
+      setCropName(`item-photo-${photo.id}.jpg`);
+      setReplacingPhoto(photo);
+      setCropSrc(dataUrl);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -149,7 +150,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         style={{ display: 'none' }}
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) openCropperFromFile(f);
+          if (f) void openCropperFromFile(f);
           e.target.value = '';
         }}
       />

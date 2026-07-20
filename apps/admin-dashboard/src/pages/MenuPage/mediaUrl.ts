@@ -1,33 +1,58 @@
-import { getAdminApiOrigin } from '../../api/client';
-
-/** Resolve relative /storage/… paths so admin previews work on any host. */
+/**
+ * Resolve menu image URLs for admin preview / re-crop.
+ * Prefer same-origin /storage paths so previews work even when APP_URL differs.
+ */
 export function resolveMediaUrl(url: string | null | undefined): string {
   if (!url) return '';
-  if (
-    url.startsWith('blob:')
-    || url.startsWith('data:')
-    || url.startsWith('http://')
-    || url.startsWith('https://')
-  ) {
-    return url;
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+
+  try {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      const parsed = new URL(url);
+      // Old uploads used absolute asset() URLs — rewrite storage paths to this host
+      if (parsed.pathname.startsWith('/storage/')) {
+        return `${window.location.origin}${parsed.pathname}${parsed.search}`;
+      }
+      return url;
+    }
+  } catch {
+    /* fall through */
   }
-  const origin = getAdminApiOrigin() || window.location.origin;
-  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+
+  return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+/** Convert a File to a data: URL (allowed by CSP; blob: was blocked until CSP update). */
+export function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('Could not read image file.'));
+    };
+    reader.onerror = () => reject(new Error('Could not read image file.'));
+    reader.readAsDataURL(file);
+  });
 }
 
 /**
- * Fetch an existing image into a blob: URL so the cropper + canvas can edit
- * it without CORS tainting (works for same-origin /storage paths).
+ * Load an existing image as a data: URL for the cropper (avoids blob: CSP issues
+ * and CORS tainting when reading from /storage).
  */
-export async function loadImageAsObjectUrl(url: string): Promise<string> {
+export async function loadImageAsDataUrl(url: string): Promise<string> {
   const resolved = resolveMediaUrl(url);
   const res = await fetch(resolved, { credentials: 'same-origin', cache: 'reload' });
   if (!res.ok) {
-    throw new Error('Could not load this image for editing. Try uploading it again.');
+    throw new Error(
+      res.status === 404
+        ? 'Image file is missing on the server (check storage link). Re-upload the photo.'
+        : 'Could not load this image for editing. Try uploading it again.',
+    );
   }
   const blob = await res.blob();
-  if (!blob.type.startsWith('image/')) {
-    throw new Error('That file is not a usable image.');
+  if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') {
+    // Some servers omit image/* for /storage — still try to read as image
+    if (blob.size === 0) throw new Error('That file is not a usable image.');
   }
-  return URL.createObjectURL(blob);
+  return fileToDataUrl(new File([blob], 'image.jpg', { type: blob.type || 'image/jpeg' }));
 }

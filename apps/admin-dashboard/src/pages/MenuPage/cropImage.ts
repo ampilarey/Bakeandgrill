@@ -12,7 +12,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.addEventListener('load', () => resolve(img));
     img.addEventListener('error', () => reject(new Error('Could not load image for cropping.')));
-    // crossOrigin on blob:/data: URLs breaks loading in some browsers
+    // data: / blob: must not set crossOrigin; only remote http(s) need it
     if (src.startsWith('http://') || src.startsWith('https://')) {
       img.crossOrigin = 'anonymous';
     }

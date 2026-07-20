@@ -34,7 +34,8 @@ class SecurityHeaders
         $nonce = "'nonce-" . csp_nonce() . "'";
 
         if ($request->is('admin', 'admin/*')) {
-            return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io;";
+            // blob: required for menu image crop/preview (File / createObjectURL)
+            return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io;";
         }
 
         if ($request->is('pos', 'pos/*')) {
