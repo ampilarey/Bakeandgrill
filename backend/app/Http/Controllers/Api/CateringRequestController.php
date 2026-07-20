@@ -14,6 +14,7 @@ use App\Models\CateringRequest;
 use App\Models\Item;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
+use App\Support\DeferAfterResponse;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,7 +69,13 @@ class CateringRequestController extends Controller
             'source' => 'web',
         ]);
 
-        event(new CateringRequestSubmitted($row));
+        $requestId = (int) $row->id;
+        DeferAfterResponse::run(function () use ($requestId): void {
+            $fresh = CateringRequest::query()->find($requestId);
+            if ($fresh) {
+                event(new CateringRequestSubmitted($fresh));
+            }
+        }, 'catering-inquiry-created-notify');
 
         return response()->json([
             'message' => 'Thanks — we will contact you shortly.',

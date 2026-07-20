@@ -87,6 +87,7 @@ describe('EventOrderPage discoverability', () => {
     expect(createEventOrder).toHaveBeenCalledWith(
       expect.objectContaining({
         event_date: expect.any(String),
+        fulfillment_method: 'pickup',
         lines: [expect.objectContaining({ custom_name: 'Wedding cake', quantity: 1 })],
       }),
     );

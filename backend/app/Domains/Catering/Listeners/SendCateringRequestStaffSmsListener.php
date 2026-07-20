@@ -9,18 +9,18 @@ use App\Domains\Catering\Services\CateringEventCreatedNotifier;
 use App\Domains\Catering\Services\CateringNotifyRecipients;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Handles CateringRequestSubmitted for both simple inquiries and event drafts.
+ *
+ * Runs synchronously (not queued) so customer/admin SMS still send when the
+ * Redis queue worker is down — same reliability pattern as payment confirmation.
+ * Prefer dispatching CateringRequestSubmitted inside DeferAfterResponse so the
+ * HTTP response is not blocked by the carrier round-trip.
  */
-class SendCateringRequestStaffSmsListener implements ShouldQueue
+class SendCateringRequestStaffSmsListener
 {
-    public string $queue = 'default';
-
-    public int $tries = 3;
-
     public bool $afterCommit = true;
 
     public function __construct(

@@ -66,12 +66,20 @@ class CateringEventCreatedNotifier
     private function notifyStaff(CateringRequest $request, string $ref, string $baseKey): void
     {
         $targets = $this->recipients->forCreated();
+        if ($targets === []) {
+            Log::warning('CateringEventCreatedNotifier: no staff recipients (set catering_notify_phone or events.manage phones)', [
+                'id' => $request->id,
+                'reference' => $ref,
+            ]);
+
+            return;
+        }
 
         $date = $request->event_date?->toDateString() ?? 'TBD';
-        $headcount = $request->headcount ?? '?';
+        $method = $request->fulfillment_method === 'delivery' ? 'delivery' : 'pickup';
         $name = $request->contact_name;
         $lineCount = $request->lines->count();
-        $staffMsg = "Event {$ref}: {$name}, {$date}, {$headcount} guests, {$lineCount} lines. Phone {$request->phone}.";
+        $staffMsg = "Event {$ref}: {$name}, {$method}, {$date}, {$lineCount} lines. Phone {$request->phone}.";
 
         foreach ($targets as $i => $target) {
             if (!empty($target['phone'])) {

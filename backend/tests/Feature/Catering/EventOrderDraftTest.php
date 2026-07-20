@@ -184,17 +184,23 @@ class EventOrderDraftTest extends TestCase
         $id = (int) $res->json('request.id');
         $row = CateringRequest::query()->findOrFail($id);
 
-        // Listener may be queued — run notifier twice for idempotency of SMS keys.
-        $notifier = app(CateringEventCreatedNotifier::class);
-        $notifier->notify($row);
-        $notifier->notify($row);
+        // Sync listener runs via DeferAfterResponse flush in TestCase::call
+        $this->assertSame(1, SmsLog::query()
+            ->where('idempotency_key', 'event:' . $id . ':1:created:customer_sms')
+            ->count());
+        $this->assertSame(1, SmsLog::query()
+            ->where('idempotency_key', 'event:' . $id . ':1:created:staff_sms:0')
+            ->count());
+
+        // Second notify must not duplicate SMS rows.
+        app(CateringEventCreatedNotifier::class)->notify($row);
+        app(CateringEventCreatedNotifier::class)->notify($row);
 
         Mail::assertSent(EventRequestReceivedMail::class);
 
-        $customerSms = SmsLog::query()
+        $this->assertSame(1, SmsLog::query()
             ->where('idempotency_key', 'event:' . $id . ':1:created:customer_sms')
-            ->count();
-        $this->assertSame(1, $customerSms);
+            ->count());
     }
 
     public function test_authenticated_customers_skip_otp_for_event_orders(): void

@@ -4,6 +4,7 @@ import { fetchItems } from '../api';
 import type { Item } from '../api';
 import { createEventOrder, type EventOrderPayload } from '../api/eventOrders';
 import { AuthBlock } from '../components/AuthBlock';
+import { getCustomerMe } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/shell/PageHeader';
@@ -49,7 +50,14 @@ export function EventOrderPage() {
   const [pendingVariantId, setPendingVariantId] = useState<number | null>(null);
   const [pendingPackagingId, setPendingPackagingId] = useState<number | null>(null);
 
+  const [fulfillmentMethod, setFulfillmentMethod] = useState<'pickup' | 'delivery'>('pickup');
   const [eventDate, setEventDate] = useState('');
+  const [fulfillmentTime, setFulfillmentTime] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryIsland, setDeliveryIsland] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [notes, setNotes] = useState('');
 
   const [customName, setCustomName] = useState('');
   const [customQty, setCustomQty] = useState(1);
@@ -75,6 +83,19 @@ export function EventOrderPage() {
   useEffect(() => {
     if (!eventDate) setEventDate(minEventDateInput(leadHours));
   }, [leadHours, eventDate]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    getCustomerMe()
+      .then(({ customer: c }) => {
+        if (c.name) setContactName((prev) => prev || c.name || '');
+        if (c.phone) {
+          const local = c.phone.replace(/^\+?960/, '');
+          setContactPhone((prev) => prev || local);
+        }
+      })
+      .catch(() => { /* ignore */ });
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (preselectDone || cateringItems.length === 0) return;
@@ -126,13 +147,20 @@ export function EventOrderPage() {
     setCustomNotes('');
   };
 
-  const validateDate = (): string | null => {
+  /** Same requireds as online checkout, plus event date. */
+  const validateDetails = (): string | null => {
     if (!eventDate || eventDate < minDate) return `Event date must be on or after ${minDate}`;
+    if (fulfillmentMethod === 'delivery') {
+      if (!deliveryAddress.trim()) return 'Delivery address is required';
+      if (!deliveryIsland.trim()) return 'Island is required';
+      if (!contactName.trim()) return 'Contact name is required';
+      if (!contactPhone.trim()) return 'Contact phone is required';
+    }
     return null;
   };
 
   const handleSubmit = async () => {
-    const err = validateDate();
+    const err = validateDetails();
     if (err) {
       setError(err);
       return;
@@ -146,6 +174,9 @@ export function EventOrderPage() {
     try {
       const payload: EventOrderPayload = {
         event_date: eventDate,
+        fulfillment_method: fulfillmentMethod,
+        fulfillment_time: fulfillmentTime || undefined,
+        notes: notes.trim() || undefined,
         lines: lines.map((l) =>
           l.kind === 'custom'
             ? { custom_name: l.custom_name, quantity: l.quantity, notes: l.notes }
@@ -158,6 +189,14 @@ export function EventOrderPage() {
               },
         ),
       };
+      if (fulfillmentMethod === 'delivery') {
+        payload.delivery_address = deliveryAddress.trim();
+        payload.delivery_island = deliveryIsland.trim();
+        payload.contact_name = contactName.trim();
+        payload.phone = contactPhone.trim();
+        payload.onsite_contact_name = contactName.trim();
+        payload.onsite_contact_phone = contactPhone.trim();
+      }
       const res = await createEventOrder(payload);
       setReference(res.request.reference);
       setStep('done');
@@ -211,7 +250,7 @@ export function EventOrderPage() {
       <div style={S.page}>
         <div style={S.container}>
           <p style={S.lede}>
-            Pick your items and event date. Sign in with OTP — we&apos;ll sort delivery details later with your quote.
+            Same pickup/delivery details as online ordering, plus your event date. Sign in with OTP to submit.
           </p>
           <p style={{ margin: '0 0 1rem', fontSize: 13 }}>
             <Link to="/menu" style={S.link}>Need it today instead? Order from the menu →</Link>
@@ -220,7 +259,7 @@ export function EventOrderPage() {
           </p>
 
           <div style={S.steps} aria-label="Progress">
-            {(['items', 'date', 'done'] as WizardStep[]).map((s) => (
+            {(['items', 'details', 'done'] as WizardStep[]).map((s) => (
               <span key={s} style={{ ...S.stepDot, ...(step === s ? S.stepDotActive : {}) }}>{s}</span>
             ))}
           </div>
@@ -416,11 +455,29 @@ export function EventOrderPage() {
             </section>
           )}
 
-          {step === 'date' && (
-            <section>
-              <h3 style={S.h3}>Event date</h3>
+          {step === 'details' && (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={S.toggleRow} role="group" aria-label="Fulfillment">
+                <button
+                  type="button"
+                  data-testid="fulfillment-pickup"
+                  style={{ ...S.tab, ...(fulfillmentMethod === 'pickup' ? S.tabActive : {}) }}
+                  onClick={() => setFulfillmentMethod('pickup')}
+                >
+                  Pickup
+                </button>
+                <button
+                  type="button"
+                  data-testid="fulfillment-delivery"
+                  style={{ ...S.tab, ...(fulfillmentMethod === 'delivery' ? S.tabActive : {}) }}
+                  onClick={() => setFulfillmentMethod('delivery')}
+                >
+                  Delivery
+                </button>
+              </div>
+
               <label style={S.label}>
-                When do you need this?
+                Event date
                 <input
                   style={S.input}
                   type="date"
@@ -431,10 +488,83 @@ export function EventOrderPage() {
                   data-testid="event-date"
                 />
               </label>
+              <label style={S.label}>
+                Event time (optional)
+                <input
+                  style={S.input}
+                  type="time"
+                  value={fulfillmentTime}
+                  onChange={(e) => setFulfillmentTime(e.target.value)}
+                  data-testid="event-time"
+                />
+              </label>
 
-              <div style={{ marginTop: 16 }} data-testid="date-summary">
+              {fulfillmentMethod === 'delivery' && (
+                <>
+                  <label style={S.label}>
+                    Delivery address
+                    <input
+                      style={S.input}
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Street / building"
+                      required
+                      data-testid="delivery-address"
+                    />
+                  </label>
+                  <label style={S.label}>
+                    Island
+                    <input
+                      style={S.input}
+                      value={deliveryIsland}
+                      onChange={(e) => setDeliveryIsland(e.target.value)}
+                      placeholder="Malé / Hulhumalé / …"
+                      required
+                      data-testid="delivery-island"
+                    />
+                  </label>
+                  <label style={S.label}>
+                    Contact name
+                    <input
+                      style={S.input}
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      required
+                      data-testid="contact-name"
+                    />
+                  </label>
+                  <label style={S.label}>
+                    Contact phone
+                    <input
+                      style={S.input}
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      placeholder="7XXXXXX"
+                      required
+                      data-testid="contact-phone"
+                    />
+                  </label>
+                </>
+              )}
+
+              <label style={S.label}>
+                Order notes (optional)
+                <textarea
+                  style={{ ...S.input, minHeight: 72, paddingTop: 10 }}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  data-testid="event-notes"
+                />
+              </label>
+
+              <div data-testid="details-summary">
                 <h3 style={S.h3}>Your draft</h3>
-                <ul style={{ paddingLeft: 18, margin: '8px 0 16px' }}>
+                <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '0 0 8px' }}>
+                  {fulfillmentMethod === 'delivery' ? 'Delivery' : 'Pickup'}
+                  {eventDate ? ` · ${eventDate}` : ''}
+                  {fulfillmentTime ? ` · ${fulfillmentTime}` : ''}
+                </p>
+                <ul style={{ paddingLeft: 18, margin: '0 0 12px' }}>
                   {lines.map((l) => (
                     <li key={l.key} style={{ marginBottom: 6, fontSize: 14 }}>
                       {l.name} × {l.quantity}
@@ -446,20 +576,20 @@ export function EventOrderPage() {
                 </ul>
               </div>
 
-              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
-                Staff will confirm the final quote. Delivery or pickup details come later — after you approve the quote.
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+                Staff will confirm the final quote before payment.
               </p>
 
               {isAuthenticated ? (
                 <>
-                  <p style={{ fontSize: 14, marginBottom: 12 }}>Signed in as {customerName || 'customer'} — no OTP needed.</p>
+                  <p style={{ fontSize: 14, margin: 0 }}>Signed in as {customerName || 'customer'} — no OTP needed.</p>
                   <button type="button" style={S.btn} disabled={loading} onClick={() => void handleSubmit()} data-testid="submit-event">
                     {loading ? 'Submitting…' : 'Submit event request'}
                   </button>
                 </>
               ) : (
                 <>
-                  <p style={{ fontSize: 14, marginBottom: 8 }}>Verify your phone with OTP to submit.</p>
+                  <p style={{ fontSize: 14, margin: 0 }}>Verify your phone with OTP to submit.</p>
                   <AuthBlock
                     onSuccess={(name) => {
                       setAuth(name);
@@ -479,7 +609,7 @@ export function EventOrderPage() {
                 {reference}
               </p>
               <p style={{ fontSize: 14, color: 'var(--color-text-muted)', maxWidth: 360, margin: '12px auto' }}>
-                We&apos;ll SMS you the quote. Delivery details can be confirmed before payment.
+                We&apos;ll SMS you when the quote is ready.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
                 <Link to="/events/mine" data-testid="view-my-events" style={S.btn}>View my events</Link>
@@ -503,6 +633,7 @@ const S: Record<string, CSSProperties> = {
   stepDotActive: { background: 'var(--color-primary)', color: '#fff', fontWeight: 700 },
   error: { color: '#b91c1c', fontSize: 13, marginBottom: 12 },
   tabs: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
+  toggleRow: { display: 'flex', gap: 8 },
   tab: { minHeight: 44, padding: '0 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'inherit', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   tabActive: { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' },
   input: { display: 'block', width: '100%', minHeight: 44, marginTop: 4, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 12px', fontFamily: 'inherit', fontSize: 15, boxSizing: 'border-box' },

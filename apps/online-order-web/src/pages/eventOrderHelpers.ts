@@ -237,17 +237,17 @@ export function minEventDateInput(leadHours: number, now = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** items → date (OTP/submit) → done. Delivery/contact collected later. */
-export type WizardStep = 'items' | 'date' | 'done';
+/** items → details (pickup/delivery + date + OTP) → done. */
+export type WizardStep = 'items' | 'details' | 'done';
 
 export function nextStep(step: WizardStep): WizardStep | null {
-  const order: WizardStep[] = ['items', 'date', 'done'];
+  const order: WizardStep[] = ['items', 'details', 'done'];
   const i = order.indexOf(step);
   return i >= 0 && i < order.length - 1 ? order[i + 1] : null;
 }
 
 export function prevStep(step: WizardStep): WizardStep | null {
-  const order: WizardStep[] = ['items', 'date', 'done'];
+  const order: WizardStep[] = ['items', 'details', 'done'];
   const i = order.indexOf(step);
   return i > 0 ? order[i - 1] : null;
 }

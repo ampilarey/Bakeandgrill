@@ -14,6 +14,7 @@ use App\Models\Item;
 use App\Models\SiteSetting;
 use App\Models\Variant;
 use App\Services\SpecialPricingService;
+use App\Support\DeferAfterResponse;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -158,7 +159,13 @@ class EventOrderController extends Controller
             return $row->load('lines');
         });
 
-        event(new CateringRequestSubmitted($row));
+        $requestId = (int) $row->id;
+        DeferAfterResponse::run(function () use ($requestId): void {
+            $fresh = CateringRequest::query()->with('lines')->find($requestId);
+            if ($fresh) {
+                event(new CateringRequestSubmitted($fresh));
+            }
+        }, 'event-order-created-notify');
 
         return response()->json([
             'message' => 'Event request received — we will send your quote soon.',
