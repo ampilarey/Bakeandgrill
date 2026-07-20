@@ -9,6 +9,7 @@ import {
 } from './menuItemForm';
 import { PhotosTab } from './PhotosTab';
 import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
+import { cardDescriptionPreview } from '@shared/utils';
 
 const DIETARY_PRESETS = ['vegetarian', 'vegan', 'halal', 'gluten-free', 'spicy'] as const;
 const ALLERGEN_PRESETS = ['nuts', 'dairy', 'gluten', 'eggs', 'soy', 'shellfish', 'fish', 'sesame'] as const;
@@ -280,13 +281,38 @@ export function MenuItemEditorModal({
                 <FormTextarea
                   value={form.description}
                   onChange={(v) => set('description', v)}
-                  placeholder="Short appetising description (first ~2 lines show on the menu card)…"
-                  rows={4}
+                  placeholder={"Line 1 — short hook for the menu card\nLine 2 — optional second teaser line\n\nMore detail here — customers see all of this when they tap the item."}
+                  rows={6}
                 />
               </Field>
-              <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 12px' }}>
-                {form.description.trim().length} characters · aim for 80–180 for a clean card preview
-              </p>
+              {(() => {
+                const preview = cardDescriptionPreview(form.description);
+                const lines = form.description.replace(/\r\n/g, '\n').split('\n').filter((l) => l.trim()).length;
+                return (
+                  <>
+                    <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 8px' }}>
+                      {form.description.trim().length} characters · {lines} line{lines === 1 ? '' : 's'} ·
+                      menu card shows the first 2 lines; full text (with line breaks) opens on tap
+                    </p>
+                    {preview.text && (
+                      <div style={{
+                        marginBottom: 12, padding: '10px 12px', borderRadius: 10,
+                        background: '#fff', border: '1px dashed #E8E0D8',
+                      }}>
+                        <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.04em' }}>
+                          MENU CARD PREVIEW{preview.truncated ? ' (truncated)' : ''}
+                        </p>
+                        <p style={{
+                          margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.45,
+                          whiteSpace: 'pre-line',
+                        }}>
+                          {preview.text}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               <Field label="Dietary tags">
                 <TagChipField
                   value={parseTagsCsv(form.dietary_tags)}

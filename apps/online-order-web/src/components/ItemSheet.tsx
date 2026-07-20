@@ -305,8 +305,14 @@ export function ItemSheet({
             )}
 
             {item.description && (
-              <p style={{ fontSize: '0.92rem', color: 'var(--color-text-muted)', margin: '0 0 1rem', lineHeight: 1.55 }}>
-                {item.description}
+              <p style={{
+                fontSize: '0.92rem',
+                color: 'var(--color-text-muted)',
+                margin: '0 0 1rem',
+                lineHeight: 1.55,
+                whiteSpace: 'pre-line',
+              }}>
+                {item.description.trim()}
               </p>
             )}
 

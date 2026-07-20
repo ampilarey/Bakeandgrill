@@ -2,6 +2,7 @@
  * Menu product card — whole card is one tap target (§15); quick-add/favourite stopPropagation.
  */
 import { useMemo, useState } from 'react';
+import { cardDescriptionPreview } from '@shared/utils';
 import type { Item, Variant } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
 import { buildItemSlideUrls } from '../../utils/itemMedia';
@@ -41,6 +42,10 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
   const slides = useMemo(
     () => buildItemSlideUrls(item),
     [item.image_url, item.photos],
+  );
+  const descPreview = useMemo(
+    () => cardDescriptionPreview(item.description),
+    [item.description],
   );
 
   const isUnavailable = item.is_available === false;
@@ -172,19 +177,20 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
           {item.name}
         </h3>
 
-        {/* Description */}
-        {item.description && (
+        {/* Description teaser — first 2 lines only; full text in detail sheet */}
+        {descPreview.text && (
           <p style={{
             fontSize: '0.78rem',
             color: 'var(--color-text-muted)',
             lineHeight: 1.45,
             margin: 0,
+            whiteSpace: 'pre-line',
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
           }}>
-            {item.description}
+            {descPreview.text}
           </p>
         )}
 

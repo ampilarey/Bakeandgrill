@@ -18,3 +18,4 @@ export * from './serviceCharge';
 export * from './smsCharCount';
 export * from './deliveryFeeEstimate';
 export * from './effectiveDiscount';
+export * from './itemDescription';
