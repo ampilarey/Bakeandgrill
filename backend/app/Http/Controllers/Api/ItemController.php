@@ -66,7 +66,10 @@ class ItemController extends Controller
 
         if (!$isAdmin) {
             $query->where('is_active', true);
-            $query->with(['comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants']);
+            $query->with([
+                'comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants',
+                'photos',
+            ]);
             $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
         } elseif ($isPosView) {
             // POS register only needs sellable items for the active order
@@ -248,6 +251,14 @@ class ItemController extends Controller
                     $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
                     $data['avg_rating'] = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
                     $data['review_count'] = (int) ($item->review_count ?? 0);
+                    $data['photos'] = $item->relationLoaded('photos')
+                        ? $item->photos->map(fn ($p) => [
+                            'id' => $p->id,
+                            'url' => $p->url,
+                            'sort_order' => (int) $p->sort_order,
+                            'is_primary' => (bool) $p->is_primary,
+                        ])->values()->all()
+                        : [];
                 }
 
                 if ($isPosView) {

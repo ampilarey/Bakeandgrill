@@ -1,10 +1,11 @@
 /**
  * Menu product card — whole card is one tap target (§15); quick-add/favourite stopPropagation.
  */
-import { useState } from 'react';
-import { API_ORIGIN } from '../../api';
+import { useMemo, useState } from 'react';
 import type { Item, Variant } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
+import { buildItemSlideUrls } from '../../utils/itemMedia';
+import { MenuImageSlider } from './MenuImageSlider';
 
 export type ProductCardProps = {
   item: Item;
@@ -34,15 +35,13 @@ const MAX_QTY = 99;
 export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = false, onToggleFavourite }: Props) {
   const { t } = useLanguage();
   const [quantity, setQuantity] = useState(1);
-  const [imgError, setImgError] = useState(false);
   const needsConfigure =
     !!item.has_variants || (item.packaging_options?.length ?? 0) > 1;
 
-  const imgSrc = (!imgError && item.image_url)
-    ? item.image_url.startsWith('http')
-      ? item.image_url
-      : `${API_ORIGIN}${item.image_url.startsWith('/') ? '' : '/'}${item.image_url}`
-    : null;
+  const slides = useMemo(
+    () => buildItemSlideUrls(item),
+    [item.image_url, item.photos],
+  );
 
   const isUnavailable = item.is_available === false;
   const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
@@ -107,28 +106,9 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
         cursor: isUnavailable ? 'default' : 'pointer',
       }}
     >
-      {/* ── Image ──────────────────────────────────────────── */}
-      <div
-        style={{
-          width: '100%',
-          aspectRatio: '4 / 3',
-          background: imgSrc ? undefined : 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          overflow: 'hidden', flexShrink: 0, position: 'relative',
-        }}
-      >
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt={item.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            loading="lazy"
-            decoding="async"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <span style={{ fontSize: '2.5rem', opacity: 0.35 }}>🍽️</span>
-        )}
+      {/* ── Image (auto-slides when Image + Photos exist) ── */}
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <MenuImageSlider slides={slides} alt={item.name} />
 
         {/* Unavailable overlay */}
         {isUnavailable && (
@@ -147,7 +127,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
               background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%',
               width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', fontSize: 15, boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
-              zIndex: 1,
+              zIndex: 3,
             }}
             aria-label={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
           >

@@ -2,11 +2,13 @@
  * Item customisation sheet. Phase 3 PR2: same UI;
  * edit-mode props call CartContext.updateEntry when editIndex is set.
  */
-import { useEffect, useRef, useState } from 'react';
-import { fetchCartRecommendations, getItemReviews, getItemPhotos, API_ORIGIN } from '../api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { fetchCartRecommendations, getItemReviews, getItemPhotos } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { Variant } from '@shared/types';
 import { useCart } from '../context/CartContext';
+import { buildItemSlideUrls } from '../utils/itemMedia';
+import { MenuImageSlider } from './menu/MenuImageSlider';
 
 export type ItemSheetProps = {
   open: boolean;
@@ -71,14 +73,17 @@ export function ItemSheet({
 
   const [reviews, setReviews] = useState<ItemReview[]>([]);
   const [avgRating, setAvgRating] = useState<number | null>(null);
-  const [photos, setPhotos] = useState<ItemPhoto[]>([]);
-  const [activePhoto, setActivePhoto] = useState(0);
+  const [photos, setPhotos] = useState<ItemPhoto[]>(() => item.photos ?? []);
   const [pairings, setPairings] = useState<Item[]>([]);
+
+  const slides = useMemo(
+    () => buildItemSlideUrls({ image_url: item.image_url, photos }),
+    [item.image_url, photos],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    setPhotos([]);
-    setActivePhoto(0);
+    setPhotos(item.photos ?? []);
     setReviews([]);
     setAvgRating(null);
     setPairings([]);
@@ -92,7 +97,7 @@ export function ItemSheet({
       .then(({ items: recs }) => { if (!cancelled) setPairings(recs ?? []); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [item.id]);
+  }, [item.id, item.photos]);
 
   useEffect(() => {
     if (!item.has_variants || activeVariants.length === 0) {
@@ -199,24 +204,10 @@ export function ItemSheet({
           </button>
         </div>
 
-        {/* Photo gallery */}
-        {photos.length > 0 && (
-          <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '16/9', background: 'var(--color-surface-alt)', position: 'relative' }}>
-              <img
-                src={photos[activePhoto].url.startsWith('http') ? photos[activePhoto].url : `${API_ORIGIN}${photos[activePhoto].url.startsWith('/') ? '' : '/'}${photos[activePhoto].url}`}
-                alt={item.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-              {photos.length > 1 && (
-                <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
-                  {photos.map((_, i) => (
-                    <button key={i} onClick={() => setActivePhoto(i)} aria-label={`Photo ${i + 1} of ${photos.length}`}
-                      style={{ width: i === activePhoto ? 16 : 8, height: 8, borderRadius: 99, border: 'none', background: i === activePhoto ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: 0, transition: 'all 0.2s' }} />
-                  ))}
-                </div>
-              )}
-            </div>
+        {/* Photo gallery — main Image + Photos, auto-slides when 2+ */}
+        {slides.length > 0 && (
+          <div style={{ marginBottom: '1.25rem', borderRadius: 12, overflow: 'hidden' }}>
+            <MenuImageSlider slides={slides} alt={item.name} aspectRatio="16 / 9" />
           </div>
         )}
 

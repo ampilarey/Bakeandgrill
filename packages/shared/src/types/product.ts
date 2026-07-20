@@ -53,6 +53,13 @@ export type MenuItem = {
   has_variants?: boolean;
   variants?: Variant[];
   image_url?: string | null;
+  /** Extra gallery photos (public menu). Combined with image_url for slideshows. */
+  photos?: Array<{
+    id: number;
+    url: string;
+    sort_order: number;
+    is_primary: boolean;
+  }> | null;
   category_id: number | null;
   barcode?: string | null;
   track_stock?: boolean;
