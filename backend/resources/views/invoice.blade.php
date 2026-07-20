@@ -116,7 +116,7 @@
                 @forelse ($displayItems as $item)
                     <tr>
                         @if ($itemsAreOrderLines)
-                            <td>{{ $item->item_name }}{{ $item->variant_name ? ' — '.$item->variant_name : '' }}</td>
+                            <td>{{ $item->item_name }}{{ $item->variant_name ? ' — '.$item->variant_name : '' }}{{ !empty($item->packaging_option_name) ? ' — '.$item->packaging_option_name : '' }}</td>
                             <td class="qty">{{ $item->quantity }}</td>
                             <td class="amount">MVR {{ number_format((float) $item->unit_price, 2) }}</td>
                             <td class="amount">MVR {{ number_format((float) $item->total_price, 2) }}</td>

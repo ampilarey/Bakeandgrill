@@ -65,7 +65,9 @@
             @if ($invoice->order)
                 @foreach ($invoice->order->items as $orderItem)
                     <tr>
-                        <td>{{ $orderItem->item_name }}</td>
+                        <td>
+                            {{ $orderItem->item_name }}{{ $orderItem->variant_name ? ' — '.$orderItem->variant_name : '' }}{{ !empty($orderItem->packaging_option_name) ? ' — '.$orderItem->packaging_option_name : '' }}
+                        </td>
                         <td class="center">{{ $orderItem->quantity }}</td>
                         <td class="right">MVR {{ number_format((float) $orderItem->unit_price, 2) }}</td>
                         <td class="right">MVR {{ number_format((float) $orderItem->total_price, 2) }}</td>

@@ -102,6 +102,7 @@ type PrintPayload = {
       item_name: string;
       quantity: number;
       unit_price?: number;
+      packaging_option_name?: string | null;
       modifiers?: Array<{ modifier_name: string }>;
     }>;
     payments?: Array<{
@@ -178,6 +179,9 @@ const buildKitchenTicket = (payload: PrintPayload): string => {
   lines.push('-----------------------------\n');
   payload.order.items.forEach(item => {
     lines.push(`${item.quantity}x ${item.item_name}\n`);
+    if (item.packaging_option_name) {
+      lines.push(`  - ${item.packaging_option_name}\n`);
+    }
     if (item.modifiers && item.modifiers.length > 0) {
       lines.push(`  - ${item.modifiers.map(m => m.modifier_name).join(', ')}\n`);
     }
@@ -205,6 +209,9 @@ const buildReceiptTicket = (payload: PrintPayload): string => {
     const price     = item.unit_price ?? 0;
     const lineTotal = price * item.quantity;
     lines.push(`${item.quantity}x ${item.item_name}  ${lineTotal.toFixed(2)}\n`);
+    if (item.packaging_option_name) {
+      lines.push(`  - ${item.packaging_option_name}\n`);
+    }
     if (item.modifiers && item.modifiers.length > 0) {
       lines.push(`  - ${item.modifiers.map(m => m.modifier_name).join(', ')}\n`);
     }

@@ -64,6 +64,9 @@
                     @if ($item->variant_name)
                         <div class="pdf-mods">{{ $item->variant_name }}</div>
                     @endif
+                    @if (!empty($item->packaging_option_name))
+                        <div class="pdf-mods">+ {{ $item->packaging_option_name }}</div>
+                    @endif
                     @if ($item->modifiers->count() > 0)
                         <div class="pdf-mods">{{ $item->modifiers->map(fn ($mod) => $mod->modifier_name)->join(', ') }}</div>
                     @endif

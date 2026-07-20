@@ -996,6 +996,16 @@ export function OrderStatusPage() {
                   <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', paddingBottom: '0.625rem', marginBottom: '0.625rem', borderBottom: '1px solid var(--color-border)' }}>
                     <div style={{ flex: 1 }}>
                       <span style={{ fontWeight: 600, fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>{item.item_name}</span>
+                      {item.variant_name && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.125rem' }}>
+                          {item.variant_name}
+                        </div>
+                      )}
+                      {item.packaging_option_name && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.125rem' }}>
+                          + {item.packaging_option_name}
+                        </div>
+                      )}
                       {item.modifiers && item.modifiers.length > 0 && (
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.125rem' }}>
                           + {item.modifiers.map((m) => m.name ?? m.modifier_name ?? '').filter(Boolean).join(', ')}

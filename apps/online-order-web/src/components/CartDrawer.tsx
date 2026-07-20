@@ -195,6 +195,11 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                         {entry.variantName}
                       </span>
                     )}
+                    {entry.packagingOptionName && (
+                      <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block' }}>
+                        + {entry.packagingOptionName}
+                      </span>
+                    )}
                   </p>
                   {isAuthenticated && (
                     <button

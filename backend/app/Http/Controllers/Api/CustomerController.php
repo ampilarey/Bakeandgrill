@@ -548,6 +548,7 @@ class CustomerController extends Controller
                     'item_id' => $item->item_id,
                     'item_name' => $item->item_name,
                     'variant_name' => $item->variant_name,
+                    'packaging_option_name' => $item->packaging_option_name,
                     'quantity' => $item->quantity,
                     'unit_price' => (float) $item->unit_price,
                     'total_price' => (float) $item->total_price,

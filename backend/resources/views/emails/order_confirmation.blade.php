@@ -72,6 +72,9 @@
                                         @if ($item->variant_name)
                                             <span style="color:#64748b; font-size:12px;"> — {{ $item->variant_name }}</span>
                                         @endif
+                                        @if (!empty($item->packaging_option_name))
+                                            <div style="color:#64748b; font-size:12px; margin-top:2px;">+ {{ $item->packaging_option_name }}</div>
+                                        @endif
                                         @if (!empty($item->notes))
                                             <div style="color:#64748b; font-size:12px; font-style:italic; margin-top:2px;">↳ {{ $item->notes }}</div>
                                         @endif

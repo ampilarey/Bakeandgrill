@@ -181,6 +181,7 @@ class PrintJobService
                     'id' => $item->id,
                     'item_name' => $item->item_name,
                     'variant_name' => $item->variant_name,
+                    'packaging_option_name' => $item->packaging_option_name,
                     'quantity' => $item->quantity,
                     // Per-line kitchen note ("No salt", "Extra spicy",
                     // etc.). The print proxy must render this bold /
@@ -245,6 +246,7 @@ class PrintJobService
                     'id' => $item->id,
                     'item_name' => $item->item_name,
                     'variant_name' => $item->variant_name,
+                    'packaging_option_name' => $item->packaging_option_name,
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'notes' => $item->notes,

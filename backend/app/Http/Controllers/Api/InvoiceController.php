@@ -738,6 +738,9 @@ class InvoiceController extends Controller
             if (!empty($oi->variant_name)) {
                 $description .= ' — ' . $oi->variant_name;
             }
+            if (!empty($oi->packaging_option_name)) {
+                $description .= ' — ' . $oi->packaging_option_name;
+            }
 
             $invoice->items()->create([
                 'item_id' => $oi->item_id,
