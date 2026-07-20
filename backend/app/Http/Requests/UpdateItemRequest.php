@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Rules\MediaUrl;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateItemRequest extends FormRequest
@@ -39,7 +40,7 @@ class UpdateItemRequest extends FormRequest
             'description' => 'nullable|string',
             'sku' => 'nullable|string|max:100|unique:items,sku,' . $itemId,
             'barcode' => 'nullable|string|max:100|unique:items,barcode,' . $itemId,
-            'image_url' => 'nullable|url',
+            'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'base_price' => 'sometimes|numeric|min:0',
             'packaging_fee' => 'sometimes|numeric|min:0|max:500',
             'packaging_fee_mode' => 'sometimes|string|in:per_unit,per_line',

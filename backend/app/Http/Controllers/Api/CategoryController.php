@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Rules\MediaUrl;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
@@ -59,7 +60,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'sort_order' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
-            'image_url' => 'nullable|url',
+            'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
@@ -107,7 +108,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'sort_order' => 'nullable|integer',
             'is_active' => 'sometimes|boolean',
-            'image_url' => 'nullable|url',
+            'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
