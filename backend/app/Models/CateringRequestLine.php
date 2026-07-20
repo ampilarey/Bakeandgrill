@@ -13,6 +13,7 @@ class CateringRequestLine extends Model
         'catering_request_id',
         'item_id',
         'variant_id',
+        'packaging_option_id',
         'name',
         'quantity',
         'unit_price',
@@ -43,5 +44,10 @@ class CateringRequestLine extends Model
     public function variant(): BelongsTo
     {
         return $this->belongsTo(Variant::class);
+    }
+
+    public function packagingOption(): BelongsTo
+    {
+        return $this->belongsTo(ItemPackagingOption::class, 'packaging_option_id');
     }
 }

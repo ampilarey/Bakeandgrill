@@ -20,6 +20,9 @@ type DraftLine = {
   key: string;
   item_id: number | null;
   variant_id: number | null;
+  packaging_option_id: number | null;
+  packaging_option_name: string | null;
+  available_packaging_options: Array<{ id: number; name: string; fee: number; is_default: boolean }>;
   name: string;
   quantity: number;
   unit_price: string;
@@ -33,6 +36,9 @@ function toDraftLines(lines: CateringLine[] | undefined): DraftLine[] {
     key: `l-${l.id ?? i}-${l.name}`,
     item_id: l.item_id ?? null,
     variant_id: l.variant_id ?? null,
+    packaging_option_id: l.packaging_option_id ?? null,
+    packaging_option_name: l.packaging_option_name ?? null,
+    available_packaging_options: l.available_packaging_options ?? [],
     name: l.name,
     quantity: l.quantity,
     unit_price: l.unit_price != null ? String(l.unit_price) : '',
@@ -145,6 +151,7 @@ export function CateringDetailPage() {
     return {
       item_id: l.item_id!,
       variant_id: l.variant_id,
+      packaging_option_id: l.packaging_option_id,
       quantity: l.quantity,
       notes: l.notes || null,
       is_custom: false,
@@ -200,12 +207,24 @@ export function CateringDetailPage() {
   const addCatalogItem = (sel: MenuItemSelection | null) => {
     setItemPick(sel);
     if (!sel) return;
+    const opts = (sel.item.packaging_options ?? [])
+      .filter((o): o is typeof o & { id: number } => o.id != null && o.is_active !== false)
+      .map((o) => ({
+        id: o.id,
+        name: o.name,
+        fee: Number(o.fee ?? 0),
+        is_default: Boolean(o.is_default),
+      }));
+    const defaultOpt = opts.find((o) => o.is_default) ?? opts[0] ?? null;
     setLines((prev) => [
       ...prev,
       {
         key: `new-${sel.id}-${Date.now()}`,
         item_id: sel.id,
         variant_id: null,
+        packaging_option_id: defaultOpt?.id ?? null,
+        packaging_option_name: defaultOpt?.name ?? null,
+        available_packaging_options: opts,
         name: sel.label,
         quantity: 1,
         unit_price: String(sel.item.base_price ?? ''),
@@ -226,6 +245,9 @@ export function CateringDetailPage() {
         key: `custom-${Date.now()}`,
         item_id: null,
         variant_id: null,
+        packaging_option_id: null,
+        packaging_option_name: null,
+        available_packaging_options: [],
         name,
         quantity: 1,
         unit_price: '',
@@ -319,6 +341,41 @@ export function CateringDetailPage() {
                     />
                   </label>
                 </div>
+                {!l.is_custom && (
+                  <div style={{ marginTop: 8 }}>
+                    {l.available_packaging_options.length > 1 ? (
+                      <label style={{ ...labelStyle, display: 'block' }}>
+                        Packaging
+                        <select
+                          data-testid={`packaging-select-${idx}`}
+                          style={fieldStyle}
+                          value={l.packaging_option_id ?? ''}
+                          onChange={(e) => {
+                            const id = e.target.value ? Number(e.target.value) : null;
+                            const opt = l.available_packaging_options.find((o) => o.id === id);
+                            setLines((p) => p.map((x, i) => i === idx ? {
+                              ...x,
+                              packaging_option_id: id,
+                              packaging_option_name: opt?.name ?? null,
+                            } : x));
+                          }}
+                        >
+                          {l.available_packaging_options.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.name}{o.fee > 0 ? ` (+MVR ${o.fee.toFixed(2)})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : (
+                      l.packaging_option_name && (
+                        <div style={{ fontSize: 12, color: '#9C8E7E' }} data-testid={`packaging-label-${idx}`}>
+                          Packaging: {l.packaging_option_name}
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
               </div>
             ))}
 
@@ -430,6 +487,11 @@ export function CateringDetailPage() {
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Quote summary</h3>
             <div style={{ fontSize: 14, color: '#5C4E3E', lineHeight: 1.7 }}>
               <div>Subtotal: MVR {tax ? mvr(tax.subtotal_laar) : '—'}</div>
+              {(tax?.packaging_fee_laar ?? 0) > 0 && (
+                <div data-testid="quote-packaging-fee">
+                  {tax?.packaging_fee_label ?? 'Packaging fee'}: MVR {mvr(tax!.packaging_fee_laar!)}
+                </div>
+              )}
               <div>GST: MVR {tax ? mvr(tax.tax_laar) : '—'}</div>
               <div style={{ fontWeight: 800, fontSize: 16 }}>Total: MVR {tax ? mvr(tax.total_laar) : '—'}</div>
             </div>

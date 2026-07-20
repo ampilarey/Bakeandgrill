@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Catering\Events\CateringRequestSubmitted;
+use App\Domains\Orders\Services\PackagingOptionResolver;
 use App\Http\Controllers\Controller;
 use App\Models\CateringRequest;
 use App\Models\CateringRequestLine;
@@ -24,6 +25,7 @@ class EventOrderController extends Controller
 {
     public function __construct(
         private readonly SpecialPricingService $specialPricing,
+        private readonly PackagingOptionResolver $packagingResolver = new PackagingOptionResolver,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -77,6 +79,7 @@ class EventOrderController extends Controller
             'lines' => ['required', 'array', 'min:1', 'max:80'],
             'lines.*.item_id' => ['nullable', 'integer', 'exists:items,id'],
             'lines.*.variant_id' => ['nullable', 'integer', 'exists:variants,id'],
+            'lines.*.packaging_option_id' => ['nullable', 'integer', 'exists:item_packaging_options,id'],
             'lines.*.custom_name' => ['nullable', 'string', 'max:160'],
             'lines.*.quantity' => ['required', 'integer', 'min:1', 'max:5000'],
             'lines.*.notes' => ['nullable', 'string', 'max:500'],
@@ -126,6 +129,7 @@ class EventOrderController extends Controller
                     'catering_request_id' => $row->id,
                     'item_id' => $line['item_id'],
                     'variant_id' => $line['variant_id'],
+                    'packaging_option_id' => $line['packaging_option_id'],
                     'name' => $line['name'],
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
@@ -148,7 +152,7 @@ class EventOrderController extends Controller
 
     /**
      * @param  list<array<string, mixed>>  $lines
-     * @return list<array{item_id:?int,variant_id:?int,name:string,quantity:int,unit_price:?float,notes:?string,is_custom:bool}>
+     * @return list<array{item_id:?int,variant_id:?int,packaging_option_id:?int,name:string,quantity:int,unit_price:?float,notes:?string,is_custom:bool}>
      */
     private function resolveLines(array $lines): array
     {
@@ -160,7 +164,7 @@ class EventOrderController extends Controller
             $customName = isset($line['custom_name']) ? trim((string) $line['custom_name']) : '';
 
             if ($itemId) {
-                $item = Item::query()->with('variants')->find($itemId);
+                $item = Item::query()->with(['variants', 'packagingOptions'])->find($itemId);
                 if (!$item || !$item->is_active) {
                     throw ValidationException::withMessages([
                         "lines.{$i}.item_id" => ['Item is not available.'],
@@ -186,6 +190,17 @@ class EventOrderController extends Controller
                     ]);
                 }
 
+                $packagingOptionId = array_key_exists('packaging_option_id', $line) && $line['packaging_option_id'] !== null
+                    ? (int) $line['packaging_option_id']
+                    : null;
+                try {
+                    $packaging = $this->packagingResolver->resolve($item, $packagingOptionId);
+                } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                    throw ValidationException::withMessages([
+                        "lines.{$i}.packaging_option_id" => [$e->getMessage() ?: 'Invalid packaging option for this item.'],
+                    ]);
+                }
+
                 $catalogPrice = $variant ? (float) $variant->price : (float) $item->base_price;
                 $pricing = $this->specialPricing->resolveUnitPrice($item->id, $catalogPrice, $item, $variant?->id);
                 $name = $item->name . ($variant ? (' — ' . $variant->name) : '');
@@ -193,6 +208,7 @@ class EventOrderController extends Controller
                 $out[] = [
                     'item_id' => $item->id,
                     'variant_id' => $variant?->id,
+                    'packaging_option_id' => $packaging['packaging_option_id'],
                     'name' => mb_substr($name, 0, 160),
                     'quantity' => $qty,
                     'unit_price' => round($pricing->unitPrice, 2),
@@ -211,6 +227,7 @@ class EventOrderController extends Controller
             $out[] = [
                 'item_id' => null,
                 'variant_id' => null,
+                'packaging_option_id' => null,
                 'name' => mb_substr($customName, 0, 160),
                 'quantity' => $qty,
                 'unit_price' => null,
@@ -240,6 +257,7 @@ class EventOrderController extends Controller
                 'id' => $l->id,
                 'item_id' => $l->item_id,
                 'variant_id' => $l->variant_id,
+                'packaging_option_id' => $l->packaging_option_id,
                 'name' => $l->name,
                 'quantity' => $l->quantity,
                 'unit_price' => $l->unit_price !== null ? (float) $l->unit_price : null,

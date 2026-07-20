@@ -154,7 +154,11 @@ export function EventQuotePage() {
                 <div key={`${l.name}-${i}`} style={S.line}>
                   <div>
                     <div style={{ fontWeight: 700 }}>{l.name}</div>
-                    <div style={S.muted}>× {l.quantity}{l.is_custom ? ' · custom' : ''}</div>
+                    <div style={S.muted}>
+                      × {l.quantity}
+                      {l.is_custom ? ' · custom' : ''}
+                      {l.packaging_option_name ? ` · ${l.packaging_option_name}` : ''}
+                    </div>
                   </div>
                   <div style={{ fontWeight: 700 }}>
                     {l.unit_price != null ? `MVR ${(l.unit_price * l.quantity).toFixed(2)}` : '—'}
@@ -164,6 +168,12 @@ export function EventQuotePage() {
               <div style={{ ...S.line, borderTop: '1px solid var(--color-border)', marginTop: 8, paddingTop: 10 }}>
                 <span>Subtotal</span><span>MVR {mvrFromLaar(quote.subtotal_laar)}</span>
               </div>
+              {(quote.packaging_fee_laar ?? 0) > 0 && (
+                <div style={S.line} data-testid="quote-packaging-fee">
+                  <span>{quote.packaging_fee_label ?? 'Packaging fee'}</span>
+                  <span>MVR {mvrFromLaar(quote.packaging_fee_laar!)}</span>
+                </div>
+              )}
               <div style={S.line}><span>GST</span><span>MVR {mvrFromLaar(quote.tax_laar)}</span></div>
               <div style={{ ...S.line, fontWeight: 800, fontSize: 16 }}>
                 <span>Total</span><span>MVR {mvrFromLaar(quote.total_laar)}</span>

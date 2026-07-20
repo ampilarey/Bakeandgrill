@@ -10,15 +10,22 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader } from '../components/shell/PageHeader';
 import {
   DEFAULT_ITEM_TAB,
+  activePackagingOptions,
+  activeVariants,
   addCustomLine,
+  buildCatalogDraftLine,
+  defaultPackagingOptionId,
   filterItemsForTab,
   minEventDateInput,
+  needsSelection,
   nextStep,
   parseAddItemId,
   prevStep,
   removeLine,
   resolvePreselectLine,
+  showPackagingPicker,
   upsertCatalogLine,
+  variantUnitPrice,
   type EventDraftLine,
   type ItemPickerTab,
   type WizardStep,
@@ -39,11 +46,15 @@ export function EventOrderPage() {
 
   const [step, setStep] = useState<WizardStep>('items');
   const [tab, setTab] = useState<ItemPickerTab>(DEFAULT_ITEM_TAB);
-  const [items, setItems] = useState<Item[]>([]);
+  const [cateringItems, setCateringItems] = useState<Item[]>([]);
+  const [regularItems, setRegularItems] = useState<Item[]>([]);
   const [search, setSearch] = useState('');
   const [lines, setLines] = useState<EventDraftLine[]>([]);
   const [preselectDone, setPreselectDone] = useState(false);
   const [leadHours, setLeadHours] = useState(24);
+  const [pendingItemId, setPendingItemId] = useState<number | null>(null);
+  const [pendingVariantId, setPendingVariantId] = useState<number | null>(null);
+  const [pendingPackagingId, setPendingPackagingId] = useState<number | null>(null);
 
   const [fulfillmentMethod, setFulfillmentMethod] = useState<'pickup' | 'delivery'>('pickup');
   const [eventDate, setEventDate] = useState('');
@@ -70,10 +81,15 @@ export function EventOrderPage() {
   const [reference, setReference] = useState('');
 
   useEffect(() => {
-    fetchItems()
-      .then(({ data }) => setItems(data ?? []))
+    Promise.all([
+      fetchItems('catering'),
+      fetchItems(),
+    ])
+      .then(([catering, regular]) => {
+        setCateringItems(catering.data ?? []);
+        setRegularItems(regular.data ?? []);
+      })
       .catch((e: Error) => setError(e.message || 'Could not load menu'));
-    // Soft-read public lead hours from site settings if present on window — otherwise default 24.
     setLeadHours(24);
   }, []);
 
@@ -100,51 +116,46 @@ export function EventOrderPage() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (preselectDone || items.length === 0) return;
+    if (preselectDone || cateringItems.length === 0) return;
     const id = parseAddItemId(searchParams);
-    const line = resolvePreselectLine(id, items);
+    const line = resolvePreselectLine(id, cateringItems);
     if (line) {
       setLines((prev) => (prev.some((l) => l.key === line.key) ? prev : [...prev, line]));
       setTab('catering');
     }
     setPreselectDone(true);
-  }, [items, searchParams, preselectDone]);
+  }, [cateringItems, searchParams, preselectDone]);
 
-  const filtered = filterItemsForTab(items, tab, search);
+  const tabItems = tab === 'catering' ? cateringItems : regularItems;
+  const filtered = filterItemsForTab(tabItems, tab, search);
   const minDate = minEventDateInput(leadHours);
+  const pendingItem = pendingItemId != null
+    ? tabItems.find((i) => i.id === pendingItemId) ?? cateringItems.find((i) => i.id === pendingItemId) ?? null
+    : null;
+
+  const commitCatalogLine = (item: Item, variantId: number | null, packagingId: number | null) => {
+    const line = buildCatalogDraftLine(item, variantId, packagingId);
+    if (!line) return;
+    setLines((prev) => upsertCatalogLine(prev, line, 1));
+    setPendingItemId(null);
+    setPendingVariantId(null);
+    setPendingPackagingId(null);
+  };
 
   const addCatalogItem = (item: Item) => {
-    if (item.has_variants) {
-      const active = (item.variants ?? []).filter((v) => v.is_active !== false);
-      const v = active[0];
-      if (!v) return;
-      const price = Number(v.effective_price ?? v.price);
-      setLines((prev) =>
-        upsertCatalogLine(prev, {
-          key: `c-${item.id}-${v.id}`,
-          kind: 'catalog',
-          item_id: item.id,
-          variant_id: v.id,
-          name: `${item.name} — ${v.name}`,
-          quantity: 1,
-          unit_price: price,
-          is_catering: item.is_catering,
-        }, 1),
-      );
+    if (needsSelection(item)) {
+      setPendingItemId(item.id);
+      setPendingVariantId(null);
+      setPendingPackagingId(defaultPackagingOptionId(item));
       return;
     }
-    setLines((prev) =>
-      upsertCatalogLine(prev, {
-        key: `c-${item.id}`,
-        kind: 'catalog',
-        item_id: item.id,
-        variant_id: null,
-        name: item.name,
-        quantity: 1,
-        unit_price: Number(item.base_price),
-        is_catering: item.is_catering,
-      }, 1),
-    );
+    commitCatalogLine(item, null, defaultPackagingOptionId(item));
+  };
+
+  const confirmPendingSelection = () => {
+    if (!pendingItem) return;
+    if (pendingItem.has_variants && pendingVariantId == null) return;
+    commitCatalogLine(pendingItem, pendingVariantId, pendingPackagingId);
   };
 
   const handleAddCustom = () => {
@@ -199,7 +210,13 @@ export function EventOrderPage() {
         lines: lines.map((l) =>
           l.kind === 'custom'
             ? { custom_name: l.custom_name, quantity: l.quantity, notes: l.notes }
-            : { item_id: l.item_id, variant_id: l.variant_id ?? undefined, quantity: l.quantity, notes: l.notes },
+            : {
+                item_id: l.item_id,
+                variant_id: l.variant_id ?? undefined,
+                packaging_option_id: l.packaging_option_id ?? undefined,
+                quantity: l.quantity,
+                notes: l.notes,
+              },
         ),
       };
       const res = await createEventOrder(payload);
@@ -296,18 +313,99 @@ export function EventOrderPage() {
                     aria-label="Search menu"
                   />
                   <div style={S.list}>
-                    {filtered.map((item) => (
-                      <div key={item.id} style={S.row}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700 }}>{item.name}</div>
-                          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                            MVR {Number(item.base_price).toFixed(2)}
-                            {item.is_catering ? ' · Catering' : ''}
+                    {filtered.map((item) => {
+                      const isPending = pendingItemId === item.id;
+                      const variants = activeVariants(item);
+                      const packagingOpts = activePackagingOptions(item);
+                      const showPkg = showPackagingPicker(item);
+                      return (
+                        <div key={item.id} style={{ ...S.row, flexDirection: 'column', alignItems: 'stretch' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700 }}>{item.name}</div>
+                              <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                MVR {Number(item.base_price).toFixed(2)}
+                                {item.is_catering ? ' · Catering' : ''}
+                                {item.has_variants ? ' · Options' : ''}
+                              </div>
+                            </div>
+                            {!isPending && (
+                              <button type="button" style={S.btnSm} onClick={() => addCatalogItem(item)} data-testid={`add-item-${item.id}`}>
+                                + Add
+                              </button>
+                            )}
                           </div>
+                          {isPending && (
+                            <div style={{ marginTop: 10, borderTop: '1px solid var(--color-border)', paddingTop: 10 }} data-testid={`select-item-${item.id}`}>
+                              {item.has_variants && variants.length > 0 && (
+                                <div style={{ marginBottom: 8 }}>
+                                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Choose size / option</div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {variants.map((v) => (
+                                      <button
+                                        key={v.id}
+                                        type="button"
+                                        data-testid={`variant-${v.id}`}
+                                        onClick={() => setPendingVariantId(v.id)}
+                                        style={{
+                                          ...S.btnSm,
+                                          ...(pendingVariantId === v.id ? S.tabActive : {}),
+                                        }}
+                                      >
+                                        {v.name} · MVR {variantUnitPrice(v).toFixed(2)}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {showPkg && (
+                                <div style={{ marginBottom: 8 }}>
+                                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Packaging</div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {packagingOpts.map((o) => (
+                                      <button
+                                        key={o.id}
+                                        type="button"
+                                        data-testid={`packaging-${o.id}`}
+                                        onClick={() => setPendingPackagingId(o.id)}
+                                        style={{
+                                          ...S.btnSm,
+                                          ...(pendingPackagingId === o.id ? S.tabActive : {}),
+                                        }}
+                                      >
+                                        {o.name}{Number(o.fee ?? 0) > 0 ? ` · +MVR ${Number(o.fee).toFixed(2)}` : ''}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                  type="button"
+                                  style={S.btnSm}
+                                  onClick={() => {
+                                    setPendingItemId(null);
+                                    setPendingVariantId(null);
+                                    setPendingPackagingId(null);
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  style={{ ...S.btnSm, ...S.tabActive }}
+                                  data-testid="confirm-item-selection"
+                                  disabled={Boolean(item.has_variants) && pendingVariantId == null}
+                                  onClick={confirmPendingSelection}
+                                >
+                                  Add to draft
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <button type="button" style={S.btnSm} onClick={() => addCatalogItem(item)}>+ Add</button>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {filtered.length === 0 && (
                       <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No items in this tab.</p>
                     )}
@@ -352,7 +450,10 @@ export function EventOrderPage() {
                         {l.kind === 'custom' ? (
                           <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}> · to be quoted</span>
                         ) : (
-                          <span style={{ fontSize: 12 }}> · MVR {((l.unit_price ?? 0) * l.quantity).toFixed(2)}</span>
+                          <span style={{ fontSize: 12 }}>
+                            {' '}· MVR {((l.unit_price ?? 0) * l.quantity).toFixed(2)}
+                            {l.packaging_option_name ? ` · ${l.packaging_option_name}` : ''}
+                          </span>
                         )}
                       </div>
                       <button type="button" style={S.btnSm} onClick={() => setLines((p) => removeLine(p, l.key))} data-testid={`remove-${l.key}`}>

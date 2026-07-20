@@ -4,6 +4,9 @@ export type CateringLine = {
   id?: number;
   item_id?: number | null;
   variant_id?: number | null;
+  packaging_option_id?: number | null;
+  packaging_option_name?: string | null;
+  available_packaging_options?: Array<{ id: number; name: string; fee: number; is_default: boolean }>;
   name: string;
   quantity: number;
   unit_price: number | null;
@@ -16,6 +19,9 @@ export type CateringLine = {
 export type CateringTaxPreview = {
   subtotal_laar: number;
   tax_laar: number;
+  packaging_fee_laar?: number;
+  packaging_fee_label?: string;
+  packaging_fee_taxable?: boolean;
   total_laar: number;
   tax_inclusive: boolean;
 };
@@ -135,6 +141,7 @@ export async function replaceCateringLines(
   lines: Array<{
     item_id?: number | null;
     variant_id?: number | null;
+    packaging_option_id?: number | null;
     custom_name?: string;
     name?: string;
     quantity: number;

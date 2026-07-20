@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_ITEM_TAB,
   addCustomLine,
+  buildCatalogDraftLine,
   cartHasCateringItem,
   filterItemsForTab,
+  needsSelection,
   nextStep,
   parseAddItemId,
   prevStep,
   removeLine,
   resolvePreselectLine,
+  showPackagingPicker,
 } from './eventOrderHelpers';
 
 describe('eventOrderHelpers', () => {
@@ -59,5 +62,30 @@ describe('eventOrderHelpers', () => {
     expect(cartHasCateringItem([{ item: { is_catering: false } }])).toBe(false);
     expect(cartHasCateringItem([{ item: { is_catering: true } }])).toBe(true);
     expect(cartHasCateringItem([])).toBe(false);
+  });
+
+  it('builds catalog lines with variant and packaging keys', () => {
+    const item = {
+      id: 10,
+      name: 'Tray',
+      base_price: 100,
+      is_catering: true,
+      has_variants: true,
+      variants: [
+        { id: 1, name: 'Small', price: 80, is_active: true },
+        { id: 2, name: 'Large', price: 120, is_active: true },
+      ],
+      packaging_options: [
+        { id: 5, name: 'Standard', fee: 2, is_default: true, is_active: true },
+        { id: 6, name: 'Premium', fee: 5, is_default: false, is_active: true },
+      ],
+    };
+    expect(needsSelection(item)).toBe(true);
+    expect(showPackagingPicker(item)).toBe(true);
+    const line = buildCatalogDraftLine(item, 2, 6);
+    expect(line?.name).toBe('Tray — Large');
+    expect(line?.variant_id).toBe(2);
+    expect(line?.packaging_option_id).toBe(6);
+    expect(line?.unit_price).toBe(120);
   });
 });

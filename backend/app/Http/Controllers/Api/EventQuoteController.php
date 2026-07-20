@@ -25,7 +25,7 @@ class EventQuoteController extends Controller
         }
 
         $row = CateringRequest::query()
-            ->with('lines')
+            ->with(['lines.packagingOption'])
             ->where('quote_token', $token)
             ->first();
 
@@ -96,6 +96,9 @@ class EventQuoteController extends Controller
             'quote_is_deposit' => (bool) $row->quote_is_deposit,
             'subtotal_laar' => $tax['subtotal_laar'],
             'tax_laar' => $tax['tax_laar'],
+            'packaging_fee_laar' => $tax['packaging_fee_laar'] ?? 0,
+            'packaging_fee_label' => $tax['packaging_fee_label'] ?? 'Packaging fee',
+            'packaging_fee_taxable' => (bool) ($tax['packaging_fee_taxable'] ?? false),
             'total_laar' => $tax['total_laar'],
             'tax_inclusive' => $tax['tax_inclusive'],
             'lines' => $row->lines->map(fn ($l) => [
@@ -104,6 +107,9 @@ class EventQuoteController extends Controller
                 'unit_price' => $l->unit_price !== null ? (float) $l->unit_price : null,
                 'notes' => $l->notes,
                 'is_custom' => (bool) $l->is_custom,
+                'packaging_option_name' => $l->relationLoaded('packagingOption')
+                    ? $l->packagingOption?->name
+                    : null,
             ])->values()->all(),
         ];
     }

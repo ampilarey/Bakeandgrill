@@ -2,7 +2,7 @@ import { ENDPOINTS } from '@shared/api';
 import { request } from './client';
 
 export type EventOrderLineInput =
-  | { item_id: number; variant_id?: number; quantity: number; notes?: string }
+  | { item_id: number; variant_id?: number; packaging_option_id?: number; quantity: number; notes?: string }
   | { custom_name: string; quantity: number; notes?: string };
 
 export type EventOrderPayload = {

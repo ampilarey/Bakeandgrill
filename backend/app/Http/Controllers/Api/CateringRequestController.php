@@ -255,6 +255,7 @@ class CateringRequestController extends Controller
             'lines' => ['required', 'array', 'min:1', 'max:80'],
             'lines.*.item_id' => ['nullable', 'integer', 'exists:items,id'],
             'lines.*.variant_id' => ['nullable', 'integer', 'exists:variants,id'],
+            'lines.*.packaging_option_id' => ['nullable', 'integer', 'exists:item_packaging_options,id'],
             'lines.*.custom_name' => ['nullable', 'string', 'max:160'],
             'lines.*.name' => ['nullable', 'string', 'max:160'],
             'lines.*.quantity' => ['required', 'integer', 'min:1', 'max:5000'],
@@ -372,18 +373,39 @@ class CateringRequestController extends Controller
         ];
 
         if ($withLines || $row->relationLoaded('lines')) {
-            $payload['lines'] = $row->lines->map(fn ($l) => [
-                'id' => $l->id,
-                'item_id' => $l->item_id,
-                'variant_id' => $l->variant_id,
-                'name' => $l->name,
-                'quantity' => $l->quantity,
-                'unit_price' => $l->unit_price !== null ? (float) $l->unit_price : null,
-                'notes' => $l->notes,
-                'is_custom' => (bool) $l->is_custom,
-                'price_needs_review' => (bool) ($l->price_needs_review ?? false),
-                'sort_order' => $l->sort_order,
-            ])->values()->all();
+            $row->loadMissing(['lines.packagingOption', 'lines.item.packagingOptions']);
+            $payload['lines'] = $row->lines->map(function ($l) {
+                $options = [];
+                if ($l->item && $l->item->relationLoaded('packagingOptions')) {
+                    $options = $l->item->packagingOptions
+                        ->where('is_active', true)
+                        ->sortBy(['sort_order', 'id'])
+                        ->values()
+                        ->map(fn ($o) => [
+                            'id' => $o->id,
+                            'name' => $o->name,
+                            'fee' => (float) $o->fee,
+                            'is_default' => (bool) $o->is_default,
+                        ])
+                        ->all();
+                }
+
+                return [
+                    'id' => $l->id,
+                    'item_id' => $l->item_id,
+                    'variant_id' => $l->variant_id,
+                    'packaging_option_id' => $l->packaging_option_id,
+                    'packaging_option_name' => $l->packagingOption?->name,
+                    'available_packaging_options' => $options,
+                    'name' => $l->name,
+                    'quantity' => $l->quantity,
+                    'unit_price' => $l->unit_price !== null ? (float) $l->unit_price : null,
+                    'notes' => $l->notes,
+                    'is_custom' => (bool) $l->is_custom,
+                    'price_needs_review' => (bool) ($l->price_needs_review ?? false),
+                    'sort_order' => $l->sort_order,
+                ];
+            })->values()->all();
         }
 
         return $payload;

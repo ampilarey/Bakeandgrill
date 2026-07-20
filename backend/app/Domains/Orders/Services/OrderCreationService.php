@@ -723,6 +723,19 @@ class OrderCreationService
 
         $lineTotal = $unitPrice * $qty;
 
+        $packaging = [
+            'packaging_option_id' => null,
+            'packaging_fee' => 0.0,
+            'packaging_fee_mode' => PackagingOptionResolver::MODE_PER_UNIT,
+            'packaging_option_name' => null,
+        ];
+        if (!$usePlaceholder && $catalogItem) {
+            $packaging = app(PackagingOptionResolver::class)->resolve(
+                $catalogItem,
+                $line->packaging_option_id !== null ? (int) $line->packaging_option_id : null,
+            );
+        }
+
         OrderItem::create([
             'order_id' => $order->id,
             'item_id' => $itemModel->id,
@@ -737,10 +750,10 @@ class OrderCreationService
             'tax_rate' => (float) ($itemModel->tax_rate ?? 0),
             'tax_code' => $itemModel->tax_code ?? 'standard_8',
             'notes' => $notes,
-            'packaging_option_id' => null,
-            'packaging_fee' => 0,
-            'packaging_fee_mode' => PackagingOptionResolver::MODE_PER_UNIT,
-            'packaging_option_name' => null,
+            'packaging_option_id' => $packaging['packaging_option_id'],
+            'packaging_fee' => $packaging['packaging_fee'],
+            'packaging_fee_mode' => $packaging['packaging_fee_mode'],
+            'packaging_option_name' => $packaging['packaging_option_name'],
             'status' => 'pending',
         ]);
     }

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Catering\Services;
 
+use App\Domains\Gst\Enums\GstTaxCode;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Orders\Services\PackagingFeeCalculator;
+use App\Domains\Orders\Services\PackagingOptionResolver;
 use App\Mail\EventQuoteSentMail;
 use App\Models\CateringRequest;
 use App\Models\CateringRequestLine;
@@ -33,6 +36,8 @@ class CateringQuoteService
         private readonly SmsService $sms,
         private readonly CateringNotifyRecipients $recipients,
         private readonly AuditLogService $audit,
+        private readonly PackagingOptionResolver $packagingResolver = new PackagingOptionResolver,
+        private readonly PackagingFeeCalculator $packagingFees = new PackagingFeeCalculator,
     ) {}
 
     /**
@@ -50,6 +55,7 @@ class CateringQuoteService
                     'catering_request_id' => $request->id,
                     'item_id' => $line['item_id'],
                     'variant_id' => $line['variant_id'],
+                    'packaging_option_id' => $line['packaging_option_id'],
                     'name' => $line['name'],
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
@@ -220,6 +226,7 @@ class CateringQuoteService
                         'catering_request_id' => $row->id,
                         'item_id' => null,
                         'variant_id' => null,
+                        'packaging_option_id' => null,
                         'name' => $line->name,
                         'quantity' => $line->quantity,
                         'unit_price' => $line->unit_price,
@@ -231,13 +238,14 @@ class CateringQuoteService
                     continue;
                 }
 
-                $item = $line->item_id ? Item::query()->with('variants')->find($line->item_id) : null;
+                $item = $line->item_id ? Item::query()->with(['variants', 'packagingOptions'])->find($line->item_id) : null;
                 if (!$item || !$item->is_active) {
                     // Fall back to custom line with historical name/price for review.
                     CateringRequestLine::create([
                         'catering_request_id' => $row->id,
                         'item_id' => null,
                         'variant_id' => null,
+                        'packaging_option_id' => null,
                         'name' => $line->name,
                         'quantity' => $line->quantity,
                         'unit_price' => $line->unit_price,
@@ -261,10 +269,24 @@ class CateringQuoteService
                 $pricing = $this->specialPricing->resolveUnitPrice($item->id, $catalogPrice, $item, $variant?->id);
                 $name = $item->name . ($variant ? (' — ' . $variant->name) : '');
 
+                // Copy packaging_option_id when still valid on the (re-priced) catalog item.
+                $packagingOptionId = null;
+                if ($line->packaging_option_id) {
+                    try {
+                        $resolved = $this->packagingResolver->resolve($item, (int) $line->packaging_option_id);
+                        $packagingOptionId = $resolved['packaging_option_id'];
+                    } catch (\Throwable) {
+                        $packagingOptionId = $this->packagingResolver->resolve($item, null)['packaging_option_id'];
+                    }
+                } else {
+                    $packagingOptionId = $this->packagingResolver->resolve($item, null)['packaging_option_id'];
+                }
+
                 CateringRequestLine::create([
                     'catering_request_id' => $row->id,
                     'item_id' => $item->id,
                     'variant_id' => $variant?->id,
+                    'packaging_option_id' => $packagingOptionId,
                     'name' => mb_substr($name, 0, 160),
                     'quantity' => $line->quantity,
                     'unit_price' => round($pricing->unitPrice, 2),
@@ -297,14 +319,15 @@ class CateringQuoteService
         return $copy;
     }
 
-    /** @return array{subtotal_laar: int, tax_laar: int, total_laar: int, tax_inclusive: bool, lines: list<array<string,mixed>>} */
+    /** @return array{subtotal_laar: int, tax_laar: int, packaging_fee_laar: int, packaging_fee_label: string, packaging_fee_taxable: bool, total_laar: int, tax_inclusive: bool, lines: list<array<string,mixed>>} */
     public function taxPreview(CateringRequest $request): array
     {
-        $request->loadMissing('lines.item');
+        $request->loadMissing(['lines.item.packagingOptions', 'lines.packagingOption']);
         $taxInclusive = $this->gstSettings->taxInclusive();
         $subtotalLaar = 0;
         $taxLaar = 0;
         $lineRows = [];
+        $packagingLines = [];
 
         foreach ($request->lines as $line) {
             if ($line->unit_price === null) {
@@ -316,6 +339,8 @@ class CateringQuoteService
                     'line_laar' => null,
                     'tax_laar' => null,
                     'is_custom' => (bool) $line->is_custom,
+                    'packaging_option_id' => $line->packaging_option_id,
+                    'packaging_option_name' => $line->packagingOption?->name,
                     'unpriced' => true,
                 ];
                 continue;
@@ -326,6 +351,27 @@ class CateringQuoteService
             $lineTax = $this->taxCalculator->calculateLineTaxLaar($lineTotal, $taxCode, $taxInclusive);
             $subtotalLaar += $lineTotal;
             $taxLaar += $lineTax;
+
+            $packagingOptionName = $line->packagingOption?->name;
+            if (!$line->is_custom && $line->item_id && $line->item) {
+                try {
+                    $resolved = $this->packagingResolver->resolve(
+                        $line->item,
+                        $line->packaging_option_id !== null ? (int) $line->packaging_option_id : null,
+                    );
+                    $packagingOptionName = $resolved['packaging_option_name'] ?? $packagingOptionName;
+                    $packagingLines[] = [
+                        'item_id' => (int) $line->item_id,
+                        'quantity' => (int) $line->quantity,
+                        'packaging_option_id' => $resolved['packaging_option_id'],
+                        'packaging_fee' => $resolved['packaging_fee'],
+                        'packaging_fee_mode' => $resolved['packaging_fee_mode'],
+                    ];
+                } catch (\Throwable) {
+                    // Invalid/missing option — omit from packaging preview.
+                }
+            }
+
             $lineRows[] = [
                 'id' => $line->id,
                 'name' => $line->name,
@@ -334,15 +380,34 @@ class CateringQuoteService
                 'line_laar' => $lineTotal,
                 'tax_laar' => $lineTax,
                 'is_custom' => (bool) $line->is_custom,
+                'packaging_option_id' => $line->packaging_option_id,
+                'packaging_option_name' => $packagingOptionName,
                 'unpriced' => false,
             ];
         }
 
-        $totalLaar = $taxInclusive ? $subtotalLaar : $subtotalLaar + $taxLaar;
+        $packagingLaar = $this->packagingFees->previewPackagingForOrderType('catering', $packagingLines);
+        $packagingTaxable = $this->packagingFees->packagingFeeTaxable();
+        $packagingTaxLaar = 0;
+        if ($packagingLaar > 0 && $packagingTaxable) {
+            $packagingTaxLaar = $this->taxCalculator->calculateLineTaxLaar(
+                $packagingLaar,
+                GstTaxCode::Standard8->value,
+                $taxInclusive,
+            );
+            $taxLaar += $packagingTaxLaar;
+        }
+
+        $totalLaar = $taxInclusive
+            ? $subtotalLaar + $packagingLaar
+            : $subtotalLaar + $taxLaar + $packagingLaar;
 
         return [
             'subtotal_laar' => $subtotalLaar,
             'tax_laar' => $taxLaar,
+            'packaging_fee_laar' => $packagingLaar,
+            'packaging_fee_label' => $this->packagingFees->currentSettings()['packaging_label'] ?? 'Packaging fee',
+            'packaging_fee_taxable' => $packagingTaxable,
             'total_laar' => $totalLaar,
             'tax_inclusive' => $taxInclusive,
             'lines' => $lineRows,
@@ -428,7 +493,7 @@ class CateringQuoteService
 
     /**
      * @param  list<array<string, mixed>>  $lines
-     * @return list<array{item_id:?int,variant_id:?int,name:string,quantity:int,unit_price:?float,notes:?string,is_custom:bool,price_needs_review:bool}>
+     * @return list<array{item_id:?int,variant_id:?int,packaging_option_id:?int,name:string,quantity:int,unit_price:?float,notes:?string,is_custom:bool,price_needs_review:bool}>
      */
     private function resolveStaffLines(array $lines): array
     {
@@ -455,6 +520,7 @@ class CateringQuoteService
                 $out[] = [
                     'item_id' => null,
                     'variant_id' => null,
+                    'packaging_option_id' => null,
                     'name' => mb_substr($name, 0, 160),
                     'quantity' => $qty,
                     'unit_price' => $price,
@@ -466,7 +532,7 @@ class CateringQuoteService
             }
 
             $itemId = (int) $line['item_id'];
-            $item = Item::query()->with('variants')->find($itemId);
+            $item = Item::query()->with(['variants', 'packagingOptions'])->find($itemId);
             if (!$item || !$item->is_active) {
                 throw ValidationException::withMessages(["lines.{$i}.item_id" => ['Item is not available.']]);
             }
@@ -485,6 +551,17 @@ class CateringQuoteService
                 throw ValidationException::withMessages(["lines.{$i}.variant_id" => ['Variant required.']]);
             }
 
+            $packagingOptionId = array_key_exists('packaging_option_id', $line) && $line['packaging_option_id'] !== null
+                ? (int) $line['packaging_option_id']
+                : null;
+            try {
+                $packaging = $this->packagingResolver->resolve($item, $packagingOptionId);
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                throw ValidationException::withMessages([
+                    "lines.{$i}.packaging_option_id" => [$e->getMessage() ?: 'Invalid packaging option for this item.'],
+                ]);
+            }
+
             // Catalog prices always re-resolved server-side — client unit_price ignored.
             $catalogPrice = $variant ? (float) $variant->price : (float) $item->base_price;
             $pricing = $this->specialPricing->resolveUnitPrice($item->id, $catalogPrice, $item, $variant?->id);
@@ -493,6 +570,7 @@ class CateringQuoteService
             $out[] = [
                 'item_id' => $item->id,
                 'variant_id' => $variant?->id,
+                'packaging_option_id' => $packaging['packaging_option_id'],
                 'name' => mb_substr($name, 0, 160),
                 'quantity' => $qty,
                 'unit_price' => round($pricing->unitPrice, 2),

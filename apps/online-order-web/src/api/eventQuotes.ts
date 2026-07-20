@@ -23,6 +23,9 @@ export type PublicEventQuote = {
   quote_is_deposit: boolean;
   subtotal_laar: number;
   tax_laar: number;
+  packaging_fee_laar?: number;
+  packaging_fee_label?: string;
+  packaging_fee_taxable?: boolean;
   total_laar: number;
   tax_inclusive: boolean;
   lines: Array<{
@@ -31,6 +34,7 @@ export type PublicEventQuote = {
     unit_price: number | null;
     notes: string | null;
     is_custom: boolean;
+    packaging_option_name?: string | null;
   }>;
 };
 

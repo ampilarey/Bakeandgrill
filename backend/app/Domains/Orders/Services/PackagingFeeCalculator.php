@@ -95,7 +95,9 @@ class PackagingFeeCalculator
 
     public function orderTypeEligible(string $orderType): bool
     {
-        return in_array($orderType, ['takeaway', 'online_pickup', 'delivery'], true);
+        // Event/catering orders carry packaging on quote lines so charged totals
+        // match the customer-approved quote (CATERING-EVENTS-PLAN packaging fidelity).
+        return in_array($orderType, ['takeaway', 'online_pickup', 'delivery', 'catering'], true);
     }
 
     public function packagingFeeTaxable(): bool

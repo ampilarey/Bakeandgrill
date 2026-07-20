@@ -8,6 +8,9 @@ export type { MenuItem };
 /** Sales channel for public menu API (`online_pickup` = pickup, `delivery` = delivery). */
 export type SalesChannel = 'online_pickup' | 'delivery';
 
+/** Listing-only channel for the event wizard Catering tab (not orderable immediately). */
+export type MenuListingChannel = SalesChannel | 'catering';
+
 const SALES_CHANNEL_KEY = 'bakegrill_sales_channel';
 
 export function getSalesChannel(): SalesChannel {
@@ -134,12 +137,12 @@ export async function fetchCategories(): Promise<{ data: Category[] }> {
 export type FetchItemsResult = {
   data: MenuItem[];
   /** Channel actually used after any pickup fallback. */
-  channelUsed: SalesChannel;
+  channelUsed: MenuListingChannel;
   /** True when delivery was requested but no delivery items exist — switched to pickup. */
   deliveryFallback: boolean;
 };
 
-async function fetchItemsForChannel(ch: SalesChannel): Promise<MenuItem[]> {
+async function fetchItemsForChannel(ch: MenuListingChannel): Promise<MenuItem[]> {
   const qs = new URLSearchParams({ available_only: '1', channel: ch });
   const res = await request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?${qs}`);
   return (res.data ?? []).map((item) => ({
@@ -170,14 +173,15 @@ async function fetchItemsForChannel(ch: SalesChannel): Promise<MenuItem[]> {
   }));
 }
 
-export async function fetchItems(channel?: SalesChannel): Promise<FetchItemsResult> {
+export async function fetchItems(channel?: MenuListingChannel): Promise<FetchItemsResult> {
   const requested = channel ?? getSalesChannel();
-  let channelUsed = requested;
+  let channelUsed: MenuListingChannel = requested;
   let deliveryFallback = false;
 
   let data = await fetchItemsForChannel(requested);
 
   // Delivery with zero channel-enabled items used to show categories but an empty grid.
+  // Never fall back when listing the catering channel — that tab must show catering-only items.
   if (requested === 'delivery' && data.length === 0) {
     const pickupItems = await fetchItemsForChannel('online_pickup');
     if (pickupItems.length > 0) {

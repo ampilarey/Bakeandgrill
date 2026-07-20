@@ -26,6 +26,8 @@ class ItemController extends Controller
     private function resolvePublicChannel(Request $request, KitchenMenuResolver $resolver): string
     {
         $ch = $request->query('channel');
+        // `catering` is a display/listing channel for the event wizard — it does
+        // NOT make items orderable in immediate flows (ORDERING_CHANNELS).
         if (is_string($ch) && in_array($ch, KitchenMenuResolver::CHANNELS, true)) {
             return $ch;
         }

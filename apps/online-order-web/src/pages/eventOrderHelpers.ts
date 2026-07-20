@@ -8,6 +8,8 @@ export type EventDraftLine =
       kind: 'catalog';
       item_id: number;
       variant_id?: number | null;
+      packaging_option_id?: number | null;
+      packaging_option_name?: string | null;
       name: string;
       quantity: number;
       unit_price: number | null;
@@ -28,8 +30,108 @@ export type ItemPickerTab = 'catering' | 'regular' | 'custom';
 
 export const DEFAULT_ITEM_TAB: ItemPickerTab = 'catering';
 
+type VariantLike = {
+  id: number;
+  name: string;
+  price: number | string;
+  effective_price?: number | string | null;
+  is_active?: boolean;
+};
+
+type PackagingLike = {
+  id: number;
+  name: string;
+  fee?: number | string;
+  is_default?: boolean;
+  is_active?: boolean;
+};
+
+export type CatalogItemLike = {
+  id: number;
+  name: string;
+  base_price: number | string;
+  is_catering?: boolean;
+  has_variants?: boolean;
+  variants?: VariantLike[];
+  packaging_options?: PackagingLike[];
+};
+
 export function isCateringItem(item: { is_catering?: boolean }): boolean {
   return item.is_catering === true;
+}
+
+export function activeVariants(item: CatalogItemLike): VariantLike[] {
+  return (item.variants ?? []).filter((v) => v.is_active !== false);
+}
+
+export function activePackagingOptions(item: CatalogItemLike): PackagingLike[] {
+  return (item.packaging_options ?? []).filter((o) => o.is_active !== false);
+}
+
+/** Same rule as ItemSheet: show picker only when more than one active option. */
+export function showPackagingPicker(item: CatalogItemLike): boolean {
+  return activePackagingOptions(item).length > 1;
+}
+
+/** True when Add needs an explicit variant and/or packaging choice before inserting. */
+export function needsSelection(item: CatalogItemLike): boolean {
+  const variants = activeVariants(item);
+  const needsVariant = Boolean(item.has_variants) && variants.length > 0;
+  return needsVariant || showPackagingPicker(item);
+}
+
+export function defaultPackagingOptionId(item: CatalogItemLike): number | null {
+  const opts = activePackagingOptions(item);
+  if (opts.length === 0) return null;
+  return opts.find((o) => o.is_default)?.id ?? opts[0]?.id ?? null;
+}
+
+export function packagingOptionName(item: CatalogItemLike, optionId: number | null): string | null {
+  if (optionId == null) return null;
+  return activePackagingOptions(item).find((o) => o.id === optionId)?.name ?? null;
+}
+
+export function variantUnitPrice(variant: VariantLike): number {
+  const price = Number(variant.effective_price ?? variant.price);
+  return Number.isFinite(price) ? price : Number(variant.price) || 0;
+}
+
+export function buildCatalogDraftLine(
+  item: CatalogItemLike,
+  variantId: number | null,
+  packagingOptionId: number | null,
+): Extract<EventDraftLine, { kind: 'catalog' }> | null {
+  let name = item.name;
+  let unitPrice = Number(item.base_price);
+  let resolvedVariantId: number | null = null;
+
+  if (item.has_variants) {
+    const variants = activeVariants(item);
+    const variant = variantId != null ? variants.find((v) => v.id === variantId) : undefined;
+    if (!variant) return null;
+    resolvedVariantId = variant.id;
+    name = `${item.name} — ${variant.name}`;
+    unitPrice = variantUnitPrice(variant);
+  } else if (!Number.isFinite(unitPrice)) {
+    unitPrice = 0;
+  }
+
+  const pkgId = packagingOptionId ?? defaultPackagingOptionId(item);
+  const pkgName = packagingOptionName(item, pkgId);
+  const keyParts = [`c-${item.id}`, resolvedVariantId ?? 'nv', pkgId ?? 'np'];
+
+  return {
+    key: keyParts.join('-'),
+    kind: 'catalog',
+    item_id: item.id,
+    variant_id: resolvedVariantId,
+    packaging_option_id: pkgId,
+    packaging_option_name: pkgName,
+    name,
+    quantity: 1,
+    unit_price: unitPrice,
+    is_catering: item.is_catering,
+  };
 }
 
 export function filterItemsForTab<T extends { is_catering?: boolean; name: string }>(
@@ -58,38 +160,19 @@ export function parseAddItemId(searchParams: URLSearchParams | { get: (k: string
 /** Preselect only when the id matches a catering-flagged item. */
 export function resolvePreselectLine(
   itemId: number | null,
-  items: Array<{ id: number; name: string; base_price: number | string; is_catering?: boolean; has_variants?: boolean; variants?: Array<{ id: number; name: string; price: number | string; effective_price?: number | string | null; is_active?: boolean }> }>,
+  items: CatalogItemLike[],
 ): EventDraftLine | null {
   if (itemId == null) return null;
   const item = items.find((i) => i.id === itemId);
   if (!item || !isCateringItem(item)) return null;
-  if (item.has_variants) {
-    const active = (item.variants ?? []).filter((v) => v.is_active !== false);
-    if (active.length === 0) return null;
-    const v = active[0];
-    const price = Number(v.effective_price ?? v.price);
-    return {
-      key: `c-${item.id}-${v.id}`,
-      kind: 'catalog',
-      item_id: item.id,
-      variant_id: v.id,
-      name: `${item.name} — ${v.name}`,
-      quantity: 1,
-      unit_price: Number.isFinite(price) ? price : Number(v.price),
-      is_catering: true,
-    };
+  if (needsSelection(item)) {
+    // Prefill requires an explicit choice when variants / multi-packaging exist.
+    const variants = activeVariants(item);
+    if (item.has_variants && variants.length > 0) {
+      return buildCatalogDraftLine(item, variants[0].id, defaultPackagingOptionId(item));
+    }
   }
-  const price = Number(item.base_price);
-  return {
-    key: `c-${item.id}`,
-    kind: 'catalog',
-    item_id: item.id,
-    variant_id: null,
-    name: item.name,
-    quantity: 1,
-    unit_price: Number.isFinite(price) ? price : 0,
-    is_catering: true,
-  };
+  return buildCatalogDraftLine(item, null, defaultPackagingOptionId(item));
 }
 
 export function cartHasCateringItem(cart: Array<{ item: { is_catering?: boolean } }>): boolean {
@@ -127,7 +210,11 @@ export function upsertCatalogLine(
   deltaQty: number,
 ): EventDraftLine[] {
   const idx = lines.findIndex(
-    (l) => l.kind === 'catalog' && l.item_id === line.item_id && (l.variant_id ?? null) === (line.variant_id ?? null),
+    (l) =>
+      l.kind === 'catalog'
+      && l.item_id === line.item_id
+      && (l.variant_id ?? null) === (line.variant_id ?? null)
+      && (l.packaging_option_id ?? null) === (line.packaging_option_id ?? null),
   );
   if (idx < 0) {
     if (deltaQty <= 0) return lines;
