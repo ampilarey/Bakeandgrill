@@ -22,31 +22,22 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-/** Convert a File to a data: URL (allowed by CSP; blob: was blocked until CSP update). */
-export function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') resolve(reader.result);
-      else reject(new Error('Could not read image file.'));
-    };
-    reader.onerror = () => reject(new Error('Could not read image file.'));
-    reader.readAsDataURL(file);
-  });
+export function revokeCropSrc(url: string | null | undefined): void {
+  if (url?.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
+  }
 }
 
-/**
- * Load an existing image as a data: URL for the cropper.
- * Uses <img> + canvas (img-src) instead of fetch (connect-src), so CSP cannot
- * block re-crop of same-origin /storage files.
- */
-export function loadImageAsDataUrl(url: string): Promise<string> {
-  const resolved = resolveMediaUrl(url);
+/** Longest edge fed into the cropper — phone photos are often 12MP+ and freeze the UI. */
+const MAX_CROP_SOURCE_EDGE = 2048;
+const PREP_JPEG_QUALITY = 0.9;
+
+function loadHtmlImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const isRemoteHttp =
-      (resolved.startsWith('http://') || resolved.startsWith('https://')) &&
-      !resolved.startsWith(window.location.origin);
+      (src.startsWith('http://') || src.startsWith('https://')) &&
+      !src.startsWith(window.location.origin);
 
     if (isRemoteHttp) {
       img.crossOrigin = 'anonymous';
@@ -57,34 +48,55 @@ export function loadImageAsDataUrl(url: string): Promise<string> {
         reject(new Error('That file is not a usable image.'));
         return;
       }
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Canvas is not supported in this browser.'));
-        return;
-      }
-      ctx.drawImage(img, 0, 0);
-      try {
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
-      } catch {
-        reject(
-          new Error(
-            'Could not read this image for editing (blocked by the host). Re-upload the photo.',
-          ),
-        );
-      }
+      resolve(img);
     };
-
     img.onerror = () => {
       reject(
         new Error(
-          'Could not load this image for editing. If previews are blank, on the server run: php artisan storage:link — then re-upload.',
+          'Could not load this image. If previews are blank, on the server run: php artisan storage:link — then re-upload.',
         ),
       );
     };
-
-    img.src = resolved;
+    img.src = src;
   });
+}
+
+function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Could not prepare image for cropping.'))),
+      'image/jpeg',
+      PREP_JPEG_QUALITY,
+    );
+  });
+}
+
+/**
+ * Decode a File or existing media URL, downscale huge photos, return a blob: URL
+ * for the cropper. Caller must revokeCropSrc() when done.
+ */
+export async function prepareImageForCrop(source: File | string): Promise<string> {
+  const tempUrl = source instanceof File ? URL.createObjectURL(source) : null;
+  const src = source instanceof File ? tempUrl! : resolveMediaUrl(source);
+
+  try {
+    const img = await loadHtmlImage(src);
+    const scale = Math.min(1, MAX_CROP_SOURCE_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+    const width = Math.max(1, Math.round(img.naturalWidth * scale));
+    const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas is not supported in this browser.');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await canvasToJpegBlob(canvas);
+    return URL.createObjectURL(blob);
+  } finally {
+    if (tempUrl) URL.revokeObjectURL(tempUrl);
+  }
 }

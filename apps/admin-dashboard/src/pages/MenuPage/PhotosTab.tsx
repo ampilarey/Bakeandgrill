@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Crop, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, type ItemPhoto } from '../../api';
 import { ImageCropModal } from './ImageCropModal';
-import { fileToDataUrl, loadImageAsDataUrl, resolveMediaUrl } from './mediaUrl';
+import { prepareImageForCrop, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
 export function PhotosTab({ itemId }: { itemId: number }) {
   const [photos, setPhotos] = useState<ItemPhoto[]>([]);
@@ -30,7 +30,10 @@ export function PhotosTab({ itemId }: { itemId: number }) {
   useEffect(() => { void load(); }, [itemId]);
 
   const closeCropper = () => {
-    setCropSrc(null);
+    setCropSrc((prev) => {
+      revokeCropSrc(prev);
+      return null;
+    });
     setReplacingPhoto(null);
   };
 
@@ -38,10 +41,13 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     setError('');
     setUploading(true);
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const src = await prepareImageForCrop(file);
       setCropName(file.name || 'item-photo.jpg');
       setReplacingPhoto(null);
-      setCropSrc(dataUrl);
+      setCropSrc((prev) => {
+        revokeCropSrc(prev);
+        return src;
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -53,10 +59,13 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     setUploading(true);
     setError('');
     try {
-      const dataUrl = await loadImageAsDataUrl(photo.url);
+      const src = await prepareImageForCrop(photo.url);
       setCropName(`item-photo-${photo.id}.jpg`);
       setReplacingPhoto(photo);
-      setCropSrc(dataUrl);
+      setCropSrc((prev) => {
+        revokeCropSrc(prev);
+        return src;
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -138,7 +147,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         }}
       >
         <Upload size={15} />
-        {uploading && !cropSrc ? 'Working…' : 'Upload & crop photo'}
+        {uploading && !cropSrc ? 'Preparing…' : 'Upload & crop photo'}
       </button>
       <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
         Crop to 4:3. Use the crop button on an existing photo to re-frame it for the menu/POS.

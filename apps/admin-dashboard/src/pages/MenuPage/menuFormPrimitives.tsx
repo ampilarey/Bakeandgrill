@@ -3,7 +3,7 @@ import { Crop, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/Layout';
 import { ImageCropModal } from './ImageCropModal';
-import { fileToDataUrl, loadImageAsDataUrl, resolveMediaUrl } from './mediaUrl';
+import { prepareImageForCrop, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
 export function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
@@ -13,15 +13,23 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
   const [previewKey, setPreviewKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const closeCropper = () => setCropSrc(null);
+  const closeCropper = () => {
+    setCropSrc((prev) => {
+      revokeCropSrc(prev);
+      return null;
+    });
+  };
 
   const openCropperFromFile = async (file: File) => {
     setUploadError('');
     setUploading(true);
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const src = await prepareImageForCrop(file);
       setCropName(file.name || 'menu-image.jpg');
-      setCropSrc(dataUrl);
+      setCropSrc((prev) => {
+        revokeCropSrc(prev);
+        return src;
+      });
     } catch (e) {
       setUploadError((e as Error).message);
     } finally {
@@ -34,9 +42,12 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
     setUploadError('');
     setUploading(true);
     try {
-      const dataUrl = await loadImageAsDataUrl(value.trim());
+      const src = await prepareImageForCrop(value.trim());
       setCropName('menu-image.jpg');
-      setCropSrc(dataUrl);
+      setCropSrc((prev) => {
+        revokeCropSrc(prev);
+        return src;
+      });
     } catch (e) {
       setUploadError((e as Error).message);
     } finally {
@@ -84,7 +95,7 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
           }}
         >
           <Upload size={14} />
-          {uploading && !cropSrc ? 'Working…' : 'Upload & crop'}
+          {uploading && !cropSrc ? 'Preparing…' : 'Upload & crop'}
         </button>
         {value.trim() && (
           <button

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
@@ -17,8 +17,19 @@ type Props = {
 /**
  * Fixed 4:3 crop + rotate so Image / Photos match menu & POS thumbnails.
  * Portaled above the item editor modal.
+ *
+ * key={imageSrc} remounts fresh state when the photo changes. Do not reset
+ * ready/crop pixels in a useEffect — React Strict Mode re-runs effects and
+ * would clear them after onCropComplete already fired, leaving "Loading…" stuck.
  */
-export function ImageCropModal({
+export function ImageCropModal(props: Props) {
+  return createPortal(
+    <ImageCropModalBody key={props.imageSrc} {...props} />,
+    document.body,
+  );
+}
+
+function ImageCropModalBody({
   imageSrc,
   fileName = 'menu-image.jpg',
   title = 'Edit menu photo',
@@ -31,43 +42,13 @@ export function ImageCropModal({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setReady(false);
-    setError('');
-    setCroppedAreaPixels(null);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setRotation(0);
-
-    let cancelled = false;
-    const probe = new Image();
-    probe.onerror = () => {
-      if (!cancelled) {
-        setError('Could not display this image. Try another file, or run php artisan storage:link on the server.');
-      }
-    };
-    probe.src = imageSrc;
-
-    const timeout = window.setTimeout(() => {
-      if (cancelled) return;
-      setReady((isReady) => {
-        if (!isReady) {
-          setError((prev) => prev || 'Image is taking too long to load. Hard-refresh the admin page (Cmd/Ctrl+Shift+R) and try again.');
-        }
-        return isReady;
-      });
-    }, 10000);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, [imageSrc]);
+  const [mediaReady, setMediaReady] = useState(false);
 
   const onCropComplete = useCallback((_area: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
+    if (pixels.width > 0 && pixels.height > 0) {
+      setMediaReady(true);
+    }
   }, []);
 
   const handleConfirm = async () => {
@@ -86,7 +67,9 @@ export function ImageCropModal({
     }
   };
 
-  return createPortal(
+  const canSave = mediaReady && !!croppedAreaPixels && !busy;
+
+  return (
     <div
       role="dialog"
       aria-modal="true"
@@ -144,10 +127,12 @@ export function ImageCropModal({
           borderRadius: 12,
           overflow: 'hidden',
         }}>
-          {!ready && (
+          {!mediaReady && (
             <div style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', color: '#fff', fontSize: 13, zIndex: 1,
+              justifyContent: 'center', color: '#fff', fontSize: 13, zIndex: 2,
+              pointerEvents: 'none',
+              background: 'rgba(28,20,8,0.35)',
             }}>
               Loading image…
             </div>
@@ -162,12 +147,12 @@ export function ImageCropModal({
             onZoomChange={setZoom}
             onRotationChange={setRotation}
             onCropComplete={onCropComplete}
-            onMediaLoaded={() => {
-              setReady(true);
-              setError('');
-            }}
+            onMediaLoaded={() => setMediaReady(true)}
             objectFit="contain"
             showGrid
+            style={{
+              containerStyle: { width: '100%', height: '100%' },
+            }}
           />
         </div>
 
@@ -182,18 +167,18 @@ export function ImageCropModal({
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
               style={{ flex: 1 }}
-              disabled={busy}
+              disabled={busy || !mediaReady}
             />
           </label>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               type="button"
               title="Rotate left"
-              disabled={busy}
+              disabled={busy || !mediaReady}
               onClick={() => setRotation((r) => r - 90)}
               style={{
                 minHeight: 40, minWidth: 40, borderRadius: 8, border: '1px solid #E8E0D8',
-                background: '#F8F6F3', cursor: 'pointer', display: 'flex',
+                background: '#F8F6F3', cursor: mediaReady && !busy ? 'pointer' : 'not-allowed', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -202,11 +187,11 @@ export function ImageCropModal({
             <button
               type="button"
               title="Rotate right"
-              disabled={busy}
+              disabled={busy || !mediaReady}
               onClick={() => setRotation((r) => r + 90)}
               style={{
                 minHeight: 40, minWidth: 40, borderRadius: 8, border: '1px solid #E8E0D8',
-                background: '#F8F6F3', cursor: 'pointer', display: 'flex',
+                background: '#F8F6F3', cursor: mediaReady && !busy ? 'pointer' : 'not-allowed', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -221,12 +206,11 @@ export function ImageCropModal({
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
           <Btn variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Btn>
-          <Btn onClick={() => void handleConfirm()} disabled={busy || !ready}>
+          <Btn onClick={() => void handleConfirm()} disabled={!canSave}>
             {busy ? 'Saving…' : 'Save cropped photo'}
           </Btn>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }
