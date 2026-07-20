@@ -1081,7 +1081,7 @@ export function AccountPage() {
 
         {/* Account extras */}
         <SectionCard title={t('account.extras')}>
-          {hubRow('⭐', t('account.loyalty'),    () => setPanel('loyalty'))}
+          {hubLinkRow('⭐', t('account.link_rewards'), '/rewards')}
           {hubRow('🎁', t('account.referrals'),  () => setPanel('referrals'))}
           {hubRow('💳', t('account.credit'),     () => setPanel('credit'))}
           {hubRow('💰', t('account.deposit'),    () => setPanel('deposit'))}

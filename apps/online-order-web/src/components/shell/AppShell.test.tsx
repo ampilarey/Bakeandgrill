@@ -27,6 +27,7 @@ function wrap(initial = '/') {
                 <Route element={<AppShell />}>
                   <Route index element={<div>home-body</div>} />
                   <Route path="menu" element={<div>menu-body</div>} />
+                  <Route path="events" element={<div>events-body</div>} />
                   <Route path="rewards" element={<div>rewards-body</div>} />
                 </Route>
               </Routes>
@@ -65,8 +66,9 @@ describe('AppShell', () => {
     expect(screen.getByText('Home')).toBeTruthy();
     expect(screen.getByText('Menu')).toBeTruthy();
     expect(screen.getByText('Orders')).toBeTruthy();
-    expect(screen.getByText('Rewards')).toBeTruthy();
+    expect(screen.getByText('Pre-order')).toBeTruthy();
     expect(screen.getByText('Gifts')).toBeTruthy();
+    expect(screen.queryByText('Rewards')).toBeNull();
     expect(screen.queryByText('Account')).toBeNull();
   });
 
