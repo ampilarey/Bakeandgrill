@@ -160,6 +160,33 @@ class PrintJobService
 
     private function buildKitchenPayload(Order $order, Printer $printer): array
     {
+        $notes = (string) ($order->notes ?? '');
+        $setupTime = null;
+        $dietaryNotes = null;
+
+        if ($order->type === 'catering') {
+            $event = \App\Models\CateringRequest::query()
+                ->where('pos_order_id', $order->id)
+                ->first(['setup_time', 'dietary_notes', 'fulfillment_time', 'venue_name', 'reference']);
+            if ($event) {
+                $setupTime = $event->setup_time
+                    ? \Carbon\Carbon::parse($event->setup_time)->format('H:i')
+                    : null;
+                $dietaryNotes = $event->dietary_notes ? trim((string) $event->dietary_notes) : null;
+                $banner = [];
+                if ($setupTime) {
+                    $banner[] = 'SETUP BY '.$setupTime;
+                }
+                if ($dietaryNotes) {
+                    $banner[] = 'DIETARY: '.$dietaryNotes;
+                }
+                if ($banner !== []) {
+                    $prefix = implode(' | ', $banner);
+                    $notes = $notes !== '' ? $prefix."\n".$notes : $prefix;
+                }
+            }
+        }
+
         return [
             'printer_name' => $printer->name,
             'type' => $printer->type,
@@ -175,7 +202,11 @@ class PrintJobService
                 'id' => $order->id,
                 'order_number' => $order->order_number,
                 'type' => $order->type,
-                'notes' => $order->notes,
+                'notes' => $notes !== '' ? $notes : $order->notes,
+                // Explicit catering fields so print proxies can render them
+                // larger / bolder than general notes.
+                'setup_time' => $setupTime,
+                'dietary_notes' => $dietaryNotes,
                 'created_at' => $order->created_at?->toIso8601String(),
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,

@@ -8,6 +8,7 @@ import { OpenShiftModal } from '../components/OpenShiftModal';
 import { CloseShiftModal } from '../components/CloseShiftModal';
 import { SaveTicketModal } from '../components/SaveTicketModal';
 import { OpenTicketsPanel } from '../components/OpenTicketsPanel';
+import { EventsPanel } from '../components/EventsPanel';
 import { KitchenReceivingPanel } from '../components/KitchenReceivingPanel';
 import { ReceiptsPanel } from '../components/ReceiptsPanel';
 import { ShiftPanel } from '../components/ShiftPanel';
@@ -66,7 +67,7 @@ export function PosShellLayout() {
     isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, deviceId,
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
-    canAccessOps, canVoidOrders,
+    canAccessOps, canVoidOrders, canManageEvents,
     canManageOrderStatus, canSendBill, canSendPayLink, canRefund, canCreatePurchaseRequest,
     canLockScreen, canPayCash,
     canPayCard, canPaySplit, canUseCredit, canUseWallet, canApplyDiscount, canUseRewards,
@@ -485,6 +486,24 @@ export function PosShellLayout() {
                 .catch((err) => {
                   const msg = (err as Error)?.message ?? "Couldn't open ticket";
                   order.flashError(`Couldn't open ticket: ${msg}`);
+                });
+            }}
+          />
+        )}
+
+        {pane === 'events' && (
+          <EventsPanel
+            canManageEvents={canManageEvents}
+            shiftOpen={shiftOpen}
+            onClose={() => setPane(shiftOpen && canRingSales ? "sales" : canAccessOps ? "ops" : "events")}
+            onSettleBalance={(orderId) => {
+              order.handleResumeTicket(orderId)
+                .then(() => {
+                  setPane("sales");
+                })
+                .catch((err) => {
+                  const msg = (err as Error)?.message ?? "Couldn't open event order";
+                  order.flashError(`Couldn't settle: ${msg}`);
                 });
             }}
           />

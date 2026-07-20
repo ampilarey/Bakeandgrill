@@ -61,6 +61,11 @@ class KdsController extends Controller
         ])
             ->whereIn('status', $statuses)
             ->where('type', '!=', 'gift_card')
+            // Catering stays off KDS until an appointed staff fires it from POS Events.
+            ->where(function ($q) {
+                $q->where('type', '!=', 'catering')
+                    ->orWhereNotNull('fired_at');
+            })
             ->orderBy('created_at')
             ->get()
             ->map(fn (Order $order) => $this->formatKitchenOrder($order));

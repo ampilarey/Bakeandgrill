@@ -93,6 +93,7 @@ export function usePosApp() {
   const canViewOwnPurchaseRequests = hasPosPermission(staffPermissions, "purchase_requests.view_own");
   const canBuyAssigned = hasPosPermission(staffPermissions, "purchase_requests.buy");
   const canKitchenReceive = hasPosPermission(staffPermissions, "kitchen.receiving.view");
+  const canManageEvents = hasPosPermission(staffPermissions, "events.manage");
   const [kitchenHandoverSettings, setKitchenHandoverSettings] = useState<KitchenHandoverSettings | null>(null);
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   const [deviceId]                    = useState(() => {
@@ -1048,6 +1049,8 @@ export function usePosApp() {
         badgeCritical: openTicketsCritical,
       });
     }
+    // Events tab is always visible once logged in — independent of shift state.
+    main.push({ id: "events", label: "Events", icon: "📅", group: "main" });
     if (shiftOpen || canOpenShift || canCloseShift) {
       main.push({ id: "shift", label: shiftOpen ? "Current Shift" : "Shift", icon: "💰", group: "main" });
     }
@@ -1085,6 +1088,7 @@ export function usePosApp() {
     sales: canRingSales && shiftOpen,
     receipts: canViewReceipts && shiftOpen,
     open_tickets: canViewActiveOrders && shiftOpen,
+    events: true,
     shift: shiftOpen || canOpenShift || canCloseShift,
     shift_history: canViewShiftHistory,
     sales_report: canViewReports,
@@ -1114,7 +1118,7 @@ export function usePosApp() {
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
     canUseRewards, canRefund, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
     canViewKds, canAccessOps, canKitchenOnly, canCreatePurchaseRequest, canViewOwnPurchaseRequests,
-    canBuyAssigned, canKitchenReceive, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, deviceId,
+    canBuyAssigned, canKitchenReceive, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, deviceId,
     deviceDbId, authError, showTimeClock, setShowTimeClock, isLocked, pane, setPane,
     drawerOpen, setDrawerOpen, showPreferences, setShowPreferences, connectivity, isOnline,
     isReachable, offlineQueueCount, offlinePendingCount, offlinePendingTotals,

@@ -5,6 +5,7 @@ export function paneTitle(p: Pane): string {
     case "sales": return "Sale";
     case "receipts": return "Receipts";
     case "open_tickets": return "Active Orders";
+    case "events": return "Events";
     case "shift": return "Current Shift";
     case "shift_history": return "Shift History";
     case "sales_report": return "Sales Reports";

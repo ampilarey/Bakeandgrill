@@ -3,6 +3,7 @@ export type Pane =
   | "receipts"
   | "shift"
   | "open_tickets"
+  | "events"
   | "shift_history"
   | "sales_report"
   | "ops"

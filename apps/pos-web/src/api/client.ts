@@ -9,6 +9,8 @@ import {
   type ApiRequestOptions,
 } from '@shared/api';
 
+export { ApiRequestError };
+
 const API_BASE_URL = resolveApiBaseUrl({
   envUrl: import.meta.env.VITE_API_BASE_URL as string | undefined,
   prod: import.meta.env.PROD,

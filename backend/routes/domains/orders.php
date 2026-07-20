@@ -87,6 +87,14 @@ if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orde
         Route::post('/offline-sync', [App\Http\Controllers\Api\PosOfflineSyncController::class, 'sync'])
             ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
 
+        // Events tab — list is readable by all staff; mutations need events.manage.
+        Route::get('/events', [App\Http\Controllers\Api\PosEventController::class, 'index'])
+            ->middleware(['device.active', 'throttle:60,1']);
+        Route::post('/events/{id}/fire', [App\Http\Controllers\Api\PosEventController::class, 'fire'])
+            ->middleware(['permission:events.manage', 'device.active', 'throttle:30,1']);
+        Route::post('/events/{id}/cancel', [App\Http\Controllers\Api\PosEventController::class, 'cancel'])
+            ->middleware(['permission:events.manage', 'device.active', 'throttle:20,1']);
+
         Route::post('/loyalty/preview', [App\Http\Controllers\Api\LoyaltyController::class, 'posHoldPreview']);
         Route::post('/loyalty/hold', [App\Http\Controllers\Api\LoyaltyController::class, 'posHold']);
         Route::delete('/loyalty/hold/{orderId}', [App\Http\Controllers\Api\LoyaltyController::class, 'posReleaseHold']);

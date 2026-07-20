@@ -189,6 +189,8 @@ class OrderCreationController extends Controller
             $query->whereNotIn('status', ['cancelled', 'refunded', 'completed', 'payment_pending']);
             // Online gift-card purchases are not kitchen/cashier tickets.
             $query->where('type', '!=', 'gift_card');
+            // Event orders live on the dedicated POS Events tab — never Active Orders.
+            $query->where('type', '!=', 'catering');
 
             $query->where(function ($w) {
                 $w->whereIn('type', ['online_pickup', 'delivery'])
@@ -198,8 +200,7 @@ class OrderCreationController extends Controller
                                 $w3->whereNull('payment_status')
                                     ->orWhereIn('payment_status', ['unpaid', 'partial']);
                             });
-                    })
-                    ->orWhereNotIn('type', ['dine_in', 'takeaway', 'online_pickup', 'delivery', 'gift_card']);
+                    });
             });
         }
 
