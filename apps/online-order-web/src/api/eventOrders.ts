@@ -5,15 +5,18 @@ export type EventOrderLineInput =
   | { item_id: number; variant_id?: number; packaging_option_id?: number; quantity: number; notes?: string }
   | { custom_name: string; quantity: number; notes?: string };
 
+/** Minimal wizard payload — contact comes from the authenticated customer. */
 export type EventOrderPayload = {
-  contact_name: string;
-  phone: string;
+  event_date: string;
+  lines: EventOrderLineInput[];
+  /** Optional overrides (staff/legacy clients). Defaults to pickup on the server. */
+  fulfillment_method?: 'pickup' | 'delivery';
+  contact_name?: string;
+  phone?: string;
   email?: string;
   company?: string;
   occasion?: string;
   event_type?: string;
-  event_date: string;
-  fulfillment_method: 'pickup' | 'delivery';
   fulfillment_time?: string;
   setup_time?: string;
   venue_name?: string;
@@ -24,7 +27,6 @@ export type EventOrderPayload = {
   headcount?: number;
   notes?: string;
   dietary_notes?: string;
-  lines: EventOrderLineInput[];
 };
 
 export type EventOrderResult = {

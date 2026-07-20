@@ -78,12 +78,17 @@ describe('EventOrderPage discoverability', () => {
     await user.click(screen.getByTestId('event-tab-custom'));
     await user.type(screen.getByTestId('custom-name'), 'Wedding cake');
     await user.click(screen.getByTestId('custom-add'));
-    await user.click(screen.getByRole('button', { name: /Continue to event details/i }));
-    await waitFor(() => expect(screen.getByRole('button', { name: /Review & confirm/i })).toBeTruthy());
-    await user.click(screen.getByRole('button', { name: /Review & confirm/i }));
-    await waitFor(() => expect(screen.getByRole('button', { name: /Submit event request/i })).toBeTruthy());
-    await user.click(screen.getByRole('button', { name: /Submit event request/i }));
+    await user.click(screen.getByRole('button', { name: /Continue/i }));
+    await waitFor(() => expect(screen.getByTestId('event-date')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('submit-event')).toBeTruthy());
+    await user.click(screen.getByTestId('submit-event'));
     await waitFor(() => expect(screen.getByTestId('view-my-events')).toBeTruthy());
     expect(screen.getByTestId('event-reference').textContent).toContain('EVT-TEST-1');
+    expect(createEventOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_date: expect.any(String),
+        lines: [expect.objectContaining({ custom_name: 'Wedding cake', quantity: 1 })],
+      }),
+    );
   });
 });

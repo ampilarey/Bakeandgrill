@@ -41,10 +41,10 @@ describe('eventOrderHelpers', () => {
   });
 
   it('steps through wizard flow', () => {
-    expect(nextStep('items')).toBe('details');
-    expect(nextStep('details')).toBe('confirm');
-    expect(nextStep('confirm')).toBe('done');
-    expect(prevStep('confirm')).toBe('details');
+    expect(nextStep('items')).toBe('date');
+    expect(nextStep('date')).toBe('done');
+    expect(nextStep('done')).toBeNull();
+    expect(prevStep('date')).toBe('items');
     expect(prevStep('items')).toBeNull();
   });
 

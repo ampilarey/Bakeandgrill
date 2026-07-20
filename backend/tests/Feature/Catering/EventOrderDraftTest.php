@@ -53,17 +53,7 @@ class EventOrderDraftTest extends TestCase
         Sanctum::actingAs($this->customer, ['customer']);
 
         $res = $this->postJson('/api/customer/event-orders', [
-            'contact_name' => 'Aisha',
-            'phone' => '7777001',
-            'email' => 'aisha@example.com',
-            'occasion' => 'event',
             'event_date' => now()->addDays(4)->toDateString(),
-            'fulfillment_method' => 'pickup',
-            'fulfillment_time' => '12:00',
-            'venue_name' => 'Office',
-            'headcount' => 25,
-            'dietary_notes' => 'No nuts',
-            'notes' => 'Please call',
             'lines' => [
                 [
                     'item_id' => $this->catalogItem->id,
@@ -81,16 +71,7 @@ class EventOrderDraftTest extends TestCase
         $res->assertStatus(422); // unit_price prohibited
 
         $res = $this->postJson('/api/customer/event-orders', [
-            'contact_name' => 'Aisha',
-            'phone' => '7777001',
-            'email' => 'aisha@example.com',
-            'occasion' => 'event',
             'event_date' => now()->addDays(4)->toDateString(),
-            'fulfillment_method' => 'pickup',
-            'fulfillment_time' => '12:00',
-            'venue_name' => 'Office',
-            'headcount' => 25,
-            'dietary_notes' => 'No nuts',
             'lines' => [
                 ['item_id' => $this->catalogItem->id, 'quantity' => 2],
                 ['custom_name' => 'Extra chutney bowls', 'quantity' => 3, 'notes' => 'Mild'],
@@ -110,12 +91,32 @@ class EventOrderDraftTest extends TestCase
             'customer_id' => $this->customer->id,
             'reference' => $ref,
             'status' => 'draft',
-            'dietary_notes' => 'No nuts',
+            'contact_name' => 'Aisha',
+            'phone' => '+9607777001',
             'fulfillment_method' => 'pickup',
         ]);
 
         $this->assertSame(2, CateringRequestLine::query()->count());
         Event::assertDispatched(CateringRequestSubmitted::class);
+    }
+
+    public function test_minimal_wizard_payload_fills_contact_from_customer(): void
+    {
+        Sanctum::actingAs($this->customer, ['customer']);
+
+        $this->postJson('/api/customer/event-orders', [
+            'event_date' => now()->addDays(4)->toDateString(),
+            'lines' => [['item_id' => $this->catalogItem->id, 'quantity' => 1]],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('request.fulfillment_method', 'pickup');
+
+        $this->assertDatabaseHas('catering_requests', [
+            'customer_id' => $this->customer->id,
+            'contact_name' => 'Aisha',
+            'phone' => '+9607777001',
+            'fulfillment_method' => 'pickup',
+        ]);
     }
 
     public function test_lead_time_validation_and_delivery_requires_address(): void

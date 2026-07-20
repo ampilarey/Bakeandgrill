@@ -61,11 +61,13 @@ class EventOrderController extends Controller
             'company' => ['nullable', 'string', 'max:200'],
             'occasion' => ['nullable', 'string', 'in:' . implode(',', CateringRequest::OCCASIONS)],
             'event_type' => ['nullable', 'string', 'max:80'],
-            'contact_name' => ['required', 'string', 'max:120'],
-            'phone' => ['required', 'string', 'max:32'],
+            // Optional — wizard uses the authenticated customer; staff/API may still send overrides.
+            'contact_name' => ['nullable', 'string', 'max:120'],
+            'phone' => ['nullable', 'string', 'max:32'],
             'email' => ['nullable', 'email', 'max:190'],
             'event_date' => ['required', 'date', 'after_or_equal:' . $minDate],
-            'fulfillment_method' => ['required', 'string', Rule::in(CateringRequest::FULFILLMENT_METHODS)],
+            // Defaults to pickup; delivery address is collected later (quote / after payment).
+            'fulfillment_method' => ['nullable', 'string', Rule::in(CateringRequest::FULFILLMENT_METHODS)],
             'fulfillment_time' => ['nullable', 'date_format:H:i'],
             'setup_time' => ['nullable', 'date_format:H:i'],
             'venue_name' => ['nullable', 'string', 'max:160'],
@@ -87,7 +89,8 @@ class EventOrderController extends Controller
             'lines.*.price' => ['prohibited'],
         ]);
 
-        if (($validated['fulfillment_method'] ?? 'pickup') === 'delivery') {
+        $fulfillmentMethod = $validated['fulfillment_method'] ?? 'pickup';
+        if ($fulfillmentMethod === 'delivery') {
             if (blank($validated['delivery_address'] ?? null) || blank($validated['delivery_island'] ?? null)) {
                 throw ValidationException::withMessages([
                     'delivery_address' => ['Delivery address and island are required for delivery events.'],
@@ -96,27 +99,40 @@ class EventOrderController extends Controller
             }
         }
 
+        $contactName = trim((string) ($validated['contact_name'] ?? ''));
+        if ($contactName === '') {
+            $contactName = trim((string) ($customer->name ?? ''));
+        }
+        if ($contactName === '') {
+            $contactName = preg_replace('/^\+?960/', '', (string) $customer->phone) ?: 'Customer';
+        }
+
+        $phone = trim((string) ($validated['phone'] ?? ''));
+        if ($phone === '') {
+            $phone = (string) $customer->phone;
+        }
+
         $resolvedLines = $this->resolveLines($validated['lines']);
 
-        $row = DB::transaction(function () use ($validated, $customer, $resolvedLines) {
+        $row = DB::transaction(function () use ($validated, $customer, $resolvedLines, $fulfillmentMethod, $contactName, $phone) {
             $row = CateringRequest::create([
                 'customer_id' => $customer->id,
                 'reference' => CateringRequest::generateReference(),
                 'company' => $validated['company'] ?? null,
                 'occasion' => $validated['occasion'] ?? (($validated['event_type'] ?? null) ? 'event' : 'other'),
                 'event_type' => $validated['event_type'] ?? null,
-                'contact_name' => $validated['contact_name'],
-                'phone' => $validated['phone'],
+                'contact_name' => $contactName,
+                'phone' => $phone,
                 'email' => $validated['email'] ?? $customer->email,
                 'event_date' => $validated['event_date'],
-                'fulfillment_method' => $validated['fulfillment_method'],
+                'fulfillment_method' => $fulfillmentMethod,
                 'fulfillment_time' => $validated['fulfillment_time'] ?? null,
                 'setup_time' => $validated['setup_time'] ?? null,
                 'venue_name' => $validated['venue_name'] ?? null,
                 'delivery_address' => $validated['delivery_address'] ?? null,
                 'delivery_island' => $validated['delivery_island'] ?? null,
-                'onsite_contact_name' => $validated['onsite_contact_name'] ?? $validated['contact_name'],
-                'onsite_contact_phone' => $validated['onsite_contact_phone'] ?? $validated['phone'],
+                'onsite_contact_name' => $validated['onsite_contact_name'] ?? $contactName,
+                'onsite_contact_phone' => $validated['onsite_contact_phone'] ?? $phone,
                 'headcount' => $validated['headcount'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'dietary_notes' => $validated['dietary_notes'] ?? null,
