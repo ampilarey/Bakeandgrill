@@ -84,22 +84,30 @@ export function EventOrderPage() {
     if (!eventDate) setEventDate(minEventDateInput(leadHours));
   }, [leadHours, eventDate]);
 
+  const localPhoneDigits = (raw: string | null | undefined): string => {
+    const digits = (raw ?? '').replace(/\D/g, '');
+    const local = digits.startsWith('960') && digits.length === 10 ? digits.slice(3) : digits;
+    return local.length === 7 ? local : '';
+  };
+
   const prefillFromAccount = () => {
+    // Auth display name is often the 7-digit phone — fill immediately without waiting on /me.
+    const fromAuth = localPhoneDigits(customerName);
+    if (fromAuth) setContactPhone((prev) => prev || fromAuth);
+
     getCustomerMe()
       .then(({ customer: c }) => {
         if (c.name) setContactName((prev) => prev || c.name || '');
-        if (c.phone) {
-          const local = c.phone.replace(/^\+?960/, '').replace(/\D/g, '');
-          setContactPhone((prev) => prev || local);
-        }
+        const local = localPhoneDigits(c.phone);
+        if (local) setContactPhone((prev) => prev || local);
       })
-      .catch(() => { /* ignore */ });
+      .catch(() => { /* ignore — phone may already be filled from auth display name */ });
   };
 
   useEffect(() => {
     if (!isAuthenticated) return;
     prefillFromAccount();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, customerName]);
 
   useEffect(() => {
     if (preselectDone || cateringItems.length === 0) return;

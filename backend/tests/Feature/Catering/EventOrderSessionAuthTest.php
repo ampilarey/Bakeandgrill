@@ -74,6 +74,11 @@ class EventOrderSessionAuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('authenticated', true);
 
+        // /me must work so the wizard can prefill mobile (TransientToken on session customer).
+        $this->getJson('/api/customer/me')
+            ->assertOk()
+            ->assertJsonPath('customer.phone', '+9607820288');
+
         $this->postJson('/api/customer/event-orders', [
             'contact_name' => 'Customer',
             'phone' => '7820288',

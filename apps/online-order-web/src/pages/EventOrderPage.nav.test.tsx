@@ -64,6 +64,24 @@ describe('EventOrderPage discoverability', () => {
     await waitFor(() => expect(screen.getByTestId('my-events-nav')).toBeTruthy());
   });
 
+  it('prefills mobile from auth display phone on details step', async () => {
+    const user = userEvent.setup();
+    authState.isAuthenticated = true;
+    authState.customerName = '7820288';
+    render(
+      <MemoryRouter>
+        <EventOrderPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('event-tab-custom')).toBeTruthy());
+    await user.click(screen.getByTestId('event-tab-custom'));
+    await user.type(screen.getByTestId('custom-name'), 'Cake');
+    await user.click(screen.getByTestId('custom-add'));
+    await user.click(screen.getByRole('button', { name: /Continue/i }));
+    await waitFor(() => expect(screen.getByTestId('contact-phone')).toBeTruthy());
+    expect((screen.getByTestId('contact-phone') as HTMLInputElement).value).toBe('7820288');
+  });
+
   it('shows View my events on the done screen', async () => {
     const user = userEvent.setup();
     authState.isAuthenticated = true;

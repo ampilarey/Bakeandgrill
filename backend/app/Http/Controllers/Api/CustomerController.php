@@ -299,12 +299,15 @@ class CustomerController extends Controller
      */
     public function me(Request $request)
     {
-        // SECURITY: Ensure this is a customer token, not staff
-        if (!$request->user()->tokenCan('customer')) {
+        $customer = $request->user();
+        // Middleware already enforces Customer; allow session auth (TransientToken)
+        // and bearer tokens with customer ability.
+        if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden - customer access only'], 403);
         }
-
-        $customer = $request->user();
+        if ($customer->currentAccessToken() !== null && !$customer->tokenCan('customer')) {
+            return response()->json(['message' => 'Forbidden - customer access only'], 403);
+        }
 
         return response()->json([
             'customer' => [

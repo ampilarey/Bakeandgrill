@@ -9,6 +9,7 @@ use App\Support\SanctumBearerResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\TransientToken;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -77,6 +78,13 @@ class EnsureCustomerToken
         // session auth does not carry token abilities.
         if ($request->bearerToken() && !$user->tokenCan('customer')) {
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
+        }
+
+        // Session customers (or customer recovered over a staff web session) need a
+        // TransientToken so controllers using tokenCan('customer') still pass —
+        // same as Sanctum's stateful guard path.
+        if (!$request->bearerToken() && $user->currentAccessToken() === null) {
+            $user = $user->withAccessToken(new TransientToken);
         }
 
         $request->setUserResolver(static fn () => $user);
