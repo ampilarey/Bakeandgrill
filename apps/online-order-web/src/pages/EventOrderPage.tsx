@@ -253,14 +253,28 @@ export function EventOrderPage() {
 
   return (
     <>
-      <PageHeader title="Plan your event" onBack={() => (step === 'items' ? navigate(-1) : goBack())} />
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 var(--page-gutter)', display: 'flex', gap: 12, fontSize: 14 }} data-testid="events-nav">
-        <span style={{ fontWeight: 800 }}>Plan event</span>
-        {isAuthenticated && (
-          <Link to="/events/mine" data-testid="my-events-nav" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
+      <PageHeader
+        title="Plan your event"
+        onBack={() => (step === 'items' ? navigate(-1) : goBack())}
+        right={(
+          <Link
+            to="/events/mine"
+            data-testid="my-events-nav"
+            style={{
+              color: 'var(--color-primary)',
+              fontWeight: 700,
+              fontSize: 14,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              paddingRight: 4,
+            }}
+          >
             My events
           </Link>
         )}
+      />
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 var(--page-gutter) 8px', fontSize: 13, color: 'var(--color-text-muted)' }} data-testid="events-nav">
+        Event quotes &amp; deposits — separate from today&apos;s menu cart
       </div>
       <div style={S.page}>
         <div style={S.container}>

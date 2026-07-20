@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ActiveOrderProvider } from '../../context/ActiveOrderContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -8,6 +8,7 @@ import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useCart } from '../../context/CartContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getCustomerMe } from '../../api';
+import { isEventFlowPath } from '../../utils/eventFlowPath';
 import { ActiveOrderCapsule } from './ActiveOrderCapsule';
 import { BottomNav } from './BottomNav';
 import { FloatingCartBar } from './FloatingCartBar';
@@ -19,8 +20,10 @@ function AppShellChrome() {
   const { settings: s } = useSiteSettingsContext();
   const { hideNav } = useShellNav();
   const { cart } = useCart();
+  const location = useLocation();
   const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
   const cartCount = cart.reduce((n, e) => n + e.quantity, 0);
+  const showCartChrome = cartCount > 0 && !hideNav && !isEventFlowPath(location.pathname);
 
   const annEnabled = s.announcement_enabled === 'true';
   const annText = (s.announcement_text || '').trim();
@@ -46,7 +49,7 @@ function AppShellChrome() {
   const shellClass = [
     'app-shell',
     isDesktopShell ? 'app-shell--desktop' : '',
-    cartCount > 0 && !hideNav ? 'app-shell--with-cart' : '',
+    showCartChrome ? 'app-shell--with-cart' : '',
     hideNav ? 'app-shell--hide-nav' : '',
   ]
     .filter(Boolean)

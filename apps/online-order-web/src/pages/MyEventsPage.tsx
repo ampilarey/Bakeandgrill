@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { fetchMyEventOrders, type CustomerEventOrder } from '../api/eventOrders';
 import { PageHeader } from '../components/shell/PageHeader';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +26,21 @@ export function MyEventsPage() {
   }, [authReady, isAuthenticated]);
 
   if (authReady && !isAuthenticated) {
-    return <Navigate to="/account" replace />;
+    return (
+      <div style={S.page}>
+        <PageHeader title="My events" />
+        <div style={S.container} data-testid="events-nav">
+          <div style={S.navRow}>
+            <Link to="/events" style={S.navLink}>Plan an event</Link>
+            <span style={S.navActive}>My events</span>
+          </div>
+          <p style={S.muted}>Sign in to see your event requests and quotes.</p>
+          <Link to="/account" data-testid="my-events-sign-in" style={S.btn}>
+            Sign in
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -93,6 +107,11 @@ const S: Record<string, CSSProperties> = {
   cardLink: {
     background: 'var(--color-surface)', border: '1px solid var(--color-border)',
     borderRadius: 12, padding: 14, color: 'inherit', textDecoration: 'none', display: 'block',
+  },
+  btn: {
+    display: 'inline-block', minHeight: 44, padding: '0 16px', lineHeight: '44px',
+    borderRadius: 12, background: 'var(--color-primary)', color: '#fff',
+    fontWeight: 800, fontSize: 14, textDecoration: 'none', textAlign: 'center',
   },
 };
 

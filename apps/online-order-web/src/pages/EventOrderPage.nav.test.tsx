@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { EventOrderPage } from './EventOrderPage';
 
 const authState = { isAuthenticated: false, customerName: null as string | null, setAuth: vi.fn() };
@@ -26,7 +27,12 @@ vi.mock('../api/auth', () => ({
 }));
 vi.mock('../components/AuthBlock', () => ({ AuthBlock: () => null }));
 vi.mock('../components/shell/PageHeader', () => ({
-  PageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
+  PageHeader: ({ title, right }: { title: string; right?: ReactNode }) => (
+    <header>
+      <h1>{title}</h1>
+      {right}
+    </header>
+  ),
 }));
 
 describe('EventOrderPage discoverability', () => {
@@ -37,14 +43,14 @@ describe('EventOrderPage discoverability', () => {
     createEventOrder.mockResolvedValue({ request: { reference: 'EVT-TEST-1' } });
   });
 
-  it('hides My events nav when not authenticated', async () => {
+  it('always shows My events nav (sign-in happens on that page if needed)', async () => {
     render(
       <MemoryRouter>
         <EventOrderPage />
       </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByTestId('events-nav')).toBeTruthy());
-    expect(screen.queryByTestId('my-events-nav')).toBeNull();
+    expect(screen.getByTestId('my-events-nav')).toBeTruthy();
   });
 
   it('shows My events nav when authenticated', async () => {

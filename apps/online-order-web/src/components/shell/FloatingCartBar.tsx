@@ -5,10 +5,12 @@ import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
+import { isEventFlowPath } from '../../utils/eventFlowPath';
 import { CartSheet } from '../CartSheet';
 
 /**
  * Logo cart FAB → CartSheet. All breakpoints — only when the cart has items.
+ * Hidden on event/quote flows so the immediate cart doesn't compete with event lines.
  */
 export function FloatingCartBar() {
   const { t } = useLanguage();
@@ -21,6 +23,7 @@ export function FloatingCartBar() {
 
   const count = cart.reduce((sum, e) => sum + e.quantity, 0);
   const logoSrc = s.logo || '/logo.png';
+  const onEventFlow = isEventFlowPath(location.pathname);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,11 +42,12 @@ export function FloatingCartBar() {
   }, []);
 
   useEffect(() => {
-    if (count === 0 && cartSheetOpen) closeCartSheet();
-  }, [count, cartSheetOpen, closeCartSheet]);
+    if ((count === 0 || onEventFlow) && cartSheetOpen) closeCartSheet();
+  }, [count, onEventFlow, cartSheetOpen, closeCartSheet]);
 
   const showFab =
     !hideNav &&
+    !onEventFlow &&
     count > 0 &&
     !location.pathname.startsWith('/checkout');
 
