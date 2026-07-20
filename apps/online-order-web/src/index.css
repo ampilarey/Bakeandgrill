@@ -1275,6 +1275,19 @@ textarea.field-input {
 /* Add to cart / modal add button */
 .modal-add-btn:hover { background: var(--color-primary-hover) !important; }
 
+/* Item detail sheet — bottom sheet on phone, centered card on wider screens */
+@media (min-width: 640px) {
+  .item-detail-backdrop {
+    align-items: center !important;
+    padding: 1.25rem !important;
+  }
+  .item-detail-sheet {
+    border-radius: 20px !important;
+    max-height: min(88vh, 820px) !important;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28) !important;
+  }
+}
+
 /* Menu card add button */
 .card-add-btn { transition: background 0.15s; }
 .card-add-btn:hover { background: var(--color-primary-hover) !important; }

@@ -91,6 +91,7 @@ export type MenuItem = {
   }>;
   dietary_tags?: string[] | null;
   allergens?: string[] | null;
+  calories?: number | null;
 };
 
 export type MenuItemPayload = {
@@ -135,6 +136,7 @@ export type MenuItemPayload = {
   combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean }>;
   dietary_tags?: string[] | null;
   allergens?: string[] | null;
+  calories?: number | null;
   prep_time_minutes?: number | null;
   spice_level?: 'none' | 'mild' | 'medium' | 'hot' | 'extra_hot' | null;
 };

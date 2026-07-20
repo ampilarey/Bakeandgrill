@@ -234,8 +234,10 @@ class ItemController extends Controller
                     if ($data['is_combo'] && $item->relationLoaded('comboItems')) {
                         $data['combo_items'] = $item->comboItems->map(fn ($row) => [
                             'item_id' => $row->item_id,
+                            'item_name' => $row->item?->name,
                             'quantity' => $row->quantity,
                             'is_optional' => $row->is_optional,
+                            'unit_price' => $row->item ? (float) $row->item->base_price : 0,
                             'item' => $row->item ? [
                                 'id' => $row->item->id,
                                 'name' => $row->item->name,
@@ -248,6 +250,8 @@ class ItemController extends Controller
                         ])->values();
                     }
                     $data['dietary_tags'] = $item->dietary_tags ?? [];
+                    $data['allergens'] = $item->allergens ?? [];
+                    $data['calories'] = $item->calories !== null ? (int) $item->calories : null;
                     $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
                     $data['avg_rating'] = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
                     $data['review_count'] = (int) ($item->review_count ?? 0);
@@ -286,11 +290,13 @@ class ItemController extends Controller
                 $data['effective_cost'] = $recipeCosts?->effectiveCost($item);
                 $data['dietary_tags'] = $item->dietary_tags ?? [];
                 $data['allergens'] = $item->allergens ?? [];
+                $data['calories'] = $item->calories !== null ? (int) $item->calories : null;
                 $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
                 $data['spice_level'] = $item->spice_level ?? null;
                 $data['combo_items'] = $item->relationLoaded('comboItems')
                     ? $item->comboItems->map(fn ($row) => [
                         'item_id' => $row->item_id,
+                        'item_name' => $row->item?->name,
                         'quantity' => $row->quantity,
                         'is_optional' => $row->is_optional,
                         'item' => $row->item ? [

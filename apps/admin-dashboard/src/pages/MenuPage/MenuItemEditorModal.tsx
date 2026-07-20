@@ -8,6 +8,10 @@ import {
   emptyPackagingOptionRow, emptyVariantRow, SALES_CHANNELS, type ItemForm, type VariantRow,
 } from './menuItemForm';
 import { PhotosTab } from './PhotosTab';
+import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
+
+const DIETARY_PRESETS = ['vegetarian', 'vegan', 'halal', 'gluten-free', 'spicy'] as const;
+const ALLERGEN_PRESETS = ['nuts', 'dairy', 'gluten', 'eggs', 'soy', 'shellfish', 'fish', 'sesame'] as const;
 
 function comboRowSelection(row: { item_id: string; item_name?: string }): MenuItemSelection | null {
   if (!row.item_id) return null;
@@ -267,44 +271,76 @@ export function MenuItemEditorModal({
                 <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
               </Field>
             </div>
-            <Field label="Description">
-              <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Describe the item…" />
-            </Field>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Dietary tags">
-                <Input value={form.dietary_tags} onChange={(v) => set('dietary_tags', v)} placeholder="vegetarian, halal, gluten-free, spicy" />
-              </Field>
-              <Field label="Allergens">
-                <Input value={form.allergens} onChange={(v) => set('allergens', v)} placeholder="nuts, dairy, gluten" />
-              </Field>
-            </div>
-            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '-6px 0 0' }}>Comma-separated. Any tag appears as a filter chip on the online menu.</p>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Spice level">
-                <select
-                  value={form.spice_level}
-                  onChange={(e) => set('spice_level', e.target.value as ItemForm['spice_level'])}
-                  style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 14 }}
-                >
-                  <option value="none">None / not spicy</option>
-                  <option value="mild">Mild</option>
-                  <option value="medium">Medium</option>
-                  <option value="hot">Hot</option>
-                  <option value="extra_hot">Extra hot</option>
-                </select>
-              </Field>
-              <Field label="Prep time (minutes)">
-                <Input
-                  value={form.prep_time_minutes}
-                  onChange={(v) => set('prep_time_minutes', v)}
-                  type="number"
-                  placeholder="e.g. 15"
+            <div style={{ padding: '14px 16px', background: '#FFFAF5', borderRadius: 12, border: '1px solid #F0E0D0' }}>
+              <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Customer-facing details</p>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
+                Shown on the online menu card and the item detail sheet when customers tap an item.
+              </p>
+              <Field label="Description">
+                <FormTextarea
+                  value={form.description}
+                  onChange={(v) => set('description', v)}
+                  placeholder="Short appetising description (first ~2 lines show on the menu card)…"
+                  rows={4}
                 />
               </Field>
+              <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 12px' }}>
+                {form.description.trim().length} characters · aim for 80–180 for a clean card preview
+              </p>
+              <Field label="Dietary tags">
+                <TagChipField
+                  value={parseTagsCsv(form.dietary_tags)}
+                  onChange={(tags) => set('dietary_tags', tagsToCsv(tags))}
+                  presets={DIETARY_PRESETS}
+                  placeholder="Custom dietary tag…"
+                />
+              </Field>
+              <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 12px' }}>
+                Filter chips on the menu · also listed on the item detail sheet
+              </p>
+              <Field label="Allergens">
+                <TagChipField
+                  value={parseTagsCsv(form.allergens)}
+                  onChange={(tags) => set('allergens', tagsToCsv(tags))}
+                  presets={ALLERGEN_PRESETS}
+                  placeholder="Custom allergen…"
+                />
+              </Field>
+              <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 12px' }}>
+                Shown as “Contains …” on the item detail sheet (not on the menu card)
+              </p>
+              <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <Field label="Spice level">
+                  <select
+                    value={form.spice_level}
+                    onChange={(e) => set('spice_level', e.target.value as ItemForm['spice_level'])}
+                    style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 14 }}
+                  >
+                    <option value="none">None / not spicy</option>
+                    <option value="mild">Mild</option>
+                    <option value="medium">Medium</option>
+                    <option value="hot">Hot</option>
+                    <option value="extra_hot">Extra hot</option>
+                  </select>
+                </Field>
+                <Field label="Prep time (min)">
+                  <Input
+                    value={form.prep_time_minutes}
+                    onChange={(v) => set('prep_time_minutes', v)}
+                    type="number"
+                    placeholder="e.g. 15"
+                  />
+                </Field>
+                <Field label="Calories (optional)">
+                  <Input
+                    value={form.calories}
+                    onChange={(v) => set('calories', v.replace(/[^\d]/g, ''))}
+                    type="number"
+                    placeholder="e.g. 450"
+                  />
+                </Field>
+              </div>
             </div>
-            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '-6px 0 0' }}>
-              Shown on the online menu card. Prep time also feeds kitchen wait estimates.
-            </p>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: '#F8F6F3', borderRadius: 8, border: '1px solid #E8E0D8' }}>
               <input
                 type="checkbox"

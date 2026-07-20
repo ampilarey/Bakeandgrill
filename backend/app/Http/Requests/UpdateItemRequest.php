@@ -95,6 +95,7 @@ class UpdateItemRequest extends FormRequest
             'allergens' => 'sometimes|nullable|array|max:12',
             'allergens.*' => 'string|max:40',
             'prep_time_minutes' => 'sometimes|nullable|integer|min:0|max:480',
+            'calories' => 'sometimes|nullable|integer|min:0|max:9999',
             'spice_level' => 'sometimes|nullable|string|in:none,mild,medium,hot,extra_hot',
         ];
     }

@@ -100,10 +100,11 @@ export type MenuItem = {
 
 export type ComboItemEntry = {
   item_id: number;
-  item_name: string;
+  item_name?: string | null;
   quantity: number;
   is_optional: boolean;
-  unit_price: number;
+  unit_price?: number;
+  item?: { id: number; name: string; name_dv?: string | null; base_price?: number | string | null } | null;
 };
 
 export type PackagingOption = {

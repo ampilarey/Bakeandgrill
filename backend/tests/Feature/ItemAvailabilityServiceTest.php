@@ -148,6 +148,9 @@ class ItemAvailabilityServiceTest extends TestCase
         $this->assertNull($first['available_from']);
         $this->assertArrayHasKey('photos', $first);
         $this->assertIsArray($first['photos']);
+        $this->assertArrayHasKey('allergens', $first);
+        $this->assertIsArray($first['allergens']);
+        $this->assertArrayHasKey('calories', $first);
     }
 
     public function test_public_item_show_includes_wave_c_aliases(): void
