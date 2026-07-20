@@ -153,7 +153,11 @@ export function EventOrderPage() {
 
   const validateDetails = (): string | null => {
     if (!eventDate || eventDate < minDate) return `Event date must be on or after ${minDate}`;
-    if (!fulfillmentTime) return 'Event time is required';
+    if (!fulfillmentTime.trim()) {
+      return fulfillmentMethod === 'delivery'
+        ? 'Delivery time is required'
+        : 'Pickup time is required';
+    }
     const phoneDigits = contactPhone.replace(/\D/g, '').replace(/^960/, '');
     if (!phoneDigits || phoneDigits.length !== 7) {
       return 'Enter a valid 7-digit mobile number';
@@ -165,6 +169,8 @@ export function EventOrderPage() {
     }
     return null;
   };
+
+  const detailsComplete = validateDetails() === null;
 
   const handleSubmit = async () => {
     const err = validateDetails();
@@ -257,7 +263,7 @@ export function EventOrderPage() {
       <div style={S.page}>
         <div style={S.container}>
           <p style={S.lede}>
-            Same pickup/delivery details as online ordering, plus your event date. Sign in with OTP to submit.
+            Choose pickup or delivery, then enter the event date and time (both required). Sign in with OTP to submit.
           </p>
           <p style={{ margin: '0 0 1rem', fontSize: 13 }}>
             <Link to="/menu" style={S.link}>Need it today instead? Order from the menu →</Link>
@@ -484,7 +490,7 @@ export function EventOrderPage() {
               </div>
 
               <label style={S.label}>
-                Event date
+                Event date *
                 <input
                   style={S.input}
                   type="date"
@@ -492,17 +498,19 @@ export function EventOrderPage() {
                   value={eventDate}
                   onChange={(e) => setEventDate(e.target.value)}
                   required
+                  aria-required="true"
                   data-testid="event-date"
                 />
               </label>
               <label style={S.label}>
-                Event time
+                {fulfillmentMethod === 'delivery' ? 'Delivery time *' : 'Pickup time *'}
                 <input
                   style={S.input}
                   type="time"
                   value={fulfillmentTime}
                   onChange={(e) => setFulfillmentTime(e.target.value)}
                   required
+                  aria-required="true"
                   data-testid="event-time"
                 />
               </label>
@@ -615,7 +623,20 @@ export function EventOrderPage() {
               {isAuthenticated && (
                 <>
                   <p style={{ fontSize: 14, margin: 0 }}>Signed in as {customerName || 'customer'}.</p>
-                  <button type="button" style={S.btn} disabled={loading} onClick={() => void handleSubmit()} data-testid="submit-event">
+                  {!detailsComplete && (
+                    <p style={{ fontSize: 13, color: '#b91c1c', margin: 0 }} role="status">
+                      {fulfillmentMethod === 'delivery'
+                        ? 'Fill date, delivery time, address, island, contact name, and mobile to submit.'
+                        : 'Fill date, pickup time, and mobile to submit.'}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    style={{ ...S.btn, ...(detailsComplete ? {} : { opacity: 0.55, cursor: 'not-allowed' }) }}
+                    disabled={loading || !detailsComplete}
+                    onClick={() => void handleSubmit()}
+                    data-testid="submit-event"
+                  >
                     {loading ? 'Submitting…' : 'Submit event request'}
                   </button>
                 </>

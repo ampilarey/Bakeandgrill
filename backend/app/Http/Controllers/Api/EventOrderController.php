@@ -69,7 +69,8 @@ class EventOrderController extends Controller
             'email' => ['nullable', 'email', 'max:190'],
             'event_date' => ['required', 'date', 'after_or_equal:' . $minDate],
             'fulfillment_method' => ['nullable', 'string', Rule::in(CateringRequest::FULFILLMENT_METHODS)],
-            'fulfillment_time' => ['required', 'date_format:H:i'],
+            // Browsers may send H:i or H:i:s from <input type="time">.
+            'fulfillment_time' => ['required', 'string', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
             'setup_time' => ['nullable', 'date_format:H:i'],
             'venue_name' => ['nullable', 'string', 'max:160'],
             'delivery_address' => ['nullable', 'string', 'max:500'],
@@ -134,7 +135,7 @@ class EventOrderController extends Controller
                 'email' => $validated['email'] ?? $customer->email,
                 'event_date' => $validated['event_date'],
                 'fulfillment_method' => $fulfillmentMethod,
-                'fulfillment_time' => $validated['fulfillment_time'],
+                'fulfillment_time' => Carbon::parse($validated['fulfillment_time'])->format('H:i'),
                 'setup_time' => $validated['setup_time'] ?? null,
                 'venue_name' => $validated['venue_name'] ?? null,
                 'delivery_address' => $validated['delivery_address'] ?? null,
