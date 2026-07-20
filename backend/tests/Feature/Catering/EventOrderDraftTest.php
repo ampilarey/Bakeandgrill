@@ -193,12 +193,18 @@ class EventOrderDraftTest extends TestCase
         $row = CateringRequest::query()->findOrFail($id);
 
         // Sync notify from EventOrderController::store
-        $this->assertSame(1, SmsLog::query()
+        $customerSms = SmsLog::query()
             ->where('idempotency_key', 'event:' . $id . ':1:created:customer_sms')
-            ->count());
-        $this->assertSame(1, SmsLog::query()
+            ->first();
+        $this->assertNotNull($customerSms);
+        $this->assertStringContainsString('View details:', (string) $customerSms->message);
+        $this->assertStringContainsString('/order/events/mine', (string) $customerSms->message);
+
+        $staffSms = SmsLog::query()
             ->where('idempotency_key', 'event:' . $id . ':1:created:staff_sms:0')
-            ->count());
+            ->first();
+        $this->assertNotNull($staffSms);
+        $this->assertStringContainsString('/admin/catering/' . $id, (string) $staffSms->message);
 
         // Second notify must not duplicate SMS rows.
         app(CateringEventCreatedNotifier::class)->notify($row);

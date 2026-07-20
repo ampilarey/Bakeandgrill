@@ -35,15 +35,19 @@ class CateringEventCreatedNotifier
     private function notifyCustomer(CateringRequest $request, string $ref, string $baseKey): void
     {
         $phone = trim((string) $request->phone);
+        $viewUrl = $this->customerEventsUrl();
+
         if ($phone === '') {
             Log::warning('CateringEventCreatedNotifier: customer phone empty — SMS skipped', [
                 'id' => $request->id,
                 'reference' => $ref,
             ]);
         } else {
+            // Same pattern as online order SMS: short confirm + view-details link.
+            $message = "Event request {$ref} received. View details: {$viewUrl}";
             $log = $this->sms->send(new SmsMessage(
                 to: $phone,
-                message: "Event request {$ref} received - we will send your quote soon",
+                message: $message,
                 type: 'transactional',
                 customerId: $request->customer_id,
                 referenceType: 'catering_request',
@@ -86,16 +90,8 @@ class CateringEventCreatedNotifier
             return;
         }
 
-        $date = $request->event_date?->toDateString() ?? 'TBD';
-        $timeRaw = $request->fulfillment_time;
-        $time = is_object($timeRaw) && method_exists($timeRaw, 'format')
-            ? $timeRaw->format('H:i')
-            : (is_string($timeRaw) ? substr($timeRaw, 0, 5) : '');
-        $when = trim($date . ($time !== '' ? " {$time}" : ''));
-        $method = $request->fulfillment_method === 'delivery' ? 'delivery' : 'pickup';
-        $name = $request->contact_name;
-        $lineCount = $request->lines->count();
-        $staffMsg = "Event {$ref}: {$name}, {$method}, {$when}, {$lineCount} lines. Phone {$request->phone}.";
+        $adminUrl = $this->adminEventUrl((int) $request->id);
+        $staffMsg = "New event {$ref}. View: {$adminUrl}";
 
         foreach ($targets as $i => $target) {
             if (!empty($target['phone'])) {
@@ -128,5 +124,17 @@ class CateringEventCreatedNotifier
                 }
             }
         }
+    }
+
+    private function customerEventsUrl(): string
+    {
+        return rtrim((string) config('app.url'), '/') . '/order/events/mine';
+    }
+
+    private function adminEventUrl(int $id): string
+    {
+        $base = rtrim((string) (config('app.admin_url') ?: config('app.url')), '/');
+
+        return $base . '/admin/catering/' . $id;
     }
 }
