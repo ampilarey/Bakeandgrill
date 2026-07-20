@@ -1,6 +1,6 @@
 # Catering & Events Ordering System — Implementation Plan
 
-> Date: 2026-07-20 (rev 2: notifications/OTP channels, menu display spec, POS Events tab, deposit-confirmation fix) · Status: approved design, ready for implementation
+> Date: 2026-07-20 (rev 3: + adoption maps for admin app, main website, order app) · Status: approved design, ready for implementation
 > Implementation is executed **phase by phase** — each phase below is a self-contained prompt for a coding agent (Cursor). Do not start a later phase before the earlier one is merged and green.
 
 ---
@@ -56,12 +56,45 @@ Remove the pre-order IDOR page (or token-protect it), the orphaned wizard route 
 - **Do not modify:** `OrderTotalsCalculator` totals pipeline, `EffectiveDiscount`, gift-card tender logic, loyalty/promotions, packaging-fee math. New order lines must flow through the existing creation path (`OrderCreationService`) so all of that continues to apply automatically.
 - Every phase: backend `vendor/bin/phpunit` fully green (new feature tests included), `npx vitest run` green in `apps/pos-web` and `apps/online-order-web`. If API item payloads change shape, regenerate contract snapshots deliberately (`UPDATE_SNAPSHOTS=true`, APP_URL=http://localhost:8000) and commit them.
 
+## 4. Adoption maps — every surface that changes
+
+### 4A. Admin app (`apps/admin-dashboard`)
+| Change | Where | Phase |
+|---|---|---|
+| Nav entry renamed "Events & Catering", description "Event orders, quotes & catering pipeline", gated `permissions: ['events.manage', 'customers.manage']` (any-of, so existing staff keep access until roles are updated); update `src/__tests__/navConfig.test.ts` | `src/components/navConfig.ts` (~line 84) | 3 |
+| New route `/catering/:id` — event detail / quote editor page (lazy import + permission-gate pattern of sibling routes); pipeline list rows link to it | `src/App.tsx` | 3 |
+| `events.manage` appears in the roles/permissions editor (auto once seeded backend-side; if the frontend keeps a hardcoded permission catalog, add slug + friendly label) | roles/staff pages | 3 |
+| New "Catering & Events" settings card: `catering_notify_phone` (existing), `catering_notify_email` (new), `catering_min_lead_hours` (existing, not yet UI-editable), `catering_quote_valid_days`, `catering_quote_min_hours_before_event` — follow whichever settings surface hosts sibling site-setting groups | settings pages | 3 |
+| `catering_reminder_enabled` toggle added to that card | settings pages | 4 |
+| Orders page: `catering` order-type label + type filter (pattern: existing `preorder` label, `OrdersPage.tsx` ~52) | `src/pages/OrdersPage.tsx` | 4 |
+| Menu page: catering badge + "Catering items only" filter | `src/pages/MenuPage/` | 1 |
+| Pipeline list: `draft`/`awaiting_customer` status chips; quote version, expiry, paid state (deposit/balance) columns; link to detail page | `src/pages/CateringPage.tsx` | 2–3 |
+| Optional: "Upcoming events (7 days)" dashboard widget, visible with `events.manage` | `src/pages/DashboardPage` | 5 (optional) |
+| Remove "ring through POS with a manual discount" hint | `src/pages/CateringPage.tsx` | 4 |
+
+### 4B. Main website (Blade, `backend/resources/views`)
+| Change | Where | Phase |
+|---|---|---|
+| "Catering & Events" nav link points to the wizard `/order/events` (optionally keep `/order/catering` as a secondary "quick inquiry" link) | `layout.blade.php` | 2 |
+| Lightweight "Events & Catering" home section — blurb + CTAs "Browse catering menu" and "Plan your event" (→ `/order/events`); copy via the existing CMS site-settings pattern | `home.blade.php` | 2 |
+| "Planning an event?" CTA | `contact.blade.php` | 2 |
+| Reservations untouched (separate backlog) | — | — |
+
+### 4C. Order app (`apps/online-order-web`)
+| Change | Where | Phase |
+|---|---|---|
+| Collapsed "Event & catering menu" section on the menu page | MenuPage components | 1 |
+| `/order/events` wizard (+ `/order/pre-order` pointing there); app navigation entry "Events" | `src/main.tsx`, nav components | 2 |
+| HomePage office-catering block: retitle "Events & catering", CTA → `/order/events` (keep `officeOrdersEnabled` gating) | `src/pages/HomePage.tsx` (~309-371) | 2 |
+| Public quote page `/order/quote/{token}` | new page | 4 |
+| AccountPage "My events": customer's event orders (reference, date, status, paid/balance), rows link to the live quote page when awaiting payment; backed by `GET /api/customer/event-orders` (list variant of the create endpoint); replaces old pre-order history links | `src/pages/AccountPage.tsx` | 4 |
+
 ---
 
 ## PHASE 1 — Catering menu foundation
 
 ```
-Bake & Grill monorepo (Laravel backend in backend/, React apps in apps/pos-web, apps/online-order-web, apps/admin-dashboard). Read docs/CATERING-EVENTS-PLAN.md sections 1–3 for full context. This phase makes catering items real, orderable products shown as an optional section in POS and online ordering.
+Bake & Grill monorepo (Laravel backend in backend/, React apps in apps/pos-web, apps/online-order-web, apps/admin-dashboard). Read docs/CATERING-EVENTS-PLAN.md sections 1–4 (the adoption maps in section 4 list every surface change per phase) for full context. This phase makes catering items real, orderable products shown as an optional section in POS and online ordering.
 
 Current mechanics you build on:
 - Every item has channel rows in item_channel_availability; the catering channel exists but is_enabled=false by default (ItemController ~line 350, Item.php ~line 206) and KitchenMenuResolver (backend/app/Domains/Kitchen/Services/KitchenMenuResolver.php) excludes 'catering' from ORDERING_CHANNELS (~line 25) and never maps an order type to it (channelForOrderType ~line 31).
@@ -81,7 +114,7 @@ DO NOT: change any pricing/tax/packaging/discount logic; catering items must beh
 ## PHASE 2 — Event order builder (customer wizard → draft)
 
 ```
-Bake & Grill monorepo. Read docs/CATERING-EVENTS-PLAN.md sections 1–3. Phase 1 (catering menu foundation) is merged: catering items are orderable, flagged in menu payloads. This phase gives customers an event-order wizard that saves a structured DRAFT into the catering pipeline, and retires the dead pre-order remnants.
+Bake & Grill monorepo. Read docs/CATERING-EVENTS-PLAN.md sections 1–4 (the adoption maps in section 4 list every surface change per phase). Phase 1 (catering menu foundation) is merged: catering items are orderable, flagged in menu payloads. This phase gives customers an event-order wizard that saves a structured DRAFT into the catering pipeline, and retires the dead pre-order remnants.
 
 Current mechanics:
 - CateringRequest (backend/app/Models/CateringRequest.php): statuses new/contacted/quoted/confirmed/completed/cancelled; created via POST /api/catering-requests (CateringRequestController::store — honeypot, lead-time from catering_min_lead_hours setting, throttle 10/min); staff SMS via CateringRequestSubmitted event.
@@ -97,6 +130,7 @@ TASKS:
 6. Wizard (apps/online-order-web): resurrect PreOrderPage.tsx as EventOrderPage at route /order/events (also point /order/pre-order there): step 1 item picker with THREE TABS — "Catering menu" (default), "Regular menu", "+ Custom item" (name/qty/note rows) — so catering leads and the regular menu is one tap away (inverse of the main ordering app); step 2 event details (date honoring the lead-time min, time, occasion, headcount, notes); step 3 OTP-or-authenticated confirm showing an itemized summary — catalog lines with prices, custom lines marked "to be quoted", and copy that staff will confirm the final quote; step 4 done screen with the reference number and "we'll SMS/email you the quote". Keep the existing CateringPage simple-inquiry form reachable (link from the wizard: "just want a callback?").
 7. Retirements: delete the unrouted PreOrderApiController::store method; remove the IDOR route GET /pre-order/{id}/confirmation + PreOrderController::confirmation + its blade (historical pre-orders were already imported into catering_requests); remove dead corporate-inquiry API clients (apps/online-order-web submitCorporateInquiry in src/api/menu.ts, apps/admin-dashboard fetchCorporateInquiries/updateCorporateInquiryStatus in src/api/customer-growth.ts). Keep the backend legacy /api/corporate-inquiries POST alias (old clients).
 8. Admin: CateringPage list must render draft rows (status filter includes draft) showing line count + custom-line count; full editing arrives in Phase 3 — read-only line display is enough here (GET /admin/customers/catering-requests/{id} returns lines).
+9. Entry points (adoption map 4B/4C): main website — layout.blade.php "Catering & Events" nav link → /order/events; home.blade.php gets a lightweight "Events & Catering" section (blurb + "Browse catering menu" and "Plan your event" CTAs, copy via the existing CMS site-settings pattern); contact.blade.php gets a "Planning an event?" CTA. Order app — HomePage office-catering block retitled "Events & catering" with CTA → /order/events (keep officeOrdersEnabled gating); add an "Events" entry to the app navigation alongside Reservations/Catering links.
 
 TESTS: feature — draft creation with mixed catalog+custom lines (prices resolved server-side, client-sent prices ignored/rejected), lead-time validation, reference number uniqueness, created-notification SMS+email dispatched idempotently, email-OTP channel works and SMS stays default, authenticated customers skip OTP, IDOR route now 404s, legacy corporate alias still accepts. Vitest — wizard tabbed item picker (catering default), custom-line add/remove, step flow. Full suites green.
 
@@ -106,7 +140,7 @@ DO NOT: touch Order/OrderItem creation, totals, or payment code in this phase �
 ## PHASE 3 — Staff quote editor + send for approval
 
 ```
-Bake & Grill monorepo. Read docs/CATERING-EVENTS-PLAN.md sections 1–3. Phases 1–2 merged: catering menu live; customers create draft event orders with catalog + custom lines (catering_request_lines); admin sees drafts read-only. This phase lets staff edit/price/quote an event order and send it to the customer for approval.
+Bake & Grill monorepo. Read docs/CATERING-EVENTS-PLAN.md sections 1–4 (the adoption maps in section 4 list every surface change per phase). Phases 1–2 merged: catering menu live; customers create draft event orders with catalog + custom lines (catering_request_lines); admin sees drafts read-only. This phase lets staff edit/price/quote an event order and send it to the customer for approval.
 
 Current mechanics: admin catering UI apps/admin-dashboard/src/pages/CateringPage.tsx + src/api/catering.ts (PATCH /admin/customers/catering-requests/{id}, permission customers.manage); SMS via SmsService with idempotency keys; token patterns in GiftCardController (view token) and ReceiptController.
 
@@ -117,6 +151,7 @@ TASKS:
 4. Send/resend: POST /admin/customers/catering-requests/{id}/send-quote with {payment_amount_mvr, is_deposit} (permission events.manage) — validates 0 < payment ≤ quote total (deposit) or equals total (full), regenerates quote_token (Str::random(48)), sets quote_sent_at=now, quote_expires_at=min(now + catering_quote_valid_days, event_date − catering_quote_min_hours_before_event), increments quote_version, sets status awaiting_customer. Notify: customer SMS with the link https://{app}/order/quote/{token} + email when on file (mailable with the itemized quote); staff targets (recipient helper) get a brief "quote v{n} sent for {reference}" SMS/email. Idempotency event:{id}:{version}:quote_sent. Any subsequent edit to lines invalidates: clears token + reverts status to quoted.
 5. Admin UI (CateringPage or a detail drawer/page): line editor (qty steppers, remove, add catalog item via item search, price inputs enabled only on custom lines), quote summary (subtotal, tax preview, total), payment amount input + "deposit" toggle with validation, Send/Resend button showing version + expiry, and a status timeline. Keep all existing pipeline fields (staff_notes, pos_order_id, handled_by) working.
 6. Public quote read endpoint: GET /api/event-quotes/{token} (public, throttle 30/min) → itemized quote (lines, totals, payment amount, deposit flag, expiry, status). 404 on unknown/cleared token; 410-style expired payload after quote_expires_at. No sequential IDs anywhere.
+7. Admin adoption (map 4A): navConfig.ts entry renamed "Events & Catering" (description "Event orders, quotes & catering pipeline") gated permissions: ['events.manage','customers.manage'] any-of + update navConfig.test.ts; new App.tsx route /catering/:id for the detail/quote editor (lazy import + sibling permission-gate pattern), list rows link to it; ensure events.manage shows in the roles/permissions editor (add slug + friendly label to any hardcoded frontend permission catalog); new "Catering & Events" settings card (in whichever settings surface hosts sibling site-setting groups) editing catering_notify_phone, catering_notify_email, catering_min_lead_hours, catering_quote_valid_days, catering_quote_min_hours_before_event.
 
 TESTS: feature — line replace re-resolves catalog prices (client prices ignored), custom price requires events.manage, send blocked with unpriced custom lines, deposit bounds validation, resend rotates token + old token dies + notifies customer and events.manage holders (SMS + email, idempotent), expiry computation (both min branches), public endpoint token/expiry behavior, events.manage permission gating (403 without it). Vitest — admin editor interactions. Full suites green.
 
@@ -126,7 +161,7 @@ DO NOT: create Orders or payments yet (Phase 4); do not touch OrderTotalsCalcula
 ## PHASE 4 — Customer approval, payment, confirmation
 
 ```
-Bake & Grill monorepo. Read docs/CATERING-EVENTS-PLAN.md sections 1–3. Phases 1–3 merged: staff send tokened quotes (quote_token, quote_payment_laar, quote_is_deposit, quote_expires_at, status awaiting_customer). This phase completes the loop: customer approves and pays online; payment confirms the event.
+Bake & Grill monorepo. Read docs/CATERING-EVENTS-PLAN.md sections 1–4 (the adoption maps in section 4 list every surface change per phase). Phases 1–3 merged: staff send tokened quotes (quote_token, quote_payment_laar, quote_is_deposit, quote_expires_at, status awaiting_customer). This phase completes the loop: customer approves and pays online; payment confirms the event.
 
 Current mechanics to REUSE (this is the critical part):
 - Gift-card purchase pattern: GiftCardPurchaseService::start creates a payable Order (type gift_card) → BML checkout URL → on OrderPaid a listener performs the domain action, idempotently. Mirror this exactly.
@@ -140,6 +175,7 @@ TASKS:
 4. Expiry sweep: scheduled command (hourly) that flips awaiting_customer requests past quote_expires_at back to quoted and clears the token (so the page shows expired even if opened later). Notify customer (SMS + email, "your quote expired — contact us to renew") and events.manage holders, idempotent per version. Follow the AutoCancelNoShowReservations job/schedule pattern in routes/console.php. Also add an OPTIONAL day-before-event reminder (site-setting toggle catering_reminder_enabled, default on): daily job reminds customer + events.manage holders of tomorrow's confirmed events.
 5. Cancellation notifications: when staff cancel an event (existing status change to cancelled), notify customer SMS + email + events.manage holders, idempotent.
 6. Edge handling: approving twice (idempotent — second call returns the existing payment_url if still payment_pending), BML failure/abandon (order stays payment_pending; staff can resend quote which cancels the stale pending order via existing cancellation flow), staff editing after approval-but-unpaid (blocked while a live payment_pending order exists unless staff explicitly cancel it — enforce + test).
+7. Adoption (maps 4A/4C): admin OrdersPage gains a 'catering' order-type label + type filter (pattern: existing preorder label ~line 52); add the catering_reminder_enabled toggle to the Phase-3 settings card; remove the "ring through POS with a manual discount" hint from CateringPage. Order app: GET /api/customer/event-orders (list, customer token — own requests with reference/date/status/paid+balance laari) and an AccountPage "My events" section listing them, each row linking to /order/quote/{token} while awaiting_customer; replace the old pre-order history links/empty-states with it.
 
 TESTS: feature — approve creates catering order with correct lines/prices and 1-laar snapshot guard; custom placeholder item never menu-visible; DEPOSIT payment confirmation (not OrderPaid) confirms the event exactly once and leaves the order partial; full payment confirms exactly once (no double-notify from PaymentConfirmed + OrderPaid); POS can settle the balance; expiry sweep notifies + reverts idempotently; reminder job; cancellation notifications; expired/rotated token rejected; double-approve idempotent; staff edit blocked while pending payment exists. Vitest — quote page states (live/expired/paid). Full backend + frontend suites green; regenerate contract snapshots if order payloads changed.
 
@@ -149,7 +185,7 @@ DO NOT: modify OrderTotalsCalculator/EffectiveDiscount/gift-card tender/loyalty 
 ## PHASE 5 — POS Events tab (dedicated, not mixed with Active Orders)
 
 ```
-Bake & Grill monorepo. Read docs/CATERING-EVENTS-PLAN.md sections 1–3 (especially "Event orders inside the POS"). Phases 1–4 merged: events are quoted, approved, and paid online; confirmed events have a linked catering-type Order (payment_pending → partial/paid) and kitchen print is suppressed until fired. This phase gives the POS a dedicated Events surface. Design decision (do not revisit): event orders are NOT part of the Active Orders feed.
+Bake & Grill monorepo. Read docs/CATERING-EVENTS-PLAN.md sections 1–4 (the adoption maps in section 4 list every surface change per phase) (especially "Event orders inside the POS"). Phases 1–4 merged: events are quoted, approved, and paid online; confirmed events have a linked catering-type Order (payment_pending → partial/paid) and kitchen print is suppressed until fired. This phase gives the POS a dedicated Events surface. Design decision (do not revisit): event orders are NOT part of the Active Orders feed.
 
 Current mechanics: POS Active Orders feed + tabs live in apps/pos-web (OrderCart.tsx, usePosApp.ts, the Active Orders components); shifts are cash-reconciliation only (backend/app/Http/Controllers/Api/ShiftController.php::close never blocks on open orders — do NOT add such blocking); payments carry shift_id of the collecting cashier automatically; permissions surface via hasPosPermission (apps/pos-web/src/hooks/usePosPermissions.ts, slugs from the login payload).
 
@@ -162,6 +198,7 @@ TASKS:
    c. "Cancel event": existing cancellation flow + Phase 4 notifications.
 4. Shifts: NO code changes to shift logic. Add a test asserting a shift closes normally while confirmed events exist (they are not "open orders" of any cashier and must never block).
 5. Events must NOT appear in the Active Orders feed, X-report open-order noise, or KDS until fired — assert in tests.
+6. OPTIONAL (map 4A): admin dashboard "Upcoming events (7 days)" widget, visible only with events.manage — skip if the dashboard layout makes it awkward; note the decision in the PR description.
 
 TESTS: feature — pos/events endpoint shape + visibility without events.manage; fire-to-kitchen idempotent + gated (403 without permission); balance settle attaches shift_id of the collector and flips order to paid; shift close unaffected by pending events; events absent from Active Orders feed. Vitest — Events tab rendering/grouping, permission-gated action visibility. Full suites green.
 
