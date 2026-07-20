@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchReservationSlots, createReservation } from "../api";
 import type { ReservationSlot, CustomerReservation } from "../api";
@@ -26,6 +26,7 @@ export function ReservationPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState(2);
+  const [maxPartySize, setMaxPartySize] = useState(20);
   const [date, setDate] = useState(tomorrow());
   const [notes, setNotes] = useState("");
 
@@ -33,13 +34,29 @@ export function ReservationPage() {
   const [selectedSlot, setSelectedSlot] = useState("");
   const [reservation, setReservation] = useState<CustomerReservation | null>(null);
 
+  useEffect(() => {
+    // Soft-fetch max party size for the stepper before the customer checks slots.
+    void fetchReservationSlots(tomorrow(), 1)
+      .then((data) => {
+        if (data.max_party_size > 0) {
+          setMaxPartySize(data.max_party_size);
+          setPartySize((p) => Math.min(p, data.max_party_size));
+        }
+      })
+      .catch(() => { /* keep default */ });
+  }, []);
+
   const loadSlots = async () => {
     if (!date || partySize < 1) return;
     setLoading(true);
     setError("");
     try {
       const data = await fetchReservationSlots(date, partySize);
-      setSlots(data);
+      setSlots(data.slots);
+      if (data.max_party_size > 0) {
+        setMaxPartySize(data.max_party_size);
+        setPartySize((p) => Math.min(p, data.max_party_size));
+      }
       setStep("slots");
     } catch (e) {
       setError((e as Error).message);
@@ -116,6 +133,9 @@ export function ReservationPage() {
                     }}
                   >
                     {slot.time_slot}
+                    {slot.available && slot.remaining_capacity <= 4 ? (
+                      <span style={s.slotLeft}> · {slot.remaining_capacity} left</span>
+                    ) : null}
                   </button>
                 ))
               )}
@@ -141,7 +161,7 @@ export function ReservationPage() {
             <div style={s.stepper}>
               <button style={s.stepBtn} onClick={() => setPartySize(p => Math.max(1, p - 1))} aria-label={t("reserve.party_dec")}>−</button>
               <span style={s.stepVal} aria-live="polite">{partySize}</span>
-              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.min(20, p + 1))} aria-label={t("reserve.party_inc")}>+</button>
+              <button style={s.stepBtn} onClick={() => setPartySize(p => Math.min(maxPartySize, p + 1))} aria-label={t("reserve.party_inc")}>+</button>
             </div>
 
             <label htmlFor="rsv-date" style={s.label}>{t("reserve.label_date")}</label>
@@ -187,6 +207,7 @@ const s: Record<string, React.CSSProperties> = {
   backLink: { background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: 14, padding: 0, marginBottom: 12 },
   slotGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 },
   slotBtn: { padding: "10px 0", borderRadius: 10, border: "2px solid var(--color-border)", background: "var(--color-surface)", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "var(--color-text)" },
+  slotLeft: { fontSize: 11, fontWeight: 500, color: "var(--color-text-muted)" },
   slotSelected: { borderColor: "var(--color-primary)", background: "var(--color-primary-light)", color: "var(--color-primary)" },
   slotDisabled: { opacity: 0.4, cursor: "not-allowed" },
   successIcon: { fontSize: 56, color: "var(--color-success)", marginBottom: 12 },

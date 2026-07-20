@@ -6,16 +6,35 @@ namespace App\Domains\Reservations\Services;
 
 use App\Domains\Reservations\DTOs\CreateReservationData;
 use App\Domains\Reservations\DTOs\ReservationSlotData;
+use App\Domains\Reservations\Events\ReservationConfirmed;
 use App\Domains\Reservations\Events\ReservationCreated;
 use App\Domains\Reservations\Repositories\ReservationRepositoryInterface;
 use App\Models\Reservation;
 use App\Models\ReservationSetting;
 use App\Models\RestaurantTable;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ReservationService
 {
+    /**
+     * Staff UI transition map — also enforced server-side.
+     * Auto no-show job bypasses this via repository::updateStatus.
+     *
+     * @var array<string, list<string>>
+     */
+    public const NEXT_STATUSES = [
+        'pending' => ['confirmed', 'cancelled'],
+        'confirmed' => ['seated', 'no_show', 'cancelled'],
+        'seated' => ['completed'],
+        'completed' => [],
+        'cancelled' => [],
+        'no_show' => [],
+    ];
+
     public function __construct(
         private ReservationRepositoryInterface $reservations,
     ) {}
@@ -40,22 +59,16 @@ class ReservationService
 
         $slots = $this->generateSlots($settings);
         $existing = $this->reservations->forDate($date);
-        $totalCapacity = RestaurantTable::where('is_active', true)->sum('capacity');
+        $totalCapacity = $this->totalActiveTableCapacity();
 
         $result = [];
 
         foreach ($slots as $slot) {
-            $bookedForSlot = $existing->filter(
-                fn (Reservation $r) => $r->time_slot === $slot &&
-                !in_array($r->status, ['cancelled', 'no_show'], true),
-            );
-
-            $bookedPartySize = $bookedForSlot->sum('party_size');
-            $remaining = max(0, (int) $totalCapacity - $bookedPartySize);
+            $remaining = $this->remainingCapacityForSlot($slot, $existing, $totalCapacity);
 
             // Skip past slots for today
             if ($parsedDate->isToday()) {
-                $slotTime = Carbon::parse($date . ' ' . $slot);
+                $slotTime = Carbon::parse($date.' '.$slot);
                 if ($slotTime->isPast()) {
                     continue;
                 }
@@ -73,23 +86,46 @@ class ReservationService
 
     public function create(CreateReservationData $data): Reservation
     {
-        $reservation = $this->reservations->create([
-            'customer_id' => $data->customerId,
-            'customer_name' => $data->customerName,
-            'customer_phone' => $data->customerPhone,
-            'party_size' => $data->partySize,
-            'date' => $data->date,
-            'time_slot' => $data->timeSlot,
-            'duration_minutes' => ReservationSetting::current()->slot_duration_minutes,
-            'notes' => $data->notes,
-            'status' => 'pending',
-            'tracking_token' => Str::random(32),
-        ]);
+        $reservation = DB::transaction(function () use ($data): Reservation {
+            // Lock existing active bookings for this date so concurrent
+            // create() calls cannot both pass the capacity check.
+            $locked = Reservation::query()
+                ->whereDate('date', $data->date)
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->lockForUpdate()
+                ->get();
 
-        // Auto-assign an available table
-        $this->tryAssignTable($reservation);
+            $remaining = $this->remainingCapacityForSlot(
+                $data->timeSlot,
+                $locked,
+                $this->totalActiveTableCapacity(),
+            );
 
-        ReservationCreated::dispatch($reservation->fresh());
+            if ($data->partySize > $remaining) {
+                throw ValidationException::withMessages([
+                    'time_slot' => ['This time slot is fully booked.'],
+                ]);
+            }
+
+            $reservation = $this->reservations->create([
+                'customer_id' => $data->customerId,
+                'customer_name' => $data->customerName,
+                'customer_phone' => $data->customerPhone,
+                'party_size' => $data->partySize,
+                'date' => $data->date,
+                'time_slot' => $data->timeSlot,
+                'duration_minutes' => ReservationSetting::current()->slot_duration_minutes,
+                'notes' => $data->notes,
+                'status' => 'pending',
+                'tracking_token' => Str::random(32),
+            ]);
+
+            $this->tryAssignTable($reservation, $locked->push($reservation));
+
+            return $reservation->fresh(['table', 'customer']) ?? $reservation;
+        });
+
+        ReservationCreated::dispatch($reservation);
 
         return $reservation;
     }
@@ -108,9 +144,22 @@ class ReservationService
             throw new \InvalidArgumentException("Invalid status: {$status}");
         }
 
-        $this->reservations->updateStatus($id, $status);
+        $from = (string) $reservation->status;
+        $next = self::NEXT_STATUSES[$from] ?? [];
+        if (!in_array($status, $next, true)) {
+            throw ValidationException::withMessages([
+                'status' => ["Cannot transition from '{$from}' to '{$status}'."],
+            ]);
+        }
 
-        return $reservation->fresh();
+        $this->reservations->updateStatus($id, $status);
+        $fresh = $reservation->fresh(['table', 'customer']);
+
+        if ($status === 'confirmed' && $from !== 'confirmed' && $fresh) {
+            ReservationConfirmed::dispatch($fresh);
+        }
+
+        return $fresh ?? $reservation;
     }
 
     public function cancel(int $id, ?int $requestingCustomerId = null, bool $isStaff = false): void
@@ -130,6 +179,8 @@ class ReservationService
             abort(422, 'Cannot cancel a completed or no-show reservation.');
         }
 
+        // Use repository directly so customer/staff cancel works from any
+        // cancellable status without requiring the staff transition map.
         $this->reservations->updateStatus($id, 'cancelled');
     }
 
@@ -139,6 +190,7 @@ class ReservationService
         $count = 0;
 
         foreach ($overdue as $reservation) {
+            // Bypass NEXT_STATUSES — job may mark pending or confirmed → no_show.
             $this->reservations->updateStatus($reservation->id, 'no_show');
             $count++;
         }
@@ -146,8 +198,49 @@ class ReservationService
         return $count;
     }
 
+    /**
+     * Shared capacity math used by availability() and create().
+     * remaining = sum(active table capacities) − booked party sizes for the slot.
+     *
+     * @param  Collection<int, Reservation>  $existing
+     */
+    public function remainingCapacityForSlot(string $timeSlot, Collection $existing, ?int $totalCapacity = null): int
+    {
+        $totalCapacity ??= $this->totalActiveTableCapacity();
+        $normalized = $this->normalizeTimeSlot($timeSlot);
+
+        $bookedPartySize = $existing
+            ->filter(function (Reservation $r) use ($normalized): bool {
+                if (in_array($r->status, ['cancelled', 'no_show'], true)) {
+                    return false;
+                }
+
+                return $this->normalizeTimeSlot((string) $r->time_slot) === $normalized;
+            })
+            ->sum('party_size');
+
+        return max(0, $totalCapacity - (int) $bookedPartySize);
+    }
+
+    public function totalActiveTableCapacity(): int
+    {
+        return (int) RestaurantTable::query()->where('is_active', true)->sum('capacity');
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    private function normalizeTimeSlot(string $slot): string
+    {
+        // Accept "12:00", "12:00:00", etc. → "HH:MM:SS"
+        $parts = explode(':', $slot);
+        $h = str_pad((string) ((int) ($parts[0] ?? 0)), 2, '0', STR_PAD_LEFT);
+        $m = str_pad((string) ((int) ($parts[1] ?? 0)), 2, '0', STR_PAD_LEFT);
+        $s = str_pad((string) ((int) ($parts[2] ?? 0)), 2, '0', STR_PAD_LEFT);
+
+        return "{$h}:{$m}:{$s}";
+    }
+
+    /** @return list<string> */
     private function generateSlots(ReservationSetting $settings): array
     {
         $slots = [];
@@ -166,20 +259,24 @@ class ReservationService
         return $slots;
     }
 
-    private function tryAssignTable(Reservation $reservation): void
+    /**
+     * @param  Collection<int, Reservation>|null  $existing
+     */
+    private function tryAssignTable(Reservation $reservation, ?Collection $existing = null): void
     {
         $tables = RestaurantTable::where('is_active', true)
             ->where('capacity', '>=', $reservation->party_size)
             ->orderBy('capacity')
             ->get();
 
-        $existing = $this->reservations->forDate($reservation->date->toDateString());
+        $existing ??= $this->reservations->forDate($reservation->date->toDateString());
+        $slot = $this->normalizeTimeSlot((string) $reservation->time_slot);
 
         foreach ($tables as $table) {
             $hasConflict = $existing->contains(
                 fn (Reservation $r) => $r->id !== $reservation->id &&
                 $r->table_id === $table->id &&
-                $r->time_slot === $reservation->time_slot &&
+                $this->normalizeTimeSlot((string) $r->time_slot) === $slot &&
                 !in_array($r->status, ['cancelled', 'no_show'], true),
             );
 

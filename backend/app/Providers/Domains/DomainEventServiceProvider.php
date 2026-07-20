@@ -44,8 +44,10 @@ use App\Domains\Promotions\Listeners\ConsumePromoRedemptionsListener;
 use App\Domains\Promotions\Listeners\ReleasePromoRedemptionOnRefundListener;
 use App\Domains\Promotions\Listeners\ReleasePromoReservationListener;
 use App\Domains\Realtime\Listeners\PublishOrderStatusToRedisListener;
+use App\Domains\Reservations\Events\ReservationConfirmed;
 use App\Domains\Reservations\Events\ReservationCreated;
 use App\Domains\Reservations\Listeners\SendReservationConfirmationListener;
+use App\Domains\Reservations\Listeners\SendReservationConfirmedListener;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Domains\Shifts\Events\ShiftOpened;
 use App\Domains\Catering\Events\CateringRequestSubmitted;
@@ -112,6 +114,9 @@ class DomainEventServiceProvider extends EventServiceProvider
         ReservationCreated::class => [
             SendReservationConfirmationListener::class,
             DispatchWebhookOnDomainEvent::class,
+        ],
+        ReservationConfirmed::class => [
+            SendReservationConfirmedListener::class,
         ],
 
         OrderRefunded::class => [

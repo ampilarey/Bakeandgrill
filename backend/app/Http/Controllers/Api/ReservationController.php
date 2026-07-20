@@ -11,6 +11,7 @@ use App\Models\ReservationSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\ValidationException;
 
 class ReservationController extends Controller
 {
@@ -23,9 +24,11 @@ class ReservationController extends Controller
 
     public function availability(Request $request): JsonResponse
     {
+        $maxParty = $this->effectiveMaxPartySize();
+
         $validated = $request->validate([
             'date' => ['required', 'date', 'after_or_equal:today'],
-            'party_size' => ['required', 'integer', 'min:1', 'max:20'],
+            'party_size' => ['required', 'integer', 'min:1', 'max:'.$maxParty],
         ]);
 
         $slots = $this->service->availableSlots($validated['date'], (int) $validated['party_size']);
@@ -36,6 +39,9 @@ class ReservationController extends Controller
                 'available' => $s->available,
                 'remaining_capacity' => $s->remainingCapacity,
             ], $slots),
+            'meta' => [
+                'max_party_size' => $maxParty,
+            ],
         ]);
     }
 
@@ -43,10 +49,12 @@ class ReservationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $maxParty = $this->effectiveMaxPartySize();
+
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:120'],
             'customer_phone' => ['required', 'string', 'max:20'],
-            'party_size' => ['required', 'integer', 'min:1', 'max:20'],
+            'party_size' => ['required', 'integer', 'min:1', 'max:'.$maxParty],
             'date' => ['required', 'date', 'after_or_equal:today'],
             'time_slot' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -60,7 +68,7 @@ class ReservationController extends Controller
             customerPhone: $validated['customer_phone'],
             partySize: (int) $validated['party_size'],
             date: $validated['date'],
-            timeSlot: $validated['time_slot'] . ':00',
+            timeSlot: $validated['time_slot'].':00',
             notes: $validated['notes'] ?? null,
             customerId: $customerId,
         ));
@@ -115,7 +123,11 @@ class ReservationController extends Controller
             'status' => ['required', 'in:pending,confirmed,seated,completed,cancelled,no_show'],
         ]);
 
-        $reservation = $this->service->updateStatus($id, $validated['status']);
+        try {
+            $reservation = $this->service->updateStatus($id, $validated['status']);
+        } catch (\InvalidArgumentException $e) {
+            throw ValidationException::withMessages(['status' => [$e->getMessage()]]);
+        }
 
         return response()->json(['reservation' => $this->format($reservation)]);
     }
@@ -148,7 +160,7 @@ class ReservationController extends Controller
 
     public function getSettings(): JsonResponse
     {
-        return response()->json(['settings' => ReservationSetting::current()]);
+        return response()->json(['settings' => $this->formatSettings(ReservationSetting::current())]);
     }
 
     public function updateSettings(Request $request): JsonResponse
@@ -166,10 +178,32 @@ class ReservationController extends Controller
         $settings = ReservationSetting::current();
         $settings->update($validated);
 
-        return response()->json(['settings' => $settings->fresh()]);
+        return response()->json(['settings' => $this->formatSettings($settings->fresh() ?? $settings)]);
     }
 
     // ── Private helpers ────────────────────────────────────────────────────────
+
+    private function effectiveMaxPartySize(): int
+    {
+        $max = (int) ReservationSetting::current()->max_party_size;
+
+        return max(1, min(50, $max > 0 ? $max : 20));
+    }
+
+    /** @return array<string, mixed> */
+    private function formatSettings(ReservationSetting $s): array
+    {
+        return [
+            'id' => $s->id,
+            'slot_duration_minutes' => (int) $s->slot_duration_minutes,
+            'max_party_size' => (int) $s->max_party_size,
+            'advance_booking_days' => (int) $s->advance_booking_days,
+            'buffer_minutes_between' => (int) $s->buffer_minutes_between,
+            'auto_cancel_minutes' => (int) $s->auto_cancel_minutes,
+            'opening_time' => substr((string) ($s->opening_time ?? '09:00'), 0, 5),
+            'closing_time' => substr((string) ($s->closing_time ?? '22:00'), 0, 5),
+        ];
+    }
 
     private function format(\App\Models\Reservation $r): array
     {

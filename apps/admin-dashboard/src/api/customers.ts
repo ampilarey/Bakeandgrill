@@ -1,3 +1,4 @@
+import type { Reservation, ReservationSettings as SharedReservationSettings } from '@shared/types';
 import { req } from './client';
 import type { Order } from './orders';
 
@@ -527,18 +528,8 @@ export async function validateReferralCode(
 
 // ── Reservations ──────────────────────────────────────────────────────────────
 
-export type AdminReservation = {
-  id: number;
-  customer_name: string;
-  customer_phone: string;
-  party_size: number;
-  date: string;
-  time_slot: string;
-  status: 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no_show';
-  notes: string | null;
-  table: { id: number; name: string } | null;
-  created_at: string;
-};
+export type AdminReservation = Reservation;
+export type ReservationSettings = SharedReservationSettings;
 
 export async function getReservations(params: { date?: string; status?: string; page?: number } = {}): Promise<{ data: AdminReservation[]; meta: { total: number; current_page: number; last_page: number } }> {
   const q = new URLSearchParams();
@@ -552,22 +543,10 @@ export async function updateReservationStatus(id: number, status: string): Promi
   return req(`/admin/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 }
 
-export interface ReservationSettings {
-  max_party_size: number;
-  booking_window_days: number;
-  slot_duration_minutes: number;
-  slots_per_interval: number;
-  advance_notice_hours: number;
-  auto_confirm: boolean;
-  confirmation_sms: boolean;
-  reminder_sms: boolean;
-  reminder_hours_before: number;
-}
-
 export async function getReservationSettings(): Promise<{ settings: ReservationSettings }> {
   return req('/admin/reservations/settings');
 }
 
-export async function updateReservationSettings(data: Partial<ReservationSettings>): Promise<void> {
-  await req('/admin/reservations/settings', { method: 'PATCH', body: JSON.stringify(data) });
+export async function updateReservationSettings(data: Partial<ReservationSettings>): Promise<{ settings: ReservationSettings }> {
+  return req('/admin/reservations/settings', { method: 'PATCH', body: JSON.stringify(data) });
 }

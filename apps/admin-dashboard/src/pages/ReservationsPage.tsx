@@ -210,20 +210,21 @@ function ReservationsList() {
   );
 }
 
-// ── Settings tab ──────────────────────────────────────────────────────────────
+// ── Settings tab (real backend fields only) ───────────────────────────────────
+
+const DEFAULT_SETTINGS: ReservationSettings = {
+  id: 0,
+  slot_duration_minutes: 60,
+  max_party_size: 10,
+  advance_booking_days: 30,
+  buffer_minutes_between: 15,
+  auto_cancel_minutes: 15,
+  opening_time: '09:00',
+  closing_time: '22:00',
+};
 
 function ReservationSettingsTab() {
-  const [form, setForm] = useState<ReservationSettings>({
-    max_party_size: 8,
-    booking_window_days: 30,
-    slot_duration_minutes: 30,
-    slots_per_interval: 4,
-    advance_notice_hours: 2,
-    auto_confirm: false,
-    confirmation_sms: true,
-    reminder_sms: true,
-    reminder_hours_before: 2,
-  });
+  const [form, setForm] = useState<ReservationSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -231,7 +232,12 @@ function ReservationSettingsTab() {
 
   useEffect(() => {
     getReservationSettings()
-      .then(({ settings }) => setForm(settings))
+      .then(({ settings }) => setForm({
+        ...DEFAULT_SETTINGS,
+        ...settings,
+        opening_time: (settings.opening_time ?? '09:00').slice(0, 5),
+        closing_time: (settings.closing_time ?? '22:00').slice(0, 5),
+      }))
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -242,18 +248,38 @@ function ReservationSettingsTab() {
   };
 
   const handleSave = async () => {
-    // Guard against NaN from empty number inputs
-    const numFields: (keyof ReservationSettings)[] = ['max_party_size', 'booking_window_days', 'advance_notice_hours', 'slot_duration_minutes', 'slots_per_interval', 'reminder_hours_before'];
+    const numFields: (keyof ReservationSettings)[] = [
+      'max_party_size', 'advance_booking_days', 'slot_duration_minutes',
+      'buffer_minutes_between', 'auto_cancel_minutes',
+    ];
     for (const f of numFields) {
       const v = form[f] as number;
-      if (typeof v === 'number' && isNaN(v)) {
+      if (typeof v === 'number' && Number.isNaN(v)) {
         setError(`Invalid value for ${f.replace(/_/g, ' ')}.`);
         return;
       }
     }
+    if (form.closing_time <= form.opening_time) {
+      setError('Closing time must be after opening time.');
+      return;
+    }
     setSaving(true); setError('');
     try {
-      await updateReservationSettings(form);
+      const { settings } = await updateReservationSettings({
+        slot_duration_minutes: form.slot_duration_minutes,
+        max_party_size: form.max_party_size,
+        advance_booking_days: form.advance_booking_days,
+        buffer_minutes_between: form.buffer_minutes_between,
+        auto_cancel_minutes: form.auto_cancel_minutes,
+        opening_time: form.opening_time.slice(0, 5),
+        closing_time: form.closing_time.slice(0, 5),
+      });
+      setForm({
+        ...DEFAULT_SETTINGS,
+        ...settings,
+        opening_time: (settings.opening_time ?? form.opening_time).slice(0, 5),
+        closing_time: (settings.closing_time ?? form.closing_time).slice(0, 5),
+      });
       showToast('Settings saved.');
     } catch (e) {
       setError((e as Error).message);
@@ -276,10 +302,9 @@ function ReservationSettingsTab() {
 
       {loading ? <Spinner /> : null}
 
-      {/* Booking rules */}
       <div style={cardStyle}>
         <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: '#1C1408' }}>Booking Rules</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }} data-responsive-grid>
           <div style={fieldStyle}>
             <label style={labelStyle}>Max Party Size</label>
             <input
@@ -290,30 +315,47 @@ function ReservationSettingsTab() {
             />
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Booking Window (days ahead)</label>
+            <label style={labelStyle}>Advance Booking (days ahead)</label>
             <input
               type="number" min={1} max={365}
               style={inputStyle}
-              value={form.booking_window_days}
-              onChange={(e) => set('booking_window_days', Number(e.target.value))}
+              value={form.advance_booking_days}
+              onChange={(e) => set('advance_booking_days', Number(e.target.value))}
             />
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Advance Notice Required (hours)</label>
+            <label style={labelStyle}>Auto No-Show (minutes after slot)</label>
             <input
-              type="number" min={0} max={72}
+              type="number" min={5} max={120}
               style={inputStyle}
-              value={form.advance_notice_hours}
-              onChange={(e) => set('advance_notice_hours', Number(e.target.value))}
+              value={form.auto_cancel_minutes}
+              onChange={(e) => set('auto_cancel_minutes', Number(e.target.value))}
             />
           </div>
         </div>
       </div>
 
-      {/* Slot settings */}
       <div style={cardStyle}>
         <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: '#1C1408' }}>Time Slots</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }} data-responsive-grid>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Opening Time</label>
+            <input
+              type="time"
+              style={inputStyle}
+              value={form.opening_time}
+              onChange={(e) => set('opening_time', e.target.value)}
+            />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Closing Time</label>
+            <input
+              type="time"
+              style={inputStyle}
+              value={form.closing_time}
+              onChange={(e) => set('closing_time', e.target.value)}
+            />
+          </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Slot Duration (minutes)</label>
             <select
@@ -327,53 +369,14 @@ function ReservationSettingsTab() {
             </select>
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Max Concurrent Bookings per Slot</label>
+            <label style={labelStyle}>Buffer Between Slots (minutes)</label>
             <input
-              type="number" min={1} max={20}
+              type="number" min={0} max={120}
               style={inputStyle}
-              value={form.slots_per_interval}
-              onChange={(e) => set('slots_per_interval', Number(e.target.value))}
+              value={form.buffer_minutes_between}
+              onChange={(e) => set('buffer_minutes_between', Number(e.target.value))}
             />
           </div>
-        </div>
-      </div>
-
-      {/* Confirmations & SMS */}
-      <div style={cardStyle}>
-        <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: '#1C1408' }}>Confirmations & SMS</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {(
-            [
-              { key: 'auto_confirm', label: 'Auto-confirm bookings', desc: 'Automatically confirm new reservations without manual review' },
-              { key: 'confirmation_sms', label: 'Send confirmation SMS', desc: 'SMS customer when a reservation is confirmed' },
-              { key: 'reminder_sms', label: 'Send reminder SMS', desc: 'SMS customer ahead of their reservation time' },
-            ] as { key: keyof ReservationSettings; label: string; desc: string }[]
-          ).map(({ key, label, desc }) => (
-            <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={form[key] as boolean}
-                onChange={(e) => set(key, e.target.checked as ReservationSettings[typeof key])}
-                style={{ marginTop: 3, width: 16, height: 16, cursor: 'pointer', accentColor: '#D4783A' }}
-              />
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#1C1408' }}>{label}</div>
-                <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{desc}</div>
-              </div>
-            </label>
-          ))}
-
-          {form.reminder_sms && (
-            <div style={{ ...fieldStyle, marginLeft: 28, maxWidth: 240 }}>
-              <label style={labelStyle}>Reminder — hours before reservation</label>
-              <input
-                type="number" min={1} max={48}
-                style={inputStyle}
-                value={form.reminder_hours_before}
-                onChange={(e) => set('reminder_hours_before', Number(e.target.value))}
-              />
-            </div>
-          )}
         </div>
       </div>
 

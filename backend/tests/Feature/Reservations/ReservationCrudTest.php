@@ -6,6 +6,7 @@ namespace Tests\Feature\Reservations;
 
 use App\Models\Reservation;
 use App\Models\ReservationSetting;
+use App\Models\RestaurantTable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -31,17 +32,24 @@ class ReservationCrudTest extends TestCase
 
         $this->ownerHeaders = $this->staffHeaders($this->makeOwner());
 
-        // Ensure the reservation system has open slots
+        // Ensure the reservation system has open slots + table capacity
         ReservationSetting::updateOrCreate(
             [],
             [
                 'max_party_size' => 20,
                 'advance_booking_days' => 30,
                 'slot_duration_minutes' => 30,
+                'buffer_minutes_between' => 0,
                 'opening_time' => '08:00',
                 'closing_time' => '22:00',
             ],
         );
+        RestaurantTable::create([
+            'name' => 'Hall A',
+            'capacity' => 40,
+            'is_active' => true,
+            'status' => 'available',
+        ]);
 
         $this->basePayload = [
             'customer_name' => 'Test Guest',

@@ -27,6 +27,7 @@ export type Reservation = {
   created_at: string;
 };
 
+/** Matches ReservationSetting / GET|PATCH /admin/reservations/settings */
 export type ReservationSettings = {
   id: number;
   slot_duration_minutes: number;
@@ -34,4 +35,6 @@ export type ReservationSettings = {
   advance_booking_days: number;
   buffer_minutes_between: number;
   auto_cancel_minutes: number;
+  opening_time: string;
+  closing_time: string;
 };

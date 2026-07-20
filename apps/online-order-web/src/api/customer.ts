@@ -4,7 +4,10 @@ import { request } from './client';
 // ── Opening hours ──────────────────────────────────────────────────────────────
 
 import { ENDPOINTS } from '@shared/api';
-import type { OpeningHoursStatus } from '@shared/types';
+import type { OpeningHoursStatus, Reservation, ReservationSlot } from '@shared/types';
+
+export type { ReservationSlot };
+export type CustomerReservation = Reservation;
 
 export type DaySchedule = { open: string; close: string; closed?: boolean };
 
@@ -47,26 +50,17 @@ export async function createPreOrder(payload: PreOrderPayload): Promise<{ pre_or
 
 // ── Reservations ───────────────────────────────────────────────────────────────
 
-export type ReservationSlot = { time_slot: string; available: boolean };
-
-export interface CustomerReservation {
-  id: number;
-  customer_name: string;
-  customer_phone: string;
-  party_size: number;
-  date: string;
-  time_slot: string;
-  status: string;
-  notes: string | null;
-  created_at: string;
-  table?: { id: number; name: string } | null;
-}
-
-export async function fetchReservationSlots(date: string, partySize: number): Promise<ReservationSlot[]> {
-  const data = await request<{ slots: ReservationSlot[] }>(
+export async function fetchReservationSlots(
+  date: string,
+  partySize: number,
+): Promise<{ slots: ReservationSlot[]; max_party_size: number }> {
+  const data = await request<{ slots: ReservationSlot[]; meta?: { max_party_size?: number } }>(
     `${ENDPOINTS.RESERVATIONS_AVAILABILITY}?date=${date}&party_size=${partySize}`,
   );
-  return data.slots ?? [];
+  return {
+    slots: data.slots ?? [],
+    max_party_size: data.meta?.max_party_size ?? 20,
+  };
 }
 
 export async function createReservation(payload: {

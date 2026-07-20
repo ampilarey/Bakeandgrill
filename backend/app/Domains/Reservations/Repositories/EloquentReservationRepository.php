@@ -23,7 +23,10 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
 
     public function forDate(string $date): Collection
     {
-        return Reservation::where('date', $date)
+        // whereDate avoids timezone-cast mismatches on the date column
+        // (same predicate create() uses when locking for capacity checks).
+        return Reservation::query()
+            ->whereDate('date', $date)
             ->whereNotIn('status', ['cancelled', 'no_show'])
             ->with(['table', 'customer'])
             ->orderBy('time_slot')
