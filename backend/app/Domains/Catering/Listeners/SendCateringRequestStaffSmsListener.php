@@ -5,19 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Catering\Listeners;
 
 use App\Domains\Catering\Events\CateringRequestSubmitted;
-use App\Domains\Catering\Services\CateringEventCreatedNotifier;
 use App\Domains\Catering\Services\CateringNotifyRecipients;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Handles CateringRequestSubmitted for both simple inquiries and event drafts.
- *
- * Runs synchronously (not queued) so customer/admin SMS still send when the
- * Redis queue worker is down — same reliability pattern as payment confirmation.
- * Prefer dispatching CateringRequestSubmitted inside DeferAfterResponse so the
- * HTTP response is not blocked by the carrier round-trip.
+ * Staff SMS for simple catering web inquiries (status=new).
+ * Event wizard drafts notify via EventOrderController (sync).
  */
 class SendCateringRequestStaffSmsListener
 {
@@ -25,7 +20,6 @@ class SendCateringRequestStaffSmsListener
 
     public function __construct(
         private readonly SmsService $sms,
-        private readonly CateringEventCreatedNotifier $eventNotifier,
         private readonly CateringNotifyRecipients $recipients,
     ) {}
 
@@ -33,10 +27,9 @@ class SendCateringRequestStaffSmsListener
     {
         $req = $event->request;
 
-        // Structured event drafts (wizard) — customer + staff "created" notifications.
+        // Wizard drafts are notified synchronously in EventOrderController::store
+        // (queue/defer was dropping SMS when workers/terminating callbacks failed).
         if ($req->status === 'draft' || filled($req->reference)) {
-            $this->eventNotifier->notify($req);
-
             return;
         }
 

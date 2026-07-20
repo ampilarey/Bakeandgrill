@@ -39,6 +39,7 @@ class EventOrderSessionAuthTest extends TestCase
             'contact_name' => 'Session User',
             'phone' => '7820288',
             'event_date' => now()->addDays(4)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
             'lines' => [['item_id' => $item->id, 'quantity' => 2]],
         ])->assertCreated();
@@ -77,6 +78,7 @@ class EventOrderSessionAuthTest extends TestCase
             'contact_name' => 'Customer',
             'phone' => '7820288',
             'event_date' => now()->addDays(4)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
             'lines' => [['item_id' => $item->id, 'quantity' => 1]],
         ])
@@ -106,6 +108,7 @@ class EventOrderSessionAuthTest extends TestCase
             'contact_name' => 'Nope',
             'phone' => '7000000',
             'event_date' => now()->addDays(4)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
             'lines' => [['item_id' => $item->id, 'quantity' => 1]],
         ])

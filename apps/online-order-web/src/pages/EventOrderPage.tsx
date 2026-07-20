@@ -84,17 +84,21 @@ export function EventOrderPage() {
     if (!eventDate) setEventDate(minEventDateInput(leadHours));
   }, [leadHours, eventDate]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
+  const prefillFromAccount = () => {
     getCustomerMe()
       .then(({ customer: c }) => {
         if (c.name) setContactName((prev) => prev || c.name || '');
         if (c.phone) {
-          const local = c.phone.replace(/^\+?960/, '');
+          const local = c.phone.replace(/^\+?960/, '').replace(/\D/g, '');
           setContactPhone((prev) => prev || local);
         }
       })
       .catch(() => { /* ignore */ });
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    prefillFromAccount();
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -147,14 +151,17 @@ export function EventOrderPage() {
     setCustomNotes('');
   };
 
-  /** Same requireds as online checkout, plus event date. */
   const validateDetails = (): string | null => {
     if (!eventDate || eventDate < minDate) return `Event date must be on or after ${minDate}`;
+    if (!fulfillmentTime) return 'Event time is required';
+    const phoneDigits = contactPhone.replace(/\D/g, '').replace(/^960/, '');
+    if (!phoneDigits || phoneDigits.length !== 7) {
+      return 'Enter a valid 7-digit mobile number';
+    }
     if (fulfillmentMethod === 'delivery') {
       if (!deliveryAddress.trim()) return 'Delivery address is required';
       if (!deliveryIsland.trim()) return 'Island is required';
       if (!contactName.trim()) return 'Contact name is required';
-      if (!contactPhone.trim()) return 'Contact phone is required';
     }
     return null;
   };
@@ -175,7 +182,9 @@ export function EventOrderPage() {
       const payload: EventOrderPayload = {
         event_date: eventDate,
         fulfillment_method: fulfillmentMethod,
-        fulfillment_time: fulfillmentTime || undefined,
+        fulfillment_time: fulfillmentTime,
+        phone: contactPhone.trim(),
+        contact_name: contactName.trim() || undefined,
         notes: notes.trim() || undefined,
         lines: lines.map((l) =>
           l.kind === 'custom'
@@ -192,9 +201,7 @@ export function EventOrderPage() {
       if (fulfillmentMethod === 'delivery') {
         payload.delivery_address = deliveryAddress.trim();
         payload.delivery_island = deliveryIsland.trim();
-        payload.contact_name = contactName.trim();
-        payload.phone = contactPhone.trim();
-        payload.onsite_contact_name = contactName.trim();
+        payload.onsite_contact_name = contactName.trim() || undefined;
         payload.onsite_contact_phone = contactPhone.trim();
       }
       const res = await createEventOrder(payload);
@@ -489,12 +496,13 @@ export function EventOrderPage() {
                 />
               </label>
               <label style={S.label}>
-                Event time (optional)
+                Event time
                 <input
                   style={S.input}
                   type="time"
                   value={fulfillmentTime}
                   onChange={(e) => setFulfillmentTime(e.target.value)}
+                  required
                   data-testid="event-time"
                 />
               </label>
@@ -533,19 +541,30 @@ export function EventOrderPage() {
                       data-testid="contact-name"
                     />
                   </label>
-                  <label style={S.label}>
-                    Contact phone
-                    <input
-                      style={S.input}
-                      value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
-                      placeholder="7XXXXXX"
-                      required
-                      data-testid="contact-phone"
-                    />
-                  </label>
                 </>
               )}
+
+              <label style={S.label}>
+                Mobile number
+                <div style={S.phoneRow}>
+                  <span style={S.prefix} aria-hidden="true">+960</span>
+                  <input
+                    style={S.phoneField}
+                    type="tel"
+                    inputMode="numeric"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, '').replace(/^960/, '').slice(0, 7))}
+                    placeholder="7XXXXXX"
+                    required
+                    data-testid="contact-phone"
+                  />
+                </div>
+                <span style={{ fontWeight: 500, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  {isAuthenticated
+                    ? 'Pre-filled from your login. Change only if this event uses a different number.'
+                    : 'After OTP, your number is filled in. Change it only if the event contact is different.'}
+                </span>
+              </label>
 
               <label style={S.label}>
                 Order notes (optional)
@@ -580,23 +599,25 @@ export function EventOrderPage() {
                 Staff will confirm the final quote before payment.
               </p>
 
-              {isAuthenticated ? (
+              {!isAuthenticated && (
                 <>
-                  <p style={{ fontSize: 14, margin: 0 }}>Signed in as {customerName || 'customer'} — no OTP needed.</p>
-                  <button type="button" style={S.btn} disabled={loading} onClick={() => void handleSubmit()} data-testid="submit-event">
-                    {loading ? 'Submitting…' : 'Submit event request'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p style={{ fontSize: 14, margin: 0 }}>Verify your phone with OTP to submit.</p>
+                  <p style={{ fontSize: 14, margin: 0 }}>Verify your phone with OTP first.</p>
                   <AuthBlock
                     onSuccess={(name) => {
                       setAuth(name);
-                      void handleSubmit();
+                      prefillFromAccount();
                     }}
                     skipProfileSetup
                   />
+                </>
+              )}
+
+              {isAuthenticated && (
+                <>
+                  <p style={{ fontSize: 14, margin: 0 }}>Signed in as {customerName || 'customer'}.</p>
+                  <button type="button" style={S.btn} disabled={loading} onClick={() => void handleSubmit()} data-testid="submit-event">
+                    {loading ? 'Submitting…' : 'Submit event request'}
+                  </button>
                 </>
               )}
             </section>
@@ -643,4 +664,7 @@ const S: Record<string, CSSProperties> = {
   btn: { display: 'inline-block', width: '100%', minHeight: 48, borderRadius: 12, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 800, fontSize: 15, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'center', textDecoration: 'none', lineHeight: '48px' },
   btnSm: { minHeight: 40, padding: '0 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' },
   h3: { fontSize: 15, fontWeight: 800, margin: '0 0 8px' },
+  phoneRow: { display: 'flex', alignItems: 'stretch', marginTop: 4, borderRadius: 10, border: '1px solid var(--color-border)', overflow: 'hidden', background: 'var(--color-surface)' },
+  prefix: { display: 'flex', alignItems: 'center', padding: '0 12px', background: 'var(--color-surface-alt)', fontWeight: 700, fontSize: 14, color: 'var(--color-text-muted)' },
+  phoneField: { flex: 1, minHeight: 44, border: 'none', padding: '0 12px', fontFamily: 'inherit', fontSize: 15, background: 'transparent' },
 };

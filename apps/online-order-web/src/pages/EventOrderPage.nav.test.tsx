@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
@@ -23,7 +23,7 @@ vi.mock('../api/eventOrders', async (importOriginal) => {
   };
 });
 vi.mock('../api/auth', () => ({
-  getCustomerMe: vi.fn().mockResolvedValue({ customer: { name: 'Aisha', phone: '7777001' } }),
+  getCustomerMe: vi.fn().mockResolvedValue({ customer: { name: 'Aisha', phone: '+9607777001' } }),
 }));
 vi.mock('../components/AuthBlock', () => ({ AuthBlock: () => null }));
 vi.mock('../components/shell/PageHeader', () => ({
@@ -80,6 +80,8 @@ describe('EventOrderPage discoverability', () => {
     await user.click(screen.getByTestId('custom-add'));
     await user.click(screen.getByRole('button', { name: /Continue/i }));
     await waitFor(() => expect(screen.getByTestId('event-date')).toBeTruthy());
+    fireEvent.change(screen.getByTestId('event-time'), { target: { value: '14:30' } });
+    await waitFor(() => expect((screen.getByTestId('contact-phone') as HTMLInputElement).value).toBe('7777001'));
     await waitFor(() => expect(screen.getByTestId('submit-event')).toBeTruthy());
     await user.click(screen.getByTestId('submit-event'));
     await waitFor(() => expect(screen.getByTestId('view-my-events')).toBeTruthy());
@@ -87,7 +89,9 @@ describe('EventOrderPage discoverability', () => {
     expect(createEventOrder).toHaveBeenCalledWith(
       expect.objectContaining({
         event_date: expect.any(String),
+        fulfillment_time: '14:30',
         fulfillment_method: 'pickup',
+        phone: '7777001',
         lines: [expect.objectContaining({ custom_name: 'Wedding cake', quantity: 1 })],
       }),
     );

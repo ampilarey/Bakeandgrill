@@ -185,6 +185,7 @@ class EventWizardFidelityTest extends TestCase
             'contact_name' => 'Aisha',
             'phone' => '7777001',
             'event_date' => now()->addDays(5)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
         ];
 

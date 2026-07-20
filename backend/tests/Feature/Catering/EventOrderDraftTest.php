@@ -54,6 +54,7 @@ class EventOrderDraftTest extends TestCase
 
         $res = $this->postJson('/api/customer/event-orders', [
             'event_date' => now()->addDays(4)->toDateString(),
+            'fulfillment_time' => '12:00',
             'lines' => [
                 [
                     'item_id' => $this->catalogItem->id,
@@ -72,6 +73,7 @@ class EventOrderDraftTest extends TestCase
 
         $res = $this->postJson('/api/customer/event-orders', [
             'event_date' => now()->addDays(4)->toDateString(),
+            'fulfillment_time' => '12:00',
             'lines' => [
                 ['item_id' => $this->catalogItem->id, 'quantity' => 2],
                 ['custom_name' => 'Extra chutney bowls', 'quantity' => 3, 'notes' => 'Mild'],
@@ -106,6 +108,7 @@ class EventOrderDraftTest extends TestCase
 
         $this->postJson('/api/customer/event-orders', [
             'event_date' => now()->addDays(4)->toDateString(),
+            'fulfillment_time' => '12:00',
             'lines' => [['item_id' => $this->catalogItem->id, 'quantity' => 1]],
         ])
             ->assertCreated()
@@ -128,6 +131,7 @@ class EventOrderDraftTest extends TestCase
             'contact_name' => 'Aisha',
             'phone' => '7777001',
             'event_date' => now()->addHours(12)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
             'lines' => [['item_id' => $this->catalogItem->id, 'quantity' => 1]],
         ])->assertStatus(422);
@@ -136,6 +140,7 @@ class EventOrderDraftTest extends TestCase
             'contact_name' => 'Aisha',
             'phone' => '7777001',
             'event_date' => now()->addDays(5)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'delivery',
             'lines' => [['item_id' => $this->catalogItem->id, 'quantity' => 1]],
         ])->assertStatus(422);
@@ -144,6 +149,7 @@ class EventOrderDraftTest extends TestCase
             'contact_name' => 'Aisha',
             'phone' => '7777001',
             'event_date' => now()->addDays(5)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'delivery',
             'delivery_address' => 'H. Sahara',
             'delivery_island' => 'Malé',
@@ -160,6 +166,7 @@ class EventOrderDraftTest extends TestCase
                 'contact_name' => 'Aisha',
                 'phone' => '7777001',
                 'event_date' => now()->addDays(5)->toDateString(),
+                'fulfillment_time' => '12:00',
                 'fulfillment_method' => 'pickup',
                 'lines' => [['custom_name' => "Custom {$i}", 'quantity' => 1]],
             ])->assertCreated()->json('request.reference');
@@ -177,6 +184,7 @@ class EventOrderDraftTest extends TestCase
             'phone' => '7777001',
             'email' => 'aisha@example.com',
             'event_date' => now()->addDays(5)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
             'lines' => [['item_id' => $this->catalogItem->id, 'quantity' => 1]],
         ])->assertCreated();
@@ -184,7 +192,7 @@ class EventOrderDraftTest extends TestCase
         $id = (int) $res->json('request.id');
         $row = CateringRequest::query()->findOrFail($id);
 
-        // Sync listener runs via DeferAfterResponse flush in TestCase::call
+        // Sync notify from EventOrderController::store
         $this->assertSame(1, SmsLog::query()
             ->where('idempotency_key', 'event:' . $id . ':1:created:customer_sms')
             ->count());
@@ -212,6 +220,7 @@ class EventOrderDraftTest extends TestCase
             'contact_name' => 'Aisha',
             'phone' => '7777001',
             'event_date' => now()->addDays(5)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
             'lines' => [['custom_name' => 'Tray', 'quantity' => 1]],
         ])->assertCreated();
@@ -222,6 +231,7 @@ class EventOrderDraftTest extends TestCase
             'contact_name' => 'Guest',
             'phone' => '7777002',
             'event_date' => now()->addDays(5)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
             'lines' => [['custom_name' => 'Tray', 'quantity' => 1]],
         ])->assertUnauthorized();
@@ -267,6 +277,7 @@ class EventOrderDraftTest extends TestCase
             'contact_name' => 'Corp',
             'phone' => '7666666',
             'event_date' => now()->addDays(5)->toDateString(),
+            'fulfillment_time' => '12:00',
             'notes' => 'Legacy client',
         ])->assertCreated();
 
@@ -280,6 +291,7 @@ class EventOrderDraftTest extends TestCase
             'contact_name' => 'Aisha',
             'phone' => '7777001',
             'event_date' => now()->addDays(5)->toDateString(),
+            'fulfillment_time' => '12:00',
             'fulfillment_method' => 'pickup',
             'lines' => [
                 ['item_id' => $this->catalogItem->id, 'quantity' => 1],

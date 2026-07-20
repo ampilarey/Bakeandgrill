@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Catering\Events\CateringRequestSubmitted;
+use App\Domains\Catering\Services\CateringEventCreatedNotifier;
 use App\Domains\Orders\Services\PackagingOptionResolver;
 use App\Http\Controllers\Controller;
 use App\Models\CateringRequest;
@@ -13,12 +14,13 @@ use App\Models\Customer;
 use App\Models\Item;
 use App\Models\SiteSetting;
 use App\Models\Variant;
+use App\Rules\MaldivesPhone;
 use App\Services\SpecialPricingService;
-use App\Support\DeferAfterResponse;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -62,14 +64,12 @@ class EventOrderController extends Controller
             'company' => ['nullable', 'string', 'max:200'],
             'occasion' => ['nullable', 'string', 'in:' . implode(',', CateringRequest::OCCASIONS)],
             'event_type' => ['nullable', 'string', 'max:80'],
-            // Optional — wizard uses the authenticated customer; staff/API may still send overrides.
             'contact_name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:32'],
+            'phone' => ['nullable', 'string', 'max:32', new MaldivesPhone],
             'email' => ['nullable', 'email', 'max:190'],
             'event_date' => ['required', 'date', 'after_or_equal:' . $minDate],
-            // Defaults to pickup; delivery address is collected later (quote / after payment).
             'fulfillment_method' => ['nullable', 'string', Rule::in(CateringRequest::FULFILLMENT_METHODS)],
-            'fulfillment_time' => ['nullable', 'date_format:H:i'],
+            'fulfillment_time' => ['required', 'date_format:H:i'],
             'setup_time' => ['nullable', 'date_format:H:i'],
             'venue_name' => ['nullable', 'string', 'max:160'],
             'delivery_address' => ['nullable', 'string', 'max:500'],
@@ -108,9 +108,16 @@ class EventOrderController extends Controller
             $contactName = preg_replace('/^\+?960/', '', (string) $customer->phone) ?: 'Customer';
         }
 
-        $phone = trim((string) ($validated['phone'] ?? ''));
-        if ($phone === '') {
-            $phone = (string) $customer->phone;
+        $phoneRaw = trim((string) ($validated['phone'] ?? ''));
+        if ($phoneRaw === '') {
+            $phoneRaw = (string) $customer->phone;
+        }
+        try {
+            $phone = MaldivesPhone::normalize($phoneRaw);
+        } catch (\InvalidArgumentException) {
+            throw ValidationException::withMessages([
+                'phone' => ['Please enter a valid Maldivian phone number (e.g. 7654321).'],
+            ]);
         }
 
         $resolvedLines = $this->resolveLines($validated['lines']);
@@ -127,7 +134,7 @@ class EventOrderController extends Controller
                 'email' => $validated['email'] ?? $customer->email,
                 'event_date' => $validated['event_date'],
                 'fulfillment_method' => $fulfillmentMethod,
-                'fulfillment_time' => $validated['fulfillment_time'] ?? null,
+                'fulfillment_time' => $validated['fulfillment_time'],
                 'setup_time' => $validated['setup_time'] ?? null,
                 'venue_name' => $validated['venue_name'] ?? null,
                 'delivery_address' => $validated['delivery_address'] ?? null,
@@ -159,13 +166,18 @@ class EventOrderController extends Controller
             return $row->load('lines');
         });
 
-        $requestId = (int) $row->id;
-        DeferAfterResponse::run(function () use ($requestId): void {
-            $fresh = CateringRequest::query()->with('lines')->find($requestId);
-            if ($fresh) {
-                event(new CateringRequestSubmitted($fresh));
-            }
-        }, 'event-order-created-notify');
+        // Send customer + staff SMS in-request (not queued / not deferred) so
+        // delivery does not depend on a queue worker or terminating callbacks.
+        try {
+            app(CateringEventCreatedNotifier::class)->notify($row);
+        } catch (\Throwable $e) {
+            Log::error('EventOrderController: create SMS notify failed', [
+                'id' => $row->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        event(new CateringRequestSubmitted($row));
 
         return response()->json([
             'message' => 'Event request received — we will send your quote soon.',
