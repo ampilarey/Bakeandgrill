@@ -126,7 +126,7 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
         />
       </div>
       <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>
-        Crop to 4:3 for a clean menu/POS thumbnail. Use Edit / re-crop on photos already saved.
+        Crop to 4:3 — saved as 1200×900 JPEG for fast menu & POS loading. Use Edit / re-crop on saved photos.
       </p>
       {uploadError && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{uploadError}</p>}
       {previewSrc && (

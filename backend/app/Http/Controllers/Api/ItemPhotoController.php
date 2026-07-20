@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Item;
 use App\Models\ItemPhoto;
+use App\Services\MenuImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\Storage;
 
 class ItemPhotoController extends Controller
 {
+    public function __construct(
+        private readonly MenuImageProcessor $processor,
+    ) {}
+
     // ── Public: list photos ───────────────────────────────────────────────────
 
     public function index(int $itemId): JsonResponse
@@ -30,18 +35,23 @@ class ItemPhotoController extends Controller
         $item = Item::findOrFail($itemId);
 
         $validated = $request->validate([
-            'photo' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'photo' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
             'alt_text' => ['nullable', 'string', 'max:200'],
             'is_primary' => ['sometimes', 'boolean'],
         ]);
 
-        $path = $request->file('photo')->store("item-photos/{$itemId}", 'public');
-        // Relative URL — Storage::url() prefixes APP_URL and breaks previews when
-        // APP_URL ≠ the browser origin (common on test vs production).
+        try {
+            $path = $this->processor->storeProcessed(
+                $request->file('photo'),
+                "item-photos/{$itemId}",
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
         $url = '/storage/' . ltrim($path, '/');
 
         if ($validated['is_primary'] ?? false) {
-            // Demote all others
             $item->photos()->update(['is_primary' => false]);
         }
 
@@ -84,7 +94,6 @@ class ItemPhotoController extends Controller
     {
         $photo = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);
 
-        // Delete from storage — support relative /storage/... and absolute APP_URL forms
         $relativePath = null;
         if (str_starts_with($photo->url, '/storage/')) {
             $relativePath = ltrim(substr($photo->url, strlen('/storage/')), '/');

@@ -5,19 +5,23 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\MenuImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class ImageUploadController extends Controller
 {
-    private const MAX_SIZE_KB = 5120; // 5 MB
+    private const MAX_SIZE_KB = 10240; // 10 MB pre-process (phone photos); output is much smaller
 
     private const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 
+    public function __construct(
+        private readonly MenuImageProcessor $processor,
+    ) {}
+
     /**
      * POST /api/admin/upload-image
-     * Accepts a single image file, stores in public disk, returns the URL.
+     * Accepts a single image, normalizes to 1200×900 JPEG, returns the URL.
      */
     public function store(Request $request): JsonResponse
     {
@@ -27,7 +31,7 @@ class ImageUploadController extends Controller
                 'image',
                 'mimes:jpeg,png,webp',
                 'max:' . self::MAX_SIZE_KB,
-                'dimensions:max_width=4096,max_height=4096',
+                'dimensions:max_width=8192,max_height=8192',
             ],
         ]);
 
@@ -37,17 +41,18 @@ class ImageUploadController extends Controller
             return response()->json(['message' => 'Invalid file type.'], 422);
         }
 
-        // Sanitised filename: random prefix + original extension
-        $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
-        $filename = Str::uuid() . '.' . $ext;
+        try {
+            $relative = $this->processor->storeProcessed($file, 'menu');
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
-        // Store in storage/app/public/menu/ (publicly accessible via /storage/menu/)
-        $file->storeAs('menu', $filename, 'public');
+        $url = '/storage/' . ltrim($relative, '/');
 
-        // Relative URL so admin/POS/order work on any host (asset() follows APP_URL and
-        // often breaks previews when APP_URL ≠ the browser origin).
-        $url = '/storage/menu/' . $filename;
-
-        return response()->json(['url' => $url], 201);
+        return response()->json([
+            'url' => $url,
+            'width' => MenuImageProcessor::WIDTH,
+            'height' => MenuImageProcessor::HEIGHT,
+        ], 201);
     }
 }

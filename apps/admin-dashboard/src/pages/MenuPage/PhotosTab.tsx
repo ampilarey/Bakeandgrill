@@ -150,7 +150,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         {uploading && !cropSrc ? 'Preparing…' : 'Upload & crop photo'}
       </button>
       <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
-        Crop to 4:3. Use the crop button on an existing photo to re-frame it for the menu/POS.
+        Crop to 4:3 — saved as 1200×900 JPEG. Use Edit crop to re-frame a saved photo.
       </p>
       <input
         ref={fileRef}
