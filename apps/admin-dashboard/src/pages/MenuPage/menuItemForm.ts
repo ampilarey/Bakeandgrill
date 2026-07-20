@@ -180,7 +180,12 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
   }
   const parseTagList = (raw: string) =>
     raw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 12);
-  payload.dietary_tags = parseTagList(form.dietary_tags);
+  // Slug-style tags so online filters match "Gluten Free" → gluten-free
+  const parseDietaryTags = (raw: string) =>
+    parseTagList(raw).map((t) =>
+      t.toLowerCase().replace(/[_\s]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
+    ).filter(Boolean);
+  payload.dietary_tags = parseDietaryTags(form.dietary_tags);
   payload.allergens = parseTagList(form.allergens);
   payload.prep_time_minutes = form.prep_time_minutes !== ''
     ? Math.max(0, Math.min(480, parseInt(form.prep_time_minutes, 10) || 0))

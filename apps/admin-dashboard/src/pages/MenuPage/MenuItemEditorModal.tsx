@@ -272,13 +272,13 @@ export function MenuItemEditorModal({
             </Field>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Dietary tags">
-                <Input value={form.dietary_tags} onChange={(v) => set('dietary_tags', v)} placeholder="vegetarian, halal, spicy" />
+                <Input value={form.dietary_tags} onChange={(v) => set('dietary_tags', v)} placeholder="vegetarian, halal, gluten-free, spicy" />
               </Field>
               <Field label="Allergens">
                 <Input value={form.allergens} onChange={(v) => set('allergens', v)} placeholder="nuts, dairy, gluten" />
               </Field>
             </div>
-            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '-6px 0 0' }}>Comma-separated. Tags appear as menu filters online.</p>
+            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '-6px 0 0' }}>Comma-separated. Any tag appears as a filter chip on the online menu.</p>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Spice level">
                 <select

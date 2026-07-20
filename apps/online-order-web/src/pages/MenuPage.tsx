@@ -68,6 +68,23 @@ const DIETARY_FILTERS = [
   { id: 'spicy', label: '🌶 Spicy' },
 ] as const;
 
+/** Normalize free-form admin tags so "Gluten Free" / "gluten_free" match "gluten-free". */
+function normalizeDietaryTag(tag: string): string {
+  return tag
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function dietaryFilterLabel(slug: string, sampleRaw?: string): string {
+  const known = DIETARY_FILTERS.find((f) => f.id === slug);
+  if (known) return known.label;
+  const raw = (sampleRaw?.trim() || slug.replace(/-/g, ' ')).replace(/\s+/g, ' ');
+  return raw.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function MenuPage() {
   const { addItem, pruneCartToAllowedItemIds, cart } = useCart();
   const { t } = useLanguage();
@@ -259,21 +276,38 @@ export function MenuPage() {
       list = list.filter(isFixedSpecialItem);
     }
     if (dietaryFilter) {
-      list = list.filter((i) => (i.dietary_tags ?? []).some((t) => t.toLowerCase() === dietaryFilter));
+      list = list.filter((i) =>
+        (i.dietary_tags ?? []).some((t) => normalizeDietaryTag(t) === dietaryFilter),
+      );
     }
     return sortMenuItems(list, sortBy);
   }, [items, searchQuery, sortBy, saleFilter, dietaryFilter]);
 
   const filtersActive = Boolean(searchQuery.trim() || saleFilter !== 'all' || dietaryFilter != null);
 
+  /** Chips from tags actually on the menu — not only the known whitelist. */
   const availableDietaryFilters = useMemo(() => {
-    const tags = new Set<string>();
+    const bySlug = new Map<string, string>();
     for (const item of items) {
       for (const tag of item.dietary_tags ?? []) {
-        tags.add(tag.toLowerCase());
+        const slug = normalizeDietaryTag(tag);
+        if (!slug || bySlug.has(slug)) continue;
+        bySlug.set(slug, dietaryFilterLabel(slug, tag));
       }
     }
-    return DIETARY_FILTERS.filter((f) => tags.has(f.id));
+    const knownOrder = DIETARY_FILTERS.map((f) => f.id) as readonly string[];
+    return [...bySlug.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => {
+        const ai = knownOrder.indexOf(a.id);
+        const bi = knownOrder.indexOf(b.id);
+        if (ai !== -1 || bi !== -1) {
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        }
+        return a.label.localeCompare(b.label);
+      });
   }, [items]);
 
   const discountCount = useMemo(() => items.filter(isPercentDiscountItem).length, [items]);
