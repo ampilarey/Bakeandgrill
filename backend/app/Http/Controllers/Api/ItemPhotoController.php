@@ -36,7 +36,9 @@ class ItemPhotoController extends Controller
         ]);
 
         $path = $request->file('photo')->store("item-photos/{$itemId}", 'public');
-        $url = Storage::url($path);
+        // Relative URL — Storage::url() prefixes APP_URL and breaks previews when
+        // APP_URL ≠ the browser origin (common on test vs production).
+        $url = '/storage/' . ltrim($path, '/');
 
         if ($validated['is_primary'] ?? false) {
             // Demote all others
@@ -82,10 +84,22 @@ class ItemPhotoController extends Controller
     {
         $photo = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);
 
-        // Delete from storage — derive relative path robustly from the public disk URL base
-        $diskUrl = rtrim(Storage::disk('public')->url('/'), '/');
-        if (str_starts_with($photo->url, $diskUrl)) {
-            $relativePath = ltrim(substr($photo->url, strlen($diskUrl)), '/');
+        // Delete from storage — support relative /storage/... and absolute APP_URL forms
+        $relativePath = null;
+        if (str_starts_with($photo->url, '/storage/')) {
+            $relativePath = ltrim(substr($photo->url, strlen('/storage/')), '/');
+        } else {
+            $diskUrl = rtrim(Storage::disk('public')->url('/'), '/');
+            if (str_starts_with($photo->url, $diskUrl)) {
+                $relativePath = ltrim(substr($photo->url, strlen($diskUrl)), '/');
+            } else {
+                $path = parse_url($photo->url, PHP_URL_PATH);
+                if (is_string($path) && str_starts_with($path, '/storage/')) {
+                    $relativePath = ltrim(substr($path, strlen('/storage/')), '/');
+                }
+            }
+        }
+        if ($relativePath) {
             Storage::disk('public')->delete($relativePath);
         }
 

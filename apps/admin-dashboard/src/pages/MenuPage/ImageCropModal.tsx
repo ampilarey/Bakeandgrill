@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
@@ -32,6 +32,39 @@ export function ImageCropModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(false);
+    setError('');
+    setCroppedAreaPixels(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setRotation(0);
+
+    let cancelled = false;
+    const probe = new Image();
+    probe.onerror = () => {
+      if (!cancelled) {
+        setError('Could not display this image. Try another file, or run php artisan storage:link on the server.');
+      }
+    };
+    probe.src = imageSrc;
+
+    const timeout = window.setTimeout(() => {
+      if (cancelled) return;
+      setReady((isReady) => {
+        if (!isReady) {
+          setError((prev) => prev || 'Image is taking too long to load. Hard-refresh the admin page (Cmd/Ctrl+Shift+R) and try again.');
+        }
+        return isReady;
+      });
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [imageSrc]);
 
   const onCropComplete = useCallback((_area: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
@@ -129,7 +162,10 @@ export function ImageCropModal({
             onZoomChange={setZoom}
             onRotationChange={setRotation}
             onCropComplete={onCropComplete}
-            onMediaLoaded={() => setReady(true)}
+            onMediaLoaded={() => {
+              setReady(true);
+              setError('');
+            }}
             objectFit="contain"
             showGrid
           />

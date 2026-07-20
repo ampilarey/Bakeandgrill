@@ -33,8 +33,8 @@ class SecurityHeaders
     {
         $nonce = "'nonce-" . csp_nonce() . "'";
 
-        if ($request->is('admin', 'admin/*')) {
-            // blob: required for menu image crop/preview (File / createObjectURL)
+        if ($request->is('admin', 'admin/', 'admin/*')) {
+            // data: + blob: required for menu image crop/preview
             return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io;";
         }
 

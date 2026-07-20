@@ -1,0 +1,11 @@
+# Admin SPA shell — must revalidate after deploy (CSP / crop fixes live in index.html).
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html)$">
+    Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  <FilesMatch "\.(js|css)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>

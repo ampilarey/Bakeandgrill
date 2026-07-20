@@ -36,23 +36,55 @@ export function fileToDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Load an existing image as a data: URL for the cropper (avoids blob: CSP issues
- * and CORS tainting when reading from /storage).
+ * Load an existing image as a data: URL for the cropper.
+ * Uses <img> + canvas (img-src) instead of fetch (connect-src), so CSP cannot
+ * block re-crop of same-origin /storage files.
  */
-export async function loadImageAsDataUrl(url: string): Promise<string> {
+export function loadImageAsDataUrl(url: string): Promise<string> {
   const resolved = resolveMediaUrl(url);
-  const res = await fetch(resolved, { credentials: 'same-origin', cache: 'reload' });
-  if (!res.ok) {
-    throw new Error(
-      res.status === 404
-        ? 'Image file is missing on the server (check storage link). Re-upload the photo.'
-        : 'Could not load this image for editing. Try uploading it again.',
-    );
-  }
-  const blob = await res.blob();
-  if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') {
-    // Some servers omit image/* for /storage — still try to read as image
-    if (blob.size === 0) throw new Error('That file is not a usable image.');
-  }
-  return fileToDataUrl(new File([blob], 'image.jpg', { type: blob.type || 'image/jpeg' }));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const isRemoteHttp =
+      (resolved.startsWith('http://') || resolved.startsWith('https://')) &&
+      !resolved.startsWith(window.location.origin);
+
+    if (isRemoteHttp) {
+      img.crossOrigin = 'anonymous';
+    }
+
+    img.onload = () => {
+      if (!img.naturalWidth || !img.naturalHeight) {
+        reject(new Error('That file is not a usable image.'));
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Canvas is not supported in this browser.'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      try {
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      } catch {
+        reject(
+          new Error(
+            'Could not read this image for editing (blocked by the host). Re-upload the photo.',
+          ),
+        );
+      }
+    };
+
+    img.onerror = () => {
+      reject(
+        new Error(
+          'Could not load this image for editing. If previews are blank, on the server run: php artisan storage:link — then re-upload.',
+        ),
+      );
+    };
+
+    img.src = resolved;
+  });
 }
