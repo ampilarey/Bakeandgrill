@@ -11,9 +11,15 @@ export function PhotosTab({ itemId }: { itemId: number }) {
 
   const load = async () => {
     setLoading(true);
-    try { setPhotos((await getItemPhotos(itemId)).data); }
-    catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
+    try {
+      const res = await getItemPhotos(itemId);
+      setPhotos(Array.isArray(res.photos) ? res.photos : []);
+    } catch (e) {
+      setError((e as Error).message);
+      setPhotos([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { void load(); }, [itemId]);
@@ -22,6 +28,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     setUploading(true); setError('');
     try {
       const { photo } = await uploadItemPhoto(itemId, file);
+      if (!photo) throw new Error('Upload succeeded but no photo was returned.');
       setPhotos((p) => [...p, photo]);
     } catch (e) { setError((e as Error).message); }
     finally { setUploading(false); }

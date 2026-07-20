@@ -43,7 +43,7 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp"
           style={{ display: 'none' }}
           onChange={(e) => {
             const file = e.target.files?.[0];

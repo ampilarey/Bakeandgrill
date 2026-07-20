@@ -255,7 +255,7 @@ export interface ItemPhoto {
   created_at: string;
 }
 
-export async function getItemPhotos(itemId: number): Promise<{ data: ItemPhoto[] }> {
+export async function getItemPhotos(itemId: number): Promise<{ photos: ItemPhoto[] }> {
   return req(`/items/${itemId}/photos`);
 }
 
