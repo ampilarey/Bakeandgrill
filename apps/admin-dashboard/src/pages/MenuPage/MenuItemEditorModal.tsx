@@ -279,6 +279,32 @@ export function MenuItemEditorModal({
               </Field>
             </div>
             <p style={{ fontSize: 12, color: '#9C8E7E', margin: '-6px 0 0' }}>Comma-separated. Tags appear as menu filters online.</p>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Spice level">
+                <select
+                  value={form.spice_level}
+                  onChange={(e) => set('spice_level', e.target.value as ItemForm['spice_level'])}
+                  style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 14 }}
+                >
+                  <option value="none">None / not spicy</option>
+                  <option value="mild">Mild</option>
+                  <option value="medium">Medium</option>
+                  <option value="hot">Hot</option>
+                  <option value="extra_hot">Extra hot</option>
+                </select>
+              </Field>
+              <Field label="Prep time (minutes)">
+                <Input
+                  value={form.prep_time_minutes}
+                  onChange={(v) => set('prep_time_minutes', v)}
+                  type="number"
+                  placeholder="e.g. 15"
+                />
+              </Field>
+            </div>
+            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '-6px 0 0' }}>
+              Shown on the online menu card. Prep time also feeds kitchen wait estimates.
+            </p>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: '#F8F6F3', borderRadius: 8, border: '1px solid #E8E0D8' }}>
               <input
                 type="checkbox"

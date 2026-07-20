@@ -93,6 +93,8 @@ class StoreItemRequest extends FormRequest
             'dietary_tags.*' => 'string|max:40',
             'allergens' => 'sometimes|nullable|array|max:12',
             'allergens.*' => 'string|max:40',
+            'prep_time_minutes' => 'sometimes|nullable|integer|min:0|max:480',
+            'spice_level' => 'sometimes|nullable|string|in:none,mild,medium,hot,extra_hot',
             'combo_items.*.is_optional' => 'nullable|boolean',
         ];
     }

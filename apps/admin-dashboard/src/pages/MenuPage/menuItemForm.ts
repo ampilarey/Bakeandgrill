@@ -41,6 +41,8 @@ export type ItemForm = {
   variants: VariantRow[];
   dietary_tags: string;
   allergens: string;
+  prep_time_minutes: string;
+  spice_level: 'none' | 'mild' | 'medium' | 'hot' | 'extra_hot';
 };
 
 export function emptyPackagingOptionRow(isDefault = false): PackagingOptionRow {
@@ -108,6 +110,12 @@ export function itemToForm(item: MenuItem): ItemForm {
     variants: (item.variants ?? []).map((v) => ({ ...v, _key: String(v.id ?? Math.random()) })),
     dietary_tags: (item.dietary_tags ?? []).join(', '),
     allergens: (item.allergens ?? []).join(', '),
+    prep_time_minutes: item.prep_time_minutes != null ? String(item.prep_time_minutes) : '',
+    spice_level: (['none', 'mild', 'medium', 'hot', 'extra_hot'] as const).includes(
+      item.spice_level as 'none',
+    )
+      ? (item.spice_level as ItemForm['spice_level'])
+      : 'none',
   };
 }
 
@@ -174,6 +182,10 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     raw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 12);
   payload.dietary_tags = parseTagList(form.dietary_tags);
   payload.allergens = parseTagList(form.allergens);
+  payload.prep_time_minutes = form.prep_time_minutes !== ''
+    ? Math.max(0, Math.min(480, parseInt(form.prep_time_minutes, 10) || 0))
+    : null;
+  payload.spice_level = form.spice_level === 'none' ? null : form.spice_level;
   return payload;
 }
 
@@ -190,5 +202,6 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     is_combo: false, combo_discount_pct: '', combo_items: [],
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
     dietary_tags: '', allergens: '',
+    prep_time_minutes: '', spice_level: 'none',
   };
 }

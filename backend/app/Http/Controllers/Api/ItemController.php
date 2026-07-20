@@ -275,6 +275,8 @@ class ItemController extends Controller
                 $data['effective_cost'] = $recipeCosts?->effectiveCost($item);
                 $data['dietary_tags'] = $item->dietary_tags ?? [];
                 $data['allergens'] = $item->allergens ?? [];
+                $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
+                $data['spice_level'] = $item->spice_level ?? null;
                 $data['combo_items'] = $item->relationLoaded('comboItems')
                     ? $item->comboItems->map(fn ($row) => [
                         'item_id' => $row->item_id,

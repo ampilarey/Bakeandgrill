@@ -77,6 +77,7 @@ export type MenuItem = {
   category_id?: number | null;
   menu_group_id?: number | null;
   prep_time_minutes?: number | null;
+  spice_level?: 'none' | 'mild' | 'medium' | 'hot' | 'extra_hot' | null;
   category?: { id: number; name: string } | null;
   menu_group?: { id: number; name: string; slug: string } | null;
   channel_availabilities?: ItemChannelAvailabilityRow[] | null;
@@ -134,6 +135,8 @@ export type MenuItemPayload = {
   combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean }>;
   dietary_tags?: string[] | null;
   allergens?: string[] | null;
+  prep_time_minutes?: number | null;
+  spice_level?: 'none' | 'mild' | 'medium' | 'hot' | 'extra_hot' | null;
 };
 
 export async function fetchItemVariants(itemId: number): Promise<{ variants: MenuVariant[] }> {
