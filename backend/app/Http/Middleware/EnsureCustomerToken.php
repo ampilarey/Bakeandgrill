@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Models\Customer;
+use App\Support\SanctumBearerResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,24 +24,47 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * For session-only routes (e.g. GET /api/auth/customer/check), skip auth:sanctum
  * and use the 'customer' guard directly — see api.php.
+ *
+ * Sanctum's guard list is [web, customer]. A concurrent staff web session would
+ * otherwise shadow the ordering customer on /api/customer/* — prefer the
+ * customer session (and customer bearer) on these routes.
  */
 class EnsureCustomerToken
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // Primary path: Sanctum resolved a user via Bearer token
         $user = $request->user();
 
-        // Fallback: check session-based customer guard (no Bearer token present)
-        if (!$user && !$request->bearerToken()) {
-            $user = Auth::guard('customer')->user();
+        // Prefer an explicit customer bearer when present so a concurrent staff
+        // web session cannot shadow customer API access.
+        if ($request->bearerToken()) {
+            if (SanctumBearerResolver::bearerTokenIsInvalid($request)) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+
+            $customerFromBearer = SanctumBearerResolver::resolveTokenable($request, Customer::class);
+            if ($customerFromBearer instanceof Customer) {
+                $user = $customerFromBearer;
+                $request->setUserResolver(static fn () => $user);
+            } elseif (!($user instanceof Customer)) {
+                // Staff/driver/other bearer (or web session User) on a customer route.
+                return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+            }
+        }
+
+        // No bearer: prefer customer session over Sanctum's web-first user.
+        if (!($user instanceof Customer)) {
+            $sessionCustomer = Auth::guard('customer')->user();
+            if ($sessionCustomer instanceof Customer) {
+                $user = $sessionCustomer;
+                $request->setUserResolver(static fn () => $user);
+            }
         }
 
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        // Must be a Customer model instance, not a staff User
         if (!($user instanceof Customer)) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
@@ -54,6 +78,8 @@ class EnsureCustomerToken
         if ($request->bearerToken() && !$user->tokenCan('customer')) {
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
+
+        $request->setUserResolver(static fn () => $user);
 
         return $next($request);
     }
