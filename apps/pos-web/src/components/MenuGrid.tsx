@@ -71,6 +71,126 @@ function tileColor(categoryId: number | null | undefined) {
   return TILE_PALETTE[Math.abs(categoryId) % TILE_PALETTE.length];
 }
 
+/** Menu item tile — photo thumbnail when Image is set in Admin, else category colour chip. */
+function MenuItemTile({
+  item,
+  readOnly,
+  onClick,
+}: {
+  item: Item;
+  readOnly?: boolean;
+  onClick: () => void;
+}) {
+  const c = tileColor(item.category_id);
+  const price = effectiveItemPrice(item);
+  const wasPrice = originalItemPrice(item);
+  const hasVariants = item.has_variants;
+  const [imgFailed, setImgFailed] = useState(false);
+  const imgSrc = item.image_url && !imgFailed ? item.image_url : null;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={readOnly}
+      title={readOnly ? 'Resumed ticket is view-only. Cancel resume to edit.' : undefined}
+      style={{
+        aspectRatio: '1 / 1',
+        position: 'relative',
+        background: imgSrc ? '#0F172A' : c.bg,
+        color: c.fg,
+        border: 'none',
+        borderRadius: 12,
+        padding: 0,
+        cursor: readOnly ? 'not-allowed' : 'pointer',
+        opacity: readOnly ? 0.45 : 1,
+        textAlign: 'left',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 1px 2px rgba(15,23,42,0.06)',
+        transition: 'transform 0.05s, box-shadow 0.12s',
+        overflow: 'hidden',
+      }}
+      onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+      onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.10)'; }}
+      onMouseOut={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.06)'; }}
+    >
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setImgFailed(true)}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0, top: 0, bottom: 0, width: 4,
+            background: c.fg,
+            opacity: 0.85,
+          }}
+        />
+      )}
+
+      {/* Bottom caption — gradient over photos so name/price stay readable */}
+      <div
+        style={{
+          marginTop: 'auto',
+          position: 'relative',
+          zIndex: 1,
+          padding: imgSrc ? '28px 10px 10px 12px' : '12px 12px 10px 14px',
+          background: imgSrc
+            ? 'linear-gradient(to top, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.55) 55%, transparent 100%)'
+            : 'transparent',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          gap: 4,
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        <span style={{
+          fontSize: 14, fontWeight: 700, lineHeight: 1.2,
+          color: imgSrc ? '#FFFFFF' : '#0F172A',
+          display: '-webkit-box', WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
+          {item.name}
+        </span>
+        <span style={{
+          fontSize: 13, fontWeight: 800,
+          color: imgSrc ? '#FDE68A' : c.fg,
+          display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap',
+        }}>
+          {hasVariants && <span style={{ fontSize: 10, opacity: 0.75, fontWeight: 600 }}>from</span>}
+          MVR {price.toFixed(2)}
+          {wasPrice != null && wasPrice > price && (
+            <span style={{
+              fontSize: 10, fontWeight: 600, opacity: 0.65, textDecoration: 'line-through',
+              color: imgSrc ? 'rgba(255,255,255,0.7)' : undefined,
+            }}>
+              {wasPrice.toFixed(2)}
+            </span>
+          )}
+        </span>
+      </div>
+    </button>
+  );
+}
+
 type SaleFilter = 'all' | 'discount' | 'special';
 
 function isPercentDiscountItem(item: Item): boolean {
@@ -519,9 +639,6 @@ export function MenuGrid({
         ) : (
           <div className="pos-menu-grid">
             {visibleItems.map((item) => {
-              const c = tileColor(item.category_id);
-              const price = effectiveItemPrice(item);
-              const wasPrice = originalItemPrice(item);
               const hasMods = (item.modifiers?.length ?? 0) > 0;
               const hasVariants = item.has_variants;
               const hasPackagingChoices = (item.packaging_options?.length ?? 0) > 1;
@@ -533,65 +650,12 @@ export function MenuGrid({
                 else addToCart(item);
               };
               return (
-                <button
+                <MenuItemTile
                   key={item.id}
+                  item={item}
+                  readOnly={readOnly}
                   onClick={onClick}
-                  disabled={readOnly}
-                  title={readOnly ? 'Resumed ticket is view-only. Cancel resume to edit.' : undefined}
-                  style={{
-                    aspectRatio: '1 / 1',
-                    position: 'relative',
-                    background: c.bg,
-                    color: c.fg,
-                    border: 'none',
-                    borderRadius: 12,
-                    padding: '12px 12px 10px 14px',
-                    cursor: readOnly ? 'not-allowed' : 'pointer',
-                    opacity: readOnly ? 0.45 : 1,
-                    textAlign: 'left',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 1px 2px rgba(15,23,42,0.06)',
-                    transition: 'transform 0.05s, box-shadow 0.12s',
-                    overflow: 'hidden',
-                  }}
-                  onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.97)')}
-                  onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                  onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.10)')}
-                  onMouseOut={(e) => (e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.06)')}
-                >
-                  {/* Category accent strip — keeps category visible
-                      even though the tile body is muted. */}
-                  <div style={{
-                    position: 'absolute',
-                    left: 0, top: 0, bottom: 0, width: 4,
-                    background: c.fg,
-                    opacity: 0.85,
-                  }} />
-                  <span style={{
-                    fontSize: 14, fontWeight: 700, lineHeight: 1.2,
-                    color: '#0F172A',
-                    display: '-webkit-box', WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                  }}>
-                    {item.name}
-                  </span>
-                  <span style={{
-                    fontSize: 13, fontWeight: 800,
-                    color: c.fg,
-                    display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap',
-                  }}>
-                    {hasVariants && <span style={{ fontSize: 10, opacity: 0.75, fontWeight: 600 }}>from</span>}
-                    MVR {price.toFixed(2)}
-                    {wasPrice != null && wasPrice > price && (
-                      <span style={{ fontSize: 10, fontWeight: 600, opacity: 0.65, textDecoration: 'line-through' }}>
-                        {wasPrice.toFixed(2)}
-                      </span>
-                    )}
-                  </span>
-                </button>
+                />
               );
             })}
           </div>
@@ -715,9 +779,20 @@ function ConfigurePanel({
         <div style={{
           background: c.bg, color: c.fg, padding: '18px 20px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          flexShrink: 0,
+          flexShrink: 0, gap: 12,
         }}>
-          <div style={{ minWidth: 0, paddingRight: 12 }}>
+          {item.image_url && (
+            <img
+              src={item.image_url}
+              alt=""
+              style={{
+                width: 52, height: 52, borderRadius: 10, objectFit: 'cover',
+                flexShrink: 0, border: '2px solid rgba(255,255,255,0.55)',
+              }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+          <div style={{ minWidth: 0, paddingRight: 12, flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{item.name}</div>
             <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
               {oneTapMode && !chosenVariant ? 'from ' : ''}MVR {headlinePrice.toFixed(2)}
