@@ -10,11 +10,16 @@ import {
   toggleOnlineOrdering,
   setOnlineOrderingOverride,
   updateOnlineOrderingSchedule,
+  getCateringOrderingStatus,
+  toggleCateringOrdering,
+  setCateringOrderingOverride,
+  updateCateringOrderingSchedule,
   getSiteSettings,
   updateSiteSettings,
   getPackagingFeeSettings,
   updatePackagingFeeSettings,
   type OnlineOrderingGateStatus,
+  type CateringOrderingGateStatus,
   type PackagingFeeSettings,
 } from '../api';
 import { OrderingControlTabs } from '../components/OrderingControlTabs';
@@ -237,6 +242,15 @@ export default function OnlineOrderingPage() {
   const [cateringQuoteMinHours, setCateringQuoteMinHours] = useState('24');
   const [cateringReminderEnabled, setCateringReminderEnabled] = useState(true);
   const [cateringSaving, setCateringSaving] = useState(false);
+  const [cateringClosedMessage, setCateringClosedMessage] = useState(
+    'Pre-order is currently closed. Please check back during accepting hours.',
+  );
+  const [cateringStatus, setCateringStatus] = useState<CateringOrderingGateStatus | null>(null);
+  const [cateringToggling, setCateringToggling] = useState(false);
+  const [cateringOverrideUntil, setCateringOverrideUntil] = useState('');
+  const [cateringSavingOverride, setCateringSavingOverride] = useState(false);
+  const [cateringSchedule, setCateringSchedule] = useState<Schedule>(DEFAULT_SCHEDULE);
+  const [cateringScheduleSaving, setCateringScheduleSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -260,7 +274,25 @@ export default function OnlineOrderingPage() {
       .finally(() => setLoading(false));
   };
 
+  const loadCateringGate = () => {
+    getCateringOrderingStatus()
+      .then((s) => {
+        setCateringStatus(s);
+        if (s.override_until) {
+          const d = new Date(s.override_until);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          setCateringOverrideUntil(
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
+          );
+        } else {
+          setCateringOverrideUntil('');
+        }
+      })
+      .catch(() => { /* optional until migration runs */ });
+  };
+
   useEffect(() => { load(); }, []);
+  useEffect(() => { loadCateringGate(); }, []);
 
   useEffect(() => {
     getSiteSettings().then(({ settings }) => {
@@ -268,6 +300,10 @@ export default function OnlineOrderingPage() {
       const byKey = (k: string) => flat.find((s) => s.key === k)?.value;
       const raw = byKey('online_ordering_schedule') ?? '';
       if (raw) setSchedule(parseSchedule(raw));
+      const cateringRaw = byKey('catering_ordering_schedule') ?? '';
+      if (cateringRaw) setCateringSchedule(parseSchedule(cateringRaw));
+      const closedMsg = byKey('catering_ordering_closed_message');
+      if (closedMsg) setCateringClosedMessage(closedMsg);
       const enabled = byKey('pickup_slots_enabled');
       if (enabled !== undefined) setPickupEnabled(enabled === '1' || enabled === 'true');
       const minutes = byKey('pickup_slot_minutes');
@@ -329,6 +365,78 @@ export default function OnlineOrderingPage() {
     }
   };
 
+  const handleCateringToggle = async () => {
+    if (!cateringStatus) return;
+    setCateringToggling(true);
+    try {
+      const { status: next } = await toggleCateringOrdering(!cateringStatus.master_switch);
+      setCateringStatus(next);
+      showToast(next.master_switch ? 'Pre-order is ON.' : 'Pre-order is OFF.');
+    } catch {
+      showToast('Failed to toggle pre-order.', 'err');
+    } finally {
+      setCateringToggling(false);
+    }
+  };
+
+  const handleCateringSetOverride = async () => {
+    if (!cateringOverrideUntil) {
+      showToast('Pick an override end time.', 'err');
+      return;
+    }
+    setCateringSavingOverride(true);
+    try {
+      const { status: next } = await setCateringOrderingOverride(new Date(cateringOverrideUntil).toISOString());
+      setCateringStatus(next);
+      showToast('Pre-order force-open override set.');
+    } catch {
+      showToast('Failed to set override.', 'err');
+    } finally {
+      setCateringSavingOverride(false);
+    }
+  };
+
+  const handleCateringClearOverride = async () => {
+    setCateringSavingOverride(true);
+    try {
+      const { status: next } = await setCateringOrderingOverride(null);
+      setCateringStatus(next);
+      setCateringOverrideUntil('');
+      showToast('Pre-order override cleared.');
+    } catch {
+      showToast('Failed to clear override.', 'err');
+    } finally {
+      setCateringSavingOverride(false);
+    }
+  };
+
+  const saveCateringSchedule = async () => {
+    setCateringScheduleSaving(true);
+    try {
+      const { status: next } = await updateCateringOrderingSchedule(cateringSchedule);
+      setCateringStatus(next);
+      showToast('Pre-order schedule saved.');
+    } catch {
+      showToast('Failed to save pre-order schedule.', 'err');
+    } finally {
+      setCateringScheduleSaving(false);
+    }
+  };
+
+  const clearCateringSchedule = async () => {
+    setCateringScheduleSaving(true);
+    try {
+      const { status: next } = await updateCateringOrderingSchedule(null);
+      setCateringStatus(next);
+      setCateringSchedule(DEFAULT_SCHEDULE);
+      showToast('Pre-order schedule cleared (always open when ON).');
+    } catch {
+      showToast('Failed to clear schedule.', 'err');
+    } finally {
+      setCateringScheduleSaving(false);
+    }
+  };
+
   const saveCateringSettings = async () => {
     const lead = parseInt(cateringMinLeadHours, 10);
     const validDays = parseInt(cateringQuoteValidDays, 10);
@@ -354,8 +462,11 @@ export default function OnlineOrderingPage() {
         catering_quote_valid_days: String(validDays),
         catering_quote_min_hours_before_event: String(minHours),
         catering_reminder_enabled: cateringReminderEnabled ? '1' : '0',
+        catering_ordering_closed_message: cateringClosedMessage.trim()
+          || 'Pre-order is currently closed. Please check back during accepting hours.',
       });
       showToast('Catering & events settings saved.');
+      loadCateringGate();
     } catch {
       showToast('Failed to save catering settings.', 'err');
     } finally {
@@ -457,6 +568,37 @@ export default function OnlineOrderingPage() {
   const setAllDays = (enabled: boolean) => {
     setSchedule((prev) => Object.fromEntries(
       DAYS.map(({ key }) => [key, { ...prev[key], enabled }])
+    ) as Schedule);
+  };
+
+  const toggleCateringDayEnabled = (day: DayKey) => {
+    setCateringSchedule((prev) => ({ ...prev, [day]: { ...prev[day], enabled: !prev[day].enabled } }));
+  };
+
+  const updateCateringWindow = (day: DayKey, idx: number, field: 'open' | 'close', value: string) => {
+    setCateringSchedule((prev) => {
+      const windows = prev[day].windows.map((w, i) => (i === idx ? { ...w, [field]: value } : w));
+      return { ...prev, [day]: { ...prev[day], windows } };
+    });
+  };
+
+  const addCateringWindow = (day: DayKey) => {
+    setCateringSchedule((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], windows: [...prev[day].windows, { open: '10:00', close: '18:00' }] },
+    }));
+  };
+
+  const removeCateringWindow = (day: DayKey, idx: number) => {
+    setCateringSchedule((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], windows: prev[day].windows.filter((_, i) => i !== idx) },
+    }));
+  };
+
+  const setAllCateringDays = (enabled: boolean) => {
+    setCateringSchedule((prev) => Object.fromEntries(
+      DAYS.map(({ key }) => [key, { ...prev[key], enabled }]),
     ) as Schedule);
   };
 
@@ -849,14 +991,198 @@ export default function OnlineOrderingPage() {
       </div>
       </>)}
 
-      {section === 'events' && (
+      {section === 'events' && (<>
+        <div style={S.card} data-testid="catering-preorder-gate">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <p style={S.sectionTitle}>Pre-order gate</p>
+              <span style={cateringStatus?.open ? S.statusOpen : S.statusClosed}>
+                {cateringStatus?.open ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                {cateringStatus?.open ? 'Accepting pre-orders' : 'Not accepting pre-orders'}
+              </span>
+              {cateringStatus && !cateringStatus.open && cateringStatus.reason && (
+                <p style={S.reasonNote}>
+                  Reason: {REASON_LABELS[cateringStatus.reason] ?? cateringStatus.reason}
+                </p>
+              )}
+              {cateringStatus?.override_until && (
+                <p style={{ ...S.reasonNote, color: '#D4813A', fontWeight: 600 }}>
+                  Force-open until {new Date(cateringStatus.override_until).toLocaleString()}
+                </p>
+              )}
+            </div>
+            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '6px 12px' }} onClick={loadCateringGate} type="button">
+              <RefreshCw size={13} />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <div style={S.card}>
+          <p style={S.sectionTitle}>Master Switch</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button
+              type="button"
+              style={S.toggleTrack(!!cateringStatus?.master_switch)}
+              onClick={() => void handleCateringToggle()}
+              disabled={cateringToggling || !cateringStatus}
+              aria-label="Toggle pre-order"
+              role="switch"
+              aria-checked={!!cateringStatus?.master_switch}
+            >
+              <span style={S.toggleThumb(!!cateringStatus?.master_switch)} />
+            </button>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#3D2B1F' }}>
+                {cateringStatus?.master_switch ? 'Pre-order is ON' : 'Pre-order is OFF'}
+              </div>
+              <div style={{ fontSize: 12, color: '#9C8575', marginTop: 2 }}>
+                {cateringStatus?.master_switch
+                  ? 'Customers can submit new event / pre-order requests.'
+                  : 'New customer requests are blocked. Existing quotes and admin tools stay available.'}
+              </div>
+            </div>
+          </div>
+          <div style={{ marginTop: 14 }}>
+            <button
+              type="button"
+              style={cateringStatus?.master_switch ? S.btnDanger : S.btnPrimary}
+              onClick={() => void handleCateringToggle()}
+              disabled={cateringToggling || !cateringStatus}
+            >
+              <Power size={14} />
+              {cateringToggling
+                ? 'Updating…'
+                : cateringStatus?.master_switch
+                  ? 'Turn OFF pre-order'
+                  : 'Turn ON pre-order'}
+            </button>
+          </div>
+        </div>
+
+        <div style={S.card}>
+          <p style={S.sectionTitle}>Force-open Override</p>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12, lineHeight: 1.5 }}>
+            Force pre-order <strong>open</strong> until a specific time, ignoring the schedule.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <label style={S.label}>Override until</label>
+              <input
+                type="datetime-local"
+                style={S.input}
+                value={cateringOverrideUntil}
+                onChange={(e) => setCateringOverrideUntil(e.target.value)}
+              />
+            </div>
+            <button type="button" style={S.btnPrimary} onClick={() => void handleCateringSetOverride()} disabled={cateringSavingOverride}>
+              <Unlock size={14} />
+              {cateringSavingOverride ? 'Saving…' : 'Set Override'}
+            </button>
+            {cateringStatus?.override_until && (
+              <button type="button" style={S.btnSecondary} onClick={() => void handleCateringClearOverride()} disabled={cateringSavingOverride}>
+                <Lock size={14} />
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div style={S.card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '1rem' }}>
+            <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Pre-order schedule</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllCateringDays(true)}>All open</button>
+              <button type="button" style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllCateringDays(false)}>All closed</button>
+            </div>
+          </div>
+          <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
+            Optional. Leave cleared for always-open when the master switch is ON. Independent from online ordering hours.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {DAYS.map(({ key, label }) => {
+              const day = cateringSchedule[key];
+              return (
+                <div key={key} style={{
+                  padding: '10px 14px', borderRadius: 10,
+                  background: day.enabled ? '#FDFAF7' : '#F5F0EB',
+                  border: `1px solid ${day.enabled ? '#E8E0D8' : '#DDD5CB'}`,
+                  opacity: day.enabled ? 1 : 0.65,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
+                    <button
+                      type="button"
+                      style={S.toggleTrack(day.enabled)}
+                      onClick={() => toggleCateringDayEnabled(key)}
+                      role="switch"
+                      aria-checked={day.enabled}
+                      aria-label={label}
+                    >
+                      <span style={S.toggleThumb(day.enabled)} />
+                    </button>
+                    <span style={{ width: 88, fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
+                    {!day.enabled && <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>}
+                  </div>
+                  {day.enabled && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 50 }}>
+                      {day.windows.map((win, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Open</label>
+                            <input type="time" value={win.open}
+                              onChange={(e) => updateCateringWindow(key, idx, 'open', e.target.value)}
+                              style={{ ...S.input, width: 110, padding: '5px 8px' }} />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Close</label>
+                            <input type="time" value={win.close}
+                              onChange={(e) => updateCateringWindow(key, idx, 'close', e.target.value)}
+                              style={{ ...S.input, width: 110, padding: '5px 8px' }} />
+                          </div>
+                          {day.windows.length > 1 && (
+                            <button type="button" onClick={() => removeCateringWindow(key, idx)}
+                              aria-label={`Remove window ${idx + 1}`}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C0392B', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
+                          )}
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => addCateringWindow(key)}
+                        style={{ alignSelf: 'flex-start', fontSize: 12, color: '#7B5E3A', background: 'none', border: '1px dashed #C2A87A', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', marginTop: 2 }}>
+                        + Add window
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" style={S.btnPrimary} onClick={() => void saveCateringSchedule()} disabled={cateringScheduleSaving}>
+              <Save size={14} />
+              {cateringScheduleSaving ? 'Saving…' : 'Save pre-order schedule'}
+            </button>
+            <button type="button" style={S.btnSecondary} onClick={() => void clearCateringSchedule()} disabled={cateringScheduleSaving}>
+              Clear schedule
+            </button>
+          </div>
+        </div>
+
         <div style={S.card} data-testid="catering-events-settings">
-          <p style={S.sectionTitle}>Catering & Events</p>
+          <p style={S.sectionTitle}>Notifications & lead time</p>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9C8E7E', lineHeight: 1.5 }}>
             Notify fallbacks when no event staff are online, lead time for new requests, and quote link validity.
             Appoint handlers via Roles & Permissions → <code>events.manage</code>.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={S.label}>Closed message</label>
+              <input
+                style={S.input}
+                value={cateringClosedMessage}
+                onChange={(e) => setCateringClosedMessage(e.target.value)}
+                placeholder="Shown when pre-order is closed"
+              />
+            </div>
             <div>
               <label style={S.label}>Notify phone (fallback)</label>
               <input
@@ -926,7 +1252,7 @@ export default function OnlineOrderingPage() {
             </button>
           </div>
         </div>
-      )}
+      </>)}
     </div>
   );
 }

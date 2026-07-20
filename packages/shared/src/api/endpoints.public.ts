@@ -38,6 +38,7 @@ export const PUBLIC_ENDPOINTS = {
   OPENING_HOURS_SCHEDULE:    '/opening-hours',
   ORDERING_ELIGIBILITY:      '/ordering/eligibility',
   ORDERING_STATUS:           '/ordering/status',
+  ORDERING_CATERING_STATUS:  '/ordering/catering-status',
   ORDERING_DELIVERY_STATUS:  '/ordering/delivery-status',
   ORDERING_DELIVERY_FEE_PREVIEW: '/ordering/delivery-fee-preview',
   ORDERING_CHECKOUT_FEES_PREVIEW: '/ordering/checkout-fees-preview',

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { fetchItems } from '../api';
-import type { Item } from '../api';
+import { fetchItems, fetchPreorderStatus } from '../api';
+import type { Item, PreorderGateStatus } from '../api';
 import { createEventOrder, type EventOrderPayload } from '../api/eventOrders';
 import { AuthBlock } from '../components/AuthBlock';
 import { getCustomerMe } from '../api/auth';
@@ -66,8 +66,19 @@ export function EventOrderPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [reference, setReference] = useState('');
+  const [preorderGate, setPreorderGate] = useState<PreorderGateStatus | null>(null);
+  const [gateLoading, setGateLoading] = useState(true);
 
   useEffect(() => {
+    setGateLoading(true);
+    fetchPreorderStatus()
+      .then(setPreorderGate)
+      .catch(() => setPreorderGate({ open: true, message: '', reason: null, master_switch: true, override_until: null, override_active: false, schedule_active: false, current_close: null, next_open_window: null }))
+      .finally(() => setGateLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (preorderGate && !preorderGate.open) return;
     Promise.all([
       fetchItems('catering'),
       fetchItems(),
@@ -78,7 +89,7 @@ export function EventOrderPage() {
       })
       .catch((e: Error) => setError(e.message || 'Could not load menu'));
     setLeadHours(24);
-  }, []);
+  }, [preorderGate]);
 
   const localPhoneDigits = (raw: string | null | undefined): string => {
     const digits = (raw ?? '').replace(/\D/g, '');
@@ -244,6 +255,50 @@ export function EventOrderPage() {
     const p = prevStep(step);
     if (p) setStep(p);
   };
+
+  if (gateLoading) {
+    return (
+      <>
+        <PageHeader title="Plan your event" onBack={() => navigate(-1)} />
+        <div style={S.page}><p style={S.lede}>Loading…</p></div>
+      </>
+    );
+  }
+
+  if (preorderGate && !preorderGate.open) {
+    const nextOpen = preorderGate.next_open_window
+      ? new Date(preorderGate.next_open_window).toLocaleString(undefined, {
+          weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        })
+      : null;
+    return (
+      <>
+        <PageHeader
+          title="Plan your event"
+          onBack={() => navigate(-1)}
+          right={(
+            <Link to="/events/mine" data-testid="my-events-nav" style={S.link}>
+              My events
+            </Link>
+          )}
+        />
+        <div style={S.page}>
+          <div style={S.container} data-testid="preorder-closed">
+            <p style={{ ...S.lede, color: '#b91c1c', fontWeight: 600 }}>
+              {preorderGate.message || 'Pre-order is currently closed.'}
+            </p>
+            {nextOpen && (
+              <p style={S.lede}>Opens {nextOpen}</p>
+            )}
+            <Link to="/events/mine" style={S.btn}>View my events</Link>
+            <Link to="/menu" style={{ ...S.link, display: 'block', textAlign: 'center', marginTop: 12 }}>
+              Back to menu
+            </Link>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

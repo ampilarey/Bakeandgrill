@@ -58,6 +58,28 @@ export async function updateOnlineOrderingSchedule(
   return req('/admin/ordering/schedule', { method: 'PUT', body: JSON.stringify({ schedule }) });
 }
 
+// ── Pre-order / catering gate ─────────────────────────────────────────────────
+
+export type CateringOrderingGateStatus = OnlineOrderingGateStatus;
+
+export async function getCateringOrderingStatus(): Promise<CateringOrderingGateStatus> {
+  return req('/ordering/catering-status');
+}
+
+export async function toggleCateringOrdering(enabled: boolean): Promise<{ catering_ordering_enabled: boolean; status: CateringOrderingGateStatus }> {
+  return req('/admin/ordering/catering-toggle', { method: 'POST', body: JSON.stringify({ enabled }) });
+}
+
+export async function setCateringOrderingOverride(until: string | null): Promise<{ override_until: string | null; status: CateringOrderingGateStatus }> {
+  return req('/admin/ordering/catering-override', { method: 'POST', body: JSON.stringify({ override_until: until }) });
+}
+
+export async function updateCateringOrderingSchedule(
+  schedule: Record<string, OnlineOrderingDayWindow> | null,
+): Promise<{ catering_ordering_schedule: unknown; status: CateringOrderingGateStatus }> {
+  return req('/admin/ordering/catering-schedule', { method: 'PUT', body: JSON.stringify({ schedule }) });
+}
+
 // ── Delivery Gate ─────────────────────────────────────────────────────────────
 
 export interface DeliveryGateStatus {

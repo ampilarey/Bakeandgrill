@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
+use App\Services\CateringOrderingGateService;
 use App\Services\DeliveryGateService;
 use App\Services\OnlineOrderingGateService;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,7 @@ class OnlineOrderingController extends Controller
     public function __construct(
         private readonly OnlineOrderingGateService $gate,
         private readonly DeliveryGateService $deliveryGate,
+        private readonly CateringOrderingGateService $cateringGate,
     ) {}
 
     /** Public status — returns current open/closed state for the order app. */
@@ -35,8 +37,78 @@ class OnlineOrderingController extends Controller
         $deliveryStatus = $this->deliveryGate->status();
         $status['delivery_available'] = $status['open'] && $deliveryStatus['delivery_open'];
         $status['next_delivery_window'] = $deliveryStatus['next_delivery_window'] ?? null;
+        $status['preorder'] = $this->cateringGate->status();
 
         return response()->json($status);
+    }
+
+    /** Public pre-order / events gate status. */
+    public function cateringStatus(): JsonResponse
+    {
+        return response()->json($this->cateringGate->status());
+    }
+
+    /**
+     * Toggle pre-order / event requests master switch.
+     * Body: { "enabled": true|false }  or  no body (flips current state).
+     */
+    public function toggleCatering(Request $request): JsonResponse
+    {
+        $current = filter_var(
+            SiteSetting::get('catering_ordering_enabled', '1'),
+            FILTER_VALIDATE_BOOLEAN,
+            FILTER_NULL_ON_FAILURE,
+        ) ?? true;
+
+        $next = $request->has('enabled')
+            ? (bool) $request->input('enabled')
+            : !$current;
+
+        SiteSetting::set('catering_ordering_enabled', $next ? '1' : '0');
+
+        return response()->json([
+            'catering_ordering_enabled' => $next,
+            'status' => $this->cateringGate->status(),
+        ]);
+    }
+
+    /**
+     * Update pre-order schedule.
+     * Body: { "schedule": { "mon": {"open":"07:00","close":"22:00","enabled":true}, ... } }
+     * Send { "schedule": null } to clear (always open when master switch is on).
+     */
+    public function updateCateringSchedule(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'schedule' => 'nullable|array',
+        ]);
+
+        $schedule = $validated['schedule'] ?? null;
+        SiteSetting::set('catering_ordering_schedule', $schedule ? json_encode($schedule) : null);
+
+        return response()->json([
+            'catering_ordering_schedule' => $schedule,
+            'status' => $this->cateringGate->status(),
+        ]);
+    }
+
+    /**
+     * Set or clear the pre-order force-open override.
+     * Body: { "override_until": "2026-04-18T23:59:00" }  — set
+     *       { "override_until": null }                    — clear
+     */
+    public function cateringOverride(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'override_until' => 'nullable|date',
+        ]);
+
+        SiteSetting::set('catering_ordering_override_until', $validated['override_until'] ?? null);
+
+        return response()->json([
+            'override_until' => $validated['override_until'],
+            'status' => $this->cateringGate->status(),
+        ]);
     }
 
     /**

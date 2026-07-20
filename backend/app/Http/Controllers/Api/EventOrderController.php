@@ -15,6 +15,7 @@ use App\Models\Item;
 use App\Models\SiteSetting;
 use App\Models\Variant;
 use App\Rules\MaldivesPhone;
+use App\Services\CateringOrderingGateService;
 use App\Services\SpecialPricingService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,7 @@ class EventOrderController extends Controller
 {
     public function __construct(
         private readonly SpecialPricingService $specialPricing,
+        private readonly CateringOrderingGateService $cateringGate,
         private readonly PackagingOptionResolver $packagingResolver = new PackagingOptionResolver,
     ) {}
 
@@ -78,6 +80,8 @@ class EventOrderController extends Controller
         if (!$customer instanceof Customer) {
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
+
+        $this->cateringGate->assertOpen();
 
         $leadHours = max(0, (int) SiteSetting::get('catering_min_lead_hours', '24'));
         $minDate = now()->addHours($leadHours)->startOfDay()->toDateString();

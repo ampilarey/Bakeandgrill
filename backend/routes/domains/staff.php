@@ -39,6 +39,9 @@ if (routes_domain_section_is('staff', 'protected') && !routes_domain_loaded('sta
         Route::put('/delivery-schedule', [App\Http\Controllers\Api\OnlineOrderingController::class, 'updateDeliverySchedule']);
         Route::post('/delivery-override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'deliveryOverride']);
         Route::post('/delivery-capacity', [App\Http\Controllers\Api\OnlineOrderingController::class, 'updateDeliveryCapacity']);
+        Route::post('/catering-toggle', [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggleCatering']);
+        Route::put('/catering-schedule', [App\Http\Controllers\Api\OnlineOrderingController::class, 'updateCateringSchedule']);
+        Route::post('/catering-override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'cateringOverride']);
     });
 
     Route::prefix('admin/delivery')->middleware('permission:settings.update')->group(function () {

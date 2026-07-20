@@ -53,10 +53,28 @@ export interface OnlineOrderingStatus {
   delivery_available: boolean;
   /** ISO 8601 start of the next delivery window, when delivery is currently unavailable. */
   next_delivery_window: string | null;
+  /** Nested pre-order / events gate (optional — older servers omit). */
+  preorder?: PreorderGateStatus;
 }
+
+export type PreorderGateStatus = {
+  open: boolean;
+  message: string;
+  reason: string | null;
+  master_switch: boolean;
+  override_until: string | null;
+  override_active: boolean;
+  schedule_active: boolean;
+  current_close: string | null;
+  next_open_window: string | null;
+};
 
 export async function fetchOnlineOrderingStatus(): Promise<OnlineOrderingStatus> {
   return request<OnlineOrderingStatus>(ENDPOINTS.ORDERING_STATUS);
+}
+
+export async function fetchPreorderStatus(): Promise<PreorderGateStatus> {
+  return request<PreorderGateStatus>(ENDPOINTS.ORDERING_CATERING_STATUS);
 }
 
 export interface DeliveryZoneStatus {

@@ -43,6 +43,9 @@ Route::get('/ordering/eligibility', [App\Http\Controllers\Api\OrderingEligibilit
 Route::get('/ordering/status', [App\Http\Controllers\Api\OnlineOrderingController::class, 'status'])
     ->middleware('throttle:120,1');
 
+Route::get('/ordering/catering-status', [App\Http\Controllers\Api\OnlineOrderingController::class, 'cateringStatus'])
+    ->middleware('throttle:120,1');
+
 Route::get('/ordering/delivery-status', [App\Http\Controllers\Api\DeliveryStatusController::class, 'show'])
     ->middleware('throttle:120,1');
 
