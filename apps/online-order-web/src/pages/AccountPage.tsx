@@ -1074,9 +1074,9 @@ export function AccountPage() {
 
         {/* Bookings */}
         <SectionCard title={t('account.bookings')}>
-          {hubLinkRow('📦', t('account.link_preorder'), '/events')}
+          {hubLinkRow('🎉', 'Plan an event', '/events')}
+          {hubLinkRow('📋', 'My events', '/events/mine')}
           {hubRow('🗓', t('account.link_reservations'), () => setPanel('reservations'), true)}
-          {hubLinkRow('🎉', 'Events', '/events')}
         </SectionCard>
 
         {/* Account extras */}
@@ -1086,7 +1086,6 @@ export function AccountPage() {
           {hubRow('💳', t('account.credit'),     () => setPanel('credit'))}
           {hubRow('💰', t('account.deposit'),    () => setPanel('deposit'))}
           {hubRow('❤️', t('account.favourites'), () => setPanel('favourites'))}
-          {hubRow('📦', t('account.preorders'),  () => setPanel('preorders'))}
           {hubRow('✍️', t('account.reviews'),    () => setPanel('reviews'), true)}
         </SectionCard>
 

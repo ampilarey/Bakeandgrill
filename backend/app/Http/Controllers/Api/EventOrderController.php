@@ -26,6 +26,25 @@ class EventOrderController extends Controller
         private readonly SpecialPricingService $specialPricing,
     ) {}
 
+    public function index(Request $request): JsonResponse
+    {
+        $customer = $request->user();
+        if (!$customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        $rows = CateringRequest::query()
+            ->with(['lines', 'posOrder'])
+            ->where('customer_id', $customer->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'data' => $rows->map(fn (CateringRequest $row) => $this->formatCustomerEvent($row))->values()->all(),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $customer = $request->user();
@@ -227,6 +246,39 @@ class EventOrderController extends Controller
                 'notes' => $l->notes,
                 'is_custom' => (bool) $l->is_custom,
             ])->values()->all(),
+            'created_at' => $row->created_at?->toIso8601String(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function formatCustomerEvent(CateringRequest $row): array
+    {
+        $order = $row->relationLoaded('posOrder') ? $row->posOrder : null;
+        $paidLaar = 0;
+        $totalLaar = 0;
+        if ($order) {
+            $totalLaar = (int) ($order->total_laar ?? 0);
+            $paidLaar = (int) \App\Models\Payment::query()
+                ->where('order_id', $order->id)
+                ->whereIn('status', ['confirmed', 'paid', 'completed'])
+                ->sum('amount_laar');
+        }
+
+        return [
+            'reference' => $row->reference,
+            'status' => $row->status,
+            'event_date' => $row->event_date?->toDateString(),
+            'fulfillment_method' => $row->fulfillment_method,
+            'fulfillment_time' => $row->fulfillment_time
+                ? Carbon::parse($row->fulfillment_time)->format('H:i')
+                : null,
+            'venue_name' => $row->venue_name,
+            'headcount' => $row->headcount,
+            'quote_token' => $row->status === 'awaiting_customer' ? $row->quote_token : null,
+            'quote_is_deposit' => (bool) $row->quote_is_deposit,
+            'paid_laar' => $paidLaar,
+            'balance_laar' => max(0, $totalLaar - $paidLaar),
+            'total_laar' => $totalLaar,
             'created_at' => $row->created_at?->toIso8601String(),
         ];
     }

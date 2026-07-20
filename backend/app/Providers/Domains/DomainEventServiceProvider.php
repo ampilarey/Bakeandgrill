@@ -33,6 +33,7 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Domains\Orders\Listeners\ReleasePreparedStockOnCancelListener;
+use App\Domains\Catering\Listeners\ConfirmCateringEventOnPaymentListener;
 use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Listeners\PaymentConfirmedListener;
 use App\Domains\Payments\Listeners\RedeemGiftCardOnOrderPaidListener;
@@ -105,6 +106,7 @@ class DomainEventServiceProvider extends EventServiceProvider
 
         PaymentConfirmed::class => [
             PaymentConfirmedListener::class,
+            ConfirmCateringEventOnPaymentListener::class,
         ],
 
         ReservationCreated::class => [

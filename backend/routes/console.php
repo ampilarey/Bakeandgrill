@@ -77,6 +77,18 @@ Schedule::job(App\Jobs\AutoCancelNoShowReservations::class)
     ->onFailure($alertOnFailure('AutoCancelNoShowReservations'))
     ->after($trackSuccess('AutoCancelNoShowReservations'));
 
+// Catering: expire awaiting_customer quotes past quote_expires_at
+Schedule::job(App\Jobs\ExpireCateringQuotes::class)
+    ->hourly()
+    ->onFailure($alertOnFailure('ExpireCateringQuotes'))
+    ->after($trackSuccess('ExpireCateringQuotes'));
+
+// Catering: day-before reminder for confirmed events
+Schedule::job(App\Jobs\SendCateringEventReminders::class)
+    ->dailyAt('09:30')
+    ->onFailure($alertOnFailure('SendCateringEventReminders'))
+    ->after($trackSuccess('SendCateringEventReminders'));
+
 // Finance: generate recurring expenses daily at 06:00
 Schedule::command('expenses:generate-recurring')
     ->dailyAt('06:00')

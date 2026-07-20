@@ -31,6 +31,7 @@ export const PUBLIC_ENDPOINTS = {
   // physical card should be able to read its balance without an account).
   // POST-only so the code never lands in URL access logs.
   GIFT_CARD_BALANCE_POST:    '/gift-cards/balance',
+  EVENT_QUOTE:               '/event-quotes',
 
   // Opening hours / ordering eligibility (drives the storefront banner)
   OPENING_HOURS_STATUS:      '/opening-hours/status',

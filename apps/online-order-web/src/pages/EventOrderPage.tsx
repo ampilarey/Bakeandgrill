@@ -237,6 +237,14 @@ export function EventOrderPage() {
   return (
     <>
       <PageHeader title="Plan your event" onBack={() => (step === 'items' ? navigate(-1) : goBack())} />
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 var(--page-gutter)', display: 'flex', gap: 12, fontSize: 14 }} data-testid="events-nav">
+        <span style={{ fontWeight: 800 }}>Plan event</span>
+        {isAuthenticated && (
+          <Link to="/events/mine" data-testid="my-events-nav" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
+            My events
+          </Link>
+        )}
+      </div>
       <div style={S.page}>
         <div style={S.container}>
           <p style={S.lede}>
@@ -488,7 +496,10 @@ export function EventOrderPage() {
               <p style={{ fontSize: 14, color: 'var(--color-text-muted)', maxWidth: 360, margin: '12px auto' }}>
                 We&apos;ll SMS/email you the quote. Staff will confirm final pricing before payment.
               </p>
-              <Link to="/menu" style={S.btn}>Back to menu</Link>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+                <Link to="/events/mine" data-testid="view-my-events" style={S.btn}>View my events</Link>
+                <Link to="/menu" style={{ ...S.link, fontSize: 14 }}>Back to menu</Link>
+              </div>
             </section>
           )}
         </div>

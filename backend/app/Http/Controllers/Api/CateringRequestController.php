@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Catering\Events\CateringRequestSubmitted;
+use App\Domains\Catering\Services\CateringLifecycleNotifier;
 use App\Domains\Catering\Services\CateringNotifyRecipients;
+use App\Domains\Catering\Services\CateringQuoteApprovalService;
 use App\Domains\Catering\Services\CateringQuoteService;
 use App\Http\Controllers\Controller;
 use App\Models\CateringRequest;
@@ -15,12 +17,15 @@ use App\Services\AuditLogService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CateringRequestController extends Controller
 {
     public function __construct(
         private readonly CateringQuoteService $quotes,
         private readonly CateringNotifyRecipients $recipients,
+        private readonly CateringQuoteApprovalService $approval,
+        private readonly CateringLifecycleNotifier $lifecycle,
         private readonly AuditLogService $audit,
     ) {}
 
@@ -170,7 +175,25 @@ class CateringRequestController extends Controller
 
         $row = CateringRequest::query()->findOrFail($id);
         $oldHandledBy = $row->handled_by;
+        $oldStatus = $row->status;
         $updates = $validated;
+        $isCancel = isset($validated['status']) && $validated['status'] === 'cancelled';
+
+        // Block fulfilment/line-adjacent edits while a live payment_pending order exists.
+        // Cancel (and clearing via cancel) is always allowed.
+        if (!$isCancel && $this->approval->hasLivePendingPaymentOrder($row)) {
+            $blockedKeys = array_diff(array_keys($validated), ['staff_notes', 'status', 'handled_by']);
+            if ($blockedKeys !== []) {
+                throw ValidationException::withMessages([
+                    'order' => ['A payment is in progress. Cancel the pending order before editing this event.'],
+                ]);
+            }
+        }
+
+        if ($isCancel) {
+            $this->approval->cancelPendingOrderIfAny($row);
+            $row->refresh();
+        }
 
         if (isset($validated['status'])) {
             $now = Carbon::now();
@@ -192,6 +215,10 @@ class CateringRequestController extends Controller
 
         $row->update($updates);
         $row = $row->fresh(['lines', 'handler:id,name']);
+
+        if ($isCancel && $oldStatus !== 'cancelled') {
+            $this->lifecycle->notifyCancelled($row);
+        }
 
         if (array_key_exists('handled_by', $validated) && (int) $oldHandledBy !== (int) $row->handled_by) {
             $this->audit->log(

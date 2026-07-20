@@ -1,0 +1,1 @@
+import{ao as n,ap as a}from"./index-Diem7tKB.js";async function o(o){return n(a.CUSTOMER_EVENT_ORDERS,{method:"POST",body:JSON.stringify(o)})}async function r(){return n(a.CUSTOMER_EVENT_ORDERS)}export{o as c,r as f};

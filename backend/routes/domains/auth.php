@@ -117,6 +117,8 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::post('/complete-profile', [App\Http\Controllers\Api\CustomerProfileController::class, 'completeProfile']);
     Route::post('/change-password', [App\Http\Controllers\Api\CustomerProfileController::class, 'changePassword']);
 
+    Route::get('/event-orders', [App\Http\Controllers\Api\EventOrderController::class, 'index'])
+        ->middleware('throttle:30,1');
     Route::post('/event-orders', [App\Http\Controllers\Api\EventOrderController::class, 'store'])
         ->middleware('throttle:10,1');
 });

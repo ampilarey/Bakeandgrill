@@ -47,6 +47,11 @@ class DeductInventoryListener
             return;
         }
 
+        // Catering: stock is validated/deducted at fire-to-kitchen (Phase 5), not on pay.
+        if ($order->type === 'catering') {
+            return;
+        }
+
         try {
             $this->deductionService->deductForOrder($order);
         } catch (\Throwable $e) {

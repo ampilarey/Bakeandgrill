@@ -50,3 +50,23 @@ export async function createEventOrder(
     body: JSON.stringify(payload),
   });
 }
+
+export type CustomerEventOrder = {
+  reference: string;
+  status: string;
+  event_date: string | null;
+  fulfillment_method: string | null;
+  fulfillment_time: string | null;
+  venue_name: string | null;
+  headcount: number | null;
+  quote_token: string | null;
+  quote_is_deposit: boolean;
+  paid_laar: number;
+  balance_laar: number;
+  total_laar: number;
+  created_at: string | null;
+};
+
+export async function fetchMyEventOrders(): Promise<{ data: CustomerEventOrder[] }> {
+  return request(ENDPOINTS.CUSTOMER_EVENT_ORDERS);
+}

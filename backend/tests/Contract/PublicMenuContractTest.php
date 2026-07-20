@@ -50,7 +50,9 @@ class PublicMenuContractTest extends ContractTestCase
 
     public function test_item_show_shape(): void
     {
-        $item = Item::first();
+        // Prefer the fixture SKU — migrations may seed inactive system items
+        // (e.g. catering placeholder) that sort before this active menu row.
+        $item = Item::query()->where('sku', 'GRL-001')->firstOrFail();
         $response = $this->getJson("/api/items/{$item->id}");
         $response->assertOk();
         $this->assertMatchesApiSnapshot($response, 'menu.item.show');

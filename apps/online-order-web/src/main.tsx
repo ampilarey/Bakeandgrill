@@ -41,6 +41,8 @@ const CheckoutPage     = lazy(() => import('./pages/CheckoutPage').then((m) => (
 const OrderStatusPage  = lazy(() => import('./pages/OrderStatusPage').then((m) => ({ default: m.OrderStatusPage })));
 const CateringPage     = lazy(() => import('./pages/CateringPage').then((m) => ({ default: m.CateringPage })));
 const EventOrderPage   = lazy(() => import('./pages/EventOrderPage').then((m) => ({ default: m.EventOrderPage })));
+const EventQuotePage   = lazy(() => import('./pages/EventQuotePage').then((m) => ({ default: m.EventQuotePage })));
+const MyEventsPage     = lazy(() => import('./pages/MyEventsPage').then((m) => ({ default: m.MyEventsPage })));
 const PrivacyPage      = lazy(() => import('./pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })));
 const NotFoundPage     = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage').then((m) => ({ default: m.OrderHistoryPage })));
@@ -94,7 +96,9 @@ ReactDOM.createRoot(rootEl).render(
                     <Route path="reservations" element={<ReservationPage />} />
                     <Route path="catering" element={<CateringPage />} />
                     <Route path="events" element={<EventOrderPage />} />
+                    <Route path="events/mine" element={<ErrorBoundary inline><MyEventsPage /></ErrorBoundary>} />
                     <Route path="pre-order" element={<EventOrderPage />} />
+                    <Route path="quote/:token" element={<ErrorBoundary inline><EventQuotePage /></ErrorBoundary>} />
                     <Route path="privacy" element={<PrivacyPage />} />
                     <Route path="order-history" element={<ErrorBoundary inline><OrderHistoryPage /></ErrorBoundary>} />
                     <Route path="rewards" element={<ErrorBoundary inline><RewardsPage /></ErrorBoundary>} />

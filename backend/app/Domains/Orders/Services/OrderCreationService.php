@@ -7,6 +7,8 @@ namespace App\Domains\Orders\Services;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
+use App\Models\CateringRequest;
+use App\Models\CateringRequestLine;
 use App\Models\Customer;
 use App\Models\Device;
 use App\Models\Item;
@@ -20,6 +22,7 @@ use App\Services\StockManagementService;
 use App\Services\StockReservationService;
 use App\Support\DeferAfterResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class OrderCreationService
 {
@@ -181,6 +184,62 @@ class OrderCreationService
                 // customer_id we mirror the same update so the customer's profile stays current.
                 if (!empty($payload['customer_id'])) {
                     Customer::where('id', $payload['customer_id'])
+                        ->update(['last_order_at' => now()]);
+                }
+            });
+
+            return $order;
+        });
+    }
+
+    /**
+     * Internal priced-from-quote path for catering event approval.
+     * Snapshot unit prices from catering_request_lines are authoritative —
+     * never re-resolve catalog prices, skip stock/86/channel checks, no kitchen print.
+     */
+    public function createFromCateringQuote(CateringRequest $request): Order
+    {
+        $request->loadMissing('lines');
+        if ($request->lines->isEmpty()) {
+            throw ValidationException::withMessages(['lines' => ['Quote has no lines.']]);
+        }
+
+        $placeholder = $this->resolveCustomCateringPlaceholder();
+
+        return DB::transaction(function () use ($request, $placeholder): Order {
+            $order = Order::create([
+                'order_number' => $this->generateOrderNumber(),
+                'type' => 'catering',
+                'status' => 'payment_pending',
+                'payment_status' => 'unpaid',
+                'fired_at' => null,
+                'customer_id' => $request->customer_id,
+                'user_id' => null,
+                'device_id' => null,
+                'shift_id' => null,
+                'subtotal' => 0,
+                'tax_amount' => 0,
+                'discount_amount' => 0,
+                'total' => 0,
+                'notes' => 'Event '.$request->reference,
+                'customer_notes' => $request->dietary_notes,
+                'ticket_name' => $request->reference,
+            ]);
+
+            foreach ($request->lines as $line) {
+                $this->addQuotedCateringLine($order, $line, $placeholder);
+            }
+
+            $order = $this->calculator->recalculateAndPersist($order);
+            $order->load(['items.modifiers']);
+
+            DB::afterCommit(function () use ($order): void {
+                DeferAfterResponse::run(function () use ($order): void {
+                    OrderCreated::dispatch(OrderCreatedData::fromOrder($order->fresh(), false));
+                }, 'OrderCreated');
+
+                if ($order->customer_id) {
+                    Customer::where('id', $order->customer_id)
                         ->update(['last_order_at' => now()]);
                 }
             });
@@ -603,6 +662,87 @@ class OrderCreationService
         }
 
         return $subtotal;
+    }
+
+    private function resolveCustomCateringPlaceholder(): Item
+    {
+        $item = Item::withTrashed()->where('sku', 'CATERING-CUSTOM')->first();
+        if (!$item) {
+            throw ValidationException::withMessages([
+                'items' => ['Custom catering placeholder item is not configured.'],
+            ]);
+        }
+
+        return $item;
+    }
+
+    private function addQuotedCateringLine(Order $order, CateringRequestLine $line, Item $placeholder): void
+    {
+        if ($line->unit_price === null) {
+            throw ValidationException::withMessages([
+                'lines' => ['All quote lines must be priced before approval.'],
+            ]);
+        }
+
+        $unitPrice = round((float) $line->unit_price, 2);
+        $qty = max(1, (int) $line->quantity);
+        $catalogItem = null;
+        $usePlaceholder = (bool) $line->is_custom || !$line->item_id;
+
+        if (!$usePlaceholder) {
+            // Soft-deleted items are treated as deleted → placeholder.
+            $catalogItem = Item::query()->find($line->item_id);
+            if (!$catalogItem) {
+                $usePlaceholder = true;
+            }
+        }
+
+        $itemModel = $usePlaceholder ? $placeholder : $catalogItem;
+        $itemName = $usePlaceholder
+            ? mb_substr((string) $line->name, 0, 160)
+            : (string) ($catalogItem?->name ?: $line->name);
+        $variantName = null;
+        if (!$usePlaceholder && $line->variant_id && $catalogItem) {
+            $variant = $catalogItem->variants()->where('id', $line->variant_id)->first();
+            $variantName = $variant?->name;
+            if ($variantName && !str_contains($itemName, $variantName)) {
+                // Keep snapshot display name when it already includes variant.
+                if (str_contains((string) $line->name, '—') || str_contains((string) $line->name, '-')) {
+                    $itemName = mb_substr((string) $line->name, 0, 160);
+                }
+            }
+        } elseif ($usePlaceholder) {
+            // Prefer the full snapshot name for custom/deleted lines.
+            $itemName = mb_substr((string) $line->name, 0, 160);
+        }
+
+        $notes = $line->notes ? mb_substr(trim((string) $line->notes), 0, 255) : null;
+        if ($notes === '') {
+            $notes = null;
+        }
+
+        $lineTotal = $unitPrice * $qty;
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'item_id' => $itemModel->id,
+            'variant_id' => $usePlaceholder ? null : $line->variant_id,
+            'item_name' => $itemName,
+            'variant_name' => $usePlaceholder ? null : $variantName,
+            'quantity' => $qty,
+            'unit_price' => $unitPrice,
+            'original_unit_price' => null,
+            'daily_special_id' => null,
+            'total_price' => $lineTotal,
+            'tax_rate' => (float) ($itemModel->tax_rate ?? 0),
+            'tax_code' => $itemModel->tax_code ?? 'standard_8',
+            'notes' => $notes,
+            'packaging_option_id' => null,
+            'packaging_fee' => 0,
+            'packaging_fee_mode' => PackagingOptionResolver::MODE_PER_UNIT,
+            'packaging_option_name' => null,
+            'status' => 'pending',
+        ]);
     }
 
     private function assertOnlineOrderThrottleNotExceeded(): void

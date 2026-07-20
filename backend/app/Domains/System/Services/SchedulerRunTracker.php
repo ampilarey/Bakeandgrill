@@ -88,6 +88,8 @@ class SchedulerRunTracker
             'app:expire-loyalty-points',
             'app:reconcile-loyalty-balances',
             'AutoCancelNoShowReservations',
+            'ExpireCateringQuotes',
+            'SendCateringEventReminders',
             'expenses:generate-recurring',
             'invoices:mark-overdue',
             'credit:send-payment-reminders',

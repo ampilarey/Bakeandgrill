@@ -10,4 +10,5 @@ enum OrderType: string
     case Takeaway = 'takeaway';
     case OnlinePickup = 'online_pickup';
     case Delivery = 'delivery';
+    case Catering = 'catering';
 }

@@ -38,7 +38,7 @@ export function CateringPage() {
     <div>
       <PageHeader
         title="Events & Catering"
-        subtitle="Event orders, quotes & catering pipeline"
+        subtitle="Draft → quote → customer pay → confirmed"
       />
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>

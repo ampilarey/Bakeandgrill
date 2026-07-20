@@ -49,7 +49,11 @@ class StagingCleanCommandTest extends TestCase
         $this->assertSame(0, Order::count());
         $this->assertSame(0, Customer::count());
         $this->assertSame(1, User::count());
-        $this->assertSame(1, Item::count());
-        $this->assertSame(1, Category::count());
+        // Menu fixture kept; inactive system rows from migrations (e.g. Custom
+        // Catering placeholder) may also remain — assert by identity, not count.
+        $this->assertTrue(Item::query()->where('sku', 'TST-1')->exists());
+        $this->assertTrue(Category::query()->where('slug', 'test')->exists());
+        $this->assertTrue(Item::query()->where('sku', 'CATERING-CUSTOM')->exists());
+        $this->assertTrue(Category::query()->where('slug', 'custom-catering')->exists());
     }
 }

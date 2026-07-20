@@ -235,6 +235,7 @@ export default function OnlineOrderingPage() {
   const [cateringMinLeadHours, setCateringMinLeadHours] = useState('24');
   const [cateringQuoteValidDays, setCateringQuoteValidDays] = useState('7');
   const [cateringQuoteMinHours, setCateringQuoteMinHours] = useState('24');
+  const [cateringReminderEnabled, setCateringReminderEnabled] = useState(true);
   const [cateringSaving, setCateringSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
@@ -278,6 +279,10 @@ export default function OnlineOrderingPage() {
       setCateringMinLeadHours(byKey('catering_min_lead_hours') ?? '24');
       setCateringQuoteValidDays(byKey('catering_quote_valid_days') ?? '7');
       setCateringQuoteMinHours(byKey('catering_quote_min_hours_before_event') ?? '24');
+      const reminder = byKey('catering_reminder_enabled');
+      if (reminder !== undefined) {
+        setCateringReminderEnabled(reminder === '1' || reminder === 'true');
+      }
     }).finally(() => setScheduleLoading(false));
     getPackagingFeeSettings()
       .then(({ settings }) => setFeeSettings(settings))
@@ -348,6 +353,7 @@ export default function OnlineOrderingPage() {
         catering_min_lead_hours: String(lead),
         catering_quote_valid_days: String(validDays),
         catering_quote_min_hours_before_event: String(minHours),
+        catering_reminder_enabled: cateringReminderEnabled ? '1' : '0',
       });
       showToast('Catering & events settings saved.');
     } catch {
@@ -903,6 +909,15 @@ export default function OnlineOrderingPage() {
                 onChange={(e) => setCateringQuoteMinHours(e.target.value)}
               />
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minHeight: 44 }}>
+              <input
+                type="checkbox"
+                data-testid="catering-reminder-toggle"
+                checked={cateringReminderEnabled}
+                onChange={(e) => setCateringReminderEnabled(e.target.checked)}
+              />
+              Day-before event reminders
+            </label>
           </div>
           <div style={{ marginTop: 16 }}>
             <button type="button" style={S.btnPrimary} onClick={() => void saveCateringSettings()} disabled={cateringSaving}>

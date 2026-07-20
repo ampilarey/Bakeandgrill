@@ -40,6 +40,7 @@ class CateringQuoteService
      */
     public function replaceLines(CateringRequest $request, array $lines, User $actor): CateringRequest
     {
+        $this->assertNotBlockedByPendingPayment($request);
         $resolved = $this->resolveStaffLines($lines);
 
         DB::transaction(function () use ($request, $resolved, $actor) {
@@ -102,6 +103,9 @@ class CateringQuoteService
     public function sendQuote(CateringRequest $request, array $payload, User $actor): CateringRequest
     {
         $request->load('lines');
+        // Resend: cancel any abandoned payment_pending catering order first.
+        app(CateringQuoteApprovalService::class)->cancelPendingOrderIfAny($request->fresh() ?? $request);
+        $request->refresh();
         $this->assertSendable($request);
 
         $subtotalLaar = $this->computeSubtotalLaar($request->lines);
@@ -362,6 +366,15 @@ class CateringQuoteService
         }
 
         return $expires;
+    }
+
+    private function assertNotBlockedByPendingPayment(CateringRequest $request): void
+    {
+        if (app(CateringQuoteApprovalService::class)->hasLivePendingPaymentOrder($request)) {
+            throw ValidationException::withMessages([
+                'order' => ['A payment is in progress for this event. Cancel the pending order before editing lines.'],
+            ]);
+        }
     }
 
     private function assertSendable(CateringRequest $request): void

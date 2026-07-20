@@ -44,12 +44,14 @@ const TYPE_OPTIONS = [
   { value: 'takeaway', label: 'Takeaway' },
   { value: 'online_pickup', label: 'Online Pickup' },
   { value: 'delivery', label: 'Delivery' },
+  { value: 'catering', label: 'Catering' },
 ];
 
 function typeLabel(t: string) {
   const m: Record<string, string> = {
     dine_in: 'Dine In', takeaway: 'Takeaway',
-    online_pickup: 'Online Pickup', delivery: 'Delivery', preorder: 'Pre-order',
+    online_pickup: 'Online Pickup', delivery: 'Delivery',
+    preorder: 'Pre-order', catering: 'Catering',
   };
   return m[t] ?? t;
 }

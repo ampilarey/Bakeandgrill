@@ -31,7 +31,10 @@ class CancelStaleOrders extends Command
         // an order that is actively being paid right now.
         $graceCutoff = now()->subMinutes(5);
 
+        // Catering event deposits stay payment_pending until staff resend/cancel —
+        // do not auto-expire them with the short online-order TTL.
         $stale = Order::where('status', 'payment_pending')
+            ->where('type', '!=', 'catering')
             ->where('created_at', '<', $cutoff)
             ->where('updated_at', '<', $graceCutoff)
             ->get();
