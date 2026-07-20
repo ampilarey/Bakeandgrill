@@ -121,8 +121,10 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
         ->middleware('throttle:30,1');
     Route::get('/event-orders/{reference}', [App\Http\Controllers\Api\EventOrderController::class, 'show'])
         ->middleware('throttle:30,1');
+    // Authenticated drafts — allow more than the default 10/min so quote retries
+    // during a single planning session do not surface "Too Many Attempts".
     Route::post('/event-orders', [App\Http\Controllers\Api\EventOrderController::class, 'store'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:30,1');
 });
 
 // ─── Driver Auth (public — PIN login) ──────────────────────────────────────

@@ -218,7 +218,13 @@ export function EventOrderPage() {
       setReference(res.request.reference);
       setStep('done');
     } catch (e) {
-      setError((e as Error).message);
+      const err = e as Error & { status?: number };
+      const msg = err.message || 'Could not submit event request';
+      if (err.status === 429 || /too many attempts/i.test(msg)) {
+        setError('Too many requests. Please wait about a minute, then try again.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -495,28 +501,34 @@ export function EventOrderPage() {
 
               <label style={S.label}>
                 Event date *
-                <input
-                  style={S.input}
-                  type="date"
-                  min={minDate}
-                  value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
-                  required
-                  aria-required="true"
-                  data-testid="event-date"
-                />
+                <span style={S.pickerWrap}>
+                  {!eventDate && <span style={S.pickerPh}>Select date</span>}
+                  <input
+                    style={{ ...S.input, ...(eventDate ? {} : S.pickerEmpty) }}
+                    type="date"
+                    min={minDate}
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    required
+                    aria-required="true"
+                    data-testid="event-date"
+                  />
+                </span>
               </label>
               <label style={S.label}>
                 {fulfillmentMethod === 'delivery' ? 'Delivery time *' : 'Pickup time *'}
-                <input
-                  style={S.input}
-                  type="time"
-                  value={fulfillmentTime}
-                  onChange={(e) => setFulfillmentTime(e.target.value)}
-                  required
-                  aria-required="true"
-                  data-testid="event-time"
-                />
+                <span style={S.pickerWrap}>
+                  {!fulfillmentTime && <span style={S.pickerPh}>Select time</span>}
+                  <input
+                    style={{ ...S.input, ...(fulfillmentTime ? {} : S.pickerEmpty) }}
+                    type="time"
+                    value={fulfillmentTime}
+                    onChange={(e) => setFulfillmentTime(e.target.value)}
+                    required
+                    aria-required="true"
+                    data-testid="event-time"
+                  />
+                </span>
               </label>
 
               {fulfillmentMethod === 'delivery' && (
@@ -683,6 +695,14 @@ const S: Record<string, CSSProperties> = {
   tab: { minHeight: 44, padding: '0 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'inherit', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   tabActive: { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' },
   input: { display: 'block', width: '100%', minHeight: 44, marginTop: 4, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 12px', fontFamily: 'inherit', fontSize: 15, boxSizing: 'border-box' },
+  /** Hide native date/time “default” glyphs until the customer picks a value. */
+  pickerWrap: { position: 'relative', display: 'block' },
+  pickerPh: {
+    position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+    marginTop: 2, color: 'var(--color-text-muted)', fontSize: 15, fontWeight: 500,
+    pointerEvents: 'none', zIndex: 1,
+  },
+  pickerEmpty: { color: 'transparent', WebkitTextFillColor: 'transparent' },
   label: { fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 },
   list: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10, maxHeight: 360, overflow: 'auto' },
   row: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-surface)' },
