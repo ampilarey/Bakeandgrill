@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ItemPhoto extends Model
 {
-    protected $fillable = ['item_id', 'url', 'alt_text', 'sort_order', 'is_primary'];
+    protected $fillable = ['item_id', 'url', 'original_url', 'alt_text', 'sort_order', 'is_primary'];
 
     protected $casts = ['sort_order' => 'integer', 'is_primary' => 'boolean'];
 

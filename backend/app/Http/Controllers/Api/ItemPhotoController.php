@@ -14,11 +14,11 @@ use Illuminate\Support\Facades\Storage;
 
 class ItemPhotoController extends Controller
 {
+    private const MAX_SIZE_KB = 10240;
+
     public function __construct(
         private readonly MenuImageProcessor $processor,
     ) {}
-
-    // ── Public: list photos ───────────────────────────────────────────────────
 
     public function index(int $itemId): JsonResponse
     {
@@ -28,16 +28,17 @@ class ItemPhotoController extends Controller
         return response()->json(['photos' => $photos]);
     }
 
-    // ── Admin: upload photo ───────────────────────────────────────────────────
-
     public function store(Request $request, int $itemId): JsonResponse
     {
         $item = Item::findOrFail($itemId);
 
         $validated = $request->validate([
-            'photo' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
+            'photo' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:' . self::MAX_SIZE_KB],
+            'original' => ['sometimes', 'file', 'mimes:jpeg,jpg,png,webp', 'max:' . self::MAX_SIZE_KB],
             'alt_text' => ['nullable', 'string', 'max:200'],
             'is_primary' => ['sometimes', 'boolean'],
+            // When re-cropping, keep the existing master without re-uploading it.
+            'original_url' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
 
         try {
@@ -45,6 +46,16 @@ class ItemPhotoController extends Controller
                 $request->file('photo'),
                 "item-photos/{$itemId}",
             );
+            $originalUrl = null;
+            if ($request->hasFile('original')) {
+                $origPath = $this->processor->storeMaster(
+                    $request->file('original'),
+                    "item-photos/{$itemId}/masters",
+                );
+                $originalUrl = '/storage/' . ltrim($origPath, '/');
+            } elseif (!empty($validated['original_url'])) {
+                $originalUrl = $validated['original_url'];
+            }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -60,6 +71,7 @@ class ItemPhotoController extends Controller
         $photo = ItemPhoto::create([
             'item_id' => $item->id,
             'url' => $url,
+            'original_url' => $originalUrl,
             'alt_text' => $validated['alt_text'] ?? null,
             'sort_order' => $maxOrder + 1,
             'is_primary' => (bool) ($validated['is_primary'] ?? false),
@@ -68,8 +80,6 @@ class ItemPhotoController extends Controller
         return response()->json(['photo' => $photo], 201);
     }
 
-    // ── Admin: update alt/sort/primary ────────────────────────────────────────
-
     public function update(Request $request, int $itemId, int $photoId): JsonResponse
     {
         $photo = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);
@@ -77,6 +87,8 @@ class ItemPhotoController extends Controller
             'alt_text' => ['nullable', 'string', 'max:200'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'is_primary' => ['sometimes', 'boolean'],
+            // Allow clearing before destroy so a reused master file is not deleted.
+            'original_url' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
 
         if (!empty($validated['is_primary'])) {
@@ -88,32 +100,42 @@ class ItemPhotoController extends Controller
         return response()->json(['photo' => $photo->fresh()]);
     }
 
-    // ── Admin: delete ─────────────────────────────────────────────────────────
-
     public function destroy(int $itemId, int $photoId): JsonResponse
     {
         $photo = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);
 
-        $relativePath = null;
-        if (str_starts_with($photo->url, '/storage/')) {
-            $relativePath = ltrim(substr($photo->url, strlen('/storage/')), '/');
-        } else {
-            $diskUrl = rtrim(Storage::disk('public')->url('/'), '/');
-            if (str_starts_with($photo->url, $diskUrl)) {
-                $relativePath = ltrim(substr($photo->url, strlen($diskUrl)), '/');
-            } else {
-                $path = parse_url($photo->url, PHP_URL_PATH);
-                if (is_string($path) && str_starts_with($path, '/storage/')) {
-                    $relativePath = ltrim(substr($path, strlen('/storage/')), '/');
-                }
+        foreach ([$photo->url, $photo->original_url] as $mediaUrl) {
+            $relativePath = $this->storagePathFromUrl($mediaUrl);
+            if ($relativePath) {
+                Storage::disk('public')->delete($relativePath);
             }
-        }
-        if ($relativePath) {
-            Storage::disk('public')->delete($relativePath);
         }
 
         $photo->delete();
 
         return response()->json(['message' => 'Photo deleted.']);
+    }
+
+    private function storagePathFromUrl(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+
+        if (str_starts_with($url, '/storage/')) {
+            return ltrim(substr($url, strlen('/storage/')), '/');
+        }
+
+        $diskUrl = rtrim(Storage::disk('public')->url('/'), '/');
+        if (str_starts_with($url, $diskUrl)) {
+            return ltrim(substr($url, strlen($diskUrl)), '/');
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+        if (is_string($path) && str_starts_with($path, '/storage/')) {
+            return ltrim(substr($path, strlen('/storage/')), '/');
+        }
+
+        return null;
     }
 }

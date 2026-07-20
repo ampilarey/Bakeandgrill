@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Crop, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, type ItemPhoto } from '../../api';
 import { ImageCropModal } from './ImageCropModal';
-import { prepareImageForCrop, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
+import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
 export function PhotosTab({ itemId }: { itemId: number }) {
   const [photos, setPhotos] = useState<ItemPhoto[]>([]);
@@ -12,6 +12,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropName, setCropName] = useState('item-photo.jpg');
   const [replacingPhoto, setReplacingPhoto] = useState<ItemPhoto | null>(null);
+  const [pendingMaster, setPendingMaster] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -35,15 +36,17 @@ export function PhotosTab({ itemId }: { itemId: number }) {
       return null;
     });
     setReplacingPhoto(null);
+    setPendingMaster(null);
   };
 
   const openCropperFromFile = async (file: File) => {
     setError('');
     setUploading(true);
     try {
-      const src = await prepareImageForCrop(file);
+      const { cropSrc: src, masterFile } = await prepareUploadFromFile(file);
       setCropName(file.name || 'item-photo.jpg');
       setReplacingPhoto(null);
+      setPendingMaster(masterFile);
       setCropSrc((prev) => {
         revokeCropSrc(prev);
         return src;
@@ -59,9 +62,11 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     setUploading(true);
     setError('');
     try {
-      const src = await prepareImageForCrop(photo.url);
+      const master = (photo.original_url || photo.url).trim();
+      const src = await prepareImageForCrop(master);
       setCropName(`item-photo-${photo.id}.jpg`);
       setReplacingPhoto(photo);
+      setPendingMaster(null);
       setCropSrc((prev) => {
         revokeCropSrc(prev);
         return src;
@@ -76,7 +81,11 @@ export function PhotosTab({ itemId }: { itemId: number }) {
   const handleUpload = async (file: File) => {
     setUploading(true); setError('');
     try {
-      const { photo } = await uploadItemPhoto(itemId, file);
+      const reusedMaster = !pendingMaster ? (replacingPhoto?.original_url || null) : null;
+      const { photo } = await uploadItemPhoto(itemId, file, {
+        original: pendingMaster ?? undefined,
+        original_url: reusedMaster || undefined,
+      });
       if (!photo) throw new Error('Upload succeeded but no photo was returned.');
 
       if (replacingPhoto) {
@@ -84,6 +93,11 @@ export function PhotosTab({ itemId }: { itemId: number }) {
           sort_order: replacingPhoto.sort_order,
           ...(replacingPhoto.is_primary ? { is_primary: true } : {}),
         });
+        // If the new row reuses the old master path, detach it from the old
+        // row first so destroy does not delete the shared master file.
+        if (reusedMaster && photo.original_url === reusedMaster) {
+          await updateItemPhoto(itemId, replacingPhoto.id, { original_url: null });
+        }
         await deleteItemPhoto(itemId, replacingPhoto.id);
       }
 
@@ -150,7 +164,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         {uploading && !cropSrc ? 'Preparing…' : 'Upload & crop photo'}
       </button>
       <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
-        Crop to 4:3 — saved as 1200×900 JPEG. Use Edit crop to re-frame a saved photo.
+        1200×900 crop for the menu; full photo kept for re-crop later.
       </p>
       <input
         ref={fileRef}

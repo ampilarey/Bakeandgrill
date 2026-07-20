@@ -26,6 +26,7 @@ class Item extends Model
         'sku',
         'barcode',
         'image_url',
+        'image_original_url',
         'base_price',
         'packaging_fee',
         'packaging_fee_mode',

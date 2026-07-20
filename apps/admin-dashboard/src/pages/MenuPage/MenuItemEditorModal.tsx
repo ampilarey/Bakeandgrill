@@ -630,7 +630,14 @@ export function MenuItemEditorModal({
               </div>
             )}
             <Field label="Image">
-              <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
+              <ImageUploadField
+                value={form.image_url}
+                originalValue={form.image_original_url}
+                onChange={({ url, original_url }) => {
+                  set('image_url', url);
+                  set('image_original_url', original_url);
+                }}
+              />
             </Field>
             {!form.has_variants && (
               <div style={{ border: '1px solid #E8E0D8', borderRadius: 10, padding: '14px 16px', background: '#FAFAF8' }}>

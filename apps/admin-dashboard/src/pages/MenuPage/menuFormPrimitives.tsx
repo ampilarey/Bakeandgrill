@@ -3,13 +3,25 @@ import { Crop, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/Layout';
 import { ImageCropModal } from './ImageCropModal';
-import { prepareImageForCrop, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
+import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
-export function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+type ImageUrls = { url: string; original_url: string };
+
+export function ImageUploadField({
+  value,
+  originalValue = '',
+  onChange,
+}: {
+  value: string;
+  /** Full-frame master for re-crop; omit for fields that only store the public crop. */
+  originalValue?: string;
+  onChange: (next: ImageUrls) => void;
+}) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropName, setCropName] = useState('menu-image.jpg');
+  const [pendingMaster, setPendingMaster] = useState<File | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -18,14 +30,16 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
       revokeCropSrc(prev);
       return null;
     });
+    setPendingMaster(null);
   };
 
   const openCropperFromFile = async (file: File) => {
     setUploadError('');
     setUploading(true);
     try {
-      const src = await prepareImageForCrop(file);
+      const { cropSrc: src, masterFile } = await prepareUploadFromFile(file);
       setCropName(file.name || 'menu-image.jpg');
+      setPendingMaster(masterFile);
       setCropSrc((prev) => {
         revokeCropSrc(prev);
         return src;
@@ -38,12 +52,15 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
   };
 
   const openCropperFromExisting = async () => {
-    if (!value.trim()) return;
+    const master = (originalValue || value).trim();
+    if (!master) return;
     setUploadError('');
     setUploading(true);
     try {
-      const src = await prepareImageForCrop(value.trim());
+      // Re-crop from the stored master (full photo), not the 1200×900 public crop.
+      const src = await prepareImageForCrop(master);
       setCropName('menu-image.jpg');
+      setPendingMaster(null);
       setCropSrc((prev) => {
         revokeCropSrc(prev);
         return src;
@@ -59,9 +76,12 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
     setUploading(true);
     setUploadError('');
     try {
-      const { url } = await uploadMenuImage(file);
-      if (!url) throw new Error('Upload succeeded but no image URL was returned.');
-      onChange(url);
+      const res = await uploadMenuImage(file, pendingMaster ?? undefined);
+      if (!res.url) throw new Error('Upload succeeded but no image URL was returned.');
+      onChange({
+        url: res.url,
+        original_url: res.original_url || originalValue || '',
+      });
       setPreviewKey((k) => k + 1);
       closeCropper();
     } catch (e) {
@@ -80,7 +100,7 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Input
           value={value}
-          onChange={onChange}
+          onChange={(v) => onChange({ url: v, original_url: '' })}
           placeholder="https://… or upload & crop below"
         />
         <button
@@ -126,7 +146,8 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
         />
       </div>
       <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>
-        Crop to 4:3 — saved as 1200×900 JPEG for fast menu & POS loading. Use Edit / re-crop on saved photos.
+        Menu/POS show a 1200×900 crop. The full photo is kept on the server so you can re-crop later.
+        {originalValue.trim() ? ' Master saved ✓' : ''}
       </p>
       {uploadError && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{uploadError}</p>}
       {previewSrc && (

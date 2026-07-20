@@ -66,7 +66,10 @@ function CategoryFormModal({
           <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Short description…" rows={2} />
         </Field>
         <Field label="Image">
-          <ImageUploadField value={form.image_url} onChange={(v) => set('image_url', v)} />
+          <ImageUploadField
+            value={form.image_url}
+            onChange={({ url }) => set('image_url', url)}
+          />
         </Field>
         <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Sort Order">

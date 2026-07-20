@@ -19,6 +19,9 @@ class UpdateItemRequest extends FormRequest
         if ($this->image_url === '') {
             $this->merge(['image_url' => null]);
         }
+        if ($this->image_original_url === '') {
+            $this->merge(['image_original_url' => null]);
+        }
 
         // MySQL NOT NULL DEFAULT 0 columns: replace null with 0 so the update succeeds
         $defaults = ['sort_order' => 0, 'cost' => 0, 'tax_rate' => 0];
@@ -41,6 +44,7 @@ class UpdateItemRequest extends FormRequest
             'sku' => 'nullable|string|max:100|unique:items,sku,' . $itemId,
             'barcode' => 'nullable|string|max:100|unique:items,barcode,' . $itemId,
             'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'image_original_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'base_price' => 'sometimes|numeric|min:0',
             'packaging_fee' => 'sometimes|numeric|min:0|max:500',
             'packaging_fee_mode' => 'sometimes|string|in:per_unit,per_line',

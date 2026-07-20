@@ -23,7 +23,7 @@ export type PackagingOptionRow = {
 
 export type ItemForm = {
   name: string; name_dv: string; description: string; sku: string;
-  image_url: string; base_price: string; packaging_fee: string;
+  image_url: string; image_original_url: string; base_price: string; packaging_fee: string;
   packaging_fee_mode: 'per_unit' | 'per_line';
   packaging_options: PackagingOptionRow[];
   tax_code: string;
@@ -78,6 +78,7 @@ export function itemToForm(item: MenuItem): ItemForm {
     description: item.description ?? '',
     sku: item.sku ?? '',
     image_url: item.image_url ?? '',
+    image_original_url: item.image_original_url ?? '',
     base_price: String(item.base_price),
     packaging_fee: item.packaging_fee != null ? String(item.packaging_fee) : '0',
     packaging_fee_mode: item.packaging_fee_mode === 'per_line' ? 'per_line' : 'per_unit',
@@ -128,6 +129,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     description: form.description.trim() || null,
     sku: form.sku.trim() || null,
     image_url: form.image_url.trim() || null,
+    image_original_url: form.image_original_url.trim() || null,
     base_price: parseFloat(form.base_price) || 0,
     packaging_fee: Math.max(0, parseFloat(form.packaging_fee) || 0),
     packaging_fee_mode: form.packaging_fee_mode,
@@ -203,7 +205,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
 
 export function emptyItemForm(selectedCat: number | null): ItemForm {
   return {
-    name: '', name_dv: '', description: '', sku: '', image_url: '',
+    name: '', name_dv: '', description: '', sku: '', image_url: '', image_original_url: '',
     base_price: '', packaging_fee: '0', packaging_fee_mode: 'per_unit', packaging_options: [],
     tax_code: 'standard_8', sort_order: '',
     is_active: true, is_available: true,

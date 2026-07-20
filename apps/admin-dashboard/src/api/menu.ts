@@ -48,6 +48,8 @@ export type MenuItem = {
   description?: string | null;
   sku?: string | null;
   image_url?: string | null;
+  /** High-res master for admin re-crop (not used on POS/website). */
+  image_original_url?: string | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -100,6 +102,7 @@ export type MenuItemPayload = {
   description?: string | null;
   sku?: string | null;
   image_url?: string | null;
+  image_original_url?: string | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -240,9 +243,13 @@ export async function toggleItemAvailability(id: number): Promise<{ item: MenuIt
   return req(`/items/${id}/toggle-availability`, { method: 'PATCH' });
 }
 
-export async function uploadMenuImage(file: File): Promise<{ url: string }> {
+export async function uploadMenuImage(
+  file: File,
+  original?: File,
+): Promise<{ url: string; original_url?: string | null }> {
   const formData = new FormData();
   formData.append('image', file);
+  if (original) formData.append('original', original);
   return req('/admin/upload-image', { method: 'POST', body: formData });
 }
 
@@ -252,6 +259,7 @@ export interface ItemPhoto {
   id: number;
   item_id: number;
   url: string;
+  original_url?: string | null;
   sort_order: number;
   is_primary: boolean;
   created_at: string;
@@ -261,16 +269,22 @@ export async function getItemPhotos(itemId: number): Promise<{ photos: ItemPhoto
   return req(`/items/${itemId}/photos`);
 }
 
-export async function uploadItemPhoto(itemId: number, file: File): Promise<{ photo: ItemPhoto }> {
+export async function uploadItemPhoto(
+  itemId: number,
+  file: File,
+  options?: { original?: File; original_url?: string | null },
+): Promise<{ photo: ItemPhoto }> {
   const form = new FormData();
   form.append('photo', file);
+  if (options?.original) form.append('original', options.original);
+  if (options?.original_url) form.append('original_url', options.original_url);
   return req(`/items/${itemId}/photos`, { method: 'POST', body: form });
 }
 
 export async function updateItemPhoto(
   itemId: number,
   photoId: number,
-  data: { sort_order?: number; is_primary?: boolean },
+  data: { sort_order?: number; is_primary?: boolean; original_url?: string | null; alt_text?: string | null },
 ): Promise<{ photo: ItemPhoto }> {
   return req(`/items/${itemId}/photos/${photoId}`, { method: 'PATCH', body: JSON.stringify(data) });
 }

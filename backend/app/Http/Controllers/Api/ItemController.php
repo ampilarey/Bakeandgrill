@@ -283,6 +283,7 @@ class ItemController extends Controller
             }
 
             if ($includeAdminExtras) {
+                $data['image_original_url'] = $item->image_original_url;
                 $data['is_combo'] = (bool) ($item->is_combo ?? false);
                 $data['combo_discount_pct'] = $item->combo_discount_pct;
                 $data['cost'] = $item->cost !== null ? (float) $item->cost : null;

@@ -9,10 +9,10 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Normalize menu / gallery uploads to a fixed 4:3 JPEG for POS + website.
+ * Menu media: public crop + optional high-res master for re-edit / reuse.
  *
- * Target: 1200×900 (~2× common card widths) at quality 82 — sharp on retina,
- * typically 120–250 KB so menu grids stay fast.
+ * - Crop (POS/website): 1200×900 JPEG @ 82
+ * - Master (admin re-crop): fit within 3200px, aspect preserved, JPEG @ 90
  */
 class MenuImageProcessor
 {
@@ -22,14 +22,93 @@ class MenuImageProcessor
 
     public const JPEG_QUALITY = 82;
 
+    public const MASTER_MAX_EDGE = 3200;
+
+    public const MASTER_JPEG_QUALITY = 90;
+
     /**
-     * Process an uploaded image and store it on the public disk.
-     *
      * @return string Relative storage path (e.g. menu/uuid.jpg)
      */
     public function storeProcessed(UploadedFile $file, string $directory): string
     {
-        $binary = $this->processToJpeg($file);
+        return $this->writeBinary($this->processToJpeg($file), $directory);
+    }
+
+    /**
+     * Store a high-res master (full frame, not forced to 4:3).
+     *
+     * @return string Relative storage path
+     */
+    public function storeMaster(UploadedFile $file, string $directory): string
+    {
+        return $this->writeBinary($this->processMasterJpeg($file), $directory);
+    }
+
+    public function processToJpeg(UploadedFile $file): string
+    {
+        $image = $this->loadUploaded($file);
+
+        try {
+            [$srcW, $srcH] = $this->dimensions($image);
+            $targetW = self::WIDTH;
+            $targetH = self::HEIGHT;
+            $targetAspect = $targetW / $targetH;
+            $srcAspect = $srcW / $srcH;
+
+            if ($srcAspect > $targetAspect) {
+                $cropH = $srcH;
+                $cropW = (int) round($srcH * $targetAspect);
+                $cropX = (int) max(0, round(($srcW - $cropW) / 2));
+                $cropY = 0;
+            } else {
+                $cropW = $srcW;
+                $cropH = (int) round($srcW / $targetAspect);
+                $cropX = 0;
+                $cropY = (int) max(0, round(($srcH - $cropH) / 2));
+            }
+
+            return $this->resampleToJpeg(
+                $image,
+                $cropX,
+                $cropY,
+                $cropW,
+                $cropH,
+                $targetW,
+                $targetH,
+                self::JPEG_QUALITY,
+            );
+        } finally {
+            imagedestroy($image);
+        }
+    }
+
+    public function processMasterJpeg(UploadedFile $file): string
+    {
+        $image = $this->loadUploaded($file);
+
+        try {
+            [$srcW, $srcH] = $this->dimensions($image);
+            $scale = min(1, self::MASTER_MAX_EDGE / max($srcW, $srcH));
+            $targetW = max(1, (int) round($srcW * $scale));
+            $targetH = max(1, (int) round($srcH * $scale));
+
+            return $this->resampleToJpeg(
+                $image,
+                0,
+                0,
+                $srcW,
+                $srcH,
+                $targetW,
+                $targetH,
+                self::MASTER_JPEG_QUALITY,
+            );
+        } finally {
+            imagedestroy($image);
+        }
+    }
+
+    private function writeBinary(string $binary, string $directory): string
+    {
         $filename = Str::uuid()->toString() . '.jpg';
         $relative = trim($directory, '/') . '/' . $filename;
         $absolute = storage_path('app/public/' . $relative);
@@ -46,7 +125,7 @@ class MenuImageProcessor
         return $relative;
     }
 
-    public function processToJpeg(UploadedFile $file): string
+    private function loadUploaded(UploadedFile $file): \GdImage
     {
         $path = $file->getRealPath();
         if ($path === false || !is_readable($path)) {
@@ -58,68 +137,53 @@ class MenuImageProcessor
             throw new RuntimeException('Unsupported or corrupt image. Use JPEG, PNG, or WebP.');
         }
 
-        try {
-            $srcW = imagesx($image);
-            $srcH = imagesy($image);
-            if ($srcW < 1 || $srcH < 1) {
-                throw new RuntimeException('Invalid image dimensions.');
-            }
+        return $image;
+    }
 
-            $targetW = self::WIDTH;
-            $targetH = self::HEIGHT;
-            $targetAspect = $targetW / $targetH;
-            $srcAspect = $srcW / $srcH;
-
-            // Cover-crop into 4:3, then scale to exact target size.
-            if ($srcAspect > $targetAspect) {
-                $cropH = $srcH;
-                $cropW = (int) round($srcH * $targetAspect);
-                $cropX = (int) max(0, round(($srcW - $cropW) / 2));
-                $cropY = 0;
-            } else {
-                $cropW = $srcW;
-                $cropH = (int) round($srcW / $targetAspect);
-                $cropX = 0;
-                $cropY = (int) max(0, round(($srcH - $cropH) / 2));
-            }
-
-            $out = imagecreatetruecolor($targetW, $targetH);
-            if ($out === false) {
-                throw new RuntimeException('Could not allocate image canvas.');
-            }
-
-            // Flatten transparency onto white (menu thumbs are always JPEG).
-            $white = imagecolorallocate($out, 255, 255, 255);
-            if ($white !== false) {
-                imagefilledrectangle($out, 0, 0, $targetW, $targetH, $white);
-            }
-
-            imagecopyresampled(
-                $out,
-                $image,
-                0,
-                0,
-                $cropX,
-                $cropY,
-                $targetW,
-                $targetH,
-                $cropW,
-                $cropH,
-            );
-
-            ob_start();
-            imagejpeg($out, null, self::JPEG_QUALITY);
-            $binary = ob_get_clean();
-            imagedestroy($out);
-
-            if ($binary === false || $binary === '') {
-                throw new RuntimeException('Failed to encode menu JPEG.');
-            }
-
-            return $binary;
-        } finally {
-            imagedestroy($image);
+    /** @return array{0: int, 1: int} */
+    private function dimensions(\GdImage $image): array
+    {
+        $srcW = imagesx($image);
+        $srcH = imagesy($image);
+        if ($srcW < 1 || $srcH < 1) {
+            throw new RuntimeException('Invalid image dimensions.');
         }
+
+        return [$srcW, $srcH];
+    }
+
+    private function resampleToJpeg(
+        \GdImage $image,
+        int $srcX,
+        int $srcY,
+        int $srcW,
+        int $srcH,
+        int $targetW,
+        int $targetH,
+        int $quality,
+    ): string {
+        $out = imagecreatetruecolor($targetW, $targetH);
+        if ($out === false) {
+            throw new RuntimeException('Could not allocate image canvas.');
+        }
+
+        $white = imagecolorallocate($out, 255, 255, 255);
+        if ($white !== false) {
+            imagefilledrectangle($out, 0, 0, $targetW, $targetH, $white);
+        }
+
+        imagecopyresampled($out, $image, 0, 0, $srcX, $srcY, $targetW, $targetH, $srcW, $srcH);
+
+        ob_start();
+        imagejpeg($out, null, $quality);
+        $binary = ob_get_clean();
+        imagedestroy($out);
+
+        if ($binary === false || $binary === '') {
+            throw new RuntimeException('Failed to encode menu JPEG.');
+        }
+
+        return $binary;
     }
 
     private function createImageResource(string $path, string $mime): \GdImage|null
