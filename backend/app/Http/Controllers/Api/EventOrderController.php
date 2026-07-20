@@ -50,6 +50,28 @@ class EventOrderController extends Controller
         ]);
     }
 
+    public function show(Request $request, string $reference): JsonResponse
+    {
+        $customer = $request->user();
+        if (!$customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        $row = CateringRequest::query()
+            ->with(['lines', 'posOrder'])
+            ->where('customer_id', $customer->id)
+            ->where('reference', $reference)
+            ->first();
+
+        if (!$row) {
+            return response()->json(['message' => 'Event not found.'], 404);
+        }
+
+        return response()->json([
+            'data' => $this->formatCustomerEventDetail($row),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $customer = $request->user();
@@ -335,5 +357,34 @@ class EventOrderController extends Controller
             'total_laar' => $totalLaar,
             'created_at' => $row->created_at?->toIso8601String(),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function formatCustomerEventDetail(CateringRequest $row): array
+    {
+        $base = $this->formatCustomerEvent($row);
+        $lines = $row->relationLoaded('lines')
+            ? $row->lines
+            : $row->lines()->get();
+
+        return array_merge($base, [
+            'contact_name' => $row->contact_name,
+            'phone' => $row->phone,
+            'email' => $row->email,
+            'company' => $row->company,
+            'occasion' => $row->occasion,
+            'delivery_address' => $row->delivery_address,
+            'delivery_island' => $row->delivery_island,
+            'notes' => $row->notes,
+            'dietary_notes' => $row->dietary_notes,
+            'lines' => $lines->map(fn (CateringRequestLine $l) => [
+                'id' => $l->id,
+                'name' => $l->name,
+                'quantity' => $l->quantity,
+                'unit_price' => $l->unit_price !== null ? (float) $l->unit_price : null,
+                'notes' => $l->notes,
+                'is_custom' => (bool) $l->is_custom,
+            ])->values()->all(),
+        ]);
     }
 }

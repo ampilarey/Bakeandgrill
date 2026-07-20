@@ -69,6 +69,30 @@ export type CustomerEventOrder = {
   created_at: string | null;
 };
 
+export type CustomerEventOrderDetail = CustomerEventOrder & {
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  company: string | null;
+  occasion: string | null;
+  delivery_address: string | null;
+  delivery_island: string | null;
+  notes: string | null;
+  dietary_notes: string | null;
+  lines: Array<{
+    id: number;
+    name: string;
+    quantity: number;
+    unit_price: number | null;
+    notes: string | null;
+    is_custom: boolean;
+  }>;
+};
+
 export async function fetchMyEventOrders(): Promise<{ data: CustomerEventOrder[] }> {
   return request(ENDPOINTS.CUSTOMER_EVENT_ORDERS);
+}
+
+export async function fetchMyEventOrder(reference: string): Promise<{ data: CustomerEventOrderDetail }> {
+  return request(ENDPOINTS.CUSTOMER_EVENT_ORDER_BY_REF(reference));
 }

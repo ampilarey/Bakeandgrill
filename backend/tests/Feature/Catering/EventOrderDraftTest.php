@@ -198,7 +198,7 @@ class EventOrderDraftTest extends TestCase
             ->first();
         $this->assertNotNull($customerSms);
         $this->assertStringContainsString('View details:', (string) $customerSms->message);
-        $this->assertStringContainsString('/order/events/mine', (string) $customerSms->message);
+        $this->assertStringContainsString('/order/events/mine/' . $row->reference, (string) $customerSms->message);
 
         $staffSms = SmsLog::query()
             ->where('idempotency_key', 'event:' . $id . ':1:created:staff_sms:0')

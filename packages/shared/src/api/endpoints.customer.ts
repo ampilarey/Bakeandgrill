@@ -31,6 +31,7 @@ export const CUSTOMER_ENDPOINTS = {
   QUICK_REORDER:              (orderId: number) => `/customer/orders/${orderId}/reorder`,
   CUSTOMER_PRE_ORDERS:        '/customer/pre-orders',
   CUSTOMER_EVENT_ORDERS:      '/customer/event-orders',
+  CUSTOMER_EVENT_ORDER_BY_REF:(reference: string) => `/customer/event-orders/${encodeURIComponent(reference)}`,
 
   // Order creation & lifecycle (some dual-actor — see api.php notes)
   ORDERS:                     '/orders',

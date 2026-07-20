@@ -35,7 +35,7 @@ class CateringEventCreatedNotifier
     private function notifyCustomer(CateringRequest $request, string $ref, string $baseKey): void
     {
         $phone = trim((string) $request->phone);
-        $viewUrl = $this->customerEventsUrl();
+        $viewUrl = $this->customerEventUrl($ref);
 
         if ($phone === '') {
             Log::warning('CateringEventCreatedNotifier: customer phone empty — SMS skipped', [
@@ -126,15 +126,13 @@ class CateringEventCreatedNotifier
         }
     }
 
-    private function customerEventsUrl(): string
+    private function customerEventUrl(string $reference): string
     {
-        return rtrim((string) config('app.url'), '/') . '/order/events/mine';
+        return rtrim((string) config('app.url'), '/') . '/order/events/mine/' . rawurlencode($reference);
     }
 
     private function adminEventUrl(int $id): string
     {
-        $base = rtrim((string) (config('app.admin_url') ?: config('app.url')), '/');
-
-        return $base . '/admin/catering/' . $id;
+        return rtrim((string) config('app.url'), '/') . '/admin/catering/' . $id;
     }
 }

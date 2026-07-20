@@ -424,6 +424,13 @@ class EventQuotePhase4Test extends TestCase
         $this->assertContains($mine->reference, $refs);
         $this->assertCount(1, $refs);
         $this->assertArrayNotHasKey('id', $res->json('data.0'));
+
+        $detail = $this->getJson('/api/customer/event-orders/' . $mine->reference)->assertOk();
+        $this->assertSame($mine->reference, $detail->json('data.reference'));
+        $this->assertIsArray($detail->json('data.lines'));
+
+        $otherRef = CateringRequest::query()->where('customer_id', $otherCustomer->id)->value('reference');
+        $this->getJson('/api/customer/event-orders/' . $otherRef)->assertNotFound();
     }
 
     public function test_placeholder_never_menu_visible(): void

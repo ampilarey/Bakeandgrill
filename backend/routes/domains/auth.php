@@ -119,6 +119,8 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
 
     Route::get('/event-orders', [App\Http\Controllers\Api\EventOrderController::class, 'index'])
         ->middleware('throttle:30,1');
+    Route::get('/event-orders/{reference}', [App\Http\Controllers\Api\EventOrderController::class, 'show'])
+        ->middleware('throttle:30,1');
     Route::post('/event-orders', [App\Http\Controllers\Api\EventOrderController::class, 'store'])
         ->middleware('throttle:10,1');
 });

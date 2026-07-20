@@ -57,37 +57,33 @@ export function MyEventsPage() {
         {!loading && rows.length === 0 && (
           <p style={S.muted}>No events yet. <Link to="/events">Plan your first event</Link></p>
         )}
-        {rows.map((row) => {
-          const quoteLink = row.status === 'awaiting_customer' && row.quote_token
-            ? `/quote/${row.quote_token}`
-            : null;
-          const body = (
-            <>
-              <div style={{ fontWeight: 800 }}>{row.reference}</div>
-              <div style={S.muted}>
-                {row.event_date || 'Date TBD'}
-                {row.fulfillment_time ? ` · ${row.fulfillment_time}` : ''}
-                {' · '}
-                {row.status.replace(/_/g, ' ')}
-              </div>
-              {(row.total_laar > 0 || row.paid_laar > 0) && (
-                <div style={{ fontSize: 13, marginTop: 4 }}>
-                  Paid MVR {mvr(row.paid_laar)}
-                  {row.balance_laar > 0 ? ` · Balance MVR ${mvr(row.balance_laar)}` : ''}
-                </div>
-              )}
-            </>
-          );
-          return quoteLink ? (
-            <Link key={row.reference} to={quoteLink} style={S.cardLink} data-testid={`event-row-${row.reference}`}>
-              {body}
-            </Link>
-          ) : (
-            <div key={row.reference} style={S.card} data-testid={`event-row-${row.reference}`}>
-              {body}
+        {rows.map((row) => (
+          <Link
+            key={row.reference}
+            to={`/events/mine/${encodeURIComponent(row.reference)}`}
+            style={S.cardLink}
+            data-testid={`event-row-${row.reference}`}
+          >
+            <div style={{ fontWeight: 800 }}>{row.reference}</div>
+            <div style={S.muted}>
+              {row.event_date || 'Date TBD'}
+              {row.fulfillment_time ? ` · ${row.fulfillment_time}` : ''}
+              {' · '}
+              {row.status.replace(/_/g, ' ')}
             </div>
-          );
-        })}
+            {(row.total_laar > 0 || row.paid_laar > 0) && (
+              <div style={{ fontSize: 13, marginTop: 4 }}>
+                Paid MVR {mvr(row.paid_laar)}
+                {row.balance_laar > 0 ? ` · Balance MVR ${mvr(row.balance_laar)}` : ''}
+              </div>
+            )}
+            {row.quote_token && (
+              <div style={{ fontSize: 13, marginTop: 6, color: 'var(--color-primary)', fontWeight: 700 }}>
+                Quote ready — tap to view
+              </div>
+            )}
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -100,13 +96,10 @@ const S: Record<string, CSSProperties> = {
   navRow: { display: 'flex', gap: 12, marginBottom: 8, fontSize: 14 },
   navLink: { color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' },
   navActive: { fontWeight: 800 },
-  card: {
-    background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-    borderRadius: 12, padding: 14, color: 'inherit',
-  },
   cardLink: {
     background: 'var(--color-surface)', border: '1px solid var(--color-border)',
     borderRadius: 12, padding: 14, color: 'inherit', textDecoration: 'none', display: 'block',
+    cursor: 'pointer',
   },
   btn: {
     display: 'inline-block', minHeight: 44, padding: '0 16px', lineHeight: '44px',
