@@ -191,7 +191,7 @@ function MenuItemTile({
   );
 }
 
-type SaleFilter = 'all' | 'discount' | 'special';
+type SaleFilter = 'all' | 'discount' | 'special' | 'catering';
 
 function isPercentDiscountItem(item: Item): boolean {
   if (item.special?.discount_pct != null && item.special.discount_pct > 0) return true;
@@ -222,35 +222,39 @@ function CategoryPill({
   onClick,
   caret = false,
   subtle = false,
+  muted = false,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
   caret?: boolean;
   subtle?: boolean;
+  /** De-emphasized end-of-strip tab (Events & Catering). */
+  muted?: boolean;
 }) {
+  const inactiveBg = muted ? '#F8FAFC' : subtle ? '#F1F5F9' : '#FFFFFF';
+  const inactiveBorder = muted ? '#CBD5E1' : '#E2E8F0';
+  const inactiveColor = muted ? '#64748B' : '#0F172A';
   return (
     <button
       onClick={onClick}
       style={{
-        padding: subtle ? '6px 12px' : '8px 16px',
-        borderRadius: 999,
-        // Active pill uses the brand orange — same accent the cart's
-        // primary CTA and login hero use, so the "current selection"
-        // language is consistent across the whole POS.
-        border: `1px solid ${active ? '#B86820' : '#E2E8F0'}`,
-        background: active ? '#D4813A' : subtle ? '#F1F5F9' : '#FFFFFF',
-        color: active ? '#FFFFFF' : '#0F172A',
-        fontSize: subtle ? 11 : 13,
-        fontWeight: 700,
+        padding: subtle || muted ? '6px 12px' : '8px 16px',
+        borderRadius: muted ? 10 : 999,
+        border: `1px solid ${active ? '#B86820' : inactiveBorder}`,
+        background: active ? '#D4813A' : inactiveBg,
+        color: active ? '#FFFFFF' : inactiveColor,
+        fontSize: subtle || muted ? 11 : 13,
+        fontWeight: muted ? 600 : 700,
         cursor: 'pointer',
         whiteSpace: 'nowrap',
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
-        minHeight: subtle ? 30 : 36,
+        minHeight: subtle || muted ? 30 : 36,
         boxShadow: active ? '0 1px 3px rgba(212,129,58,0.35)' : 'none',
         transition: 'background 0.12s, box-shadow 0.12s',
+        opacity: muted && !active ? 0.92 : 1,
       }}
     >
       <span>{label}</span>
@@ -404,10 +408,15 @@ export function MenuGrid({
     () => filteredItems.filter(isFixedSpecialItem).length,
     [filteredItems],
   );
+  const cateringCount = useMemo(
+    () => filteredItems.filter((i) => !!i.is_catering).length,
+    [filteredItems],
+  );
 
   const saleScopedItems = useMemo(() => {
     if (saleFilter === 'discount') return filteredItems.filter(isPercentDiscountItem);
     if (saleFilter === 'special') return filteredItems.filter(isFixedSpecialItem);
+    if (saleFilter === 'catering') return filteredItems.filter((i) => !!i.is_catering);
     return filteredItems;
   }, [filteredItems, saleFilter]);
 
@@ -538,7 +547,7 @@ export function MenuGrid({
       </div>
 
       {/* Category + sale filters in one row (avoids duplicate "All items"). */}
-      {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0) && (
+      {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0 || cateringCount > 0) && (
         <div style={pillRowStyle}>
           <CategoryPill
             label="All items"
@@ -564,14 +573,33 @@ export function MenuGrid({
             <CategoryPill
               label={`% Off (${discountCount})`}
               active={saleFilter === 'discount'}
-              onClick={() => setSaleFilter((f) => (f === 'discount' ? 'all' : 'discount'))}
+              onClick={() => {
+                setSelectedCategoryId(null);
+                setSaleFilter((f) => (f === 'discount' ? 'all' : 'discount'));
+              }}
             />
           )}
           {specialCount > 0 && (
             <CategoryPill
               label={`Specials (${specialCount})`}
               active={saleFilter === 'special'}
-              onClick={() => setSaleFilter((f) => (f === 'special' ? 'all' : 'special'))}
+              onClick={() => {
+                setSelectedCategoryId(null);
+                setSaleFilter((f) => (f === 'special' ? 'all' : 'special'));
+              }}
+            />
+          )}
+          {cateringCount > 0 && (
+            <CategoryPill
+              label={`Events & Catering (${cateringCount})`}
+              active={saleFilter === 'catering'}
+              muted
+              onClick={() => {
+                // Distinct end-of-strip tab: clear category so the list is
+                // catering∧current-channel items from the whole menu.
+                setSelectedCategoryId(null);
+                setSaleFilter((f) => (f === 'catering' ? 'all' : 'catering'));
+              }}
             />
           )}
         </div>

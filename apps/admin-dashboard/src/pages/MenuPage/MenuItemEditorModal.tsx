@@ -604,14 +604,13 @@ export function MenuItemEditorModal({
             <Field label="SKU / Internal Code">
               <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
             </Field>
-            {itemId && (
-              <div>
+            <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
-                  Per-channel availability
+                  Where can this be ordered? (channel matrix)
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px' }}>
                   {SALES_CHANNELS.map(({ id, label }) => (
-                    <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                    <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
                       <input
                         type="checkbox"
                         checked={!!form.channels[id]}
@@ -624,11 +623,12 @@ export function MenuItemEditorModal({
                     </label>
                   ))}
                 </div>
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 0' }}>
-                  Delivery also requires the global delivery switch (Settings → Website) and active menu duty above.
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 0', lineHeight: 1.45 }}>
+                  Immediate sale needs dine-in / takeaway / pickup / delivery. Catering alone = event menu only
+                  (not orderable at the till or online until you also enable an immediate channel). Delivery also
+                  needs the global delivery switch and active menu duty above.
                 </p>
               </div>
-            )}
             <Field label="Image">
               <ImageUploadField
                 value={form.image_url}

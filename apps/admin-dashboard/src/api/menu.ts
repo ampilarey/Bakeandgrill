@@ -94,6 +94,8 @@ export type MenuItem = {
   dietary_tags?: string[] | null;
   allergens?: string[] | null;
   calories?: number | null;
+  /** Catering channel enabled — display flag only. */
+  is_catering?: boolean;
 };
 
 export type MenuItemPayload = {

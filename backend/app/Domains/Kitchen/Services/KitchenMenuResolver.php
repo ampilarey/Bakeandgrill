@@ -21,7 +21,16 @@ final class KitchenMenuResolver
 {
     public const CHANNELS = ['dine_in', 'takeaway', 'online_pickup', 'delivery', 'catering'];
 
-    /** Channels that can create sellable orders (never includes catering). */
+    /**
+     * Channels that can create sellable immediate orders.
+     *
+     * ARCHITECTURE RULE (docs/CATERING-EVENTS-PLAN.md §2): catering is a
+     * display/availability flag only — NEVER add it here. The catering flag
+     * by itself never makes an item orderable in immediate flows; orderability
+     * comes only from dine_in / takeaway / online_pickup / delivery. Menu /
+     * category membership never implies orderability either. Do not couple
+     * these three concepts.
+     */
     public const ORDERING_CHANNELS = ['dine_in', 'takeaway', 'online_pickup', 'delivery'];
 
     public function __construct(

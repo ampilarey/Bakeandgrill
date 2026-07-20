@@ -452,6 +452,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
             // existing line means "split into a new line", not
             // "rewrite history on a paid-up line".
             notes: [],
+            is_catering: !!item.is_catering,
           },
         ];
       });

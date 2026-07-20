@@ -5,7 +5,7 @@ export const SALES_CHANNELS = [
   { id: 'takeaway', label: 'Takeaway (POS)' },
   { id: 'online_pickup', label: 'Online pickup' },
   { id: 'delivery', label: 'Delivery' },
-  { id: 'catering', label: 'Catering (inquiry only)' },
+  { id: 'catering', label: 'Catering / events' },
 ] as const;
 
 export type VariantRow = MenuVariant & { _key: string };

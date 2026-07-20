@@ -50,7 +50,8 @@
                     "tax_code": "standard_8",
                     "packaging_fee": "0.00",
                     "snoozed_until": null,
-                    "packaging_fee_mode": "per_unit"
+                    "packaging_fee_mode": "per_unit",
+                    "image_original_url": null
                 }
             ]
         }

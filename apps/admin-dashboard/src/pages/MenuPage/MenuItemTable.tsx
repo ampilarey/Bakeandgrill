@@ -12,11 +12,13 @@ type MenuItemTableProps = {
   kitchenSaving: boolean;
   selectedCat: number | null;
   search: string;
+  cateringOnly: boolean;
   page: number;
   lastPage: number;
   perPage: number;
   onSelectedCatChange: (cat: number | null) => void;
   onSearchChange: (search: string) => void;
+  onCateringOnlyChange: (v: boolean) => void;
   onPerPageChange: (perPage: number) => void;
   onPageChange: (page: number) => void;
   onToggleKitchenGroup: (id: number) => void;
@@ -38,11 +40,13 @@ export function MenuItemTable({
   kitchenSaving,
   selectedCat,
   search,
+  cateringOnly,
   page,
   lastPage,
   perPage,
   onSelectedCatChange,
   onSearchChange,
+  onCateringOnlyChange,
   onPerPageChange,
   onPageChange,
   onToggleKitchenGroup,
@@ -54,6 +58,12 @@ export function MenuItemTable({
   onViewRecipe,
 }: MenuItemTableProps) {
   const defaultMenuGroups = menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }];
+
+  const isCateringItem = (item: MenuItem) =>
+    !!item.is_catering
+    || !!item.channel_availabilities?.some((r) => r.channel === 'catering' && r.is_enabled);
+
+  const visibleItems = cateringOnly ? items.filter(isCateringItem) : items;
 
   return (
     <>
@@ -101,6 +111,18 @@ export function MenuItemTable({
         <div style={{ flex: 1, minWidth: 180 }}>
           <Input value={search} onChange={onSearchChange} placeholder="Search by name or SKU…" />
         </div>
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6B5D4F',
+          padding: '8px 12px', borderRadius: 9, border: '1px solid #E8E0D8',
+          background: cateringOnly ? '#FEF3E8' : '#fff', cursor: 'pointer', minHeight: 44,
+        }}>
+          <input
+            type="checkbox"
+            checked={cateringOnly}
+            onChange={(e) => onCateringOnlyChange(e.target.checked)}
+          />
+          Catering items only
+        </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B5D4F' }}>
           Per page:
           <select
@@ -114,8 +136,8 @@ export function MenuItemTable({
       </div>
 
       {loading && items.length === 0 ? <Spinner /> :
-      items.length === 0 ? (
-        <Card><EmptyState message="No items found." /></Card>
+      visibleItems.length === 0 ? (
+        <Card><EmptyState message={cateringOnly ? 'No catering-flagged items on this page.' : 'No items found.'} /></Card>
       ) : (
         <>
           <Card style={{ padding: 0, overflow: 'hidden' }}>
@@ -129,7 +151,7 @@ export function MenuItemTable({
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
+                {visibleItems.map((item) => (
                   <tr key={item.id} style={{ borderBottom: '1px solid #F0EBE5', opacity: item.is_active ? 1 : 0.5 }}>
                     <td style={{ padding: '10px 14px', width: 52 }}>
                       {item.image_url ? (
@@ -141,7 +163,18 @@ export function MenuItemTable({
                       )}
                     </td>
                     <td style={{ padding: '10px 14px' }}>
-                      <div style={{ fontWeight: 600 }}>{item.name}</div>
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {item.name}
+                        {isCateringItem(item) && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase',
+                            color: '#B86820', background: '#FEF3E8', border: '1px solid #F0D9C0',
+                            borderRadius: 4, padding: '2px 6px',
+                          }}>
+                            Catering menu
+                          </span>
+                        )}
+                      </div>
                       {item.sku && <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.sku}</div>}
                       {(() => {
                         const price = parseFloat(String(item.base_price));

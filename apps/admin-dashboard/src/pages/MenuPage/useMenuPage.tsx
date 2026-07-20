@@ -32,6 +32,7 @@ export function useMenuPage() {
 
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [cateringOnly, setCateringOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
@@ -138,7 +139,7 @@ export function useMenuPage() {
 
   const handleCreateItem = async (form: ItemForm) => {
     try {
-      await createItem(formToPayload(form, false));
+      await createItem(formToPayload(form, true));
       setCreatingItem(false);
       await loadItems();
     } catch (e) { setError((e as Error).message); }
@@ -225,6 +226,8 @@ export function useMenuPage() {
     setSelectedCat,
     search,
     setSearch,
+    cateringOnly,
+    setCateringOnly,
     page,
     lastPage,
     perPage,

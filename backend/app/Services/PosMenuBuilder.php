@@ -55,6 +55,19 @@ class PosMenuBuilder
                 ->get()
                 ->keyBy('item_id');
 
+        // Catering is display-only (never an ordering channel). Flag items that
+        // also have catering enabled so POS can show the Events & Catering tab.
+        $cateringItemIds = $itemIds === []
+            ? []
+            : ItemChannelAvailability::query()
+                ->whereIn('item_id', $itemIds)
+                ->where('channel', 'catering')
+                ->where('is_enabled', true)
+                ->pluck('item_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        $cateringSet = array_fill_keys($cateringItemIds, true);
+
         $stockItemIds = $items
             ->filter(fn (Item $item) => $item->track_stock && $item->availability_type === 'stock_based')
             ->pluck('id')
@@ -82,6 +95,7 @@ class PosMenuBuilder
             $reservedByItem,
             $channel,
             $at,
+            $cateringSet,
         ) {
             $available = $this->isPosItemAvailable(
                 $item,
@@ -157,6 +171,7 @@ class PosMenuBuilder
                     'price' => $m->price,
                 ]),
                 'availability' => $available,
+                'is_catering' => isset($cateringSet[$item->id]),
             ];
 
             $specialBlock = $baseSpecial?->toApiBlock();

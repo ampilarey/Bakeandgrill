@@ -20,6 +20,7 @@
         "has_variants": false,
         "variants": [],
         "modifiers": [],
+        "is_catering": false,
         "availability": {
             "available": true,
             "reason_code": null,

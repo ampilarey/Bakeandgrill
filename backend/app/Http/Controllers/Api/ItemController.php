@@ -55,6 +55,10 @@ class ItemController extends Controller
             $with[] = 'comboItems.item';
             $with[] = 'recipe.recipeItems.inventoryItem';
         }
+        // Public / POS need catering flag for Events & Catering sections.
+        if (!$isAdmin || $isPosView) {
+            $with[] = 'channelAvailabilities';
+        }
         $query = Item::with($with);
 
         if (!$isAdmin) {
@@ -155,6 +159,12 @@ class ItemController extends Controller
                         'valid_until' => $r->valid_until?->toIso8601String(),
                     ])->values()->all()
                     : null,
+                // Display flag only — does NOT make the item orderable by itself
+                // (see KitchenMenuResolver::ORDERING_CHANNELS / CATERING-EVENTS-PLAN §2).
+                'is_catering' => $item->relationLoaded('channelAvailabilities')
+                    && $item->channelAvailabilities->contains(
+                        fn ($r) => $r->channel === 'catering' && (bool) $r->is_enabled,
+                    ),
                 'has_variants' => $item->has_variants,
                 'track_stock' => $includeAdminExtras ? (bool) $item->track_stock : null,
                 'stock_quantity' => $includeAdminExtras ? (int) $item->stock_quantity : null,
@@ -402,7 +412,7 @@ class ItemController extends Controller
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
 
-        $item = Item::with(['category', 'variants', 'modifiers', 'packagingOptions'])
+        $item = Item::with(['category', 'variants', 'modifiers', 'packagingOptions', 'channelAvailabilities'])
             ->where('is_active', true)
             ->findOrFail($id);
 
@@ -451,6 +461,9 @@ class ItemController extends Controller
                 'name' => $m->name,
                 'price' => $m->price,
             ]),
+            'is_catering' => $item->channelAvailabilities->contains(
+                fn ($r) => $r->channel === 'catering' && (bool) $r->is_enabled,
+            ),
         ];
 
         if (!$isAdmin) {

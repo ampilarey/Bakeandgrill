@@ -60,6 +60,8 @@ export type MenuItem = {
     sort_order: number;
     is_primary: boolean;
   }> | null;
+  /** True when the catering channel is enabled — display only; not orderability. */
+  is_catering?: boolean;
   category_id: number | null;
   barcode?: string | null;
   track_stock?: boolean;
@@ -142,6 +144,8 @@ export type CartItem = {
   // `makeCartKey` in `useCart`). Joined with " · " before being sent
   // to the backend's `notes` field.
   notes?: string[];
+  /** Snapshot: item has catering channel enabled (POS cart badge). */
+  is_catering?: boolean;
 };
 
 export type RestaurantTable = {

@@ -221,11 +221,13 @@ export function MenuPage() {
           kitchenSaving={m.kitchenSaving}
           selectedCat={m.selectedCat}
           search={m.search}
+          cateringOnly={m.cateringOnly}
           page={m.page}
           lastPage={m.lastPage}
           perPage={m.perPage}
           onSelectedCatChange={m.setSelectedCat}
           onSearchChange={m.setSearch}
+          onCateringOnlyChange={m.setCateringOnly}
           onPerPageChange={m.handlePerPageChange}
           onPageChange={m.handlePageChange}
           onToggleKitchenGroup={m.toggleKitchenGroup}

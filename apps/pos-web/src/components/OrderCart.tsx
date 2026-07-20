@@ -1345,6 +1345,16 @@ function CartLine({
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</span>
+                {item.is_catering && (
+                  <span style={{
+                    marginLeft: 6, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
+                    textTransform: 'uppercase', color: '#64748B', background: '#F1F5F9',
+                    border: '1px solid #E2E8F0', borderRadius: 3, padding: '1px 4px',
+                    verticalAlign: 'middle',
+                  }}>
+                    Catering
+                  </span>
+                )}
                 {item.variant_name && (
                   <span style={{
                     fontSize: 11, color: C.muted, fontWeight: 500,
