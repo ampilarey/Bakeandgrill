@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Star, Trash2, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Crop, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, type ItemPhoto } from '../../api';
 import { ImageCropModal } from './ImageCropModal';
+import { loadImageAsObjectUrl, resolveMediaUrl } from './mediaUrl';
 
 export function PhotosTab({ itemId }: { itemId: number }) {
   const [photos, setPhotos] = useState<ItemPhoto[]>([]);
@@ -10,7 +11,9 @@ export function PhotosTab({ itemId }: { itemId: number }) {
   const [error, setError] = useState('');
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropName, setCropName] = useState('item-photo.jpg');
+  const [replacingPhoto, setReplacingPhoto] = useState<ItemPhoto | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const ownsObjectUrl = useRef(false);
 
   const load = async () => {
     setLoading(true);
@@ -27,16 +30,37 @@ export function PhotosTab({ itemId }: { itemId: number }) {
 
   useEffect(() => { void load(); }, [itemId]);
 
-  const openCropper = (file: File) => {
+  const openCropSrc = (src: string, fileName: string, isObjectUrl: boolean, replace: ItemPhoto | null) => {
     setError('');
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
-    setCropName(file.name || 'item-photo.jpg');
-    setCropSrc(URL.createObjectURL(file));
+    if (cropSrc && ownsObjectUrl.current) URL.revokeObjectURL(cropSrc);
+    ownsObjectUrl.current = isObjectUrl;
+    setCropName(fileName);
+    setReplacingPhoto(replace);
+    setCropSrc(src);
   };
 
   const closeCropper = () => {
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    if (cropSrc && ownsObjectUrl.current) URL.revokeObjectURL(cropSrc);
+    ownsObjectUrl.current = false;
     setCropSrc(null);
+    setReplacingPhoto(null);
+  };
+
+  const openCropperFromFile = (file: File) => {
+    openCropSrc(URL.createObjectURL(file), file.name || 'item-photo.jpg', true, null);
+  };
+
+  const openCropperFromExisting = async (photo: ItemPhoto) => {
+    setUploading(true);
+    setError('');
+    try {
+      const objectUrl = await loadImageAsObjectUrl(photo.url);
+      openCropSrc(objectUrl, `item-photo-${photo.id}.jpg`, true, photo);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleUpload = async (file: File) => {
@@ -44,7 +68,16 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     try {
       const { photo } = await uploadItemPhoto(itemId, file);
       if (!photo) throw new Error('Upload succeeded but no photo was returned.');
-      setPhotos((p) => [...p, photo]);
+
+      if (replacingPhoto) {
+        await updateItemPhoto(itemId, photo.id, {
+          sort_order: replacingPhoto.sort_order,
+          ...(replacingPhoto.is_primary ? { is_primary: true } : {}),
+        });
+        await deleteItemPhoto(itemId, replacingPhoto.id);
+      }
+
+      await load();
       closeCropper();
     } catch (e) { setError((e as Error).message); }
     finally { setUploading(false); }
@@ -104,10 +137,10 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         }}
       >
         <Upload size={15} />
-        {uploading ? 'Uploading…' : 'Upload & crop photo'}
+        {uploading && !cropSrc ? 'Working…' : 'Upload & crop photo'}
       </button>
       <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
-        Same 4:3 crop as the main Image — only the framed area is saved for the website.
+        Crop to 4:3. Use the crop button on an existing photo to re-frame it for the menu/POS.
       </p>
       <input
         ref={fileRef}
@@ -116,7 +149,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         style={{ display: 'none' }}
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) openCropper(f);
+          if (f) openCropperFromFile(f);
           e.target.value = '';
         }}
       />
@@ -124,7 +157,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         <ImageCropModal
           imageSrc={cropSrc}
           fileName={cropName}
-          title="Crop gallery photo"
+          title={replacingPhoto ? 'Re-crop gallery photo' : 'Crop gallery photo'}
           onCancel={closeCropper}
           onConfirm={handleUpload}
         />
@@ -139,17 +172,25 @@ export function PhotosTab({ itemId }: { itemId: number }) {
           {[...photos].sort((a, b) => a.sort_order - b.sort_order).map((ph, index, sorted) => (
             <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid #D4813A' : '2px solid #E8E0D8' }}>
               <img
-                src={ph.url}
+                src={resolveMediaUrl(ph.url)}
                 alt=""
-                style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', background: '#F8F6F3' }}
               />
               {ph.is_primary && (
                 <div style={{ position: 'absolute', top: 4, left: 4, background: '#D4813A', color: '#fff', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700 }}>
                   Primary
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 4, padding: '6px 6px 6px' }}>
+              <div style={{ display: 'flex', gap: 4, padding: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  title="Edit / re-crop"
+                  disabled={uploading}
+                  onClick={() => void openCropperFromExisting(ph)}
+                  style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', background: '#FEF3E8', border: '1px solid #F0D9C0', borderRadius: 6, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 700, color: '#B86820' }}
+                >
+                  <Crop size={12} /> Edit crop
+                </button>
                 <button
                   type="button"
                   title="Move earlier"

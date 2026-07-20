@@ -1,25 +1,49 @@
 import { useRef, useState } from 'react';
+import { Crop, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/Layout';
 import { ImageCropModal } from './ImageCropModal';
+import { loadImageAsObjectUrl, resolveMediaUrl } from './mediaUrl';
 
 export function ImageUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropName, setCropName] = useState('menu-image.jpg');
+  const [previewKey, setPreviewKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const ownsObjectUrl = useRef(false);
 
-  const openCropper = (file: File) => {
+  const openCropSrc = (src: string, fileName: string, isObjectUrl: boolean) => {
     setUploadError('');
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
-    setCropName(file.name || 'menu-image.jpg');
-    setCropSrc(URL.createObjectURL(file));
+    if (cropSrc && ownsObjectUrl.current) URL.revokeObjectURL(cropSrc);
+    ownsObjectUrl.current = isObjectUrl;
+    setCropName(fileName);
+    setCropSrc(src);
   };
 
   const closeCropper = () => {
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    if (cropSrc && ownsObjectUrl.current) URL.revokeObjectURL(cropSrc);
+    ownsObjectUrl.current = false;
     setCropSrc(null);
+  };
+
+  const openCropperFromFile = (file: File) => {
+    openCropSrc(URL.createObjectURL(file), file.name || 'menu-image.jpg', true);
+  };
+
+  const openCropperFromExisting = async () => {
+    if (!value.trim()) return;
+    setUploadError('');
+    setUploading(true);
+    try {
+      const objectUrl = await loadImageAsObjectUrl(value.trim());
+      openCropSrc(objectUrl, 'menu-image.jpg', true);
+    } catch (e) {
+      setUploadError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const uploadCropped = async (file: File) => {
@@ -27,7 +51,9 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
     setUploadError('');
     try {
       const { url } = await uploadMenuImage(file);
+      if (!url) throw new Error('Upload succeeded but no image URL was returned.');
       onChange(url);
+      setPreviewKey((k) => k + 1);
       closeCropper();
     } catch (e) {
       setUploadError((e as Error).message);
@@ -36,9 +62,11 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
     }
   };
 
+  const previewSrc = value ? `${resolveMediaUrl(value)}${value.includes('?') ? '&' : '?'}v=${previewKey}` : '';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Input
           value={value}
           onChange={onChange}
@@ -52,10 +80,28 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
             flexShrink: 0, padding: '8px 14px', background: '#F8F6F3',
             border: '1px solid #E8E0D8', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: 13, fontWeight: 600, color: '#6B5D4F', whiteSpace: 'nowrap',
+            display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
           }}
         >
-          {uploading ? '⏳ Uploading…' : '📁 Upload & crop'}
+          <Upload size={14} />
+          {uploading && !cropSrc ? 'Working…' : 'Upload & crop'}
         </button>
+        {value.trim() && (
+          <button
+            type="button"
+            onClick={() => void openCropperFromExisting()}
+            disabled={uploading}
+            style={{
+              flexShrink: 0, padding: '8px 14px', background: '#FEF3E8',
+              border: '1px solid #F0D9C0', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 600, color: '#B86820', whiteSpace: 'nowrap',
+              display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
+            }}
+          >
+            <Crop size={14} />
+            Edit / re-crop
+          </button>
+        )}
         <input
           ref={inputRef}
           type="file"
@@ -63,28 +109,33 @@ export function ImageUploadField({ value, onChange }: { value: string; onChange:
           style={{ display: 'none' }}
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) openCropper(file);
+            if (file) openCropperFromFile(file);
             e.target.value = '';
           }}
         />
       </div>
       <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>
-        Uploads open a 4:3 crop tool so every item photo matches the online menu card.
+        Crop to 4:3 for a clean menu/POS thumbnail. Use Edit / re-crop on photos already saved.
       </p>
       {uploadError && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{uploadError}</p>}
-      {value && (
+      {previewSrc && (
         <img
-          src={value}
-          alt="preview"
-          style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8' }}
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          key={previewKey}
+          src={previewSrc}
+          alt="Item thumbnail preview"
+          style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8', background: '#F8F6F3' }}
+          onError={(e) => {
+            const el = e.target as HTMLImageElement;
+            el.style.outline = '1px solid #fca5a5';
+            el.alt = 'Preview failed to load';
+          }}
         />
       )}
       {cropSrc && (
         <ImageCropModal
           imageSrc={cropSrc}
           fileName={cropName}
-          title="Crop item image"
+          title="Edit item image"
           onCancel={closeCropper}
           onConfirm={uploadCropped}
         />

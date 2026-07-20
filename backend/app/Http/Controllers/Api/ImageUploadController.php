@@ -44,7 +44,9 @@ class ImageUploadController extends Controller
         // Store in storage/app/public/menu/ (publicly accessible via /storage/menu/)
         $file->storeAs('menu', $filename, 'public');
 
-        $url = asset('storage/menu/' . $filename);
+        // Relative URL so admin/POS/order work on any host (asset() follows APP_URL and
+        // often breaks previews when APP_URL ≠ the browser origin).
+        $url = '/storage/menu/' . $filename;
 
         return response()->json(['url' => $url], 201);
     }

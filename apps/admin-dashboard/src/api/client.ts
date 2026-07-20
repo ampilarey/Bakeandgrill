@@ -21,6 +21,11 @@ export const BASE = resolveApiBaseUrl({
 
 const API_ORIGIN = getApiOrigin(BASE);
 
+/** Public origin for resolving /storage media URLs in the admin UI. */
+export function getAdminApiOrigin(): string {
+  return API_ORIGIN || (typeof window !== 'undefined' ? window.location.origin : '');
+}
+
 if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   // eslint-disable-next-line no-console
   console.error('[CONFIG] VITE_API_BASE_URL is not set in production — all API calls will fail if the app is not served from the same origin as the API.');
