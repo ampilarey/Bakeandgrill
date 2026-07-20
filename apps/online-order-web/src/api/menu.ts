@@ -242,21 +242,6 @@ export async function fetchFeaturedReviews(limit = 6): Promise<{ reviews: Featur
   return request(`${ENDPOINTS.REVIEWS_FEATURED}?${qs}`);
 }
 
-export async function submitCorporateInquiry(data: {
-  contact_name: string;
-  phone: string;
-  company?: string;
-  email?: string;
-  event_date?: string;
-  headcount?: number;
-  notes?: string;
-}): Promise<{ message: string; inquiry: { id: number; created_at: string } }> {
-  return request(ENDPOINTS.CORPORATE_INQUIRIES, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
 export interface ItemReview {
   id: number;
   rating: number;

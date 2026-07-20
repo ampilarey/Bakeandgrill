@@ -510,6 +510,23 @@ export function ItemSheet({
                 : `Add${qty > 1 ? ` ${qty}×` : ''} to cart — MVR ${(totalPrice * qty).toFixed(2)}`)
               : 'Select an option first'}
           </button>
+          {item.is_catering && !isEdit && (
+            <a
+              href={`/order/events?add=${item.id}`}
+              data-testid="item-sheet-event-link"
+              style={{
+                display: 'block',
+                marginTop: 10,
+                textAlign: 'center',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--color-primary)',
+                textDecoration: 'none',
+              }}
+            >
+              Planning an event? Order this for a future date →
+            </a>
+          )}
         </div>
       </div>
     </div>

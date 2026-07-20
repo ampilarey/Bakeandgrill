@@ -350,7 +350,7 @@ export function HomePage() {
 
             <button
               type="button"
-              onClick={() => navigate('/catering')}
+              onClick={() => navigate('/events')}
               style={{
                 width: '100%',
                 padding: '0.875rem',
@@ -364,7 +364,7 @@ export function HomePage() {
                 fontFamily: 'inherit',
               }}
             >
-              Request catering quote
+              Plan your event
             </button>
           </div>
         </section>

@@ -10,6 +10,8 @@ class OtpVerification extends Model
 {
     protected $fillable = [
         'phone',
+        'channel',
+        'email',
         'code_hash',
         'expires_at',
         'attempts',

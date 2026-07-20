@@ -9,6 +9,7 @@ export * from './orders';
 export * from './promotions';
 export * from './customer';
 export * from './addresses';
+export * from './eventOrders';
 
 // Re-export shared types that pages import from '../api'
 export type {

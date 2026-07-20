@@ -42,8 +42,20 @@ export async function passwordLogin(payload: { phone: string; password: string }
   return request<AuthResponse>(ENDPOINTS.CUSTOMER_PASSWORD_LOGIN, { method: 'POST', body: JSON.stringify(payload) });
 }
 
-export async function requestOtp(phone: string, purpose: 'register' | 'reset_password' = 'register'): Promise<{ otp?: string }> {
-  return request<{ otp?: string }>(ENDPOINTS.CUSTOMER_OTP_REQUEST, { method: 'POST', body: JSON.stringify({ phone, purpose }) });
+export async function requestOtp(
+  phone: string,
+  purpose: 'register' | 'reset_password' = 'register',
+  opts?: { channel?: 'sms' | 'email'; email?: string },
+): Promise<{ otp?: string; channel?: string }> {
+  return request<{ otp?: string; channel?: string }>(ENDPOINTS.CUSTOMER_OTP_REQUEST, {
+    method: 'POST',
+    body: JSON.stringify({
+      phone,
+      purpose,
+      channel: opts?.channel ?? 'sms',
+      email: opts?.email,
+    }),
+  });
 }
 
 export async function verifyOtp(payload: { phone: string; otp: string }): Promise<AuthResponse> {

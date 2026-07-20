@@ -210,6 +210,18 @@
 
 </div>
 
+@php
+    $contactEventsHeadline = \App\Models\SiteSetting::get('contact_events_cta_headline', 'Planning an event?');
+    $contactEventsText = \App\Models\SiteSetting::get('contact_events_cta_text', 'Build a draft order with catering trays and custom lines — we will send a quote.');
+@endphp
+<section style="max-width:1100px; margin:0 auto 2rem; padding:0 2rem;">
+    <div style="background:var(--amber-light); border:1px solid var(--border); border-radius:16px; padding:1.75rem 2rem; text-align:center;">
+        <h2 style="font-size:1.35rem; font-weight:800; color:var(--dark); margin:0 0 0.5rem;">{{ $contactEventsHeadline }}</h2>
+        <p style="margin:0 0 1rem; color:var(--muted); font-size:0.95rem;">{{ $contactEventsText }}</p>
+        <a href="/order/events" class="btn-primary" style="display:inline-flex; min-height:44px; align-items:center; padding:0 1.25rem;">Plan your event →</a>
+    </div>
+</section>
+
 <div class="map-section">
     <h2>{{ \App\Models\SiteSetting::get('contact_map_heading', '📍 Find Us on the Map') }}</h2>
     <div class="map-wrap">

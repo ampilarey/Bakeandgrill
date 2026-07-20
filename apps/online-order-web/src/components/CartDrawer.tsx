@@ -182,6 +182,26 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {cart.some((e) => e.item.is_catering === true) && (
+              <a
+                href="/order/events"
+                data-testid="cart-event-banner"
+                style={{
+                  display: 'block',
+                  padding: '0.65rem 0.85rem',
+                  fontSize: '0.8rem',
+                  lineHeight: 1.4,
+                  color: 'var(--color-primary)',
+                  fontWeight: 600,
+                  background: 'var(--color-primary-light, #FEF3E8)',
+                  borderRadius: 10,
+                  textDecoration: 'none',
+                  border: '1px solid rgba(212,129,58,0.25)',
+                }}
+              >
+                Ordering for a future event? Use Event ordering for quotes, deposits and scheduling →
+              </a>
+            )}
             {cart.map((entry, index) => (
               <div
                 key={`${entry.item.id}-${index}`}

@@ -2,12 +2,68 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CATERING_STATUSES,
+  fetchCateringRequest,
   fetchCateringRequests,
   updateCateringRequest,
   type CateringRequestRow,
 } from '../api/catering';
 import { PageHeader, Btn, EmptyState } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
+
+function LinesPreview({ requestId }: { requestId: number }) {
+  const [open, setOpen] = useState(false);
+  const [lines, setLines] = useState<NonNullable<CateringRequestRow['lines']> | null>(null);
+  const [err, setErr] = useState('');
+
+  const load = () => {
+    setErr('');
+    fetchCateringRequest(requestId)
+      .then((res) => setLines(res.request.lines ?? []))
+      .catch((e: Error) => setErr(e.message));
+  };
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        type="button"
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next && lines == null) load();
+        }}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: '#B45309',
+          fontWeight: 700,
+          fontSize: 12,
+          cursor: 'pointer',
+          padding: 0,
+          fontFamily: 'inherit',
+        }}
+      >
+        {open ? 'Hide lines' : 'Show lines (read-only)'}
+      </button>
+      {open && (
+        <div style={{ marginTop: 6, fontSize: 12, color: '#5C4E3E' }}>
+          {err && <p style={{ color: '#b91c1c' }}>{err}</p>}
+          {lines == null && !err && <p>Loading…</p>}
+          {lines && lines.length === 0 && <p>No lines.</p>}
+          {lines && lines.map((l) => (
+            <div key={l.id} style={{ padding: '4px 0', borderBottom: '1px solid #F0E8E0' }}>
+              {l.name} × {l.quantity}
+              {l.is_custom
+                ? ' · custom (to quote)'
+                : l.unit_price != null
+                  ? ` · MVR ${(l.unit_price * l.quantity).toFixed(2)}`
+                  : ''}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CateringPage() {
   usePageTitle('Catering');
@@ -94,6 +150,7 @@ export function CateringPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 16 }}>
+                      {row.reference ? `${row.reference} · ` : ''}
                       {row.contact_name}
                       {row.company ? ` · ${row.company}` : ''}
                     </div>
@@ -104,6 +161,9 @@ export function CateringPage() {
                       {(row.occasion ?? 'other').replace('_', ' ')}
                       {row.event_date ? ` · ${row.event_date}` : ''}
                       {row.headcount != null ? ` · ${row.headcount} guests` : ''}
+                      {(row.lines_count ?? 0) > 0
+                        ? ` · ${row.lines_count} lines${(row.custom_lines_count ?? 0) > 0 ? ` (${row.custom_lines_count} custom)` : ''}`
+                        : ''}
                     </div>
                   </div>
                   <select
@@ -125,6 +185,10 @@ export function CateringPage() {
                   <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9C8E7E' }}>
                     Interested: {row.interested_item_names.map((i) => i.name).join(', ')}
                   </p>
+                )}
+
+                {(row.lines_count ?? 0) > 0 && (
+                  <LinesPreview requestId={row.id} />
                 )}
 
                 <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 12 }}>

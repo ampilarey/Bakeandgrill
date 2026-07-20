@@ -67,7 +67,12 @@ class CateringRequestController extends Controller
 
     public function adminIndex(Request $request): JsonResponse
     {
-        $query = CateringRequest::query()->orderByDesc('created_at');
+        $query = CateringRequest::query()
+            ->withCount([
+                'lines',
+                'lines as custom_lines_count' => fn ($q) => $q->where('is_custom', true),
+            ])
+            ->orderByDesc('created_at');
 
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $query->where('status', $request->input('status'));
@@ -83,6 +88,19 @@ class CateringRequestController extends Controller
                 'total' => $paginator->total(),
             ],
         ]);
+    }
+
+    public function adminShow(int $id): JsonResponse
+    {
+        $row = CateringRequest::query()
+            ->with(['lines'])
+            ->withCount([
+                'lines',
+                'lines as custom_lines_count' => fn ($q) => $q->where('is_custom', true),
+            ])
+            ->findOrFail($id);
+
+        return response()->json(['request' => $this->format($row, true)]);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -121,7 +139,7 @@ class CateringRequestController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function format(CateringRequest $row): array
+    private function format(CateringRequest $row, bool $withLines = false): array
     {
         $interested = is_array($row->interested_items) ? $row->interested_items : [];
         $itemNames = [];
@@ -132,21 +150,40 @@ class CateringRequestController extends Controller
                 ->all();
         }
 
-        return [
+        $payload = [
             'id' => $row->id,
+            'customer_id' => $row->customer_id,
+            'reference' => $row->reference,
             'company' => $row->company,
             'occasion' => $row->occasion,
+            'event_type' => $row->event_type,
             'contact_name' => $row->contact_name,
             'phone' => $row->phone,
             'email' => $row->email,
             'event_date' => $row->event_date?->toDateString(),
+            'fulfillment_method' => $row->fulfillment_method ?? 'pickup',
+            'fulfillment_time' => $row->fulfillment_time
+                ? Carbon::parse($row->fulfillment_time)->format('H:i')
+                : null,
+            'setup_time' => $row->setup_time
+                ? Carbon::parse($row->setup_time)->format('H:i')
+                : null,
+            'venue_name' => $row->venue_name,
+            'delivery_address' => $row->delivery_address,
+            'delivery_island' => $row->delivery_island,
+            'onsite_contact_name' => $row->onsite_contact_name,
+            'onsite_contact_phone' => $row->onsite_contact_phone,
             'headcount' => $row->headcount,
             'notes' => $row->notes,
+            'dietary_notes' => $row->dietary_notes,
+            'fulfillment_options' => $row->fulfillment_options,
             'interested_items' => $interested,
             'interested_item_names' => collect($interested)
                 ->map(fn ($id) => ['id' => (int) $id, 'name' => $itemNames[(int) $id] ?? ('#' . $id)])
                 ->values()
                 ->all(),
+            'lines_count' => (int) ($row->lines_count ?? $row->lines()->count()),
+            'custom_lines_count' => (int) ($row->custom_lines_count ?? $row->lines()->where('is_custom', true)->count()),
             'staff_notes' => $row->staff_notes,
             'quoted_amount' => $row->quoted_amount !== null ? (float) $row->quoted_amount : null,
             'pos_order_id' => $row->pos_order_id,
@@ -158,5 +195,21 @@ class CateringRequestController extends Controller
             'source' => $row->source,
             'created_at' => $row->created_at?->toIso8601String(),
         ];
+
+        if ($withLines || $row->relationLoaded('lines')) {
+            $payload['lines'] = $row->lines->map(fn ($l) => [
+                'id' => $l->id,
+                'item_id' => $l->item_id,
+                'variant_id' => $l->variant_id,
+                'name' => $l->name,
+                'quantity' => $l->quantity,
+                'unit_price' => $l->unit_price !== null ? (float) $l->unit_price : null,
+                'notes' => $l->notes,
+                'is_custom' => (bool) $l->is_custom,
+                'sort_order' => $l->sort_order,
+            ])->values()->all();
+        }
+
+        return $payload;
     }
 }

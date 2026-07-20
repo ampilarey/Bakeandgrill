@@ -70,16 +70,12 @@ Route::post('/customer/reset-password', [CustomerPortalController::class, 'reset
 Route::redirect('/order-type', '/order/', 301);
 Route::redirect('/checkout', '/order/', 301);
 
-// Pre-Orders (Event Orders)
-use App\Http\Controllers\PreOrderController;
-
-// Catering & events (replaces public pre-order create flow)
-Route::redirect('/pre-order', '/order/catering', 301)->name('pre-order.create');
-Route::redirect('/order/pre-order', '/order/catering', 301);
+// Catering & events — wizard lives at /order/events (pre-order confirmation IDOR retired)
+Route::redirect('/pre-order', '/order/events', 301)->name('pre-order.create');
+Route::redirect('/order/pre-order', '/order/events', 301);
 Route::post('/pre-order', function () {
-    return redirect('/order/catering', 301);
+    return redirect('/order/events', 301);
 })->name('pre-order.store');
-Route::get('/pre-order/{id}/confirmation', [PreOrderController::class, 'confirmation'])->name('pre-order.confirmation');
 
 // Receipt pages
 Route::get('/receipts/{token}', [ReceiptPageController::class, 'show'])->name('receipts.show');

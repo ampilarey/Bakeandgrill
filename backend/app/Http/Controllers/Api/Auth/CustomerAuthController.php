@@ -8,6 +8,7 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Events\CustomerCreated;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
+use App\Mail\CustomerOtpMail;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OtpVerification;
@@ -15,6 +16,7 @@ use App\Rules\MaldivesPhone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
@@ -59,16 +61,25 @@ class CustomerAuthController extends Controller
         ];
     }
 
-    private function sendOtp(string $phone, string $purpose = 'login'): string
+    private function sendOtp(string $phone, string $purpose = 'login', string $channel = 'sms', ?string $email = null): string
     {
         $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $channel = $channel === 'email' ? 'email' : 'sms';
 
         $otpRow = OtpVerification::create([
             'phone' => $phone,
+            'channel' => $channel,
+            'email' => $channel === 'email' ? $email : null,
             'code_hash' => Hash::make($otpCode),
             'expires_at' => now()->addMinutes(10),
             'attempts' => 0,
         ]);
+
+        if ($channel === 'email') {
+            Mail::to((string) $email)->send(new CustomerOtpMail($otpCode, 10));
+
+            return $otpCode;
+        }
 
         $smsService = app(SmsService::class);
         $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes. Do not share this code.";
@@ -201,10 +212,20 @@ class CustomerAuthController extends Controller
         $request->validate([
             'phone' => ['required', 'string', new MaldivesPhone],
             'purpose' => 'nullable|string|in:register,reset_password',
+            'channel' => 'nullable|string|in:sms,email',
+            'email' => 'nullable|email|max:190',
         ]);
 
         $phone = $this->normalizePhone($request->phone);
         $purpose = $request->input('purpose', 'register');
+        $channel = $request->input('channel', 'sms') === 'email' ? 'email' : 'sms';
+        $email = $request->filled('email') ? trim((string) $request->input('email')) : null;
+
+        if ($channel === 'email' && ($email === null || $email === '')) {
+            throw ValidationException::withMessages([
+                'email' => ['An email address is required when requesting an email OTP.'],
+            ]);
+        }
 
         // Block returning customers with a password from using OTP to "register" —
         // they should use password login instead. For password reset it's always allowed.
@@ -229,15 +250,16 @@ class CustomerAuthController extends Controller
 
         RateLimiter::hit($key, 300);
 
-        $otpCode = $this->sendOtp($phone, $purpose);
+        $otpCode = $this->sendOtp($phone, $purpose, $channel, $email);
 
         // Audit trail without leaking the code. The actual code only ever lives
-        // hashed in `otp_verifications.code_hash` and (briefly) in the SMS body.
-        logger()->info('OTP requested', ['phone' => $phone, 'purpose' => $purpose]);
+        // hashed in `otp_verifications.code_hash` and (briefly) in the SMS/email body.
+        logger()->info('OTP requested', ['phone' => $phone, 'purpose' => $purpose, 'channel' => $channel]);
 
         $response = [
-            'message' => 'OTP sent successfully',
+            'message' => $channel === 'email' ? 'OTP sent to email' : 'OTP sent successfully',
             'expires_in' => 600,
+            'channel' => $channel,
         ];
 
         // Dev convenience only — never in production, never just on APP_DEBUG.

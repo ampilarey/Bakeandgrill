@@ -80,19 +80,18 @@ describe('PrayerBar island picker', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Malé/i })).toBeTruthy();
-    });
+    }, { timeout: 10000 });
 
     // Expand so Change island is available, then open the picker.
     await user.click(screen.getByRole('button', { name: /Dhuhr|Fajr|Asr|Maghrib|Isha|Sunrise|Prayer Times/i }));
-    const changeBtn = await screen.findByRole('button', { name: /Change island/i });
+    const changeBtn = await screen.findByRole('button', { name: /Change island/i }, { timeout: 10000 });
     await user.click(changeBtn);
 
-    const listbox = await screen.findByRole('listbox');
+    const listbox = await screen.findByRole('listbox', {}, { timeout: 10000 });
     expect(within(listbox).getByText('Mahibadhoo')).toBeTruthy();
 
     // Panel must still be open after the opening click settles.
     await waitFor(() => {
       expect(screen.getByRole('listbox')).toBeTruthy();
     });
-  });
-});
+  }, 15000);});

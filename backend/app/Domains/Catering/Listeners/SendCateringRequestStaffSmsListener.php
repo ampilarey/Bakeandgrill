@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Domains\Catering\Listeners;
 
 use App\Domains\Catering\Events\CateringRequestSubmitted;
+use App\Domains\Catering\Services\CateringEventCreatedNotifier;
+use App\Domains\Catering\Services\CateringNotifyRecipients;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
-use App\Models\SiteSetting;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Handles CateringRequestSubmitted for both simple inquiries and event drafts.
+ */
 class SendCateringRequestStaffSmsListener implements ShouldQueue
 {
     public string $queue = 'default';
@@ -21,32 +25,46 @@ class SendCateringRequestStaffSmsListener implements ShouldQueue
 
     public function __construct(
         private readonly SmsService $sms,
+        private readonly CateringEventCreatedNotifier $eventNotifier,
+        private readonly CateringNotifyRecipients $recipients,
     ) {}
 
     public function handle(CateringRequestSubmitted $event): void
     {
-        $phone = trim((string) SiteSetting::get('catering_notify_phone', ''));
-        if ($phone === '') {
-            Log::info('SendCateringRequestStaffSmsListener: catering_notify_phone not set');
+        $req = $event->request;
+
+        // Structured event drafts (wizard) — customer + staff "created" notifications.
+        if ($req->status === 'draft' || filled($req->reference)) {
+            $this->eventNotifier->notify($req);
 
             return;
         }
 
-        $req = $event->request;
+        // Simple web inquiry — staff only (legacy behaviour + email setting).
+        $targets = $this->recipients->fromSettingsFallback();
+        if ($targets === []) {
+            Log::info('SendCateringRequestStaffSmsListener: no catering notify recipients configured');
+
+            return;
+        }
+
         $date = $req->event_date?->toDateString() ?? 'TBD';
         $headcount = $req->headcount ?? '?';
         $name = $req->contact_name;
         $occasion = str_replace('_', ' ', (string) ($req->occasion ?? 'other'));
-
         $message = "Catering request: {$name}, {$occasion}, {$date}, {$headcount} guests. Phone {$req->phone}.";
 
-        $this->sms->send(new SmsMessage(
-            to: $phone,
-            message: $message,
-            type: 'transactional',
-            referenceType: 'catering_request',
-            referenceId: (string) $req->id,
-            idempotencyKey: 'catering_request_notify:' . $req->id,
-        ));
+        foreach ($targets as $i => $target) {
+            if (!empty($target['phone'])) {
+                $this->sms->send(new SmsMessage(
+                    to: (string) $target['phone'],
+                    message: $message,
+                    type: 'transactional',
+                    referenceType: 'catering_request',
+                    referenceId: (string) $req->id,
+                    idempotencyKey: 'catering_request_notify:' . $req->id . ':' . $i,
+                ));
+            }
+        }
     }
 }

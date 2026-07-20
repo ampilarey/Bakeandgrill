@@ -1,0 +1,520 @@
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { fetchItems } from '../api';
+import type { Item } from '../api';
+import { createEventOrder, type EventOrderPayload } from '../api/eventOrders';
+import { AuthBlock } from '../components/AuthBlock';
+import { getCustomerMe } from '../api/auth';
+import { useAuth } from '../context/AuthContext';
+import { usePageTitle } from '../hooks/usePageTitle';
+import { PageHeader } from '../components/shell/PageHeader';
+import {
+  DEFAULT_ITEM_TAB,
+  addCustomLine,
+  filterItemsForTab,
+  minEventDateInput,
+  nextStep,
+  parseAddItemId,
+  prevStep,
+  removeLine,
+  resolvePreselectLine,
+  upsertCatalogLine,
+  type EventDraftLine,
+  type ItemPickerTab,
+  type WizardStep,
+} from './eventOrderHelpers';
+import type { CSSProperties } from 'react';
+
+const OCCASIONS = [
+  { value: 'office_breakfast', label: 'Office breakfast' },
+  { value: 'event', label: 'Event / celebration' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export function EventOrderPage() {
+  usePageTitle('Plan your event');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { isAuthenticated, customerName, setAuth } = useAuth();
+
+  const [step, setStep] = useState<WizardStep>('items');
+  const [tab, setTab] = useState<ItemPickerTab>(DEFAULT_ITEM_TAB);
+  const [items, setItems] = useState<Item[]>([]);
+  const [search, setSearch] = useState('');
+  const [lines, setLines] = useState<EventDraftLine[]>([]);
+  const [preselectDone, setPreselectDone] = useState(false);
+  const [leadHours, setLeadHours] = useState(24);
+
+  const [fulfillmentMethod, setFulfillmentMethod] = useState<'pickup' | 'delivery'>('pickup');
+  const [eventDate, setEventDate] = useState('');
+  const [fulfillmentTime, setFulfillmentTime] = useState('');
+  const [venueName, setVenueName] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryIsland, setDeliveryIsland] = useState('');
+  const [onsiteName, setOnsiteName] = useState('');
+  const [onsitePhone, setOnsitePhone] = useState('');
+  const [occasion, setOccasion] = useState('event');
+  const [headcount, setHeadcount] = useState('');
+  const [dietaryNotes, setDietaryNotes] = useState('');
+  const [notes, setNotes] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+
+  const [customName, setCustomName] = useState('');
+  const [customQty, setCustomQty] = useState(1);
+  const [customNotes, setCustomNotes] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [reference, setReference] = useState('');
+
+  useEffect(() => {
+    fetchItems()
+      .then(({ data }) => setItems(data ?? []))
+      .catch((e: Error) => setError(e.message || 'Could not load menu'));
+    // Soft-read public lead hours from site settings if present on window — otherwise default 24.
+    setLeadHours(24);
+  }, []);
+
+  useEffect(() => {
+    if (!eventDate) setEventDate(minEventDateInput(leadHours));
+  }, [leadHours, eventDate]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    getCustomerMe()
+      .then(({ customer: c }) => {
+        if (c.name) {
+          setContactName((prev) => prev || c.name || '');
+          setOnsiteName((prev) => prev || c.name || '');
+        }
+        if (c.phone) {
+          const local = c.phone.replace(/^\+?960/, '');
+          setContactPhone((prev) => prev || local);
+          setOnsitePhone((prev) => prev || local);
+        }
+        if (c.email) setContactEmail((prev) => prev || c.email || '');
+      })
+      .catch(() => { /* ignore */ });
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (preselectDone || items.length === 0) return;
+    const id = parseAddItemId(searchParams);
+    const line = resolvePreselectLine(id, items);
+    if (line) {
+      setLines((prev) => (prev.some((l) => l.key === line.key) ? prev : [...prev, line]));
+      setTab('catering');
+    }
+    setPreselectDone(true);
+  }, [items, searchParams, preselectDone]);
+
+  const filtered = filterItemsForTab(items, tab, search);
+  const minDate = minEventDateInput(leadHours);
+
+  const addCatalogItem = (item: Item) => {
+    if (item.has_variants) {
+      const active = (item.variants ?? []).filter((v) => v.is_active !== false);
+      const v = active[0];
+      if (!v) return;
+      const price = Number(v.effective_price ?? v.price);
+      setLines((prev) =>
+        upsertCatalogLine(prev, {
+          key: `c-${item.id}-${v.id}`,
+          kind: 'catalog',
+          item_id: item.id,
+          variant_id: v.id,
+          name: `${item.name} — ${v.name}`,
+          quantity: 1,
+          unit_price: price,
+          is_catering: item.is_catering,
+        }, 1),
+      );
+      return;
+    }
+    setLines((prev) =>
+      upsertCatalogLine(prev, {
+        key: `c-${item.id}`,
+        kind: 'catalog',
+        item_id: item.id,
+        variant_id: null,
+        name: item.name,
+        quantity: 1,
+        unit_price: Number(item.base_price),
+        is_catering: item.is_catering,
+      }, 1),
+    );
+  };
+
+  const handleAddCustom = () => {
+    setLines((prev) => addCustomLine(prev, { name: customName, quantity: customQty, notes: customNotes }));
+    setCustomName('');
+    setCustomQty(1);
+    setCustomNotes('');
+  };
+
+  const validateDetails = (): string | null => {
+    if (!eventDate || eventDate < minDate) return `Event date must be on or after ${minDate}`;
+    if (fulfillmentMethod === 'delivery') {
+      if (!deliveryAddress.trim() || !deliveryIsland.trim()) {
+        return 'Delivery address and island are required for delivery';
+      }
+    }
+    if (!contactName.trim() || !contactPhone.trim()) return 'Contact name and phone are required';
+    return null;
+  };
+
+  const handleSubmit = async () => {
+    if (!isAuthenticated) return;
+    const err = validateDetails();
+    if (err) {
+      setError(err);
+      return;
+    }
+    if (lines.length === 0) {
+      setError('Add at least one item');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const payload: EventOrderPayload = {
+        contact_name: contactName.trim(),
+        phone: contactPhone.trim(),
+        email: contactEmail.trim() || undefined,
+        occasion,
+        event_type: occasion,
+        event_date: eventDate,
+        fulfillment_method: fulfillmentMethod,
+        fulfillment_time: fulfillmentTime || undefined,
+        venue_name: venueName.trim() || undefined,
+        delivery_address: fulfillmentMethod === 'delivery' ? deliveryAddress.trim() : undefined,
+        delivery_island: fulfillmentMethod === 'delivery' ? deliveryIsland.trim() : undefined,
+        onsite_contact_name: onsiteName.trim() || contactName.trim(),
+        onsite_contact_phone: onsitePhone.trim() || contactPhone.trim(),
+        headcount: headcount ? Number.parseInt(headcount, 10) : undefined,
+        notes: notes.trim() || undefined,
+        dietary_notes: dietaryNotes.trim() || undefined,
+        lines: lines.map((l) =>
+          l.kind === 'custom'
+            ? { custom_name: l.custom_name, quantity: l.quantity, notes: l.notes }
+            : { item_id: l.item_id, variant_id: l.variant_id ?? undefined, quantity: l.quantity, notes: l.notes },
+        ),
+      };
+      const res = await createEventOrder(payload);
+      setReference(res.request.reference);
+      setStep('done');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goNext = () => {
+    setError('');
+    if (step === 'items' && lines.length === 0) {
+      setError('Add at least one item or custom line');
+      return;
+    }
+    if (step === 'details') {
+      const err = validateDetails();
+      if (err) {
+        setError(err);
+        return;
+      }
+    }
+    const n = nextStep(step);
+    if (n) setStep(n);
+  };
+
+  const goBack = () => {
+    const p = prevStep(step);
+    if (p) setStep(p);
+  };
+
+  return (
+    <>
+      <PageHeader title="Plan your event" onBack={() => (step === 'items' ? navigate(-1) : goBack())} />
+      <div style={S.page}>
+        <div style={S.container}>
+          <p style={S.lede}>
+            Build a draft for a future date. Staff will confirm the final quote — custom lines are priced later.
+          </p>
+          <p style={{ margin: '0 0 1rem', fontSize: 13 }}>
+            <Link to="/menu" style={S.link}>Need it today instead? Order from the menu →</Link>
+            {' · '}
+            <Link to="/catering" style={S.link}>Just want a callback?</Link>
+          </p>
+
+          <div style={S.steps} aria-label="Progress">
+            {(['items', 'details', 'confirm', 'done'] as WizardStep[]).map((s) => (
+              <span key={s} style={{ ...S.stepDot, ...(step === s ? S.stepDotActive : {}) }}>{s}</span>
+            ))}
+          </div>
+
+          {error && <p style={S.error} role="alert">{error}</p>}
+
+          {step === 'items' && (
+            <section>
+              <div style={S.tabs} role="tablist">
+                {([
+                  ['catering', 'Catering menu'],
+                  ['regular', 'Regular menu'],
+                  ['custom', '+ Custom item'],
+                ] as const).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === id}
+                    data-testid={`event-tab-${id}`}
+                    onClick={() => setTab(id)}
+                    style={{ ...S.tab, ...(tab === id ? S.tabActive : {}) }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {tab !== 'custom' && (
+                <>
+                  <input
+                    style={S.input}
+                    placeholder="Search…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    aria-label="Search menu"
+                  />
+                  <div style={S.list}>
+                    {filtered.map((item) => (
+                      <div key={item.id} style={S.row}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700 }}>{item.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                            MVR {Number(item.base_price).toFixed(2)}
+                            {item.is_catering ? ' · Catering' : ''}
+                          </div>
+                        </div>
+                        <button type="button" style={S.btnSm} onClick={() => addCatalogItem(item)}>+ Add</button>
+                      </div>
+                    ))}
+                    {filtered.length === 0 && (
+                      <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No items in this tab.</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {tab === 'custom' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <label style={S.label}>
+                    Custom item name
+                    <input style={S.input} value={customName} onChange={(e) => setCustomName(e.target.value)} data-testid="custom-name" />
+                  </label>
+                  <label style={S.label}>
+                    Quantity
+                    <input
+                      style={S.input}
+                      type="number"
+                      min={1}
+                      value={customQty}
+                      onChange={(e) => setCustomQty(Math.max(1, Number(e.target.value) || 1))}
+                      data-testid="custom-qty"
+                    />
+                  </label>
+                  <label style={S.label}>
+                    Note (optional)
+                    <input style={S.input} value={customNotes} onChange={(e) => setCustomNotes(e.target.value)} />
+                  </label>
+                  <button type="button" style={S.btn} onClick={handleAddCustom} data-testid="custom-add">
+                    Add custom line
+                  </button>
+                </div>
+              )}
+
+              {lines.length > 0 && (
+                <div style={{ marginTop: 16 }} data-testid="draft-lines">
+                  <h3 style={S.h3}>Your draft ({lines.length})</h3>
+                  {lines.map((l) => (
+                    <div key={l.key} style={S.row}>
+                      <div style={{ flex: 1 }}>
+                        <strong>{l.name}</strong> × {l.quantity}
+                        {l.kind === 'custom' ? (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}> · to be quoted</span>
+                        ) : (
+                          <span style={{ fontSize: 12 }}> · MVR {((l.unit_price ?? 0) * l.quantity).toFixed(2)}</span>
+                        )}
+                      </div>
+                      <button type="button" style={S.btnSm} onClick={() => setLines((p) => removeLine(p, l.key))} data-testid={`remove-${l.key}`}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button type="button" style={{ ...S.btn, marginTop: 16 }} onClick={goNext} disabled={lines.length === 0}>
+                Continue to event details →
+              </button>
+            </section>
+          )}
+
+          {step === 'details' && (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={S.toggleRow}>
+                <button type="button" style={{ ...S.tab, ...(fulfillmentMethod === 'pickup' ? S.tabActive : {}) }} onClick={() => setFulfillmentMethod('pickup')}>Pickup</button>
+                <button type="button" style={{ ...S.tab, ...(fulfillmentMethod === 'delivery' ? S.tabActive : {}) }} onClick={() => setFulfillmentMethod('delivery')}>Delivery</button>
+              </div>
+              <label style={S.label}>
+                Event date
+                <input style={S.input} type="date" min={minDate} value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
+              </label>
+              <label style={S.label}>
+                Event time
+                <input style={S.input} type="time" value={fulfillmentTime} onChange={(e) => setFulfillmentTime(e.target.value)} />
+              </label>
+              <label style={S.label}>
+                Venue name
+                <input style={S.input} value={venueName} onChange={(e) => setVenueName(e.target.value)} placeholder="Office / hall / home" />
+              </label>
+              {fulfillmentMethod === 'delivery' && (
+                <>
+                  <label style={S.label}>
+                    Delivery address
+                    <input style={S.input} value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} required />
+                  </label>
+                  <label style={S.label}>
+                    Island
+                    <input style={S.input} value={deliveryIsland} onChange={(e) => setDeliveryIsland(e.target.value)} required />
+                  </label>
+                </>
+              )}
+              <label style={S.label}>
+                On-site contact name
+                <input style={S.input} value={onsiteName} onChange={(e) => setOnsiteName(e.target.value)} />
+              </label>
+              <label style={S.label}>
+                On-site contact phone
+                <input style={S.input} value={onsitePhone} onChange={(e) => setOnsitePhone(e.target.value)} />
+              </label>
+              <label style={S.label}>
+                Occasion
+                <select style={S.input} value={occasion} onChange={(e) => setOccasion(e.target.value)}>
+                  {OCCASIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={S.label}>
+                Headcount
+                <input style={S.input} type="number" min={1} value={headcount} onChange={(e) => setHeadcount(e.target.value)} />
+              </label>
+              <label style={S.label}>
+                Dietary / allergy notes
+                <textarea style={{ ...S.input, minHeight: 72, paddingTop: 10 }} value={dietaryNotes} onChange={(e) => setDietaryNotes(e.target.value)} />
+              </label>
+              <label style={S.label}>
+                Customer notes
+                <textarea style={{ ...S.input, minHeight: 72, paddingTop: 10 }} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </label>
+              <label style={S.label}>
+                Your name
+                <input style={S.input} value={contactName} onChange={(e) => setContactName(e.target.value)} required />
+              </label>
+              <label style={S.label}>
+                Phone
+                <input style={S.input} value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} required />
+              </label>
+              <label style={S.label}>
+                Email (optional — for quote)
+                <input style={S.input} type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+              </label>
+              <button type="button" style={S.btn} onClick={goNext}>Review & confirm →</button>
+            </section>
+          )}
+
+          {step === 'confirm' && (
+            <section>
+              <h3 style={S.h3}>Summary</h3>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
+                {fulfillmentMethod === 'delivery' ? 'Delivery' : 'Pickup'}
+                {eventDate ? ` · ${eventDate}` : ''}
+                {fulfillmentTime ? ` · ${fulfillmentTime}` : ''}
+                {venueName ? ` · ${venueName}` : ''}
+              </p>
+              <ul style={{ paddingLeft: 18, margin: '12px 0' }}>
+                {lines.map((l) => (
+                  <li key={l.key} style={{ marginBottom: 6, fontSize: 14 }}>
+                    {l.name} × {l.quantity}
+                    {l.kind === 'custom'
+                      ? ' — to be quoted'
+                      : ` — MVR ${((l.unit_price ?? 0) * l.quantity).toFixed(2)}`}
+                  </li>
+                ))}
+              </ul>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
+                Staff will confirm the final quote. Catalog prices shown are estimates; custom lines are priced by the team.
+              </p>
+
+              {isAuthenticated ? (
+                <>
+                  <p style={{ fontSize: 14, marginBottom: 12 }}>Signed in as {customerName || 'customer'} — no OTP needed.</p>
+                  <button type="button" style={S.btn} disabled={loading} onClick={() => void handleSubmit()}>
+                    {loading ? 'Submitting…' : 'Submit event request'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: 14, marginBottom: 8 }}>Verify your phone to submit this draft.</p>
+                  <AuthBlock
+                    onSuccess={(name) => {
+                      setAuth(name);
+                    }}
+                    skipProfileSetup
+                  />
+                </>
+              )}
+            </section>
+          )}
+
+          {step === 'done' && (
+            <section style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+              <h2 style={{ margin: '0 0 8px' }}>Request received</h2>
+              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-primary)' }} data-testid="event-reference">
+                {reference}
+              </p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', maxWidth: 360, margin: '12px auto' }}>
+                We&apos;ll SMS/email you the quote. Staff will confirm final pricing before payment.
+              </p>
+              <Link to="/menu" style={S.btn}>Back to menu</Link>
+            </section>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+const S: Record<string, CSSProperties> = {
+  page: { padding: '0 var(--page-gutter) 3rem' },
+  container: { maxWidth: 560, margin: '0 auto' },
+  lede: { fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5, margin: '0 0 8px' },
+  link: { color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' },
+  steps: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
+  stepDot: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.04, color: 'var(--color-text-muted)', padding: '4px 8px', borderRadius: 6, background: 'var(--color-surface-alt)' },
+  stepDotActive: { background: 'var(--color-primary)', color: '#fff', fontWeight: 700 },
+  error: { color: '#b91c1c', fontSize: 13, marginBottom: 12 },
+  tabs: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
+  toggleRow: { display: 'flex', gap: 8 },
+  tab: { minHeight: 44, padding: '0 12px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'inherit', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  tabActive: { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' },
+  input: { display: 'block', width: '100%', minHeight: 44, marginTop: 4, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 12px', fontFamily: 'inherit', fontSize: 15, boxSizing: 'border-box' },
+  label: { fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 },
+  list: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10, maxHeight: 360, overflow: 'auto' },
+  row: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-surface)' },
+  btn: { display: 'inline-block', width: '100%', minHeight: 48, borderRadius: 12, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 800, fontSize: 15, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'center', textDecoration: 'none', lineHeight: '48px' },
+  btnSm: { minHeight: 40, padding: '0 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' },
+  h3: { fontSize: 15, fontWeight: 800, margin: '0 0 8px' },
+};
