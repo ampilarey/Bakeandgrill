@@ -69,7 +69,7 @@ export const ORDER_TYPE_LABELS: Record<string, string> = {
 
 export const DISCOUNT_TYPE_LABELS: Record<string, string> = {
   promo: 'Promo code', loyalty: 'Loyalty', manual: 'Manual',
-  gift_card: 'Gift card', referral: 'Referral',
+  referral: 'Referral',
 };
 
 export const REPORT_SECTIONS = [
