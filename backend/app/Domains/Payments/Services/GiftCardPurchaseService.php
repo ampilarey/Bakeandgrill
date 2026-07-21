@@ -47,6 +47,13 @@ final class GiftCardPurchaseService
             );
         }
 
+        // Whole-MVR only — no fractional laari for gift-card face values.
+        // Guards against 49.99 slipping past the MIN check on rounding.
+        $amountLaarCheck = (int) round($amount * 100);
+        if ($amountLaarCheck % 100 !== 0) {
+            throw new \InvalidArgumentException('Gift card amount must be a whole number of MVR.');
+        }
+
         $phone = isset($data['recipient_phone']) ? trim((string) $data['recipient_phone']) : '';
         $phone = $phone !== '' ? MaldivesPhone::normalize($phone) : null;
 
