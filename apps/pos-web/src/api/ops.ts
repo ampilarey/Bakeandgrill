@@ -116,10 +116,45 @@ export async function fetchRefunds(status?: string): Promise<{
   return request(`/refunds${query}`);
 }
 
+/**
+ * FIX 1e — POS-triggered refund.
+ *
+ * The client only sends the amount, an optional reason, and the
+ * `cash_refund_override` flag (when the cashier ticks "Refund card
+ * portion in cash"). All settlement breakdown is decided server-side:
+ * the backend inspects the order's payment mix, reverses each tender
+ * proportionally, and returns the resulting per-method laari splits
+ * in `breakdown` so we can show the cashier exactly what happened.
+ *
+ * The `cash_refund_override` boolean is the only mutation lever the
+ * POS gets — amounts are never forwarded, which prevents an accidental
+ * "refund more card than was charged" bug from the client side.
+ */
 export async function createRefund(
   orderId: number,
-  payload: { amount: number; reason?: string; status?: string }
-): Promise<{ refund: { id: number } }> {
+  payload: {
+    amount: number;
+    reason?: string;
+    status?: string;
+    cash_refund_override?: boolean;
+  }
+): Promise<{
+  refund: {
+    id: number;
+    amount?: number;
+    breakdown?: {
+      cash_laar?: number;
+      card_laar?: number;
+      transfer_laar?: number;
+      qr_laar?: number;
+      house_account_laar?: number;
+      wallet_laar?: number;
+      other_laar?: number;
+    } | null;
+    cash_refund_override?: boolean;
+    message?: string;
+  };
+}> {
   return request(`/orders/${orderId}/refunds`, {
     method: "POST",
     body: JSON.stringify(payload),

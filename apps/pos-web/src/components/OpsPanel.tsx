@@ -838,6 +838,18 @@ function RefundsTab({ ops }: { ops: OpsState }) {
           />
           <PrimaryBtn onClick={ops.handleCreateRefund}>Record refund</PrimaryBtn>
         </div>
+        <label style={{
+          display: "flex", alignItems: "center", gap: 8, marginTop: 8,
+          fontSize: 12, color: C.muted, cursor: "pointer",
+        }}>
+          <input
+            type="checkbox"
+            checked={ops.refundCashOverride}
+            onChange={(e) => ops.setRefundCashOverride(e.target.checked)}
+            style={{ width: 15, height: 15 }}
+          />
+          Refund card portion in cash (backend decides breakdown)
+        </label>
       </FormCard>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>

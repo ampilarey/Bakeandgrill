@@ -248,14 +248,24 @@ function ReceiptDetail({
     setPendingRefund({ amount, reason: refundReason.trim() });
   };
 
-  const handleRefundConfirmed = async () => {
+  const handleRefundConfirmed = async (cashRefundOverride: boolean) => {
     if (!pendingRefund) return;
     const { amount, reason } = pendingRefund;
     setPendingRefund(null);
     setBusy("refund"); setInfo("");
     try {
-      await createRefund(receipt.id, { amount, reason: reason || undefined });
-      setInfo("Refund recorded.");
+      // FIX 1e — POS sends the override boolean only. Backend
+      // computes the actual cash/card/transfer laari breakdown
+      // and returns it in `refund.breakdown` so we can echo the
+      // exact tender split back to the cashier without ever
+      // trusting a client-computed amount.
+      const res = await createRefund(receipt.id, {
+        amount,
+        reason: reason || undefined,
+        ...(cashRefundOverride ? { cash_refund_override: true } : {}),
+      });
+      const breakdownMsg = formatRefundBreakdown(res.refund?.breakdown, res.refund?.cash_refund_override);
+      setInfo(breakdownMsg ? `Refund recorded — ${breakdownMsg}` : "Refund recorded.");
     } catch (e) { setInfo((e as Error).message || "Refund failed."); }
     finally { setBusy(""); }
   };
@@ -381,7 +391,7 @@ function ReceiptDetail({
           amount={pendingRefund.amount}
           reason={pendingRefund.reason}
           onCancel={() => setPendingRefund(null)}
-          onConfirm={() => void handleRefundConfirmed()}
+          onConfirm={(cashRefundOverride) => void handleRefundConfirmed(cashRefundOverride)}
         />
       )}
     </div>
@@ -408,9 +418,17 @@ function RefundConfirmModal({
   amount: number;
   reason: string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (cashRefundOverride: boolean) => void;
 }) {
   const partial = amount + 0.005 < orderTotal;
+  // FIX 1e — cashier can optionally force the entire refund to
+  // come out of the drawer as cash instead of reversing the
+  // original tender proportionally. Common when the customer's
+  // card is no longer with them, or when the manager wants to
+  // simplify the reconciliation. The POS never computes
+  // per-tender amounts — the backend inspects the order's
+  // payment mix and returns the actual laari splits after.
+  const [cashRefundOverride, setCashRefundOverride] = useState(false);
   return (
     <div
       role="dialog"
@@ -457,6 +475,25 @@ function RefundConfirmModal({
             <Row label="Reason"><em style={{ color: "#94A3B8" }}>(none)</em></Row>
           )}
         </div>
+        <label style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "8px 10px", borderRadius: 8,
+          background: "#F8FAFC", border: "1px solid #E2E8F0",
+          fontSize: 13, color: "#0F172A", cursor: "pointer",
+        }}>
+          <input
+            type="checkbox"
+            checked={cashRefundOverride}
+            onChange={(e) => setCashRefundOverride(e.target.checked)}
+            style={{ width: 16, height: 16 }}
+          />
+          <span>Refund card portion in cash</span>
+        </label>
+        <p style={{ margin: 0, fontSize: 11, color: "#94A3B8", lineHeight: 1.4 }}>
+          {cashRefundOverride
+            ? "The whole refund will be handed back as cash. The backend records the reversal breakdown."
+            : "Refunds each tender in the same proportion it was paid. Server-side computes the split."}
+        </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button
             onClick={onCancel}
@@ -469,7 +506,7 @@ function RefundConfirmModal({
             Cancel
           </button>
           <button
-            onClick={onConfirm}
+            onClick={() => onConfirm(cashRefundOverride)}
             style={{
               padding: "10px 16px", borderRadius: 10, fontWeight: 800,
               background: "#B91C1C", color: "#fff",
@@ -503,6 +540,47 @@ function Line({ label, value, bold }: { label: string; value: string; bold?: boo
       <span>{label}</span><span>{value}</span>
     </div>
   );
+}
+
+/**
+ * FIX 1e — turn the backend's per-method laari refund breakdown into a
+ * short human summary the cashier can eyeball after the refund lands.
+ * The API returns any subset of {cash, card, transfer, qr,
+ * house_account, wallet, other}_laar — only non-zero legs are shown so
+ * a plain "full cash refund" doesn't get cluttered with "MVR 0.00 card"
+ * noise.
+ */
+function formatRefundBreakdown(
+  breakdown:
+    | {
+        cash_laar?: number;
+        card_laar?: number;
+        transfer_laar?: number;
+        qr_laar?: number;
+        house_account_laar?: number;
+        wallet_laar?: number;
+        other_laar?: number;
+      }
+    | null
+    | undefined,
+  cashRefundOverride?: boolean,
+): string {
+  if (!breakdown) return "";
+  const parts: string[] = [];
+  const push = (label: string, laar?: number) => {
+    if (typeof laar !== "number" || laar <= 0) return;
+    parts.push(`${label} MVR ${(laar / 100).toFixed(2)}`);
+  };
+  push("cash", breakdown.cash_laar);
+  push("card", breakdown.card_laar);
+  push("transfer", breakdown.transfer_laar);
+  push("QR", breakdown.qr_laar);
+  push("credit", breakdown.house_account_laar);
+  push("deposit", breakdown.wallet_laar);
+  push("other", breakdown.other_laar);
+  if (parts.length === 0) return "";
+  const suffix = cashRefundOverride ? " (card portion converted to cash)" : "";
+  return `${parts.join(", ")}${suffix}.`;
 }
 
 function formatTime(iso: string): string {

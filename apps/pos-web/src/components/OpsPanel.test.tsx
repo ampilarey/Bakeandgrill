@@ -54,6 +54,8 @@ function makeOps(overrides: Partial<OpsState> = {}): OpsState {
     refundStatusFilter: "",
     setRefundStatusFilter: noop,
     refunds: [],
+    refundCashOverride: false,
+    setRefundCashOverride: noop,
     handleOpenShift: noop,
     handleCloseShift: noop,
     handleCashMovement: noop,

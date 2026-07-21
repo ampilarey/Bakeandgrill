@@ -87,6 +87,10 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
   const [refundStatusFilter, setRefundStatusFilter] = useState("");
+  // FIX 1e — ops-side "Refund card portion in cash". Same semantics
+  // as the ReceiptsPanel checkbox: the POS only forwards the flag;
+  // the backend decides the actual per-tender laari splits.
+  const [refundCashOverride, setRefundCashOverride] = useState(false);
   const [refunds, setRefunds] = useState<
     Array<{ id: number; amount: number; status: string; reason: string | null; order_id: number }>
   >([]);
@@ -256,8 +260,16 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     const amount = Number.parseFloat(refundAmount);
     if (!Number.isFinite(orderId) || orderId <= 0) { setOpsMessage("Enter a valid order ID."); return; }
     if (!Number.isFinite(amount) || amount <= 0) { setOpsMessage("Enter a valid refund amount."); return; }
-    createRefund(orderId, { amount, reason: refundReason || undefined })
-      .then(() => { setRefundOrderId(""); setRefundAmount(""); setRefundReason(""); return fetchRefunds(refundStatusFilter || undefined); })
+    createRefund(orderId, {
+      amount,
+      reason: refundReason || undefined,
+      ...(refundCashOverride ? { cash_refund_override: true } : {}),
+    })
+      .then(() => {
+        setRefundOrderId(""); setRefundAmount(""); setRefundReason("");
+        setRefundCashOverride(false);
+        return fetchRefunds(refundStatusFilter || undefined);
+      })
       .then((r) => setRefunds(r.refunds.data))
       .catch(() => setOpsMessage("Unable to record refund."));
   };
@@ -274,6 +286,7 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     refundOrderId, setRefundOrderId,
     refundAmount, setRefundAmount, refundReason, setRefundReason,
     refundStatusFilter, setRefundStatusFilter, refunds,
+    refundCashOverride, setRefundCashOverride,
     handleOpenShift, handleCloseShift, handleCashMovement,
     handleAdjustInventory, handleRecordWaste, handleCreatePurchase,
     handleCreateRefund,
