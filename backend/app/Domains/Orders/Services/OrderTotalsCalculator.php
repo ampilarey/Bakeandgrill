@@ -202,6 +202,14 @@ class OrderTotalsCalculator
      */
     public function recalculateAndPersist(Order $order): Order
     {
+        // Gift-card purchase orders have no line items — the "amount" IS the
+        // total, and the whole tax/service/discount pipeline doesn't apply.
+        // Recalculating would clobber subtotal / total (currently written by
+        // GiftCardPurchaseService) with 0 and break BML checkout.
+        if (($order->type ?? '') === 'gift_card') {
+            return $order->loadMissing(['items.modifiers']);
+        }
+
         // Gift cards are tender (payment), not pre-tax discounts — keep the
         // reserved amount on the order but never feed it into tax allocation.
         $giftCardTenderLaar = max(0, (int) ($order->gift_card_discount_laar ?? 0));
