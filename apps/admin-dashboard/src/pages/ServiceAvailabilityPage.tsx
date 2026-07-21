@@ -5,6 +5,7 @@ import { PageHeader, Btn, Card } from '../components/SharedUI';
 import {
   applyPreset,
   listServiceStates,
+  notifyRestoration,
   previewPreset,
   restoreService,
   updateServiceState,
@@ -126,6 +127,25 @@ export default function ServiceAvailabilityPage() {
     }
   };
 
+  const dispatchNotify = async (row: ServiceStateRow) => {
+    const count = row.waiting_notify_count;
+    if (!count) return;
+    if (!window.confirm(`Send ${count} restoration SMS for ${row.service_key}?`)) return;
+    setBusyKey(row.service_key);
+    try {
+      const res = await notifyRestoration(
+        row.service_key,
+        row.last_closed_incident_id ?? undefined,
+      );
+      alert(`Dispatched ${res.dispatched} SMS notification(s).`);
+      await load();
+    } catch (e) {
+      alert(`Notify failed: ${(e as Error).message}`);
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   const runPresetPreview = async (preset: string) => {
     setPresetBusy(true);
     try {
@@ -225,6 +245,7 @@ export default function ServiceAvailabilityPage() {
             rows={grouped.publicRows}
             onFlip={flipStatus}
             onRestore={restore}
+            onNotify={dispatchNotify}
             busyKey={busyKey}
           />
           <ServiceGroupCard
@@ -233,6 +254,7 @@ export default function ServiceAvailabilityPage() {
             rows={grouped.internalRows}
             onFlip={flipStatus}
             onRestore={restore}
+            onNotify={dispatchNotify}
             busyKey={busyKey}
           />
         </>
@@ -247,6 +269,7 @@ function ServiceGroupCard({
   rows,
   onFlip,
   onRestore,
+  onNotify,
   busyKey,
 }: {
   title: string;
@@ -254,6 +277,7 @@ function ServiceGroupCard({
   rows: ServiceStateRow[];
   onFlip: (row: ServiceStateRow, next: ServiceStatus) => void | Promise<void>;
   onRestore: (row: ServiceStateRow) => void | Promise<void>;
+  onNotify: (row: ServiceStateRow) => void | Promise<void>;
   busyKey: string | null;
 }) {
   if (rows.length === 0) return null;
@@ -294,25 +318,38 @@ function ServiceGroupCard({
                 <td style={cellStyle}>{row.reason_type ?? '—'}</td>
                 <td style={{ ...cellStyle, maxWidth: 260 }}>{row.public_message ?? '—'}</td>
                 <td style={cellStyle}>
-                  {row.status === 'available' ? (
-                    <Btn
-                      variant="secondary"
-                      small
-                      onClick={() => void onFlip(row, 'operational_pause')}
-                      disabled={busyKey === row.service_key}
-                    >
-                      Pause
-                    </Btn>
-                  ) : (
-                    <Btn
-                      variant="primary"
-                      small
-                      onClick={() => void onRestore(row)}
-                      disabled={busyKey === row.service_key}
-                    >
-                      Restore
-                    </Btn>
-                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {row.status === 'available' ? (
+                      <Btn
+                        variant="secondary"
+                        small
+                        onClick={() => void onFlip(row, 'operational_pause')}
+                        disabled={busyKey === row.service_key}
+                      >
+                        Pause
+                      </Btn>
+                    ) : (
+                      <Btn
+                        variant="primary"
+                        small
+                        onClick={() => void onRestore(row)}
+                        disabled={busyKey === row.service_key}
+                      >
+                        Restore
+                      </Btn>
+                    )}
+                    {row.waiting_notify_count > 0 && (
+                      <Btn
+                        variant="secondary"
+                        small
+                        onClick={() => void onNotify(row)}
+                        disabled={busyKey === row.service_key}
+                        title="Two-step restore: dispatch queued restoration SMS for the last incident"
+                      >
+                        Send {row.waiting_notify_count} SMS
+                      </Btn>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

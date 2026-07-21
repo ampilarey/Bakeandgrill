@@ -102,4 +102,27 @@ return [
     ],
 
     'consent_text' => 'By tapping Notify me, you agree to receive one SMS from Bake & Grill when this service is back. Standard rates may apply.',
+
+    /**
+     * One-time restoration SMS copy (plan §14 / Stage 6). Kept as config so
+     * ops can tweak wording without a code deploy. Per-service overrides via
+     * `templates.<service_key>`.
+     */
+    'restoration_sms' => [
+        'default_template' => 'Bake & Grill: :label is back — order at :url',
+        'link' => env('RESTORATION_SMS_LINK', 'https://bakeandgrill.mv/order/menu'),
+        'templates' => [
+            'online_checkout' => 'Bake & Grill: Online ordering is back — order at :url',
+            'online_delivery' => 'Bake & Grill: Delivery is back — order at :url',
+            'online_pickup' => 'Bake & Grill: Pickup is back — order at :url',
+            'catering_inquiry' => 'Bake & Grill: Catering inquiries are back — get in touch at :url',
+        ],
+    ],
+
+    /**
+     * Subscriptions past a terminal state older than this many days are
+     * anonymised by PruneRestorationSubscriptions (plan §14). Kept as config
+     * so retention can be tightened without a deploy.
+     */
+    'restoration_retention_days' => 30,
 ];

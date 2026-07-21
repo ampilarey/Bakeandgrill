@@ -34,6 +34,8 @@ export interface ServiceStateRow {
   updated_at: string | null;
   resolved_available: boolean;
   resolved_source: string;
+  waiting_notify_count: number;
+  last_closed_incident_id: number | null;
 }
 
 export interface ServiceStateUpdatePayload {
@@ -67,6 +69,27 @@ export async function updateServiceState(
 export async function restoreService(key: string): Promise<{ data: ServiceStateRow }> {
   return req(`/admin/service-availability/${encodeURIComponent(key)}/restore`, {
     method: 'POST',
+  });
+}
+
+export interface NotifyDispatched {
+  service_key: string;
+  incident_id: number;
+  dispatched: number;
+}
+
+/**
+ * Two-step restore (plan §14): after Restore flips the switch, this endpoint
+ * dispatches the queued restoration SMS for the last closed incident (or the
+ * `incidentId` passed in). Returns the count of jobs dispatched.
+ */
+export async function notifyRestoration(
+  key: string,
+  incidentId?: number,
+): Promise<NotifyDispatched> {
+  return req(`/admin/service-availability/${encodeURIComponent(key)}/notify`, {
+    method: 'POST',
+    body: JSON.stringify({ incident_id: incidentId ?? null }),
   });
 }
 

@@ -54,6 +54,8 @@ if (routes_domain_section_is('staff', 'protected') && !routes_domain_loaded('sta
             ->middleware('permission:service_availability.manage_public');
         Route::post('/{key}/restore', [App\Http\Controllers\Api\ServiceAvailabilityController::class, 'restore'])
             ->middleware('permission:service_availability.restore');
+        Route::post('/{key}/notify', [App\Http\Controllers\Api\ServiceAvailabilityController::class, 'notify'])
+            ->middleware('permission:service_availability.notify');
         // Preset requires broadest permission by default; emergency preset
         // additionally requires the emergency slug (enforced in controller
         // logic once Stage 8 lands — for now the manage_public slug is the

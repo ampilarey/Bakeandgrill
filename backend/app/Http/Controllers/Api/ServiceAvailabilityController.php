@@ -8,7 +8,9 @@ use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateServiceStateRequest;
 use App\Http\Resources\ServiceStateResource;
+use App\Jobs\SendRestorationSmsJob;
 use App\Models\AuditLog;
+use App\Models\RestorationSubscription;
 use App\Models\ServiceIncident;
 use App\Models\ServiceState;
 use Illuminate\Http\JsonResponse;
@@ -35,14 +37,73 @@ class ServiceAvailabilityController extends Controller
         $snapshot = $this->availability->resolve();
         $rows = ServiceState::query()->orderBy('group')->orderBy('service_key')->get();
 
+        $waitingByKey = $this->waitingCountsBySlug();
+        $lastClosedByKey = $this->lastClosedIncidentBySlug();
+
         $data = $rows->map(fn (ServiceState $model) => (new ServiceStateResource([
             'model' => $model,
             'snapshot' => $snapshot[$model->service_key] ?? [],
+            'waiting_notify_count' => $waitingByKey[$model->service_key] ?? 0,
+            'last_closed_incident_id' => $lastClosedByKey[$model->service_key] ?? null,
         ]))->toArray(request()))->all();
 
         return response()->json([
             'data' => $data,
             'generated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Dispatch queued restoration SMS for pending subs of the last
+     * closed/restored incident (or the incident_id supplied in the body).
+     * Two-step by design (plan §14): a Restore only flips the switch, this
+     * endpoint fires the notifications after the operator sanity-checks.
+     */
+    public function notify(Request $request, string $key): JsonResponse
+    {
+        $this->assertKnownKey($key);
+
+        $incidentId = $request->integer('incident_id') ?: null;
+        $incident = $incidentId
+            ? ServiceIncident::query()->where('id', $incidentId)->where('service_key', $key)->first()
+            : ServiceIncident::query()
+                ->where('service_key', $key)
+                ->whereIn('status', ['restored', 'closed'])
+                ->orderByDesc('restored_at')
+                ->orderByDesc('id')
+                ->first();
+
+        if (!$incident) {
+            return response()->json([
+                'message' => 'No restored incident found to notify.',
+                'dispatched' => 0,
+            ], 422);
+        }
+
+        $subs = RestorationSubscription::query()
+            ->where('service_incident_id', $incident->id)
+            ->where('status', 'pending')
+            ->pluck('id');
+
+        foreach ($subs as $id) {
+            SendRestorationSmsJob::dispatch((int) $id);
+        }
+
+        AuditLog::create([
+            'user_id' => $request->user()?->id,
+            'action' => 'service_availability.restoration_notify_dispatched',
+            'model_type' => ServiceIncident::class,
+            'model_id' => $incident->id,
+            'new_values' => ['dispatched' => $subs->count()],
+            'meta' => ['service_key' => $key, 'incident_id' => $incident->id],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->json([
+            'service_key' => $key,
+            'incident_id' => $incident->id,
+            'dispatched' => $subs->count(),
         ]);
     }
 
@@ -168,5 +229,33 @@ class ServiceAvailabilityController extends Controller
         if (!array_key_exists($key, config('service_availability.keys', []))) {
             abort(404, "Unknown service_key: {$key}");
         }
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function waitingCountsBySlug(): array
+    {
+        return RestorationSubscription::query()
+            ->where('status', 'pending')
+            ->selectRaw('service_key, COUNT(*) as total')
+            ->groupBy('service_key')
+            ->pluck('total', 'service_key')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function lastClosedIncidentBySlug(): array
+    {
+        return ServiceIncident::query()
+            ->whereIn('status', ['restored', 'closed'])
+            ->selectRaw('service_key, MAX(id) as last_id')
+            ->groupBy('service_key')
+            ->pluck('last_id', 'service_key')
+            ->map(fn ($v) => (int) $v)
+            ->all();
     }
 }

@@ -47,6 +47,10 @@ class ServiceStateResource extends JsonResource
             // Resolved view — reflects overlay + adapter + env fallbacks
             'resolved_available' => (bool) ($snapshot['available'] ?? ($model->status === 'available')),
             'resolved_source' => $snapshot['source'] ?? 'db',
+            // Stage 6 — restoration SMS staging counts (only populated when
+            // the caller merges them in via `restoration_meta`).
+            'waiting_notify_count' => (int) ($this->resource['waiting_notify_count'] ?? 0),
+            'last_closed_incident_id' => $this->resource['last_closed_incident_id'] ?? null,
         ];
     }
 }

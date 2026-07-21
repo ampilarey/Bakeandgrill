@@ -126,6 +126,13 @@ Schedule::command('otp:prune')
     ->onFailure($alertOnFailure('otp:prune'))
     ->after($trackSuccess('otp:prune'));
 
+// Service Availability: anonymise old restoration subscriptions daily
+Schedule::command('service-availability:prune-restoration-subscriptions')
+    ->dailyAt('02:15')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('service-availability:prune-restoration-subscriptions'))
+    ->after($trackSuccess('service-availability:prune-restoration-subscriptions'));
+
 // Orders: cancel stale payment_pending orders every 5 minutes
 Schedule::command('orders:cancel-stale')
     ->everyFiveMinutes()

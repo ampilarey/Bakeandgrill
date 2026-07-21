@@ -46,6 +46,12 @@ Route::get('/ordering/status', [App\Http\Controllers\Api\OnlineOrderingControlle
 Route::get('/service-status', App\Http\Controllers\Api\ServiceStatusController::class)
     ->middleware('throttle:120,1');
 
+// Restoration notify-me signup — public, per-IP throttled to 5/min.
+// Generic-success response for new/duplicate/never-seen so we never leak the
+// existence of a phone number. See plan §14.
+Route::post('/service-status/notify-me', [App\Http\Controllers\Api\RestorationSubscriptionController::class, 'store'])
+    ->middleware('throttle:5,1');
+
 Route::get('/ordering/catering-status', [App\Http\Controllers\Api\OnlineOrderingController::class, 'cateringStatus'])
     ->middleware('throttle:120,1');
 
