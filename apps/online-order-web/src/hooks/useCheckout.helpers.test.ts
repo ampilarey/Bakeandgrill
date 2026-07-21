@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { referralRoomLaar, mapGiftCardError } from './useCheckout';
+import { computeReferralRoomLaar, mapGiftCardError } from './useCheckout';
 import { ApiRequestError } from '@shared/api';
 
-describe('FIX 3 — referralRoomLaar ignores gift-card tender', () => {
+describe('FIX 3 — computeReferralRoomLaar ignores gift-card tender', () => {
   it('subtotal 100 with a 100 gift card staged and a valid 20 MVR referral → 20 referral is accepted', () => {
     const subtotalLaar = 100 * 100;
     const promoLaar = 0;
@@ -12,7 +12,7 @@ describe('FIX 3 — referralRoomLaar ignores gift-card tender', () => {
     // The removed line was subtracting the gift-card delta from the
     // room. That would produce room = 100 - 0 - 0 - 100 = 0 laar and
     // clamp the estimate to 0, showing "No referral discount applies".
-    const room = referralRoomLaar({ subtotalLaar, promoLaar, loyaltyLaar });
+    const room = computeReferralRoomLaar({ subtotalLaar, promoLaar, loyaltyLaar });
     const est = Math.min(configuredLaar, room);
 
     expect(room).toBe(subtotalLaar);
@@ -25,7 +25,7 @@ describe('FIX 3 — referralRoomLaar ignores gift-card tender', () => {
     const promoLaar = 30 * 100;
     const loyaltyLaar = 40 * 100;
     // Only 30 MVR of room left; 40 MVR referral clamps to 30.
-    expect(referralRoomLaar({ subtotalLaar, promoLaar, loyaltyLaar })).toBe(30 * 100);
+    expect(computeReferralRoomLaar({ subtotalLaar, promoLaar, loyaltyLaar })).toBe(30 * 100);
   });
 });
 

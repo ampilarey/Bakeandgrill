@@ -109,9 +109,13 @@ describe('EventOrderPage discoverability', () => {
     await user.click(screen.getByTestId('custom-add'));
     await user.click(screen.getByRole('button', { name: /Continue/i }));
     await waitFor(() => expect(screen.getByTestId('event-date')).toBeTruthy());
+    const dateInput = screen.getByTestId('event-date') as HTMLInputElement;
+    const minDate = dateInput.min || new Date().toISOString().slice(0, 10);
+    fireEvent.change(dateInput, { target: { value: minDate } });
     fireEvent.change(screen.getByTestId('event-time'), { target: { value: '14:30' } });
     await waitFor(() => expect((screen.getByTestId('contact-phone') as HTMLInputElement).value).toBe('7777001'));
     await waitFor(() => expect(screen.getByTestId('submit-event')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('submit-event')).not.toBeDisabled());
     await user.click(screen.getByTestId('submit-event'));
     await waitFor(() => expect(screen.getByTestId('view-my-events')).toBeTruthy());
     expect(screen.getByTestId('event-reference').textContent).toContain('EVT-TEST-1');

@@ -164,7 +164,7 @@ export function mapGiftCardError(e: unknown): string {
  * pre-tax discount and therefore MUST NOT consume referral room.
  * Mirrors the calculation used for gift-card apply on discountedSubtotal.
  */
-export function referralRoomLaar(opts: {
+export function computeReferralRoomLaar(opts: {
   subtotalLaar: number;
   promoLaar: number;
   loyaltyLaar: number;
@@ -769,7 +769,7 @@ export function useCheckout() {
         }
         const configuredLaar = Math.round(validation.referee_discount_mvr * 100);
         // Gift card is a tender, not a pre-tax discount — do not consume referral room.
-        const roomLaar = referralRoomLaar({
+        const roomLaar = computeReferralRoomLaar({
           subtotalLaar,
           promoLaar: promoDelta,
           loyaltyLaar: loyaltyDelta,
