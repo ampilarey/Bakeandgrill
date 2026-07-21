@@ -37,12 +37,17 @@ export function useConnectivity(enabled: boolean) {
         credentials: "same-origin",
       });
       if (res.ok) {
-        let ok = true;
+        // FIX 20 — require BOTH a parseable JSON body AND the expected
+        // "status" field. A captive-portal or misrouted proxy that hands
+        // us HTML with a 200 status must not be treated as reachable —
+        // orders would then post into a black hole. Parse failure or
+        // unrecognised status → count as offline.
+        let ok = false;
         try {
           const data = (await res.json()) as HealthResponse;
-          ok = data.status === "ok" || data.status === "healthy" || res.ok;
+          ok = data?.status === "ok" || data?.status === "healthy";
         } catch {
-          ok = true;
+          ok = false;
         }
         if (ok) {
           failStreakRef.current = 0;
