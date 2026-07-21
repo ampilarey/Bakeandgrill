@@ -64,10 +64,18 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
         Route::patch('/{id}/credit', [App\Http\Controllers\Api\CustomerCreditController::class, 'update']);
         Route::get('/{id}/credit/invoices', [App\Http\Controllers\Api\CustomerCreditController::class, 'invoices']);
         Route::get('/{id}/credit/ledger', [App\Http\Controllers\Api\CustomerCreditController::class, 'ledger']);
+        // FIX 9b: CSV export of the credit ledger for a single customer.
+        Route::get('/{id}/credit/ledger.csv', [App\Http\Controllers\Api\CustomerCreditController::class, 'ledgerCsv'])
+            ->middleware('throttle:20,1');
     });
 
     Route::middleware('permission:customers.credit.repay')->group(function () {
         Route::post('/{id}/credit/repayments', [App\Http\Controllers\Api\CustomerCreditController::class, 'repay']);
+    });
+
+    // FIX 9a: write-off — owner-only permission.
+    Route::middleware('permission:customers.credit.writeoff')->group(function () {
+        Route::post('/{id}/credit/write-off', [App\Http\Controllers\Api\CustomerCreditController::class, 'writeOff']);
     });
 
     Route::middleware('permission:customers.deposit.view')->group(function () {

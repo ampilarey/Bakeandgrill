@@ -50,6 +50,8 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         Route::get('/reports/x-report/csv', [ReportsController::class, 'xReportCsv'])->middleware('throttle:20,1');
         Route::get('/reports/z-report/csv', [ReportsController::class, 'zReportCsv'])->middleware('throttle:20,1');
         Route::get('/reports/inventory-valuation/csv', [ReportsController::class, 'inventoryValuationCsv'])->middleware('throttle:20,1');
+        // FIX 9b: CSV export of the credit exposure snapshot.
+        Route::get('/reports/credit-exposure/csv', [ReportsController::class, 'creditExposureCsv'])->middleware('throttle:20,1');
     });
 }
 

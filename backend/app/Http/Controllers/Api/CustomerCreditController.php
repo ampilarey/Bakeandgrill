@@ -56,11 +56,19 @@ class CustomerCreditController extends Controller
             'credit_payment_terms_days' => ['nullable', 'required_if:action,update_terms', 'integer', 'min:7', 'max:90'],
             'credit_reminder_sms' => ['nullable', 'boolean'],
             'override_limit' => ['sometimes', 'boolean'],
+            // FIX 6: reason is REQUIRED for update_limit and REQUIRED
+            // whenever the limit exceeds credit_limit_max_mvr (checked
+            // inside the service so the same rule applies to approve/update).
+            'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $limitMvrRaw = $validated['credit_limit_mvr'] ?? null;
+        if ($limitMvrRaw !== null && (!is_numeric($limitMvrRaw) || !is_finite((float) $limitMvrRaw))) {
+            abort(422, 'Credit limit is not a valid number.');
+        }
         $limitLaar = isset($validated['credit_limit_laar'])
             ? (int) $validated['credit_limit_laar']
-            : (int) round(((float) ($validated['credit_limit_mvr'] ?? 0)) * 100);
+            : (int) round(((float) ($limitMvrRaw ?? 0)) * 100);
 
         $updated = match ($validated['action']) {
             'approve' => $this->credit->approveCredit(
@@ -72,6 +80,7 @@ class CustomerCreditController extends Controller
                 isset($validated['credit_payment_terms_days'])
                     ? (int) $validated['credit_payment_terms_days']
                     : null,
+                $validated['reason'] ?? null,
             ),
             'disable' => $this->credit->disableCredit($customer, $actor, $request),
             'update_limit' => $this->credit->updateLimit(
@@ -80,6 +89,7 @@ class CustomerCreditController extends Controller
                 $actor,
                 (bool) ($validated['override_limit'] ?? false),
                 $request,
+                $validated['reason'] ?? null,
             ),
             'set_status' => $this->credit->setStatus(
                 $customer,
@@ -181,11 +191,119 @@ class CustomerCreditController extends Controller
     }
 
     /**
+     * POST /admin/customers/{id}/credit/write-off — FIX 9a.
+     */
+    public function writeOff(Request $request, int $id): JsonResponse
+    {
+        $customer = Customer::findOrFail($id);
+        $actor = $request->user();
+        abort_unless($actor !== null, 401);
+
+        $validated = $request->validate([
+            'amount_laar' => ['nullable', 'integer', 'min:1'],
+            'amount_mvr' => ['nullable', 'numeric', 'min:0.01'],
+            'reason' => ['required', 'string', 'min:5', 'max:1000'],
+        ]);
+
+        $amountLaar = isset($validated['amount_laar'])
+            ? (int) $validated['amount_laar']
+            : (int) round(((float) $validated['amount_mvr']) * 100);
+
+        $ledger = $this->credit->writeOff(
+            $customer,
+            $amountLaar,
+            $actor,
+            (string) $validated['reason'],
+            $request,
+        );
+
+        $customer->refresh();
+
+        return response()->json([
+            'ledger' => $this->formatLedgerRow($ledger),
+            'credit' => $this->formatCredit($customer->load('creditApprovedBy:id,name')),
+        ], 201);
+    }
+
+    /**
+     * GET /admin/customers/{id}/credit/ledger.csv — FIX 9b.
+     */
+    public function ledgerCsv(int $id)
+    {
+        Customer::findOrFail($id);
+
+        $rows = CustomerCreditLedger::query()
+            ->where('customer_id', $id)
+            ->orderByDesc('created_at')
+            ->limit(5000)
+            ->get();
+
+        $headers = [
+            'id', 'created_at', 'type', 'method',
+            'amount_mvr', 'balance_after_mvr',
+            'order_id', 'invoice_id', 'payment_id', 'shift_id',
+            'notes',
+        ];
+
+        return $this->csvResponse('credit-ledger-' . $id . '.csv', $headers, $rows, function (CustomerCreditLedger $row): array {
+            return [
+                $row->id,
+                $row->created_at?->toIso8601String(),
+                $row->type,
+                $row->method,
+                round(((int) $row->amount_laar) / 100, 2),
+                round(((int) $row->balance_after_laar) / 100, 2),
+                $row->order_id,
+                $row->invoice_id,
+                $row->payment_id,
+                $row->shift_id,
+                (string) ($row->notes ?? ''),
+            ];
+        });
+    }
+
+    /**
+     * @param iterable<mixed> $rows
+     */
+    private function csvResponse(string $filename, array $headers, iterable $rows, callable $mapper)
+    {
+        $handle = fopen('php://temp', 'r+');
+        fputcsv($handle, $headers);
+        foreach ($rows as $row) {
+            $line = $mapper($row);
+            $sanitized = array_map(function ($v) {
+                if ($v === null) {
+                    return '';
+                }
+                if (is_numeric($v)) {
+                    return (string) $v;
+                }
+                $s = (string) $v;
+                if (preg_match('/^[=+\-@]/', $s)) {
+                    return "'" . $s;
+                }
+
+                return $s;
+            }, $line);
+            fputcsv($handle, $sanitized);
+        }
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function formatCredit(Customer $customer): array
     {
         $summary = $this->credit->creditSummary($customer);
+        $maxLaar = \App\Domains\Credit\Services\CreditLedgerService::creditLimitMaxLaar();
 
         return array_merge($summary, [
             'customer_id' => $customer->id,
@@ -193,6 +311,8 @@ class CustomerCreditController extends Controller
             'limit_mvr' => round($summary['limit_laar'] / 100, 2),
             'balance_mvr' => round($summary['balance_laar'] / 100, 2),
             'available_mvr' => round($summary['available_laar'] / 100, 2),
+            'limit_max_laar' => $maxLaar,
+            'limit_max_mvr' => round($maxLaar / 100, 2),
         ]);
     }
 

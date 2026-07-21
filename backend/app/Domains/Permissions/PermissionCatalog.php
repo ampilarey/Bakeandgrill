@@ -118,6 +118,7 @@ final class PermissionCatalog
             ['group' => 'Customers', 'slug' => 'customers.analytics', 'name' => 'Customer analytics'],
             ['group' => 'Customers', 'slug' => 'customers.credit.manage', 'name' => 'Manage customer credit accounts', 'description' => 'Approve credit, set limits, block/on-hold accounts'],
             ['group' => 'Customers', 'slug' => 'customers.credit.repay', 'name' => 'Record customer credit repayments', 'description' => 'Apply payments against customer credit balance'],
+            ['group' => 'Customers', 'slug' => 'customers.credit.writeoff', 'name' => 'Write off customer credit balance', 'description' => 'Owner-only: zero out uncollectable credit as bad debt'],
             ['group' => 'Customers', 'slug' => 'customers.deposit.manage', 'name' => 'Manage customer deposit accounts', 'description' => 'Legacy: full deposit account management'],
             ['group' => 'Customers', 'slug' => 'customers.deposit.view', 'name' => 'View customer deposit accounts', 'description' => 'View deposit balance and ledger'],
             ['group' => 'Customers', 'slug' => 'customers.deposit.receive', 'name' => 'Receive customer deposits', 'description' => 'Record deposit top-ups from customers'],
@@ -261,6 +262,7 @@ final class PermissionCatalog
             'webhooks.manage', 'integrations.webhooks',
             'xero.manage', 'integrations.xero',
             'customers.credit.repay',
+            'customers.credit.writeoff',
             'customers.deposit.adjust',
             'customers.deposit.transfer_credit',
             // Discount cards — owner-issued only by default

@@ -75,8 +75,9 @@ class CustomerCreditService
         ?string $notes = null,
         ?Request $request = null,
         ?int $paymentTermsDays = null,
+        ?string $reason = null,
     ): Customer {
-        return $this->ledger->approveCredit($customer, $limitLaar, $actor, $notes, $request, $paymentTermsDays);
+        return $this->ledger->approveCredit($customer, $limitLaar, $actor, $notes, $request, $paymentTermsDays, $reason);
     }
 
     public function disableCredit(Customer $customer, User $actor, ?Request $request = null): Customer
@@ -90,8 +91,31 @@ class CustomerCreditService
         User $actor,
         bool $override = false,
         ?Request $request = null,
+        ?string $reason = null,
     ): Customer {
-        return $this->ledger->updateLimit($customer, $limitLaar, $actor, $override, $request);
+        return $this->ledger->updateLimit($customer, $limitLaar, $actor, $override, $request, $reason);
+    }
+
+    public static function creditLimitMaxLaar(): int
+    {
+        return CreditLedgerService::creditLimitMaxLaar();
+    }
+
+    /**
+     * Record a write-off (uncollectable credit balance).
+     *
+     * Not part of the CreditLedgerService flow because write-offs are a
+     * finance-only action — permission-gated (customers.credit.writeoff)
+     * and audited separately. NEVER writes a CashMovement.
+     */
+    public function writeOff(
+        Customer $customer,
+        int $amountLaar,
+        User $actor,
+        string $reason,
+        ?Request $request = null,
+    ): CustomerCreditLedger {
+        return $this->ledger->writeOff($customer, $amountLaar, $actor, $reason, $request);
     }
 
     public function updatePaymentTerms(

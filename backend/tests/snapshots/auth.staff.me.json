@@ -13,6 +13,7 @@
             "customers.create",
             "customers.credit.manage",
             "customers.credit.repay",
+            "customers.credit.writeoff",
             "customers.deposit.adjust",
             "customers.deposit.freeze",
             "customers.deposit.manage",

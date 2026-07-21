@@ -542,7 +542,7 @@ class CustomerCreditTest extends TestCase
             'method' => 'cash',
         ])
             ->assertStatus(422)
-            ->assertJsonFragment(['message' => 'Open a shift before recording a cash credit repayment.']);
+            ->assertJsonFragment(['message' => 'Open a shift to record cash — or record it as a bank transfer.']);
     }
 
     public function test_repayment_over_balance_is_rejected(): void

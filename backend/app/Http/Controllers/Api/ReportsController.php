@@ -217,6 +217,35 @@ class ReportsController extends Controller
         return response()->json($this->reports->creditExposure());
     }
 
+    /**
+     * FIX 9b — CSV export of the credit exposure snapshot.
+     */
+    public function creditExposureCsv()
+    {
+        $data = $this->reports->creditExposure();
+
+        $rows = [
+            ['metric', 'value'],
+            ['total_balance_mvr', $data['total_balance'] ?? 0],
+            ['customers_count', $data['customers_count'] ?? 0],
+            [],
+            ['customer_id', 'name', 'balance_mvr', 'limit_mvr', 'available_mvr', 'status', 'overdue_invoices_count'],
+        ];
+        foreach ($data['top_customers'] ?? [] as $c) {
+            $rows[] = [
+                $c['id'] ?? '',
+                $c['name'] ?? '',
+                $c['balance'] ?? 0,
+                $c['limit'] ?? 0,
+                $c['available'] ?? 0,
+                $c['status'] ?? '',
+                $c['overdue_invoices_count'] ?? 0,
+            ];
+        }
+
+        return $this->csvResponse('credit-exposure.csv', $rows);
+    }
+
     public function depositExposure()
     {
         return response()->json($this->reports->depositExposure());

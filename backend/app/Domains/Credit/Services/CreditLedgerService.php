@@ -11,6 +11,7 @@ use App\Models\CustomerCreditLedger;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\ShiftAccessService;
@@ -26,6 +27,44 @@ final class CreditLedgerService
         private readonly ShiftAccessService $shifts,
     ) {}
 
+    /**
+     * FIX 6: site-setting-driven maximum credit limit.
+     * Non-owner actors cannot exceed this; the owner may with an audited
+     * override (meta.exceeded_max = true).
+     */
+    public static function creditLimitMaxLaar(): int
+    {
+        $raw = SiteSetting::get('credit_limit_max_mvr', '50000');
+        $mvr = (float) $raw;
+        if (!is_finite($mvr) || $mvr < 0) {
+            $mvr = 50000.0;
+        }
+
+        return (int) round($mvr * 100);
+    }
+
+    private function assertLimitWithinMax(int $limitLaar, User $actor, ?string $reason = null): bool
+    {
+        $maxLaar = self::creditLimitMaxLaar();
+        if ($limitLaar <= $maxLaar) {
+            return false;
+        }
+
+        $isOwner = $actor->role?->slug === 'owner';
+        if (!$isOwner) {
+            abort(422, sprintf(
+                'Credit limit exceeds configured maximum of MVR %.2f. Owner override required.',
+                $maxLaar / 100,
+            ));
+        }
+
+        if ($reason === null || strlen(trim($reason)) < 5) {
+            abort(422, 'A reason (5+ chars) is required to exceed the credit limit maximum.');
+        }
+
+        return true;
+    }
+
     public function approveCredit(
         Customer $customer,
         int $limitLaar,
@@ -33,16 +72,19 @@ final class CreditLedgerService
         ?string $notes = null,
         ?Request $request = null,
         ?int $paymentTermsDays = null,
+        ?string $reason = null,
     ): Customer {
-        if ($limitLaar <= 0) {
-            abort(422, 'Credit limit must be greater than zero.');
+        if (!is_finite((float) $limitLaar) || $limitLaar <= 0) {
+            abort(422, 'Credit limit must be a positive number.');
         }
+
+        $exceededMax = $this->assertLimitWithinMax($limitLaar, $actor, $reason);
 
         $termsDays = $this->eligibility->validatePaymentTermsDays(
             $paymentTermsDays ?? CreditEligibilityService::DEFAULT_PAYMENT_TERMS_DAYS,
         );
 
-        return DB::transaction(function () use ($customer, $limitLaar, $actor, $notes, $request, $termsDays) {
+        return DB::transaction(function () use ($customer, $limitLaar, $actor, $notes, $request, $termsDays, $reason, $exceededMax) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $old = $this->eligibility->creditSummary($locked);
 
@@ -63,7 +105,10 @@ final class CreditLedgerService
                 $locked->id,
                 $old,
                 $this->eligibility->creditSummary($locked->fresh()),
-                [],
+                array_filter([
+                    'exceeded_max' => $exceededMax ?: null,
+                    'reason' => $reason,
+                ], fn ($v) => $v !== null),
                 $request,
             );
 
@@ -102,12 +147,23 @@ final class CreditLedgerService
         User $actor,
         bool $override = false,
         ?Request $request = null,
+        ?string $reason = null,
     ): Customer {
-        if ($limitLaar < 0) {
-            abort(422, 'Credit limit cannot be negative.');
+        if (!is_finite((float) $limitLaar) || $limitLaar < 0) {
+            abort(422, 'Credit limit must be a non-negative number.');
         }
 
-        return DB::transaction(function () use ($customer, $limitLaar, $override, $request) {
+        // FIX 6: limit CHANGES require a reason of 5+ chars. This is what
+        // gets audited when a manager quietly bumps a customer's limit by
+        // MVR 10k; owner-forced exceeding-max also flows through here.
+        $trimmedReason = $reason !== null ? trim($reason) : '';
+        if (strlen($trimmedReason) < 5) {
+            abort(422, 'A reason (5+ chars) is required when changing a credit limit.');
+        }
+
+        $exceededMax = $this->assertLimitWithinMax($limitLaar, $actor, $trimmedReason);
+
+        return DB::transaction(function () use ($customer, $limitLaar, $override, $request, $trimmedReason, $exceededMax) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $balance = (int) $locked->credit_balance_laar;
 
@@ -127,7 +183,11 @@ final class CreditLedgerService
                 $locked->id,
                 $old,
                 $this->eligibility->creditSummary($locked->fresh()),
-                ['override' => $override],
+                array_filter([
+                    'override' => $override,
+                    'reason' => $trimmedReason,
+                    'exceeded_max' => $exceededMax ?: null,
+                ], fn ($v) => $v !== null && $v !== false),
                 $request,
             );
 
@@ -429,6 +489,71 @@ final class CreditLedgerService
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * FIX 9a — Write-off (bad debt).
+     *
+     * Uncollectable balance is zeroed out via an `adjustment` ledger row
+     * with a negative amount. NEVER writes a CashMovement (this money was
+     * never received). Balance is clamped at zero.
+     */
+    public function writeOff(
+        Customer $customer,
+        int $amountLaar,
+        User $actor,
+        string $reason,
+        ?Request $request = null,
+    ): CustomerCreditLedger {
+        if ($amountLaar <= 0) {
+            abort(422, 'Write-off amount must be greater than zero.');
+        }
+
+        $trimmedReason = trim($reason);
+        if (strlen($trimmedReason) < 5) {
+            abort(422, 'A reason (5+ chars) is required for a write-off.');
+        }
+
+        return DB::transaction(function () use ($customer, $amountLaar, $actor, $trimmedReason, $request) {
+            $locked = Customer::lockForUpdate()->findOrFail($customer->id);
+            $balance = (int) $locked->credit_balance_laar;
+
+            if ($amountLaar > $balance) {
+                abort(422, sprintf(
+                    'Write-off exceeds outstanding balance (MVR %.2f).',
+                    $balance / 100,
+                ));
+            }
+
+            $newBalance = max(0, $balance - $amountLaar);
+            $locked->update(['credit_balance_laar' => $newBalance]);
+
+            $ledger = CustomerCreditLedger::create([
+                'customer_id' => $locked->id,
+                'type' => 'adjustment',
+                'amount_laar' => -$amountLaar,
+                'balance_after_laar' => $newBalance,
+                'method' => 'writeoff',
+                'recorded_by' => $actor->id,
+                'notes' => 'Write-off: ' . $trimmedReason,
+            ]);
+
+            $this->audit->log(
+                'customer.credit.writeoff',
+                'Customer',
+                $locked->id,
+                ['balance_laar' => $balance],
+                [
+                    'amount_laar' => $amountLaar,
+                    'balance_after_laar' => $newBalance,
+                    'reason' => $trimmedReason,
+                ],
+                ['ledger_id' => $ledger->id],
+                $request,
+            );
+
+            return $ledger;
+        });
     }
 
     public function reverseChargeForRefund(Order $order, int $refundAmountLaar, User $actor, ?\App\Models\Refund $refund = null): void
