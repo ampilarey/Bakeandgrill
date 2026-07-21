@@ -112,7 +112,7 @@ class RefundController extends Controller
                 'user_id' => $request->user()?->id,
                 'shift_id' => $processorShift->id,
                 'amount' => $amount,
-                'status' => $validated['status'] ?? 'approved',
+                'status' => 'approved',
                 'reason' => $validated['reason'] ?? null,
             ]);
 

@@ -138,7 +138,7 @@ class EnsureActiveDeviceTest extends TestCase
 
     public function test_missing_device_header_is_allowed_in_relaxed_mode(): void
     {
-        config(['pos.strict_device_approval' => false]);
+        config(['pos.strict_device_approval' => false, 'pos.require_device_header' => false]);
 
         $this->postJson('/api/orders', [
             'type' => 'takeaway',
@@ -147,5 +147,88 @@ class EnsureActiveDeviceTest extends TestCase
             ->assertCreated();
 
         $this->assertDatabaseCount('devices', 0);
+    }
+
+    public function test_strict_require_device_header_returns_428_when_missing(): void
+    {
+        config(['pos.require_device_header' => true]);
+
+        $this->postJson('/api/orders', [
+            'type' => 'takeaway',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ])
+            ->assertStatus(428)
+            ->assertJsonPath('code', 'device_header_required')
+            ->assertJsonPath(
+                'message',
+                'This terminal must identify itself — reopen the POS app.',
+            );
+    }
+
+    public function test_disabling_device_revokes_pos_token_for_that_device(): void
+    {
+        config(['pos.require_device_header' => false]);
+
+        // Drop Sanctum::actingAs from setUp so Bearer tokens are actually checked.
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+
+        $ownerRole = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'is_active' => true]);
+        $owner = User::create([
+            'name' => 'Device Owner',
+            'email' => 'device-owner@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $ownerRole->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+
+        $device = Device::create([
+            'name' => 'Revoke POS',
+            'identifier' => 'REVOKE-POS-1',
+            'type' => 'pos',
+            'is_active' => true,
+            'status' => 'approved',
+        ]);
+
+        $tokenName = 'staff-pos-' . $this->staff->id . '-REVOKE-POS-1';
+        $plain = $this->staff->createToken($tokenName, ['staff'])->plainTextToken;
+
+        // Ensure an open shift for this staff (setUp shift was under actingAs).
+        \App\Models\Shift::create([
+            'user_id' => $this->staff->id,
+            'device_id' => $device->id,
+            'opened_at' => now(),
+            'opening_cash' => 100,
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer ' . $plain,
+            'X-Device-Identifier' => 'REVOKE-POS-1',
+        ])->postJson('/api/orders', [
+            'type' => 'takeaway',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ])->assertCreated();
+
+        // Guard caches the previous request's user — clear so the owner token resolves.
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+
+        $ownerToken = $owner->createToken('admin', ['staff'])->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer ' . $ownerToken)
+            ->patchJson('/api/devices/' . $device->id . '/disable')
+            ->assertOk();
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'name' => $tokenName,
+        ]);
+
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer ' . $plain,
+            'X-Device-Identifier' => 'REVOKE-POS-1',
+        ])->postJson('/api/orders', [
+            'type' => 'takeaway',
+            'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+        ])->assertUnauthorized();
     }
 }

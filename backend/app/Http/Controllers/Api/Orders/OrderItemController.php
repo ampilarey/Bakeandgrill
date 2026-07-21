@@ -159,6 +159,8 @@ class OrderItemController extends Controller
             }
 
             // Floor map: seat ownership follows restaurant_table_id.
+            // Only claim when the table id actually changes — split tickets
+            // share one seat, and re-claiming on every item save would 422.
             $newTableId = $updated->restaurant_table_id !== null
                 ? (int) $updated->restaurant_table_id
                 : null;
@@ -166,7 +168,11 @@ class OrderItemController extends Controller
             if ($prevTableId !== null && $prevTableId !== $newTableId) {
                 RestaurantTable::syncOccupancy($prevTableId);
             }
-            if ($newTableId !== null && (string) $updated->type === 'dine_in') {
+            if (
+                $newTableId !== null
+                && (string) $updated->type === 'dine_in'
+                && $prevTableId !== $newTableId
+            ) {
                 RestaurantTable::claimForOrder($newTableId, (int) $updated->id);
             }
 

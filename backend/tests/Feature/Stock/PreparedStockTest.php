@@ -499,7 +499,6 @@ class PreparedStockTest extends TestCase
         $response = $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 100.0,
             'reason' => 'Customer request',
-            'status' => 'approved',
         ]);
 
         $response->assertCreated();

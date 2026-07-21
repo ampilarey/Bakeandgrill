@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Orders\DTOs\OrderCancelledData;
+use App\Domains\Orders\Events\OrderCancelled;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AddTableItemsRequest;
 use App\Http\Requests\CloseTableRequest;
@@ -137,42 +139,61 @@ class TableController extends Controller
 
     public function open(OpenTableRequest $request, $id)
     {
-        $table = RestaurantTable::findOrFail($id);
-        if (!$table->is_active) {
-            return response()->json(['message' => 'Table is inactive.'], 422);
+        $result = DB::transaction(function () use ($request, $id) {
+            // Lock the seat row before the active-order check so concurrent
+            // opens cannot both pass and mint two tickets on one table.
+            $table = RestaurantTable::query()->lockForUpdate()->findOrFail($id);
+            if (!$table->is_active) {
+                return ['error' => 'Table is inactive.'];
+            }
+
+            $activeOrder = $this->findActiveOrder($table->id);
+            if ($activeOrder) {
+                return [
+                    'error' => 'Table already has an open order.',
+                    'order_id' => $activeOrder->id,
+                ];
+            }
+
+            $payload = $request->validated();
+            $payload['type'] = 'dine_in';
+            $payload['restaurant_table_id'] = $table->id;
+
+            $order = app(OrderCreationService::class)->createFromPayload(
+                $payload,
+                $request->user(),
+            );
+
+            $oldStatus = $table->status;
+            $table->update(['status' => 'occupied']);
+
+            return [
+                'order' => $order,
+                'table' => $table,
+                'old_status' => $oldStatus,
+            ];
+        });
+
+        if (isset($result['error'])) {
+            $payload = ['message' => $result['error']];
+            if (isset($result['order_id'])) {
+                $payload['order_id'] = $result['order_id'];
+            }
+
+            return response()->json($payload, 422);
         }
-
-        $activeOrder = $this->findActiveOrder($table->id);
-        if ($activeOrder) {
-            return response()->json([
-                'message' => 'Table already has an open order.',
-                'order_id' => $activeOrder->id,
-            ], 422);
-        }
-
-        $payload = $request->validated();
-        $payload['type'] = 'dine_in';
-        $payload['restaurant_table_id'] = $table->id;
-
-        $order = app(OrderCreationService::class)->createFromPayload(
-            $payload,
-            $request->user(),
-        );
-
-        $oldStatus = $table->status;
-        $table->update(['status' => 'occupied']);
 
         app(AuditLogService::class)->log(
             'table.opened',
             'RestaurantTable',
-            $table->id,
-            ['status' => $oldStatus],
+            $result['table']->id,
+            ['status' => $result['old_status']],
             ['status' => 'occupied'],
-            ['order_id' => $order->id],
+            ['order_id' => $result['order']->id],
             $request,
         );
 
-        return response()->json(['order' => $order, 'table' => $table], 201);
+        return response()->json(['order' => $result['order'], 'table' => $result['table']], 201);
     }
 
     public function addItems(AddTableItemsRequest $request, $tableId, $orderId)
@@ -250,58 +271,96 @@ class TableController extends Controller
     public function merge(MergeTablesRequest $request)
     {
         $validated = $request->validated();
-        $sourceTable = RestaurantTable::findOrFail($validated['source_table_id']);
-        $targetTable = RestaurantTable::findOrFail($validated['target_table_id']);
-        $oldSourceStatus = $sourceTable->status;
-        $oldTargetStatus = $targetTable->status;
 
-        if ($sourceTable->id === $targetTable->id) {
+        if ((int) $validated['source_table_id'] === (int) $validated['target_table_id']) {
             return response()->json(['message' => 'Select two different tables.'], 422);
         }
 
-        $sourceOrder = $this->findActiveOrder($sourceTable->id);
-        if (!$sourceOrder) {
-            return response()->json(['message' => 'No active order on source table.'], 422);
-        }
-
-        $targetOrder = $this->findActiveOrder($targetTable->id);
         $service = app(OrderCreationService::class);
 
-        DB::transaction(function () use (
-            $sourceOrder,
-            $targetOrder,
-            $sourceTable,
-            $targetTable,
-            $service
-        ) {
+        $result = DB::transaction(function () use ($validated, $service) {
+            // Lock both seats in id order to avoid deadlocks under concurrent merges.
+            $lockIds = [
+                (int) $validated['source_table_id'],
+                (int) $validated['target_table_id'],
+            ];
+            sort($lockIds);
+            $locked = RestaurantTable::query()
+                ->whereIn('id', $lockIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            $sourceTable = $locked->get((int) $validated['source_table_id'])
+                ?? RestaurantTable::query()->lockForUpdate()->findOrFail($validated['source_table_id']);
+            $targetTable = $locked->get((int) $validated['target_table_id'])
+                ?? RestaurantTable::query()->lockForUpdate()->findOrFail($validated['target_table_id']);
+
+            $oldSourceStatus = $sourceTable->status;
+            $oldTargetStatus = $targetTable->status;
+
+            $sourceOrder = $this->findActiveOrder($sourceTable->id);
+            if (!$sourceOrder) {
+                return ['error' => 'No active order on source table.'];
+            }
+
+            $targetOrder = $this->findActiveOrder($targetTable->id);
+            $cancelledSource = null;
+
             if ($targetOrder) {
                 OrderItem::where('order_id', $sourceOrder->id)
                     ->update(['order_id' => $targetOrder->id]);
 
                 $service->recalculateTotals($targetOrder->fresh());
                 $sourceOrder->update(['status' => 'cancelled']);
+                $cancelledSource = $sourceOrder->fresh();
             } else {
                 $sourceOrder->update(['restaurant_table_id' => $targetTable->id]);
             }
 
             $sourceTable->update(['status' => 'available']);
             $targetTable->update(['status' => 'occupied']);
+
+            return [
+                'source_table' => $sourceTable,
+                'target_table' => $targetTable,
+                'old_source_status' => $oldSourceStatus,
+                'old_target_status' => $oldTargetStatus,
+                'cancelled_source' => $cancelledSource,
+            ];
         });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        // Fire OrderCancelled for the merged-away source AFTER commit so
+        // loyalty / promo / gift-card holds release (mirrors OrderItemController::merge).
+        if ($result['cancelled_source'] !== null) {
+            $sourceOrder = $result['cancelled_source'];
+            DB::afterCommit(function () use ($sourceOrder): void {
+                OrderCancelled::dispatch(OrderCancelledData::fromOrder($sourceOrder));
+            });
+        }
 
         app(AuditLogService::class)->log(
             'table.merged',
             'RestaurantTable',
-            $targetTable->id,
-            ['source_status' => $oldSourceStatus, 'target_status' => $oldTargetStatus],
+            $result['target_table']->id,
+            [
+                'source_status' => $result['old_source_status'],
+                'target_status' => $result['old_target_status'],
+            ],
             ['source_status' => 'available', 'target_status' => 'occupied'],
-            ['source_table_id' => $sourceTable->id],
+            ['source_table_id' => $result['source_table']->id],
             $request,
         );
 
         return response()->json([
-            'target_order' => $this->findActiveOrder($targetTable->id)?->load(['items.modifiers']),
-            'source_table' => $sourceTable->fresh(),
-            'target_table' => $targetTable->fresh(),
+            'target_order' => $this->findActiveOrder($result['target_table']->id)?->load(['items.modifiers']),
+            'source_table' => $result['source_table']->fresh(),
+            'target_table' => $result['target_table']->fresh(),
         ]);
     }
 

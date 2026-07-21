@@ -75,7 +75,7 @@ class StaffAuthController extends Controller
             return $this->issueAdminStaffSession($request, $user, 'pin');
         }
 
-        return $this->issuePosStaffToken($user, 'pin');
+        return $this->issuePosStaffToken($user, 'pin', $request->input('device_identifier'));
     }
 
     /**
@@ -110,7 +110,7 @@ class StaffAuthController extends Controller
 
         RateLimiter::clear($rateKey);
 
-        return $this->issuePosStaffToken($user, 'password');
+        return $this->issuePosStaffToken($user, 'password', $request->input('device_identifier'));
     }
 
     /**
@@ -378,7 +378,7 @@ class StaffAuthController extends Controller
             || $permissions->hasPermission($user, 'admin.access');
     }
 
-    private function issuePosStaffToken(User $user, string $errorField = 'pin'): JsonResponse
+    private function issuePosStaffToken(User $user, string $errorField = 'pin', ?string $deviceIdentifier = null): JsonResponse
     {
         $user->update(['last_login_at' => now()]);
         $user->loadMissing('role');
@@ -389,8 +389,13 @@ class StaffAuthController extends Controller
             ]);
         }
 
+        $tokenName = 'staff-pos-' . $user->id;
+        if (is_string($deviceIdentifier) && $deviceIdentifier !== '') {
+            $tokenName .= '-' . $this->sanitizeDeviceIdentifierForTokenName($deviceIdentifier);
+        }
+
         $token = $user->createToken(
-            'staff-pos-' . $user->id,
+            $tokenName,
             ['staff'],
             now()->addHours((int) config('sanctum.pos_token_ttl_hours')),
         )->plainTextToken;
@@ -400,6 +405,17 @@ class StaffAuthController extends Controller
             'token' => $token,
             'user' => $this->serializeStaffUser($user),
         ]);
+    }
+
+    /**
+     * Keep Sanctum token names safe and matchable for device revoke on disable.
+     */
+    private function sanitizeDeviceIdentifierForTokenName(string $identifier): string
+    {
+        $safe = preg_replace('/[^A-Za-z0-9\-_]/', '-', $identifier) ?? '';
+        $safe = trim($safe, '-_');
+
+        return $safe !== '' ? substr($safe, 0, 80) : 'device';
     }
 
     /**

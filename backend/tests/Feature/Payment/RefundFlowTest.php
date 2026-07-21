@@ -112,7 +112,24 @@ class RefundFlowTest extends TestCase
         $this->assertDatabaseHas('refunds', [
             'order_id' => $order->id,
             'amount' => 10.00,
+            'status' => 'approved',
         ]);
+    }
+
+    public function test_client_cannot_set_refund_status(): void
+    {
+        $this->openOwnerShift();
+        $order = $this->makeRefundableOrder(50.00);
+
+        $this->postJson(
+            "/api/orders/{$order->id}/refunds",
+            ['amount' => 10.00, 'status' => 'rejected'],
+            $this->authHeader($this->owner),
+        )
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['status']);
+
+        $this->assertDatabaseMissing('refunds', ['order_id' => $order->id]);
     }
 
     // ── Cannot refund without a valid amount ──────────────────────────────────

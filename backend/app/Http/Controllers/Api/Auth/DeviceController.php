@@ -9,6 +9,7 @@ use App\Models\Device;
 use App\Models\Shift;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class DeviceController extends Controller
 {
@@ -224,12 +225,21 @@ class DeviceController extends Controller
     }
 
     /**
-     * Disable device.
+     * Disable device and revoke POS tokens bound to its identifier.
      */
     public function disable(int $id)
     {
         $device = Device::findOrFail($id);
         $device->update(['is_active' => false]);
+
+        $safeId = preg_replace('/[^A-Za-z0-9\-_]/', '-', (string) $device->identifier) ?? '';
+        $safeId = trim($safeId, '-_');
+        if ($safeId !== '') {
+            // Token names: staff-pos-{userId}-{sanitizedIdentifier}
+            PersonalAccessToken::query()
+                ->where('name', 'like', 'staff-pos-%-' . $safeId)
+                ->delete();
+        }
 
         return response()->json(['device' => $device]);
     }

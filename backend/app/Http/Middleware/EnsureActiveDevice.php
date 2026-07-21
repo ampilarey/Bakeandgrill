@@ -10,13 +10,14 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Optional device metadata for POS audit/reporting.
+ * Device metadata for POS audit/reporting + optional terminal identity gate.
  *
- * By default never blocks sales — staff auth + permissions + shift gate access.
- * Owner-disabled devices (is_active=false) are rejected. Set
- * POS_STRICT_DEVICE_APPROVAL=true to also require approved status.
- * When X-Device-Identifier is present, upserts a device row and attaches
- * it to the request. Missing header is allowed.
+ * When `pos.require_device_header` is true, missing X-Device-Identifier
+ * returns 428 (this middleware only runs on `device.active` routes).
+ * Owner-disabled devices (is_active=false) are always rejected when a
+ * header is present. Set POS_STRICT_DEVICE_APPROVAL=true to also require
+ * approved status. When the header is present, upserts a device row and
+ * attaches it to the request.
  */
 class EnsureActiveDevice
 {
@@ -26,6 +27,13 @@ class EnsureActiveDevice
             ?? $request->header('X-Device-Id');
 
         if (!$identifier) {
+            if (config('pos.require_device_header')) {
+                return response()->json([
+                    'message' => 'This terminal must identify itself — reopen the POS app.',
+                    'code' => 'device_header_required',
+                ], 428);
+            }
+
             $request->attributes->set('device', null);
 
             return $next($request);

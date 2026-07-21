@@ -26,11 +26,11 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
         ->middleware(['permission:pos.ring_sales', 'device.active']);
     Route::get('/orders/{id}', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'show']);
     Route::post('/orders/{id}/hold', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'hold'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
+        ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/resume', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'resume'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
+        ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/fire-to-kitchen', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'fireToKitchen'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:20,1']);
+        ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/send-pay-link', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'sendPayLink'])
         ->middleware(['permission:orders.send_payment_link', 'throttle:10,1']);
     Route::post('/orders/{id}/start-cooking', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'startCooking'])
@@ -42,11 +42,11 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     Route::post('/orders/{id}/cancel', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'cancel'])
         ->middleware(['permission:orders.void', 'device.active', 'throttle:10,1']);
     Route::patch('/orders/{id}/items', [App\Http\Controllers\Api\Orders\OrderItemController::class, 'updateItems'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:30,1']);
+        ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:30,1']);
     Route::post('/orders/{id}/merge', [App\Http\Controllers\Api\Orders\OrderItemController::class, 'merge'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
+        ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:10,1']);
     Route::post('/orders/{id}/split', [App\Http\Controllers\Api\Orders\OrderItemController::class, 'split'])
-        ->middleware(['permission:pos.hold_resume', 'throttle:10,1']);
+        ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:10,1']);
     Route::post('/orders/{id}/payments', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'addPayments'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'throttle:20,1']);
     Route::post('/orders/{id}/send-bill', [App\Http\Controllers\Api\Orders\OrderPaymentController::class, 'sendBill'])
@@ -64,7 +64,7 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     Route::get('/refunds/{id}', [App\Http\Controllers\Api\RefundController::class, 'show'])
         ->middleware('permission:orders.refund');
     Route::post('/orders/{orderId}/refunds', [App\Http\Controllers\Api\RefundController::class, 'store'])
-        ->middleware(['permission:orders.refund', 'throttle:10,1']);
+        ->middleware(['permission:orders.refund', 'device.active', 'throttle:10,1']);
 }
 
 if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orders.pos_ops')) {

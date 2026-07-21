@@ -329,6 +329,56 @@ class TableManagementTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_merge_releases_loyalty_hold_on_cancelled_source(): void
+    {
+        $source = $this->createTable('T-LOY-SRC');
+        $target = $this->createTable('T-LOY-TGT');
+
+        $opened = $this->openTableRequest($source->id)->assertCreated();
+        $this->openTableRequest($target->id)->assertCreated();
+
+        $sourceOrderId = (int) $opened->json('order.id');
+        $sourceOrder = Order::findOrFail($sourceOrderId);
+
+        // Empty open-table tickets have $0 subtotal — loyalty hold needs merchandise room.
+        $sourceOrder->update([
+            'subtotal' => 100,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 100,
+            'total_laar' => 10000,
+            'subtotal_laar' => 10000,
+        ]);
+
+        $customer = $this->makeCustomer();
+        $sourceOrder->update(['customer_id' => $customer->id]);
+
+        $account = \App\Models\LoyaltyAccount::query()->firstOrCreate(
+            ['customer_id' => $customer->id],
+            ['points_balance' => 0, 'points_held' => 0, 'lifetime_points' => 0, 'tier' => 'bronze'],
+        );
+        $account->update(['points_balance' => 200, 'points_held' => 0]);
+
+        app(\App\Domains\Loyalty\Services\LoyaltyLedgerService::class)
+            ->createOrRefreshHold($customer, $sourceOrder->fresh(), 100);
+
+        $this->assertSame(100, (int) $account->fresh()->points_held);
+
+        $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson('/api/tables/merge', [
+                'source_table_id' => $source->id,
+                'target_table_id' => $target->id,
+            ], $this->managerHeaders)
+            ->assertOk();
+
+        $this->assertSame('cancelled', $sourceOrder->fresh()->status);
+        $this->assertSame(0, (int) $account->fresh()->points_held);
+
+        $hold = \App\Models\LoyaltyHold::query()->where('order_id', $sourceOrder->id)->first();
+        $this->assertNotNull($hold);
+        $this->assertSame('released', $hold->status);
+    }
+
     public function test_merge_requires_different_tables(): void
     {
         $table = $this->createTable('T-SAME');
@@ -338,6 +388,74 @@ class TableManagementTest extends TestCase
                 'source_table_id' => $table->id,
                 'target_table_id' => $table->id,
             ], $this->managerHeaders)->assertStatus(422);
+    }
+
+    public function test_split_ticket_can_patch_items_without_reclaiming_table(): void
+    {
+        $category = Category::create(['name' => 'Food', 'slug' => 'table-split-food', 'is_active' => true]);
+        $item = Item::create([
+            'category_id' => $category->id,
+            'name' => 'Split Burger',
+            'base_price' => 12.00,
+            'sku' => 'TBL-SPLIT-1',
+            'is_active' => true,
+            'is_available' => true,
+        ]);
+        $table = $this->createTable('T-SPLIT-PATCH');
+
+        $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson('/api/shifts/open', ['opening_cash' => 50], $this->managerHeaders)
+            ->assertCreated();
+
+        $first = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->postJson('/api/orders', [
+                'type' => 'dine_in',
+                'restaurant_table_id' => $table->id,
+                'print' => false,
+                'items' => [
+                    ['item_id' => $item->id, 'quantity' => 1],
+                    ['item_id' => $item->id, 'quantity' => 1],
+                ],
+            ], $this->managerHeaders)
+            ->assertCreated();
+
+        $orderId = (int) $first->json('order.id');
+        $order = Order::with('items')->findOrFail($orderId);
+
+        // Simulate a split sibling that already shares the seat (claim is exclusive at create).
+        $sibling = Order::factory()->dineIn()->create([
+            'restaurant_table_id' => $table->id,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+            'user_id' => $order->user_id,
+            'subtotal' => 12,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 12,
+            'total_laar' => 1200,
+        ]);
+        \App\Models\OrderItem::create([
+            'order_id' => $sibling->id,
+            'item_id' => $item->id,
+            'item_name' => $item->name,
+            'quantity' => 1,
+            'unit_price' => 12,
+            'total_price' => 12,
+            'status' => 'pending',
+        ]);
+
+        $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
+            ->patchJson("/api/orders/{$sibling->id}/items", [
+                'items' => [[
+                    'item_id' => $item->id,
+                    'name' => $item->name,
+                    'quantity' => 2,
+                ]],
+                'restaurant_table_id' => $table->id,
+                'type' => 'dine_in',
+                'reprint_kitchen' => false,
+            ], $this->managerHeaders)
+            ->assertOk();
     }
 
     // ── Split table ───────────────────────────────────────────────────────────
