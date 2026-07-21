@@ -23,6 +23,13 @@ const AUTO_REFRESH_MS = 5 * 60 * 1000;
  * the admin marked "Online pickup only" actually disappears when the
  * cashier switches to Dine-in.
  */
+function formatMenuAge(ms: number): string {
+  const hours = Math.max(1, Math.floor(ms / 3_600_000));
+  if (hours < 48) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
 function channelForOrderType(orderType: PosOrderType): PosSalesChannel {
   if (orderType === "Dine-in") return "dine_in";
   if (orderType === "Pickup") return "online_pickup";
@@ -48,6 +55,14 @@ export function useMenu(
   const [dataError, setDataError] = useState("");
   const [usingCachedMenu, setUsingCachedMenu] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
+  /**
+   * FIX 16 — when serving from cache offline and the cache is >24h old,
+   * surface a dismissible "menu prices last updated N ago" warning so
+   * cashiers know they may be ringing yesterday's price list.
+   */
+  const [staleMenuWarning, setStaleMenuWarning] = useState<string | null>(null);
+  const [dismissedStaleAt, setDismissedStaleAt] = useState<number | null>(null);
+  const STALE_MS = 24 * 60 * 60 * 1000;
   const attemptRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bootstrapDoneRef = useRef(false);
@@ -69,8 +84,17 @@ export function useMenu(
     setCategories((cached.categories ?? []) as Category[]);
     setItems((cached.items ?? []) as Item[]);
     setUsingCachedMenu(true);
-    setLastRefreshedAt(Date.parse(cached.cached_at));
-  }, []);
+    const savedAtMs = Date.parse(cached.cached_at);
+    setLastRefreshedAt(savedAtMs);
+    // FIX 16 — if the cache we're about to serve is > 24h old and we
+    // haven't dismissed a warning since then, flash the stale note.
+    if (Number.isFinite(savedAtMs)) {
+      const ageMs = Date.now() - savedAtMs;
+      if (ageMs > STALE_MS && (dismissedStaleAt == null || dismissedStaleAt < savedAtMs)) {
+        setStaleMenuWarning(`Menu prices last updated ${formatMenuAge(ageMs)} ago. Reconnect to refresh.`);
+      }
+    }
+  }, [dismissedStaleAt, STALE_MS]);
 
   const load = useCallback(
     async (mode: "initial" | "silent" | "manual" = "initial") => {
@@ -115,6 +139,7 @@ export function useMenu(
           setItems(its);
           setDataError("");
           setUsingCachedMenu(false);
+          setStaleMenuWarning(null);
           setLastRefreshedAt(Date.now());
           markOfflineBootstrap();
           void saveCachedMenu(ch, { categories: cats, items: its });
@@ -132,6 +157,7 @@ export function useMenu(
           setItems(its);
           setDataError("");
           setUsingCachedMenu(false);
+          setStaleMenuWarning(null);
           setLastRefreshedAt(Date.now());
           markOfflineBootstrap();
           void saveCachedMenu(ch, { categories: cats, items: its });
@@ -218,6 +244,11 @@ export function useMenu(
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [isLoggedIn, load, lastRefreshedAt]);
 
+  const dismissStaleMenuWarning = useCallback(() => {
+    setStaleMenuWarning(null);
+    setDismissedStaleAt(Date.now());
+  }, []);
+
   return {
     categories,
     items,
@@ -229,5 +260,8 @@ export function useMenu(
     refresh,
     lastRefreshedAt,
     usingCachedMenu,
+    /** FIX 16 — dismissible "menu prices last updated N ago" note. */
+    staleMenuWarning,
+    dismissStaleMenuWarning,
   };
 }

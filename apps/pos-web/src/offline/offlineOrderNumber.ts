@@ -1,4 +1,4 @@
-import { getMetaValue, setMetaValue } from "./db";
+import { getOfflineDb } from "./db";
 
 function todayKey(): string {
   const d = new Date();
@@ -16,13 +16,26 @@ function deviceShortId(deviceIdentifier: string): string {
 
 /**
  * Format: OFF-{deviceShortId}-{YYYYMMDD}-{seq4}
+ *
+ * FIX 15: the read-increment-write cycle runs in a single IndexedDB
+ * readwrite transaction on the meta store so two concurrent allocations
+ * from the same device can't mint the same sequence number.
  */
 export async function allocateOfflineOrderNumber(deviceIdentifier: string): Promise<string> {
   const date = todayKey();
-  const metaKey = `offline_seq:${deviceShortId(deviceIdentifier)}:${date}`;
-  const current = await getMetaValue(metaKey);
-  const next = (typeof current === "number" ? current : Number(current) || 0) + 1;
-  await setMetaValue(metaKey, next);
+  const short = deviceShortId(deviceIdentifier);
+  const metaKey = `offline_seq:${short}:${date}`;
+
+  const db = await getOfflineDb();
+  const tx = db.transaction("meta", "readwrite");
+  const store = tx.objectStore("meta");
+  const existing = await store.get(metaKey);
+  const current = existing?.value ?? null;
+  const next =
+    (typeof current === "number" ? current : Number(current) || 0) + 1;
+  await store.put({ value: next }, metaKey);
+  await tx.done;
+
   const seq = String(next).padStart(4, "0");
-  return `OFF-${deviceShortId(deviceIdentifier)}-${date}-${seq}`;
+  return `OFF-${short}-${date}-${seq}`;
 }

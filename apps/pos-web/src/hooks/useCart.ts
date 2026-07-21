@@ -12,11 +12,23 @@ import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from "@shared/ut
 import { effectiveLineTaxRatePercent, packagingTaxLaar } from "../utils/posCartTotals";
 import { fetchPublicSiteSettings, fetchGstBootstrap } from "../api";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
+import {
+  loadCachedGstBootstrap,
+  loadCachedServiceChargeSettings,
+  saveCachedGstBootstrap,
+  saveCachedServiceChargeSettings,
+} from "../offline/db";
 
 export type PaymentRow = {
   id: string;
   method: "cash" | "card" | "qr" | "digital_wallet" | "house_account" | "wallet";
   amount: string;
+  /**
+   * FIX 11 — cash overpay: the actual cash the cashier received. Only
+   * meaningful on cash rows and only when > amount. Optional so older
+   * flows / callers keep working without any changes.
+   */
+  tendered_amount?: string;
 };
 
 /** First active variant, or first listed — matches server expectation when item.has_variants. */
@@ -177,22 +189,72 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
   const [taxInclusive, setTaxInclusive] = useState(false);
   const [packagingFeeTaxable, setPackagingFeeTaxable] = useState(true);
+  /**
+   * FIX 9: age of the cached tax/service-charge config the cart math is
+   * currently using when a fetch failed. `null` when live fetch succeeded.
+   * Presented as an informational banner ("using saved settings from …").
+   */
+  const [settingsCacheAgeMs, setSettingsCacheAgeMs] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchPublicSiteSettings()
-      .then((settings) => setServiceChargeConfig(parseServiceChargePublicSettings(settings)))
-      .catch(() => setServiceChargeConfig(null));
-    fetchGstBootstrap()
-      .then((b) => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const settings = await fetchPublicSiteSettings();
+        if (!alive) return;
+        setServiceChargeConfig(parseServiceChargePublicSettings(settings));
+        void saveCachedServiceChargeSettings(settings as Record<string, unknown>);
+      } catch {
+        // Live fetch failed — hydrate from IndexedDB BEFORE falling back
+        // to hardcoded defaults so offline math still matches settings.
+        const cached = await loadCachedServiceChargeSettings();
+        if (!alive) return;
+        if (cached) {
+          setServiceChargeConfig(
+            parseServiceChargePublicSettings(cached.settings as never),
+          );
+          const age = Date.now() - Date.parse(cached.cached_at);
+          if (Number.isFinite(age)) setSettingsCacheAgeMs(age);
+        } else {
+          setServiceChargeConfig(null);
+        }
+      }
+    })();
+
+    (async () => {
+      try {
+        const b = await fetchGstBootstrap();
+        if (!alive) return;
         setDefaultTaxRatePercent(b.tax_rate_percent);
         setTaxInclusive(!!b.tax_inclusive);
         setPackagingFeeTaxable(b.packaging_fee_taxable !== false);
-      })
-      .catch(() => {
-        setDefaultTaxRatePercent(8);
-        setTaxInclusive(false);
-        setPackagingFeeTaxable(true);
-      });
+        void saveCachedGstBootstrap({
+          tax_rate_percent: b.tax_rate_percent,
+          tax_inclusive: !!b.tax_inclusive,
+          packaging_fee_taxable: b.packaging_fee_taxable !== false,
+        });
+      } catch {
+        const cached = await loadCachedGstBootstrap();
+        if (!alive) return;
+        if (cached) {
+          setDefaultTaxRatePercent(cached.tax_rate_percent);
+          setTaxInclusive(!!cached.tax_inclusive);
+          setPackagingFeeTaxable(cached.packaging_fee_taxable !== false);
+          const age = Date.now() - Date.parse(cached.cached_at);
+          if (Number.isFinite(age)) setSettingsCacheAgeMs((prev) => prev ?? age);
+        } else {
+          // No cache — last resort defaults (unchanged from before FIX 9).
+          setDefaultTaxRatePercent(8);
+          setTaxInclusive(false);
+          setPackagingFeeTaxable(true);
+        }
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const effectiveLineTaxRate = useCallback(
@@ -585,5 +647,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     setAppliedLoyalty,
     appliedGiftCard,
     setAppliedGiftCard,
+    /** FIX 9: non-null age (ms) when cart math is using cached tax settings. */
+    settingsCacheAgeMs,
   };
 }

@@ -35,6 +35,17 @@ import { usePosAppContext } from './PosAppProvider';
 import { paneTitle, Banner, NoticeBanner, shouldShowStatusBanner } from './posUiHelpers';
 import type { Pane } from './types';
 
+/** FIX 9: humanise "cached tax settings from …" age for the offline banner. */
+function formatSettingsAge(ms: number): string {
+  const mins = Math.max(0, Math.round(ms / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `${days}d ago`;
+}
+
 function offlineTypeToPos(type: string): PosOrderType {
   if (type === 'dine_in') return 'Dine-in';
   if (type === 'online_pickup') return 'Pickup';
@@ -206,6 +217,33 @@ export function PosShellLayout() {
         <div className="pos-offline-banner">
           Offline mode — cash, card, transfer, and QR only (manual). Orders sync when internet returns.
           {menu.usingCachedMenu ? " Showing cached menu." : ""}
+          {cart.settingsCacheAgeMs != null
+            ? ` Using saved tax/service settings from ${formatSettingsAge(cart.settingsCacheAgeMs)}.`
+            : ""}
+        </div>
+      )}
+
+      {menu.staleMenuWarning && (
+        <div
+          role="alert"
+          style={{
+            margin: '0 12px', padding: '10px 14px', borderRadius: 10,
+            background: '#FEF3C7', color: '#92400E', fontSize: 13, fontWeight: 600,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          }}
+        >
+          <span>{menu.staleMenuWarning}</span>
+          <button
+            type="button"
+            onClick={menu.dismissStaleMenuWarning}
+            style={{
+              minHeight: 32, padding: '4px 10px', borderRadius: 6,
+              border: '1px solid rgba(146,64,14,0.3)', background: 'transparent',
+              color: '#92400E', fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -237,6 +275,7 @@ export function PosShellLayout() {
             orderId={receiptBanner.orderId}
             customerPhone={receiptBanner.customerPhone}
             paidOnCredit={receiptBanner.paidOnCredit}
+            creditNote={receiptBanner.creditNote}
             receiptResendEnabled={smsNotifications.receipt_resend}
             onDismiss={() => setReceiptBanner(null)}
           />
@@ -691,6 +730,8 @@ export function PosShellLayout() {
           }}
           submitting={order.isSubmitting}
           errorMessage={order.statusMessage}
+          rewardWarning={order.rewardWarning}
+          pendingPaymentOrderId={order.pendingPaymentForOrderId}
           onClose={() => setShowCharge(false)}
           onConfirm={async (rows) => {
             // Clear any stale error (e.g. from a previous attempt) so

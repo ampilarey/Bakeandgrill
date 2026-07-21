@@ -70,6 +70,21 @@ export type CachedShiftRecord = {
   cached_at: string;
 };
 
+export type CachedGstBootstrap = {
+  id: "current";
+  tax_rate_percent: number;
+  tax_inclusive: boolean;
+  packaging_fee_taxable: boolean;
+  cached_at: string;
+};
+
+export type CachedServiceChargeSettings = {
+  id: "current";
+  /** Raw public site settings map used to parse service-charge config. */
+  settings: Record<string, unknown>;
+  cached_at: string;
+};
+
 export type SyncLogRecord = {
   id: "latest";
   last_attempt_at: string | null;
@@ -84,13 +99,20 @@ interface PosOfflineDB extends DBSchema {
   cached_menu: { key: string; value: CachedMenuRecord };
   cached_staff_session: { key: string; value: CachedStaffSession };
   cached_shift: { key: string; value: CachedShiftRecord };
+  cached_gst_bootstrap: { key: string; value: CachedGstBootstrap };
+  cached_service_charge: { key: string; value: CachedServiceChargeSettings };
   offline_orders: { key: string; value: OfflineOrderRecord; indexes: { status: string; shift_id: number } };
   sync_logs: { key: string; value: SyncLogRecord };
   meta: { key: string; value: { value: string | number } };
 }
 
 const DB_NAME = "pos_offline_v1";
-const DB_VERSION = 1;
+/**
+ * v1 → v2: adds cached_gst_bootstrap + cached_service_charge object stores so
+ * cart math survives an offline reload with the last-known tax / service-
+ * charge config instead of falling back to hardcoded defaults (FIX 9).
+ */
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<PosOfflineDB>> | null = null;
 
@@ -118,10 +140,48 @@ export function getOfflineDb(): Promise<IDBPDatabase<PosOfflineDB>> {
         if (!db.objectStoreNames.contains("meta")) {
           db.createObjectStore("meta");
         }
+        if (!db.objectStoreNames.contains("cached_gst_bootstrap")) {
+          db.createObjectStore("cached_gst_bootstrap");
+        }
+        if (!db.objectStoreNames.contains("cached_service_charge")) {
+          db.createObjectStore("cached_service_charge");
+        }
       },
     });
   }
   return dbPromise;
+}
+
+export async function saveCachedGstBootstrap(
+  data: Omit<CachedGstBootstrap, "id" | "cached_at">,
+): Promise<void> {
+  const db = await getOfflineDb();
+  await db.put(
+    "cached_gst_bootstrap",
+    { id: "current", ...data, cached_at: new Date().toISOString() },
+    "current",
+  );
+}
+
+export async function loadCachedGstBootstrap(): Promise<CachedGstBootstrap | null> {
+  const db = await getOfflineDb();
+  return (await db.get("cached_gst_bootstrap", "current")) ?? null;
+}
+
+export async function saveCachedServiceChargeSettings(
+  settings: Record<string, unknown>,
+): Promise<void> {
+  const db = await getOfflineDb();
+  await db.put(
+    "cached_service_charge",
+    { id: "current", settings, cached_at: new Date().toISOString() },
+    "current",
+  );
+}
+
+export async function loadCachedServiceChargeSettings(): Promise<CachedServiceChargeSettings | null> {
+  const db = await getOfflineDb();
+  return (await db.get("cached_service_charge", "current")) ?? null;
 }
 
 export const MAX_OFFLINE_ORDERS = 100;
