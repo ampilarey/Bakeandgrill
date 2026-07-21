@@ -29,6 +29,7 @@ import {
   type LoyaltyAccount,
 } from "../api";
 import type { LoyaltyTierProgress } from "@shared/types";
+import { ApiRequestError } from "@shared/api";
 import {
   discountLaarForRedeemPoints,
   DEFAULT_LOYALTY_RATES,
@@ -115,6 +116,47 @@ function addressToDelivery(a: CustomerAddress): DeliveryForm {
     notes: a.notes ?? "",
     location_link: a.location_link ?? "",
   };
+}
+
+/**
+ * FIX 7 (frontend): if a gift-card error carries an "expired" reason (or
+ * the message mentions "expired"), surface a friendly renewal message
+ * using the returned expires_at when possible.
+ */
+export function mapGiftCardError(e: unknown): string {
+  const err = e as Error;
+  const rawMessage = err?.message ?? '';
+  let body: Record<string, unknown> | undefined;
+  if (e instanceof ApiRequestError && e.body && typeof e.body === 'object') {
+    body = e.body as Record<string, unknown>;
+  }
+  const reason = typeof body?.reason === 'string' ? (body.reason as string) : '';
+  const isExpired =
+    reason === 'expired' ||
+    /\bexpired\b/i.test(rawMessage) ||
+    (typeof body?.message === 'string' && /\bexpired\b/i.test(body.message as string));
+
+  if (isExpired) {
+    const expiresAt =
+      (typeof body?.expires_at === 'string' && (body.expires_at as string)) ||
+      (typeof body?.expired_at === 'string' && (body.expired_at as string)) ||
+      '';
+    let formatted = expiresAt;
+    if (expiresAt) {
+      const d = new Date(expiresAt);
+      if (!Number.isNaN(d.getTime())) {
+        try {
+          formatted = new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(d);
+        } catch {
+          formatted = expiresAt;
+        }
+      }
+    }
+    return formatted
+      ? `This card expired on ${formatted} — contact us to renew.`
+      : 'This card has expired — contact us to renew.';
+  }
+  return rawMessage || 'Something went wrong.';
 }
 
 /**
@@ -642,7 +684,7 @@ export function useCheckout() {
         setGiftCardBalance(available);
       }
     } catch (e) {
-      setGiftCardError((e as Error).message);
+      setGiftCardError(mapGiftCardError(e));
     } finally {
       setGiftCardLoading(false);
     }
@@ -672,7 +714,7 @@ export function useCheckout() {
       setGiftCardApplied({ code: giftCardCode.trim().toUpperCase(), discountLaar: res.discount_laar });
       setGiftCardCode("");
     } catch (e) {
-      setGiftCardError((e as Error).message);
+      setGiftCardError(mapGiftCardError(e));
     } finally {
       setGiftCardLoading(false);
     }
