@@ -696,7 +696,7 @@ Recorded on branch `claude/service-availability-maintenance-zj4whc`. Stages 1–
 | 5 | `6b5d403f` | Order-app UX (browse-only checkout, ServiceUnavailableModal, NotifyMeForm, 503 mapping, SW `v9`) + Blade banner + branded maintenance view + View Composer via `ShareServiceAvailability` middleware |
 | 6 | `11e1a0e5` | Public `POST /service-status/notify-me`, `RestorationSubscriptionController`, `SendRestorationSmsJob`, `RestorationSmsBuilder`, admin `POST /{key}/notify` + waiting-count UI, `PruneRestorationSubscriptions` command scheduled daily |
 | 7 | `2dc7946f` | `ActivateScheduledServiceStates` command scheduled every minute — activates + restores on `starts_at` / `ends_at`, never fires SMS |
-| 8 | *(this commit)* | POS `pos_sales` / KDS `kds_operations` / delivery-ops `delivery_operations` route guards; `SERVICE_AVAILABILITY_RUNBOOK.md`; emergency + env override tests |
+| 8 | `845b4729` | POS `pos_sales` / KDS `kds_operations` / delivery-ops `delivery_operations` route guards; `SERVICE_AVAILABILITY_RUNBOOK.md`; emergency + env override tests |
 
 ### Test results per stage
 
