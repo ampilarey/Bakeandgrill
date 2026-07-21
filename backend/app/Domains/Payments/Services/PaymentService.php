@@ -395,6 +395,26 @@ class PaymentService
 
         $idempotencyKey = 'bml:webhook:' . ($payload['transactionId'] ?? Str::uuid());
 
+        // FIX 12 — verify HMAC signature BEFORE minting a WebhookLog row.
+        // The prior order (firstOrCreate → verify) let a forged webhook
+        // claim the idempotency key for a genuine transactionId, so a
+        // subsequent legitimate delivery would be dropped as a duplicate.
+        // Now: bad signature → 401-style throw, no log row created.
+        $signatureOk = $this->bml->verifyWebhookSignature($rawBody, $signature);
+        if (!$signatureOk) {
+            Log::warning('BML: Webhook signature mismatch. Verify BML_WEBHOOK_SECRET matches the portal.', [
+                'idempotency_key' => $idempotencyKey,
+            ]);
+
+            if (
+                config('app.env') === 'production'
+                || config('bml.enforce_signature', true)
+                || filled(config('bml.webhook_secret'))
+            ) {
+                throw new \RuntimeException('BML webhook signature verification failed — rejecting payload.');
+            }
+        }
+
         $log = DB::transaction(function () use ($idempotencyKey, $rawBody, $payload, $headers): WebhookLog {
             return WebhookLog::firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
@@ -417,16 +437,6 @@ class PaymentService
         }
 
         try {
-            if (!$this->bml->verifyWebhookSignature($rawBody, $signature)) {
-                Log::warning('BML: Webhook signature mismatch. Verify BML_WEBHOOK_SECRET matches the portal.', [
-                    'idempotency_key' => $idempotencyKey,
-                ]);
-
-                if (config('app.env') === 'production' || config('bml.enforce_signature', true) || filled(config('bml.webhook_secret'))) {
-                    throw new \RuntimeException('BML webhook signature verification failed — rejecting payload.');
-                }
-            }
-
             $this->processWebhookPayload($payload, $log);
             $log->update(['status' => 'processed', 'processed_at' => now()]);
         } catch (\Throwable $e) {
