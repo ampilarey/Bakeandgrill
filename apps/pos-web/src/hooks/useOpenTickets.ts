@@ -33,9 +33,11 @@ const POLL_MS = 30_000;
 export type UseOpenTicketsOptions = {
   /** Prefill for Send Bill when the ticket has no linked customer. */
   cartCustomerPhone?: string | null;
+  /** Called after a successful void so pending-payment state can clear. */
+  onOrderCancelled?: (orderId: number) => void;
 };
 
-export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}) {
+export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenTicketsOptions = {}) {
   const [tickets, setTickets] = useState<OpenTicket[]>([]);
   /** Server total for the current list scope (may exceed loaded rows). */
   const [activeTotal, setActiveTotal] = useState(0);
@@ -74,6 +76,14 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
   const [mergeConfirm, setMergeConfirm] = useState<{ target: OpenTicket; source: OpenTicket } | null>(null);
   const [mergeBusy, setMergeBusy] = useState(false);
   const [splitFor, setSplitFor] = useState<OpenTicket | null>(null);
+  /**
+   * FIX 19 — when window.open is blocked (mobile Safari, popup-blocker,
+   * kiosk), we fall back to an in-app modal so the cashier can still get
+   * the invoice URL onto the customer's phone via QR / clipboard.
+   */
+  const [printBillFallback, setPrintBillFallback] = useState<
+    { ticket: OpenTicket; url: string } | null
+  >(null);
 
   const loadActiveOrders = useCallback(async () => {
     if (listScope === "mine") {
@@ -205,6 +215,7 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
       await cancelOrder(t.id, trimmed);
       setTickets((curr) => curr.filter((row) => row.id !== t.id));
       setRowMsg({ id: t.id, kind: "ok", text: `Ticket voided — ${trimmed}` });
+      onOrderCancelled?.(t.id);
       return true;
     } catch (e) {
       setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Couldn't void ticket" });
@@ -280,12 +291,12 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
       const url = link.includes("?") ? `${link}&print=1` : `${link}?print=1`;
       const win = window.open(url, "_blank", "noopener,noreferrer");
       if (!win) {
+        // FIX 19 — instead of only toasting, surface an in-app fallback
+        // modal with the invoice URL + a scannable QR (customer's phone
+        // can grab it directly). Clipboard copy is still attempted as a
+        // best-effort convenience for desktop cashiers.
         try { await navigator.clipboard.writeText(url); } catch { /* permissions */ }
-        setRowMsg({
-          id: t.id,
-          kind: "err",
-          text: "Print blocked by browser popup-blocker. Allow popups for the POS, or paste the copied link into a new tab.",
-        });
+        setPrintBillFallback({ ticket: t, url });
       }
     } catch (e) {
       setRowMsg({ id: t.id, kind: "err", text: (e as Error).message || "Failed to open invoice" });
@@ -293,6 +304,8 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
       setBusyId(null);
     }
   };
+
+  const closePrintBillFallback = useCallback(() => setPrintBillFallback(null), []);
 
   const handleStartMerge = (target: OpenTicket) => {
     setMergeTargetId(target.id);
@@ -507,5 +520,8 @@ export function useOpenTickets({ cartCustomerPhone }: UseOpenTicketsOptions = {}
     handlePickMergeSource,
     handleConfirmMerge,
     handleSplitConfirm,
+    /** FIX 19 — popup-blocked print bill fallback (URL + QR modal). */
+    printBillFallback,
+    closePrintBillFallback,
   };
 }

@@ -13,6 +13,7 @@ import { OpenTicketsFilterBar } from "./openTickets/OpenTicketsFilterBar";
 import { OpenTicketsScopeBar } from "./openTickets/OpenTicketsScopeBar";
 import { EmptyState, PanelShell } from "./openTickets/PanelShell";
 import { PhonePromptModal } from "./openTickets/PhonePromptModal";
+import { PrintBillFallbackModal } from "./openTickets/PrintBillFallbackModal";
 import { SplitItemPicker } from "./openTickets/SplitItemPicker";
 import { TicketList } from "./openTickets/TicketList";
 import { VoidConfirmModal } from "./openTickets/VoidConfirmModal";
@@ -88,6 +89,8 @@ export function OpenTicketsPanel({
     handlePickMergeSource,
     handleConfirmMerge,
     handleSplitConfirm,
+    printBillFallback,
+    closePrintBillFallback,
   } = hook;
 
   const [voidPrompt, setVoidPrompt] = useState<{ ticket: OpenTicket; reason: string } | null>(null);
@@ -230,6 +233,16 @@ export function OpenTicketsPanel({
             setVoidPrompt(null);
           }}
           onConfirm={() => void handleConfirmVoid()}
+        />
+      )}
+      {printBillFallback && (
+        <PrintBillFallbackModal
+          url={printBillFallback.url}
+          ticketLabel={
+            printBillFallback.ticket.ticket_name
+              ?? `Order ${printBillFallback.ticket.order_number}`
+          }
+          onClose={closePrintBillFallback}
         />
       )}
     </PanelShell>
