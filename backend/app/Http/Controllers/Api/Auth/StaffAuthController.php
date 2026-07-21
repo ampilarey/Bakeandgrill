@@ -39,8 +39,18 @@ class StaffAuthController extends Controller
         $forAdmin = $request->input('intent') === 'admin';
 
         $rateKey = 'staff-pin:' . $identityKey . ':' . $request->ip();
-        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
-            $seconds = RateLimiter::availableIn($rateKey);
+        // FIX 13 — a second per-identity counter (independent of IP) so
+        // that credential-stuffing from a rotating IP pool still trips
+        // an account-level lockout at 15 attempts / 15min.
+        $acctKey = 'staff-pin-acct:' . $identityKey;
+        if (
+            RateLimiter::tooManyAttempts($rateKey, 5)
+            || RateLimiter::tooManyAttempts($acctKey, 15)
+        ) {
+            $seconds = max(
+                RateLimiter::availableIn($rateKey),
+                RateLimiter::availableIn($acctKey),
+            );
             throw ValidationException::withMessages([
                 'pin' => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
             ]);
@@ -50,6 +60,7 @@ class StaffAuthController extends Controller
 
         if (!$user) {
             RateLimiter::hit($rateKey, 900);
+            RateLimiter::hit($acctKey, 900);
             throw ValidationException::withMessages([
                 'pin' => ['Invalid mobile/email or PIN.'],
             ]);
@@ -57,6 +68,7 @@ class StaffAuthController extends Controller
 
         if ($user->pin_hash === null) {
             RateLimiter::hit($rateKey, 900);
+            RateLimiter::hit($acctKey, 900);
             throw ValidationException::withMessages([
                 'pin' => ['No PIN is set on this account. Use Owner / admin sign-in with your admin password, or set a PIN in Admin → Staff.'],
             ]);
@@ -64,12 +76,14 @@ class StaffAuthController extends Controller
 
         if (!Hash::check($pin, $user->pin_hash)) {
             RateLimiter::hit($rateKey, 900);
+            RateLimiter::hit($acctKey, 900);
             throw ValidationException::withMessages([
                 'pin' => ['Invalid mobile/email or PIN.'],
             ]);
         }
 
         RateLimiter::clear($rateKey);
+        RateLimiter::clear($acctKey);
 
         if ($forAdmin) {
             return $this->issueAdminStaffSession($request, $user, 'pin');
