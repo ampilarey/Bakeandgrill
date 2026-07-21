@@ -21,6 +21,10 @@ type Props = {
   packagingFee?: number;
   /** Optional delivery fee line (POS phone-in delivery). */
   deliveryFee?: number;
+  /** Gift-card tender applied to the ticket (MVR). Rendered as the
+   *  last −MVR line before "Amount due" so the breakdown always sums
+   *  to the headline total. */
+  giftTender?: number;
   /** Show Credit Account tender when customer is approved for credit. */
   creditEligible?: boolean;
   creditAvailableMvr?: number;
@@ -78,6 +82,7 @@ export function ChargeOverlay({
   serviceChargeLabel,
   packagingFee,
   deliveryFee,
+  giftTender,
   creditEligible = false,
   creditAvailableMvr = 0,
   walletEligible = false,
@@ -110,6 +115,7 @@ export function ChargeOverlay({
       || (serviceCharge ?? 0) > 0
       || (packagingFee ?? 0) > 0
       || (deliveryFee ?? 0) > 0
+      || (giftTender ?? 0) > 0
     ));
   const [method, setMethod] = useState<ChargeMethod>("cash");
   const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
@@ -358,6 +364,9 @@ export function ChargeOverlay({
                 )}
                 {(tax ?? 0) > 0 && (
                   <Line label="GST" value={tax ?? 0} />
+                )}
+                {(giftTender ?? 0) > 0 && (
+                  <Line label="Gift card" value={-(giftTender ?? 0)} accent="#FCD34D" />
                 )}
               </div>
             )}

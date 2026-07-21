@@ -708,6 +708,7 @@ export function PosShellLayout() {
               ? deliveryFeeEst
               : undefined
           }
+          giftTender={cart.appliedGiftCard?.discount ?? 0}
           // Use the SERVER total for resumed tickets so the cashier
           // confirms the same number that handleCharge will settle
           // against. Without this, a ticket resumed with server-side
