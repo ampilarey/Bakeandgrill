@@ -21,9 +21,9 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     // Orders
     Route::get('/orders', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'index']);
     Route::post('/orders', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'store'])
-        ->middleware(['permission:pos.ring_sales', 'device.active']);
+        ->middleware(['permission:pos.ring_sales', 'device.active', 'service.available:pos_sales']);
     Route::post('/orders/sync', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'sync'])
-        ->middleware(['permission:pos.ring_sales', 'device.active']);
+        ->middleware(['permission:pos.ring_sales', 'device.active', 'service.available:pos_sales']);
     Route::get('/orders/{id}', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'show']);
     Route::post('/orders/{id}/hold', [App\Http\Controllers\Api\Orders\OrderStatusController::class, 'hold'])
         ->middleware(['permission:pos.hold_resume', 'device.active', 'throttle:20,1']);
@@ -150,11 +150,18 @@ if (routes_domain_section_is('orders', 'delivery') && !routes_domain_loaded('ord
     });
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:orders.manage'])->group(function () {
+        // Read routes never gated.
         Route::get('/delivery/drivers', [App\Http\Controllers\Api\DeliveryDriverController::class, 'index']);
-        Route::post('/delivery/drivers', [App\Http\Controllers\Api\DeliveryDriverController::class, 'store']);
-        Route::patch('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'update']);
-        Route::delete('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'destroy']);
-        Route::post('/delivery/orders/{order}/assign-driver', [App\Http\Controllers\Api\DeliveryDriverController::class, 'assignDriver']);
+        // Mutations gated on delivery_operations (Stage 8 / plan §11). Never gates
+        // the customer delivery submit above (that uses online_delivery via Stage 3).
+        Route::post('/delivery/drivers', [App\Http\Controllers\Api\DeliveryDriverController::class, 'store'])
+            ->middleware('service.available:delivery_operations');
+        Route::patch('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'update'])
+            ->middleware('service.available:delivery_operations');
+        Route::delete('/delivery/drivers/{driver}', [App\Http\Controllers\Api\DeliveryDriverController::class, 'destroy'])
+            ->middleware('service.available:delivery_operations');
+        Route::post('/delivery/orders/{order}/assign-driver', [App\Http\Controllers\Api\DeliveryDriverController::class, 'assignDriver'])
+            ->middleware('service.available:delivery_operations');
     });
 
     Route::get('/display/{token}', [App\Http\Controllers\Api\CustomerDisplayController::class, 'show'])

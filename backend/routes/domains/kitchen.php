@@ -27,20 +27,23 @@ if (routes_domain_section_is_or_unset('kitchen', 'kds', 'kds') && !routes_domain
     Route::get('/kds/orders', [KdsController::class, 'index'])->middleware('permission:kds.view');
     Route::get('/kds/menu-groups', [KdsController::class, 'menuGroups'])->middleware('permission:kds.view');
     Route::get('/kds/activity', [KdsController::class, 'recentActivity'])->middleware('permission:kds.view');
+    // KDS mutating routes gated on kds_operations (Stage 8 / plan §11). List
+    // endpoints stay ungated so the kitchen can still SEE the queue during
+    // an emergency lockdown — we only stop it moving.
     Route::post('/kds/items/{id}/86', [KdsController::class, 'toggleItemAvailability'])
-        ->middleware('permission:kds.manage_availability');
+        ->middleware(['permission:kds.manage_availability', 'service.available:kds_operations']);
     Route::post('/kds/orders/{id}/start', [KdsController::class, 'start'])
-        ->middleware(['permission:kds.start_order', 'device.active']);
+        ->middleware(['permission:kds.start_order', 'device.active', 'service.available:kds_operations']);
     Route::post('/kds/orders/{id}/kitchen-done', [KdsController::class, 'kitchenDone'])
-        ->middleware(['permission:kds.mark_kitchen_done', 'device.active']);
+        ->middleware(['permission:kds.mark_kitchen_done', 'device.active', 'service.available:kds_operations']);
     Route::post('/kds/orders/{orderId}/items/{orderItemId}/cooked', [KdsController::class, 'markItemCooked'])
-        ->middleware(['permission:kitchen.production.create', 'device.active']);
+        ->middleware(['permission:kitchen.production.create', 'device.active', 'service.available:kds_operations']);
     Route::post('/kds/orders/{id}/print-ticket', [KdsController::class, 'printTicket'])
-        ->middleware(['permission:kds.print_ticket', 'device.active']);
+        ->middleware(['permission:kds.print_ticket', 'device.active', 'service.available:kds_operations']);
     Route::post('/kds/orders/{id}/bump', [KdsController::class, 'bump'])
-        ->middleware(['permission:kds.bump_order', 'device.active']);
+        ->middleware(['permission:kds.bump_order', 'device.active', 'service.available:kds_operations']);
     Route::post('/kds/orders/{id}/recall', [KdsController::class, 'recall'])
-        ->middleware(['permission:kds.recall_order', 'device.active']);
+        ->middleware(['permission:kds.recall_order', 'device.active', 'service.available:kds_operations']);
 }
 
 if (routes_domain_section_is('kitchen', 'production') && !routes_domain_loaded('kitchen.production')) {

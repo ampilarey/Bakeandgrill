@@ -684,3 +684,56 @@ Stack: PHPUnit + `RefreshDatabase` + Sanctum (backend); Vitest + Testing Library
 - CustomerAuthController gating (§7): route-level `service.available:customer_registration` middleware is applied only to `POST /auth/customer/guest-session` (Stage 3). Existing customer login, OTP request/verify, `check`, forgot/reset password, and order tracking remain ungated so returning customers can still sign in and track orders during a new-registration outage.
 - Central 503 handling in the order app: `ApiRequestError` bodies with `code: SERVICE_UNAVAILABLE` are normalised into a typed `ServiceUnavailableError` inside `apps/online-order-web/src/api/client.ts`, then a global `service_unavailable` window event triggers `ServiceStatusProvider` to open `ServiceUnavailableModal` and refresh status — so even stale PWA bundles fail gracefully.
 - ServiceStatusProvider was hoisted to `main.tsx` so it wraps `CheckoutPage` (which lives outside `AppShell`); `AppShell` no longer double-wraps the provider.
+
+## Build log
+
+Recorded on branch `claude/service-availability-maintenance-zj4whc`. Stages 1–4 (base plan, resolver, backend enforcement, admin) landed prior to this build; Stages 5–8 completed in this run.
+
+### Stages and commit SHAs
+
+| Stage | Commit | Summary |
+|---|---|---|
+| 5 | `6b5d403f` | Order-app UX (browse-only checkout, ServiceUnavailableModal, NotifyMeForm, 503 mapping, SW `v9`) + Blade banner + branded maintenance view + View Composer via `ShareServiceAvailability` middleware |
+| 6 | `11e1a0e5` | Public `POST /service-status/notify-me`, `RestorationSubscriptionController`, `SendRestorationSmsJob`, `RestorationSmsBuilder`, admin `POST /{key}/notify` + waiting-count UI, `PruneRestorationSubscriptions` command scheduled daily |
+| 7 | `2dc7946f` | `ActivateScheduledServiceStates` command scheduled every minute — activates + restores on `starts_at` / `ends_at`, never fires SMS |
+| 8 | *(this commit)* | POS `pos_sales` / KDS `kds_operations` / delivery-ops `delivery_operations` route guards; `SERVICE_AVAILABILITY_RUNBOOK.md`; emergency + env override tests |
+
+### Test results per stage
+
+All values are from `php artisan test` (backend), `apps/online-order-web && npm test -- --run`, and `apps/admin-dashboard && npm test -- --run`.
+
+| Stage | Backend | Online-order-web | Admin dashboard |
+|---|---|---|---|
+| 5 | 1413 passed, 2 skipped | 75 passed | 66 passed |
+| 6 | 1425 passed, 2 skipped | 75 passed | 66 passed |
+| 7 | 1430 passed, 2 skipped | 75 passed | 66 passed |
+| 8 | 1437 passed, 2 skipped | 75 passed | 66 passed |
+
+New feature-specific test files added:
+
+- Stage 5 backend: `MarketingMaintenanceTest` (5 tests).
+- Stage 5 frontend: `serviceUnavailable.test.ts`, `NotifyMeForm.test.tsx`, `OrderModeToggle.test.tsx`, `ServiceUnavailableModal.test.tsx` (16 tests).
+- Stage 6 backend: `RestorationSubscriptionTest` (7), `RestorationSmsJobTest` (3), `PruneRestorationSubscriptionsTest` (2).
+- Stage 7 backend: `ServiceSchedulingTest` (5).
+- Stage 8 backend: `EmergencyLockdownTest` (7).
+
+### Autonomous decisions
+
+1. **Middleware over View Composer** for the Blade banner + maintenance short-circuit. A `ShareServiceAvailability` middleware (alias `service.banner`) applied to the public marketing route group both shares `$serviceBanner` with the layout AND returns the branded `maintenance.blade.php` view (503 + `Retry-After`) when `marketing_site` is disabled. This lets us keep admin, order SPA, receipts, webhooks, and API on separate execution paths that never touch the maintenance page.
+2. **Hoisted `ServiceStatusProvider` to `main.tsx`** so `CheckoutPage` (outside `AppShell`) participates in the same 503 → modal flow. `AppShell` no longer double-wraps the provider.
+3. **Central 503 handling in `api/client.ts`** normalises `ApiRequestError` bodies with `code: SERVICE_UNAVAILABLE` into a typed `ServiceUnavailableError`, and broadcasts a global `service_unavailable` window event. This means even stale PWA bundles (already-loaded pages after the operator disables checkout) still degrade to the modal on the next mutating write.
+4. **`NotifyMeForm` degrades gracefully on 404**: Stage 5 ships the form before Stage 6 ships the endpoint, so a 404 renders a friendly "not available yet" message instead of throwing.
+5. **Restoration SMS opt-in is dedupe-per-incident**: `RestorationSubscription` unique index `(service_incident_id, normalized_mobile)`. A single number can subscribe again in a new incident without ambiguity, but never receives two SMS for the same restore.
+6. **Two-step restore in the admin panel**: `POST /{key}/restore` only flips the switch. The `Send N SMS` button under the Restore action calls the separate `POST /{key}/notify` endpoint, which is behind `service_availability.notify`. This prevents accidental notification blasts and lets the operator visually verify the incident window.
+7. **Env `EMERGENCY_WRITE_LOCK` is master over DB**: the resolver reads env at highest precedence, so if the DB or admin panel is unreachable, ops can toggle `.env` + `artisan config:cache` and lockdown is total.
+8. **Scheduled restore never auto-fires SMS** (plan §14). The scheduler activator command clears `starts_at` / `ends_at` on restore so the next tick does not re-activate, but explicitly does NOT dispatch `SendRestorationSmsJob`. Operators must click Send N SMS if they want it.
+9. **Route-model-binding order in Stage 8 tests**: for KDS `{id}` (plain param, no binding) we can assert the 503 without a real Order row. For delivery ops, we picked `POST /delivery/drivers` (no `{order}` param) so the tests never depend on route-model-binding succeeding.
+
+### Deviations from the plan
+
+- Plan §11 mentioned guarding `assign-driver` for `delivery_operations`. All four delivery-ops mutation routes (drivers CRUD + assign-driver) are gated in this build; only reads (`GET /delivery/drivers`) stay open, per the "read is never blocked" rule.
+- Plan §8 mentioned an "advance-warning banner" for approaching scheduled windows. This build ships the activator + admin UI showing `starts_at` / `ends_at` but does not add a distinct pre-window banner; the existing service banner covers all disabled-state messaging. Follow-up work if operators want proactive lead-time nudges.
+
+### Anything unfinished
+
+None — every task in Stages 5–8 landed with tests. The admin dist and order-app dist have been rebuilt and synced into `backend/public/{admin,order}/` so the branch is deploy-ready.
