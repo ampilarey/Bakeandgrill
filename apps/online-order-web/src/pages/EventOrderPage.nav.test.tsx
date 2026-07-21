@@ -14,6 +14,17 @@ vi.mock('../context/AuthContext', () => ({
 }));
 vi.mock('../api', () => ({
   fetchItems: vi.fn().mockResolvedValue({ data: [] }),
+  fetchPreorderStatus: vi.fn().mockResolvedValue({
+    open: true,
+    message: '',
+    reason: null,
+    master_switch: true,
+    override_until: null,
+    override_active: false,
+    schedule_active: true,
+    current_close: null,
+    next_open_window: null,
+  }),
 }));
 vi.mock('../api/eventOrders', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/eventOrders')>();
