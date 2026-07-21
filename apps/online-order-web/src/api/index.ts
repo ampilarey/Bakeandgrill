@@ -11,6 +11,7 @@ export * from './customer';
 export * from './addresses';
 export * from './eventOrders';
 export * from './serviceStatus';
+export * from './serviceUnavailable';
 
 // Re-export shared types that pages import from '../api'
 export type {

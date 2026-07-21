@@ -30,13 +30,17 @@ use App\Http\Controllers\PrayerTimesWebController;
 Route::get('/prayer-times', [PrayerTimesWebController::class, 'index'])->name('prayer-times.index');
 
 // Public Website Pages (Customer-facing only)
-Route::get('/', [HomeController::class, 'index'])->name('home');
+// `service.banner` shares $serviceBanner with layout.blade.php and returns the
+// branded maintenance view (503) when the `marketing_site` service key is off.
+Route::middleware('service.banner')->group(function () {
+    Route::get('/', [HomeController::class, 'index'])->name('home');
+    Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
+    Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
+    Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
+    Route::get('/refund', [HomeController::class, 'refund'])->name('refund');
+});
 Route::redirect('/menu', '/order/menu', 301)->name('menu');
-Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
-Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
 Route::redirect('/privacy', '/order/privacy', 301)->name('privacy');
-Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
-Route::get('/refund', [HomeController::class, 'refund'])->name('refund');
 
 // Customer Portal (Web Login)
 use App\Http\Controllers\CustomerPortalController;

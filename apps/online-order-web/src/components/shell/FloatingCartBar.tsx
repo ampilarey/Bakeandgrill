@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { fetchOnlineOrderingStatus } from '../../api';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useServiceStatusContext } from '../../context/ServiceStatusContext';
 import { useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { isEventFlowPath } from '../../utils/eventFlowPath';
@@ -17,9 +18,16 @@ export function FloatingCartBar() {
   const { cart, cartTotal } = useCart();
   const { hideNav, cartSheetOpen, openCartSheet, closeCartSheet } = useShellNav();
   const { settings: s } = useSiteSettingsContext();
+  const { isAvailable, get } = useServiceStatusContext();
   const location = useLocation();
   const [orderingOpen, setOrderingOpen] = useState(true);
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
+  const checkoutAvailable = isAvailable('online_checkout');
+  const checkoutState = get('online_checkout');
+  const effectiveOpen = orderingOpen && checkoutAvailable;
+  const effectiveMessage = !checkoutAvailable
+    ? checkoutState?.public_message ?? 'Online checkout is temporarily unavailable.'
+    : closedMessage;
 
   const count = cart.reduce((sum, e) => sum + e.quantity, 0);
   const logoSrc = s.logo || '/logo.png';
@@ -87,8 +95,8 @@ export function FloatingCartBar() {
       <CartSheet
         open={cartSheetOpen}
         onClose={closeCartSheet}
-        isOpen={orderingOpen}
-        closedMessage={closedMessage}
+        isOpen={effectiveOpen}
+        closedMessage={effectiveMessage}
       />
     </>
   );

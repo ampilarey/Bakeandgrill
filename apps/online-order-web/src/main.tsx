@@ -9,9 +9,11 @@ import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { OrderModeProvider } from './context/OrderModeContext';
+import { ServiceStatusProvider } from './context/ServiceStatusContext';
 import { AppShell } from './components/shell/AppShell';
 import { AbandonedCartTracker } from './components/AbandonedCartTracker';
 import { ScrollToTop } from './components/ScrollToTop';
+import { ServiceUnavailableModal } from './components/ServiceUnavailableModal';
 import './index.css';
 
 // Apply saved theme before first paint — useTheme only mounts on Account.
@@ -77,8 +79,10 @@ ReactDOM.createRoot(rootEl).render(
             <AuthProvider>
             <AbandonedCartTracker />
             <OrderModeProvider>
+            <ServiceStatusProvider>
             <BrowserRouter basename="/order">
               <ScrollToTop />
+              <ServiceUnavailableModal />
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
                   {/* Standalone pages — no AppShell. /track/:token is the SMS
@@ -114,6 +118,7 @@ ReactDOM.createRoot(rootEl).render(
                 </Routes>
               </Suspense>
             </BrowserRouter>
+            </ServiceStatusProvider>
             </OrderModeProvider>
             </AuthProvider>
             </ToastProvider>

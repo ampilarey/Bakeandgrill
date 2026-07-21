@@ -25,6 +25,7 @@ import { useToast } from '../context/ToastContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderModeToggle } from '../components/OrderModeToggle';
+import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
@@ -91,6 +92,7 @@ export function MenuPage() {
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
   const { openCartSheet } = useShellNav();
+  const { isAvailable: isServiceAvailable } = useServiceStatusContext();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -532,7 +534,10 @@ export function MenuPage() {
       >
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-            <OrderModeToggle deliveryBlocked={isOpen === true && !deliveryAvailable} />
+            <OrderModeToggle
+              deliveryBlocked={(isOpen === true && !deliveryAvailable) || !isServiceAvailable('online_delivery')}
+              pickupBlocked={!isServiceAvailable('online_pickup')}
+            />
           </div>
           <button
             type="button"

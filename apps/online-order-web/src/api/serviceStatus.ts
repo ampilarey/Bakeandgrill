@@ -41,3 +41,27 @@ export type ServiceStatusResponse = {
 export async function fetchServiceStatus(): Promise<ServiceStatusResponse> {
   return request<ServiceStatusResponse>('/service-status');
 }
+
+/**
+ * Restoration notify-me signup — one SMS when the service is back.
+ * Backend returns identical generic success for new/duplicate/existing-customer
+ * numbers (no enumeration). Endpoint only exists once Stage 6 lands; callers
+ * should handle a 404 gracefully as "not available yet".
+ */
+export type NotifyMeRequest = {
+  service_key: string;
+  mobile: string;
+  incident_id?: number | null;
+};
+
+export type NotifyMeResponse = {
+  ok: boolean;
+  message: string;
+};
+
+export async function submitNotifyMe(body: NotifyMeRequest): Promise<NotifyMeResponse> {
+  return request<NotifyMeResponse>('/service-status/notify-me', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}

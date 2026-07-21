@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
 import { useSiteSettingsContext } from "../context/SiteSettingsContext";
 import { useLanguage } from "../context/LanguageContext";
+import { useServiceStatusContext } from "../context/ServiceStatusContext";
 import { AuthBlock } from "../components/AuthBlock";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { CartSummary } from "../components/CartSummary";
@@ -112,6 +113,13 @@ export function CheckoutPage() {
   const toggle = (id: string) => setOpenId((cur) => (cur === id ? null : id));
 
   const { settings: s, text } = useSiteSettingsContext();
+  const { isAvailable: isServiceAvailable, get: getService, openUnavailableModal } = useServiceStatusContext();
+  const checkoutServiceAvailable = isServiceAvailable('online_checkout');
+  const paymentServiceAvailable = isServiceAvailable('online_payment');
+  const pickupServiceAvailable = isServiceAvailable('online_pickup');
+  const deliveryServiceAvailable = isServiceAvailable('online_delivery');
+  const checkoutServiceEntry = getService('online_checkout');
+  const paymentServiceEntry = getService('online_payment');
 
   const siteName    = s.site_name        || 'Bake & Grill';
   const checkoutTitle = text('order_checkout_title', 'Complete your order');
@@ -184,11 +192,13 @@ export function CheckoutPage() {
     handleApplyFriendReferral, handleRemoveFriendReferral,
   } = useCheckout();
 
-  const deliveryBlocked = orderElig != null && !orderElig.delivery.accepting;
-  const orderingGateClosed = onlineGate != null && !onlineGate.open;
+  const deliveryBlocked = (orderElig != null && !orderElig.delivery.accepting) || !deliveryServiceAvailable;
+  const pickupBlocked = !pickupServiceAvailable;
+  const orderingGateClosed = (onlineGate != null && !onlineGate.open) || !checkoutServiceAvailable;
   useEffect(() => {
-    if (deliveryBlocked && orderType === 'delivery') setOrderType('pickup');
-  }, [deliveryBlocked, orderType, setOrderType]);
+    if (deliveryBlocked && orderType === 'delivery' && !pickupBlocked) setOrderType('pickup');
+    if (pickupBlocked && orderType === 'pickup' && !deliveryBlocked) setOrderType('delivery');
+  }, [deliveryBlocked, pickupBlocked, orderType, setOrderType]);
 
   useEffect(() => {
     if (orderType !== 'pickup' || !pickupSlotsEnabled) {
@@ -235,42 +245,75 @@ export function CheckoutPage() {
   }
 
   const hasPendingReferral = friendReferralApplied?.pending === true;
+  const guardedPlaceAndPay = () => {
+    if (!checkoutServiceAvailable) {
+      openUnavailableModal({
+        serviceKey: 'online_checkout',
+        message: checkoutServiceEntry?.public_message ?? 'Online ordering is temporarily unavailable.',
+        alternatives: checkoutServiceEntry?.alternatives ?? ['pickup', 'call'],
+        retryAt: checkoutServiceEntry?.retry_at ?? null,
+        notifyEnabled: checkoutServiceEntry?.notify_enabled ?? true,
+      });
+      return;
+    }
+    if (!paymentServiceAvailable && amountDueLaar > 0) {
+      openUnavailableModal({
+        serviceKey: 'online_payment',
+        message: paymentServiceEntry?.public_message ?? 'Online payment is temporarily unavailable — please choose cash on collection.',
+        alternatives: paymentServiceEntry?.alternatives ?? ['cod', 'call'],
+        retryAt: paymentServiceEntry?.retry_at ?? null,
+        notifyEnabled: paymentServiceEntry?.notify_enabled ?? true,
+      });
+      return;
+    }
+    void handlePlaceAndPay();
+  };
   const placeLabel = isPlacing
     ? t('checkout.processing')
     : orderingGateClosed
       ? t('checkout.gate_closed')
-      : amountDueLaar <= 0
-        ? t('checkout.place_no_payment')
-        : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar)));
+      : !paymentServiceAvailable && amountDueLaar > 0
+        ? 'Online payment unavailable'
+        : amountDueLaar <= 0
+          ? t('checkout.place_no_payment')
+          : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar)));
 
   // ── Section bodies (bare content — AccordionItem provides title/chrome) ──────
 
   const bodyOrderType = (
     <>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {(['pickup', 'delivery'] as const).map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => {
-              if (type === 'delivery' && deliveryBlocked) return;
-              setOrderType(type);
-            }}
-            disabled={type === 'delivery' && deliveryBlocked}
-            style={{
-              ...S.typeBtn,
-              ...(orderType === type ? S.typeBtnActive : {}),
-              ...(type === 'delivery' && deliveryBlocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
-            }}
-            aria-pressed={orderType === type}
-          >
-            {type === 'pickup' ? `🥡 ${t('checkout.type_pickup')}` : `🛵 ${t('checkout.type_delivery')}`}
-          </button>
-        ))}
+        {(['pickup', 'delivery'] as const).map((type) => {
+          const blocked = (type === 'delivery' && deliveryBlocked) || (type === 'pickup' && pickupBlocked);
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                if (blocked) return;
+                setOrderType(type);
+              }}
+              disabled={blocked}
+              style={{
+                ...S.typeBtn,
+                ...(orderType === type ? S.typeBtnActive : {}),
+                ...(blocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
+              }}
+              aria-pressed={orderType === type}
+            >
+              {type === 'pickup' ? `🥡 ${t('checkout.type_pickup')}` : `🛵 ${t('checkout.type_delivery')}`}
+            </button>
+          );
+        })}
       </div>
       {deliveryBlocked && (
         <p style={{ margin: '12px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-          {orderElig.delivery.message ?? t('checkout.delivery_unavailable')}
+          {(orderElig?.delivery.message) ?? t('checkout.delivery_unavailable')}
+        </p>
+      )}
+      {pickupBlocked && (
+        <p style={{ margin: '12px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+          Pickup orders are temporarily paused.
         </p>
       )}
     </>
@@ -694,8 +737,22 @@ export function CheckoutPage() {
     </div>
   );
 
-  // Payment accordion body — BML compliance notice
-  const bodyPayment = (
+  // Payment accordion body — BML compliance notice (hidden when payment down)
+  const bodyPayment = !paymentServiceAvailable ? (
+    <div
+      role="status"
+      style={{
+        ...S.complianceBox,
+        background: 'var(--color-warning-bg, #fef3c7)',
+        border: '1px solid var(--color-warning, #fbbf24)',
+      }}
+      data-testid="checkout-payment-down"
+    >
+      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-warning, #92400e)', lineHeight: 1.5 }}>
+        <strong>Online payment is temporarily unavailable.</strong> Please choose cash on collection or call us to pay by transfer.
+      </p>
+    </div>
+  ) : (
     <div style={S.complianceBox}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
         <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('checkout.we_accept')}</span>
@@ -948,8 +1005,14 @@ export function CheckoutPage() {
               <StickyCtaBar
                 above={stickyAbove}
                 label={placeLabel}
-                onClick={handlePlaceAndPay}
-                disabled={isPlacing || !acceptTerms || orderingGateClosed}
+                onClick={guardedPlaceAndPay}
+                disabled={
+                  isPlacing
+                  || !acceptTerms
+                  || orderingGateClosed
+                  || !checkoutServiceAvailable
+                  || (!paymentServiceAvailable && amountDueLaar > 0)
+                }
                 loading={isPlacing}
               />
             </>

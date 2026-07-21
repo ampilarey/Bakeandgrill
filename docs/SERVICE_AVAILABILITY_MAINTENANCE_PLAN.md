@@ -676,3 +676,11 @@ Stack: PHPUnit + `RefreshDatabase` + Sanctum (backend); Vitest + Testing Library
 - Tests: `EmergencyLockdownTest`.
 - Manual: lockdown blocks new POS ticket; existing-order settle/print OK; env flag overrides DB; admin not locked out.
 - Commit: "service-availability: emergency lockdown + env fallback".
+
+## Implementation notes
+
+- Blade layout path: main marketing layout is `backend/resources/views/layout.blade.php` (not `layouts/app`); the service banner partial is included between the existing announcement banner and the main content, and re-uses the amber warning palette used by `.site-announcement--warning`.
+- Banner + maintenance short-circuit: `App\Http\Middleware\ShareServiceAvailability` (alias `service.banner`) is applied to the public marketing route group in `routes/web.php` — it (a) shares `$serviceBanner` with the layout, and (b) returns the branded `maintenance.blade.php` view with HTTP 503 + `Retry-After` when `marketing_site` is disabled. Choice: middleware over View Composer so we can short-circuit the response, and applied at the route-group level so admin/order/API/webhooks/receipts remain reachable.
+- CustomerAuthController gating (§7): route-level `service.available:customer_registration` middleware is applied only to `POST /auth/customer/guest-session` (Stage 3). Existing customer login, OTP request/verify, `check`, forgot/reset password, and order tracking remain ungated so returning customers can still sign in and track orders during a new-registration outage.
+- Central 503 handling in the order app: `ApiRequestError` bodies with `code: SERVICE_UNAVAILABLE` are normalised into a typed `ServiceUnavailableError` inside `apps/online-order-web/src/api/client.ts`, then a global `service_unavailable` window event triggers `ServiceStatusProvider` to open `ServiceUnavailableModal` and refresh status — so even stale PWA bundles fail gracefully.
+- ServiceStatusProvider was hoisted to `main.tsx` so it wraps `CheckoutPage` (which lives outside `AppShell`); `AppShell` no longer double-wraps the provider.

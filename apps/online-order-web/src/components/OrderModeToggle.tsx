@@ -3,18 +3,22 @@ import { useOrderMode, type OrderMode } from '../context/OrderModeContext';
 
 type Props = {
   deliveryBlocked?: boolean;
+  pickupBlocked?: boolean;
   onModeChange?: (mode: OrderMode) => void;
 };
 
 /**
  * Pickup / Delivery segmented control — reads/writes OrderModeContext.
+ * `deliveryBlocked` / `pickupBlocked` disable the corresponding side when
+ * the matching service_availability key is not available (Stage 5).
  */
-export function OrderModeToggle({ deliveryBlocked = false, onModeChange }: Props) {
+export function OrderModeToggle({ deliveryBlocked = false, pickupBlocked = false, onModeChange }: Props) {
   const { t } = useLanguage();
   const { mode, setMode } = useOrderMode();
 
   const select = (next: OrderMode) => {
     if (next === 'delivery' && deliveryBlocked) return;
+    if (next === 'pickup' && pickupBlocked) return;
     if (next === mode) return;
     setMode(next);
     onModeChange?.(next);
@@ -38,7 +42,7 @@ export function OrderModeToggle({ deliveryBlocked = false, onModeChange }: Props
         { id: 'delivery' as const, label: t('mode.delivery') },
       ]).map(({ id, label }) => {
         const active = mode === id;
-        const disabled = id === 'delivery' && deliveryBlocked;
+        const disabled = (id === 'delivery' && deliveryBlocked) || (id === 'pickup' && pickupBlocked);
         return (
           <button
             key={id}

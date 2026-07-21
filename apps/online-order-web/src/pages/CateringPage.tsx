@@ -5,6 +5,7 @@ import { request } from '../api/client';
 import type { MenuItem } from '../api/menu';
 import { PageHeader } from '../components/shell/PageHeader';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useServiceStatusContext } from '../context/ServiceStatusContext';
 
 type Occasion = 'office_breakfast' | 'event' | 'other';
 
@@ -23,6 +24,9 @@ function minEventDate(): string {
 export function CateringPage() {
   usePageTitle('Catering & Events');
   const navigate = useNavigate();
+  const { isAvailable, get, openUnavailableModal } = useServiceStatusContext();
+  const cateringAvailable = isAvailable('catering_inquiry');
+  const cateringEntry = get('catering_inquiry');
   const [occasion, setOccasion] = useState<Occasion>('office_breakfast');
   const [contactName, setContactName] = useState('');
   const [phone, setPhone] = useState('');
@@ -52,6 +56,16 @@ export function CateringPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!cateringAvailable) {
+      openUnavailableModal({
+        serviceKey: 'catering_inquiry',
+        message: cateringEntry?.public_message ?? 'Catering inquiries are temporarily paused.',
+        alternatives: cateringEntry?.alternatives ?? ['call'],
+        retryAt: cateringEntry?.retry_at ?? null,
+        notifyEnabled: cateringEntry?.notify_enabled ?? true,
+      });
+      return;
+    }
     if (!contactName.trim() || !phone.trim()) {
       setError('Name and phone are required.');
       return;
@@ -158,9 +172,18 @@ export function CateringPage() {
             )}
 
             {error && <p style={S.error}>{error}</p>}
+            {!cateringAvailable && (
+              <p
+                data-testid="catering-service-down"
+                role="status"
+                style={{ ...S.p, marginTop: 8, color: 'var(--color-warning, #b45309)', fontWeight: 600 }}
+              >
+                {cateringEntry?.public_message ?? 'Catering inquiries are temporarily paused — please call us instead.'}
+              </p>
+            )}
 
-            <button type="submit" style={S.btn} disabled={loading}>
-              {loading ? 'Sending…' : 'Request a quote'}
+            <button type="submit" style={S.btn} disabled={loading || !cateringAvailable}>
+              {!cateringAvailable ? 'Currently paused' : loading ? 'Sending…' : 'Request a quote'}
             </button>
           </form>
         )}

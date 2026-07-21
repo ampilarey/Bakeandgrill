@@ -9,6 +9,7 @@ import {
   xsrfHeaderFromCookie,
   type ApiRequestOptions,
 } from '@shared/api';
+import { broadcastServiceUnavailable, toServiceUnavailableError } from './serviceUnavailable';
 
 export const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
@@ -56,13 +57,27 @@ export async function request<T>(path: string, options: ApiRequestOptions = {}):
     const status = e instanceof ApiRequestError ? e.status : (e as { status?: number })?.status;
     if (status === 419 && method !== 'GET' && method !== 'HEAD') {
       await csrfHeadersForMutation(API_ORIGIN);
-      return coreRequest<T>(path, {
-        ...options,
-        headers: {
-          ...xsrfHeaderFromCookie(),
-          ...(options.headers ?? {}),
-        },
-      });
+      try {
+        return await coreRequest<T>(path, {
+          ...options,
+          headers: {
+            ...xsrfHeaderFromCookie(),
+            ...(options.headers ?? {}),
+          },
+        });
+      } catch (retryErr) {
+        const typed = toServiceUnavailableError(retryErr);
+        if (typed) {
+          broadcastServiceUnavailable(typed);
+          throw typed;
+        }
+        throw retryErr;
+      }
+    }
+    const typed = toServiceUnavailableError(e);
+    if (typed) {
+      broadcastServiceUnavailable(typed);
+      throw typed;
     }
     throw e;
   }

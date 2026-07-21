@@ -1098,6 +1098,10 @@
 </div>
 @endif
 
+{{-- Service Availability & Maintenance banner (plan §7). $serviceBanner is
+     shared by App\Providers\AppServiceProvider view composer. --}}
+@include('partials.service-banner')
+
 {{-- ─── Mobile Top Bar ──────────────────────────────────────────── --}}
 <div class="mobile-header">
     <div class="mob-hdr-row">

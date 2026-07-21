@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ActiveOrderProvider } from '../../context/ActiveOrderContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { ServiceStatusProvider } from '../../context/ServiceStatusContext';
 import { ShellNavProvider, useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useCart } from '../../context/CartContext';
@@ -149,13 +148,11 @@ function AuthNameHydration() {
  */
 export function AppShell() {
   return (
-    <ServiceStatusProvider>
-      <ShellNavProvider>
-        <ActiveOrderProvider>
-          <AuthNameHydration />
-          <AppShellChrome />
-        </ActiveOrderProvider>
-      </ShellNavProvider>
-    </ServiceStatusProvider>
+    <ShellNavProvider>
+      <ActiveOrderProvider>
+        <AuthNameHydration />
+        <AppShellChrome />
+      </ActiveOrderProvider>
+    </ShellNavProvider>
   );
 }
