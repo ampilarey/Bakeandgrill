@@ -107,6 +107,16 @@ class RefundController extends Controller
                 ));
             }
 
+            // Gift-card purchases can only be refunded in full — the purchased
+            // card is voided in one step by the OrderRefunded listener, and
+            // partially reversing a "purchase to a stored balance" tender has
+            // no sensible ledger semantics.
+            if (($order->type ?? '') === 'gift_card'
+                && $refundableLaar > 0
+                && $amountLaar + $alreadyRefundedLaar < $refundableLaar) {
+                abort(422, 'Gift card purchases can only be refunded in full.');
+            }
+
             $refund = Refund::create([
                 'order_id' => $order->id,
                 'user_id' => $request->user()?->id,

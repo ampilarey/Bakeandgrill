@@ -124,6 +124,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             ReverseCreditOnRefundListener::class,
             \App\Domains\Deposits\Listeners\ReverseDepositOnRefundListener::class,
             \App\Domains\Payments\Listeners\RestoreGiftCardOnRefundListener::class,
+            \App\Domains\Payments\Listeners\VoidPurchasedGiftCardOnRefundListener::class,
             ReverseLoyaltyEarnOnRefundListener::class,
             RestoreLoyaltyRedemptionOnRefundListener::class,
             ReleasePromoRedemptionOnRefundListener::class,

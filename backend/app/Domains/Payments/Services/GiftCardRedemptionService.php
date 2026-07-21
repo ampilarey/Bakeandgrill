@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Payments\Services;
 
+use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\GiftCard;
+use App\Models\GiftCardPurchase;
 use App\Models\GiftCardTransaction;
 use App\Models\Order;
+use App\Services\AuditLogService;
 use Illuminate\Support\Facades\DB;
 
 final class GiftCardRedemptionService
@@ -256,6 +259,108 @@ final class GiftCardRedemptionService
                 'type' => 'refund',
                 'balance_after' => $newBalanceMvr,
             ]);
+        });
+    }
+
+    /**
+     * Void the purchased gift card behind a `type=gift_card` order when that
+     * purchase order is refunded. Gift-card purchases can only be refunded in
+     * full (enforced upstream in RefundController), but the card may already
+     * be partially spent: in that case we only void the remaining balance and
+     * leave the redeemed portion as-is on the recipient's ledger.
+     *
+     * Idempotent per (gift_card_id, refund_id).
+     */
+    public function voidPurchasedCardForRefund(Order $order, int $refundId): void
+    {
+        if (($order->type ?? '') !== 'gift_card') {
+            return;
+        }
+
+        DB::transaction(function () use ($order, $refundId): void {
+            $purchase = GiftCardPurchase::query()
+                ->where('order_id', $order->id)
+                ->whereNotNull('gift_card_id')
+                ->first();
+
+            if (!$purchase || !$purchase->gift_card_id) {
+                return;
+            }
+
+            /** @var GiftCard|null $card */
+            $card = GiftCard::query()
+                ->where('id', $purchase->gift_card_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$card) {
+                return;
+            }
+
+            $alreadyVoided = GiftCardTransaction::query()
+                ->where('gift_card_id', $card->id)
+                ->where('type', 'void')
+                ->where('refund_id', $refundId)
+                ->exists();
+            if ($alreadyVoided) {
+                return;
+            }
+
+            $initialLaar = (int) round((float) $card->initial_balance * 100);
+            $currentLaar = $card->balanceLaar();
+
+            // Nothing to void: already zeroed and cancelled (from a prior path).
+            if ($currentLaar <= 0 && $card->status === 'cancelled') {
+                return;
+            }
+
+            $releasedOrderIds = $this->clearSoftReserves($card);
+
+            $totalsCalc = app(OrderTotalsCalculator::class);
+            foreach ($releasedOrderIds as $releasedId) {
+                $released = Order::query()->find($releasedId);
+                if ($released) {
+                    $totalsCalc->recalculateAndPersist($released);
+                }
+            }
+
+            $residualLaar = max(0, $currentLaar);
+            $spentLaar = max(0, $initialLaar - $residualLaar);
+            $residualMvr = round($residualLaar / 100, 2);
+
+            $card->update([
+                'current_balance' => 0,
+                'status' => 'cancelled',
+            ]);
+
+            if ($residualLaar > 0) {
+                GiftCardTransaction::create([
+                    'gift_card_id' => $card->id,
+                    'order_id' => $order->id,
+                    'refund_id' => $refundId,
+                    'amount' => -$residualMvr,
+                    'type' => 'void',
+                    'balance_after' => 0,
+                ]);
+            }
+
+            app(AuditLogService::class)->log(
+                'gift_card.voided_on_refund',
+                'GiftCard',
+                $card->id,
+                [],
+                [
+                    'refund_id' => $refundId,
+                    'order_id' => $order->id,
+                    'initial_laar' => $initialLaar,
+                    'spent_laar' => $spentLaar,
+                    'voided_laar' => $residualLaar,
+                ],
+                [
+                    'masked_code' => $card->masked_code,
+                    'released_orders' => $releasedOrderIds,
+                ],
+            );
         });
     }
 }
