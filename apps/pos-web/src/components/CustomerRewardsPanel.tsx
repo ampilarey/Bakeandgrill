@@ -36,7 +36,7 @@ type Props = {
   /** Manual cashier discount in MVR — used for loyalty % cap preview. */
   manualDiscountMvr?: number;
   /** Grand total after tax — gift-card tender is capped against this. */
-  tenderRoom?: number;
+  tenderRoom: number;
   applied: {
     promo: AppliedPromo | null;
     loyalty: AppliedLoyalty | null;
@@ -241,7 +241,7 @@ export function CustomerRewardsPanel({
       const res = await checkGiftCardBalance(code);
       const available = Number(res.available_balance ?? res.current_balance);
       const held = Number(res.held_balance ?? 0);
-      const preview = previewGiftCardDiscount(available, held, tenderRoom ?? taxableSubtotal);
+      const preview = previewGiftCardDiscount(available, held, tenderRoom);
       if (!preview.ok) {
         setGiftError(preview.error);
         return;
