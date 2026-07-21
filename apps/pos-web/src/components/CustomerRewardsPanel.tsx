@@ -394,6 +394,11 @@ export function CustomerRewardsPanel({
                     }
                   />
                 )}
+                {creditEnabled && (
+                  <div style={{ gridColumn: "1 / -1", fontSize: 11, color: COLOR.subtle, fontStyle: "italic" }}>
+                    Collect repayments in Admin → Customers.
+                  </div>
+                )}
                 {lastPaidAt && (
                   <Stat
                     label="Last visit"
