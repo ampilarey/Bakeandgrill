@@ -5,6 +5,33 @@ import { useLanguage } from '../context/LanguageContext';
 import { PageHeader } from '../components/shell/PageHeader';
 import { API_BASE_URL } from '../api/client';
 
+/**
+ * FIX 8g — map HTTP status + optional payload `status` field to a
+ * customer-safe explanation. Never render `body.message` verbatim so we
+ * don't leak internal delivery-window / retry hints to end users.
+ */
+export function friendlyGiftCardViewError(
+  httpStatus: number,
+  bodyStatus: string | null | undefined,
+  t: (key: string) => string,
+): string {
+  const s = (bodyStatus ?? '').toLowerCase();
+  if (s === 'expired' || httpStatus === 410) {
+    return 'This gift card link has expired. Ask the sender to resend, or contact the restaurant.';
+  }
+  if (s === 'cancelled') {
+    return 'This gift card has been cancelled. Please contact the restaurant.';
+  }
+  if (s === 'depleted') {
+    return 'This gift card has been fully redeemed.';
+  }
+  if (httpStatus >= 500) {
+    return 'We couldn\u2019t load your gift card right now. Please try again in a moment.';
+  }
+  // 400 / 404 / unknown → generic
+  return t('gift.view_invalid');
+}
+
 type ViewPayload = {
   code: string;
   masked_code: string;
@@ -45,9 +72,22 @@ export function GiftCardViewPage() {
       headers: { Accept: 'application/json' },
     })
       .then(async (res) => {
-        const body = await res.json().catch(() => ({})) as { message?: string } & Partial<ViewPayload>;
+        const body = await res.json().catch(() => ({})) as {
+          message?: string;
+          status?: string;
+        } & Partial<ViewPayload>;
         if (!res.ok) {
-          throw new Error(body.message || t('gift.view_invalid'));
+          // FIX 8g: never surface `body.message` verbatim — it may leak
+          // internal state (e.g. "Delivery window expired. Contact the
+          // restaurant with your order number.") that scares customers.
+          // Log it for support, then show a friendly mapped string.
+          if (body?.message) {
+            // eslint-disable-next-line no-console
+            console.log('[gift-card view] server message:', body.message);
+          }
+          const friendly = friendlyGiftCardViewError(res.status, body?.status, t);
+          const err = new Error(friendly);
+          throw err;
         }
         return body as ViewPayload;
       })
