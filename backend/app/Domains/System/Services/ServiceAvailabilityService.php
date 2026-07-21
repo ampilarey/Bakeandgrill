@@ -97,9 +97,13 @@ class ServiceAvailabilityService
     }
 
     /**
-     * Throws ServiceUnavailableException (HTTP 503) when the key is not
-     * currently available. When enforcement_enabled is false in config, this
-     * is a no-op (rollback lever).
+     * Throws ServiceUnavailableException (HTTP 503) when the overlay itself
+     * says the key is down (DB row status ≠ available or env override). We
+     * deliberately IGNORE the legacy-gate adapter here so the legacy gate's
+     * existing 422 semantics keep firing (plan §12 decision). The adapter
+     * OR-composition is used in the public status endpoint / banner only.
+     *
+     * When enforcement_enabled is false in config, this is a no-op (rollback).
      */
     public function assertAvailable(string $key, array $ctx = []): void
     {
@@ -107,16 +111,25 @@ class ServiceAvailabilityService
             return;
         }
 
-        $state = $this->state($key);
-        if ($state['available']) {
+        $row = ServiceState::query()->where('service_key', $key)->first();
+        $status = $row?->status ?? 'available';
+
+        $envEmergency = (bool) config('service_availability.emergency_write_lock', false);
+        $envPublicTxDown = (bool) config('service_availability.public_transactions_disabled', false);
+        $group = config("service_availability.keys.$key.group", 'public');
+
+        $down = $status !== 'available'
+            || $envEmergency
+            || ($envPublicTxDown && $group === 'public' && $key !== 'marketing_site');
+
+        if (!$down) {
             return;
         }
 
-        $model = ServiceState::query()->where('service_key', $key)->first();
         throw new ServiceUnavailableException(
             serviceKey: $key,
-            state: $model,
-            message: $state['public_message'] ?: null,
+            state: $row,
+            message: $row?->public_message ?: null,
         );
     }
 

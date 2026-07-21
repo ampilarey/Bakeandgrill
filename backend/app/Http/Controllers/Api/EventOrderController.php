@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Catering\Events\CateringRequestSubmitted;
 use App\Domains\Catering\Services\CateringEventCreatedNotifier;
 use App\Domains\Orders\Services\PackagingOptionResolver;
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Models\CateringRequest;
 use App\Models\CateringRequestLine;
@@ -81,6 +82,7 @@ class EventOrderController extends Controller
             return response()->json(['message' => 'Forbidden — customer access only.'], 403);
         }
 
+        app(ServiceAvailabilityService::class)->assertAvailable('catering_inquiry');
         $this->cateringGate->assertOpen();
 
         $leadHours = max(0, (int) SiteSetting::get('catering_min_lead_hours', '24'));
@@ -213,7 +215,7 @@ class EventOrderController extends Controller
     }
 
     /**
-     * @param  list<array<string, mixed>>  $lines
+     * @param list<array<string, mixed>> $lines
      * @return list<array{item_id:?int,variant_id:?int,packaging_option_id:?int,name:string,quantity:int,unit_price:?float,notes:?string,is_custom:bool}>
      */
     private function resolveLines(array $lines): array

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Orders;
 
 use App\Domains\Orders\Services\OrderVisibilityService;
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerOrderRequest;
 use App\Http\Requests\StoreOrderBatchRequest;
@@ -287,7 +288,10 @@ class OrderCreationController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        // Gate: online ordering must be open (master switch + schedule + override)
+        // Guards run in order: overlay checkout key first (503 shape), then
+        // legacy gate (422 shape) — keeps existing order-app tests green while
+        // exposing the new maintenance switch.
+        app(ServiceAvailabilityService::class)->assertAvailable('online_checkout');
         app(OnlineOrderingGateService::class)->assertOpen();
 
         $payload = $request->validated();

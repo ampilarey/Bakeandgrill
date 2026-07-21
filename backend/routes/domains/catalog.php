@@ -84,7 +84,7 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
         ->middleware('throttle:60,1');
 
     Route::post('/catering-requests', [App\Http\Controllers\Api\CateringRequestController::class, 'store'])
-        ->middleware('throttle:10,1');
+        ->middleware(['throttle:10,1', 'service.available:catering_inquiry']);
     // Legacy alias
     Route::post('/corporate-inquiries', [App\Http\Controllers\Api\CorporateInquiryController::class, 'store'])
         ->middleware('throttle:10,1');

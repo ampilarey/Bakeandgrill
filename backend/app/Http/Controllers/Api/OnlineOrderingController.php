@@ -8,6 +8,7 @@ use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ServiceStatusResource;
 use App\Models\SiteSetting;
+use App\Services\AuditLogService;
 use App\Services\CateringOrderingGateService;
 use App\Services\DeliveryGateService;
 use App\Services\OnlineOrderingGateService;
@@ -28,7 +29,31 @@ class OnlineOrderingController extends Controller
         private readonly DeliveryGateService $deliveryGate,
         private readonly CateringOrderingGateService $cateringGate,
         private readonly ServiceAvailabilityService $availability,
+        private readonly AuditLogService $audit,
     ) {}
+
+    /**
+     * Audit any legacy gate write (SiteSetting-backed) so admin actions leave
+     * a paper trail. Fixes the "no AuditLogService call anywhere" defect
+     * noted in the plan §0.
+     */
+    private function auditGateWrite(
+        string $key,
+        mixed $old,
+        mixed $new,
+        Request $request,
+        array $meta = [],
+    ): void {
+        $this->audit->log(
+            action: 'ordering_gate.' . $key . '.updated',
+            modelType: SiteSetting::class,
+            modelId: null,
+            oldValues: ['value' => $old],
+            newValues: ['value' => $new],
+            meta: array_merge(['setting_key' => $key], $meta),
+            request: $request,
+        );
+    }
 
     /** Public status — returns current open/closed state for the order app. */
     public function status(): JsonResponse
@@ -76,7 +101,9 @@ class OnlineOrderingController extends Controller
             ? (bool) $request->input('enabled')
             : !$current;
 
-        SiteSetting::set('catering_ordering_enabled', $next ? '1' : '0');
+        $newValue = $next ? '1' : '0';
+        SiteSetting::set('catering_ordering_enabled', $newValue);
+        $this->auditGateWrite('catering_ordering_enabled', $current ? '1' : '0', $newValue, $request);
 
         return response()->json([
             'catering_ordering_enabled' => $next,
@@ -96,7 +123,10 @@ class OnlineOrderingController extends Controller
         ]);
 
         $schedule = $validated['schedule'] ?? null;
-        SiteSetting::set('catering_ordering_schedule', $schedule ? json_encode($schedule) : null);
+        $oldSchedule = SiteSetting::get('catering_ordering_schedule');
+        $newSchedule = $schedule ? json_encode($schedule) : null;
+        SiteSetting::set('catering_ordering_schedule', $newSchedule);
+        $this->auditGateWrite('catering_ordering_schedule', $oldSchedule, $newSchedule, $request);
 
         return response()->json([
             'catering_ordering_schedule' => $schedule,
@@ -115,7 +145,10 @@ class OnlineOrderingController extends Controller
             'override_until' => 'nullable|date',
         ]);
 
-        SiteSetting::set('catering_ordering_override_until', $validated['override_until'] ?? null);
+        $oldValue = SiteSetting::get('catering_ordering_override_until');
+        $newValue = $validated['override_until'] ?? null;
+        SiteSetting::set('catering_ordering_override_until', $newValue);
+        $this->auditGateWrite('catering_ordering_override_until', $oldValue, $newValue, $request);
 
         return response()->json([
             'override_until' => $validated['override_until'],
@@ -139,7 +172,9 @@ class OnlineOrderingController extends Controller
             ? (bool) $request->input('enabled')
             : !$current;
 
-        SiteSetting::set('online_ordering_enabled', $next ? '1' : '0');
+        $newValue = $next ? '1' : '0';
+        SiteSetting::set('online_ordering_enabled', $newValue);
+        $this->auditGateWrite('online_ordering_enabled', $current ? '1' : '0', $newValue, $request);
 
         return response()->json([
             'online_ordering_enabled' => $next,
@@ -159,7 +194,10 @@ class OnlineOrderingController extends Controller
         ]);
 
         $schedule = $validated['schedule'] ?? null;
-        SiteSetting::set('online_ordering_schedule', $schedule ? json_encode($schedule) : null);
+        $oldSchedule = SiteSetting::get('online_ordering_schedule');
+        $newSchedule = $schedule ? json_encode($schedule) : null;
+        SiteSetting::set('online_ordering_schedule', $newSchedule);
+        $this->auditGateWrite('online_ordering_schedule', $oldSchedule, $newSchedule, $request);
 
         $status = $this->gate->status();
         $deliveryStatus = $this->deliveryGate->status();
@@ -188,7 +226,9 @@ class OnlineOrderingController extends Controller
             ? (bool) $request->input('enabled')
             : !$current;
 
-        SiteSetting::set('delivery_accepting_orders', $next ? '1' : '0');
+        $newValue = $next ? '1' : '0';
+        SiteSetting::set('delivery_accepting_orders', $newValue);
+        $this->auditGateWrite('delivery_accepting_orders', $current ? '1' : '0', $newValue, $request);
 
         $deliveryStatus = $this->deliveryGate->status();
 
@@ -210,7 +250,10 @@ class OnlineOrderingController extends Controller
         ]);
 
         $schedule = $validated['schedule'] ?? null;
-        SiteSetting::set('delivery_schedule', $schedule ? json_encode($schedule) : null);
+        $oldSchedule = SiteSetting::get('delivery_schedule');
+        $newSchedule = $schedule ? json_encode($schedule) : null;
+        SiteSetting::set('delivery_schedule', $newSchedule);
+        $this->auditGateWrite('delivery_schedule', $oldSchedule, $newSchedule, $request);
 
         return response()->json([
             'delivery_schedule' => $schedule,
@@ -229,7 +272,10 @@ class OnlineOrderingController extends Controller
             'override_until' => 'nullable|date',
         ]);
 
-        SiteSetting::set('delivery_override_until', $validated['override_until'] ?? null);
+        $oldValue = SiteSetting::get('delivery_override_until');
+        $newValue = $validated['override_until'] ?? null;
+        SiteSetting::set('delivery_override_until', $newValue);
+        $this->auditGateWrite('delivery_override_until', $oldValue, $newValue, $request);
 
         return response()->json([
             'override_until' => $validated['override_until'],
@@ -247,7 +293,10 @@ class OnlineOrderingController extends Controller
             'max_active_orders' => ['required', 'integer', 'min:0', 'max:500'],
         ]);
 
-        SiteSetting::set('delivery_max_active_orders', (string) $validated['max_active_orders']);
+        $oldValue = SiteSetting::get('delivery_max_active_orders');
+        $newValue = (string) $validated['max_active_orders'];
+        SiteSetting::set('delivery_max_active_orders', $newValue);
+        $this->auditGateWrite('delivery_max_active_orders', $oldValue, $newValue, $request);
 
         return response()->json([
             'max_active_orders' => $validated['max_active_orders'],
@@ -266,7 +315,10 @@ class OnlineOrderingController extends Controller
             'override_until' => 'nullable|date',
         ]);
 
-        SiteSetting::set('online_ordering_override_until', $validated['override_until'] ?? null);
+        $oldValue = SiteSetting::get('online_ordering_override_until');
+        $newValue = $validated['override_until'] ?? null;
+        SiteSetting::set('online_ordering_override_until', $newValue);
+        $this->auditGateWrite('online_ordering_override_until', $oldValue, $newValue, $request);
 
         return response()->json([
             'override_until' => $validated['override_until'],

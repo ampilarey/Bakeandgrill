@@ -79,9 +79,11 @@ Route::prefix('auth/customer')
         Route::post('/reset-password', [CustomerAuthController::class, 'resetPassword'])
             ->middleware('throttle:30,1');
 
-        // Guest checkout — name + phone only (no OTP)
+        // Guest checkout — name + phone only (no OTP).
+        // Gated by customer_registration overlay (does NOT affect otp/verify/login/check
+        // so existing customers can always sign in and track orders).
         Route::post('/guest-session', [CustomerAuthController::class, 'guestSession'])
-            ->middleware('throttle:30,1');
+            ->middleware(['throttle:30,1', 'service.available:customer_registration']);
     });
 
 // Staff logout — requires a staff Sanctum token

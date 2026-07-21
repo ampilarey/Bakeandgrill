@@ -65,6 +65,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'driver.token' => App\Http\Middleware\EnsureDriverToken::class,
             'staff_or_customer.token' => App\Http\Middleware\EnsureStaffOrCustomerToken::class,
             'staff_customer_or_driver.token' => App\Http\Middleware\EnsureStaffCustomerOrDriverToken::class,
+            'service.available' => App\Http\Middleware\EnsureServiceAvailable::class,
         ]);
 
         // API routes must never redirect to a missing `login` named route (422/500).
@@ -92,6 +93,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (Throwable $e, Illuminate\Http\Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
+                if ($e instanceof App\Exceptions\ServiceUnavailableException) {
+                    return $e->render($request);
+                }
+
                 if ($e instanceof AuthenticationException) {
                     return response()->json(['message' => 'Unauthenticated.'], 401);
                 }

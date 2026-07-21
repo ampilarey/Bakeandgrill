@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Payments\Services\PaymentService;
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\OrderStatusTransitionService;
@@ -22,6 +23,11 @@ class PaymentController extends Controller
      */
     public function initiateOnline(Request $request, int $orderId): JsonResponse
     {
+        // Only initiation is guarded — BML webhooks, return URL, and any
+        // reconciliation of already-initiated payments must NEVER be blocked
+        // by an availability toggle (see plan §11 payment nuance).
+        app(ServiceAvailabilityService::class)->assertAvailable('online_payment');
+
         $order = Order::findOrFail($orderId);
 
         if (!$request->user()->tokenCan('customer')) {
@@ -84,6 +90,8 @@ class PaymentController extends Controller
      */
     public function initiatePartial(Request $request): JsonResponse
     {
+        app(ServiceAvailabilityService::class)->assertAvailable('online_payment');
+
         $validated = $request->validate([
             'order_id' => 'required|integer|exists:orders,id',
             'amount' => 'required|integer|min:1',

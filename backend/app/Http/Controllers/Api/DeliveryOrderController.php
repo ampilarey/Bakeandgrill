@@ -9,6 +9,7 @@ use App\Domains\Delivery\Services\DeliveryFeeCalculator;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\CustomerAddressService;
@@ -50,6 +51,10 @@ class DeliveryOrderController extends Controller
         $isStaff = $authUser instanceof \App\Models\User;
 
         if (!$isStaff) {
+            // Overlay guards emit 503; legacy gate services keep their 422s.
+            app(ServiceAvailabilityService::class)->assertAvailable('online_checkout');
+            app(ServiceAvailabilityService::class)->assertAvailable('online_delivery');
+
             app(OnlineOrderingGateService::class)->assertOpen();
 
             // Validate delivery_island early so we can pass it to the delivery gate
