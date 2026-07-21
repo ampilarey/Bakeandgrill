@@ -76,6 +76,12 @@ export function CloseShiftModal({
         <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
         <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
         {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
+        {Number(summary?.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
+          <Summary
+            label="  incl. credit repayments (cash)"
+            value={Number(summary!.cash_drawer.credit_repayments_cash ?? 0)}
+          />
+        )}
         {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
         {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
         <Summary label="Expected in drawer" value={expected} bold />

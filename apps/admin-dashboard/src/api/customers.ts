@@ -46,6 +46,8 @@ export type CustomerCreditInfo = {
   limit_mvr: number;
   balance_mvr: number;
   available_mvr: number;
+  limit_max_laar?: number;
+  limit_max_mvr?: number;
 };
 
 export type CustomerCreditLedgerRow = {
@@ -94,6 +96,9 @@ export async function updateCustomerCredit(
     credit_payment_terms_days?: number;
     credit_reminder_sms?: boolean;
     override_limit?: boolean;
+    /** FIX 6: required for update_limit; also required when the new
+     *  limit exceeds credit_limit_max_mvr on approve. */
+    reason?: string;
   },
 ): Promise<{ customer: CustomerCreditInfo }> {
   return req(`/admin/customers/${customerId}/credit`, { method: 'PATCH', body: JSON.stringify(data) });
@@ -110,6 +115,36 @@ export async function recordCustomerCreditRepayment(
   },
 ): Promise<{ credit: CustomerCreditInfo; ledger: CustomerCreditLedgerRow }> {
   return req(`/admin/customers/${customerId}/credit/repayments`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+/**
+ * FIX 9a — write-off. Owner-only endpoint. Records a bad-debt adjustment
+ * against the credit balance; never touches cash movements.
+ */
+export async function writeOffCustomerCredit(
+  customerId: number,
+  data: { amount_mvr: number; reason: string },
+): Promise<{ credit: CustomerCreditInfo; ledger: CustomerCreditLedgerRow }> {
+  return req(`/admin/customers/${customerId}/credit/write-off`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * FIX 9b — CSV download URL for a customer's credit ledger.
+ * The Content-Disposition header on the response makes the browser save
+ * the CSV rather than render it inline.
+ */
+export function customerCreditLedgerCsvUrl(customerId: number): string {
+  return `/api/admin/customers/${customerId}/credit/ledger.csv`;
+}
+
+/**
+ * FIX 9b — CSV download URL for the credit-exposure snapshot.
+ */
+export function creditExposureCsvUrl(): string {
+  return '/api/reports/credit-exposure/csv';
 }
 
 export type CustomerDepositInfo = {

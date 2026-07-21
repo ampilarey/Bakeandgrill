@@ -80,6 +80,13 @@ export function ShiftPanel({
           )}
           {summary.cash_drawer.paid_in > 0 && <Row label="+ Paid in" value={summary.cash_drawer.paid_in} />}
           {summary.cash_drawer.paid_out > 0 && <Row label="− Paid out" value={-summary.cash_drawer.paid_out} />}
+          {Number(summary.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
+            <Row
+              label="  incl. credit repayments (cash)"
+              value={Number(summary.cash_drawer.credit_repayments_cash ?? 0)}
+              muted
+            />
+          )}
           <Row label="Expected in drawer" value={summary.cash_drawer.expected_cash} bold />
         </Card>
 
@@ -212,7 +219,7 @@ function Card({ title, children, full }: { title: string; children: React.ReactN
   );
 }
 
-function Row({ label, value, bold, count }: { label: string; value: number; bold?: boolean; count?: boolean }) {
+function Row({ label, value, bold, count, muted }: { label: string; value: number; bold?: boolean; count?: boolean; muted?: boolean }) {
   // Bug-053: Laravel decimal-cast returns strings; coerce defensively so
   // Math.round / Math.abs / toFixed don't crash on `"125.00"`.
   const n = Number(value ?? 0);
@@ -220,8 +227,10 @@ function Row({ label, value, bold, count }: { label: string; value: number; bold
   return (
     <div style={{
       display: "flex", justifyContent: "space-between", padding: "4px 0",
-      fontSize: 13, color: bold ? "#0F172A" : "#475569",
+      fontSize: muted ? 12 : 13,
+      color: bold ? "#0F172A" : muted ? "#94A3B8" : "#475569",
       fontWeight: bold ? 700 : 500,
+      fontStyle: muted ? "italic" : "normal",
       borderTop: bold ? "1px solid #E2E8F0" : "none",
       marginTop: bold ? 6 : 0,
     }}>

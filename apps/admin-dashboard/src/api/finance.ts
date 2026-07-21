@@ -335,6 +335,12 @@ export type SalesSummary = {
   delivery_fee_total?: number;
   payments?: Record<string, number>;
   payment_commission?: PaymentCommissionSummary;
+  /** FIX 7 — total of tenders that actually moved money. */
+  collected_laar?: number;
+  collected?: number;
+  /** FIX 7 — total of house_account tenders (a receivable, not real cash). */
+  on_credit_laar?: number;
+  on_credit?: number;
 };
 
 export async function fetchSalesSummary(params?: {
@@ -399,6 +405,15 @@ export interface XReport {
   payments: Record<string, number>;
   refunds?: number;
   payment_commission?: PaymentCommissionSummary;
+  /** FIX 7 — total of tenders that actually moved money (all methods except house_account). */
+  collected_laar?: number;
+  collected?: number;
+  /** FIX 7 — total of house_account tenders (a receivable, not real cash). */
+  on_credit_laar?: number;
+  on_credit?: number;
+  /** FIX 4 — cash-in movements tagged as credit_repayment, for the same window. */
+  credit_repayments_cash_laar?: number;
+  credit_repayments_cash?: number;
 }
 
 export async function getXReport(): Promise<XReport> {

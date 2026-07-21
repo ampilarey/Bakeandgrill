@@ -10,6 +10,9 @@ export async function getShiftSummary(shiftId: number): Promise<{
     paid_in: number;
     paid_out: number;
     expected_cash: number;
+    /** FIX 4 — cash-in tagged as credit_repayment for this shift (already counted in paid_in). */
+    credit_repayments_cash?: number;
+    credit_repayments_cash_laar?: number;
   };
   sales_summary: {
     order_count: number;

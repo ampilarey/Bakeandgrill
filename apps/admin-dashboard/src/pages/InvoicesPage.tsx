@@ -478,7 +478,11 @@ export function InvoicesPage() {
                         <Btn small variant="secondary" onClick={() => handleSent(inv.id)}>Mark Sent</Btn>
                       )}
                       {['sent', 'overdue'].includes(inv.status) && (
-                        <Btn small onClick={() => { setSelected(inv); setPaying(true); }}>Mark Paid</Btn>
+                        <Btn small onClick={() => { setSelected(inv); setPaying(true); }}>
+                          {(inv as { on_credit_account?: boolean }).on_credit_account
+                            ? 'Record repayment for this invoice'
+                            : 'Mark Paid'}
+                        </Btn>
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && inv.type === 'sale' && (
                         <Btn small variant="secondary" onClick={() => openSmsModal(inv)}>📱 SMS</Btn>
@@ -535,10 +539,23 @@ export function InvoicesPage() {
 
       {/* Mark Paid Modal */}
       {paying && selected && (
-        <Modal title="Mark Invoice Paid" onClose={() => { setPaying(false); setSelected(null); }} maxWidth={380}>
+        <Modal
+          title={(selected as { on_credit_account?: boolean }).on_credit_account
+            ? 'Record repayment for this invoice'
+            : 'Mark Invoice Paid'}
+          onClose={() => { setPaying(false); setSelected(null); }}
+          maxWidth={380}
+        >
           <p style={{ color: '#6B5D4F', fontSize: 14, marginBottom: 20 }}>
             {selected.invoice_number} · <strong style={{ color: '#D4813A' }}>MVR {parseFloat(String(selected.total ?? 0)).toFixed(2)}</strong>
           </p>
+          {(selected as { on_credit_account?: boolean }).on_credit_account && (
+            <p style={{ color: '#B45309', fontSize: 12, marginBottom: 16 }}>
+              This invoice is on the customer's credit account. Confirming will
+              record a repayment against their credit balance (not flip the
+              invoice status directly).
+            </p>
+          )}
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Payment Method</label>
             <select

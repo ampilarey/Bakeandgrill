@@ -4,6 +4,8 @@ import {
   fetchCustomerCredit,
   updateCustomerCredit,
   recordCustomerCreditRepayment,
+  writeOffCustomerCredit,
+  customerCreditLedgerCsvUrl,
   CREDIT_PAYMENT_TERMS_OPTIONS,
   type CustomerCreditInfo,
   type CustomerCreditInvoice,
@@ -37,9 +39,11 @@ export function CustomerCreditSection({ customerId }: Props) {
   const [approveLimit, setApproveLimit] = useState('');
   const [approveNotes, setApproveNotes] = useState('');
   const [approveTerms, setApproveTerms] = useState<number>(30);
+  const [approveReason, setApproveReason] = useState('');
   const [editLimit, setEditLimit] = useState('');
   const [editTerms, setEditTerms] = useState<number>(30);
   const [overrideLimit, setOverrideLimit] = useState(false);
+  const [limitReason, setLimitReason] = useState('');
 
   const [repayAmount, setRepayAmount] = useState('');
   const [repayMethod, setRepayMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
@@ -47,6 +51,11 @@ export function CustomerCreditSection({ customerId }: Props) {
   const [repayNotes, setRepayNotes] = useState('');
   const [selectedInvoices, setSelectedInvoices] = useState<number[]>([]);
   const [showRepay, setShowRepay] = useState(false);
+
+  // FIX 9a — write-off state
+  const [showWriteOff, setShowWriteOff] = useState(false);
+  const [writeOffAmount, setWriteOffAmount] = useState('');
+  const [writeOffReason, setWriteOffReason] = useState('');
 
   const load = async () => {
     if (!canManage && !canRepay) return;
@@ -84,6 +93,42 @@ export function CustomerCreditSection({ customerId }: Props) {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Action failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleWriteOff = async () => {
+    const amount = parseFloat(writeOffAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Enter a valid write-off amount');
+      return;
+    }
+    if (writeOffReason.trim().length < 5) {
+      setError('Reason must be at least 5 characters');
+      return;
+    }
+    if (!credit || amount > (credit.balance_mvr ?? 0)) {
+      setError('Write-off cannot exceed current balance');
+      return;
+    }
+    if (!window.confirm(`Write off MVR ${amount.toFixed(2)}? This adjusts the customer balance as bad debt (no cash movement).`)) {
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await writeOffCustomerCredit(customerId, {
+        amount_mvr: amount,
+        reason: writeOffReason.trim(),
+      });
+      setCredit(res.credit);
+      setWriteOffAmount('');
+      setWriteOffReason('');
+      setShowWriteOff(false);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Write-off failed');
     } finally {
       setSaving(false);
     }
@@ -186,8 +231,22 @@ export function CustomerCreditSection({ customerId }: Props) {
 
           {canManage && !credit.enabled && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Approve credit limit (MVR)</label>
-              <input style={inputStyle} type="number" min="0" step="0.01" value={approveLimit} onChange={(e) => setApproveLimit(e.target.value)} placeholder="e.g. 5000" />
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>
+                Approve credit limit (MVR)
+                {credit.limit_max_mvr != null && (
+                  <span style={{ fontWeight: 400, color: '#9C8E7E' }}> · max MVR {credit.limit_max_mvr.toFixed(2)}</span>
+                )}
+              </label>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                max={credit.limit_max_mvr ?? undefined}
+                step="0.01"
+                value={approveLimit}
+                onChange={(e) => setApproveLimit(e.target.value)}
+                placeholder="e.g. 5000"
+              />
               <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Payment terms</label>
               <select style={inputStyle} value={approveTerms} onChange={(e) => setApproveTerms(Number(e.target.value))}>
                 {CREDIT_PAYMENT_TERMS_OPTIONS.map((days) => (
@@ -195,12 +254,42 @@ export function CustomerCreditSection({ customerId }: Props) {
                 ))}
               </select>
               <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={approveNotes} onChange={(e) => setApproveNotes(e.target.value)} placeholder="Credit notes (optional)" />
-              <Btn small onClick={() => void runAction({
-                action: 'approve',
-                credit_limit_mvr: parseFloat(approveLimit),
-                credit_notes: approveNotes || undefined,
-                credit_payment_terms_days: approveTerms,
-              })} disabled={saving}>
+              {credit.limit_max_mvr != null && parseFloat(approveLimit) > credit.limit_max_mvr && (
+                <>
+                  <p style={{ margin: 0, fontSize: 11, color: '#B45309' }}>
+                    Above max — owner audit override. Reason (5+ chars) required.
+                  </p>
+                  <input
+                    style={inputStyle}
+                    value={approveReason}
+                    onChange={(e) => setApproveReason(e.target.value)}
+                    placeholder="Reason for exceeding maximum"
+                  />
+                </>
+              )}
+              <Btn small onClick={() => {
+                const amount = parseFloat(approveLimit);
+                if (!Number.isFinite(amount) || amount <= 0) {
+                  setError('Enter a valid credit limit');
+                  return;
+                }
+                if (credit.limit_max_mvr != null && amount > credit.limit_max_mvr) {
+                  if (approveReason.trim().length < 5) {
+                    setError('Reason (5+ chars) required to exceed the maximum');
+                    return;
+                  }
+                  if (!window.confirm(`Approve MVR ${amount.toFixed(2)} — this exceeds the ${credit.limit_max_mvr.toFixed(2)} maximum. Owner override will be audited.`)) {
+                    return;
+                  }
+                }
+                void runAction({
+                  action: 'approve',
+                  credit_limit_mvr: amount,
+                  credit_notes: approveNotes || undefined,
+                  credit_payment_terms_days: approveTerms,
+                  reason: approveReason.trim() || undefined,
+                });
+              }} disabled={saving}>
                 Approve for credit
               </Btn>
             </div>
@@ -217,13 +306,57 @@ export function CustomerCreditSection({ customerId }: Props) {
 
           {canManage && credit.enabled && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Update credit limit (MVR)</label>
-              <input style={inputStyle} type="number" min="0" step="0.01" value={editLimit} onChange={(e) => setEditLimit(e.target.value)} />
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>
+                Update credit limit (MVR)
+                {credit.limit_max_mvr != null && (
+                  <span style={{ fontWeight: 400, color: '#9C8E7E' }}> · max MVR {credit.limit_max_mvr.toFixed(2)}</span>
+                )}
+              </label>
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                max={credit.limit_max_mvr ?? undefined}
+                step="0.01"
+                value={editLimit}
+                onChange={(e) => setEditLimit(e.target.value)}
+              />
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
                 <input type="checkbox" checked={overrideLimit} onChange={(e) => setOverrideLimit(e.target.checked)} />
                 Override (allow limit below current balance)
               </label>
-              <Btn small variant="secondary" onClick={() => void runAction({ action: 'update_limit', credit_limit_mvr: parseFloat(editLimit), override_limit: overrideLimit })} disabled={saving}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>
+                Reason for change <span style={{ color: '#B45309' }}>(required, 5+ chars)</span>
+              </label>
+              <input
+                style={inputStyle}
+                value={limitReason}
+                onChange={(e) => setLimitReason(e.target.value)}
+                placeholder="Why is this limit changing?"
+              />
+              <Btn small variant="secondary" onClick={() => {
+                const amount = parseFloat(editLimit);
+                if (!Number.isFinite(amount) || amount < 0) {
+                  setError('Enter a valid credit limit');
+                  return;
+                }
+                if (limitReason.trim().length < 5) {
+                  setError('A reason (5+ chars) is required for limit changes');
+                  return;
+                }
+                if (credit.limit_max_mvr != null && amount > credit.limit_max_mvr) {
+                  if (!window.confirm(`Set limit to MVR ${amount.toFixed(2)} — this exceeds the ${credit.limit_max_mvr.toFixed(2)} maximum. Owner override will be audited.`)) {
+                    return;
+                  }
+                }
+                void runAction({
+                  action: 'update_limit',
+                  credit_limit_mvr: amount,
+                  override_limit: overrideLimit,
+                  reason: limitReason.trim(),
+                });
+                setLimitReason('');
+              }} disabled={saving}>
                 Save limit
               </Btn>
             </div>
@@ -317,9 +450,57 @@ export function CustomerCreditSection({ customerId }: Props) {
             </>
           )}
 
+          {canManage && credit.enabled && credit.balance_laar > 0 && (
+            <>
+              {!showWriteOff ? (
+                <Btn small variant="danger" onClick={() => setShowWriteOff(true)}>Write off balance</Btn>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: '#FEF2F2', borderRadius: 10, padding: 12, border: '1px solid #FCA5A5' }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 12, color: '#991B1B' }}>Write off (bad debt adjustment)</p>
+                  <p style={{ margin: 0, fontSize: 11, color: '#7F1D1D' }}>
+                    Reduces the customer's credit balance as an adjustment. No cash movement is recorded.
+                    Max: MVR {credit.balance_mvr.toFixed(2)}.
+                  </p>
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min="0.01"
+                    max={credit.balance_mvr}
+                    step="0.01"
+                    value={writeOffAmount}
+                    onChange={(e) => setWriteOffAmount(e.target.value)}
+                    placeholder="Amount (MVR)"
+                  />
+                  <input
+                    style={inputStyle}
+                    value={writeOffReason}
+                    onChange={(e) => setWriteOffReason(e.target.value)}
+                    placeholder="Reason (required, 5+ chars)"
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Btn small variant="danger" onClick={() => void handleWriteOff()} disabled={saving}>
+                      {saving ? 'Writing off…' : 'Confirm write-off'}
+                    </Btn>
+                    <Btn small variant="secondary" onClick={() => setShowWriteOff(false)}>Cancel</Btn>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {ledger.length > 0 && (
             <div>
-              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase' }}>Recent ledger</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase' }}>Recent ledger</p>
+                <a
+                  href={customerCreditLedgerCsvUrl(customerId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 11, color: '#D4813A', textDecoration: 'none', fontWeight: 700 }}
+                >
+                  ↓ Export CSV
+                </a>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
                 {ledger.map((row) => (
                   <div key={row.id} style={{ fontSize: 12, padding: '6px 8px', background: '#fff', borderRadius: 6, border: '1px solid #F0EAE3' }}>

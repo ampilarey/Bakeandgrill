@@ -92,14 +92,32 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(summary.payments).map(([method, amount]) => (
-                      <tr key={method}>
-                        <td style={S.td}>{paymentMethodLabel(method)}</td>
-                        <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(Number(amount))}</td>
-                      </tr>
-                    ))}
+                    {Object.entries(summary.payments).map(([method, amount]) => {
+                      const isCredit = method === 'house_account';
+                      return (
+                        <tr key={method} style={isCredit ? { color: '#9C8E7E', fontStyle: 'italic' } : undefined}>
+                          <td style={S.td}>
+                            {paymentMethodLabel(method)}
+                            {isCredit && <span style={{ marginLeft: 6, fontSize: 11 }}>(receivable)</span>}
+                          </td>
+                          <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(Number(amount))}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+                {(summary.collected != null || summary.on_credit != null) && (
+                  <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Collected</span>
+                      <strong style={{ color: '#1C1408' }}>{mvr(summary.collected ?? 0)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9C8E7E', fontStyle: 'italic' }}>
+                      <span>On credit (receivable)</span>
+                      <span>{mvr(summary.on_credit ?? 0)}</span>
+                    </div>
+                  </div>
+                )}
               </>
             )}
             <PaymentCommissionBlock commission={summary.payment_commission} />
@@ -431,14 +449,37 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                         <table style={S.table}>
                           <thead><tr><th style={S.th}>Method</th><th style={S.th}>Total</th></tr></thead>
                           <tbody>
-                            {Object.entries(data.payments ?? {}).map(([method, total]) => (
-                              <tr key={method}>
-                                <td style={S.td}>{paymentMethodLabel(method)}</td>
-                                <td style={S.td}>{mvr(total as number)}</td>
-                              </tr>
-                            ))}
+                            {Object.entries(data.payments ?? {}).map(([method, total]) => {
+                              const isCredit = method === 'house_account';
+                              return (
+                                <tr key={method} style={isCredit ? { color: '#9C8E7E', fontStyle: 'italic' } : undefined}>
+                                  <td style={S.td}>
+                                    {paymentMethodLabel(method)}
+                                    {isCredit && <span style={{ marginLeft: 6, fontSize: 11 }}>(receivable)</span>}
+                                  </td>
+                                  <td style={S.td}>{mvr(total as number)}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
+                        {(data.collected != null || data.on_credit != null) && (
+                          <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Collected</span>
+                              <strong style={{ color: '#1C1408' }}>{mvr(data.collected ?? 0)}</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9C8E7E', fontStyle: 'italic' }}>
+                              <span>On credit (receivable)</span>
+                              <span>{mvr(data.on_credit ?? 0)}</span>
+                            </div>
+                          </div>
+                        )}
+                        {data.credit_repayments_cash != null && data.credit_repayments_cash > 0 && (
+                          <div style={{ marginTop: 6, fontSize: 11, color: '#059669' }}>
+                            + MVR {(data.credit_repayments_cash).toFixed(2)} cash received as credit repayments this period
+                          </div>
+                        )}
                       </>
                     )}
                     <PaymentCommissionBlock commission={data.payment_commission} />
@@ -923,6 +964,19 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {/* ── Credit exposure ── */}
       {!loading && tab === 'Credit Exposure' && creditExposure && (
         <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <a
+              href="/api/reports/credit-exposure/csv"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: '8px 14px', borderRadius: 8, border: '1px solid #D4813A',
+                color: '#D4813A', textDecoration: 'none', fontWeight: 700, fontSize: 13,
+              }}
+            >
+              ↓ Export CSV
+            </a>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Total Outstanding" value={mvr(creditExposure.total_balance)} accent="#ef4444" />
             <StatCard label="Customers with Balance" value={String(creditExposure.customers_count)} accent="#8b5cf6" />
