@@ -79,14 +79,13 @@
         "kitchen_handover_status": null,
         "pickup_slot_at": null,
         "proof_of_delivery_path": null,
+        "idempotency_key": null,
         "payments": [
             {
                 "id": "__VOLATILE__",
                 "order_id": "__VOLATILE__",
                 "method": "cash",
                 "amount": "23.76",
-                "tendered_amount": null,
-                "change_given": null,
                 "status": "paid",
                 "reference_number": null,
                 "gateway_response": null,
@@ -103,7 +102,9 @@
                 "shift_id": "__VOLATILE__",
                 "commission_laar": 0,
                 "commission_rate_bp": null,
-                "commission_channel": null
+                "commission_channel": null,
+                "tendered_amount": null,
+                "change_given": null
             }
         ]
     },

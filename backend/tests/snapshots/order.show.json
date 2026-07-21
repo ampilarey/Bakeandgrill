@@ -79,6 +79,7 @@
         "kitchen_handover_status": null,
         "pickup_slot_at": null,
         "proof_of_delivery_path": null,
+        "idempotency_key": null,
         "items": [
             {
                 "id": "__VOLATILE__",

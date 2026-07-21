@@ -183,13 +183,16 @@ class PromotionTest extends TestCase
         $this->postJson("/api/orders/{$order->id}/apply-promo", ['code' => 'SAVE10'])
             ->assertOk();
 
-        $freshOrder = $order->fresh();
-
-        // Pay the order — use the post-discount total so the payment fully covers it.
-        // Cast to float so SQLite string "22.50" isn't treated as 0 by JSON encoding.
-        $payableAmount = max((float) $freshOrder->total, (float) $freshOrder->subtotal, 0.01);
+        // Pay the applied remaining total only — cash applied may not exceed
+        // remaining + 1 laari (overpay-as-change uses tendered_amount separately).
+        $payableAmount = (float) $order->fresh()->total;
+        $this->assertGreaterThan(0, $payableAmount);
         $payResponse = $this->postJson("/api/orders/{$order->id}/payments", [
-            'payments' => [['method' => 'cash', 'amount' => $payableAmount]],
+            'payments' => [[
+                'method' => 'cash',
+                'amount' => $payableAmount,
+                'tendered_amount' => $payableAmount + 50,
+            ]],
             'print_receipt' => false,
         ]);
         $payResponse->assertOk();
@@ -234,8 +237,8 @@ class PromotionTest extends TestCase
         Sanctum::actingAs($this->staff, ['staff']);
         $this->postJson("/api/orders/{$order1->id}/apply-promo", ['code' => 'ONCEPAY'])->assertOk();
 
-        $fresh = $order1->fresh();
-        $payableAmount = max((float) $fresh->total, (float) $fresh->subtotal, 0.01);
+        $payableAmount = (float) $order1->fresh()->total;
+        $this->assertGreaterThan(0, $payableAmount);
         $this->postJson("/api/orders/{$order1->id}/payments", [
             'payments' => [['method' => 'cash', 'amount' => $payableAmount]],
             'print_receipt' => false,
@@ -257,8 +260,8 @@ class PromotionTest extends TestCase
         Sanctum::actingAs($this->staff, ['staff']);
         $this->postJson("/api/orders/{$order->id}/apply-promo", ['code' => 'REFUNDONCE'])->assertOk();
 
-        $fresh = $order->fresh();
-        $payableAmount = max((float) $fresh->total, (float) $fresh->subtotal, 0.01);
+        $payableAmount = (float) $order->fresh()->total;
+        $this->assertGreaterThan(0, $payableAmount);
         $this->postJson("/api/orders/{$order->id}/payments", [
             'payments' => [['method' => 'cash', 'amount' => $payableAmount]],
             'print_receipt' => false,
