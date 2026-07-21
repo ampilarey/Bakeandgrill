@@ -33,6 +33,8 @@ type Props = {
   onClose: () => void;
   cartCustomerPhone?: string | null;
   smsNotifications?: { send_bill: boolean; send_pay_link: boolean };
+  /** Clear pending-payment UI when this order is voided. */
+  onOrderCancelled?: (orderId: number) => void;
 };
 
 export function OpenTicketsPanel({
@@ -46,8 +48,9 @@ export function OpenTicketsPanel({
   onClose,
   cartCustomerPhone,
   smsNotifications = { send_bill: true, send_pay_link: true },
+  onOrderCancelled,
 }: Props) {
-  const hook = useOpenTickets({ cartCustomerPhone });
+  const hook = useOpenTickets({ cartCustomerPhone, onOrderCancelled });
   const {
     tickets,
     loading,

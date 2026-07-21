@@ -27,6 +27,10 @@ class StoreOrderRequest extends FormRequest
             // queued order). Persisted by OrderCreationService so a retry
             // hits the duplicate check in OfflineSyncController.
             'offline_id' => 'nullable|string|max:64',
+            // Online charge attempt key — POS keeps one UUID until settle
+            // succeeds so a retried POST after a dropped response cannot
+            // mint a second order.
+            'idempotency_key' => 'nullable|string|max:64',
             'notes' => 'nullable|string|max:1000',
             'customer_notes' => 'nullable|string|max:1000',
             'discount_amount' => 'nullable|numeric|min:0',

@@ -28,6 +28,8 @@ type Props = {
   /** Customer's phone for the Resend button. If undefined, Resend is hidden. */
   customerPhone?: string | null;
   paidOnCredit?: boolean;
+  /** When credit is a minority split tender — e.g. "partially on credit (MVR X)". */
+  creditNote?: string | null;
   receiptResendEnabled?: boolean;
   onDismiss: () => void;
 };
@@ -41,7 +43,7 @@ const C = {
   btn: "#FFFFFF",
 };
 
-export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = false, receiptResendEnabled = true, onDismiss }: Props) {
+export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = false, creditNote = null, receiptResendEnabled = true, onDismiss }: Props) {
   const [link, setLink] = useState<string | null>(null);
   const [linkErr, setLinkErr] = useState(false);
   const [sending, setSending] = useState(false);
@@ -145,7 +147,12 @@ export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = fa
     >
       <div style={{ flex: "1 1 auto", minWidth: 200 }}>
         <div style={{ fontWeight: 800, color: C.text, fontSize: 14 }}>
-          ✓ Order #{orderId} {paidOnCredit ? 'charged to credit account' : 'paid'}
+          ✓ Order #{orderId}{" "}
+          {paidOnCredit
+            ? "charged to credit account"
+            : creditNote
+              ? creditNote
+              : "paid"}
         </div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
           {customerPhone

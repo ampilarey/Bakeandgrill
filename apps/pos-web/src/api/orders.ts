@@ -33,6 +33,7 @@ export async function createDeliveryOrder(payload: {
   device_identifier?: string;
   customer_id?: number | null;
   discount_amount?: number;
+  idempotency_key?: string;
   ticket_name?: string;
   ticket_note?: string;
   delivery_address_line1: string;

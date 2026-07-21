@@ -63,6 +63,7 @@ class OrderItemController extends Controller
             'delivery_contact_phone' => ['nullable', 'string', 'max:30', 'regex:/^(\+?960)?[379]\d{6}$/'],
             'delivery_notes' => 'nullable|string|max:500',
             'delivery_location_link' => 'nullable|url|max:2048',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
         $reprintKitchen = (bool) ($validated['reprint_kitchen'] ?? true);
@@ -150,6 +151,23 @@ class OrderItemController extends Controller
                 $meta['delivery_location_link'] = null;
                 $meta['delivery_fee'] = 0;
                 $meta['delivery_fee_laar'] = 0;
+            }
+
+            if (array_key_exists('discount_amount', $validated)) {
+                $discountAmount = (float) ($validated['discount_amount'] ?? 0);
+                $subtotalLaar = (int) round(
+                    (float) $updated->items()->sum(\DB::raw('total_price')) * 100,
+                );
+                $discountLaar = max(0, min((int) round($discountAmount * 100), $subtotalLaar));
+
+                if ($discountLaar > 0) {
+                    $user = $request->user();
+                    if (!$user instanceof \App\Models\User || !$user->hasPermission('promotions.discounts')) {
+                        abort(403, 'You do not have permission to apply manual discounts.');
+                    }
+                }
+
+                $meta['manual_discount_laar'] = $discountLaar;
             }
 
             if ($meta !== []) {

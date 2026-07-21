@@ -88,6 +88,7 @@ class DeliveryOrderController extends Controller
             'device_identifier' => 'nullable|string|max:255',
             'print' => 'sometimes|boolean',
             'discount_amount' => 'nullable|numeric|min:0',
+            'idempotency_key' => 'nullable|string|max:64',
             'ticket_name' => 'nullable|string|max:80',
             'ticket_note' => 'nullable|string|max:255',
         ]);
@@ -107,6 +108,16 @@ class DeliveryOrderController extends Controller
         $staffUser = $isCustomer ? null : $authUser;
         if ($isCustomer) {
             $payload['discount_amount'] = 0;
+        }
+
+        $idempotencyKey = $payload['idempotency_key'] ?? null;
+        if (is_string($idempotencyKey) && $idempotencyKey !== '') {
+            $existing = Order::where('idempotency_key', $idempotencyKey)->first();
+            if ($existing) {
+                $existing->load(['items.modifiers']);
+
+                return response()->json(['order' => $existing], 200);
+            }
         }
 
         $order = DB::transaction(function () use ($payload, $staffUser, $delivery): Order {

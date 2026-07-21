@@ -252,8 +252,22 @@ class OrderCreationController extends Controller
             'Open a shift before ringing sales.',
         );
 
+        $payload = $request->validated();
+
+        // Same shape as offline_id dedup: a retried charge Confirm after a
+        // dropped create response must return the first order, not mint #2.
+        $idempotencyKey = $payload['idempotency_key'] ?? null;
+        if (is_string($idempotencyKey) && $idempotencyKey !== '') {
+            $existing = Order::where('idempotency_key', $idempotencyKey)->first();
+            if ($existing) {
+                $existing->load(['items.modifiers']);
+
+                return response()->json(['order' => $existing], 200);
+            }
+        }
+
         $order = app(OrderCreationService::class)->createFromPayload(
-            $request->validated(),
+            $payload,
             $request->user(),
         );
 
