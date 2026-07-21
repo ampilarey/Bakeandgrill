@@ -9,6 +9,7 @@ use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\AuditLog;
+use App\Models\CashMovement;
 use App\Models\Customer;
 use App\Models\CustomerDepositAccount;
 use App\Models\CustomerDepositLedger;
@@ -108,6 +109,13 @@ class ReportsService
             $from, $to, $userId, $shiftId, $deviceId,
         );
 
+        // FIX 7: split total into "collected" (real tenders) vs "on credit"
+        // (house_account — receivable). house_account is a receivable, NOT
+        // cash, and totals were being read as though everything was
+        // collected. Downstream P&L / cash-flow decisions were off by the
+        // outstanding-credit-account balance.
+        [$collectedLaar, $onCreditLaar] = $this->tenderSplitLaar($payments);
+
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
@@ -121,12 +129,58 @@ class ReportsService
             'gift_cards_sold_laar' => $gcSoldLaar,
             'gift_cards_sold' => round($gcSoldLaar / 100, 2),
             'payments' => $payments,
+            'collected_laar' => $collectedLaar,
+            'collected' => round($collectedLaar / 100, 2),
+            'on_credit_laar' => $onCreditLaar,
+            'on_credit' => round($onCreditLaar / 100, 2),
             'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to, array_filter([
                 'user_id' => $userId,
                 'shift_id' => $shiftId,
                 'device_id' => $deviceId,
             ])),
         ];
+    }
+
+    /**
+     * Split the `method => total_mvr` payment breakdown into "collected"
+     * (real money in — cash, card, gateway, wallet, gift-card tender, etc.)
+     * versus "on credit" (house_account — receivable).
+     *
+     * Returns totals in LAARI to preserve integer precision downstream.
+     *
+     * @param \Illuminate\Support\Collection<string, mixed> $payments
+     * @return array{0: int, 1: int}
+     */
+    private function tenderSplitLaar($payments): array
+    {
+        $collected = 0;
+        $onCredit = 0;
+        foreach ($payments as $method => $totalMvr) {
+            $laar = (int) round(((float) $totalMvr) * 100);
+            if ((string) $method === 'house_account') {
+                $onCredit += $laar;
+            } else {
+                $collected += $laar;
+            }
+        }
+
+        return [$collected, $onCredit];
+    }
+
+    /**
+     * Sum of credit-repayment cash movements for a shift-window (X) or
+     * date-window (Z). expectedCashFor already includes these in the
+     * generic cash_in total — this method just breaks them out.
+     */
+    private function creditRepaymentsCashLaar(Carbon $from, Carbon $to, ?int $shiftId = null): int
+    {
+        return (int) CashMovement::query()
+            ->where('type', 'cash_in')
+            ->where('category', 'credit_repayment')
+            ->whereBetween('created_at', [$from, $to])
+            ->when($shiftId, fn ($q) => $q->where('shift_id', $shiftId))
+            ->selectRaw('COALESCE(ROUND(SUM(amount) * 100), 0) as t')
+            ->value('t');
     }
 
     /**
@@ -296,6 +350,9 @@ class ReportsService
 
         [$gcSoldCount, $gcSoldLaar] = $this->giftCardsSoldInRange($from, $to, $shift->user_id);
 
+        [$collectedLaar, $onCreditLaar] = $this->tenderSplitLaar($payments);
+        $creditRepaymentsCashLaar = $this->creditRepaymentsCashLaar($from, $to, $shift->id);
+
         return [
             'shift' => $shift,
             'from' => $from->toDateTimeString(),
@@ -305,6 +362,12 @@ class ReportsService
             'gift_cards_sold_laar' => $gcSoldLaar,
             'gift_cards_sold' => round($gcSoldLaar / 100, 2),
             'payments' => $payments,
+            'collected_laar' => $collectedLaar,
+            'collected' => round($collectedLaar / 100, 2),
+            'on_credit_laar' => $onCreditLaar,
+            'on_credit' => round($onCreditLaar / 100, 2),
+            'credit_repayments_cash_laar' => $creditRepaymentsCashLaar,
+            'credit_repayments_cash' => round($creditRepaymentsCashLaar / 100, 2),
             'refunds' => $refundsTotal,
             'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to, [
                 'user_id' => $shift->user_id,
@@ -373,6 +436,9 @@ class ReportsService
 
         [$gcSoldCount, $gcSoldLaar] = $this->giftCardsSoldInRange($from, $to);
 
+        [$collectedLaar, $onCreditLaar] = $this->tenderSplitLaar($payments);
+        $creditRepaymentsCashLaar = $this->creditRepaymentsCashLaar($from, $to);
+
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
@@ -381,6 +447,12 @@ class ReportsService
             'gift_cards_sold_laar' => $gcSoldLaar,
             'gift_cards_sold' => round($gcSoldLaar / 100, 2),
             'payments' => $payments,
+            'collected_laar' => $collectedLaar,
+            'collected' => round($collectedLaar / 100, 2),
+            'on_credit_laar' => $onCreditLaar,
+            'on_credit' => round($onCreditLaar / 100, 2),
+            'credit_repayments_cash_laar' => $creditRepaymentsCashLaar,
+            'credit_repayments_cash' => round($creditRepaymentsCashLaar / 100, 2),
             'payments_no_shift_total' => $noShiftTotal,
             'refunds' => $refunds,
             'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to),
