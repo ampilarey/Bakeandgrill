@@ -261,6 +261,53 @@ class InvoiceController extends Controller
         ]);
 
         $invoice = Invoice::findOrFail($id);
+
+        // FIX 2: Marking a "sent" credit-account invoice as paid must go
+        // through the credit ledger so the customer's outstanding balance
+        // drops, a repayment ledger row is written, and cash-method cash
+        // hits a shift movement. The old code flipped status directly and
+        // left credit_balance_laar untouched → invoice looked paid but
+        // credit balance still showed a debt (and vice-versa on POS).
+        $balanceDueLaar = (int) $invoice->balanceDueLaar();
+        if ($invoice->isOnCreditAccount() && $balanceDueLaar > 0) {
+            $actor = $request->user();
+            abort_unless($actor !== null, 401);
+
+            $method = (string) $validated['payment_method'];
+            $allowedMethods = ['cash', 'card', 'bank_transfer'];
+            if (!in_array($method, $allowedMethods, true)) {
+                abort(422, 'Credit invoice can only be marked paid as cash, card, or bank_transfer.');
+            }
+
+            $customer = $invoice->customer_id
+                ? \App\Models\Customer::find($invoice->customer_id)
+                : null;
+            abort_unless($customer !== null, 422, 'Credit invoice is not linked to a customer.');
+
+            app(\App\Domains\Credit\Services\CustomerCreditService::class)->recordRepayment(
+                $customer,
+                $balanceDueLaar,
+                $method,
+                $actor,
+                [$invoice->id],
+                $validated['payment_reference'] ?? null,
+                'Repayment recorded from Mark Paid on invoice ' . $invoice->invoice_number,
+                $request,
+            );
+
+            $this->audit->log(
+                'invoice.paid_via_credit_repayment',
+                'Invoice',
+                $invoice->id,
+                [],
+                ['balance_due_laar' => $balanceDueLaar, 'method' => $method],
+                [],
+                $request,
+            );
+
+            return response()->json(['invoice' => $this->format($invoice->fresh())]);
+        }
+
         $totalLaar = (int) ($invoice->total_laar ?? round((float) $invoice->total * 100));
         $invoice->update([
             'status' => 'paid',
