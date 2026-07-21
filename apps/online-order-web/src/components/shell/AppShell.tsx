@@ -3,9 +3,11 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ActiveOrderProvider } from '../../context/ActiveOrderContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { ServiceStatusProvider } from '../../context/ServiceStatusContext';
 import { ShellNavProvider, useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useCart } from '../../context/CartContext';
+import { ServiceBanner } from '../ServiceBanner';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getCustomerMe } from '../../api';
 import { isEventFlowPath } from '../../utils/eventFlowPath';
@@ -64,6 +66,8 @@ function AppShellChrome() {
       </a>
 
       {isDesktopShell && <TopNav />}
+
+      <ServiceBanner />
 
       {annEnabled && annText && (
         <div
@@ -145,11 +149,13 @@ function AuthNameHydration() {
  */
 export function AppShell() {
   return (
-    <ShellNavProvider>
-      <ActiveOrderProvider>
-        <AuthNameHydration />
-        <AppShellChrome />
-      </ActiveOrderProvider>
-    </ShellNavProvider>
+    <ServiceStatusProvider>
+      <ShellNavProvider>
+        <ActiveOrderProvider>
+          <AuthNameHydration />
+          <AppShellChrome />
+        </ActiveOrderProvider>
+      </ShellNavProvider>
+    </ServiceStatusProvider>
   );
 }

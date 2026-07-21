@@ -10,6 +10,7 @@ export * from './promotions';
 export * from './customer';
 export * from './addresses';
 export * from './eventOrders';
+export * from './serviceStatus';
 
 // Re-export shared types that pages import from '../api'
 export type {

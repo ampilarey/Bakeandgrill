@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ServiceStatusResource;
 use App\Models\SiteSetting;
 use App\Services\CateringOrderingGateService;
 use App\Services\DeliveryGateService;
@@ -25,6 +27,7 @@ class OnlineOrderingController extends Controller
         private readonly OnlineOrderingGateService $gate,
         private readonly DeliveryGateService $deliveryGate,
         private readonly CateringOrderingGateService $cateringGate,
+        private readonly ServiceAvailabilityService $availability,
     ) {}
 
     /** Public status — returns current open/closed state for the order app. */
@@ -38,6 +41,15 @@ class OnlineOrderingController extends Controller
         $status['delivery_available'] = $status['open'] && $deliveryStatus['delivery_open'];
         $status['next_delivery_window'] = $deliveryStatus['next_delivery_window'] ?? null;
         $status['preorder'] = $this->cateringGate->status();
+
+        // Additive services map — older clients ignore it. Same shape as
+        // GET /api/service-status so a single reader can consume either.
+        $snapshot = $this->availability->resolve();
+        $services = [];
+        foreach ($snapshot as $key => $data) {
+            $services[$key] = (new ServiceStatusResource($data))->toArray(request());
+        }
+        $status['services'] = $services;
 
         return response()->json($status);
     }
