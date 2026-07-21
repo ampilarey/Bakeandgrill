@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             PermissionSeeder::class,
             SiteSettingsSeeder::class,
+            ServiceStateSeeder::class,
             DemoUserSeeder::class,
             DeviceSeeder::class,
             PrinterSeeder::class,
