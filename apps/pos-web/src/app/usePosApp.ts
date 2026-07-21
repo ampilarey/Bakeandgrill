@@ -184,6 +184,13 @@ export function usePosApp() {
   const [chargeCreditEligible, setChargeCreditEligible] = useState(false);
   const [chargeWalletAvailable, setChargeWalletAvailable] = useState(0);
   const [chargeWalletEligible, setChargeWalletEligible] = useState(false);
+  // FIX 8 — timestamp of the last successful credit summary fetch for
+  // the currently-attached customer. Bumped whenever the Charge overlay
+  // opens, the cashier taps the Credit Account tender, or a
+  // credit-limit rejection forces a re-fetch. Rendered by the overlay
+  // as an "as of just now / N min ago" pill so the cashier can tell
+  // the banner is fresh.
+  const [chargeCreditRefreshedAt, setChargeCreditRefreshedAt] = useState<number | null>(null);
   const [showSaveTicket, setShowSaveTicket] = useState(false);
   const [showOpenShift, setShowOpenShift] = useState(false);
   const [showCloseShift, setShowCloseShift] = useState(false);
@@ -198,6 +205,14 @@ export function usePosApp() {
     customerPhone: string | null;
     paidOnCredit: boolean;
     creditNote?: string | null;
+    /**
+     * FIX 9e — post-settle credit balance in MVR when the payments
+     * response echoed one. Rendered on the receipt banner as
+     * "balance now MVR X" so the cashier can relay the fresh owed
+     * amount without pulling up the customer panel. Null = the
+     * backend didn't return it (older builds or non-credit orders).
+     */
+    creditBalanceMvr?: number | null;
   } | null>(null);
   const [deviceBlockedMessage, setDeviceBlockedMessage] = useState<string | null>(null);
 
@@ -583,7 +598,7 @@ export function usePosApp() {
     setAppliedPromo: cart.setAppliedPromo,
     setAppliedLoyalty: cart.setAppliedLoyalty,
     setAppliedGiftCard: cart.setAppliedGiftCard,
-    onOrderSettled: (orderId, _customerId, customerPhone, _orderType, paidOnCredit, creditNote) => {
+    onOrderSettled: (orderId, _customerId, customerPhone, _orderType, paidOnCredit, creditNote, creditBalanceMvr) => {
       void refreshOpenTickets();
       void refreshTables();
       void shift.refreshSummary();
@@ -592,6 +607,7 @@ export function usePosApp() {
         customerPhone: customerPhone ?? null,
         paidOnCredit: !!paidOnCredit,
         creditNote: creditNote ?? null,
+        creditBalanceMvr: typeof creditBalanceMvr === "number" ? creditBalanceMvr : null,
       });
       setPane("sales");
     },
@@ -697,46 +713,68 @@ export function usePosApp() {
     }
   }, [isLoggedIn]);
 
+  /**
+   * FIX 8 — pluggable credit/deposit summary refresh. Called from three
+   * places:
+   *   1. The Charge overlay opens (existing behaviour).
+   *   2. Cashier taps the Credit Account tender inside the overlay.
+   *   3. A settle attempt is rejected on the credit rail — we re-poll
+   *      so the banner shows the live available balance the moment
+   *      the cashier reads the error.
+   *
+   * Bumps `chargeCreditRefreshedAt` on success so the overlay can echo
+   * an "as of just now" indicator. Returns nothing — it's fire-and-
+   * forget from the callers' perspective.
+   */
+  const refreshChargeCreditSummary = useCallback(async () => {
+    const customer = cart.attachedCustomer;
+    if (!customer) {
+      setChargeCreditEligible(false);
+      setChargeCreditAvailable(0);
+      setChargeWalletEligible(false);
+      setChargeWalletAvailable(0);
+      setChargeCreditRefreshedAt(null);
+      return;
+    }
+    try {
+      const summary = await fetchCustomerSummary(customer.id);
+      const credit = summary.credit;
+      if (canUseCredit) {
+        setChargeCreditEligible(Boolean(credit?.can_charge));
+        setChargeCreditAvailable((credit?.available_laar ?? 0) / 100);
+      } else {
+        setChargeCreditEligible(false);
+        setChargeCreditAvailable(0);
+      }
+      const deposit = summary.deposit;
+      const balanceMvr = (deposit?.balance_laar ?? 0) / 100;
+      if (canUseWallet && deposit?.status === 'active' && balanceMvr > 0) {
+        setChargeWalletEligible(Boolean(deposit.can_use));
+        setChargeWalletAvailable(balanceMvr);
+      } else {
+        setChargeWalletEligible(false);
+        setChargeWalletAvailable(0);
+      }
+      setChargeCreditRefreshedAt(Date.now());
+    } catch {
+      setChargeCreditEligible(false);
+      setChargeCreditAvailable(0);
+      setChargeWalletEligible(false);
+      setChargeWalletAvailable(0);
+    }
+  }, [cart.attachedCustomer, canUseCredit, canUseWallet]);
+
   useEffect(() => {
     if (!showCharge || !cart.attachedCustomer) {
       setChargeCreditEligible(false);
       setChargeCreditAvailable(0);
       setChargeWalletEligible(false);
       setChargeWalletAvailable(0);
+      setChargeCreditRefreshedAt(null);
       return;
     }
-    let cancelled = false;
-    void fetchCustomerSummary(cart.attachedCustomer.id)
-      .then((summary) => {
-        if (cancelled) return;
-        const credit = summary.credit;
-        if (canUseCredit) {
-          setChargeCreditEligible(Boolean(credit?.can_charge));
-          setChargeCreditAvailable((credit?.available_laar ?? 0) / 100);
-        } else {
-          setChargeCreditEligible(false);
-          setChargeCreditAvailable(0);
-        }
-        const deposit = summary.deposit;
-        const balanceMvr = (deposit?.balance_laar ?? 0) / 100;
-        if (canUseWallet && deposit?.status === 'active' && balanceMvr > 0) {
-          setChargeWalletEligible(Boolean(deposit.can_use));
-          setChargeWalletAvailable(balanceMvr);
-        } else {
-          setChargeWalletEligible(false);
-          setChargeWalletAvailable(0);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setChargeCreditEligible(false);
-          setChargeCreditAvailable(0);
-          setChargeWalletEligible(false);
-          setChargeWalletAvailable(0);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [showCharge, cart.attachedCustomer?.id, canUseCredit, canUseWallet]);
+    void refreshChargeCreditSummary();
+  }, [showCharge, cart.attachedCustomer?.id, canUseCredit, canUseWallet, refreshChargeCreditSummary]);
 
   // Keep floor occupancy fresh across terminals (Save / Charge / Close).
   useEffect(() => {
@@ -1139,7 +1177,8 @@ export function usePosApp() {
     showOfflineSyncPanel, setShowOfflineSyncPanel, offlineGate, setOfflineGate,
     showSendBill, setShowSendBill, showRequestItemModal, setShowRequestItemModal,
     kitchenPane, setKitchenPane, showCharge, setShowCharge, chargeCreditAvailable,
-    chargeCreditEligible, chargeWalletAvailable, chargeWalletEligible, showSaveTicket,
+    chargeCreditEligible, chargeCreditRefreshedAt, refreshChargeCreditSummary,
+    chargeWalletAvailable, chargeWalletEligible, showSaveTicket,
     setShowSaveTicket, showOpenShift, setShowOpenShift, showCloseShift, setShowCloseShift,
     openShiftBusy, openTicketsCount, openTicketsCritical, receiptsFocusOrderId, setReceiptsFocusOrderId,
     receiptBanner, setReceiptBanner, deviceBlockedMessage, onlineOrderWatcher,

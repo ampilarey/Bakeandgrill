@@ -95,6 +95,7 @@ export function PosShellLayout() {
     refreshOfflineCounts, drawerItems, showPreferences, setShowPreferences,
     showRequestItemModal, setShowRequestItemModal, showSendBill, setShowSendBill,
     showCharge, setShowCharge, chargeCreditEligible, chargeCreditAvailable,
+    chargeCreditRefreshedAt, refreshChargeCreditSummary,
     chargeWalletEligible, chargeWalletAvailable, showSaveTicket, setShowSaveTicket,
     showCloseShift, setShowCloseShift, showOpenShift, setShowOpenShift, openShiftBusy,
     receiptsFocusOrderId, setReceiptsFocusOrderId, idleLockMinutes, setIdleLockMinutes,
@@ -276,6 +277,7 @@ export function PosShellLayout() {
             customerPhone={receiptBanner.customerPhone}
             paidOnCredit={receiptBanner.paidOnCredit}
             creditNote={receiptBanner.creditNote}
+            creditBalanceMvr={receiptBanner.creditBalanceMvr}
             receiptResendEnabled={smsNotifications.receipt_resend}
             onDismiss={() => setReceiptBanner(null)}
           />
@@ -720,6 +722,10 @@ export function PosShellLayout() {
           total={chargeTotal}
           creditEligible={canUseCredit && chargeCreditEligible && isReachable}
           creditAvailableMvr={chargeCreditAvailable}
+          canPayCredit={canUseCredit && isReachable}
+          hasAttachedCustomer={!!cart.attachedCustomer}
+          creditLastRefreshedAt={chargeCreditRefreshedAt}
+          onSelectCredit={() => { void refreshChargeCreditSummary(); }}
           walletEligible={canUseWallet && chargeWalletEligible && isReachable}
           walletAvailableMvr={chargeWalletAvailable}
           isOffline={!isReachable}
@@ -741,7 +747,19 @@ export function PosShellLayout() {
             // the new request is in flight.
             order.setStatusMessage("");
             const ok = await order.handleCharge(rows);
-            if (ok) setShowCharge(false);
+            if (ok) {
+              setShowCharge(false);
+              return;
+            }
+            // FIX 8 — settle rejected. If the cashier tried to
+            // charge house_account we re-pull the credit summary so
+            // the banner immediately shows the true available balance
+            // instead of the stale value they saw a moment ago (which
+            // is likely why the server said no).
+            const involvedCredit = rows.some((r) => r.method === "house_account");
+            if (involvedCredit) {
+              void refreshChargeCreditSummary();
+            }
           }}
         />
       )}

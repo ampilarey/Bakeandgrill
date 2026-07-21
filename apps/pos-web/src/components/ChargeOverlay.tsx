@@ -28,6 +28,29 @@ type Props = {
   /** Show Credit Account tender when customer is approved for credit. */
   creditEligible?: boolean;
   creditAvailableMvr?: number;
+  /**
+   * FIX 8 — cashier permission bit for `payments.credit`. Used purely
+   * to show the "attach a customer / customer has no credit account"
+   * hints when the button would otherwise be silently missing. The
+   * actual gate on eligibility is still `creditEligible` (server-side
+   * approved) — this is only about discoverability.
+   */
+  canPayCredit?: boolean;
+  /** Whether a customer is currently attached to the ticket. Drives
+   *  the "Attach a customer to charge a credit account" hint (FIX 9c). */
+  hasAttachedCustomer?: boolean;
+  /**
+   * FIX 8 — timestamp (ms) of the last credit summary fetch. Rendered
+   * as "as of just now / N min ago" beneath the credit banner so the
+   * cashier can see the reading is fresh after tapping the tender.
+   */
+  creditLastRefreshedAt?: number | null;
+  /**
+   * FIX 8 — callback invoked when the cashier selects the credit
+   * tender. The parent re-fetches the customer summary; the overlay
+   * echoes an "as of just now" pill once the new numbers land.
+   */
+  onSelectCredit?: () => void;
   /** Show customer deposit tender when customer has prepaid balance. */
   walletEligible?: boolean;
   walletAvailableMvr?: number;
@@ -85,6 +108,10 @@ export function ChargeOverlay({
   giftTender,
   creditEligible = false,
   creditAvailableMvr = 0,
+  canPayCredit = false,
+  hasAttachedCustomer = false,
+  creditLastRefreshedAt = null,
+  onSelectCredit,
   walletEligible = false,
   walletAvailableMvr = 0,
   isOffline = false,
@@ -245,8 +272,31 @@ export function ChargeOverlay({
     && splitNum > 0
     && splitNum < total;
 
-  const creditOverLimit = method === "house_account" && total > creditAvailableMvr + 0.001;
-  const canConfirmCredit = method === "house_account" && creditEligible && !creditOverLimit && total > 0;
+  // FIX 5 — Credit tender mirrors the wallet partial-pay pattern.
+  //
+  //   creditFullPay      : total fits inside the customer's available
+  //                        credit line. One row on the settle call.
+  //   creditPartialPay   : total > available > 0. Two rows on settle:
+  //                        [{house_account, available}, {cash, rest}].
+  //                        Cashier collects the shortfall in cash so
+  //                        the drawer stays honest.
+  //   creditOverLimit    : available <= 0 (fully utilised or blocked).
+  //                        Confirm stays disabled.
+  //
+  // The old logic only allowed full-pay against credit and slammed the
+  // button off the moment total > available; the audit flagged that as
+  // a papercut because the cashier had to bail out and re-open Charge
+  // with a manual split. Now the overlay handles the split itself.
+  const creditFullPay = method === "house_account" && creditEligible && total <= creditAvailableMvr + 0.001;
+  const creditPartialPay =
+    method === "house_account"
+    && creditEligible
+    && creditAvailableMvr > 0
+    && total > creditAvailableMvr + 0.001;
+  const creditOverLimit =
+    method === "house_account"
+    && (!creditEligible || creditAvailableMvr <= 0);
+  const canConfirmCredit = (creditFullPay || creditPartialPay) && total > 0;
   const walletFullPay = method === "wallet" && walletEligible && total <= walletAvailableMvr + 0.001;
   const walletPartialPay = method === "wallet" && walletEligible && walletAvailableMvr > 0 && total > walletAvailableMvr + 0.001;
   const walletOverLimit = method === "wallet" && walletEligible && walletAvailableMvr <= 0;
@@ -265,6 +315,21 @@ export function ChargeOverlay({
       const rest = fromLaari(toLaari(total) - depositLaar);
       await onConfirm([
         { method: "wallet", amount: deposit },
+        { method: "cash", amount: rest },
+      ]);
+      return;
+    }
+    if (creditPartialPay) {
+      // FIX 5 — mirror the wallet split: fill the credit line up to
+      // `available_laari` and collect the remainder as cash. Rounding
+      // is done in integer laari so the two rows sum exactly to the
+      // headline total (avoids a 1-laari mismatch vs the server's
+      // stored order total on close-out reconciliation).
+      const creditLaar = Math.min(toLaari(total), toLaari(creditAvailableMvr));
+      const creditAmt = fromLaari(creditLaar);
+      const rest = fromLaari(toLaari(total) - creditLaar);
+      await onConfirm([
+        { method: "house_account", amount: creditAmt },
         { method: "cash", amount: rest },
       ]);
       return;
@@ -430,17 +495,27 @@ export function ChargeOverlay({
                   >{METHOD_LABEL[m]}</button>
                 ))}
               </div>
-              {(creditEligible || walletEligible) && !isOffline && (
+              {((creditEligible || canPayCredit) || walletEligible) && !isOffline && (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  {creditEligible && (
+                  {(creditEligible || canPayCredit) && (
                     <button
-                      onClick={() => setMethod("house_account")}
+                      onClick={() => {
+                        setMethod("house_account");
+                        // FIX 8 — force a fresh customer credit summary
+                        // the moment the cashier taps this tender so the
+                        // banner shows the live available balance, not
+                        // a stale value from when the overlay opened.
+                        onSelectCredit?.();
+                      }}
+                      disabled={!creditEligible}
                       style={{
                         flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
                         background: method === "house_account" ? "#1D4ED8" : "#EFF6FF",
                         color: method === "house_account" ? "#fff" : "#1D4ED8",
                         border: `1px solid ${method === "house_account" ? "#1D4ED8" : "#BFDBFE"}`,
-                        fontWeight: 700, fontSize: 13, cursor: "pointer",
+                        fontWeight: 700, fontSize: 13,
+                        cursor: creditEligible ? "pointer" : "not-allowed",
+                        opacity: creditEligible ? 1 : 0.55,
                       }}
                     >Credit Account</button>
                   )}
@@ -458,6 +533,32 @@ export function ChargeOverlay({
                   )}
                 </div>
               )}
+              {/*
+                FIX 9c — discoverability hints. Rendered as muted rows
+                below the tender chips so cashiers see WHY the Credit
+                button is disabled instead of guessing:
+                  • has permission, no customer → "attach a customer"
+                  • has permission, customer without credit account →
+                    "customer has no credit account"
+              */}
+              {canPayCredit && !isOffline && !hasAttachedCustomer && (
+                <div style={{
+                  marginTop: 8, padding: "8px 12px", borderRadius: 8,
+                  background: "#F8FAFC", border: "1px dashed #CBD5E1",
+                  fontSize: 12, color: "#64748B",
+                }}>
+                  Attach a customer to charge a credit account.
+                </div>
+              )}
+              {canPayCredit && !isOffline && hasAttachedCustomer && !creditEligible && (
+                <div style={{
+                  marginTop: 8, padding: "8px 12px", borderRadius: 8,
+                  background: "#F8FAFC", border: "1px dashed #CBD5E1",
+                  fontSize: 12, color: "#64748B",
+                }}>
+                  Customer has no credit account.
+                </div>
+              )}
               {method === "house_account" && (
                 <div style={{
                   marginTop: 8, padding: "10px 12px", borderRadius: 8,
@@ -466,8 +567,15 @@ export function ChargeOverlay({
                   fontSize: 12, color: creditOverLimit ? "#B91C1C" : "#1D4ED8",
                 }}>
                   {creditOverLimit
-                    ? `Amount exceeds available credit (MVR ${creditAvailableMvr.toFixed(2)}).`
-                    : `Available credit: MVR ${creditAvailableMvr.toFixed(2)}`}
+                    ? `No credit available (limit fully utilised).`
+                    : creditPartialPay
+                      ? `Credit available MVR ${creditAvailableMvr.toFixed(2)} — remainder MVR ${(total - creditAvailableMvr).toFixed(2)} will be collected in cash.`
+                      : `Available credit: MVR ${creditAvailableMvr.toFixed(2)}`}
+                  {creditLastRefreshedAt && (
+                    <div style={{ marginTop: 4, fontSize: 11, color: "#64748B", fontWeight: 600 }}>
+                      As of {formatRefreshAge(creditLastRefreshedAt)}
+                    </div>
+                  )}
                 </div>
               )}
               {method === "wallet" && (
@@ -711,6 +819,21 @@ export function ChargeOverlay({
       </div>
     </div>
   );
+}
+
+/**
+ * FIX 8 — small helper for the "as of just now / N min ago" pill under
+ * the credit banner. Kept dumb on purpose — the parent re-renders on
+ * `creditLastRefreshedAt` change (fetchCustomerSummary side-effect),
+ * so we don't need a ticking clock here.
+ */
+function formatRefreshAge(ts: number): string {
+  const diffMs = Math.max(0, Date.now() - ts);
+  if (diffMs < 15_000) return "just now";
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return "seconds ago";
+  if (mins === 1) return "1 min ago";
+  return `${mins} min ago`;
 }
 
 const tinyLabel: React.CSSProperties = {
