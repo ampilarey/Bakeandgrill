@@ -58,7 +58,6 @@ final class PermissionCatalog
         'customers.create' => ['customers.manage'],
         'loyalty.manage' => ['loyalty.manage'],
         'promotions.apply_promo_code' => ['promotions.discounts'],
-        'promotions.gift_cards' => ['promotions.discounts'],
         'shifts.view_own_history' => ['finance.cash_manage'],
         // Manage implies view so inventory.manage-only roles can list stock.
         'inventory.view' => ['inventory.manage'],
@@ -135,7 +134,6 @@ final class PermissionCatalog
             ['group' => 'Promotions', 'slug' => 'promotions.manage', 'name' => 'Manage promotions'],
             ['group' => 'Promotions', 'slug' => 'promotions.discounts', 'name' => 'Apply discounts'],
             ['group' => 'Promotions', 'slug' => 'promotions.apply_promo_code', 'name' => 'Apply promo codes'],
-            ['group' => 'Promotions', 'slug' => 'promotions.gift_cards', 'name' => 'Redeem gift cards'],
             ['group' => 'Promotions', 'slug' => 'promotions.discount_cards', 'name' => 'Issue discount cards', 'description' => 'Owner-only: generate time-limited discount cards'],
 
             // Shifts & reports
@@ -320,7 +318,7 @@ final class PermissionCatalog
             'payments.cash_manage', 'payments.cash_in_out', 'finance.cash_manage',
             'customers.view', 'customers.lookup', 'customers.create',
             'loyalty.view', 'loyalty.redeem',
-            'promotions.view', 'promotions.discounts', 'promotions.apply_promo_code', 'promotions.gift_cards',
+            'promotions.view', 'promotions.discounts', 'promotions.apply_promo_code',
             'shifts.view_own_history',
             // reports.view / reports.basic intentionally omitted — owner/manager
             // defaults only; grant per-user when a cashier needs POS/Admin reports.

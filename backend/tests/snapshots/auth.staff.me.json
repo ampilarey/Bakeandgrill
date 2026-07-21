@@ -104,7 +104,6 @@
             "promotions.apply_promo_code",
             "promotions.discount_cards",
             "promotions.discounts",
-            "promotions.gift_cards",
             "promotions.manage",
             "promotions.view",
             "purchase_requests.approve",
