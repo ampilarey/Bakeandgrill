@@ -8,6 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Menu, Zap, MapPin,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
+  AlertTriangle,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -119,6 +120,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'webhooks.manage', description: 'Outbound integrations' },
       { to: '/xero',          icon: Link,        label: 'Xero',           permission: 'xero.manage',    description: 'Accounting sync' },
       { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permission: 'website.manage', description: 'Queue, webhooks & alerts' },
+      { to: '/service-availability', icon: AlertTriangle, label: 'Service Availability', permission: 'service_availability.view', description: 'Maintenance & incident controls' },
       { to: '/account',       icon: UserCircle,  label: 'My Account',     description: 'Profile & session' },
     ],
   },
@@ -201,6 +203,9 @@ const PERM_ALIASES: Record<string, string[]> = {
   'finance.cash_manage': ['payments.cash_manage', 'pos.open_shift', 'pos.close_shift'],
   'payments.cash_manage': ['finance.cash_manage', 'pos.open_shift', 'pos.close_shift'],
   'inventory.view': ['inventory.manage'],
+  // Service Availability — matches backend PermissionCatalog::SATISFIED_BY.
+  'service_availability.view': ['settings.update', 'settings.manage', 'website.manage'],
+  'service_availability.manage_public': ['settings.update', 'settings.manage', 'website.manage'],
 };
 
 export function can(user: StaffUser, permission?: string): boolean {

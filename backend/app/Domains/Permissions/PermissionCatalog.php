@@ -69,6 +69,11 @@ final class PermissionCatalog
         'kds.mark_kitchen_done' => ['orders.manage'],
         'kds.print_ticket' => ['orders.manage'],
         'kds.manage_availability' => ['menu.manage'],
+        // Service Availability (Stage 4). Decision §17: manage_public may be
+        // satisfied by settings.update for smoother migration; internal +
+        // emergency + schedule + restore + notify require the explicit slug.
+        'service_availability.view' => ['settings.update'],
+        'service_availability.manage_public' => ['settings.update'],
     ];
 
     /** @return list<array{slug: string, name: string, group: string, description?: string}> */
@@ -175,6 +180,16 @@ final class PermissionCatalog
             ['group' => 'Staff', 'slug' => 'users.update', 'name' => 'Update users'],
             ['group' => 'Staff', 'slug' => 'users.delete', 'name' => 'Delete users'],
             ['group' => 'System', 'slug' => 'admin.access', 'name' => 'Access admin panel', 'description' => 'Sign in to the admin dashboard (phone + password)'],
+
+            // Service Availability & Maintenance (plan §13)
+            ['group' => 'Service Availability', 'slug' => 'service_availability.view', 'name' => 'View service availability', 'description' => 'View the maintenance dashboard and current service states'],
+            ['group' => 'Service Availability', 'slug' => 'service_availability.manage_public', 'name' => 'Manage public services', 'description' => 'Toggle checkout, payment, delivery, catering, registration'],
+            ['group' => 'Service Availability', 'slug' => 'service_availability.schedule', 'name' => 'Schedule maintenance windows', 'description' => 'Set future starts_at/ends_at for planned maintenance'],
+            ['group' => 'Service Availability', 'slug' => 'service_availability.restore', 'name' => 'Restore disabled services', 'description' => 'Flip a service back to available and close the incident'],
+            ['group' => 'Service Availability', 'slug' => 'service_availability.notify', 'name' => 'Send restoration SMS', 'description' => 'Dispatch queued restoration notifications after restore'],
+            ['group' => 'Service Availability', 'slug' => 'service_availability.manage_internal', 'name' => 'Manage internal services (owner)', 'description' => 'Toggle POS, KDS, delivery ops availability'],
+            ['group' => 'Service Availability', 'slug' => 'service_availability.emergency', 'name' => 'Trigger emergency lockdown (owner)', 'description' => 'Owner-only master kill switch — typed confirmation required'],
+
             ['group' => 'System', 'slug' => 'roles_permissions.manage', 'name' => 'Manage roles & permissions'],
             ['group' => 'System', 'slug' => 'settings.manage', 'name' => 'Manage settings'],
             ['group' => 'System', 'slug' => 'settings.update', 'name' => 'Update operational settings'],
@@ -261,6 +276,9 @@ final class PermissionCatalog
             'roles_permissions.manage', 'settings.manage', 'website.manage',
             'webhooks.manage', 'integrations.webhooks',
             'xero.manage', 'integrations.xero',
+            // Emergency + internal service toggles are owner-only.
+            'service_availability.manage_internal',
+            'service_availability.emergency',
             'customers.credit.repay',
             'customers.credit.writeoff',
             'customers.deposit.adjust',

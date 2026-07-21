@@ -54,6 +54,7 @@ const ReferralsPage           = lazyWithRetry(() => import('./pages/ReferralsPag
 const PrintJobsPage           = lazyWithRetry(() => import('./pages/PrintJobsPage'));
 const XeroPage                = lazyWithRetry(() => import('./pages/XeroPage'));
 const OnlineOrderingPage      = lazyWithRetry(() => import('./pages/OnlineOrderingPage'));
+const ServiceAvailabilityPage = lazyWithRetry(() => import('./pages/ServiceAvailabilityPage'));
 const DeliverySettingsPage    = lazyWithRetry(() => import('./pages/DeliverySettingsPage'));
 const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
@@ -428,6 +429,11 @@ export default function App() {
                 <Route path="online-ordering" element={
                   <PermissionGuard user={user} permission="settings.update">
                     <OnlineOrderingPage />
+                  </PermissionGuard>
+                } />
+                <Route path="service-availability" element={
+                  <PermissionGuard user={user} permission="service_availability.view">
+                    <ServiceAvailabilityPage />
                   </PermissionGuard>
                 } />
                 <Route path="delivery-settings" element={

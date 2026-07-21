@@ -56,6 +56,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/webhooks', permission: 'webhooks.manage' },
   { to: '/xero', permission: 'xero.manage' },
   { to: '/system-health', permission: 'website.manage' },
+  { to: '/service-availability', permission: 'service_availability.view' },
   { to: '/account' },
   { to: '/checklist', permission: 'website.manage' },
 ];

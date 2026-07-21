@@ -44,6 +44,24 @@ if (routes_domain_section_is('staff', 'protected') && !routes_domain_loaded('sta
         Route::post('/catering-override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'cateringOverride']);
     });
 
+    // ─── Service Availability & Maintenance (plan §12) ────────────────────────
+    Route::prefix('admin/service-availability')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\ServiceAvailabilityController::class, 'index'])
+            ->middleware('permission:service_availability.view');
+        Route::get('/{key}/history', [App\Http\Controllers\Api\ServiceAvailabilityController::class, 'history'])
+            ->middleware('permission:service_availability.view');
+        Route::patch('/{key}', [App\Http\Controllers\Api\ServiceAvailabilityController::class, 'update'])
+            ->middleware('permission:service_availability.manage_public');
+        Route::post('/{key}/restore', [App\Http\Controllers\Api\ServiceAvailabilityController::class, 'restore'])
+            ->middleware('permission:service_availability.restore');
+        // Preset requires broadest permission by default; emergency preset
+        // additionally requires the emergency slug (enforced in controller
+        // logic once Stage 8 lands — for now the manage_public slug is the
+        // baseline gate).
+        Route::post('/preset/{preset}', [App\Http\Controllers\Api\ServiceAvailabilityController::class, 'preset'])
+            ->middleware('permission:service_availability.manage_public');
+    });
+
     Route::prefix('admin/delivery')->middleware('permission:settings.update')->group(function () {
         Route::get('/settings', [App\Http\Controllers\Api\DeliverySettingsController::class, 'show']);
         Route::patch('/settings', [App\Http\Controllers\Api\DeliverySettingsController::class, 'update']);
