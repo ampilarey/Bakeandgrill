@@ -47,6 +47,8 @@ class ReportsController extends Controller
             ['discount_amount', $data['totals']['discount_amount'] ?? 0],
             ['service_charge_total', $data['totals']['service_charge_total'] ?? 0],
             ['total', $data['totals']['total'] ?? 0],
+            ['gift_cards_sold_count', $data['gift_cards_sold_count'] ?? 0],
+            ['gift_cards_sold', $data['gift_cards_sold'] ?? 0],
             [],
             ['payment_method', 'amount'],
         ];
@@ -151,6 +153,8 @@ class ReportsController extends Controller
             ['service_charge_total', $data['totals']['service_charge_total'] ?? 0],
             ['total', $data['totals']['total'] ?? 0],
             ['refunds', $data['refunds'] ?? 0],
+            ['gift_cards_sold_count', $data['gift_cards_sold_count'] ?? 0],
+            ['gift_cards_sold', $data['gift_cards_sold'] ?? 0],
             [],
             ['payment_method', 'amount'],
         ];

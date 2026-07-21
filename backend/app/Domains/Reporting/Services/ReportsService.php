@@ -42,9 +42,15 @@ class ReportsService
      */
     public function salesSummary(Carbon $from, Carbon $to, ?int $userId = null, ?int $shiftId = null, ?int $deviceId = null): array
     {
+        // Gift-card purchase orders are tender loads — not merchandise sales.
+        // They surface in dedicated `gift_cards_sold_*` fields (below) but must
+        // never inflate sales totals, tax, discount, or category breakdowns.
         $orderBase = Order::query()
             ->whereBetween('created_at', [$from, $to])
             ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(function ($q) {
+                $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
+            })
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($shiftId, fn ($q) => $q->where('shift_id', $shiftId))
             ->when($deviceId, fn ($q) => $q->where('device_id', $deviceId));
@@ -87,6 +93,9 @@ class ReportsService
             ->whereHas('order', function ($oq) use ($from, $to, $userId, $shiftId, $deviceId) {
                 $oq->whereIn('status', ReportMoneySql::SALE_STATUSES)
                     ->whereBetween('created_at', [$from, $to])
+                    ->where(function ($q) {
+                        $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
+                    })
                     ->when($userId, fn ($q2) => $q2->where('user_id', $userId))
                     ->when($shiftId, fn ($q2) => $q2->where('shift_id', $shiftId))
                     ->when($deviceId, fn ($q2) => $q2->where('device_id', $deviceId));
@@ -94,6 +103,10 @@ class ReportsService
             ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
+
+        [$gcSoldCount, $gcSoldLaar] = $this->giftCardsSoldInRange(
+            $from, $to, $userId, $shiftId, $deviceId,
+        );
 
         return [
             'from' => $from->toDateString(),
@@ -104,6 +117,9 @@ class ReportsService
                 'device_id' => $deviceId,
             ]),
             'totals' => $totals,
+            'gift_cards_sold_count' => $gcSoldCount,
+            'gift_cards_sold_laar' => $gcSoldLaar,
+            'gift_cards_sold' => round($gcSoldLaar / 100, 2),
             'payments' => $payments,
             'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to, array_filter([
                 'user_id' => $userId,
@@ -114,17 +130,59 @@ class ReportsService
     }
 
     /**
+     * Gift card orders sold in the window — same status set as merchandise,
+     * with same POS filters. Returns [count, totalLaar].
+     *
+     * @return array{0: int, 1: int}
+     */
+    private function giftCardsSoldInRange(
+        Carbon $from,
+        Carbon $to,
+        ?int $userId = null,
+        ?int $shiftId = null,
+        ?int $deviceId = null,
+    ): array {
+        $totalLaar = ReportMoneySql::ORDER_TOTAL_LAAR;
+
+        $row = Order::query()
+            ->where('type', 'gift_card')
+            ->whereBetween('created_at', [$from, $to])
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when($shiftId, fn ($q) => $q->where('shift_id', $shiftId))
+            ->when($deviceId, fn ($q) => $q->where('device_id', $deviceId))
+            ->selectRaw('COUNT(*) as gc_count')
+            ->selectRaw('COALESCE(SUM(' . $totalLaar . '), 0) as gc_total_laar')
+            ->first();
+
+        return [
+            (int) ($row->gc_count ?? 0),
+            (int) ($row->gc_total_laar ?? 0),
+        ];
+    }
+
+    /**
      * Sales breakdown by item, category, and employee for a date range.
      */
     public function salesBreakdown(Carbon $from, Carbon $to, int $limit = 100): array
     {
+        // Same rule as salesSummary — gift-card purchases carry no line items
+        // (or their virtual "Gift card" line would inflate item / category
+        // rankings), so drop them from every rollup here.
+        $excludeGiftCard = fn ($q) => $q
+            ->whereBetween('created_at', [$from, $to])
+            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(function ($q2) {
+                $q2->whereNull('type')->orWhere('type', '!=', 'gift_card');
+            });
+
         $items = OrderItem::select(
             'item_id',
             'item_name',
             DB::raw('SUM(quantity) as quantity'),
             DB::raw('SUM(total_price) as total'),
         )
-            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$from, $to])->whereIn('status', ReportMoneySql::SALE_STATUSES))
+            ->whereHas('order', $excludeGiftCard)
             ->groupBy('item_id', 'item_name')
             ->orderByDesc('total')
             ->limit(min($limit, 500))
@@ -138,7 +196,7 @@ class ReportsService
         )
             ->join('items', 'items.id', '=', 'order_items.item_id')
             ->join('categories', 'categories.id', '=', 'items.category_id')
-            ->whereHas('order', fn ($q) => $q->whereBetween('created_at', [$from, $to])->whereIn('status', ReportMoneySql::SALE_STATUSES))
+            ->whereHas('order', $excludeGiftCard)
             ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('total')
             ->limit(50)
@@ -149,6 +207,9 @@ class ReportsService
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->whereBetween('orders.created_at', [$from, $to])
             ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->where(function ($q) {
+                $q->whereNull('orders.type')->orWhere('orders.type', '!=', 'gift_card');
+            })
             ->groupBy('orders.user_id', 'users.name')
             ->orderByDesc('total')
             ->get()
@@ -192,6 +253,9 @@ class ReportsService
         $agg = Order::where('user_id', $shift->user_id)
             ->whereBetween('created_at', [$from, $to])
             ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(function ($q) {
+                $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
+            })
             ->selectRaw('COUNT(*) as orders_count')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_SUBTOTAL_LAAR) . ' as subtotal')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax_amount')
@@ -216,6 +280,11 @@ class ReportsService
         $payments = Payment::whereBetween('processed_at', [$from, $to])
             ->whereIn('status', self::PAYMENT_STATUSES)
             ->where('shift_id', $shift->id)
+            ->whereHas('order', function ($oq) {
+                $oq->where(function ($q) {
+                    $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
+                });
+            })
             ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -225,11 +294,16 @@ class ReportsService
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
             ->value('total');
 
+        [$gcSoldCount, $gcSoldLaar] = $this->giftCardsSoldInRange($from, $to, $shift->user_id);
+
         return [
             'shift' => $shift,
             'from' => $from->toDateTimeString(),
             'to' => $to->toDateTimeString(),
             'totals' => $totals,
+            'gift_cards_sold_count' => $gcSoldCount,
+            'gift_cards_sold_laar' => $gcSoldLaar,
+            'gift_cards_sold' => round($gcSoldLaar / 100, 2),
             'payments' => $payments,
             'refunds' => $refundsTotal,
             'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to, [
@@ -245,6 +319,9 @@ class ReportsService
     {
         $agg = Order::whereBetween('created_at', [$from, $to])
             ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(function ($q) {
+                $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
+            })
             ->selectRaw('COUNT(*) as orders_count')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_SUBTOTAL_LAAR) . ' as subtotal')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax_amount')
@@ -267,7 +344,10 @@ class ReportsService
             ->whereIn('status', self::PAYMENT_STATUSES)
             ->whereHas('order', fn ($q) => $q
                 ->whereIn('status', ReportMoneySql::SALE_STATUSES)
-                ->whereBetween('created_at', [$from, $to]))
+                ->whereBetween('created_at', [$from, $to])
+                ->where(function ($q2) {
+                    $q2->whereNull('type')->orWhere('type', '!=', 'gift_card');
+                }))
             ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -280,7 +360,10 @@ class ReportsService
             ->whereNull('shift_id')
             ->whereHas('order', fn ($q) => $q
                 ->whereIn('status', ReportMoneySql::SALE_STATUSES)
-                ->whereBetween('created_at', [$from, $to]))
+                ->whereBetween('created_at', [$from, $to])
+                ->where(function ($q2) {
+                    $q2->whereNull('type')->orWhere('type', '!=', 'gift_card');
+                }))
             ->selectRaw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as t')
             ->value('t');
 
@@ -288,10 +371,15 @@ class ReportsService
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
             ->value('total');
 
+        [$gcSoldCount, $gcSoldLaar] = $this->giftCardsSoldInRange($from, $to);
+
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'totals' => $totals,
+            'gift_cards_sold_count' => $gcSoldCount,
+            'gift_cards_sold_laar' => $gcSoldLaar,
+            'gift_cards_sold' => round($gcSoldLaar / 100, 2),
             'payments' => $payments,
             'payments_no_shift_total' => $noShiftTotal,
             'refunds' => $refunds,
@@ -418,11 +506,14 @@ class ReportsService
                 'referral_discount_laar',
             ]);
 
+        // Gift cards are TENDER, not discounts — allocate merchandise parts only
+        // (see EffectiveDiscount::merchandisePartsFromOrder). Zero'ing gift_card
+        // in the merch parts also stops it from stealing allocation share when
+        // the other discounts sum above subtotal.
         $types = [
             'promo' => 'promo',
             'loyalty' => 'loyalty',
             'manual' => 'manual',
-            'gift_card' => 'gift_card',
             'referral' => 'referral',
         ];
 
@@ -432,7 +523,7 @@ class ReportsService
 
         foreach ($orders as $order) {
             $subLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
-            $parts = EffectiveDiscount::partsFromOrder($order);
+            $parts = EffectiveDiscount::merchandisePartsFromOrder($order);
             $allocated = EffectiveDiscount::allocate($subLaar, $parts);
             $effective = EffectiveDiscount::effectiveTotalLaar($subLaar, $parts);
             $totalAppliedLaar += $effective;
