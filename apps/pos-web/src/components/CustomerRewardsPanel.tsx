@@ -9,6 +9,7 @@ import type { PosCustomer, PosCustomerSummary } from "../api";
 import type { PromoPreviewLine } from "../api/loyalty";
 import { removeGiftCardFromOrder } from "../api/loyalty";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
+import { ApiRequestError } from "@shared/api";
 
 type AppliedPromo = {
   code: string;
@@ -253,9 +254,25 @@ export function CustomerRewardsPanel({
         heldBalance: held,
       });
       setGiftCode("");
-    } catch {
-      // 404 from the balance endpoint is intentionally generic.
-      setGiftError("Invalid or unavailable gift card.");
+    } catch (err) {
+      // Distinguish offline / transport failures from server-side
+      // "unavailable" so cashiers can decide whether to retry or ask
+      // the customer for a different tender. Invalid/expired cards
+      // still get the generic message so we never leak the card's
+      // real state before payment.
+      const offline =
+        (typeof navigator !== "undefined" && navigator.onLine === false)
+        || err instanceof TypeError
+        || /network|fetch|failed to fetch/i.test((err as Error)?.message ?? "");
+      const apiKnownInvalid =
+        err instanceof ApiRequestError
+        && (err.status === 404 || err.status === 410);
+
+      if (offline && !apiKnownInvalid) {
+        setGiftError("You're offline — gift cards need a live connection.");
+      } else {
+        setGiftError("Invalid or unavailable gift card.");
+      }
     } finally {
       setGiftBusy(false);
     }
