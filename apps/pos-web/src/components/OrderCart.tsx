@@ -34,6 +34,28 @@ type AppliedGiftCard = {
   serverApplied?: boolean;
 };
 
+/**
+ * FIX 8h — the cart shows the server's previously-charged gift-card
+ * discount for resumed tickets, but the actual discount that lands on
+ * the payment is recomputed at Charge time. Surface a hint only when
+ * the cashier is BOTH editing an unpaid resumed ticket AND has made
+ * unsaved changes — steady-state (paid, unedited, or fresh cart) stays
+ * quiet so we don't add banner noise.
+ */
+export function shouldShowResumedGiftCardChargeHint(opts: {
+  isResumed: boolean;
+  isEditingActive: boolean;
+  hasUnsavedTicketChanges: boolean;
+  giftCardServerApplied: boolean;
+}): boolean {
+  return (
+    opts.isResumed
+    && opts.isEditingActive
+    && opts.hasUnsavedTicketChanges
+    && opts.giftCardServerApplied
+  );
+}
+
 type Props = {
   orderType: OrderType;
   setOrderType: (t: OrderType) => void;
@@ -942,6 +964,32 @@ export function OrderCart(p: Props) {
                 value={`− MVR ${p.appliedGiftCard.discount.toFixed(2)}`}
                 accent={C.primaryDark}
               />
+            )}
+            {/* FIX 8h: When an editable resumed ticket has a server-applied
+                gift card AND the cashier is making unsaved changes, the
+                gift-card discount shown here is a display-only echo of the
+                previously-charged amount — the server will resolve the
+                actual discount at charge time. Surface a muted hint so
+                cashiers don't try to explain a small mismatch to the
+                customer. */}
+            {shouldShowResumedGiftCardChargeHint({
+              isResumed,
+              isEditingActive: editing,
+              hasUnsavedTicketChanges: ticketDirty,
+              giftCardServerApplied: !!p.appliedGiftCard?.serverApplied,
+            }) && (
+              <div
+                data-testid="gift-card-charge-hint"
+                style={{
+                  marginTop: 2,
+                  fontSize: 11,
+                  color: C.muted,
+                  fontStyle: 'italic',
+                  lineHeight: 1.4,
+                }}
+              >
+                Gift card amount is confirmed at charge.
+              </div>
             )}
             {(p.cartServiceCharge ?? 0) > 0 && (
               <Row
