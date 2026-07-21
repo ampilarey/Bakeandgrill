@@ -38,7 +38,7 @@ type Props = {
     split?: boolean;
   };
   onClose: () => void;
-  onConfirm: (rows: Array<{ method: ChargeMethod; amount: number }>) => Promise<void>;
+  onConfirm: (rows: Array<{ method: ChargeMethod; amount: number; tendered_amount?: number }>) => Promise<void>;
   submitting: boolean;
   /** Optional inline error to surface inside the overlay. The overlay
    *  is z-index 900 (covers the cart status banner area), so without
@@ -47,6 +47,10 @@ type Props = {
    *  statusMessage so device-blocked / table / network errors land
    *  on the cashier's screen. */
   errorMessage?: string;
+  /** Amber reward-apply warning (promo/loyalty/gift failures) above Confirm. */
+  rewardWarning?: string;
+  /** When set, Confirm retries settlement only — no new order is created. */
+  pendingPaymentOrderId?: number | null;
 };
 
 const METHOD_LABEL: Record<ChargeMethod, string> = {
@@ -84,6 +88,8 @@ export function ChargeOverlay({
   onConfirm,
   submitting,
   errorMessage,
+  rewardWarning,
+  pendingPaymentOrderId = null,
 }: Props) {
   const tenderAllowed = useMemo(() => ({
     cash: allowedTenders?.cash !== false,
@@ -153,16 +159,20 @@ export function ChargeOverlay({
   const fromLaari = (laari: number): number => laari / 100;
 
   const receivedNum = Number.parseFloat(received);
+  const fullyCovered = total <= 0;
   const change = useMemo(() => {
-    if (method !== "cash") return 0;
+    if (fullyCovered || method !== "cash") return 0;
     if (!Number.isFinite(receivedNum)) return 0;
     const diff = toLaari(receivedNum) - toLaari(total);
     return diff > 0 ? fromLaari(diff) : 0;
-  }, [method, receivedNum, total]);
+  }, [method, receivedNum, total, fullyCovered]);
 
-  const enough = method === "cash"
-    ? Number.isFinite(receivedNum) && receivedNum >= total
-    : true;
+  // Zero-total (rewards/gift cover the bill): Confirm must stay enabled
+  // without forcing the cashier to type "0" into Received.
+  const enough = fullyCovered
+    || (method === "cash"
+      ? Number.isFinite(receivedNum) && receivedNum >= total
+      : true);
 
   // Quick-amount buttons.
   //
@@ -268,7 +278,13 @@ export function ChargeOverlay({
       return;
     }
     if (!enough && !splitValid && !canConfirmAccountTender) return;
-    // Cash over-tender is "change given" — payments endpoint only stores the order total.
+    // FIX 11 — surface cash overpay as `tendered_amount` so change_given
+    // is recorded server-side. The applied `amount` remains the order
+    // total (drawer expected-cash stays honest).
+    if (method === "cash" && Number.isFinite(receivedNum) && toLaari(receivedNum) > toLaari(total)) {
+      await onConfirm([{ method, amount: total, tendered_amount: receivedNum }]);
+      return;
+    }
     await onConfirm([{ method, amount: total }]);
   };
 
@@ -511,7 +527,17 @@ export function ChargeOverlay({
               </div>
             )}
 
-            {method === "cash" && (
+            {method === "cash" && fullyCovered && (
+              <div style={{
+                padding: "12px 14px", borderRadius: 10,
+                background: "#ECFDF5", border: "1px solid #A7F3D0",
+                color: "#065F46", fontSize: 13, fontWeight: 600,
+              }}>
+                Nothing to collect — covered by rewards/gift card
+              </div>
+            )}
+
+            {method === "cash" && !fullyCovered && (
               <>
                 <div>
                   <p style={tinyLabel}>Received from customer</p>
@@ -577,6 +603,26 @@ export function ChargeOverlay({
               required, device blocked, server rejected, network down,
               etc). Without this the overlay would silently swallow
               failures because it covers the main app's banner area. */}
+          {pendingPaymentOrderId != null && (
+            <div role="status" style={{
+              padding: "10px 12px", borderRadius: 8,
+              background: "#FEF3C7", border: "1px solid #FCD34D",
+              color: "#92400E", fontSize: 13, fontWeight: 600,
+              animation: "pos-fade-in 0.18s ease",
+            }}>
+              Payment didn&apos;t complete for order #{pendingPaymentOrderId}. Confirm will retry the payment only — no new order will be created.
+            </div>
+          )}
+          {rewardWarning && (
+            <div role="status" style={{
+              padding: "10px 12px", borderRadius: 8,
+              background: "#FFFBEB", border: "1px solid #F59E0B",
+              color: "#92400E", fontSize: 13, fontWeight: 600,
+              animation: "pos-fade-in 0.18s ease",
+            }}>
+              {rewardWarning}
+            </div>
+          )}
           {errorMessage && (
             <div role="alert" style={{
               padding: "10px 12px", borderRadius: 8,

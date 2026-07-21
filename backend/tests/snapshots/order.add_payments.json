@@ -85,6 +85,8 @@
                 "order_id": "__VOLATILE__",
                 "method": "cash",
                 "amount": "23.76",
+                "tendered_amount": null,
+                "change_given": null,
                 "status": "paid",
                 "reference_number": null,
                 "gateway_response": null,

@@ -8,6 +8,8 @@ export async function createOrder(payload: {
   restaurant_table_id?: number | null;
   customer_id?: number | null;
   discount_amount?: number;
+  /** Per-charge UUID — server returns the existing order on retry. */
+  idempotency_key?: string;
   ticket_name?: string;
   ticket_note?: string;
   items: Array<{
@@ -127,6 +129,8 @@ export async function createOrderPayments(
     payments: Array<{
       method: string;
       amount: number;
+      /** FIX 11: cash overpay — optional, must be ≥ amount on cash rows. */
+      tendered_amount?: number;
       status?: string;
       reference_number?: string;
       idempotency_key?: string;
@@ -170,6 +174,8 @@ export async function getOrder(orderId: number): Promise<{
      *  so the cart sidebar shows the same discount line the cashier
      *  applied when the ticket was held. */
     discount_amount?: number | string | null;
+    /** Manual discount in laari — preferred for resume dirty-check baseline. */
+    manual_discount_laar?: number | null;
     /** Gift card code applied to the ticket + the laari value redeemed.
      *  Surface both so resume can re-paint the rewards row without an
      *  extra round-trip to validate the code. */
@@ -367,6 +373,8 @@ export async function updateOrderItems(
     delivery_contact_phone?: string | null;
     delivery_notes?: string | null;
     delivery_location_link?: string | null;
+    /** Manual cashier discount in MVR — persisted as manual_discount_laar. */
+    discount_amount?: number;
   },
 ): Promise<{
   order: {

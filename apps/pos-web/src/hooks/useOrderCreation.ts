@@ -112,12 +112,28 @@ function mapPaymentMethodForApi(method: string): string {
   return method;
 }
 
-function normalizePayments(rows: PaymentRow[]): { method: string; amount: number }[] {
+function normalizePayments(
+  rows: PaymentRow[],
+): { method: string; amount: number; tendered_amount?: number }[] {
   return rows
-    .map((p) => ({
-      method: mapPaymentMethodForApi(p.method),
-      amount: Number.parseFloat(p.amount),
-    }))
+    .map((p) => {
+      const amt = Number.parseFloat(p.amount);
+      const tenderedRaw = p.tendered_amount;
+      const tendered =
+        tenderedRaw != null && tenderedRaw !== ""
+          ? Number.parseFloat(String(tenderedRaw))
+          : NaN;
+      const base: { method: string; amount: number; tendered_amount?: number } = {
+        method: mapPaymentMethodForApi(p.method),
+        amount: amt,
+      };
+      // FIX 11 — only forward tendered_amount on cash overpay so old
+      // clients / non-cash rows keep the exact same payload as before.
+      if (base.method === "cash" && Number.isFinite(tendered) && tendered > amt) {
+        base.tendered_amount = tendered;
+      }
+      return base;
+    })
     .filter((p) => Number.isFinite(p.amount) && p.amount > 0);
 }
 
@@ -232,6 +248,7 @@ type Params = {
     customerPhone: string | null,
     orderType?: string | null,
     paidOnCredit?: boolean,
+    creditNote?: string | null,
   ) => void;
 };
 
@@ -337,6 +354,8 @@ export function useOrderCreation(params: Params) {
   const [resumedTableId, setResumedTableId] = useState<number | null>(null);
   /** Delivery address snapshot from resume — dirty when the form diverges. */
   const [resumedDeliveryFingerprint, setResumedDeliveryFingerprint] = useState<string | null>(null);
+  /** Manual discount (MVR string) captured on resume — dirty when cashier edits it. */
+  const [resumedDiscountBaseline, setResumedDiscountBaseline] = useState<string>("");
   /** Staff who rang the ticket — used to label POS pickup vs app online pickup. */
   const [resumedStaffUserId, setResumedStaffUserId] = useState<number | null>(null);
 
@@ -344,7 +363,13 @@ export function useOrderCreation(params: Params) {
   const currentTicketTableId = () =>
     currentTicketType() === "dine_in" ? (params.selectedTableId ?? null) : null;
 
-  /** True when items, fulfillment type, table, or delivery address differ. */
+  const normalizeDiscountAmount = (raw: string | null | undefined): string => {
+    const n = Number.parseFloat(String(raw ?? "").trim());
+    if (!Number.isFinite(n) || n <= 0) return "";
+    return n.toFixed(2);
+  };
+
+  /** True when items, fulfillment type, table, delivery, or discount differ. */
   const computeTicketDirty = (): boolean => {
     if (resumedOrderId === null) return false;
     const itemsDirty = resumedItemsFingerprint !== null
@@ -356,7 +381,9 @@ export function useOrderCreation(params: Params) {
     const deliveryDirty = currentTicketType() === "delivery"
       && resumedDeliveryFingerprint !== null
       && deliveryFingerprint(params.deliveryDetails) !== resumedDeliveryFingerprint;
-    return itemsDirty || typeDirty || tableDirty || deliveryDirty;
+    const discountDirty =
+      normalizeDiscountAmount(params.discountAmount) !== normalizeDiscountAmount(resumedDiscountBaseline);
+    return itemsDirty || typeDirty || tableDirty || deliveryDirty || discountDirty;
   };
 
   const staffUserIdFromOrder = (order: { user_id?: number | null; user?: { id?: number } | null }) =>
@@ -374,6 +401,10 @@ export function useOrderCreation(params: Params) {
     totalDue: number;
     rows: PaymentRow[];
   } | null>(null);
+  /** Amber reward-apply failures while Charge overlay is open (FIX 21). */
+  const [rewardWarning, setRewardWarning] = useState("");
+  /** Reused until settle succeeds so a dropped create response cannot mint #2. */
+  const chargeIdempotencyKeyRef = useRef<string | null>(null);
   /** Guard so handleSyncQueue can't be entered twice concurrently. */
   const [isSyncingQueue, setIsSyncingQueue] = useState(false);
 
@@ -480,17 +511,40 @@ export function useOrderCreation(params: Params) {
     );
 
     if (failures.length > 0) {
-      flashError(
-        `⚠️ ${failures.length === 1 ? "Reward failed:" : "Rewards failed:"} ${failures.join("; ")}. ` +
-        `The new total is MVR ${total.toFixed(2)}. Confirm before tendering.`,
-      );
+      const msg =
+        `${failures.length === 1 ? "Reward failed:" : "Rewards failed:"} ${failures.join("; ")}. ` +
+        `The new total is MVR ${total.toFixed(2)}. Confirm before tendering.`;
+      setRewardWarning(msg);
+      flashError(`⚠️ ${msg}`);
+    } else {
+      setRewardWarning("");
     }
 
     return total;
   };
 
-  const paidOnCreditFromRows = (rows: PaymentRow[]) =>
-    rows.some((r) => r.method === 'house_account');
+  const paidOnCreditFromRows = (rows: PaymentRow[]) => {
+    const toLaar = (mvr: number | string) => Math.round(Number(mvr) * 100);
+    const creditLaar = rows
+      .filter((r) => r.method === "house_account")
+      .reduce((s, r) => s + toLaar(r.amount), 0);
+    if (creditLaar <= 0) return false;
+    const totalLaar = rows.reduce((s, r) => s + toLaar(r.amount), 0);
+    return totalLaar <= 0 || creditLaar * 2 >= totalLaar;
+  };
+
+  const creditPartialLabel = (rows: PaymentRow[]): string | null => {
+    const toLaar = (mvr: number | string) => Math.round(Number(mvr) * 100);
+    const creditLaar = rows
+      .filter((r) => r.method === "house_account")
+      .reduce((s, r) => s + toLaar(r.amount), 0);
+    if (creditLaar <= 0) return null;
+    const totalLaar = rows.reduce((s, r) => s + toLaar(r.amount), 0);
+    if (totalLaar > 0 && creditLaar * 2 < totalLaar) {
+      return `partially on credit (MVR ${(creditLaar / 100).toFixed(2)})`;
+    }
+    return null;
+  };
 
   /** Persist sale to IndexedDB V2 queue (offline or network-failure fallback). */
   const tryPersistOfflineV2 = async (
@@ -651,9 +705,19 @@ export function useOrderCreation(params: Params) {
     } else if (finalPayments.length === 0) {
       finalPayments.push({ method: "cash", amount: totalDue, idempotency_key: `pos:pay:${orderId}:0:cash` });
     } else if (paidTotalLaar < totalDueLaar) {
+      const shortfallLaar = totalDueLaar - paidTotalLaar;
+      // Fabricating cash is only for ≤1-laari rounding. A larger gap means
+      // the overlay tendered against a stale total — abort so the cashier
+      // re-confirms instead of padding the drawer with phantom cash.
+      if (shortfallLaar > 1) {
+        flashError(
+          `Order total changed to MVR ${totalDue.toFixed(2)} — please re-confirm payment`,
+        );
+        return false;
+      }
       finalPayments.push({
         method: "cash",
-        amount: fromLaar(totalDueLaar - paidTotalLaar),
+        amount: fromLaar(shortfallLaar),
         idempotency_key: `pos:pay:${orderId}:${finalPayments.length}:cash`,
       });
     }
@@ -662,6 +726,8 @@ export function useOrderCreation(params: Params) {
       await createOrderPayments(orderId, { payments: finalPayments, print_receipt: false });
       setPendingPaymentForOrderId(null);
       setPendingPaymentSnapshot(null);
+      chargeIdempotencyKeyRef.current = null;
+      setRewardWarning("");
       return true;
     } catch (err) {
       const msg = (err as Error).message ?? "";
@@ -695,40 +761,79 @@ export function useOrderCreation(params: Params) {
    * can retry without re-entering everything.
    */
   const handleCharge = async (
-    rows: Array<{ method: string; amount: number }>,
+    rows: Array<{ method: string; amount: number; tendered_amount?: number }>,
   ): Promise<boolean> => {
     if (params.cartItems.length === 0) return false;
     if (isSubmitting) return false;
-    // Note: table is OPTIONAL on Dine-in tickets. Some venues ring up
-    // dine-in food at the counter before seating ("still seating" /
-    // "walk-up bar order"), and the backend already treats
-    // restaurant_table_id as nullable, so we don't block the charge
-    // on it client-side either.
 
     const paymentSnapshot: PaymentRow[] = rows.map((r) => ({
       id: crypto.randomUUID(),
       method: r.method as PaymentRow["method"],
       amount: r.amount.toFixed(2),
+      ...(r.tendered_amount != null && Number.isFinite(r.tendered_amount)
+        ? { tendered_amount: Number(r.tendered_amount).toFixed(2) }
+        : {}),
     }));
 
+    // ─── Pending-payment retry ────────────────────────────────────
+    // createOrder already succeeded; Confirm must NOT create another order.
+    if (pendingPaymentForOrderId !== null) {
+      setIsSubmitting(true);
+      try {
+        const snapshot = pendingPaymentSnapshot;
+        const matched = snapshot && snapshot.orderId === pendingPaymentForOrderId;
+        const totalDue = matched ? snapshot.totalDue : params.cartTotal;
+        // Prefer current overlay tender rows (cashier may have corrected them).
+        const retryRows = paymentSnapshot;
+        const orderId = pendingPaymentForOrderId;
+        const settled = await settleOrder(orderId, totalDue > 0 ? totalDue : 0, retryRows);
+        if (settled) {
+          const cid = params.customerId;
+          const cphone = params.customerPhone;
+          const settledType = resumedOrderType ?? mapOrderType(params.orderType);
+          setResumedOrderId(null);
+          setResumedOrderTotal(null);
+          setResumedItemsFingerprint(null);
+          setResumedFromStatus(null);
+          setIsEditingActive(false);
+          setResumedIsPaid(false);
+          setResumedOrderLabel(null);
+          setResumedOrderType(null);
+          setResumedTableId(null);
+          setResumedDeliveryFingerprint(null);
+          setResumedDiscountBaseline("");
+          setResumedStaffUserId(null);
+          params.clearCart();
+          params.setSelectedItem(null);
+          setLastCreatedOrderId(null);
+          params.onOrderSettled?.(
+            orderId,
+            cid,
+            cphone,
+            settledType,
+            paidOnCreditFromRows(retryRows),
+            creditPartialLabel(retryRows),
+          );
+        }
+        return settled;
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+
     // ─── Resumed-ticket path ──────────────────────────────────────
-    // The cart was rebuilt from an existing server-side order. Skip
-    // createOrder entirely and settle the original. Offline isn't
-    // supported here (the order id only exists because we're online),
-    // so the queue path below is a non-issue for this branch.
     if (resumedOrderId !== null) {
       if (resumedIsPaid) {
         return false;
       }
-      // Persist any local edits before settling so Charge never uses a
-      // stale server total. No-op when the ticket is clean.
+      let baseTotal = resumedOrderTotal ?? params.cartTotal;
       if (computeTicketDirty()) {
-        const saved = await handleSaveActiveChanges();
-        if (!saved) return false;
+        const savedTotal = await handleSaveActiveChanges();
+        if (savedTotal === false) return false;
+        baseTotal = savedTotal ?? params.cartTotal;
       }
       setIsSubmitting(true);
       try {
-        const baseTotal = resumedOrderTotal ?? params.cartTotal;
         const totalDue = await applyStagedRewards(resumedOrderId, baseTotal);
         const settled = await settleOrder(resumedOrderId, totalDue, paymentSnapshot);
         if (settled) {
@@ -746,16 +851,22 @@ export function useOrderCreation(params: Params) {
           setResumedOrderType(null);
           setResumedTableId(null);
           setResumedDeliveryFingerprint(null);
+          setResumedDiscountBaseline("");
           setResumedStaffUserId(null);
           params.clearCart();
           params.setSelectedItem(null);
-          params.onOrderSettled?.(settledOrderId, cid, cphone, settledType, paidOnCreditFromRows(paymentSnapshot));
+          params.onOrderSettled?.(
+            settledOrderId,
+            cid,
+            cphone,
+            settledType,
+            paidOnCreditFromRows(paymentSnapshot),
+            creditPartialLabel(paymentSnapshot),
+          );
         } else if (
           (params.appliedLoyaltyPoints ?? 0) > 0
           && !params.appliedLoyaltyServerApplied
         ) {
-          // Only release holds we created in this charge attempt.
-          // serverApplied loyalty already has a hold from the earlier save.
           await releaseLoyaltyHold(resumedOrderId).catch(() => undefined);
         }
         return settled;
@@ -787,16 +898,13 @@ export function useOrderCreation(params: Params) {
       }
     }
 
-    const payload = buildPayload();
-    // Bug-013: snapshot the staged customer rewards into the offline
-    // payload so handleSyncQueue can re-apply them when the orders
-    // hit the wire later. Without this, an order rung up offline
-    // with a loyalty redemption / promo / gift card would create
-    // server-side with the FULL pre-reward total, the cashier's
-    // collected payment would under-pay, and the order would be
-    // stuck UNPAID in admin until someone manually applied the
-    // reward. customer_id and discount_amount are already in
-    // payload via buildPayload — this only adds the rewards.
+    if (!chargeIdempotencyKeyRef.current) {
+      chargeIdempotencyKeyRef.current = crypto.randomUUID();
+    }
+    const payload = {
+      ...buildPayload(),
+      idempotency_key: chargeIdempotencyKeyRef.current,
+    };
     const stagedRewards = {
       promo_code: params.appliedPromoCode ?? null,
       loyalty_points: params.appliedLoyaltyPoints ?? 0,
@@ -819,27 +927,14 @@ export function useOrderCreation(params: Params) {
       orderCreated = true;
       createdOrderId = response.order.id;
       setLastCreatedOrderId(response.order.id);
-      // Apply any customer-rewards the cashier staged in the cart. Each
-      // hop reduces the order total server-side (promo → loyalty → gift
-      // card, in the same order the cart breakdown shows them) and we
-      // read back the freshest authoritative total so `settleOrder`
-      // charges the exact right amount. We swallow individual failures
-      // and keep going — a bad promo code shouldn't make the cashier
-      // re-ring an already-created order; they can manually adjust.
       let totalDue = response.order.total ?? params.cartTotal;
       totalDue = await applyStagedRewards(response.order.id, totalDue);
       const settled = await settleOrder(response.order.id, totalDue, paymentSnapshot);
       if (settled) {
-        // Snapshot the customer BEFORE clearCart wipes attachedCustomer.
         const cid = params.customerId;
         const cphone = params.customerPhone;
         params.clearCart();
         params.setSelectedItem(null);
-        // Drop the just-paid order id so the OrderCart stops offering
-        // "Send bill" against a now-paid ticket — the audit caught the
-        // Send Bill block silently shadowing the next ticket because
-        // we never cleared this flag on success. The ReceiptActions
-        // banner takes over the "what now?" duty for paid orders.
         setLastCreatedOrderId(null);
         params.onOrderSettled?.(
           response.order.id,
@@ -847,23 +942,14 @@ export function useOrderCreation(params: Params) {
           cphone,
           mapOrderType(params.orderType),
           paidOnCreditFromRows(paymentSnapshot),
+          creditPartialLabel(paymentSnapshot),
         );
       } else if ((params.appliedLoyaltyPoints ?? 0) > 0) {
-        // Payment failed after a loyalty hold — free the points so the
-        // customer isn't stuck until hold TTL expires.
         await releaseLoyaltyHold(response.order.id).catch(() => undefined);
       }
       return settled;
     } catch (err: unknown) {
       if (orderCreated) {
-        // Bug-014: createOrder succeeded but settle / rewards failed.
-        // The order now exists on the server as an unpaid open
-        // ticket (visible in OpenTicketsPanel with its own Send
-        // Bill / Send Pay Link / Charge actions). Drop the local
-        // `lastCreatedOrderId` so a stale "Send Bill for #X"
-        // button doesn't haunt the OrderCart for the next ticket
-        // the cashier rings up — they should drive the orphan
-        // from the Open Tickets pane instead.
         setLastCreatedOrderId(null);
         if (createdOrderId && (params.appliedLoyaltyPoints ?? 0) > 0) {
           await releaseLoyaltyHold(createdOrderId).catch(() => undefined);
@@ -932,6 +1018,7 @@ export function useOrderCreation(params: Params) {
             cphone,
             mapOrderType(params.orderType),
             paidOnCreditFromRows(retryRows),
+            creditPartialLabel(retryRows),
           );
         }
       } finally {
@@ -1062,10 +1149,17 @@ export function useOrderCreation(params: Params) {
     params.setCartItems(restoredItems);
 
     if (params.setDiscountAmount) {
-      const manualDiscount = response.order.discount_amount != null
-        ? Number(response.order.discount_amount)
+      const manualLaar = response.order.manual_discount_laar != null
+        ? Number(response.order.manual_discount_laar)
+        : null;
+      const manualDiscount = manualLaar != null && Number.isFinite(manualLaar) && manualLaar > 0
+        ? manualLaar / 100
         : 0;
-      params.setDiscountAmount(manualDiscount > 0 ? manualDiscount.toFixed(2) : "");
+      const baseline = manualDiscount > 0 ? manualDiscount.toFixed(2) : "";
+      params.setDiscountAmount(baseline);
+      setResumedDiscountBaseline(baseline);
+    } else {
+      setResumedDiscountBaseline("");
     }
     if (params.setAppliedGiftCard) {
       const gcCode = response.order.gift_card_code ?? response.order.gift_card_masked ?? null;
@@ -1207,10 +1301,11 @@ export function useOrderCreation(params: Params) {
 
   /**
    * Push the cart's current lines + fulfillment meta back to the
-   * active order. Used by "💾 Save" and by Charge when the ticket is
-   * dirty. Stays in editable resumed mode after a successful save.
+   * active order. Returns the fresh server total on success, or false
+   * on failure — callers must use the returned total (React state from
+   * setResumedOrderTotal is not visible inside the same in-flight closure).
    */
-  const handleSaveActiveChanges = async (): Promise<boolean> => {
+  const handleSaveActiveChanges = async (): Promise<number | false> => {
     if (resumedOrderId === null) return false;
     if (params.cartItems.length === 0) {
       flashError("Add at least one item before saving changes.");
@@ -1231,10 +1326,6 @@ export function useOrderCreation(params: Params) {
           price: m.price,
         })),
       }));
-      // Bug-016: only reprint the kitchen chit if the items / qty /
-      // mods / notes actually changed. Tapping Save with no real
-      // edits used to print a duplicate chit and cause double-prep
-      // in a busy service.
       const currentFp = cartFingerprint(params.cartItems);
       const itemsChanged = resumedItemsFingerprint !== currentFp;
       const nextType = currentTicketType();
@@ -1258,11 +1349,14 @@ export function useOrderCreation(params: Params) {
           return false;
         }
       }
+      const discountNorm = normalizeDiscountAmount(params.discountAmount);
+      const discountAmount = discountNorm ? Number.parseFloat(discountNorm) : 0;
       const res = await updateOrderItems(resumedOrderId, {
         items,
         reprint_kitchen: itemsChanged,
         type: nextType,
         restaurant_table_id: nextTableId,
+        discount_amount: discountAmount,
         ...(deliveryPayload
           ? {
             delivery_address_line1: deliveryPayload.addressLine1.trim(),
@@ -1275,7 +1369,8 @@ export function useOrderCreation(params: Params) {
           }
           : {}),
       });
-      setResumedOrderTotal(res.order.total != null ? Number(res.order.total) : null);
+      const freshTotal = res.order.total != null ? Number(res.order.total) : null;
+      setResumedOrderTotal(freshTotal);
       setResumedItemsFingerprint(currentFp);
       setResumedOrderType(res.order.type ?? nextType);
       setResumedTableId(
@@ -1286,9 +1381,9 @@ export function useOrderCreation(params: Params) {
       setResumedDeliveryFingerprint(deliveryFingerprint(
         deliveryPayload ?? EMPTY_DELIVERY_DETAILS,
       ));
-      // Stay editable so the cashier can keep tweaking or Charge next.
+      setResumedDiscountBaseline(discountNorm);
       setIsEditingActive(true);
-      return true;
+      return freshTotal ?? 0;
     } catch (err) {
       flashError(`Couldn't save changes: ${(err as Error).message}`);
       return false;
@@ -1380,6 +1475,19 @@ export function useOrderCreation(params: Params) {
     })();
   };
 
+  const clearPendingPayment = useCallback(() => {
+    setPendingPaymentForOrderId(null);
+    setPendingPaymentSnapshot(null);
+    chargeIdempotencyKeyRef.current = null;
+  }, []);
+
+  /** Clear pending-payment state when the cashier cancels that order. */
+  const notifyOrderCancelled = useCallback((orderId: number) => {
+    if (pendingPaymentForOrderId === orderId) {
+      clearPendingPayment();
+    }
+  }, [pendingPaymentForOrderId, clearPendingPayment]);
+
   const hasUnsavedTicketChanges = computeTicketDirty();
 
   return {
@@ -1392,6 +1500,8 @@ export function useOrderCreation(params: Params) {
     lastHeldOrderId,
     lastCreatedOrderId,
     pendingPaymentForOrderId,
+    pendingPaymentTotalDue: pendingPaymentSnapshot?.totalDue ?? null,
+    rewardWarning,
     resumedOrderId,
     resumedOrderTotal,
     resumedFromStatus,
@@ -1415,5 +1525,7 @@ export function useOrderCreation(params: Params) {
     handleBarcodeSubmit,
     handleSyncQueue,
     handleRetryPayment,
+    clearPendingPayment,
+    notifyOrderCancelled,
   };
 }

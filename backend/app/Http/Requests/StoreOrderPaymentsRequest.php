@@ -76,6 +76,10 @@ class StoreOrderPaymentsRequest extends FormRequest
             // no good recovery path. We still gate non-zero rows on
             // numeric/min:0 — negative tenders never make sense.
             'payments.*.amount' => 'required|numeric|min:0',
+            // FIX 11: optional cash-overpay tendered amount. Must be ≥ the
+            // applied amount when supplied (change is derived). Old clients
+            // that omit this field continue to work unchanged.
+            'payments.*.tendered_amount' => 'sometimes|nullable|numeric|min:0|gte:payments.*.amount',
             // status is intentionally ignored — derived server-side from payment method
             'payments.*.reference_number' => 'nullable|string|max:255',
             'payments.*.idempotency_key' => 'nullable|string|max:128',

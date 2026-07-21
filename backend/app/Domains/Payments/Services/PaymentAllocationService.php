@@ -170,15 +170,22 @@ final class PaymentAllocationService
             return;
         }
 
+        // FIX 11 — tighten cash-only cap to remaining + 1 laari. Cashiers
+        // now express overpay via the dedicated `tendered_amount` field
+        // (see SettleOrderPaymentAction), so the applied `amount` should
+        // never exceed the remaining balance beyond a rounding laari.
+        // Non-cash rows keep the tiny +50-laari tolerance for gateway
+        // rounding drift.
         $capLaar = $anyNonCash
             ? $remainingLaar + 50
-            : max($remainingLaar * 5, $remainingLaar + 10000);
+            : $remainingLaar + 1;
 
         if ($incomingLaar > $capLaar) {
             abort(422, sprintf(
-                'Tender (MVR %.2f) far exceeds remaining balance (MVR %.2f). Re-check the amount.',
+                'Tender (MVR %.2f) far exceeds remaining balance (MVR %.2f). Re-check the amount%s.',
                 $incomingLaar / 100,
                 $remainingLaar / 100,
+                $anyNonCash ? '' : ' — use the "cash received" field to record overpay',
             ));
         }
     }

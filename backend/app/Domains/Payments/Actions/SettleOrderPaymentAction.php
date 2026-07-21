@@ -137,10 +137,29 @@ final class SettleOrderPaymentAction
                 $paymentStatus = in_array($paymentPayload['method'], $gatewayMethods, true) ? 'pending' : 'paid';
                 $amountLaar = (int) round((float) $paymentPayload['amount'] * 100);
 
+                // FIX 11 — record cash tendered_amount + derived change_given
+                // only when the client supplied it AND we're settling cash.
+                // Drawer expected-cash still uses `amount`, so overpay never
+                // leaves phantom money in the till. Older clients that
+                // simply omit `tendered_amount` continue to work.
+                $tenderedAmount = null;
+                $changeGiven = null;
+                if (
+                    $paymentPayload['method'] === 'cash'
+                    && array_key_exists('tendered_amount', $paymentPayload)
+                    && $paymentPayload['tendered_amount'] !== null
+                    && $paymentPayload['tendered_amount'] !== ''
+                ) {
+                    $tenderedAmount = round((float) $paymentPayload['tendered_amount'], 2);
+                    $changeGiven = max(0.0, round($tenderedAmount - (float) $paymentPayload['amount'], 2));
+                }
+
                 $payment = Payment::create([
                     'order_id' => $order->id,
                     'method' => $paymentPayload['method'],
                     'amount' => $paymentPayload['amount'],
+                    'tendered_amount' => $tenderedAmount,
+                    'change_given' => $changeGiven,
                     'amount_laar' => $amountLaar,
                     'status' => $paymentStatus,
                     'reference_number' => $paymentPayload['reference_number'] ?? null,
