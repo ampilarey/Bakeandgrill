@@ -88,7 +88,14 @@ export function usePosApp() {
   const canTimeClock = hasPosPermission(staffPermissions, "pos.time_clock");
   const canViewKds = hasPosPermission(staffPermissions, "kds.view");
   const canAccessOps = canOpsInventory || canOpsPreparedStock || canRefund;
-  const canKitchenOnly = canViewKds && !canRingSales && !canAccessOps && !canViewShiftHistory;
+  // FIX 17 — a user with `pos.active_orders` is a POS user (kitchen-side
+  // expediter/manager who watches active orders), not a KDS-only kitchen
+  // hand, so they must NOT be shunted into the kitchen-only landing page.
+  const canKitchenOnly = canViewKds
+    && !canRingSales
+    && !canAccessOps
+    && !canViewShiftHistory
+    && !canViewActiveOrders;
   const canCreatePurchaseRequest = hasPosPermission(staffPermissions, "purchase_requests.create");
   const canViewOwnPurchaseRequests = hasPosPermission(staffPermissions, "purchase_requests.view_own");
   const canBuyAssigned = hasPosPermission(staffPermissions, "purchase_requests.buy");
@@ -190,6 +197,7 @@ export function usePosApp() {
     orderId: number;
     customerPhone: string | null;
     paidOnCredit: boolean;
+    creditNote?: string | null;
   } | null>(null);
   const [deviceBlockedMessage, setDeviceBlockedMessage] = useState<string | null>(null);
 
@@ -575,7 +583,7 @@ export function usePosApp() {
     setAppliedPromo: cart.setAppliedPromo,
     setAppliedLoyalty: cart.setAppliedLoyalty,
     setAppliedGiftCard: cart.setAppliedGiftCard,
-    onOrderSettled: (orderId, _customerId, customerPhone, _orderType, paidOnCredit) => {
+    onOrderSettled: (orderId, _customerId, customerPhone, _orderType, paidOnCredit, creditNote) => {
       void refreshOpenTickets();
       void refreshTables();
       void shift.refreshSummary();
@@ -583,12 +591,16 @@ export function usePosApp() {
         orderId,
         customerPhone: customerPhone ?? null,
         paidOnCredit: !!paidOnCredit,
+        creditNote: creditNote ?? null,
       });
       setPane("sales");
     },
   });
 
   const chargeTotal = useMemo(() => {
+    if (order.pendingPaymentForOrderId != null && order.pendingPaymentTotalDue != null) {
+      return order.pendingPaymentTotalDue;
+    }
     // Paid/view-only resume: prefer server grand total − gift tender.
     // Editable resumes use live cart math so Charge matches the cart.
     if (order.resumedOrderId !== null && !order.isEditingActive) {
@@ -604,6 +616,8 @@ export function usePosApp() {
     }
     return cart.cartTotal;
   }, [
+    order.pendingPaymentForOrderId,
+    order.pendingPaymentTotalDue,
     order.resumedOrderId,
     order.resumedOrderTotal,
     order.isEditingActive,
