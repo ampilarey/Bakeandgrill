@@ -138,7 +138,18 @@ export async function createOrderPayments(
     }>;
     print_receipt?: boolean;
   }
-): Promise<{ order: { id: number; total: number }; paid_total: number }> {
+): Promise<{
+  order: { id: number; total: number };
+  paid_total: number;
+  /**
+   * FIX 9e — optional post-settle credit balance for the ticket's
+   * attached customer, in whole MVR. Present when the payment rows
+   * include a `house_account` leg and the backend has been updated
+   * to echo the new balance. Older backends omit the field; callers
+   * must treat it as best-effort.
+   */
+  credit_balance_mvr?: number | null;
+}> {
   return request(`/orders/${orderId}/payments`, {
     method: "POST",
     body: JSON.stringify(payload),

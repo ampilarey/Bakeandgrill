@@ -249,6 +249,14 @@ type Params = {
     orderType?: string | null,
     paidOnCredit?: boolean,
     creditNote?: string | null,
+    /**
+     * FIX 9e — post-settle credit balance for the attached customer.
+     * Populated when the payments endpoint echoes `credit_balance_mvr`
+     * in its response (i.e. the tender mix included a house_account
+     * leg AND the backend has been upgraded). Callers surface this on
+     * the receipt banner. `null` = server didn't return a balance.
+     */
+    creditBalanceMvr?: number | null,
   ) => void;
 };
 
@@ -675,6 +683,16 @@ export function useOrderCreation(params: Params) {
   };
 
   /**
+   * FIX 9e — the last successful settle response's credit balance
+   * (MVR). Set inside settleOrder when the backend echoes
+   * `credit_balance_mvr`, then read by the calling handlers to pass
+   * through onOrderSettled → receipt banner. A tuple return would be
+   * cleaner but every existing branch checks the boolean; sticking to
+   * an outer ref keeps the diff surgical.
+   */
+  const lastCreditBalanceRef = useRef<number | null>(null);
+
+  /**
    * Settle an already-created order with the supplied payment rows. Fills
    * any remainder with cash. Returns true on success.
    */
@@ -723,7 +741,16 @@ export function useOrderCreation(params: Params) {
     }
 
     try {
-      await createOrderPayments(orderId, { payments: finalPayments, print_receipt: false });
+      const settleRes = await createOrderPayments(orderId, { payments: finalPayments, print_receipt: false });
+      // FIX 9e — capture the server-echoed credit balance so the
+      // caller can plumb it into the receipt banner. Older backends
+      // omit the field, in which case we clear it to null so a stale
+      // value from a previous settle doesn't bleed into the next
+      // banner.
+      lastCreditBalanceRef.current =
+        typeof settleRes?.credit_balance_mvr === "number"
+          ? settleRes.credit_balance_mvr
+          : null;
       setPendingPaymentForOrderId(null);
       setPendingPaymentSnapshot(null);
       chargeIdempotencyKeyRef.current = null;
@@ -813,6 +840,7 @@ export function useOrderCreation(params: Params) {
             settledType,
             paidOnCreditFromRows(retryRows),
             creditPartialLabel(retryRows),
+            lastCreditBalanceRef.current,
           );
         }
         return settled;
@@ -862,6 +890,7 @@ export function useOrderCreation(params: Params) {
             settledType,
             paidOnCreditFromRows(paymentSnapshot),
             creditPartialLabel(paymentSnapshot),
+            lastCreditBalanceRef.current,
           );
         } else if (
           (params.appliedLoyaltyPoints ?? 0) > 0
@@ -943,6 +972,7 @@ export function useOrderCreation(params: Params) {
           mapOrderType(params.orderType),
           paidOnCreditFromRows(paymentSnapshot),
           creditPartialLabel(paymentSnapshot),
+          lastCreditBalanceRef.current,
         );
       } else if ((params.appliedLoyaltyPoints ?? 0) > 0) {
         await releaseLoyaltyHold(response.order.id).catch(() => undefined);
@@ -1019,6 +1049,7 @@ export function useOrderCreation(params: Params) {
             mapOrderType(params.orderType),
             paidOnCreditFromRows(retryRows),
             creditPartialLabel(retryRows),
+            lastCreditBalanceRef.current,
           );
         }
       } finally {

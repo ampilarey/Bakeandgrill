@@ -30,6 +30,14 @@ type Props = {
   paidOnCredit?: boolean;
   /** When credit is a minority split tender — e.g. "partially on credit (MVR X)". */
   creditNote?: string | null;
+  /**
+   * FIX 9e — post-settle credit balance for the attached customer,
+   * plumbed through from the payments API when the server includes it
+   * in the response. When present the banner shows "balance now MVR X"
+   * next to the "charged to credit account" line so the cashier can
+   * relay the fresh owed number without opening the customer panel.
+   */
+  creditBalanceMvr?: number | null;
   receiptResendEnabled?: boolean;
   onDismiss: () => void;
 };
@@ -43,7 +51,15 @@ const C = {
   btn: "#FFFFFF",
 };
 
-export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = false, creditNote = null, receiptResendEnabled = true, onDismiss }: Props) {
+export function ReceiptActionsBanner({
+  orderId,
+  customerPhone,
+  paidOnCredit = false,
+  creditNote = null,
+  creditBalanceMvr = null,
+  receiptResendEnabled = true,
+  onDismiss,
+}: Props) {
   const [link, setLink] = useState<string | null>(null);
   const [linkErr, setLinkErr] = useState(false);
   const [sending, setSending] = useState(false);
@@ -153,6 +169,20 @@ export function ReceiptActionsBanner({ orderId, customerPhone, paidOnCredit = fa
             : creditNote
               ? creditNote
               : "paid"}
+          {/*
+            FIX 9e — surface the customer's post-settle credit balance
+            alongside the "charged to credit account" copy so the
+            cashier can immediately tell the customer what they now
+            owe. Only shown when the server returned a numeric balance
+            AND the order actually touched the credit rail (either a
+            full house_account charge, or a split with a credit leg
+            via `creditNote`).
+          */}
+          {(paidOnCredit || creditNote) && typeof creditBalanceMvr === "number" && (
+            <span style={{ marginLeft: 6, color: C.muted, fontWeight: 700 }}>
+              — balance now MVR {creditBalanceMvr.toFixed(2)}
+            </span>
+          )}
         </div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
           {customerPhone
