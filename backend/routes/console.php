@@ -133,6 +133,13 @@ Schedule::command('service-availability:prune-restoration-subscriptions')
     ->onFailure($alertOnFailure('service-availability:prune-restoration-subscriptions'))
     ->after($trackSuccess('service-availability:prune-restoration-subscriptions'));
 
+// Service Availability: flip scheduled maintenance windows every minute
+Schedule::command('service-availability:activate-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('service-availability:activate-scheduled'))
+    ->after($trackSuccess('service-availability:activate-scheduled'));
+
 // Orders: cancel stale payment_pending orders every 5 minutes
 Schedule::command('orders:cancel-stale')
     ->everyFiveMinutes()
