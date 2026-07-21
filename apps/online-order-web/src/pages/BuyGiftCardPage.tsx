@@ -43,15 +43,25 @@ export function BuyGiftCardPage() {
   const resolvedAmount = customAmount.trim()
     ? parseFloat(customAmount)
     : (amount ?? NaN);
-  const amountLabel = Number.isFinite(resolvedAmount) && resolvedAmount > 0
-    ? resolvedAmount.toFixed(0)
+  // FIX 8d: whole-MVR only. Reject decimals client-side so the Pay
+  // label matches what the server will actually charge — a "100.50"
+  // in the custom input previously rendered "MVR 101" (toFixed(0)
+  // rounds) and then failed server-side after redirecting to BML.
+  const isWholeAmount = Number.isFinite(resolvedAmount) && Number.isInteger(resolvedAmount);
+  const amountLabel = isWholeAmount && resolvedAmount > 0
+    ? String(resolvedAmount)
     : '—';
   const fromPreview = anonymous
     ? 'Anonymous gift'
     : (senderName.trim() ? `From: ${senderName.trim()}` : 'From: …');
 
   const handlePay = async () => {
-    if (!Number.isFinite(resolvedAmount) || resolvedAmount < 50 || resolvedAmount > 5000) {
+    if (
+      !Number.isFinite(resolvedAmount)
+      || !Number.isInteger(resolvedAmount)
+      || resolvedAmount < 50
+      || resolvedAmount > 5000
+    ) {
       setError(t('gift.err_amount'));
       return;
     }
