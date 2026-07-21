@@ -72,9 +72,13 @@ class ShiftController extends Controller
             ->selectRaw('COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0) as total_laar')
             ->value('total_laar');
 
+        // FIX 1: Prefer per-refund drawer_cash_out_laar when set so refunds
+        // whose money came out of credit / gift / wallet / card don't
+        // subtract from the till twice. Legacy rows with NULL fall back to
+        // ROUND(amount * 100) — same behaviour as before this fix.
         $refundCashOutLaar = (int) Refund::where('shift_id', $shift->id)
             ->whereNotIn('status', ['rejected'])
-            ->selectRaw('COALESCE(SUM(ROUND(amount * 100)), 0) as total_laar')
+            ->selectRaw('COALESCE(SUM(COALESCE(drawer_cash_out_laar, ROUND(amount * 100))), 0) as total_laar')
             ->value('total_laar');
 
         $opening = (float) ($shift->opening_cash ?? 0);
@@ -86,6 +90,15 @@ class ShiftController extends Controller
 
         $depositCash = $this->depositCashTotalsForShift($shift->id);
 
+        // FIX 4: sub-total cash_in rows tagged as credit repayments so
+        // Z / summary can show the amount separately from generic paid-in.
+        // expectedCashFor math is UNCHANGED — this is a display-only slice.
+        $creditRepaymentsCashLaar = (int) CashMovement::where('shift_id', $shift->id)
+            ->where('type', 'cash_in')
+            ->where('category', 'credit_repayment')
+            ->selectRaw('COALESCE(ROUND(SUM(amount) * 100), 0) as t')
+            ->value('t');
+
         return [
             'opening' => $opening,
             'cash_in' => $cashIn,
@@ -94,6 +107,8 @@ class ShiftController extends Controller
             'cash_refunds' => round((abs($cashRefundsRawLaar) + $refundCashOutLaar) / 100, 2),
             'deposit_cash_received' => $depositCash['received'],
             'deposit_cash_refunded' => $depositCash['refunded'],
+            'credit_repayments_cash_laar' => $creditRepaymentsCashLaar,
+            'credit_repayments_cash' => round($creditRepaymentsCashLaar / 100, 2),
             'expected' => round($expectedLaar / 100, 2),
         ];
     }
@@ -196,6 +211,8 @@ class ShiftController extends Controller
                 'paid_out' => $cashOut,
                 'deposit_cash_received' => $cash['deposit_cash_received'] ?? 0,
                 'deposit_cash_refunded' => $cash['deposit_cash_refunded'] ?? 0,
+                'credit_repayments_cash_laar' => $cash['credit_repayments_cash_laar'] ?? 0,
+                'credit_repayments_cash' => $cash['credit_repayments_cash'] ?? 0,
                 'expected_cash' => $expectedCash,
             ],
             'sales_summary' => [

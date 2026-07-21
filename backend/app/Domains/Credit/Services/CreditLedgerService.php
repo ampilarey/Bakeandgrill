@@ -350,10 +350,14 @@ final class CreditLedgerService
 
             $shift = null;
             if ($method === 'cash') {
-                $isOwner = $actor->role?->slug === 'owner';
+                // FIX 3: Cash repayment ALWAYS requires an open shift — even
+                // for the owner. Owner-recorded cash with no shift used to
+                // vanish from expectedCashFor reconciliation because no
+                // CashMovement row was written. Force the owner to open a
+                // shift or record it as a bank transfer instead.
                 $shift = $this->shifts->findOpenShift($actor);
-                if ($shift === null && !$isOwner) {
-                    abort(422, 'Open a shift before recording a cash credit repayment.');
+                if ($shift === null) {
+                    abort(422, 'Open a shift to record cash — or record it as a bank transfer.');
                 }
             }
 
@@ -367,6 +371,9 @@ final class CreditLedgerService
                     'shift_id' => $shift->id,
                     'user_id' => $actor->id,
                     'type' => 'cash_in',
+                    // FIX 4: tag so X / Z / shift summary payloads can break
+                    // credit-repayment cash out of generic paid-in totals.
+                    'category' => 'credit_repayment',
                     'amount' => round($amountLaar / 100, 2),
                     'reason' => 'Customer credit repayment — ' . ($locked->name ?? $locked->phone),
                 ]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Finance\Services\RefundDrawerCashService;
 use App\Domains\Orders\DTOs\OrderRefundedData;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
@@ -24,6 +25,7 @@ class RefundController extends Controller
 {
     public function __construct(
         private readonly PaymentRepositoryInterface $payments,
+        private readonly RefundDrawerCashService $drawerCash,
     ) {}
 
     public function index(Request $request)
@@ -70,7 +72,9 @@ class RefundController extends Controller
             'Open a shift before processing a refund.',
         );
 
-        [$refund, $order, $refundRatio] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request, $processorShift) {
+        $cashOverride = (bool) ($validated['cash_refund_override'] ?? false);
+
+        [$refund, $order, $refundRatio, $breakdown] = DB::transaction(function () use ($validated, $amount, $amountLaar, $orderId, $request, $processorShift, $cashOverride) {
             $order = Order::with(['items.item', 'items.variant'])->lockForUpdate()->findOrFail($orderId);
 
             $orderTotalLaar = (int) ($order->total_laar ?? round((float) ($order->total ?? 0) * 100));
@@ -117,14 +121,43 @@ class RefundController extends Controller
                 abort(422, 'Gift card purchases can only be refunded in full.');
             }
 
+            // FIX 1: compute the actual "money out of drawer" split so
+            // shift reconciliation isn't blown up by a credit-account / gift
+            // card / wallet reversal that never touched the till.
+            $breakdown = $this->drawerCash->breakdown(
+                $order,
+                $amountLaar,
+                $paidLaar,
+                $orderTotalLaar,
+            );
+
+            $nonCashFloor = $breakdown['credit_reversed_laar']
+                + $breakdown['gift_reversed_laar']
+                + $breakdown['wallet_reversed_laar'];
+
+            $drawerLaar = $cashOverride
+                // Cash-refund override: cashier absorbs any external tender
+                // (card / bml / bank_transfer / cheque / etc.) as if the
+                // customer walked out with cash from the till. Credit /
+                // gift / wallet are still ledger reversals, not cash.
+                ? max(0, $amountLaar - $nonCashFloor)
+                : $breakdown['default_drawer_cash_out_laar'];
+
+            // Clamp: 0 ≤ drawer ≤ refund − (credit + gift + wallet)
+            $drawerLaar = max(0, min($drawerLaar, $amountLaar - $nonCashFloor));
+
             $refund = Refund::create([
                 'order_id' => $order->id,
                 'user_id' => $request->user()?->id,
                 'shift_id' => $processorShift->id,
                 'amount' => $amount,
+                'drawer_cash_out_laar' => $drawerLaar,
                 'status' => 'approved',
                 'reason' => $validated['reason'] ?? null,
             ]);
+
+            $breakdown['drawer_cash_out_laar'] = $drawerLaar;
+            $breakdown['cash_refund_override'] = $cashOverride;
 
             // "Full refund" = refunding everything that was actually collected
             // (matches the cap above). Restoring stock for items the customer
@@ -212,7 +245,7 @@ class RefundController extends Controller
                 app(StockReservationService::class)->releaseForOrder($order->id);
             }
 
-            return [$refund, $order, $thisRefundRatio];
+            return [$refund, $order, $thisRefundRatio, $breakdown];
         });
 
         app(AuditLogService::class)->log(
@@ -228,6 +261,24 @@ class RefundController extends Controller
         $refund->load('order');
         event(new OrderRefunded(OrderRefundedData::fromRefund($refund, $refundRatio)));
 
-        return response()->json(['refund' => $refund], 201);
+        return response()->json([
+            'refund' => $refund,
+            'breakdown' => [
+                'credit_reversed_laar' => $breakdown['credit_reversed_laar'],
+                'credit_reversed_mvr' => round($breakdown['credit_reversed_laar'] / 100, 2),
+                'gift_reversed_laar' => $breakdown['gift_reversed_laar'],
+                'wallet_reversed_laar' => $breakdown['wallet_reversed_laar'],
+                'gift_wallet_reversed_laar' => $breakdown['gift_reversed_laar'] + $breakdown['wallet_reversed_laar'],
+                'gift_wallet_reversed_mvr' => round(
+                    ($breakdown['gift_reversed_laar'] + $breakdown['wallet_reversed_laar']) / 100,
+                    2,
+                ),
+                'external_tender_laar' => $breakdown['external_tender_laar'],
+                'external_tender_mvr' => round($breakdown['external_tender_laar'] / 100, 2),
+                'drawer_cash_out_laar' => $breakdown['drawer_cash_out_laar'],
+                'drawer_cash_out_mvr' => round($breakdown['drawer_cash_out_laar'] / 100, 2),
+                'cash_refund_override' => $breakdown['cash_refund_override'],
+            ],
+        ], 201);
     }
 }

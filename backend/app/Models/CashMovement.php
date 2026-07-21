@@ -13,6 +13,7 @@ class CashMovement extends Model
         'shift_id',
         'user_id',
         'type',
+        'category',
         'amount',
         'reason',
     ];

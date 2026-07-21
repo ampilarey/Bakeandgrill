@@ -14,6 +14,7 @@ class Refund extends Model
         'user_id',
         'shift_id',
         'amount',
+        'drawer_cash_out_laar',
         'status',
         'reason',
     ];
@@ -23,6 +24,7 @@ class Refund extends Model
         'user_id' => 'integer',
         'shift_id' => 'integer',
         'amount' => 'decimal:2',
+        'drawer_cash_out_laar' => 'integer',
     ];
 
     public function order(): BelongsTo

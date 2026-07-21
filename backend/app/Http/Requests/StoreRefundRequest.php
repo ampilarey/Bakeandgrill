@@ -19,6 +19,11 @@ class StoreRefundRequest extends FormRequest
         return [
             'amount' => 'required|numeric|min:0.01',
             'reason' => 'nullable|string|max:1000',
+            // FIX 1: When true, treat external/card tender share as if it were
+            // being handed back in cash from the drawer (cashier absorbs the
+            // gateway reversal). Default false leaves external tenders out of
+            // the till so shift reconciliation stays clean.
+            'cash_refund_override' => 'sometimes|boolean',
         ];
     }
 
