@@ -171,6 +171,12 @@ class ReportsService
     /**
      * X-Report: mid-shift totals for the currently open shift of the given user.
      * Returns null if no active shift exists.
+     *
+     * FIX 10 — money figures (tender breakdown, cash expected) derive from
+     * Payment::where('shift_id', $shift->id). Sales *counts* remain based
+     * on Order::user_id so cashier A still sees their in-flight tickets
+     * even if cashier B ultimately settles them. Online / shift-less
+     * payments are labelled "online (no shift)" only in Z; X ignores them.
      */
     public function xReport(int $userId): ?array
     {
@@ -203,14 +209,13 @@ class ReportsService
             'total' => (float) ($agg->total ?? 0),
         ];
 
+        // FIX 10: tender breakdown attributes money to whoever actually
+        // collected it (payments.shift_id), not whoever rang the order.
+        // Rows with shift_id = NULL (online/gateway) are excluded from X.
         $payLaar = ReportMoneySql::PAYMENT_AMOUNT_LAAR;
         $payments = Payment::whereBetween('processed_at', [$from, $to])
             ->whereIn('status', self::PAYMENT_STATUSES)
-            ->whereHas('order', function ($q) use ($from, $to, $shift) {
-                $q->where('user_id', $shift->user_id)
-                    ->whereIn('status', ReportMoneySql::SALE_STATUSES)
-                    ->whereBetween('created_at', [$from, $to]);
-            })
+            ->where('shift_id', $shift->id)
             ->select('method', DB::raw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as total'))
             ->groupBy('method')
             ->pluck('total', 'method');
@@ -267,6 +272,18 @@ class ReportsService
             ->groupBy('method')
             ->pluck('total', 'method');
 
+        // FIX 10: Z-report exposes the "no-shift" (online / gateway) bucket
+        // separately so venue-level revenue is complete but reporting UIs can
+        // distinguish cashier-collected from gateway-collected money.
+        $noShiftTotal = (float) Payment::whereBetween('processed_at', [$from, $to])
+            ->whereIn('status', self::PAYMENT_STATUSES)
+            ->whereNull('shift_id')
+            ->whereHas('order', fn ($q) => $q
+                ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+                ->whereBetween('created_at', [$from, $to]))
+            ->selectRaw('ROUND(COALESCE(SUM(' . $payLaar . '), 0) / 100.0, 2) as t')
+            ->value('t');
+
         $refunds = Refund::whereBetween('created_at', [$from, $to])
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
             ->value('total');
@@ -276,6 +293,7 @@ class ReportsService
             'to' => $to->toDateString(),
             'totals' => $totals,
             'payments' => $payments,
+            'payments_no_shift_total' => $noShiftTotal,
             'refunds' => $refunds,
             'payment_commission' => app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to),
         ];
