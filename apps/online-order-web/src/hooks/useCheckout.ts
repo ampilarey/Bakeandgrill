@@ -117,6 +117,19 @@ function addressToDelivery(a: CustomerAddress): DeliveryForm {
   };
 }
 
+/**
+ * FIX 3 — friend-referral discount room. Gift-card tender is NOT a
+ * pre-tax discount and therefore MUST NOT consume referral room.
+ * Mirrors the calculation used for gift-card apply on discountedSubtotal.
+ */
+export function referralRoomLaar(opts: {
+  subtotalLaar: number;
+  promoLaar: number;
+  loyaltyLaar: number;
+}): number {
+  return Math.max(0, opts.subtotalLaar - opts.promoLaar - opts.loyaltyLaar);
+}
+
 function readCart(): (CartItem & { variantId?: number | null })[] {
   try {
     const raw = localStorage.getItem("bakegrill_cart");
@@ -713,7 +726,12 @@ export function useCheckout() {
           return;
         }
         const configuredLaar = Math.round(validation.referee_discount_mvr * 100);
-        const roomLaar = Math.max(0, subtotalLaar - promoDelta - loyaltyDelta - giftCardDelta);
+        // Gift card is a tender, not a pre-tax discount — do not consume referral room.
+        const roomLaar = referralRoomLaar({
+          subtotalLaar,
+          promoLaar: promoDelta,
+          loyaltyLaar: loyaltyDelta,
+        });
         const estLaar = Math.min(configuredLaar, roomLaar);
         if (estLaar <= 0) {
           setFriendReferralError("No referral discount applies — other discounts already cover this order.");
