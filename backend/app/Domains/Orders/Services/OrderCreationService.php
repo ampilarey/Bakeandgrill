@@ -127,6 +127,7 @@ class OrderCreationService
                 // check never matched a previously-synced order so retries
                 // created duplicates.
                 'offline_id' => $payload['offline_id'] ?? null,
+                'idempotency_key' => $payload['idempotency_key'] ?? null,
                 'offline_local_number' => $payload['offline_local_number'] ?? null,
                 'subtotal' => 0,
                 'tax_amount' => 0,
@@ -782,24 +783,27 @@ class OrderCreationService
         $date = $now->toDateString();
         $dateFormatted = $now->format('Ymd');
 
+        // FIX 14 — the previous "SELECT … FOR UPDATE, then INSERT if
+        // missing" pattern had a window between the SELECT and the
+        // INSERT where two concurrent requests could both see no row
+        // and both attempt an INSERT — the second one duplicated the
+        // date PK. `insertOrIgnore` seeds the row atomically, then a
+        // second lockForUpdate SELECT is guaranteed to hit a row and
+        // takes the exclusive lock for the increment step.
         $sequence = DB::transaction(function () use ($date): int {
+            DB::table('daily_sequences')->insertOrIgnore([
+                'date' => $date,
+                'last_order_number' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
             $dailySeq = DB::table('daily_sequences')
                 ->where('date', $date)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$dailySeq) {
-                DB::table('daily_sequences')->insert([
-                    'date' => $date,
-                    'last_order_number' => 1,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                return 1;
-            }
-
-            $nextNumber = $dailySeq->last_order_number + 1;
+            $nextNumber = ((int) ($dailySeq->last_order_number ?? 0)) + 1;
             DB::table('daily_sequences')
                 ->where('date', $date)
                 ->update([
