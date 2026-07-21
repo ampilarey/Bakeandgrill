@@ -96,13 +96,27 @@ class GiftCardController extends Controller
     {
         $card = $this->giftCardCodes->findByCode($code);
 
-        if (!$card || $card->status !== 'active') {
+        // Keep 404 for genuinely unknown cards. Expired cards ALSO return 404
+        // (to preserve the historical contract) but with `reason=expired` and
+        // `expires_at` in the payload so clients can render a specific message.
+        if (!$card) {
             return response()->json(['error' => 'Invalid or unavailable gift card.'], 404);
         }
 
-        if ($card->expires_at && $card->expires_at->isPast()) {
+        $isExpired = $card->expires_at && $card->expires_at->isPast();
+        if ($isExpired && $card->status === 'active') {
             $card->update(['status' => 'expired']);
+        }
 
+        if ($isExpired || $card->status === 'expired') {
+            return response()->json([
+                'error' => 'This gift card has expired.',
+                'reason' => 'expired',
+                'expires_at' => $card->expires_at?->toDateString(),
+            ], 404);
+        }
+
+        if ($card->status !== 'active') {
             return response()->json(['error' => 'Invalid or unavailable gift card.'], 404);
         }
 
@@ -139,7 +153,11 @@ class GiftCardController extends Controller
             if ($card->expires_at && $card->expires_at->isPast()) {
                 $card->update(['status' => 'expired']);
 
-                return response()->json(['message' => 'This gift card has expired.'], 422);
+                return response()->json([
+                    'message' => 'This gift card has expired.',
+                    'reason' => 'expired',
+                    'expires_at' => $card->expires_at?->toDateString(),
+                ], 422);
             }
 
             $availableLaar = $this->giftCardRedemption->availableLaar($card, $order->id);
@@ -244,7 +262,11 @@ class GiftCardController extends Controller
             if ($card->expires_at && $card->expires_at->isPast()) {
                 $card->update(['status' => 'expired']);
 
-                return response()->json(['message' => 'This gift card has expired.'], 422);
+                return response()->json([
+                    'message' => 'This gift card has expired.',
+                    'reason' => 'expired',
+                    'expires_at' => $card->expires_at?->toDateString(),
+                ], 422);
             }
 
             $availableLaar = $this->giftCardRedemption->availableLaar($card, $order->id);
@@ -999,16 +1021,40 @@ class GiftCardController extends Controller
 
         $previous = $card->status;
         $releasedOrderIds = [];
+        $residualLaar = 0;
 
-        DB::transaction(function () use ($card, $calc, &$releasedOrderIds): void {
-            $releasedOrderIds = $this->giftCardRedemption->clearSoftReserves($card);
+        DB::transaction(function () use ($card, $calc, &$releasedOrderIds, &$residualLaar): void {
+            /** @var GiftCard $locked */
+            $locked = GiftCard::query()->lockForUpdate()->findOrFail($card->id);
+
+            $releasedOrderIds = $this->giftCardRedemption->clearSoftReserves($locked);
             foreach ($releasedOrderIds as $orderId) {
                 $order = Order::query()->find($orderId);
                 if ($order) {
                     $calc->recalculateAndPersist($order);
                 }
             }
-            $card->update(['status' => 'cancelled']);
+
+            $residualLaar = $locked->balanceLaar();
+            // Write-off any residual balance so `initial - transactions == 0`
+            // and the ledger reconciles cleanly after cancel.
+            if ($residualLaar > 0) {
+                $residualMvr = round($residualLaar / 100, 2);
+                GiftCardTransaction::create([
+                    'gift_card_id' => $locked->id,
+                    'amount' => -$residualMvr,
+                    'type' => 'void',
+                    'balance_after' => 0,
+                ]);
+                $locked->update([
+                    'current_balance' => 0,
+                    'status' => 'cancelled',
+                ]);
+            } else {
+                $locked->update(['status' => 'cancelled']);
+            }
+
+            $card->refresh();
         });
 
         $this->audit->log(
@@ -1016,7 +1062,11 @@ class GiftCardController extends Controller
             'GiftCard',
             $card->id,
             ['status' => $previous],
-            ['status' => 'cancelled', 'released_orders' => $releasedOrderIds],
+            [
+                'status' => 'cancelled',
+                'released_orders' => $releasedOrderIds,
+                'residual_laar' => $residualLaar,
+            ],
             ['masked_code' => $card->masked_code],
             $request,
         );
