@@ -5,10 +5,16 @@ declare(strict_types=1);
 namespace App\Domains\Payments\Services;
 
 use App\Models\GiftCard;
-use Illuminate\Support\Str;
 
 final class GiftCardCodeService
 {
+    /**
+     * Human-friendly alphabet for generated codes — omits 0/O, 1/I/L to avoid
+     * transcription errors when read from SMS or printed receipts. Hashing
+     * itself is untouched; only new codes are drawn from this set.
+     */
+    public const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
     /**
      * Canonical form for hashing: uppercase, no spaces or hyphens.
      * Lets customers enter ABCD-EFGH-IJKL-MNOP or ABCDEFGHIJKLMNOP.
@@ -54,9 +60,8 @@ final class GiftCardCodeService
     public function generate(): array
     {
         for ($attempt = 0; $attempt < 10; $attempt++) {
-            $plain = strtoupper(
-                Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4),
-            );
+            $plain = self::randomGroup(4) . '-' . self::randomGroup(4)
+                . '-' . self::randomGroup(4) . '-' . self::randomGroup(4);
             $hash = $this->hash($plain);
 
             if (!GiftCard::where('code_hash', $hash)->exists()) {
@@ -69,6 +74,18 @@ final class GiftCardCodeService
         }
 
         throw new \RuntimeException('Could not generate a unique gift card code.');
+    }
+
+    private static function randomGroup(int $length): string
+    {
+        $alphabet = self::CODE_ALPHABET;
+        $max = strlen($alphabet) - 1;
+        $out = '';
+        for ($i = 0; $i < $length; $i++) {
+            $out .= $alphabet[random_int(0, $max)];
+        }
+
+        return $out;
     }
 
     public function findByCode(string $code): ?GiftCard
