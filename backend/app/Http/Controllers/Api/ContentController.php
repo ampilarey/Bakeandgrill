@@ -423,9 +423,18 @@ class ContentController extends Controller
             return response()->json(['message' => 'from and to must differ.'], 422);
         }
 
-        $value = SiteSetting::getScoped($key, $from, $locale);
-        if ($value === null || $value === '') {
-            $value = (string) (ContentRegistry::default($key) ?? '');
+        // Copy the RESOLVED source value so seed/shared content is included when the
+        // source app has no override row yet (app → shared → default).
+        if (in_array($from, ContentRegistry::APPS, true)) {
+            $resolved = ContentResolver::for($from, $locale)->get($key);
+            $value = $resolved !== null && $resolved !== ''
+                ? (string) $resolved
+                : (string) (ContentRegistry::default($key) ?? '');
+        } else {
+            $value = SiteSetting::getScoped($key, $from, $locale);
+            if ($value === null || $value === '') {
+                $value = (string) (ContentRegistry::default($key) ?? '');
+            }
         }
 
         $this->ensureRow($key, $to, $locale);

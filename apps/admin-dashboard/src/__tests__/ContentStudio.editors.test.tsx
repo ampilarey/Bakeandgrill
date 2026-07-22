@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import ContentStudioPage from '../pages/ContentStudio/ContentStudioPage';
+import { AppContentEditor } from '../pages/ContentStudio/AppContentEditor';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 
@@ -12,6 +12,7 @@ vi.mock('../api/content', () => ({
   shareContentBlock: vi.fn(),
   splitContentBlock: vi.fn(),
   copyContentBlock: vi.fn(),
+  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -41,17 +42,6 @@ const heroShared = JSON.stringify({
   cta2_url: '/menu',
 });
 
-const heroWebsite = JSON.stringify({
-  image: '/images/w.jpg',
-  eyebrow: 'Web eyebrow',
-  title: 'Web title',
-  subtitle: 'Web sub',
-  cta_text: 'Order',
-  cta_url: '/order/',
-  cta2_text: 'Menu',
-  cta2_url: '/menu',
-});
-
 const categoriesShared = JSON.stringify([
   { icon: '🥐', label: 'Bakery', name: 'Pastries', hook: 'Fresh', image_url: '', link: '/menu' },
   { icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' },
@@ -59,7 +49,7 @@ const categoriesShared = JSON.stringify([
   { icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' },
 ]);
 
-function heroBlock(state: 'shared' | 'split' = 'shared'): ContentBlock {
+function heroBlock(): ContentBlock {
   return {
     key: 'hero_slide_1',
     label: 'Hero Slide 1',
@@ -70,11 +60,11 @@ function heroBlock(state: 'shared' | 'split' = 'shared'): ContentBlock {
     shareable: true,
     public: true,
     shared: heroShared,
-    website: state === 'split' ? heroWebsite : null,
-    order_app: state === 'split' ? heroShared : null,
-    resolved_website: state === 'split' ? heroWebsite : heroShared,
+    website: null,
+    order_app: null,
+    resolved_website: heroShared,
     resolved_order_app: heroShared,
-    state,
+    state: 'shared',
   };
 }
 
@@ -97,29 +87,23 @@ function categoriesBlock(): ContentBlock {
   };
 }
 
-describe('ContentStudio visual editors', () => {
+describe('ContentStudio visual editors (per-app)', () => {
   beforeEach(() => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
       locales: ['en', 'dv'],
-      blocks: [heroBlock('shared'), categoriesBlock()],
+      blocks: [heroBlock(), categoriesBlock()],
     });
     vi.mocked(contentApi.uploadContentImage).mockResolvedValue({
       url: '/storage/site/website/hero.jpg',
       thumb_url: '/storage/site/website/thumbs/hero.jpg',
     });
-    vi.mocked(contentApi.splitContentBlock).mockResolvedValue({
-      blocks: [heroBlock('split'), categoriesBlock()],
-    });
-    vi.mocked(contentApi.shareContentBlock).mockResolvedValue({
-      blocks: [heroBlock('shared'), categoriesBlock()],
-    });
   });
 
-  it('hero editor edits a slide field into the active shared draft', async () => {
+  it('hero editor edits a slide field into the active website draft', async () => {
     render(
       <MemoryRouter>
-        <ContentStudioPage />
+        <AppContentEditor app="website" />
       </MemoryRouter>,
     );
 
@@ -137,10 +121,10 @@ describe('ContentStudio visual editors', () => {
     });
   });
 
-  it('category image upload sets the scoped draft image_url via crop endpoint', async () => {
+  it('category image upload sets the app-scoped draft image_url via crop endpoint', async () => {
     render(
       <MemoryRouter>
-        <ContentStudioPage />
+        <AppContentEditor app="website" />
       </MemoryRouter>,
     );
 
@@ -158,7 +142,7 @@ describe('ContentStudio visual editors', () => {
     await waitFor(() => {
       expect(contentApi.uploadContentImage).toHaveBeenCalledWith(
         'homepage_categories',
-        'shared',
+        'website',
         expect.any(File),
         undefined,
         'en',
@@ -170,10 +154,41 @@ describe('ContentStudio visual editors', () => {
     });
   });
 
-  it('switching app tab shows that scope repeater rows after split', async () => {
+  it('order app editor shows that app resolved hero values', async () => {
+    const orderHero = {
+      ...heroBlock(),
+      order_app: JSON.stringify({
+        ...JSON.parse(heroShared),
+        eyebrow: 'Order eyebrow',
+      }),
+      resolved_order_app: JSON.stringify({
+        ...JSON.parse(heroShared),
+        eyebrow: 'Order eyebrow',
+      }),
+      state: 'split' as const,
+    };
+    vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
+      locale: 'en',
+      locales: ['en', 'dv'],
+      blocks: [orderHero, categoriesBlock()],
+    });
+
     render(
       <MemoryRouter>
-        <ContentStudioPage />
+        <AppContentEditor app="order_app" />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Order eyebrow')).toBeTruthy();
+    });
+    expect(screen.queryByText(/Make different per app/i)).toBeNull();
+  });
+
+  it('does not expose reset-to-shared or shareContentBlock', async () => {
+    render(
+      <MemoryRouter>
+        <AppContentEditor app="website" />
       </MemoryRouter>,
     );
 
@@ -181,43 +196,8 @@ describe('ContentStudio visual editors', () => {
       expect(screen.getAllByText('Hero Slide 1').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getAllByText(/Make different per app/i)[0]);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Website' })).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'Order app' })).toBeTruthy();
-    });
-
-    expect(screen.getByDisplayValue('Web eyebrow')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Order app' }));
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Shared eyebrow')).toBeTruthy();
-    });
-  });
-
-  it('reset-to-shared clears overrides', async () => {
-    vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
-      locale: 'en',
-      locales: ['en', 'dv'],
-      blocks: [heroBlock('split'), categoriesBlock()],
-    });
-
-    window.confirm = vi.fn(() => true);
-
-    render(
-      <MemoryRouter>
-        <ContentStudioPage />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText(/Reset to shared/i)).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByText(/Reset to shared/i));
-
-    await waitFor(() => {
-      expect(contentApi.shareContentBlock).toHaveBeenCalledWith('hero_slide_1', 'en');
-    });
+    expect(screen.queryByText(/Reset to shared/i)).toBeNull();
+    expect(contentApi.shareContentBlock).not.toHaveBeenCalled();
+    expect(contentApi.splitContentBlock).not.toHaveBeenCalled();
   });
 });

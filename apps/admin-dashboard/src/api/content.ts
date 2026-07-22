@@ -1,6 +1,8 @@
 import { req } from './client';
 
 export type ContentScope = 'shared' | 'website' | 'order_app';
+/** App scopes used by the two Content Studio editors (excludes invisible seed `shared`). */
+export type ContentApp = 'website' | 'order_app';
 export type ContentLocale = 'en' | 'dv';
 
 export type ContentEditorHint =
@@ -103,6 +105,21 @@ export async function copyContentBlock(
     method: 'POST',
     body: JSON.stringify({ from, to, locale }),
   });
+}
+
+/** Client-side section copy — loops per-block copy (no batch endpoint). */
+export async function copyContentSection(
+  keys: string[],
+  from: ContentScope,
+  to: ContentScope,
+  locale: ContentLocale = 'en',
+): Promise<{ blocks: ContentBlock[] }> {
+  let blocks: ContentBlock[] = [];
+  for (const key of keys) {
+    const res = await copyContentBlock(key, from, to, locale);
+    blocks = res.blocks;
+  }
+  return { blocks };
 }
 
 export async function uploadContentImage(

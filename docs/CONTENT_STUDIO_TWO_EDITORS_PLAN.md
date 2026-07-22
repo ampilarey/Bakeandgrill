@@ -2,7 +2,7 @@
 
 **Repository:** `ampilarey/Bakeandgrill`
 **Branch:** `claude/content-studio-two-editors-plan`
-**Status:** Plan only — no feature code written yet.
+**Status:** Implemented on this branch.
 **Approach:** **UI-only restructure** — no DB migration, no backend rebuild. The scope data model
 already stores independent per-app values; we replace the confusing single mixed list with two
 clean, self-contained editors and a "copy from the other app" action.
@@ -129,3 +129,29 @@ already honours), the website and order app immediately reflect per-app edits wi
 - Keep permission `website.manage`; keep EN/DV, history, schedule, import/export working.
 - Do not remove the backend `share`/`split`/`copy` endpoints (back-compat); the new UI just stops
   using share/split.
+
+## Implementation notes
+
+- **Routes:** `/content/website`, `/content/order-app`; `/content` and legacy `/content-studio`
+  redirect to Website Content. Permission remains `website.manage`.
+- **Components:** `AppContentEditor` (prop `app`) + `CopyFromOtherApp` (block + section). Thin
+  `ContentStudioPage` exports `WebsiteContentPage` / `OrderAppContentPage` + redirect default.
+- **Writes:** drafts always publish with `scope: app` via `updateContent`. Display =
+  `app row ?? resolved_* ?? default`. No `splitContentBlock` / `shareContentBlock` in the UI.
+- **Copy:** `ContentController::copy` now uses `ContentResolver::for($from)` when `from` is an app
+  scope, so seed/shared content copies correctly. Section copy loops per-block client-side
+  (`copyContentSection` helper); no batch endpoint added.
+- **Import/export:** still locale-wide via existing API (filename includes app for clarity). Not
+  filtered to one app — existing endpoint has no app filter.
+- **Tests:** ported `ContentStudio.test.tsx` + `ContentStudio.editors.test.tsx`; added
+  `ContentStudio.twoEditors.test.tsx` and `ContentCopyResolvedTest`.
+
+## Build log
+
+- Branch: `claude/content-studio-two-editors-plan`
+- Commit message: `content: two separate app editors (website / order app) + copy-from`
+- Backend: `./vendor/bin/pint` + `php artisan test` → **1526 passed**, 3 skipped
+- Admin: `npm test -- --run` → **81 passed** / 29 files; `npm run build` OK
+- Dist: `./scripts/build-all.sh admin` → synced `backend/public/admin/`
+- Content suites: ContentAdmin, ContentCopyResolved, ContentResolver, ContentScopeApi,
+  ContentBladeParity all green; ContentStudio.* vitest green

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import ContentStudioPage from '../pages/ContentStudio/ContentStudioPage';
+import { AppContentEditor } from '../pages/ContentStudio/AppContentEditor';
 
 vi.mock('../api/content', () => ({
   getContentBlocks: vi.fn(async () => ({
@@ -30,6 +30,7 @@ vi.mock('../api/content', () => ({
   shareContentBlock: vi.fn(),
   splitContentBlock: vi.fn(),
   copyContentBlock: vi.fn(),
+  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -44,18 +45,20 @@ vi.mock('../components/ui', () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn() }),
 }));
 
-describe('ContentStudioPage', () => {
-  it('loads registry blocks and shows shared state', async () => {
+describe('ContentStudioPage (Website Content editor)', () => {
+  it('loads registry blocks and shows resolved seed value without shared/split toggle', async () => {
     render(
       <MemoryRouter>
-        <ContentStudioPage />
+        <AppContentEditor app="website" />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
       expect(screen.getByText('Phone number')).toBeTruthy();
     });
-    expect(screen.getByText(/Make different per app/i)).toBeTruthy();
+    expect(screen.getByText('Website Content')).toBeTruthy();
+    expect(screen.queryByText(/Make different per app/i)).toBeNull();
     expect(screen.getByDisplayValue('+960 912 0011')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Copy from Order App/i })).toBeTruthy();
   });
 });
