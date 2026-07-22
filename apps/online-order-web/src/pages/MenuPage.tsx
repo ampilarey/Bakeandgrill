@@ -344,6 +344,11 @@ export function MenuPage() {
     [parentCategories, catItemCounts],
   );
 
+  const activeCategory = useMemo(
+    () => railCategories.find((c) => c.id === activeCategoryId) ?? null,
+    [railCategories, activeCategoryId],
+  );
+
   const sectionedMenu = useMemo(() => {
     const childToParent = new Map<number, number>();
     for (const cat of categories) {
@@ -646,7 +651,22 @@ export function MenuPage() {
         />
 
         {/* ── Main menu column ───────────────────────────────────── */}
-        <main style={{ flex: 1, minWidth: 0, paddingTop: '1rem' }}>
+        <main
+          style={{
+            flex: 1,
+            minWidth: 0,
+            paddingTop: '0.5rem',
+            ['--menu-active-cat-bar-height' as string]:
+              !loading && !filtersActive && activeCategory ? '36px' : '0px',
+          }}
+        >
+          {!loading && !filtersActive && activeCategory && (
+            <div className="menu-active-cat-bar" aria-live="polite">
+              <span className="menu-active-cat-bar__dot" aria-hidden="true" />
+              <span>{activeCategory.name}</span>
+            </div>
+          )}
+
           {/* Today's Specials */}
           {specials.length > 0 && (
             <section style={{ paddingBottom: '1rem' }}>
@@ -759,7 +779,10 @@ export function MenuPage() {
                     scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
                   }}
                 >
-                  <MenuSectionHeader category={section.category} />
+                  <MenuSectionHeader
+                    category={section.category}
+                    active={activeCategoryId === section.category.id}
+                  />
                   <div className="menu-grid" style={{ paddingBottom: '1.25rem' }}>
                     {section.items.map(renderProductCard)}
                   </div>

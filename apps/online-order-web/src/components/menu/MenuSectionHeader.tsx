@@ -4,65 +4,67 @@ import type { Category } from '../../api';
 type Props = {
   category: Category;
   id?: string;
+  /** When true, this section is the scroll-spy active category */
+  active?: boolean;
 };
 
-export function MenuSectionHeader({ category, id }: Props) {
-  const img = category.image_url
-    ? (category.image_url.startsWith('http')
-      ? category.image_url
-      : `${API_ORIGIN}${category.image_url.startsWith('/') ? '' : '/'}${category.image_url}`)
-    : null;
+function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  return `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+function tintFromId(id: number): string {
+  const hues = [18, 28, 38, 160, 200, 280];
+  const h = hues[id % hues.length];
+  return `linear-gradient(135deg, hsl(${h} 48% 42%) 0%, hsl(${(h + 28) % 360} 42% 28%) 100%)`;
+}
+
+/**
+ * ZUS-style category section header: wide promo banner, then accent title + items.
+ * Uses category.image_url when set; otherwise a branded gradient so every
+ * category still gets the same visual treatment.
+ */
+export function MenuSectionHeader({ category, id, active = false }: Props) {
+  const img = resolveImageUrl(category.image_url);
+  const description = category.description?.trim() || null;
 
   return (
     <header
       id={id}
-      className="menu-section-header"
+      className={`menu-section-header${active ? ' is-active' : ''}`}
       data-category-id={category.id}
       style={{
-        padding: '1.25rem 0 0.75rem',
-        scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
+        padding: '0.85rem 0 0.65rem',
+        scrollMarginTop: 'calc(var(--menu-header-height) + var(--menu-active-cat-bar-height, 0px) + 8px)',
       }}
     >
-      {img && (
-        <div
-          style={{
-            aspectRatio: '3 / 1',
-            borderRadius: 'var(--radius-xl)',
-            overflow: 'hidden',
-            marginBottom: '0.75rem',
-            background: 'var(--color-surface-alt)',
-          }}
-        >
+      <div
+        className="menu-cat-promo"
+        aria-hidden={img ? undefined : true}
+        style={img ? undefined : { background: tintFromId(category.id) }}
+      >
+        {img ? (
           <img
+            className="menu-cat-promo__img"
             src={img}
             alt=""
             loading="lazy"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            decoding="async"
           />
+        ) : null}
+        <div className="menu-cat-promo__scrim" />
+        <div className="menu-cat-promo__copy">
+          <p className="menu-cat-promo__eyebrow">Category</p>
+          <p className="menu-cat-promo__title">{category.name}</p>
+          {description ? (
+            <p className="menu-cat-promo__desc">{description}</p>
+          ) : null}
         </div>
-      )}
-      <h2
-        className="section-accent"
-        style={{
-          margin: 0,
-          fontSize: '1.125rem',
-          fontWeight: 800,
-          color: 'var(--color-dark)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-        }}
-      >
-        <span
-          aria-hidden="true"
-          style={{
-            width: 4,
-            height: '1.1em',
-            borderRadius: 2,
-            background: 'var(--color-primary)',
-            flexShrink: 0,
-          }}
-        />
+      </div>
+
+      <h2 className="menu-cat-title section-accent">
+        <span className="menu-cat-title__bar" aria-hidden="true" />
         {category.name}
       </h2>
     </header>
