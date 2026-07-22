@@ -146,3 +146,23 @@ independently revertible; wastage + analytics are read-mostly; quotes are option
 - Analytics endpoints are read-only, date-bounded, and indexed; no heavy unbounded scans.
 - Clamp the waste factor so it can't produce absurd order quantities.
 - Do not rebuild Purchase Requests, Expenses, RestockIntelligence, or Supplier Intelligence — extend them.
+
+## Implementation notes
+- **3A quotes UI:** Plan asked for Admin Quotes expander on buying lines. Admin detail modal now has Quotes + “Buy from cheapest” (calls `mark-bought` with `from_quote_id`). Live POS buying still works without quotes (optional). Quotes table adds `selected_at` + `savings_laar` (no change to `purchase_request_items`) so savings analytics can sum cheapest-pick outcomes.
+- **Savings maths:** Prefer historical cheapest from `PurchaseRequestPriceHintService` (MVR→laari); if none, fall back to highest other quote on the line. Stored on the selected quote as `savings_laar`.
+- **3B route:** `GET /api/reports/procurement` under `permission:reports.financial` (finance domain). Expense date filters use `whereDate` for SQLite/MySQL parity. Price trend is date-bounded and limited to top movers (or a single `inventory_item_id`).
+- **3C CheckReorderPoints:** No direct change — `buildRestockRequestDraft` → `restockPlan()` reads `restock_include_waste` SiteSetting, so auto restock PRs pick up the effective rate when enabled. Waste contribution clamped to ≤ usage daily rate.
+- **Admin nav test:** Baseline updated for `/procurement-report` and previously missing `/shopping-lists`.
+- **Flake:** `ContentStudio.editors.test.tsx` “switching app tab…” occasionally times out at 5s; unrelated to Phase 3 (not changed here).
+
+## Build log
+| Step | Result |
+|---|---|
+| Branch | `claude/procurement-phase-3-plan` |
+| Commits | `19244751` 3A · `fed93a01` 3B · `0f9d8594` 3C · (dist+notes follow) |
+| Backend `pint` | pass |
+| `php artisan test --filter=Procurement` | 29 passed |
+| `RestockIntelligenceTest` + `WasteAwareReorderTest` | pass |
+| Admin `navConfig.test.ts` | pass after baseline update |
+| `./scripts/build-all.sh admin` | success → `backend/public/admin/` |
+| PR | not opened (per instructions) |
