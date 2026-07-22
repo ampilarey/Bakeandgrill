@@ -22,16 +22,21 @@ export function Spinner({ size = 24 }: { size?: number }) {
 }
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
-export function Card({ children, style }: { children: ReactNode; style?: React.CSSProperties }) {
+export function Card({
+  children, style, className,
+}: { children: ReactNode; style?: React.CSSProperties; className?: string }) {
   return (
-    <div style={{
-      background: '#fff',
-      border: '1px solid #E8E0D8',
-      borderRadius: 14,
-      padding: '1.25rem',
-      boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
-      ...style,
-    }}>
+    <div
+      className={className}
+      style={{
+        background: '#fff',
+        border: '1px solid #E8E0D8',
+        borderRadius: 14,
+        padding: '1.25rem',
+        boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
+        ...style,
+      }}
+    >
       {children}
     </div>
   );

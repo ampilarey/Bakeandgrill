@@ -373,25 +373,27 @@ export default function ServiceAvailabilityPage() {
   };
 
   return (
-    <div>
+    <div className="svc-avail-page">
       <PageHeader
         title="Service Availability"
-        subtitle="Pause or restore customer and internal services during maintenance. Every change is audited."
+        subtitle="Pause or restore services during maintenance. Every change is audited."
         action={
-          <Btn variant="secondary" onClick={() => void load()} disabled={loading}>
-            <RefreshCw size={16} /> Refresh
+          <Btn variant="secondary" onClick={() => void load()} disabled={loading} aria-label="Refresh">
+            <RefreshCw size={16} />
+            <span className="svc-avail-hide-mobile">Refresh</span>
           </Btn>
         }
       />
 
       {toast && (
         <div
+          className="svc-avail-toast"
           role="status"
           style={{
             position: 'fixed',
             bottom: 24,
             right: 24,
-            zIndex: 80,
+            zIndex: 'var(--z-toast)' as unknown as number,
             background: toast.type === 'ok' ? '#166534' : '#991b1b',
             color: '#fff',
             padding: '12px 16px',
@@ -412,101 +414,109 @@ export default function ServiceAvailabilityPage() {
         <Spinner />
       ) : (
         <>
-          {/* Summary */}
+          {/* Summary — uses .stat-grid so mobile stays a compact 2×2 */}
           <div
-            data-responsive-grid
+            className="stat-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-              gap: 12,
-              marginBottom: 16,
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 10,
+              marginBottom: 14,
             }}
           >
             <StatCard
               label="Open"
               value={String(summary.available)}
-              sub={`of ${summary.total} services`}
+              sub={`${summary.total} total`}
               accent="#16a34a"
               icon={CheckCircle2}
             />
             <StatCard
-              label="Blocked / paused"
+              label="Blocked"
               value={String(summary.blocked)}
-              sub={summary.blocked ? 'Customers may see a banner' : 'All clear'}
+              sub={summary.blocked ? 'Banner may show' : 'All clear'}
               accent={summary.blocked ? '#d97706' : '#9C8E7E'}
               icon={Pause}
             />
             <StatCard
               label="Scheduled"
               value={String(summary.scheduled)}
-              sub="Windows with starts_at set"
+              sub="Timed windows"
               accent="#2563eb"
               icon={Clock3}
             />
             <StatCard
-              label="Waiting SMS"
+              label="SMS queue"
               value={String(summary.waiting)}
-              sub="Restoration subscribers pending"
+              sub="Waiting to notify"
               accent={summary.waiting ? '#D4813A' : '#9C8E7E'}
               icon={Bell}
             />
           </div>
 
-          {/* Presets */}
-          <Card style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 12 }}>
-              <h3 style={sectionTitle}>Quick presets</h3>
-              <p style={sectionSub}>
-                Preview exactly which services change before anything is applied.
-              </p>
-            </div>
-            <div
-              data-responsive-grid
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: 10,
-              }}
-            >
-              {PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  disabled={presetBusy}
-                  onClick={() => void runPresetPreview(preset.id)}
+          {/* Presets — collapsible summary on mobile; always expanded on desktop */}
+          <Card style={{ marginBottom: 14, padding: 0, overflow: 'hidden' }}>
+            <details className="mobile-filters" open style={{ marginBottom: 0, border: 'none' }}>
+              <summary style={{ padding: '12px 14px' }}>Quick presets</summary>
+              <div className="mobile-filters-body" style={{ display: 'block', width: '100%', padding: '0 14px 14px' }}>
+                <p className="svc-avail-hide-mobile" style={{ ...sectionSub, margin: '0 0 10px' }}>
+                  Preview exactly which services change before anything is applied.
+                </p>
+                <div
+                  className="svc-avail-preset-list"
                   style={{
-                    textAlign: 'left',
-                    padding: '14px 16px',
-                    borderRadius: 12,
-                    border: preset.danger ? '1.5px solid #fca5a5' : '1.5px solid #E8E0D8',
-                    background: preset.danger ? '#fef2f2' : '#F8F6F3',
-                    cursor: presetBusy ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit',
-                    minHeight: 44,
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                    gap: 8,
+                    width: '100%',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    {preset.danger ? (
-                      <ShieldAlert size={16} color="#b91c1c" />
-                    ) : (
-                      <Pause size={16} color="#D4813A" />
-                    )}
-                    <span
+                  {PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className="svc-avail-preset-btn"
+                      disabled={presetBusy}
+                      onClick={() => void runPresetPreview(preset.id)}
                       style={{
-                        fontWeight: 700,
-                        fontSize: 14,
-                        color: preset.danger ? '#991b1b' : '#1C1408',
+                        textAlign: 'left',
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        border: preset.danger ? '1.5px solid #fca5a5' : '1.5px solid #E8E0D8',
+                        background: preset.danger ? '#fef2f2' : '#F8F6F3',
+                        cursor: presetBusy ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit',
+                        minHeight: 44,
+                        width: '100%',
                       }}
                     >
-                      {preset.label}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12.5, color: '#6B5D4F', lineHeight: 1.4 }}>
-                    {preset.description}
-                  </div>
-                </button>
-              ))}
-            </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                        {preset.danger ? (
+                          <ShieldAlert size={16} color="#b91c1c" />
+                        ) : (
+                          <Pause size={16} color="#D4813A" />
+                        )}
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 14,
+                            color: preset.danger ? '#991b1b' : '#1C1408',
+                          }}
+                        >
+                          {preset.label}
+                        </span>
+                      </div>
+                      <div
+                        className="svc-avail-preset-desc"
+                        style={{ fontSize: 12.5, color: '#6B5D4F', lineHeight: 1.4 }}
+                      >
+                        {preset.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </details>
           </Card>
 
           <ServiceSection
@@ -635,22 +645,23 @@ function ServiceSection({
   if (rows.length === 0) return null;
   return (
     <Card
+      className="svc-avail-section"
       style={{
-        marginBottom: 16,
+        marginBottom: 14,
         borderColor: warn ? '#fde68a' : undefined,
         background: warn ? '#fffbeb' : undefined,
       }}
     >
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ marginBottom: 12 }}>
         <h3 style={sectionTitle}>{title}</h3>
-        <p style={sectionSub}>{subtitle}</p>
+        <p className="svc-avail-hide-mobile" style={sectionSub}>{subtitle}</p>
       </div>
       <div
-        data-responsive-grid
+        className="svc-avail-list"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: 12,
+          gap: 10,
         }}
       >
         {rows.map((row) => (
@@ -688,6 +699,7 @@ function ServiceCard({
   const down = !row.resolved_available;
   return (
     <div
+      className="svc-avail-card"
       style={{
         background: '#fff',
         border: `1.5px solid ${down ? '#fecaca' : '#E8E0D8'}`,
@@ -696,56 +708,71 @@ function ServiceCard({
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        minHeight: 180,
+        minWidth: 0,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
-        <div>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: '#1C1408' }}>{meta.label}</div>
           <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{meta.affects}</div>
         </div>
         <Badge label={STATUS_LABEL[row.status]} color={STATUS_BADGE[row.status]} />
       </div>
 
-      <p style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.4, flex: 1 }}>
+      <p
+        className="svc-avail-card-blurb"
+        style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.4 }}
+      >
         {row.public_message?.trim() || meta.blurb}
       </p>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: '#6B5D4F' }}>
+      <div
+        className="svc-avail-chips"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: '#6B5D4F' }}
+      >
         <span style={chipStyle(down ? 'red' : 'green')}>
-          {down ? `Blocked · ${row.resolved_source}` : 'Resolved open'}
+          {down ? `Blocked · ${row.resolved_source}` : 'Open'}
         </span>
         {row.waiting_notify_count > 0 && (
           <span style={chipStyle('orange')}>
-            <Bell size={11} /> {row.waiting_notify_count} waiting SMS
+            <Bell size={11} /> {row.waiting_notify_count} SMS
           </span>
         )}
         {(row.starts_at || row.ends_at) && (
-          <span style={chipStyle('blue')}>
-            <Clock3 size={11} />
-            {row.starts_at ? formatWhen(row.starts_at) : '…'}
-            {' → '}
-            {row.ends_at ? formatWhen(row.ends_at) : '…'}
+          <span style={chipStyle('blue')} title={`${formatWhen(row.starts_at)} → ${formatWhen(row.ends_at)}`}>
+            <Clock3 size={11} /> Scheduled
           </span>
         )}
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
-        <Btn variant="ghost" small onClick={onEdit} disabled={busy} style={{ minHeight: 40 }}>
-          <Settings2 size={14} /> Edit
-        </Btn>
+      <div className="svc-avail-actions">
         {row.status === 'available' ? (
-          <Btn variant="secondary" small onClick={onPause} disabled={busy} style={{ minHeight: 40 }}>
+          <Btn
+            variant="secondary"
+            small
+            onClick={onPause}
+            disabled={busy}
+            data-primary-action="true"
+          >
             <Pause size={14} /> Pause
           </Btn>
         ) : (
-          <Btn variant="primary" small onClick={onRestore} disabled={busy} style={{ minHeight: 40 }}>
+          <Btn
+            variant="primary"
+            small
+            onClick={onRestore}
+            disabled={busy}
+            data-primary-action="true"
+          >
             <Play size={14} /> Restore
           </Btn>
         )}
+        <Btn variant="ghost" small onClick={onEdit} disabled={busy}>
+          <Settings2 size={14} /> Edit
+        </Btn>
         {row.waiting_notify_count > 0 && (
-          <Btn variant="secondary" small onClick={onNotify} disabled={busy} style={{ minHeight: 40 }}>
-            <Bell size={14} /> Send {row.waiting_notify_count} SMS
+          <Btn variant="secondary" small onClick={onNotify} disabled={busy}>
+            <Bell size={14} /> SMS ({row.waiting_notify_count})
           </Btn>
         )}
       </div>

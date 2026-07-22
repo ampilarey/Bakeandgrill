@@ -678,6 +678,109 @@ a { text-decoration: none; color: inherit; }
   .stat-grid {
     grid-template-columns: 1fr !important;
   }
+
+  /* Service Availability: keep a compact 2×2 summary (4 stacked cards is too tall) */
+  .svc-avail-page .stat-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── Service Availability — mobile ops layout ───────────────── */
+.svc-avail-page .svc-avail-toast {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-width: none;
+}
+
+.svc-avail-page .svc-avail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.svc-avail-page .svc-avail-actions > button {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 767px) {
+  .svc-avail-page .svc-avail-hide-mobile {
+    display: none !important;
+  }
+
+  .svc-avail-page .svc-avail-section {
+    padding: 12px !important;
+  }
+
+  .svc-avail-page .svc-avail-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .svc-avail-page .svc-avail-preset-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .svc-avail-page .svc-avail-card {
+    min-height: 0 !important;
+    padding: 12px !important;
+    gap: 8px !important;
+  }
+
+  .svc-avail-page .svc-avail-card-blurb {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .svc-avail-page .svc-avail-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .svc-avail-page .svc-avail-actions > button {
+    width: 100%;
+    min-height: 44px !important;
+    justify-content: center;
+  }
+
+  /* Primary Pause/Restore spans full width */
+  .svc-avail-page .svc-avail-actions > button[data-primary-action="true"] {
+    grid-column: 1 / -1;
+  }
+
+  .svc-avail-page .svc-avail-preset-btn {
+    width: 100%;
+    padding: 12px 14px !important;
+  }
+
+  .svc-avail-page .svc-avail-preset-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .svc-avail-page .svc-avail-chips {
+    gap: 4px !important;
+  }
+
+  .svc-avail-page .svc-avail-chips > span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Compact StatCards inside this page */
+  .svc-avail-page .stat-grid > div {
+    padding: 12px !important;
+    gap: 6px !important;
+  }
 }
 
 /* Z-index scale (prevents modal/sidebar conflicts) */
