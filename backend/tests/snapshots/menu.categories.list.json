@@ -51,7 +51,8 @@
                     "packaging_fee": "0.00",
                     "snoozed_until": null,
                     "packaging_fee_mode": "per_unit",
-                    "image_original_url": null
+                    "image_original_url": null,
+                    "thumb_url": null
                 }
             ]
         }
