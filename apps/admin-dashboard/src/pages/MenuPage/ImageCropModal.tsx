@@ -4,19 +4,23 @@ import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import { RotateCcw, RotateCw } from 'lucide-react';
 import { Btn } from '../../components/Layout';
-import { getCroppedMenuImage, MENU_IMAGE_ASPECT } from './cropImage';
+import { getCroppedMenuImage, MENU_IMAGE_ASPECT, MENU_IMAGE_HEIGHT, MENU_IMAGE_WIDTH } from './cropImage';
 
 type Props = {
   imageSrc: string;
   fileName?: string;
   title?: string;
+  hint?: string;
+  /** Crop frame aspect ratio (width / height). Default 4:3 menu tiles. */
+  aspect?: number;
+  outputWidth?: number;
+  outputHeight?: number;
   onCancel: () => void;
   onConfirm: (file: File) => void | Promise<void>;
 };
 
 /**
- * Fixed 4:3 crop + rotate so Image / Photos match menu & POS thumbnails.
- * Portaled above the item editor modal.
+ * Fixed-aspect crop + rotate. Portaled above the item/category editor modal.
  *
  * key={imageSrc} remounts fresh state when the photo changes. Do not reset
  * ready/crop pixels in a useEffect — React Strict Mode re-runs effects and
@@ -33,6 +37,10 @@ function ImageCropModalBody({
   imageSrc,
   fileName = 'menu-image.jpg',
   title = 'Edit menu photo',
+  hint = 'Drag, zoom, and rotate. Only the framed area is saved — this is what customers see on the menu and what cashiers see on POS.',
+  aspect = MENU_IMAGE_ASPECT,
+  outputWidth = MENU_IMAGE_WIDTH,
+  outputHeight = MENU_IMAGE_HEIGHT,
   onCancel,
   onConfirm,
 }: Props) {
@@ -59,7 +67,13 @@ function ImageCropModalBody({
     setBusy(true);
     setError('');
     try {
-      const file = await getCroppedMenuImage(imageSrc, croppedAreaPixels, fileName, rotation);
+      const file = await getCroppedMenuImage(
+        imageSrc,
+        croppedAreaPixels,
+        fileName,
+        rotation,
+        { width: outputWidth, height: outputHeight },
+      );
       await onConfirm(file);
     } catch (e) {
       setError((e as Error).message || 'Could not save the cropped photo.');
@@ -68,6 +82,7 @@ function ImageCropModalBody({
   };
 
   const canSave = mediaReady && !!croppedAreaPixels && !busy;
+  const cropperHeight = aspect >= 2 ? 240 : 320;
 
   return (
     <div
@@ -93,7 +108,7 @@ function ImageCropModalBody({
         borderRadius: 16,
         padding: 24,
         width: '100%',
-        maxWidth: 560,
+        maxWidth: aspect >= 2 ? 720 : 560,
         boxShadow: '0 20px 60px rgba(28,20,8,0.22)',
         maxHeight: '92vh',
         overflowY: 'auto',
@@ -115,14 +130,13 @@ function ImageCropModalBody({
         </div>
 
         <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.45 }}>
-          Drag, zoom, and rotate. Only the framed area is saved — this is what customers see on
-          the menu and what cashiers see on POS.
+          {hint}
         </p>
 
         <div style={{
           position: 'relative',
           width: '100%',
-          height: 320,
+          height: cropperHeight,
           background: '#1C1408',
           borderRadius: 12,
           overflow: 'hidden',
@@ -142,7 +156,7 @@ function ImageCropModalBody({
             crop={crop}
             zoom={zoom}
             rotation={rotation}
-            aspect={MENU_IMAGE_ASPECT}
+            aspect={aspect}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onRotationChange={setRotation}

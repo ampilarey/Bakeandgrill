@@ -1948,9 +1948,9 @@ textarea.field-input {
 .menu-cat-promo {
   position: relative;
   width: 100%;
-  aspect-ratio: 2.35 / 1;
-  min-height: 112px;
-  max-height: 180px;
+  aspect-ratio: 7 / 3;
+  min-height: 100px;
+  max-height: min(28vw, 200px);
   border-radius: var(--radius-xl, 14px);
   overflow: hidden;
   margin-bottom: 0.65rem;
@@ -2039,21 +2039,30 @@ textarea.field-input {
 
 @media (max-width: 479px) {
   .menu-cat-promo {
-    aspect-ratio: 2.1 / 1;
-    min-height: 100px;
-    max-height: 148px;
+    aspect-ratio: 7 / 3;
+    min-height: 92px;
+    max-height: 140px;
     border-radius: var(--radius-lg, 12px);
   }
 
   .menu-cat-promo__copy {
-    padding: 0.7rem 0.85rem;
+    padding: 0.65rem 0.8rem;
+  }
+
+  .menu-cat-promo__title {
+    font-size: 1.05rem;
+  }
+
+  .menu-cat-promo__desc {
+    -webkit-line-clamp: 1;
   }
 }
 
 @media (min-width: 768px) {
   .menu-cat-promo {
-    aspect-ratio: 2.6 / 1;
-    max-height: 200px;
+    aspect-ratio: 7 / 3;
+    min-height: 128px;
+    max-height: 220px;
   }
 }
 

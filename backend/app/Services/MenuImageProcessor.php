@@ -11,7 +11,8 @@ use RuntimeException;
 /**
  * Menu media: public crop + optional high-res master for re-edit / reuse.
  *
- * - Crop (POS/website): 1200×900 JPEG @ 82
+ * - Item crop (POS/website cards): 1200×900 JPEG @ 82 (4:3)
+ * - Category banner (order-app menu): 1400×600 JPEG @ 82 (7:3 ≈ ZUS-style)
  * - Master (admin re-crop): fit within 3200px, aspect preserved, JPEG @ 90
  */
 class MenuImageProcessor
@@ -19,6 +20,11 @@ class MenuImageProcessor
     public const WIDTH = 1200;
 
     public const HEIGHT = 900;
+
+    /** Wide category promo for the order-app menu (matches CSS aspect-ratio 7/3). */
+    public const BANNER_WIDTH = 1400;
+
+    public const BANNER_HEIGHT = 600;
 
     public const JPEG_QUALITY = 82;
 
@@ -29,9 +35,12 @@ class MenuImageProcessor
     /**
      * @return string Relative storage path (e.g. menu/uuid.jpg)
      */
-    public function storeProcessed(UploadedFile $file, string $directory): string
+    public function storeProcessed(UploadedFile $file, string $directory, ?int $width = null, ?int $height = null): string
     {
-        return $this->writeBinary($this->processToJpeg($file), $directory);
+        return $this->writeBinary(
+            $this->processToJpeg($file, $width ?? self::WIDTH, $height ?? self::HEIGHT),
+            $directory,
+        );
     }
 
     /**
@@ -44,14 +53,12 @@ class MenuImageProcessor
         return $this->writeBinary($this->processMasterJpeg($file), $directory);
     }
 
-    public function processToJpeg(UploadedFile $file): string
+    public function processToJpeg(UploadedFile $file, int $targetW = self::WIDTH, int $targetH = self::HEIGHT): string
     {
         $image = $this->loadUploaded($file);
 
         try {
             [$srcW, $srcH] = $this->dimensions($image);
-            $targetW = self::WIDTH;
-            $targetH = self::HEIGHT;
             $targetAspect = $targetW / $targetH;
             $srcAspect = $srcW / $srcH;
 
@@ -186,7 +193,7 @@ class MenuImageProcessor
         return $binary;
     }
 
-    private function createImageResource(string $path, string $mime): \GdImage|null
+    private function createImageResource(string $path, string $mime): ?\GdImage
     {
         $mime = strtolower($mime);
 
@@ -198,7 +205,7 @@ class MenuImageProcessor
         };
     }
 
-    private function createFromExtension(string $path): \GdImage|null
+    private function createFromExtension(string $path): ?\GdImage
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 

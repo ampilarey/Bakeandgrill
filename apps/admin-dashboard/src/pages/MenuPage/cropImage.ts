@@ -5,19 +5,28 @@ export const MENU_IMAGE_ASPECT = 4 / 3;
 
 /**
  * Canonical thumbnail size saved for POS + website.
- * ~2× typical card width — sharp on retina, small enough for fast grids.
  * Must stay in sync with App\Services\MenuImageProcessor.
  */
 export const MENU_IMAGE_WIDTH = 1200;
 export const MENU_IMAGE_HEIGHT = 900;
+
+/** Category menu promo (ZUS-style). Matches order-app CSS aspect-ratio 7/3. */
+export const CATEGORY_BANNER_ASPECT = 7 / 3;
+export const CATEGORY_BANNER_WIDTH = 1400;
+export const CATEGORY_BANNER_HEIGHT = 600;
+
 const JPEG_QUALITY = 0.82;
+
+export type CropOutputSize = {
+  width: number;
+  height: number;
+};
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.addEventListener('load', () => resolve(img));
     img.addEventListener('error', () => reject(new Error('Could not load image for cropping.')));
-    // data: / blob: must not set crossOrigin; only remote http(s) need it
     if (src.startsWith('http://') || src.startsWith('https://')) {
       img.crossOrigin = 'anonymous';
     }
@@ -46,13 +55,15 @@ function createRotatedSource(
 }
 
 /**
- * Crop + optional rotate, then always export as 1200×900 JPEG.
+ * Crop + optional rotate, then export as JPEG at the given size
+ * (default 1200×900 for menu items).
  */
 export async function getCroppedMenuImage(
   imageSrc: string,
   pixelCrop: Area,
   fileName = 'menu-image.jpg',
   rotation = 0,
+  output: CropOutputSize = { width: MENU_IMAGE_WIDTH, height: MENU_IMAGE_HEIGHT },
 ): Promise<File> {
   const image = await loadImage(imageSrc);
   const rot = ((rotation % 360) + 360) % 360;
@@ -66,12 +77,12 @@ export async function getCroppedMenuImage(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas is not supported in this browser.');
 
-  canvas.width = MENU_IMAGE_WIDTH;
-  canvas.height = MENU_IMAGE_HEIGHT;
+  canvas.width = output.width;
+  canvas.height = output.height;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, MENU_IMAGE_WIDTH, MENU_IMAGE_HEIGHT);
+  ctx.fillRect(0, 0, output.width, output.height);
   ctx.drawImage(
     source,
     pixelCrop.x,
@@ -80,8 +91,8 @@ export async function getCroppedMenuImage(
     pixelCrop.height,
     0,
     0,
-    MENU_IMAGE_WIDTH,
-    MENU_IMAGE_HEIGHT,
+    output.width,
+    output.height,
   );
 
   const blob = await new Promise<Blob>((resolve, reject) => {

@@ -2,21 +2,77 @@ import { useRef, useState } from 'react';
 import { Crop, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/Layout';
+import {
+  CATEGORY_BANNER_ASPECT,
+  CATEGORY_BANNER_HEIGHT,
+  CATEGORY_BANNER_WIDTH,
+  MENU_IMAGE_ASPECT,
+  MENU_IMAGE_HEIGHT,
+  MENU_IMAGE_WIDTH,
+} from './cropImage';
 import { ImageCropModal } from './ImageCropModal';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
 type ImageUrls = { url: string; original_url: string };
 
+type Variant = 'item' | 'banner';
+
+const VARIANT_CONFIG: Record<Variant, {
+  purpose: 'menu' | 'banner';
+  aspect: number;
+  width: number;
+  height: number;
+  title: string;
+  hint: string;
+  help: string;
+  previewAlt: string;
+  previewStyle: React.CSSProperties;
+}> = {
+  item: {
+    purpose: 'menu',
+    aspect: MENU_IMAGE_ASPECT,
+    width: MENU_IMAGE_WIDTH,
+    height: MENU_IMAGE_HEIGHT,
+    title: 'Edit item image',
+    hint: 'Drag, zoom, and rotate. Only the framed area is saved — this is what customers see on the menu and what cashiers see on POS.',
+    help: 'Menu/POS show a 1200×900 (4:3) crop. The full photo is kept on the server so you can re-crop later.',
+    previewAlt: 'Item thumbnail preview',
+    previewStyle: {
+      width: 160, height: 120, objectFit: 'cover', borderRadius: 8,
+      border: '1px solid #E8E0D8', background: '#F8F6F3',
+    },
+  },
+  banner: {
+    purpose: 'banner',
+    aspect: CATEGORY_BANNER_ASPECT,
+    width: CATEGORY_BANNER_WIDTH,
+    height: CATEGORY_BANNER_HEIGHT,
+    title: 'Edit category menu banner',
+    hint: 'Wide 7:3 crop for the order-app category promo. Keep the subject toward the centre-left so the title overlay stays readable on phones and desktop.',
+    help: 'Order-app category banner — 1400×600 (7:3). Fits mobile and desktop. Full photo kept for re-crop.',
+    previewAlt: 'Category banner preview',
+    previewStyle: {
+      width: '100%', maxWidth: 520, aspectRatio: '7 / 3', height: 'auto',
+      objectFit: 'cover', borderRadius: 12, border: '1px solid #E8E0D8', background: '#F8F6F3',
+      display: 'block',
+    },
+  },
+};
+
 export function ImageUploadField({
   value,
   originalValue = '',
   onChange,
+  variant = 'item',
 }: {
   value: string;
   /** Full-frame master for re-crop; omit for fields that only store the public crop. */
   originalValue?: string;
   onChange: (next: ImageUrls) => void;
+  /** `banner` = wide category promo; `item` = 4:3 menu/POS tile. */
+  variant?: Variant;
 }) {
+  const cfg = VARIANT_CONFIG[variant];
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -57,9 +113,8 @@ export function ImageUploadField({
     setUploadError('');
     setUploading(true);
     try {
-      // Re-crop from the stored master (full photo), not the 1200×900 public crop.
       const src = await prepareImageForCrop(master);
-      setCropName('menu-image.jpg');
+      setCropName(variant === 'banner' ? 'category-banner.jpg' : 'menu-image.jpg');
       setPendingMaster(null);
       setCropSrc((prev) => {
         revokeCropSrc(prev);
@@ -76,7 +131,7 @@ export function ImageUploadField({
     setUploading(true);
     setUploadError('');
     try {
-      const res = await uploadMenuImage(file, pendingMaster ?? undefined);
+      const res = await uploadMenuImage(file, pendingMaster ?? undefined, cfg.purpose);
       if (!res.url) throw new Error('Upload succeeded but no image URL was returned.');
       onChange({
         url: res.url,
@@ -146,7 +201,7 @@ export function ImageUploadField({
         />
       </div>
       <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>
-        Menu/POS show a 1200×900 crop. The full photo is kept on the server so you can re-crop later.
+        {cfg.help}
         {originalValue.trim() ? ' Master saved ✓' : ''}
       </p>
       {uploadError && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{uploadError}</p>}
@@ -154,8 +209,8 @@ export function ImageUploadField({
         <img
           key={previewKey}
           src={previewSrc}
-          alt="Item thumbnail preview"
-          style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8', background: '#F8F6F3' }}
+          alt={cfg.previewAlt}
+          style={cfg.previewStyle}
           onError={() => setUploadError('Preview failed to load. On the server run: php artisan storage:link')}
         />
       )}
@@ -163,7 +218,11 @@ export function ImageUploadField({
         <ImageCropModal
           imageSrc={cropSrc}
           fileName={cropName}
-          title="Edit item image"
+          title={cfg.title}
+          hint={cfg.hint}
+          aspect={cfg.aspect}
+          outputWidth={cfg.width}
+          outputHeight={cfg.height}
           onCancel={closeCropper}
           onConfirm={uploadCropped}
         />

@@ -248,10 +248,12 @@ export async function toggleItemAvailability(id: number): Promise<{ item: MenuIt
 export async function uploadMenuImage(
   file: File,
   original?: File,
-): Promise<{ url: string; original_url?: string | null }> {
+  purpose: 'menu' | 'banner' = 'menu',
+): Promise<{ url: string; original_url?: string | null; width?: number; height?: number }> {
   const formData = new FormData();
   formData.append('image', file);
   if (original) formData.append('original', original);
+  if (purpose !== 'menu') formData.append('purpose', purpose);
   return req('/admin/upload-image', { method: 'POST', body: formData });
 }
 
