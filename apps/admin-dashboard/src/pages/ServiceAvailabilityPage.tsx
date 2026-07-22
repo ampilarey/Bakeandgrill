@@ -1,63 +1,243 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Save } from 'lucide-react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  AlertTriangle,
+  Bell,
+  CheckCircle2,
+  Clock3,
+  History,
+  Loader2,
+  Pause,
+  Play,
+  RefreshCw,
+  Settings2,
+  ShieldAlert,
+} from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, Btn, Card } from '../components/SharedUI';
+import {
+  Badge,
+  Btn,
+  Card,
+  ErrorMsg,
+  Input,
+  Modal,
+  ModalActions,
+  PageHeader,
+  Select,
+  Spinner,
+  StatCard,
+} from '../components/SharedUI';
 import {
   applyPreset,
+  getServiceHistory,
   listServiceStates,
   notifyRestoration,
   previewPreset,
   restoreService,
   updateServiceState,
+  type PresetPreview,
+  type ServiceHistoryResponse,
+  type ServiceReasonType,
   type ServiceStateRow,
   type ServiceStatus,
-  type PresetPreview,
+  type ServiceStateUpdatePayload,
 } from '../api';
+
+// ── Catalog (human labels — mirrors config/service_availability.php) ─────────
+
+type ServiceMeta = {
+  label: string;
+  blurb: string;
+  affects: string;
+};
+
+const SERVICE_META: Record<string, ServiceMeta> = {
+  online_ordering: {
+    label: 'Online ordering',
+    blurb: 'Umbrella pause for pickup + delivery + checkout.',
+    affects: 'Order app',
+  },
+  online_pickup: {
+    label: 'Pickup orders',
+    blurb: 'New customer pickup orders.',
+    affects: 'Order app · Pickup',
+  },
+  online_delivery: {
+    label: 'Delivery orders',
+    blurb: 'New customer delivery orders. Existing jobs keep running.',
+    affects: 'Order app · Delivery',
+  },
+  online_checkout: {
+    label: 'Checkout',
+    blurb: 'Browse-only mode — menu stays up, place-order is blocked.',
+    affects: 'Order app',
+  },
+  online_payment: {
+    label: 'Online payment',
+    blurb: 'Blocks new BML/Stripe initiation. COD and callbacks stay.',
+    affects: 'Order app · Payments',
+  },
+  catering_inquiry: {
+    label: 'Catering inquiries',
+    blurb: 'New catering / event request forms.',
+    affects: 'Website · Order app',
+  },
+  customer_registration: {
+    label: 'New registrations',
+    blurb: 'New accounts & guest sessions. Login and tracking stay open.',
+    affects: 'Order app · Auth',
+  },
+  marketing_site: {
+    label: 'Marketing website',
+    blurb: 'Rare: serves a branded maintenance page instead of the site.',
+    affects: 'bakeandgrill.mv',
+  },
+  pos_sales: {
+    label: 'POS sales',
+    blurb: 'Blocks new POS tickets only. Settle / print stay available.',
+    affects: 'POS',
+  },
+  kds_operations: {
+    label: 'KDS operations',
+    blurb: 'Blocks kitchen state changes. Board remains readable.',
+    affects: 'KDS',
+  },
+  delivery_operations: {
+    label: 'Delivery dispatch',
+    blurb: 'Blocks driver assign / driver writes. In-flight jobs continue.',
+    affects: 'Delivery app',
+  },
+  emergency_write_lock: {
+    label: 'Emergency write lock',
+    blurb: 'Master internal kill switch. Prefer the Emergency lockdown preset.',
+    affects: 'POS · KDS · Delivery',
+  },
+};
 
 const STATUS_LABEL: Record<ServiceStatus, string> = {
   available: 'Available',
-  operational_pause: 'Operational pause',
-  scheduled_maintenance: 'Scheduled maintenance',
+  operational_pause: 'Paused',
+  scheduled_maintenance: 'Scheduled',
   unavailable: 'Unavailable',
-  emergency_disabled: 'Emergency disabled',
+  emergency_disabled: 'Emergency',
 };
 
-const STATUS_COLORS: Record<ServiceStatus, { bg: string; fg: string }> = {
-  available: { bg: '#dcfce7', fg: '#166534' },
-  operational_pause: { bg: '#fef3c7', fg: '#92400e' },
-  scheduled_maintenance: { bg: '#dbeafe', fg: '#1e40af' },
-  unavailable: { bg: '#fee2e2', fg: '#991b1b' },
-  emergency_disabled: { bg: '#450a0a', fg: '#fecaca' },
+const STATUS_BADGE: Record<ServiceStatus, string> = {
+  available: 'green',
+  operational_pause: 'yellow',
+  scheduled_maintenance: 'blue',
+  unavailable: 'red',
+  emergency_disabled: 'red',
 };
 
-const PRESETS: Array<{ id: string; label: string; description: string; danger?: boolean }> = [
-  { id: 'pause_all_online_ordering', label: 'Pause all online ordering', description: 'Umbrella + pickup + delivery + checkout → operational pause' },
-  { id: 'pause_delivery_only', label: 'Pause delivery only', description: 'Delivery paused; pickup and checkout stay open' },
-  { id: 'public_transaction_maintenance', label: 'Public transaction maintenance', description: 'Blocks all public transactions; marketing site stays up' },
-  { id: 'emergency_lockdown', label: 'Emergency lockdown', description: 'Owner-only: disables POS, KDS, delivery ops, and every public write path', danger: true },
+const REASON_OPTIONS: Array<{ value: ServiceReasonType | ''; label: string }> = [
+  { value: '', label: 'No reason set' },
+  { value: 'operational_pause', label: 'Operational pause' },
+  { value: 'technical_maintenance', label: 'Technical maintenance' },
+  { value: 'payment_issue', label: 'Payment issue' },
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'emergency', label: 'Emergency' },
 ];
 
-function StatusChip({ status }: { status: ServiceStatus }) {
-  const c = STATUS_COLORS[status];
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 10px',
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 600,
-        background: c.bg,
-        color: c.fg,
-      }}
-    >
-      {status === 'available' ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
-      {STATUS_LABEL[status]}
-    </span>
-  );
+const STATUS_OPTIONS: Array<{ value: ServiceStatus; label: string }> = [
+  { value: 'available', label: 'Available' },
+  { value: 'operational_pause', label: 'Operational pause' },
+  { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
+  { value: 'unavailable', label: 'Unavailable' },
+  { value: 'emergency_disabled', label: 'Emergency disabled' },
+];
+
+const PRESETS: Array<{
+  id: string;
+  label: string;
+  description: string;
+  danger?: boolean;
+}> = [
+  {
+    id: 'pause_all_online_ordering',
+    label: 'Pause all online ordering',
+    description: 'Pickup, delivery, and checkout pause together. Marketing site stays up.',
+  },
+  {
+    id: 'pause_delivery_only',
+    label: 'Pause delivery only',
+    description: 'Delivery paused — pickup and checkout remain open.',
+  },
+  {
+    id: 'public_transaction_maintenance',
+    label: 'Public transaction maintenance',
+    description: 'Blocks public checkout / payment / catering. Site & tracking stay up.',
+  },
+  {
+    id: 'emergency_lockdown',
+    label: 'Emergency lockdown',
+    description: 'Owner only. Disables POS, KDS, delivery ops, and public writes.',
+    danger: true,
+  },
+];
+
+const HIGH_IMPACT_KEYS = new Set([
+  'pos_sales',
+  'kds_operations',
+  'delivery_operations',
+  'emergency_write_lock',
+]);
+
+function metaFor(key: string): ServiceMeta {
+  return SERVICE_META[key] ?? {
+    label: key.replace(/_/g, ' '),
+    blurb: '',
+    affects: key,
+  };
 }
+
+function needsTypedConfirm(key: string, status: ServiceStatus): boolean {
+  return status === 'emergency_disabled' || (HIGH_IMPACT_KEYS.has(key) && status !== 'available');
+}
+
+function formatWhen(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+/** Convert API ISO → value for <input type="datetime-local"> */
+function toLocalInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromLocalInput(local: string): string | null {
+  if (!local.trim()) return null;
+  const d = new Date(local);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function defaultPauseMessage(key: string): string {
+  const defaults: Record<string, string> = {
+    online_ordering: 'Online ordering is temporarily unavailable — please call us or visit us.',
+    online_checkout: 'Online ordering is temporarily unavailable — please call us or visit us.',
+    online_delivery: 'Delivery is temporarily unavailable — pickup is still available.',
+    online_pickup: 'Pickup orders are temporarily paused.',
+    online_payment: 'Online payment is temporarily unavailable. Cash on collection is still available.',
+    catering_inquiry: 'Catering inquiries are temporarily paused.',
+    customer_registration: 'New account signups are temporarily paused.',
+    marketing_site: 'Our website is temporarily down for maintenance. Please call us.',
+  };
+  return defaults[key] ?? `${metaFor(key).label} is temporarily unavailable.`;
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+type Toast = { msg: string; type: 'ok' | 'err' };
 
 export default function ServiceAvailabilityPage() {
   usePageTitle('Service Availability');
@@ -66,8 +246,19 @@ export default function ServiceAvailabilityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+
   const [presetPreview, setPresetPreview] = useState<PresetPreview | null>(null);
   const [presetBusy, setPresetBusy] = useState(false);
+  const [presetConfirmText, setPresetConfirmText] = useState('');
+
+  const [editing, setEditing] = useState<ServiceStateRow | null>(null);
+  const [notifyTarget, setNotifyTarget] = useState<ServiceStateRow | null>(null);
+
+  const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
+    setToast({ msg, type });
+    window.setTimeout(() => setToast(null), 3500);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -92,55 +283,54 @@ export default function ServiceAvailabilityPage() {
     return { publicRows, internalRows };
   }, [rows]);
 
-  const flipStatus = async (row: ServiceStateRow, next: ServiceStatus) => {
+  const summary = useMemo(() => {
+    const available = rows.filter((r) => r.resolved_available).length;
+    const blocked = rows.filter((r) => !r.resolved_available).length;
+    const waiting = rows.reduce((n, r) => n + (r.waiting_notify_count || 0), 0);
+    const scheduled = rows.filter(
+      (r) => r.status === 'scheduled_maintenance' || (!!r.starts_at && r.status !== 'available'),
+    ).length;
+    return { available, blocked, waiting, scheduled, total: rows.length };
+  }, [rows]);
+
+  const quickPause = async (row: ServiceStateRow) => {
     setBusyKey(row.service_key);
     try {
-      const highImpact = ['pos_sales', 'kds_operations', 'delivery_operations', 'emergency_write_lock'].includes(row.service_key)
-        || next === 'emergency_disabled';
-      const confirmation = highImpact
-        ? window.prompt('Type EMERGENCY LOCKDOWN to confirm this high-impact change:') ?? ''
-        : undefined;
-      if (highImpact && confirmation?.toUpperCase() !== 'EMERGENCY LOCKDOWN') {
+      const payload: ServiceStateUpdatePayload = {
+        status: 'operational_pause',
+        reason_type: 'operational_pause',
+        public_message: row.public_message || defaultPauseMessage(row.service_key),
+        notify_enabled: true,
+      };
+      if (needsTypedConfirm(row.service_key, 'operational_pause')) {
+        // Internal keys require typed confirm — open the editor instead.
+        setEditing(row);
+        showToast('Confirm this high-impact change in the editor.', 'err');
         return;
       }
-      await updateServiceState(row.service_key, {
-        status: next,
-        confirmation,
-      });
+      await updateServiceState(row.service_key, payload);
+      showToast(`${metaFor(row.service_key).label} paused.`);
       await load();
     } catch (e) {
-      alert(`Failed to update ${row.service_key}: ${(e as Error).message}`);
+      showToast((e as Error).message ?? 'Pause failed', 'err');
     } finally {
       setBusyKey(null);
     }
   };
 
-  const restore = async (row: ServiceStateRow) => {
+  const quickRestore = async (row: ServiceStateRow) => {
     setBusyKey(row.service_key);
     try {
       await restoreService(row.service_key);
-      await load();
+      showToast(`${metaFor(row.service_key).label} restored.`);
+      const refreshed = await listServiceStates();
+      setRows(refreshed.data);
+      const next = refreshed.data.find((r) => r.service_key === row.service_key);
+      if (next && next.waiting_notify_count > 0) {
+        setNotifyTarget(next);
+      }
     } catch (e) {
-      alert(`Restore failed: ${(e as Error).message}`);
-    } finally {
-      setBusyKey(null);
-    }
-  };
-
-  const dispatchNotify = async (row: ServiceStateRow) => {
-    const count = row.waiting_notify_count;
-    if (!count) return;
-    if (!window.confirm(`Send ${count} restoration SMS for ${row.service_key}?`)) return;
-    setBusyKey(row.service_key);
-    try {
-      const res = await notifyRestoration(
-        row.service_key,
-        row.last_closed_incident_id ?? undefined,
-      );
-      alert(`Dispatched ${res.dispatched} SMS notification(s).`);
-      await load();
-    } catch (e) {
-      alert(`Notify failed: ${(e as Error).message}`);
+      showToast((e as Error).message ?? 'Restore failed', 'err');
     } finally {
       setBusyKey(null);
     }
@@ -148,11 +338,12 @@ export default function ServiceAvailabilityPage() {
 
   const runPresetPreview = async (preset: string) => {
     setPresetBusy(true);
+    setPresetConfirmText('');
     try {
       const preview = await previewPreset(preset);
       setPresetPreview(preview);
     } catch (e) {
-      alert(`Preview failed: ${(e as Error).message}`);
+      showToast((e as Error).message ?? 'Preview failed', 'err');
     } finally {
       setPresetBusy(false);
     }
@@ -160,17 +351,22 @@ export default function ServiceAvailabilityPage() {
 
   const applyPresetNow = async () => {
     if (!presetPreview) return;
-    const confirmed = window.confirm(
-      `Apply preset "${presetPreview.preset}"? ${presetPreview.changes.length} services will change.`,
-    );
-    if (!confirmed) return;
+    const isEmergency = presetPreview.preset === 'emergency_lockdown';
+    if (isEmergency && presetConfirmText.trim().toUpperCase() !== 'EMERGENCY LOCKDOWN') {
+      showToast('Type EMERGENCY LOCKDOWN to confirm.', 'err');
+      return;
+    }
     setPresetBusy(true);
     try {
-      await applyPreset(presetPreview.preset);
+      await applyPreset(
+        presetPreview.preset,
+        isEmergency ? 'Emergency lockdown from admin' : 'Preset applied from admin',
+      );
       setPresetPreview(null);
+      showToast('Preset applied.');
       await load();
     } catch (e) {
-      alert(`Apply failed: ${(e as Error).message}`);
+      showToast((e as Error).message ?? 'Apply failed', 'err');
     } finally {
       setPresetBusy(false);
     }
@@ -180,188 +376,839 @@ export default function ServiceAvailabilityPage() {
     <div>
       <PageHeader
         title="Service Availability"
-        subtitle="Toggle customer and internal services during maintenance or incidents. Every change is audited."
+        subtitle="Pause or restore customer and internal services during maintenance. Every change is audited."
         action={
-          <Btn variant="secondary" onClick={() => void load()}>
+          <Btn variant="secondary" onClick={() => void load()} disabled={loading}>
             <RefreshCw size={16} /> Refresh
           </Btn>
         }
       />
 
-      {error && (
-        <Card style={{ marginBottom: 16, background: '#fef2f2', borderColor: '#fecaca' }}>
-          <div style={{ color: '#991b1b' }}>{error}</div>
-        </Card>
-      )}
-
-      <Card style={{ marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 16, marginBottom: 8 }}>Presets</h3>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {PRESETS.map((preset) => (
-            <Btn
-              key={preset.id}
-              variant={preset.danger ? 'danger' : 'secondary'}
-              onClick={() => void runPresetPreview(preset.id)}
-              disabled={presetBusy}
-              title={preset.description}
-            >
-              {preset.label}
-            </Btn>
-          ))}
+      {toast && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 80,
+            background: toast.type === 'ok' ? '#166534' : '#991b1b',
+            color: '#fff',
+            padding: '12px 16px',
+            borderRadius: 12,
+            fontSize: 14,
+            fontWeight: 600,
+            boxShadow: '0 8px 24px rgba(28,20,8,0.18)',
+            maxWidth: 360,
+          }}
+        >
+          {toast.msg}
         </div>
-      </Card>
-
-      {presetPreview && (
-        <Card style={{ marginBottom: 16, background: '#fef9c3', borderColor: '#facc15' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12 }}>
-            <div>
-              <h4 style={{ margin: 0, fontSize: 15 }}>Preview: {presetPreview.preset}</h4>
-              <ul style={{ margin: '8px 0', paddingInlineStart: 20 }}>
-                {presetPreview.changes.map((c) => (
-                  <li key={c.service_key}>
-                    <code>{c.service_key}</code> → <strong>{c.target_status}</strong>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="ghost" onClick={() => setPresetPreview(null)} disabled={presetBusy}>Cancel</Btn>
-              <Btn onClick={() => void applyPresetNow()} disabled={presetBusy}>
-                {presetBusy ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                Apply preset
-              </Btn>
-            </div>
-          </div>
-        </Card>
       )}
 
-      {loading ? (
-        <div style={{ padding: 24, color: '#64748b' }}>Loading…</div>
+      {error && <ErrorMsg message={error} />}
+
+      {loading && rows.length === 0 ? (
+        <Spinner />
       ) : (
         <>
-          <ServiceGroupCard
-            title="Public services"
-            subtitle="Customer-facing flows"
+          {/* Summary */}
+          <div
+            data-responsive-grid
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
+            <StatCard
+              label="Open"
+              value={String(summary.available)}
+              sub={`of ${summary.total} services`}
+              accent="#16a34a"
+              icon={CheckCircle2}
+            />
+            <StatCard
+              label="Blocked / paused"
+              value={String(summary.blocked)}
+              sub={summary.blocked ? 'Customers may see a banner' : 'All clear'}
+              accent={summary.blocked ? '#d97706' : '#9C8E7E'}
+              icon={Pause}
+            />
+            <StatCard
+              label="Scheduled"
+              value={String(summary.scheduled)}
+              sub="Windows with starts_at set"
+              accent="#2563eb"
+              icon={Clock3}
+            />
+            <StatCard
+              label="Waiting SMS"
+              value={String(summary.waiting)}
+              sub="Restoration subscribers pending"
+              accent={summary.waiting ? '#D4813A' : '#9C8E7E'}
+              icon={Bell}
+            />
+          </div>
+
+          {/* Presets */}
+          <Card style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 12 }}>
+              <h3 style={sectionTitle}>Quick presets</h3>
+              <p style={sectionSub}>
+                Preview exactly which services change before anything is applied.
+              </p>
+            </div>
+            <div
+              data-responsive-grid
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 10,
+              }}
+            >
+              {PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  disabled={presetBusy}
+                  onClick={() => void runPresetPreview(preset.id)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '14px 16px',
+                    borderRadius: 12,
+                    border: preset.danger ? '1.5px solid #fca5a5' : '1.5px solid #E8E0D8',
+                    background: preset.danger ? '#fef2f2' : '#F8F6F3',
+                    cursor: presetBusy ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit',
+                    minHeight: 44,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    {preset.danger ? (
+                      <ShieldAlert size={16} color="#b91c1c" />
+                    ) : (
+                      <Pause size={16} color="#D4813A" />
+                    )}
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 14,
+                        color: preset.danger ? '#991b1b' : '#1C1408',
+                      }}
+                    >
+                      {preset.label}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: '#6B5D4F', lineHeight: 1.4 }}>
+                    {preset.description}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          <ServiceSection
+            title="Customer-facing"
+            subtitle="Order app, payments, catering, and the marketing site"
             rows={grouped.publicRows}
-            onFlip={flipStatus}
-            onRestore={restore}
-            onNotify={dispatchNotify}
             busyKey={busyKey}
+            onEdit={setEditing}
+            onPause={(r) => void quickPause(r)}
+            onRestore={(r) => void quickRestore(r)}
+            onNotify={setNotifyTarget}
           />
-          <ServiceGroupCard
-            title="Internal services (owner only)"
-            subtitle="POS, KDS, delivery ops, emergency master switch"
+
+          <ServiceSection
+            title="Internal (owner)"
+            subtitle="POS, KDS, and delivery dispatch — emergency use only. Admin panel is never locked out."
             rows={grouped.internalRows}
-            onFlip={flipStatus}
-            onRestore={restore}
-            onNotify={dispatchNotify}
             busyKey={busyKey}
+            onEdit={setEditing}
+            onPause={(r) => void quickPause(r)}
+            onRestore={(r) => void quickRestore(r)}
+            onNotify={setNotifyTarget}
+            warn
           />
         </>
+      )}
+
+      {presetPreview && (
+        <Modal
+          title={`Preview: ${PRESETS.find((p) => p.id === presetPreview.preset)?.label ?? presetPreview.preset}`}
+          onClose={() => !presetBusy && setPresetPreview(null)}
+          maxWidth={520}
+        >
+          <p style={{ margin: '0 0 12px', fontSize: 14, color: '#6B5D4F' }}>
+            These services will change if you apply this preset:
+          </p>
+          <ul style={{ margin: '0 0 16px', paddingInlineStart: 18, fontSize: 14 }}>
+            {presetPreview.changes.map((c) => (
+              <li key={c.service_key} style={{ marginBottom: 6 }}>
+                <strong>{metaFor(c.service_key).label}</strong>
+                <span style={{ color: '#9C8E7E' }}> ({c.service_key})</span>
+                {' → '}
+                <Badge label={STATUS_LABEL[c.target_status]} color={STATUS_BADGE[c.target_status]} />
+              </li>
+            ))}
+          </ul>
+          {presetPreview.preset === 'emergency_lockdown' && (
+            <div style={{ marginBottom: 12 }}>
+              <Input
+                label='Type EMERGENCY LOCKDOWN to confirm'
+                value={presetConfirmText}
+                onChange={setPresetConfirmText}
+                autoComplete="off"
+                placeholder="EMERGENCY LOCKDOWN"
+              />
+            </div>
+          )}
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setPresetPreview(null)} disabled={presetBusy}>
+              Cancel
+            </Btn>
+            <Btn
+              variant={presetPreview.preset === 'emergency_lockdown' ? 'danger' : 'primary'}
+              onClick={() => void applyPresetNow()}
+              disabled={presetBusy}
+            >
+              {presetBusy ? <Loader2 size={16} className="animate-spin" /> : null}
+              Apply preset
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {editing && (
+        <EditServiceModal
+          row={editing}
+          onClose={() => setEditing(null)}
+          onSaved={async (msg) => {
+            setEditing(null);
+            showToast(msg);
+            await load();
+          }}
+          onError={(msg) => showToast(msg, 'err')}
+        />
+      )}
+
+      {notifyTarget && (
+        <NotifyConfirmModal
+          row={notifyTarget}
+          onClose={() => setNotifyTarget(null)}
+          onDone={async (count) => {
+            setNotifyTarget(null);
+            showToast(`Queued ${count} restoration SMS.`);
+            await load();
+          }}
+          onError={(msg) => showToast(msg, 'err')}
+        />
       )}
     </div>
   );
 }
 
-function ServiceGroupCard({
+// ── Section + cards ──────────────────────────────────────────────────────────
+
+function ServiceSection({
   title,
   subtitle,
   rows,
-  onFlip,
+  busyKey,
+  onEdit,
+  onPause,
   onRestore,
   onNotify,
-  busyKey,
+  warn,
 }: {
   title: string;
   subtitle: string;
   rows: ServiceStateRow[];
-  onFlip: (row: ServiceStateRow, next: ServiceStatus) => void | Promise<void>;
-  onRestore: (row: ServiceStateRow) => void | Promise<void>;
-  onNotify: (row: ServiceStateRow) => void | Promise<void>;
   busyKey: string | null;
+  onEdit: (row: ServiceStateRow) => void;
+  onPause: (row: ServiceStateRow) => void;
+  onRestore: (row: ServiceStateRow) => void;
+  onNotify: (row: ServiceStateRow) => void;
+  warn?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
-    <Card style={{ marginBottom: 16 }}>
-      <div style={{ marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: 16 }}>{title}</h3>
-        <div style={{ color: '#64748b', fontSize: 13 }}>{subtitle}</div>
+    <Card
+      style={{
+        marginBottom: 16,
+        borderColor: warn ? '#fde68a' : undefined,
+        background: warn ? '#fffbeb' : undefined,
+      }}
+    >
+      <div style={{ marginBottom: 14 }}>
+        <h3 style={sectionTitle}>{title}</h3>
+        <p style={sectionSub}>{subtitle}</p>
       </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>
-              <th style={cellStyle}>Service</th>
-              <th style={cellStyle}>Status</th>
-              <th style={cellStyle}>Resolved</th>
-              <th style={cellStyle}>Reason</th>
-              <th style={cellStyle}>Public message</th>
-              <th style={cellStyle}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.service_key} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={cellStyle}>
-                  <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>{row.service_key}</code>
-                </td>
-                <td style={cellStyle}>
-                  <StatusChip status={row.status} />
-                </td>
-                <td style={cellStyle}>
-                  {row.resolved_available ? (
-                    <span style={{ color: '#166534' }}>✓ available</span>
-                  ) : (
-                    <span style={{ color: '#991b1b' }}>✗ blocked ({row.resolved_source})</span>
-                  )}
-                </td>
-                <td style={cellStyle}>{row.reason_type ?? '—'}</td>
-                <td style={{ ...cellStyle, maxWidth: 260 }}>{row.public_message ?? '—'}</td>
-                <td style={cellStyle}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {row.status === 'available' ? (
-                      <Btn
-                        variant="secondary"
-                        small
-                        onClick={() => void onFlip(row, 'operational_pause')}
-                        disabled={busyKey === row.service_key}
-                      >
-                        Pause
-                      </Btn>
-                    ) : (
-                      <Btn
-                        variant="primary"
-                        small
-                        onClick={() => void onRestore(row)}
-                        disabled={busyKey === row.service_key}
-                      >
-                        Restore
-                      </Btn>
-                    )}
-                    {row.waiting_notify_count > 0 && (
-                      <Btn
-                        variant="secondary"
-                        small
-                        onClick={() => void onNotify(row)}
-                        disabled={busyKey === row.service_key}
-                        title="Two-step restore: dispatch queued restoration SMS for the last incident"
-                      >
-                        Send {row.waiting_notify_count} SMS
-                      </Btn>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div
+        data-responsive-grid
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 12,
+        }}
+      >
+        {rows.map((row) => (
+          <ServiceCard
+            key={row.service_key}
+            row={row}
+            busy={busyKey === row.service_key}
+            onEdit={() => onEdit(row)}
+            onPause={() => onPause(row)}
+            onRestore={() => onRestore(row)}
+            onNotify={() => onNotify(row)}
+          />
+        ))}
       </div>
     </Card>
   );
 }
 
-const cellStyle: React.CSSProperties = {
-  padding: '10px 8px',
+function ServiceCard({
+  row,
+  busy,
+  onEdit,
+  onPause,
+  onRestore,
+  onNotify,
+}: {
+  row: ServiceStateRow;
+  busy: boolean;
+  onEdit: () => void;
+  onPause: () => void;
+  onRestore: () => void;
+  onNotify: () => void;
+}) {
+  const meta = metaFor(row.service_key);
+  const down = !row.resolved_available;
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: `1.5px solid ${down ? '#fecaca' : '#E8E0D8'}`,
+        borderRadius: 12,
+        padding: 14,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        minHeight: 180,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: '#1C1408' }}>{meta.label}</div>
+          <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{meta.affects}</div>
+        </div>
+        <Badge label={STATUS_LABEL[row.status]} color={STATUS_BADGE[row.status]} />
+      </div>
+
+      <p style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.4, flex: 1 }}>
+        {row.public_message?.trim() || meta.blurb}
+      </p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: '#6B5D4F' }}>
+        <span style={chipStyle(down ? 'red' : 'green')}>
+          {down ? `Blocked · ${row.resolved_source}` : 'Resolved open'}
+        </span>
+        {row.waiting_notify_count > 0 && (
+          <span style={chipStyle('orange')}>
+            <Bell size={11} /> {row.waiting_notify_count} waiting SMS
+          </span>
+        )}
+        {(row.starts_at || row.ends_at) && (
+          <span style={chipStyle('blue')}>
+            <Clock3 size={11} />
+            {row.starts_at ? formatWhen(row.starts_at) : '…'}
+            {' → '}
+            {row.ends_at ? formatWhen(row.ends_at) : '…'}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+        <Btn variant="ghost" small onClick={onEdit} disabled={busy} style={{ minHeight: 40 }}>
+          <Settings2 size={14} /> Edit
+        </Btn>
+        {row.status === 'available' ? (
+          <Btn variant="secondary" small onClick={onPause} disabled={busy} style={{ minHeight: 40 }}>
+            <Pause size={14} /> Pause
+          </Btn>
+        ) : (
+          <Btn variant="primary" small onClick={onRestore} disabled={busy} style={{ minHeight: 40 }}>
+            <Play size={14} /> Restore
+          </Btn>
+        )}
+        {row.waiting_notify_count > 0 && (
+          <Btn variant="secondary" small onClick={onNotify} disabled={busy} style={{ minHeight: 40 }}>
+            <Bell size={14} /> Send {row.waiting_notify_count} SMS
+          </Btn>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function chipStyle(tone: 'green' | 'red' | 'orange' | 'blue'): CSSProperties {
+  const map = {
+    green: { bg: '#dcfce7', fg: '#166534' },
+    red: { bg: '#fee2e2', fg: '#991b1b' },
+    orange: { bg: '#ffedd5', fg: '#c2410c' },
+    blue: { bg: '#dbeafe', fg: '#1e40af' },
+  }[tone];
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '2px 8px',
+    borderRadius: 999,
+    background: map.bg,
+    color: map.fg,
+    fontWeight: 600,
+  };
+}
+
+// ── Edit modal ───────────────────────────────────────────────────────────────
+
+function EditServiceModal({
+  row,
+  onClose,
+  onSaved,
+  onError,
+}: {
+  row: ServiceStateRow;
+  onClose: () => void;
+  onSaved: (msg: string) => void | Promise<void>;
+  onError: (msg: string) => void;
+}) {
+  const meta = metaFor(row.service_key);
+  const [tab, setTab] = useState<'configure' | 'history'>('configure');
+  const [status, setStatus] = useState<ServiceStatus>(row.status);
+  const [reason, setReason] = useState<ServiceReasonType | ''>(row.reason_type ?? '');
+  const [publicMessage, setPublicMessage] = useState(row.public_message ?? '');
+  const [internalNote, setInternalNote] = useState(row.internal_note ?? '');
+  const [startsAt, setStartsAt] = useState(toLocalInput(row.starts_at));
+  const [endsAt, setEndsAt] = useState(toLocalInput(row.ends_at));
+  const [notifyEnabled, setNotifyEnabled] = useState(row.notify_enabled);
+  const [confirmation, setConfirmation] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<ServiceHistoryResponse | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (tab !== 'history') return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    getServiceHistory(row.service_key)
+      .then((h) => {
+        if (!cancelled) setHistory(h);
+      })
+      .catch((e) => {
+        if (!cancelled) onError((e as Error).message ?? 'Failed to load history');
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // onError is a stable toast setter from the parent render; omit to avoid re-fetch loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, row.service_key]);
+
+  const typedNeeded = needsTypedConfirm(row.service_key, status);
+
+  const save = async () => {
+    if (typedNeeded && confirmation.trim().toUpperCase() !== 'EMERGENCY LOCKDOWN') {
+      onError('Type EMERGENCY LOCKDOWN to confirm this high-impact change.');
+      return;
+    }
+    if (status !== 'available' && !publicMessage.trim()) {
+      onError('Add a short public message customers will see.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload: ServiceStateUpdatePayload = {
+        status,
+        reason_type: reason || null,
+        public_message: publicMessage.trim() || null,
+        internal_note: internalNote.trim() || null,
+        starts_at: fromLocalInput(startsAt),
+        ends_at: fromLocalInput(endsAt),
+        notify_enabled: notifyEnabled,
+        confirmation: typedNeeded ? confirmation : undefined,
+      };
+      await updateServiceState(row.service_key, payload);
+      await onSaved(`${meta.label} updated.`);
+    } catch (e) {
+      onError((e as Error).message ?? 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const previewMessage =
+    publicMessage.trim() ||
+    (status === 'available' ? 'No customer banner — service is available.' : defaultPauseMessage(row.service_key));
+
+  return (
+    <Modal title={`Edit · ${meta.label}`} onClose={onClose} maxWidth={640}>
+      <p style={{ margin: '0 0 14px', fontSize: 13, color: '#6B5D4F' }}>
+        {meta.blurb} Affects: <strong>{meta.affects}</strong>
+      </p>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        <TabBtn active={tab === 'configure'} onClick={() => setTab('configure')} icon={<Settings2 size={14} />}>
+          Configure
+        </TabBtn>
+        <TabBtn active={tab === 'history'} onClick={() => setTab('history')} icon={<History size={14} />}>
+          History
+        </TabBtn>
+      </div>
+
+      {tab === 'configure' ? (
+        <>
+          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <Select
+              label="Status"
+              value={status}
+              onChange={(v) => setStatus(v as ServiceStatus)}
+              options={STATUS_OPTIONS}
+            />
+            <Select
+              label="Reason"
+              value={reason}
+              onChange={(v) => setReason(v as ServiceReasonType | '')}
+              options={REASON_OPTIONS}
+            />
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Public message</label>
+            <textarea
+              value={publicMessage}
+              onChange={(e) => setPublicMessage(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder={defaultPauseMessage(row.service_key)}
+              style={textareaStyle}
+            />
+            <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
+              {publicMessage.length}/500 · shown on the order app banner / website
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginBottom: 14,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: status === 'available' ? '#f0fdf4' : '#fffbeb',
+              border: `1px solid ${status === 'available' ? '#bbf7d0' : '#fde68a'}`,
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#6B5D4F', marginBottom: 4 }}>
+              CUSTOMER PREVIEW
+            </div>
+            <div style={{ fontSize: 13.5, color: '#1C1408', fontWeight: 600 }}>{previewMessage}</div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Internal note (staff only)</label>
+            <textarea
+              value={internalNote}
+              onChange={(e) => setInternalNote(e.target.value)}
+              rows={2}
+              maxLength={500}
+              placeholder="Why this was paused — not shown to customers"
+              style={textareaStyle}
+            />
+          </div>
+
+          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <Input
+              label="Starts at (schedule)"
+              type="datetime-local"
+              value={startsAt}
+              onChange={setStartsAt}
+            />
+            <Input
+              label="Ends at (auto-restore)"
+              type="datetime-local"
+              value={endsAt}
+              onChange={setEndsAt}
+            />
+          </div>
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
+            Scheduled windows activate/restore via the minute cron. Auto-restore never sends SMS —
+            use “Send N SMS” after restore if needed.
+          </p>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 12, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={notifyEnabled}
+              onChange={(e) => setNotifyEnabled(e.target.checked)}
+              style={{ width: 18, height: 18 }}
+            />
+            Offer “Notify me” to customers while this service is down
+          </label>
+
+          {typedNeeded && (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: 12,
+                borderRadius: 10,
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: '#991b1b', fontWeight: 700, fontSize: 13 }}>
+                <AlertTriangle size={16} /> High-impact change
+              </div>
+              <Input
+                label='Type EMERGENCY LOCKDOWN to confirm'
+                value={confirmation}
+                onChange={setConfirmation}
+                autoComplete="off"
+                placeholder="EMERGENCY LOCKDOWN"
+              />
+            </div>
+          )}
+
+          <ModalActions>
+            <Btn variant="ghost" onClick={onClose} disabled={saving}>Cancel</Btn>
+            <Btn onClick={() => void save()} disabled={saving}>
+              {saving ? <Loader2 size={16} className="animate-spin" /> : null}
+              Save changes
+            </Btn>
+          </ModalActions>
+        </>
+      ) : (
+        <HistoryPanel loading={historyLoading} history={history} />
+      )}
+    </Modal>
+  );
+}
+
+function TabBtn({
+  active,
+  onClick,
+  children,
+  icon,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  icon: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        minHeight: 40,
+        padding: '0 12px',
+        borderRadius: 10,
+        border: active ? '1.5px solid #D4813A' : '1.5px solid #E8E0D8',
+        background: active ? '#fff7ed' : '#fff',
+        color: active ? '#c2410c' : '#6B5D4F',
+        fontWeight: 700,
+        fontSize: 13,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+      }}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+function HistoryPanel({
+  loading,
+  history,
+}: {
+  loading: boolean;
+  history: ServiceHistoryResponse | null;
+}) {
+  if (loading) return <Spinner size={20} />;
+  if (!history) return <p style={{ color: '#9C8E7E', fontSize: 14 }}>No history loaded.</p>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Incidents</h4>
+        {history.incidents.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>No incidents yet.</p>
+        ) : (
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+            {history.incidents.slice(0, 8).map((inc) => (
+              <li
+                key={inc.id}
+                style={{
+                  padding: '10px 0',
+                  borderBottom: '1px solid #F1EDE8',
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <Badge
+                    label={inc.status === 'open' ? 'Open' : 'Restored'}
+                    color={inc.status === 'open' ? 'red' : 'green'}
+                  />
+                  <span style={{ color: '#9C8E7E' }}>#{inc.id}</span>
+                </div>
+                <div style={{ marginTop: 4, color: '#6B5D4F' }}>
+                  {formatWhen(inc.started_at)}
+                  {inc.restored_at ? ` → ${formatWhen(inc.restored_at)}` : ' · ongoing'}
+                </div>
+                {inc.public_message && (
+                  <div style={{ marginTop: 4, color: '#1C1408' }}>{inc.public_message}</div>
+                )}
+                <div style={{ marginTop: 2, fontSize: 12, color: '#9C8E7E' }}>
+                  Notified: {inc.notified_count}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Audit log</h4>
+        {history.audits.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>No audit rows yet.</p>
+        ) : (
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+            {history.audits.slice(0, 12).map((a) => (
+              <li
+                key={a.id}
+                style={{
+                  padding: '8px 0',
+                  borderBottom: '1px solid #F1EDE8',
+                  fontSize: 12.5,
+                  color: '#6B5D4F',
+                }}
+              >
+                <div style={{ fontWeight: 600, color: '#1C1408' }}>{a.action}</div>
+                <div>{formatWhen(a.created_at)} · user #{a.user_id ?? '—'}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Notify confirm ───────────────────────────────────────────────────────────
+
+function NotifyConfirmModal({
+  row,
+  onClose,
+  onDone,
+  onError,
+}: {
+  row: ServiceStateRow;
+  onClose: () => void;
+  onDone: (count: number) => void | Promise<void>;
+  onError: (msg: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const meta = metaFor(row.service_key);
+
+  const send = async () => {
+    setBusy(true);
+    try {
+      const res = await notifyRestoration(
+        row.service_key,
+        row.last_closed_incident_id ?? undefined,
+      );
+      await onDone(res.dispatched);
+    } catch (e) {
+      onError((e as Error).message ?? 'Notify failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title="Send restoration SMS" onClose={onClose} maxWidth={460}>
+      <p style={{ margin: '0 0 12px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.45 }}>
+        Queue <strong>{row.waiting_notify_count}</strong> one-time SMS for{' '}
+        <strong>{meta.label}</strong>. Messages go out via the queue (never synchronous) and
+        numbers are not added to marketing lists.
+      </p>
+      {!row.resolved_available && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 10,
+            borderRadius: 10,
+            background: '#fef3c7',
+            border: '1px solid #fde68a',
+            fontSize: 13,
+            color: '#92400e',
+          }}
+        >
+          This service still looks blocked. Restore it first, then send notifications once you
+          confirm customers can order again.
+        </div>
+      )}
+      <ModalActions>
+        <Btn variant="ghost" onClick={onClose} disabled={busy}>Cancel</Btn>
+        <Btn onClick={() => void send()} disabled={busy || !row.resolved_available}>
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <Bell size={16} />}
+          Send {row.waiting_notify_count} SMS
+        </Btn>
+      </ModalActions>
+    </Modal>
+  );
+}
+
+// ── Styles ───────────────────────────────────────────────────────────────────
+
+const sectionTitle: CSSProperties = {
+  margin: 0,
+  fontSize: 16,
+  fontWeight: 800,
+  color: '#1C1408',
+};
+
+const sectionSub: CSSProperties = {
+  margin: '4px 0 0',
+  fontSize: 13,
+  color: '#9C8E7E',
+};
+
+const labelStyle: CSSProperties = {
+  display: 'block',
+  fontSize: 12,
+  fontWeight: 600,
+  color: '#1C1408',
+  marginBottom: 4,
+};
+
+const textareaStyle: CSSProperties = {
+  width: '100%',
+  minHeight: 72,
+  padding: '10px 12px',
+  border: '1.5px solid #E8E0D8',
+  borderRadius: 10,
   fontSize: 14,
-  verticalAlign: 'top',
+  fontFamily: 'inherit',
+  resize: 'vertical',
+  boxSizing: 'border-box',
+  color: '#1C1408',
+  background: '#fff',
 };
