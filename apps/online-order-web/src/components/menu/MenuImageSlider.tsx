@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import type { MediaSlide } from '../../utils/itemMedia';
 
 type Props = {
-  slides: string[];
+  slides: MediaSlide[] | string[];
   alt: string;
   /** Auto-advance interval in ms (default 3500). Disabled when < 2 slides. */
   intervalMs?: number;
@@ -11,22 +12,38 @@ type Props = {
   showDots?: boolean;
   /** Emoji / placeholder when no slides */
   placeholder?: string;
+  /**
+   * When true (menu cards), never mount <video> — render poster/image only.
+   * Item sheet should leave this false so muted clips can autoplay.
+   */
+  posterOnly?: boolean;
 };
 
+function normalizeSlides(slides: MediaSlide[] | string[], fallbackAlt: string): MediaSlide[] {
+  if (slides.length === 0) return [];
+  if (typeof slides[0] === 'string') {
+    return (slides as string[]).map((url) => ({ type: 'image' as const, url, alt: fallbackAlt }));
+  }
+  return slides as MediaSlide[];
+}
+
 /**
- * Cross-fading image slider for menu cards / item sheets.
- * Auto-advances when in view; pauses on hover and for reduced-motion.
+ * Cross-fading media slider for menu cards / item sheets.
+ * Video autoplays muted+loop+playsInline only when posterOnly is false.
  */
 export function MenuImageSlider({
-  slides,
+  slides: rawSlides,
   alt,
   intervalMs = 3500,
   aspectRatio = '4 / 3',
   className,
   showDots = true,
   placeholder = '🍽️',
+  posterOnly = false,
 }: Props) {
+  const slides = normalizeSlides(rawSlides, alt);
   const rootRef = useRef<HTMLDivElement>(null);
+  const videoRefs = useRef<Record<number, HTMLVideoElement | null>>({});
   const [index, setIndex] = useState(0);
   const [inView, setInView] = useState(true);
   const [paused, setPaused] = useState(false);
@@ -34,7 +51,7 @@ export function MenuImageSlider({
   const [reduceMotion, setReduceMotion] = useState(false);
 
   const usable = slides.filter((_, i) => !failed[i]);
-  const activeSrc = slides[index] && !failed[index] ? slides[index] : usable[0] ?? null;
+  const active = slides[index] && !failed[index] ? slides[index] : usable[0] ?? null;
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -58,10 +75,12 @@ export function MenuImageSlider({
   useEffect(() => {
     setIndex(0);
     setFailed({});
-  }, [slides.join('|')]);
+  }, [slides.map((s) => s.url).join('|')]);
 
   useEffect(() => {
     if (slides.length < 2 || reduceMotion || !inView || paused) return;
+    // Don't auto-advance away from an active video while it's playing.
+    if (!posterOnly && active?.type === 'video') return;
     const id = window.setInterval(() => {
       setIndex((i) => {
         for (let step = 1; step <= slides.length; step++) {
@@ -72,7 +91,83 @@ export function MenuImageSlider({
       });
     }, intervalMs);
     return () => window.clearInterval(id);
-  }, [slides.length, reduceMotion, inView, paused, intervalMs, failed]);
+  }, [slides.length, reduceMotion, inView, paused, intervalMs, failed, posterOnly, active?.type]);
+
+  // Play/pause videos based on active index + visibility + reduced motion.
+  useEffect(() => {
+    Object.entries(videoRefs.current).forEach(([key, el]) => {
+      if (!el) return;
+      const i = Number(key);
+      const shouldPlay =
+        !posterOnly
+        && !reduceMotion
+        && inView
+        && !paused
+        && i === index
+        && slides[i]?.type === 'video';
+      if (shouldPlay) {
+        const playResult = el.play();
+        if (playResult && typeof (playResult as Promise<void>).catch === 'function') {
+          void (playResult as Promise<void>).catch(() => undefined);
+        }
+      } else if (typeof el.pause === 'function') {
+        el.pause();
+      }
+    });
+  }, [index, inView, paused, reduceMotion, posterOnly, slides]);
+
+  const renderSlide = (slide: MediaSlide, i: number) => {
+    if (failed[i]) return null;
+    const isActive = i === index;
+    const commonStyle: CSSProperties = {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
+      opacity: isActive ? 1 : 0,
+      transition: reduceMotion ? 'none' : 'opacity 0.55s ease',
+    };
+
+    const showVideo = slide.type === 'video' && !posterOnly && !reduceMotion;
+    if (showVideo) {
+      return (
+        <video
+          key={`v-${slide.url}-${i}`}
+          ref={(el) => { videoRefs.current[i] = el; }}
+          src={slide.url}
+          poster={slide.poster || undefined}
+          muted
+          loop
+          playsInline
+          autoPlay={isActive && inView}
+          preload="metadata"
+          aria-label={isActive ? (slide.alt || alt) : undefined}
+          aria-hidden={isActive ? undefined : true}
+          onError={() => setFailed((f) => ({ ...f, [i]: true }))}
+          style={commonStyle}
+        />
+      );
+    }
+
+    const imgSrc = slide.type === 'video'
+      ? (slide.poster || slide.thumbUrl || slide.url)
+      : slide.url;
+
+    return (
+      <img
+        key={`i-${imgSrc}-${i}`}
+        src={imgSrc}
+        alt={isActive ? (slide.alt || alt) : ''}
+        aria-hidden={isActive ? undefined : true}
+        loading={i === 0 ? 'eager' : 'lazy'}
+        decoding="async"
+        onError={() => setFailed((f) => ({ ...f, [i]: true }))}
+        style={commonStyle}
+      />
+    );
+  };
 
   return (
     <div
@@ -81,7 +176,7 @@ export function MenuImageSlider({
       style={{
         width: '100%',
         aspectRatio,
-        background: activeSrc
+        background: active
           ? 'var(--color-surface-alt)'
           : 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
         display: 'flex',
@@ -97,67 +192,38 @@ export function MenuImageSlider({
       onBlurCapture={() => setPaused(false)}
     >
       {slides.length > 0 ? (
-        slides.map((src, i) => (
-          failed[i] ? null : (
-            <img
-              key={`${src}-${i}`}
-              src={src}
-              alt={i === index ? alt : ''}
-              aria-hidden={i !== index}
-              loading={i === 0 ? 'eager' : 'lazy'}
-              decoding="async"
-              onError={() => setFailed((f) => ({ ...f, [i]: true }))}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block',
-                opacity: i === index ? 1 : 0,
-                transition: reduceMotion ? 'none' : 'opacity 0.55s ease',
-              }}
-            />
-          )
-        ))
+        slides.map((slide, i) => renderSlide(slide, i))
       ) : (
-        <span style={{ fontSize: '2.5rem', opacity: 0.35 }} aria-hidden>{placeholder}</span>
+        <span style={{ fontSize: '2.5rem', opacity: 0.55 }} aria-hidden>{placeholder}</span>
       )}
 
       {showDots && slides.length > 1 && (
         <div
           style={{
             position: 'absolute',
+            left: 0,
+            right: 0,
             bottom: 8,
-            left: '50%',
-            transform: 'translateX(-50%)',
             display: 'flex',
+            justifyContent: 'center',
             gap: 5,
             zIndex: 2,
-            pointerEvents: 'auto',
           }}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
         >
           {slides.map((_, i) => (
             <button
               key={i}
               type="button"
-              aria-label={`Photo ${i + 1} of ${slides.length}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIndex(i);
-              }}
+              aria-label={`Show slide ${i + 1}`}
+              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
               style={{
-                width: i === index ? 16 : 8,
-                height: 8,
-                borderRadius: 99,
+                width: 6,
+                height: 6,
+                borderRadius: 999,
                 border: 'none',
-                background: i === index ? '#fff' : 'rgba(255,255,255,0.55)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                cursor: 'pointer',
                 padding: 0,
-                transition: 'width 0.2s ease',
+                background: i === index ? 'var(--color-primary)' : 'rgba(255,255,255,0.7)',
+                cursor: 'pointer',
               }}
             />
           ))}

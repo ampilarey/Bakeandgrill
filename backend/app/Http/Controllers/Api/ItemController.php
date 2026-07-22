@@ -17,6 +17,7 @@ use App\Services\ItemAvailabilityService;
 use App\Services\RecipeCostCalculator;
 use App\Services\SpecialPricingService;
 use App\Services\VariantSyncService;
+use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -51,26 +52,26 @@ class ItemController extends Controller
         $isPosView = $request->query('view') === 'pos';
 
         $with = ['category', 'variants', 'modifiers', 'packagingOptions'];
-        if ($isAdmin && !$isPosView) {
+        if ($isAdmin && ! $isPosView) {
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
             $with[] = 'comboItems.item';
             $with[] = 'recipe.recipeItems.inventoryItem';
         }
         // Public / POS need catering flag for Events & Catering sections.
-        if (!$isAdmin || $isPosView) {
+        if (! $isAdmin || $isPosView) {
             $with[] = 'channelAvailabilities';
         }
         $query = Item::with($with);
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $query->withCount(['reviews as review_count' => fn ($q) => $q->where('status', 'approved')])
                 ->withAvg(['reviews as avg_rating' => fn ($q) => $q->where('status', 'approved')], 'rating');
         }
 
         $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $query->where('is_active', true);
             $query->with([
                 'comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants',
@@ -100,7 +101,7 @@ class ItemController extends Controller
         }
 
         // Filter by availability (public only)
-        if (!$isAdmin && $request->has('available_only')) {
+        if (! $isAdmin && $request->has('available_only')) {
             $query->where('is_available', true)
                 ->where(function ($q) {
                     $q->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', now());
@@ -116,8 +117,8 @@ class ItemController extends Controller
 
         // Admin gets full data; public / POS get stripped response + availability metadata
         $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing) {
-            $includeAvailability = !$isAdmin || $isPosView;
-            $includeAdminExtras = $isAdmin && !$isPosView;
+            $includeAvailability = ! $isAdmin || $isPosView;
+            $includeAdminExtras = $isAdmin && ! $isPosView;
             $recipeCosts = $includeAdminExtras ? app(RecipeCostCalculator::class) : null;
             $activeSpecial = $includeAvailability
                 ? $specialPricing->activeSpecialsByItemId()->get($item->id)
@@ -217,7 +218,7 @@ class ItemController extends Controller
             // Public / POS callers receive availability metadata
             if ($includeAvailability) {
                 $specialBlock = $baseSpecial?->toApiBlock();
-                if (!$specialBlock && $activeSpecial) {
+                if (! $specialBlock && $activeSpecial) {
                     $hasVariantDiscount = $item->has_variants
                         && collect($data['variants'])->contains(fn ($v) => isset($v['effective_price']));
                     if ($hasVariantDiscount) {
@@ -239,7 +240,7 @@ class ItemController extends Controller
                     $data['special'] = $specialBlock;
                 }
 
-                if (!$isAdmin) {
+                if (! $isAdmin) {
                     $data['spice_level'] = $item->spice_level ?? null;
                     $data['is_combo'] = (bool) ($item->is_combo ?? false);
                     $data['combo_discount_pct'] = $item->combo_discount_pct;
@@ -419,9 +420,9 @@ class ItemController extends Controller
             ->findOrFail($id);
 
         $channel = 'online_pickup';
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
-            if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
                 abort(404);
             }
         }
@@ -468,7 +469,7 @@ class ItemController extends Controller
             ),
         ];
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $payload = $availability->withPublicAliases(
                 $payload,
                 $availability->check($item, $channel),
@@ -512,7 +513,28 @@ class ItemController extends Controller
         $comboRows = $data['combo_items'] ?? null;
         $packagingOptions = $data['packaging_options'] ?? null;
         unset($data['channel_availability'], $data['variants'], $data['modifier_ids'], $data['combo_items'], $data['packaging_options']);
+
+        $oldImageUrl = $item->image_url;
+        $oldOriginalUrl = $item->image_original_url;
+        $oldThumbUrl = $item->getAttribute('thumb_url');
+
         $item->update($data);
+
+        $keep = array_values(array_filter([
+            $item->image_url,
+            $item->image_original_url,
+            $item->getAttribute('thumb_url'),
+        ], static fn ($u) => is_string($u) && $u !== ''));
+
+        if ($oldImageUrl && $oldImageUrl !== $item->image_url) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldImageUrl, $keep, exceptItemId: (int) $item->id);
+        }
+        if ($oldOriginalUrl && $oldOriginalUrl !== $item->image_original_url) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldOriginalUrl, $keep, exceptItemId: (int) $item->id);
+        }
+        if (is_string($oldThumbUrl) && $oldThumbUrl !== '' && $oldThumbUrl !== $item->getAttribute('thumb_url')) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldThumbUrl, $keep, exceptItemId: (int) $item->id);
+        }
 
         if ($request->has('modifier_ids')) {
             $item->modifiers()->sync($request->modifier_ids);
@@ -549,7 +571,7 @@ class ItemController extends Controller
             $item->refresh();
             if ($item->is_combo && is_array($comboRows)) {
                 $combos->sync($item, $comboRows);
-            } elseif (!$item->is_combo) {
+            } elseif (! $item->is_combo) {
                 $combos->sync($item, []);
             }
         }
@@ -603,9 +625,9 @@ class ItemController extends Controller
             ->where('is_available', true)
             ->firstOrFail();
 
-        if (!$isStaff) {
+        if (! $isStaff) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
-            if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
                 abort(404);
             }
         }
@@ -648,7 +670,7 @@ class ItemController extends Controller
     public function toggleAvailability($id)
     {
         $item = Item::findOrFail($id);
-        $item->update(['is_available' => !$item->is_available]);
+        $item->update(['is_available' => ! $item->is_available]);
 
         return response()->json([
             'message' => 'Item availability updated',
@@ -693,7 +715,7 @@ class ItemController extends Controller
      * POST /api/items/stock-check
      * Bulk stock availability check for multiple items.
      */
-    public function bulkStockCheck(Request $request): \Illuminate\Http\JsonResponse
+    public function bulkStockCheck(Request $request): JsonResponse
     {
         $request->validate(['item_ids' => 'required|array|max:50', 'item_ids.*' => 'integer']);
         $isStaff = $request->user()?->tokenCan('staff');
@@ -710,7 +732,7 @@ class ItemController extends Controller
         $public = $items->map(fn ($item) => [
             'id' => $item->id,
             'is_available' => $item->availability_type !== 'unavailable'
-                && (!$item->track_stock || $item->stock_quantity > 0),
+                && (! $item->track_stock || $item->stock_quantity > 0),
         ]);
 
         return response()->json(['items' => $public]);

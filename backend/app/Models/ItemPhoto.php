@@ -9,9 +9,27 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ItemPhoto extends Model
 {
-    protected $fillable = ['item_id', 'url', 'original_url', 'alt_text', 'sort_order', 'is_primary'];
+    protected $fillable = [
+        'item_id',
+        'url',
+        'original_url',
+        'thumb_url',
+        'alt_text',
+        'sort_order',
+        'is_primary',
+        'media_type',
+        'poster_url',
+    ];
 
-    protected $casts = ['sort_order' => 'integer', 'is_primary' => 'boolean'];
+    protected $casts = [
+        'sort_order' => 'integer',
+        'is_primary' => 'boolean',
+    ];
+
+    public function isVideo(): bool
+    {
+        return ($this->media_type ?? 'image') === 'video';
+    }
 
     public function item(): BelongsTo
     {

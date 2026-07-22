@@ -13,7 +13,7 @@
  * caches are cleaned up on activation.
  */
 
-const CACHE_VERSION = 'bg-pwa-v9';
+const CACHE_VERSION = 'bg-pwa-v10';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const API_CACHE     = `${CACHE_VERSION}-api`;
@@ -34,6 +34,16 @@ const CACHEABLE_API_PATTERNS = [
     /\/api\/ordering\/status(\?|$)/,
     /\/api\/service-status(\?|$)/,
 ];
+
+function isVideoRequest(request, url) {
+    const path = url.pathname.toLowerCase();
+    if (path.endsWith('.mp4') || path.endsWith('.webm')) return true;
+    const accept = request.headers.get('Accept') || '';
+    if (accept.includes('video/')) return true;
+    // Range/206 responses corrupt cache.put — never cache range fetches.
+    if (request.headers.has('Range')) return true;
+    return false;
+}
 
 // ── Install — pre-cache the shell ──────────────────────────────────────────
 self.addEventListener('install', (event) => {
@@ -115,6 +125,9 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(navigationHandler(request));
         return;
     }
+
+    // 5b. Video / range responses — network only (never cache.put 206s).
+    if (isVideoRequest(request, url)) return;
 
     // 6. Everything else (images, fonts) — stale-while-revalidate.
     event.respondWith(staleWhileRevalidate(request, RUNTIME_CACHE));

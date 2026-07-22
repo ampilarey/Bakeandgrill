@@ -6,6 +6,8 @@ export type MenuCategory = {
   name_dv?: string | null;
   description?: string | null;
   image_url?: string | null;
+  image_original_url?: string | null;
+  thumb_url?: string | null;
   sort_order?: number | null;
   is_active: boolean;
   parent_id?: number | null;
@@ -50,6 +52,8 @@ export type MenuItem = {
   image_url?: string | null;
   /** High-res master for admin re-crop (not used on POS/website). */
   image_original_url?: string | null;
+  /** Card thumbnail (400×300); optional. */
+  thumb_url?: string | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -105,6 +109,7 @@ export type MenuItemPayload = {
   sku?: string | null;
   image_url?: string | null;
   image_original_url?: string | null;
+  thumb_url?: string | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -190,6 +195,8 @@ export async function createCategory(data: {
   name_dv?: string | null;
   description?: string | null;
   image_url?: string | null;
+  image_original_url?: string | null;
+  thumb_url?: string | null;
   sort_order?: number | null;
   parent_id?: number | null;
 }): Promise<{ category: MenuCategory }> {
@@ -203,6 +210,8 @@ export async function updateCategory(
     name_dv: string | null;
     description: string | null;
     image_url: string | null;
+    image_original_url: string | null;
+    thumb_url: string | null;
     sort_order: number | null;
     is_active: boolean;
     parent_id: number | null;
@@ -249,7 +258,13 @@ export async function uploadMenuImage(
   file: File,
   original?: File,
   purpose: 'menu' | 'banner' = 'menu',
-): Promise<{ url: string; original_url?: string | null; width?: number; height?: number }> {
+): Promise<{
+  url: string;
+  original_url?: string | null;
+  thumb_url?: string | null;
+  width?: number;
+  height?: number;
+}> {
   const formData = new FormData();
   formData.append('image', file);
   if (original) formData.append('original', original);
@@ -264,6 +279,10 @@ export interface ItemPhoto {
   item_id: number;
   url: string;
   original_url?: string | null;
+  alt_text?: string | null;
+  thumb_url?: string | null;
+  media_type?: 'image' | 'video';
+  poster_url?: string | null;
   sort_order: number;
   is_primary: boolean;
   created_at: string;
@@ -276,12 +295,13 @@ export async function getItemPhotos(itemId: number): Promise<{ photos: ItemPhoto
 export async function uploadItemPhoto(
   itemId: number,
   file: File,
-  options?: { original?: File; original_url?: string | null },
+  options?: { original?: File; original_url?: string | null; alt_text?: string | null },
 ): Promise<{ photo: ItemPhoto }> {
   const form = new FormData();
   form.append('photo', file);
   if (options?.original) form.append('original', options.original);
   if (options?.original_url) form.append('original_url', options.original_url);
+  if (options?.alt_text) form.append('alt_text', options.alt_text);
   return req(`/items/${itemId}/photos`, { method: 'POST', body: form });
 }
 
@@ -291,6 +311,31 @@ export async function updateItemPhoto(
   data: { sort_order?: number; is_primary?: boolean; original_url?: string | null; alt_text?: string | null },
 ): Promise<{ photo: ItemPhoto }> {
   return req(`/items/${itemId}/photos/${photoId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function reorderItemPhotos(
+  itemId: number,
+  order: number[],
+): Promise<{ photos: ItemPhoto[] }> {
+  return req(`/items/${itemId}/photos/reorder`, {
+    method: 'POST',
+    body: JSON.stringify({ order }),
+  });
+}
+
+export async function uploadItemVideo(
+  itemId: number,
+  video: File,
+  poster: File,
+  options?: { alt_text?: string | null; is_primary?: boolean },
+): Promise<{ photo: ItemPhoto }> {
+  const form = new FormData();
+  form.append('media_type', 'video');
+  form.append('video', video);
+  form.append('poster', poster);
+  if (options?.alt_text) form.append('alt_text', options.alt_text);
+  if (options?.is_primary) form.append('is_primary', '1');
+  return req(`/items/${itemId}/photos`, { method: 'POST', body: form });
 }
 
 export async function deleteItemPhoto(itemId: number, photoId: number): Promise<void> {

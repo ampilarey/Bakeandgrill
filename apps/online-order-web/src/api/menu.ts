@@ -278,6 +278,11 @@ export async function getItemReviews(itemId: number): Promise<{ reviews: ItemRev
 export interface ItemPhoto {
   id: number;
   url: string;
+  original_url?: string | null;
+  thumb_url?: string | null;
+  poster_url?: string | null;
+  media_type?: 'image' | 'video';
+  alt_text?: string | null;
   is_primary: boolean;
   sort_order: number;
 }

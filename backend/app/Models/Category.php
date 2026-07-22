@@ -22,6 +22,8 @@ class Category extends Model
         'sort_order',
         'is_active',
         'image_url',
+        'image_original_url',
+        'thumb_url',
     ];
 
     public function parent(): BelongsTo
