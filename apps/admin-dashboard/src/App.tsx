@@ -34,6 +34,7 @@ const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
 const SettingsPage            = lazyWithRetry(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const ContentStudioPage       = lazyWithRetry(() => import('./pages/ContentStudio/ContentStudioPage'));
 const GiftCardsPage           = lazyWithRetry(() => import('./pages/GiftCardsPage'));
 const DiscountCardsPage       = lazyWithRetry(() => import('./pages/DiscountCardsPage'));
 const ReviewsPage             = lazyWithRetry(() => import('./pages/ReviewsPage'));
@@ -327,6 +328,12 @@ export default function App() {
                 <Route path="checklist" element={
                   <PermissionGuard user={user} permission="website.manage">
                     <TestChecklistPage />
+                  </PermissionGuard>
+                } />
+                {/* Content Studio */}
+                <Route path="content-studio" element={
+                  <PermissionGuard user={user} permission="website.manage">
+                    <ContentStudioPage />
                   </PermissionGuard>
                 } />
                 {/* Settings hub */}

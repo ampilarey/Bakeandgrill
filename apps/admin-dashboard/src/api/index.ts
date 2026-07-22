@@ -15,6 +15,7 @@ export * from './marketing';
 export * from './discount-cards';
 export * from './operations';
 export * from './settings';
+export * from './content';
 export * from './sms-module';
 export * from './pos-admin';
 export * from './system';

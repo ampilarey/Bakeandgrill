@@ -399,6 +399,13 @@ export function WebsiteSettings() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{
+        padding: '12px 14px', borderRadius: 12, background: '#FFF7ED', border: '1px solid #F5D0A9',
+        fontSize: 13, color: '#1C1408', lineHeight: 1.45,
+      }}>
+        Prefer <a href="/admin/#/content-studio" style={{ color: '#D4813A', fontWeight: 700 }}>Content Studio</a> for
+        shared vs per-app website/order-app marketing copy. This legacy editor still saves shared values.
+      </div>
       <Tabs active={activeTab} onChange={setActiveTab}>
         <TabList>
           {tabs.map((g) => <Tab key={g} id={g.toLowerCase()}>{g}</Tab>)}

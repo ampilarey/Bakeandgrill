@@ -50,6 +50,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/expenses', permission: 'finance.expenses' },
   { to: '/refunds', permission: 'orders.refund' },
   { to: '/staff', permission: 'staff.view' },
+  { to: '/content-studio', permission: 'website.manage' },
   { to: '/settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/devices', permission: 'devices.view' },
   { to: '/print-jobs', permission: 'devices.view' },
