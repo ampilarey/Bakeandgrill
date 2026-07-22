@@ -10,6 +10,7 @@ vi.mock('../api/content', () => ({
   getContentSchedules: vi.fn(async () => ({ schedules: [] })),
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: '2026-07-23T12:00:00Z' })),
+  getContentMedia: vi.fn(async () => ({ items: [] })),
   updateContent: vi.fn(async () => ({ blocks: [] })),
   shareContentBlock: vi.fn(),
   splitContentBlock: vi.fn(),
@@ -56,7 +57,6 @@ const richBlock: ContentBlock = {
 
 describe('Content Studio autosave + WYSIWYG', () => {
   beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
       locales: ['en', 'dv'],
@@ -76,6 +76,7 @@ describe('Content Studio autosave + WYSIWYG', () => {
   });
 
   it('renders WYSIWYG for rich blocks and autosaves drafts', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     render(
       <MemoryRouter>
         <AppContentEditor app="website" />
@@ -89,18 +90,18 @@ describe('Content Studio autosave + WYSIWYG', () => {
     fireEvent.input(editor);
 
     await act(async () => {
-      vi.advanceTimersByTime(3000);
+      await vi.advanceTimersByTimeAsync(3000);
     });
 
     await waitFor(() => {
       expect(contentApi.saveContentDrafts).toHaveBeenCalled();
     });
 
-    const [changes] = vi.mocked(contentApi.saveContentDrafts).mock.calls[
-      vi.mocked(contentApi.saveContentDrafts).mock.calls.length - 1
-    ];
+    const calls = vi.mocked(contentApi.saveContentDrafts).mock.calls;
+    const [changes] = calls[calls.length - 1];
     expect(changes[0].scope).toBe('website');
     expect(changes[0].key).toBe('cta_band_headline');
+    vi.useRealTimers();
   });
 
   it('publish promotes via updateContent', async () => {

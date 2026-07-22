@@ -121,6 +121,7 @@ export interface HomepageCategoryRow {
   name?: string;
   hook?: string;
   image_url?: string;
+  image_alt?: string;
   link?: string;
 }
 

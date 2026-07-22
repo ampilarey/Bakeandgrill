@@ -1071,7 +1071,7 @@
                 <div class="cat-img">
                     @if(!empty($cat['image_url']))
                         <img src="{{ $cat['image_url'] }}"
-                             alt="{{ $cat['name'] ?? '' }}"
+                             alt="{{ $cat['image_alt'] ?? ($cat['name'] ?? '') }}"
                              data-fallback-class="cat-img-placeholder"
                              data-fallback-icon="{{ $cat['icon'] ?? '🍽️' }}">
                     @else

@@ -3,9 +3,17 @@ import { Button } from '../ui';
 import type { ContentEditorWithUploadProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
 
-type Cat = { icon: string; label: string; name: string; hook: string; image_url: string; link: string };
+type Cat = {
+  icon: string;
+  label: string;
+  name: string;
+  hook: string;
+  image_url: string;
+  image_alt?: string;
+  link: string;
+};
 
-const empty = (): Cat => ({ icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' });
+const empty = (): Cat => ({ icon: '', label: '', name: '', hook: '', image_url: '', image_alt: '', link: '/menu' });
 
 export function CategoriesEditor({ label, description, value, onChange, triggerUpload }: ContentEditorWithUploadProps) {
   let items: Cat[] = [];
@@ -37,7 +45,7 @@ export function CategoriesEditor({ label, description, value, onChange, triggerU
               style={{ height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }} />
             <div className="content-editor-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {item.image_url ? (
-                <img src={item.image_url} alt="" style={{ height: 36, width: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid #E8E0D8', flexShrink: 0 }} />
+                <img src={item.image_url} alt={item.image_alt || item.name || ''} style={{ height: 36, width: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid #E8E0D8', flexShrink: 0 }} />
               ) : (
                 <div style={{ height: 36, width: 56, borderRadius: 6, border: '1.5px dashed #E8E0D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9C8E7E', fontSize: 10, flexShrink: 0 }}>no img</div>
               )}
@@ -46,6 +54,12 @@ export function CategoriesEditor({ label, description, value, onChange, triggerU
               <input value={item.image_url} onChange={(e) => update({ image_url: e.target.value })} placeholder="/images/cafe/photo.jpg"
                 style={{ flex: 1, minWidth: 140, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', background: '#fff', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: '#6B5D4F' }} />
             </div>
+            <input
+              value={item.image_alt || ''}
+              onChange={(e) => update({ image_alt: e.target.value })}
+              placeholder="Image alt text (accessibility / SEO)"
+              style={{ height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }}
+            />
           </>
         )}
       />

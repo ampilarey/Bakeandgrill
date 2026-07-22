@@ -30,13 +30,26 @@ import {
   HeroSlidesEditor,
   PreorderStepsEditor,
   ProofDetailsEditor,
+  RevisionDiff,
   RichTextEditor,
+  SeoSnippetPreview,
   TrustItemsEditor,
 } from '../../components/content-editors';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { CopyBlockFromOtherApp, CopySectionFromOtherApp } from './CopyFromOtherApp';
 import { LivePreviewFrame } from './LivePreviewFrame';
+import { MediaLibrary } from './MediaLibrary';
+
+function seoDescriptionKey(titleKey: string): string | null {
+  if (titleKey === 'meta_title') return 'meta_description';
+  if (titleKey.endsWith('_meta_title')) return titleKey.replace(/_meta_title$/, '_meta_description');
+  return null;
+}
+
+function isSeoDescriptionKey(key: string): boolean {
+  return key === 'meta_description' || key.endsWith('_meta_description');
+}
 
 type DraftMap = Record<string, string>;
 
@@ -91,6 +104,7 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [autosaving, setAutosaving] = useState(false);
   const [serverDraftSynced, setServerDraftSynced] = useState(true);
+  const [mediaOpen, setMediaOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const uploadCtx = useRef<{
@@ -410,6 +424,9 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
             <Btn onClick={() => importInputRef.current?.click()} variant="secondary">
               <UploadIcon size={16} /> Import
             </Btn>
+            <Btn onClick={() => setMediaOpen(true)} variant="secondary">
+              <LayoutTemplate size={16} /> Media
+            </Btn>
             <span data-testid="draft-save-status" style={{ fontSize: 12, color: '#9C8E7E', minWidth: 120 }}>
               {autosaving
                 ? 'Saving draft…'
@@ -544,12 +561,29 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
         </aside>
 
         <div className="content-studio-blocks" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {loading ? <p style={{ color: '#9C8E7E' }}>Loading…</p> : null}
+          {loading ? (
+            <div data-testid="content-skeleton" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{ height: 96, borderRadius: 14, background: 'linear-gradient(90deg,#F0EBE4 25%,#F8F6F3 50%,#F0EBE4 75%)', backgroundSize: '200% 100%', animation: 'none' }} />
+              ))}
+            </div>
+          ) : null}
           {!loading && filtered.length === 0 ? <p style={{ color: '#9C8E7E' }}>No blocks match.</p> : null}
 
-          {filtered.map((block) => {
+          {!loading && filtered.map((block) => {
+            // SEO description fields render with their title pair.
+            if (isSeoDescriptionKey(block.key)) {
+              const titleKey = block.key === 'meta_description'
+                ? 'meta_title'
+                : block.key.replace(/_meta_description$/, '_meta_title');
+              if (appBlocks.some((b) => b.key === titleKey)) return null;
+            }
+
             const val = valueForApp(block, app, drafts);
             const visual = block.editor ? renderVisualEditor(block, val) : null;
+            const descKey = seoDescriptionKey(block.key);
+            const descBlock = descKey ? appBlocks.find((b) => b.key === descKey) : undefined;
+            const isSeoTitle = Boolean(descKey);
 
             return (
               <div key={`${block.key}-${locale}`} className="content-studio-block" data-content-app={app} style={{
@@ -590,12 +624,10 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
                     <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>History · {app} · {locale}</div>
                     {revisions.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>No revisions yet.</p> : null}
                     {revisions.map((r) => (
-                      <div key={r.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8, fontSize: 12 }}>
+                      <div key={r.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 10, fontSize: 12 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ color: '#9C8E7E' }}>{new Date(r.created_at).toLocaleString()}</div>
-                          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 60, overflow: 'hidden' }}>
-                            {(r.value || '—').slice(0, 200)}
-                          </div>
+                          <div style={{ color: '#9C8E7E', marginBottom: 4 }}>{new Date(r.created_at).toLocaleString()}</div>
+                          <RevisionDiff before={r.value || ''} after={val} />
                         </div>
                         <button type="button" onClick={() => void restore(r.id)}
                           style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>
@@ -612,6 +644,15 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
 
                 {visual ? (
                   visual
+                ) : isSeoTitle && descBlock ? (
+                  <SeoSnippetPreview
+                    title={val}
+                    description={valueForApp(descBlock, app, drafts)}
+                    onTitleChange={(v) => setDraft(block.key, v)}
+                    onDescriptionChange={(v) => setDraft(descBlock.key, v)}
+                    titleLabel={block.label}
+                    descriptionLabel={descBlock.label}
+                  />
                 ) : block.rich ? (
                   <RichTextEditor
                     key={`${block.key}-${locale}`}
@@ -630,7 +671,7 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
                   </label>
                 ) : block.type === 'image' ? (
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {val ? <img src={val} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 10 }} /> : null}
+                    {val ? <img src={val} alt={block.label} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 10 }} /> : null}
                     <input
                       type="file"
                       accept="image/*"
@@ -639,6 +680,12 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
                         if (f) void onUpload(block, f);
                       }}
                     />
+                    <Btn type="button" variant="secondary" onClick={() => {
+                      uploadCtx.current = { blockKey: block.key, onDone: (url) => setDraft(block.key, url) };
+                      setMediaOpen(true);
+                    }}>
+                      Library
+                    </Btn>
                     <input
                       value={val}
                       onChange={(e) => setDraft(block.key, e.target.value)}
@@ -681,6 +728,22 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
           <LivePreviewFrame url={previewUrl} loading={previewLoading} />
         </div>
       </div>
+
+      <MediaLibrary
+        open={mediaOpen}
+        onClose={() => setMediaOpen(false)}
+        onPick={(url) => {
+          const ctx = uploadCtx.current;
+          if (ctx) {
+            ctx.onDone(url);
+            uploadCtx.current = null;
+            success('Image selected from library');
+            return;
+          }
+          success('Copied media URL — paste into an image field');
+          void navigator.clipboard?.writeText(url);
+        }}
+      />
 
       {dirtyCount > 0 ? (
         <div className="content-studio-sticky-bar" role="region" aria-label="Unsaved changes">

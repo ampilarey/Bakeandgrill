@@ -238,3 +238,14 @@ export async function createContentPreviewToken(
     body: JSON.stringify({ app, locale, overrides }),
   });
 }
+
+export type ContentMediaItem = {
+  url: string;
+  thumb_url?: string | null;
+  name: string;
+  updated_at?: string | null;
+};
+
+export async function getContentMedia(): Promise<{ items: ContentMediaItem[] }> {
+  return req('/admin/content/media');
+}

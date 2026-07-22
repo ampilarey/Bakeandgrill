@@ -166,3 +166,37 @@ ship it with parity tests + a transition read-fallback. Preview/draft are admin-
 - WYSIWYG HTML must be sanitized **server-side** (`ContentSanitizer`) regardless of client.
 - Keep the two-editor structure, scope model, EN/DV, copy-from, history, schedule, import/export.
 - No heavy new frontend dependencies without justification; keep bundles lean; keep DnD accessible.
+
+## Implementation notes
+
+- **Draft store:** reused `content_revisions` with `is_draft` / `published_at` (migration
+  `2026_07_23_030000_add_is_draft_to_content_revisions`). Autosave = `PUT /admin/content/drafts`
+  (sanitized, never writes `SiteSetting`). Publish = existing `PUT /admin/content` which clears
+  draft rows + busts cache.
+- **WYSIWYG:** lightweight `contentEditable` (`RichTextEditor`); `ContentSanitizer` allow-list
+  normalises `<b>`/`<i>` → `<strong>`/`<em>`.
+- **Preview:** staff `preview-token` + signed Blade home + order `?previewToken=`; drafts never on
+  public `/api/content`.
+- **Media library:** filesystem scan of `storage/app/public/site*` (no new `content_media` table).
+- **SEO:** paired title/description keys share one `SeoSnippetPreview`; lone `*_meta_description`
+  blocks are hidden when the title pair exists.
+- **Alt text:** hero slides (Phase 2) + homepage categories (`image_alt`); Blade + order
+  `CategoryShortcuts` render it. Plain `type=image` URL blocks keep URL storage (alt via label /
+  site name at render time) to avoid breaking string readers.
+- **Fake timers:** admin autosave vitest uses fake timers only inside the autosave case to avoid
+  cross-file `waitFor` timeouts.
+
+## Build log
+
+| Phase | Commit | Backend | Admin | Order |
+|---|---|---|---|---|
+| 1 unlimited + DnD + hero array | `5b7b085c` | ~1530 pass | green | green |
+| 2 crop + focal + master + video | `2e4249db` | ~1531 pass | 84 | 89 |
+| 3 desktop/mobile live preview | `ec098470` | 1535 pass / 3 skip | 84 | 89 |
+| 4 WYSIWYG + autosave draft→publish | `daa3c90f` | 1538 pass / 3 skip | 88 | 89 |
+| 5 polish (alt, SEO, diff, media) | (this commit) | **1540 pass / 3 skip** | **91** | **90** |
+
+Final verify (Phase 5): `./vendor/bin/pint`, `php artisan test`, `npm test -- --run` + `npm run build`
+in admin + order; `./scripts/build-all.sh admin order` synced `backend/public/{admin,order}`.
+
+Branch: `claude/content-studio-modern-plan` — no PR opened (per brief).
