@@ -633,9 +633,10 @@ export function MenuItemEditorModal({
               <ImageUploadField
                 value={form.image_url}
                 originalValue={form.image_original_url}
-                onChange={({ url, original_url }) => {
+                onChange={({ url, original_url, thumb_url }) => {
                   set('image_url', url);
                   set('image_original_url', original_url);
+                  set('thumb_url', thumb_url ?? '');
                 }}
               />
             </Field>

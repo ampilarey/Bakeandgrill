@@ -5,7 +5,7 @@ import { Input } from '../../components/Layout';
 import { ImageCropModal } from './ImageCropModal';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
-type ImageUrls = { url: string; original_url: string };
+type ImageUrls = { url: string; original_url: string; thumb_url?: string };
 
 export function ImageUploadField({
   value,
@@ -81,6 +81,7 @@ export function ImageUploadField({
       onChange({
         url: res.url,
         original_url: res.original_url || originalValue || '',
+        thumb_url: res.thumb_url || '',
       });
       setPreviewKey((k) => k + 1);
       closeCropper();

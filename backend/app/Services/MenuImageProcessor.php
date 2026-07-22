@@ -26,12 +26,39 @@ class MenuImageProcessor
 
     public const MASTER_JPEG_QUALITY = 90;
 
+    public function thumbWidth(): int
+    {
+        return (int) config('menu_media.thumb.width', 400);
+    }
+
+    public function thumbHeight(): int
+    {
+        return (int) config('menu_media.thumb.height', 300);
+    }
+
+    public function thumbQuality(): int
+    {
+        return (int) config('menu_media.thumb.jpeg_quality', 80);
+    }
+
     /**
      * @return string Relative storage path (e.g. menu/uuid.jpg)
      */
     public function storeProcessed(UploadedFile $file, string $directory): string
     {
         return $this->writeBinary($this->processToJpeg($file), $directory);
+    }
+
+    /**
+     * Store a card thumbnail (default 400×300).
+     *
+     * @return string Relative storage path
+     */
+    public function storeThumbnail(UploadedFile $file, ?string $directory = null): string
+    {
+        $dir = $directory ?? (string) config('menu_media.thumb.directory', 'thumbs');
+
+        return $this->writeBinary($this->processThumbnailJpeg($file), $dir);
     }
 
     /**
@@ -44,14 +71,100 @@ class MenuImageProcessor
         return $this->writeBinary($this->processMasterJpeg($file), $directory);
     }
 
+    /**
+     * Store a raw uploaded file (e.g. video) without GD processing.
+     *
+     * @return string Relative storage path
+     */
+    public function storeRaw(UploadedFile $file, string $directory, ?string $extension = null): string
+    {
+        $ext = $extension ?: strtolower((string) $file->getClientOriginalExtension());
+        if ($ext === '') {
+            $ext = 'bin';
+        }
+        $filename = Str::uuid()->toString() . '.' . $ext;
+        $relative = trim($directory, '/') . '/' . $filename;
+        $absolute = storage_path('app/public/' . $relative);
+
+        $dir = dirname($absolute);
+        if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+            throw new RuntimeException('Could not create media storage directory.');
+        }
+
+        if (!copy($file->getRealPath(), $absolute)) {
+            throw new RuntimeException('Could not save uploaded media file.');
+        }
+
+        return $relative;
+    }
+
     public function processToJpeg(UploadedFile $file): string
+    {
+        return $this->cropResampleJpeg($file, self::WIDTH, self::HEIGHT, self::JPEG_QUALITY);
+    }
+
+    public function processThumbnailJpeg(UploadedFile $file): string
+    {
+        return $this->cropResampleJpeg(
+            $file,
+            $this->thumbWidth(),
+            $this->thumbHeight(),
+            $this->thumbQuality(),
+        );
+    }
+
+    public function processMasterJpeg(UploadedFile $file): string
     {
         $image = $this->loadUploaded($file);
 
         try {
             [$srcW, $srcH] = $this->dimensions($image);
-            $targetW = self::WIDTH;
-            $targetH = self::HEIGHT;
+            $scale = min(1, self::MASTER_MAX_EDGE / max($srcW, $srcH));
+            $targetW = max(1, (int) round($srcW * $scale));
+            $targetH = max(1, (int) round($srcH * $scale));
+
+            return $this->resampleToJpeg(
+                $image,
+                0,
+                0,
+                $srcW,
+                $srcH,
+                $targetW,
+                $targetH,
+                self::MASTER_JPEG_QUALITY,
+            );
+        } finally {
+            imagedestroy($image);
+        }
+    }
+
+    /**
+     * Generate a thumbnail from an existing public-disk relative path (backfill).
+     */
+    public function storeThumbnailFromStoragePath(string $relativePath, ?string $directory = null): string
+    {
+        $absolute = storage_path('app/public/' . ltrim($relativePath, '/'));
+        if (!is_readable($absolute)) {
+            throw new RuntimeException('Source image for thumbnail is not readable.');
+        }
+
+        $uploaded = new UploadedFile(
+            $absolute,
+            basename($absolute),
+            mime_content_type($absolute) ?: 'image/jpeg',
+            null,
+            true,
+        );
+
+        return $this->storeThumbnail($uploaded, $directory);
+    }
+
+    private function cropResampleJpeg(UploadedFile $file, int $targetW, int $targetH, int $quality): string
+    {
+        $image = $this->loadUploaded($file);
+
+        try {
+            [$srcW, $srcH] = $this->dimensions($image);
             $targetAspect = $targetW / $targetH;
             $srcAspect = $srcW / $srcH;
 
@@ -75,32 +188,7 @@ class MenuImageProcessor
                 $cropH,
                 $targetW,
                 $targetH,
-                self::JPEG_QUALITY,
-            );
-        } finally {
-            imagedestroy($image);
-        }
-    }
-
-    public function processMasterJpeg(UploadedFile $file): string
-    {
-        $image = $this->loadUploaded($file);
-
-        try {
-            [$srcW, $srcH] = $this->dimensions($image);
-            $scale = min(1, self::MASTER_MAX_EDGE / max($srcW, $srcH));
-            $targetW = max(1, (int) round($srcW * $scale));
-            $targetH = max(1, (int) round($srcH * $scale));
-
-            return $this->resampleToJpeg(
-                $image,
-                0,
-                0,
-                $srcW,
-                $srcH,
-                $targetW,
-                $targetH,
-                self::MASTER_JPEG_QUALITY,
+                $quality,
             );
         } finally {
             imagedestroy($image);

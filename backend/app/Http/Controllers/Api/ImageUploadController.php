@@ -52,6 +52,7 @@ class ImageUploadController extends Controller
 
         try {
             $relative = $this->processor->storeProcessed($file, 'menu');
+            $thumbRelative = $this->processor->storeThumbnail($file);
             $originalUrl = null;
             if ($request->hasFile('original')) {
                 $orig = $request->file('original');
@@ -67,6 +68,7 @@ class ImageUploadController extends Controller
 
         return response()->json([
             'url' => '/storage/' . ltrim($relative, '/'),
+            'thumb_url' => '/storage/' . ltrim($thumbRelative, '/'),
             'original_url' => $originalUrl,
             'width' => MenuImageProcessor::WIDTH,
             'height' => MenuImageProcessor::HEIGHT,

@@ -40,8 +40,8 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
     !!item.has_variants || (item.packaging_options?.length ?? 0) > 1;
 
   const slides = useMemo(
-    () => buildItemSlideUrls(item),
-    [item.image_url, item.photos],
+    () => buildItemSlideUrls(item, { preferThumb: true }),
+    [item.image_url, item.thumb_url, item.photos],
   );
   const descPreview = useMemo(
     () => cardDescriptionPreview(item.description),

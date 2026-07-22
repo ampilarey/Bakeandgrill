@@ -53,10 +53,16 @@ export type MenuItem = {
   has_variants?: boolean;
   variants?: Variant[];
   image_url?: string | null;
+  /** Card-sized crop when available; fall back to image_url. */
+  thumb_url?: string | null;
   /** Extra gallery photos (public menu). Combined with image_url for slideshows. */
   photos?: Array<{
     id: number;
     url: string;
+    thumb_url?: string | null;
+    poster_url?: string | null;
+    media_type?: 'image' | 'video';
+    alt_text?: string | null;
     sort_order: number;
     is_primary: boolean;
   }> | null;

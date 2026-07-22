@@ -18,15 +18,26 @@ function mediaKey(url: string): string {
   }
 }
 
-type PhotoLike = { url: string; sort_order?: number; is_primary?: boolean };
+type PhotoLike = {
+  url: string;
+  thumb_url?: string | null;
+  sort_order?: number;
+  is_primary?: boolean;
+};
 
 /**
  * Main Image first, then Photos gallery (deduped). Used for menu card / sheet slideshows.
+ * When preferThumb is true (menu cards), use thumb_url when present.
  */
-export function buildItemSlideUrls(item: {
-  image_url?: string | null;
-  photos?: PhotoLike[] | null;
-}): string[] {
+export function buildItemSlideUrls(
+  item: {
+    image_url?: string | null;
+    thumb_url?: string | null;
+    photos?: PhotoLike[] | null;
+  },
+  options?: { preferThumb?: boolean },
+): string[] {
+  const preferThumb = options?.preferThumb === true;
   const out: string[] = [];
   const seen = new Set<string>();
 
@@ -39,13 +50,15 @@ export function buildItemSlideUrls(item: {
     out.push(resolved);
   };
 
-  push(item.image_url);
+  push(preferThumb ? (item.thumb_url || item.image_url) : item.image_url);
 
   const photos = [...(item.photos ?? [])].sort((a, b) => {
     if (!!a.is_primary !== !!b.is_primary) return a.is_primary ? -1 : 1;
     return (a.sort_order ?? 0) - (b.sort_order ?? 0);
   });
-  for (const photo of photos) push(photo.url);
+  for (const photo of photos) {
+    push(preferThumb ? (photo.thumb_url || photo.url) : photo.url);
+  }
 
   return out;
 }

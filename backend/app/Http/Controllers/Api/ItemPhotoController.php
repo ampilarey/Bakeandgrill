@@ -58,6 +58,10 @@ class ItemPhotoController extends Controller
                 $request->file('photo'),
                 "item-photos/{$itemId}",
             );
+            $thumbPath = $this->processor->storeThumbnail(
+                $request->file('photo'),
+                "item-photos/{$itemId}/thumbs",
+            );
             $originalUrl = null;
             if ($request->hasFile('original')) {
                 $origPath = $this->processor->storeMaster(
@@ -73,6 +77,7 @@ class ItemPhotoController extends Controller
         }
 
         $url = '/storage/' . ltrim($path, '/');
+        $thumbUrl = '/storage/' . ltrim($thumbPath, '/');
 
         if ($validated['is_primary'] ?? false) {
             $item->photos()->update(['is_primary' => false]);
@@ -84,6 +89,7 @@ class ItemPhotoController extends Controller
             'item_id' => $item->id,
             'url' => $url,
             'original_url' => $originalUrl,
+            'thumb_url' => $thumbUrl,
             'alt_text' => $validated['alt_text'] ?? null,
             'sort_order' => $maxOrder + 1,
             'is_primary' => (bool) ($validated['is_primary'] ?? false),

@@ -50,6 +50,8 @@ export type MenuItem = {
   image_url?: string | null;
   /** High-res master for admin re-crop (not used on POS/website). */
   image_original_url?: string | null;
+  /** Card thumbnail (400×300); optional. */
+  thumb_url?: string | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -248,7 +250,7 @@ export async function toggleItemAvailability(id: number): Promise<{ item: MenuIt
 export async function uploadMenuImage(
   file: File,
   original?: File,
-): Promise<{ url: string; original_url?: string | null }> {
+): Promise<{ url: string; original_url?: string | null; thumb_url?: string | null }> {
   const formData = new FormData();
   formData.append('image', file);
   if (original) formData.append('original', original);
