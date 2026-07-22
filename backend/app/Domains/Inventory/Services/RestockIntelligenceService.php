@@ -712,6 +712,161 @@ final class RestockIntelligenceService
         return ($fromUsage ?? $fromBuy)?->toDateString();
     }
 
+    /**
+     * Build a draft Purchase Request from the restock plan (below ROP or due by next-order date).
+     *
+     * @return array{
+     *     request: \App\Models\PurchaseRequest|null,
+     *     preview: list<array{inventory_item_id: int, name: string, requested_qty: float, unit: string, estimated_unit_cost_laar: int|null, reason: string}>,
+     *     skipped: list<array{id: int, name: string, reason: string}>,
+     *     warning: string|null
+     * }
+     */
+    public function buildRestockRequestDraft(
+        \App\Models\User $user,
+        \Illuminate\Http\Request $request,
+        int $lookbackDays = 30,
+        int $buyLookbackDays = 90,
+        int $leadDays = 3,
+        int $coverDays = 14,
+        bool $onlyBelowRop = false,
+    ): array {
+        $plan = $this->restockPlan($lookbackDays, $buyLookbackDays, $leadDays, $coverDays);
+        $today = now()->startOfDay();
+
+        $openRestockItemIds = $this->openRestockPurchaseRequestItemIds();
+        $openRestockExists = $openRestockItemIds !== [];
+
+        $preview = [];
+        $skipped = [];
+
+        foreach ($plan['items'] as $row) {
+            $id = (int) $row['id'];
+            $name = (string) $row['name'];
+
+            if (!empty($row['excluded'])) {
+                $skipped[] = ['id' => $id, 'name' => $name, 'reason' => 'excluded'];
+
+                continue;
+            }
+            if (!empty($row['snoozed'])) {
+                $skipped[] = ['id' => $id, 'name' => $name, 'reason' => 'snoozed'];
+
+                continue;
+            }
+
+            $stock = (float) ($row['current_stock'] ?? 0);
+            $rop = (float) ($row['reorder_point'] ?? 0);
+            $belowRop = $rop > 0 && $stock <= $rop;
+            $nextOrder = $row['suggested_next_order_date'] ?? null;
+            $dueByDate = $nextOrder !== null && Carbon::parse((string) $nextOrder)->lte($today);
+
+            if ($onlyBelowRop) {
+                if (!$belowRop) {
+                    continue;
+                }
+            } elseif (!$belowRop && !$dueByDate) {
+                continue;
+            }
+
+            if (isset($openRestockItemIds[$id])) {
+                $skipped[] = ['id' => $id, 'name' => $name, 'reason' => 'already_on_open_restock_request'];
+
+                continue;
+            }
+
+            $qty = (float) ($row['suggested_order_qty'] ?? 0);
+            if ($qty <= 0) {
+                $skipped[] = ['id' => $id, 'name' => $name, 'reason' => 'no_suggested_qty'];
+
+                continue;
+            }
+
+            $lastPaid = (float) ($row['last_purchase_price'] ?? 0);
+            $estimatedLaar = $lastPaid > 0 ? (int) round($lastPaid * 100) : null;
+            $reason = $belowRop ? 'below_rop' : 'due_by_date';
+
+            $preview[] = [
+                'inventory_item_id' => $id,
+                'name' => $name,
+                'requested_qty' => $qty,
+                'unit' => (string) ($row['unit'] ?? 'pcs'),
+                'estimated_unit_cost_laar' => $estimatedLaar,
+                'reason' => $reason,
+            ];
+        }
+
+        $warning = $openRestockExists
+            ? 'Some items were skipped because they are already on an open restock purchase request.'
+            : null;
+
+        if ($preview === []) {
+            return [
+                'request' => null,
+                'preview' => [],
+                'skipped' => $skipped,
+                'warning' => $warning ?? 'No items need restocking for the current plan.',
+            ];
+        }
+
+        $lines = array_map(static fn (array $p): array => [
+            'inventory_item_id' => $p['inventory_item_id'],
+            'requested_qty' => $p['requested_qty'],
+            'requested_unit' => $p['unit'],
+            'estimated_unit_cost_laar' => $p['estimated_unit_cost_laar'],
+            'reason' => 'low_stock',
+            'notes' => 'Restock: ' . $p['reason'],
+        ], $preview);
+
+        $pr = app(\App\Services\PurchaseRequestService::class)->create(
+            $user,
+            [
+                'title' => 'Auto reorder ' . $today->toDateString(),
+                'source' => 'restock',
+                'priority' => 'normal',
+                'notes' => 'Generated from restock forecast',
+            ],
+            $lines,
+            $request,
+        );
+
+        return [
+            'request' => $pr->fresh(['items.inventoryItem', 'requester']),
+            'preview' => $preview,
+            'skipped' => $skipped,
+            'warning' => $warning,
+        ];
+    }
+
+    /** @return array<int, true> inventory_item_id => true */
+    private function openRestockPurchaseRequestItemIds(): array
+    {
+        $openStatuses = [
+            'requested',
+            'approved',
+            'assigned',
+            'buying',
+            'partially_bought',
+            'bought_pending_verification',
+            'received',
+        ];
+
+        $ids = DB::table('purchase_request_items as pri')
+            ->join('purchase_requests as pr', 'pr.id', '=', 'pri.purchase_request_id')
+            ->where('pr.source', 'restock')
+            ->whereIn('pr.status', $openStatuses)
+            ->whereNotNull('pri.inventory_item_id')
+            ->pluck('pri.inventory_item_id')
+            ->all();
+
+        $map = [];
+        foreach ($ids as $id) {
+            $map[(int) $id] = true;
+        }
+
+        return $map;
+    }
+
     private function stockStatus(float $stock, float $reorder, ?int $daysLeft): string
     {
         if ($stock <= 0) {

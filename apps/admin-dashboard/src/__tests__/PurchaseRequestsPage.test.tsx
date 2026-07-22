@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import PurchaseRequestsPage from "../pages/PurchaseRequestsPage";
 
 vi.mock("../hooks/usePageTitle", () => ({ usePageTitle: () => {} }));
@@ -47,7 +48,11 @@ describe("PurchaseRequestsPage", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("renders tabs and pending requests", async () => {
-    render(<PurchaseRequestsPage />);
+    render(
+      <MemoryRouter>
+        <PurchaseRequestsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText(/Purchase Requests/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pending/i })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/PR-1/i)).toBeInTheDocument());

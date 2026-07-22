@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, getRestockPlan,
   createPurchaseFromSuggest, applySuggestedReorderPoints, applySuggestedPreferredSuppliers,
-  updateInventoryItem, resolveReorderAlert,
+  generateRestockPurchaseRequest, updateInventoryItem, resolveReorderAlert,
   type ItemForecast, type RestockPlan, type RestockPlanItem,
 } from '../api';
-import { Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard } from '../components/Layout';
+import { Btn, Card, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard } from '../components/Layout';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -54,10 +54,25 @@ const STATUS_BG: Record<string, string> = {
   out_of_stock: '#fecaca',
 };
 
+function buyingListCandidates(items: RestockPlanItem[]): RestockPlanItem[] {
+  const todayStr = today();
+  return items.filter((item) => {
+    if (item.excluded || item.snoozed) return false;
+    const qty = Number(item.suggested_order_qty ?? 0);
+    if (!(qty > 0)) return false;
+    const belowRop = Number(item.reorder_point ?? 0) > 0
+      && Number(item.current_stock ?? 0) <= Number(item.reorder_point ?? 0);
+    const dueByDate = !!item.suggested_next_order_date
+      && String(item.suggested_next_order_date).slice(0, 10) <= todayStr;
+    return belowRop || dueByDate;
+  });
+}
+
 export function ForecastPage() {
     usePageTitle('Forecasts');
   const { can } = useCurrentUserPermissions();
   const canManageInventory = can('inventory.manage');
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const restockSectionRef = useRef<HTMLDivElement>(null);
   const [settingPreferredId, setSettingPreferredId] = useState<number | null>(null);
@@ -81,6 +96,8 @@ export function ForecastPage() {
   const [creatingPos, setCreatingPos] = useState(false);
   const [applyingRop, setApplyingRop] = useState(false);
   const [applyingPreferred, setApplyingPreferred] = useState(false);
+  const [generatingBuyingList, setGeneratingBuyingList] = useState(false);
+  const [buyingListPreview, setBuyingListPreview] = useState<RestockPlanItem[] | null>(null);
   const [savingLeadId, setSavingLeadId] = useState<number | null>(null);
   const [savingCoverId, setSavingCoverId] = useState<number | null>(null);
   const [savingQtyId, setSavingQtyId] = useState<number | null>(null);
@@ -266,7 +283,7 @@ export function ForecastPage() {
   const selectedWakeable = selectedAnyRestock.filter((i) => i.snoozed && !i.excluded);
   const selectedExcludable = selectedAnyRestock.filter((i) => !i.excluded);
   const selectedIncludable = selectedAnyRestock.filter((i) => i.excluded);
-  const restockBusy = creatingPos || applyingRop || applyingPreferred
+  const restockBusy = creatingPos || applyingRop || applyingPreferred || generatingBuyingList
     || settingPreferredId != null || savingLeadId != null || savingCoverId != null
     || savingQtyId != null || resolvingAlertId != null || snoozingId != null;
 
@@ -932,6 +949,43 @@ export function ForecastPage() {
     }
   };
 
+  const openBuyingListPreview = () => {
+    if (!restock) return;
+    const candidates = buyingListCandidates(restock.items);
+    if (candidates.length === 0) {
+      setError('No items are below ROP or due by next order date.');
+      return;
+    }
+    setBuyingListPreview(candidates);
+  };
+
+  const confirmGenerateBuyingList = async () => {
+    if (!canManageInventory) {
+      setError('You need inventory.manage permission to generate a buying list.');
+      return;
+    }
+    setGeneratingBuyingList(true);
+    setError('');
+    setRestockToast('');
+    try {
+      const res = await generateRestockPurchaseRequest(restockQueryParams());
+      setBuyingListPreview(null);
+      if (!res.request) {
+        setError(res.message || res.warning || 'No purchase request created.');
+        return;
+      }
+      setRestockToast(
+        `Created ${res.request.request_no} with ${res.request.items_count} item${res.request.items_count === 1 ? '' : 's'}`
+        + (res.warning ? ` · ${res.warning}` : ''),
+      );
+      navigate(`/purchase-requests?open=${res.request.id}`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setGeneratingBuyingList(false);
+    }
+  };
+
   const applyPreferredFromRestock = async () => {
     const targets = selectedPreferredItems.length > 0 ? selectedPreferredItems : cheapestRestock;
     if (targets.length === 0) {
@@ -1186,12 +1240,22 @@ export function ForecastPage() {
                     <Btn
                       small
                       variant="secondary"
-                      disabled={applyingRop || selectedRopItems.length === 0 || creatingPos || applyingPreferred}
+                      disabled={applyingRop || selectedRopItems.length === 0 || creatingPos || applyingPreferred || generatingBuyingList}
                       onClick={() => void applyRopFromRestock()}
                     >
                       {applyingRop
                         ? 'Applying…'
                         : `Apply suggested ROPs (${selectedRopItems.length})`}
+                    </Btn>
+                  )}
+                  {canManageInventory && restock && buyingListCandidates(restock.items).length > 0 && (
+                    <Btn
+                      small
+                      variant="secondary"
+                      disabled={restockBusy}
+                      onClick={openBuyingListPreview}
+                    >
+                      Generate buying list ({buyingListCandidates(restock.items).length})
                     </Btn>
                   )}
                   {eligibleRestock.length > 0 && (
@@ -1966,6 +2030,43 @@ export function ForecastPage() {
             </Card>
           )}
         </div>
+      )}
+
+      {buyingListPreview && (
+        <Modal title="Generate buying list" onClose={() => setBuyingListPreview(null)} maxWidth={560}>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 0 }}>
+            Creates a Purchase Request (status: requested) for items below ROP or due by next order date.
+            Suggested qty and last-paid price are prefilled. Manager still approves/assigns.
+          </p>
+          <div style={{ maxHeight: 280, overflow: 'auto', border: '1px solid #E8E0D8', borderRadius: 8 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#F8F6F3' }}>
+                  {['Item', 'Qty', 'Last paid'].map((h) => (
+                    <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, color: '#6B5D4F' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {buyingListPreview.map((item) => (
+                  <tr key={item.id} style={{ borderTop: '1px solid #F0EBE5' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{item.name}</td>
+                    <td style={{ padding: '8px 10px' }}>{item.suggested_order_qty} {item.unit}</td>
+                    <td style={{ padding: '8px 10px' }}>
+                      {item.last_purchase_price != null ? `MVR ${Number(item.last_purchase_price).toFixed(2)}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ModalActions>
+            <Btn variant="secondary" disabled={generatingBuyingList} onClick={() => setBuyingListPreview(null)}>Cancel</Btn>
+            <Btn disabled={generatingBuyingList} onClick={() => void confirmGenerateBuyingList()}>
+              {generatingBuyingList ? 'Creating…' : `Create request (${buyingListPreview.length})`}
+            </Btn>
+          </ModalActions>
+        </Modal>
       )}
     </>
   );

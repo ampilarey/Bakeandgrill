@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -65,6 +65,7 @@ export default function PurchaseRequestsPage() {
   const { can } = useCurrentUserPermissions();
   const toast = useToast();
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('pending');
   const [rows, setRows] = useState<PurchaseRequest[]>([]);
@@ -167,6 +168,18 @@ export default function PurchaseRequestsPage() {
       setDetailLoading(false);
     }
   };
+
+  useEffect(() => {
+    const openId = searchParams.get('open');
+    if (!openId) return;
+    const id = Number(openId);
+    if (!Number.isFinite(id) || id <= 0) return;
+    void openDetail(id);
+    const next = new URLSearchParams(searchParams);
+    next.delete('open');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open once from deep link
+  }, []);
 
   const refreshDetail = async (id: number) => {
     const res = await getPurchaseRequest(id);

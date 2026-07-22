@@ -879,6 +879,38 @@ export async function applySuggestedPreferredSuppliers(data: {
   return req('/forecasts/restock/apply-preferred', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export type GenerateRestockRequestResult = {
+  request: {
+    id: number;
+    request_no: string;
+    title: string | null;
+    source: string;
+    status: string;
+    items_count: number;
+  } | null;
+  preview: Array<{
+    inventory_item_id: number;
+    name: string;
+    requested_qty: number;
+    unit: string;
+    estimated_unit_cost_laar: number | null;
+    reason: string;
+  }>;
+  skipped: Array<{ id: number; name: string; reason: string }>;
+  warning: string | null;
+  message?: string;
+};
+
+export async function generateRestockPurchaseRequest(data: {
+  lookback_days?: number;
+  buy_lookback_days?: number;
+  lead_days?: number;
+  cover_days?: number;
+  only_below_rop?: boolean;
+} = {}): Promise<GenerateRestockRequestResult> {
+  return req('/forecasts/restock/generate-request', { method: 'POST', body: JSON.stringify(data) });
+}
+
 export type DeliveryZoneReportRow = {
   zone: string;
   orders_count: number;

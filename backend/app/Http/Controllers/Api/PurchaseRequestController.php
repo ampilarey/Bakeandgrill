@@ -82,7 +82,7 @@ class PurchaseRequestController extends Controller
     {
         $validated = $request->validate([
             'title' => ['nullable', 'string', 'max:255'],
-            'source' => ['required', Rule::in(['pos', 'kds', 'admin'])],
+            'source' => ['required', Rule::in(['pos', 'kds', 'admin', 'restock'])],
             'priority' => ['nullable', Rule::in(['low', 'normal', 'urgent'])],
             'needed_by' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],

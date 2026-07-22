@@ -300,6 +300,56 @@ class ForecastController extends Controller
         ));
     }
 
+    /**
+     * Generate a draft Purchase Request from the restock plan (status = requested).
+     */
+    public function generateRestockRequest(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'lookback_days' => ['nullable', 'integer', 'min:7', 'max:180'],
+            'buy_lookback_days' => ['nullable', 'integer', 'min:30', 'max:365'],
+            'lead_days' => ['nullable', 'integer', 'min:0', 'max:30'],
+            'cover_days' => ['nullable', 'integer', 'min:1', 'max:90'],
+            'only_below_rop' => ['nullable', 'boolean'],
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        $result = $this->restock->buildRestockRequestDraft(
+            $user,
+            $request,
+            (int) ($validated['lookback_days'] ?? 30),
+            (int) ($validated['buy_lookback_days'] ?? 90),
+            (int) ($validated['lead_days'] ?? 3),
+            (int) ($validated['cover_days'] ?? 14),
+            (bool) ($validated['only_below_rop'] ?? false),
+        );
+
+        if ($result['request'] === null) {
+            return response()->json([
+                'request' => null,
+                'preview' => $result['preview'],
+                'skipped' => $result['skipped'],
+                'warning' => $result['warning'],
+                'message' => $result['warning'] ?? 'No purchase request created.',
+            ], 422);
+        }
+
+        return response()->json([
+            'request' => [
+                'id' => $result['request']->id,
+                'request_no' => $result['request']->request_no,
+                'title' => $result['request']->title,
+                'source' => $result['request']->source,
+                'status' => $result['request']->status,
+                'items_count' => $result['request']->items->count(),
+            ],
+            'preview' => $result['preview'],
+            'skipped' => $result['skipped'],
+            'warning' => $result['warning'],
+        ], 201);
+    }
+
     // ──────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────

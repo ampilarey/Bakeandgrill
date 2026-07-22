@@ -115,4 +115,5 @@ Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('for
 Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->prefix('forecasts')->group(function () {
     Route::post('/restock/apply-rop', [App\Http\Controllers\Api\ForecastController::class, 'applySuggestedReorderPoints']);
     Route::post('/restock/apply-preferred', [App\Http\Controllers\Api\ForecastController::class, 'applySuggestedPreferredSuppliers']);
+    Route::post('/restock/generate-request', [App\Http\Controllers\Api\ForecastController::class, 'generateRestockRequest']);
 });
