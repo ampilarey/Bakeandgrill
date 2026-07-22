@@ -45,7 +45,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
     || item.name;
 
   const slides = useMemo(
-    () => buildItemSlides(item, { preferThumb: true, fallbackAlt: mediaAlt }),
+    () => buildItemSlides(item, { preferThumb: true, source: 'gallery', fallbackAlt: mediaAlt }),
     [item.image_url, item.thumb_url, item.photos, mediaAlt],
   );
   const descPreview = useMemo(
