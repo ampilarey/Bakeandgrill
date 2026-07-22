@@ -447,3 +447,80 @@ data, edited via the Hours editor, not free-text content).
 ### Deviations
 - Content Studio v1 uses textarea/JSON raw editors rather than porting every WebsiteSettings custom repeater; legacy Website Settings remains for those visual editors.
 - Ops/system groups excluded per Appendix A (unchanged).
+
+---
+
+## Stage 6 — Content Studio visual editors + live preview (completes the feature)
+
+**Why:** Stages 1–5 shipped the scope engine and Content Studio, but repeater/media blocks
+(hero, categories, trust, proof, about, preorder steps, footer links, business hours) render as
+**raw JSON/textarea** in `ContentStudioPage.tsx`. The polished per-field editors still live only
+in the legacy `WebsiteSettingsSubPage.tsx`. Stage 6 ports them in — scope-aware — and retires the
+legacy page, so the modern experience is end-to-end.
+
+### Verified current state
+- `apps/admin-dashboard/src/pages/ContentStudio/ContentStudioPage.tsx` — already has: scope model
+  (`shared`/`website`/`order_app`), `appTab` tabs, `splitContentBlock`/reset/copy, drafts, save;
+  renders editors by `block.type`: `boolean` (toggle), `image` (upload), `textarea|json` (raw
+  `<textarea>`), `text` (input). **Repeaters fall into the raw JSON textarea — the gap.**
+- `apps/admin-dashboard/src/pages/SettingsPage/WebsiteSettingsSubPage.tsx` — 8 visual editors to
+  port: `HeroSlideEditor`, `CategoriesEditor`, `TrustItemsEditor`, `ProofDetailsEditor`,
+  `AboutValuesEditor`, `PreorderStepsEditor`, `FooterLinksEditor`, `BusinessHoursEditor`.
+- Registry blocks already carry `type`; Stage 6 needs an `editor` hint per block (see below).
+
+### Work
+1. **Add an `editor` hint to the registry** (`backend/config/content.php`): for repeater/media
+   blocks add `'editor' => 'hero' | 'categories' | 'trust' | 'proof' | 'about_values' |
+   'preorder_steps' | 'footer_links' | 'business_hours'`. Expose it on `ContentBlockResource` /
+   `ContentBlock` type. Blocks without an `editor` keep the generic type-based editor. **No new
+   keys, no value changes** — purely a metadata hint (additive; snapshot tests must stay green).
+2. **Extract the 8 editors into shared, scope-agnostic components** under
+   `apps/admin-dashboard/src/components/content-editors/` — each takes `{ value: string (JSON),
+   onChange(next: string), triggerUpload(key,cb) }` (the legacy signature). Move them out of
+   `WebsiteSettingsSubPage.tsx` verbatim first (no behaviour change), then have both pages import
+   them.
+3. **Wire them into ContentStudio**: in `ContentStudioPage.tsx`, when `block.editor` is set,
+   render the matching component instead of the raw textarea, passing the **scope-correct**
+   value/onChange (`valueFor(block, scope)` / `setDraft(key, scope, next)`) and a scoped
+   `triggerUpload` (uploads must target the active scope). Hero/category image uploads go through
+   the existing scoped crop endpoint from Stage 3.
+4. **Live preview pane**: add a right-hand preview that renders the block for the active app tab
+   — reuse the order-app card/hero components where cheap, or a lightweight HTML preview for
+   Blade-only blocks. Keep it read-only; update on draft change (debounced). Scope: hero, trust,
+   categories, proof, announcement, CTA band (the visual ones); plain text/textarea blocks need
+   no preview.
+5. **Retire legacy Website Settings**: replace `WebsiteSettingsSubPage` route with a redirect to
+   Content Studio (keep the file only if it still hosts non-content ops fields; if it does, leave
+   those and remove only the ported content editors). Update `navConfig.ts`.
+6. **Rebuild + re-sync** `backend/public/admin` dist via `./scripts/build-all.sh admin`.
+
+### Tests
+- `apps/admin-dashboard/src/__tests__/ContentStudio.editors.test.tsx` (new): hero editor edits a
+  slide field → draft JSON updates for the active scope; category image upload sets the scoped
+  value; switching app tab shows that scope's repeater rows; reset-to-shared clears overrides.
+- Keep `ContentStudio.test.tsx` and all backend Content tests green (registry `editor` hint is
+  additive — `ContentBladeParityTest` must still pass).
+
+### Acceptance
+1. Hero, categories, trust, proof, about, preorder steps, footer links, business hours all edit
+   via per-field UI in Content Studio (no raw JSON), for shared **and** per-app split scopes.
+2. Image blocks upload through the scoped crop pipeline; the correct scope's value is written.
+3. A live preview reflects the active app tab's draft for visual blocks.
+4. The legacy Website Settings content editors are gone (redirect); no content key or default
+   changed; all existing tests stay green.
+
+### Commit boundary
+Single stage: "content: visual editors + live preview in Content Studio (Stage 6)".
+
+---
+
+## Remaining backlog after Stage 6 (optional, not required)
+
+These are enhancements — the feature is complete without them:
+1. **Revision restore** — dedicated `content_revisions` table + one-click restore (today: audit
+   log records changes but no restore button).
+2. **Scheduled publish** — `publish_at` per block/scope so copy can go live at a set time.
+3. **Multi-language per scope** — Dhivehi/English variants per block (there is `name_dv` on some
+   models; content blocks are single-language today).
+4. **Import/export** — download/upload a content bundle to clone between environments (e.g. copy
+   test → prod).
