@@ -141,7 +141,17 @@ export async function createInvoice(data: {
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
 
-export type ExpenseCategory = { id: number; name: string; icon: string; slug: string };
+export type ExpenseCategory = {
+  id: number;
+  name: string;
+  icon: string;
+  slug: string;
+  monthly_budget_laar?: number | null;
+  spent_this_month_laar?: number;
+  budget_pct?: number | null;
+  over_budget?: boolean;
+  near_budget?: boolean;
+};
 
 export type Expense = {
   id: number;
@@ -187,6 +197,16 @@ export async function getExpenses(params: {
 
 export async function getExpenseCategories(): Promise<{ categories: ExpenseCategory[] }> {
   return req('/expenses/categories');
+}
+
+export async function updateExpenseCategoryBudget(
+  id: number,
+  monthly_budget_laar: number | null,
+): Promise<{ category: ExpenseCategory }> {
+  return req(`/expenses/categories/${id}/budget`, {
+    method: 'PATCH',
+    body: JSON.stringify({ monthly_budget_laar }),
+  });
 }
 
 export async function storeExpense(data: Record<string, unknown>): Promise<{ expense: Expense }> {

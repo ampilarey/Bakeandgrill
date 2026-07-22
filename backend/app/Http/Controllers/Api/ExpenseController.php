@@ -9,9 +9,11 @@ use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Services\AuditLogService;
+use App\Services\ExpenseBudgetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\ValidationException;
 
 class ExpenseController extends Controller
 {
@@ -90,14 +92,35 @@ class ExpenseController extends Controller
 
     public function categories(): JsonResponse
     {
+        $budget = app(ExpenseBudgetService::class);
         $cats = ExpenseCategory::where('is_active', true)->orderBy('name')->get();
 
-        return response()->json(['categories' => $cats->map(fn ($c) => [
-            'id' => $c->id,
-            'name' => $c->name,
-            'slug' => $c->slug,
-            'icon' => $c->icon,
-        ])]);
+        return response()->json(['categories' => $cats->map(function ($c) use ($budget) {
+            $status = $budget->statusForCategory((int) $c->id);
+
+            return [
+                'id' => $c->id,
+                'name' => $c->name,
+                'slug' => $c->slug,
+                'icon' => $c->icon,
+                'monthly_budget_laar' => $c->monthly_budget_laar,
+                'spent_this_month_laar' => $status['spent_laar'],
+                'budget_pct' => $status['pct'],
+                'over_budget' => $status['over_budget'],
+                'near_budget' => $status['near_budget'],
+            ];
+        })]);
+    }
+
+    public function updateCategoryBudget(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'monthly_budget_laar' => ['nullable', 'integer', 'min:0'],
+        ]);
+        $cat = ExpenseCategory::findOrFail($id);
+        $cat->update(['monthly_budget_laar' => $validated['monthly_budget_laar'] ?? null]);
+
+        return response()->json(['category' => $cat->fresh()]);
     }
 
     public function store(Request $request): JsonResponse
@@ -136,6 +159,15 @@ class ExpenseController extends Controller
         $validated['tax_amount'] = $validated['tax_amount'] ?? 0;
         $validated['expense_number'] = $this->generateExpenseNumber();
 
+        $budget = app(ExpenseBudgetService::class);
+        $status = $budget->statusForCategory((int) $validated['expense_category_id'], (int) $validated['amount_laar']);
+        if ($status['over_budget'] && $budget->enforceEnabled()) {
+            throw ValidationException::withMessages([
+                'expense_category_id' => ['This expense would exceed the monthly category budget (MVR '
+                    . number_format(($status['monthly_budget_laar'] ?? 0) / 100, 2) . ').'],
+            ]);
+        }
+
         if ($validated['is_recurring'] ?? false) {
             $validated['next_recurrence_date'] = $this->nextRecurrenceDate(
                 $validated['expense_date'],
@@ -146,7 +178,12 @@ class ExpenseController extends Controller
         $expense = Expense::create($validated);
         $this->audit->log('expense.created', 'Expense', $expense->id, [], ['description' => $expense->description, 'amount' => $expense->amount], [], $request);
 
-        return response()->json(['expense' => $this->format($expense->load('category', 'supplier', 'purchase'))], 201);
+        $payload = ['expense' => $this->format($expense->load('category', 'supplier', 'purchase'))];
+        if ($status['over_budget'] || $status['near_budget']) {
+            $payload['budget_warning'] = $status;
+        }
+
+        return response()->json($payload, 201);
     }
 
     public function show(int $id): JsonResponse

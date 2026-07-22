@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\InventoryItem;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +44,16 @@ final class PurchaseRequestService
 
             $this->auditPurchaseRequest('purchase_request.created', $pr, [], ['status' => 'requested'], $request, $user);
 
-            return $pr;
+            $threshold = (int) SiteSetting::get('purchase_requests_auto_approve_under_laar', '0');
+            if ($threshold > 0
+                && $pr->total_estimated_laar !== null
+                && (int) $pr->total_estimated_laar > 0
+                && (int) $pr->total_estimated_laar <= $threshold
+            ) {
+                $pr = $this->approveInternal($pr, $user, $request, auto: true);
+            }
+
+            return $pr->fresh(['items', 'requester', 'assignee']);
         });
     }
 
@@ -118,7 +128,12 @@ final class PurchaseRequestService
             }
         }
 
-        return DB::transaction(function () use ($pr, $user, $request) {
+        return $this->approveInternal($pr, $user, $request, auto: false);
+    }
+
+    private function approveInternal(PurchaseRequest $pr, User $user, Request $request, bool $auto): PurchaseRequest
+    {
+        return DB::transaction(function () use ($pr, $user, $request, $auto) {
             $oldStatus = $pr->status;
             $pr->update([
                 'status' => 'approved',
@@ -134,7 +149,15 @@ final class PurchaseRequestService
             }
 
             $this->recomputeTotals($pr->fresh());
-            $this->auditPurchaseRequest('purchase_request.approved', $pr->fresh(), ['status' => $oldStatus], ['status' => 'approved'], $request, $user);
+            $this->auditPurchaseRequest(
+                $auto ? 'purchase_request.auto_approved' : 'purchase_request.approved',
+                $pr->fresh(),
+                ['status' => $oldStatus],
+                ['status' => 'approved'],
+                $request,
+                $user,
+                $auto ? ['reason' => 'under_threshold'] : [],
+            );
 
             return $pr->fresh(['items', 'requester', 'assignee', 'approver']);
         });

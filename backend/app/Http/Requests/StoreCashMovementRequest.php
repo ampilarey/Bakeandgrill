@@ -19,6 +19,7 @@ class StoreCashMovementRequest extends FormRequest
             'type' => 'required|string|in:cash_in,cash_out,paid_in,paid_out',
             'amount' => 'required|numeric|min:0.01|max:999999',
             'reason' => 'required|string|max:500',
+            'category' => 'nullable|string|max:64',
         ];
     }
 }

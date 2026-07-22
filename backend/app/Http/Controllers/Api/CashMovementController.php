@@ -28,6 +28,7 @@ class CashMovementController extends Controller
             'type' => $validated['type'],
             'amount' => $validated['amount'],
             'reason' => $validated['reason'],
+            'category' => $validated['category'] ?? null,
         ]);
 
         app(AuditLogService::class)->log(

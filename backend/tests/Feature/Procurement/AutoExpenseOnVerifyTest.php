@@ -142,7 +142,8 @@ class AutoExpenseOnVerifyTest extends TestCase
         $this->getJson('/api/purchase-requests/settings/auto-expense')
             ->assertOk()
             ->assertJsonPath('settings.auto_expense', false)
-            ->assertJsonPath('settings.default_expense_category_id', null);
+            ->assertJsonPath('settings.default_expense_category_id', null)
+            ->assertJsonPath('settings.auto_on_low_stock', false);
 
         $this->patchJson('/api/purchase-requests/settings/auto-expense', [
             'auto_expense' => true,

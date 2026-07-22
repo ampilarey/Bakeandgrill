@@ -13,6 +13,10 @@ export type PosPurchaseRequestItem = {
   status: string;
   notes: string | null;
   buyer_notes: string | null;
+  price_hint?: {
+    last_paid: number | null;
+    cheapest: { supplier_id: number; supplier_name: string | null; unit_price: number } | null;
+  };
 };
 
 export type PosPurchaseRequest = {

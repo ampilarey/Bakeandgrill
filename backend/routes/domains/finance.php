@@ -33,6 +33,7 @@ Route::middleware(['auth:sanctum', 'permission:finance.expenses'])->prefix('expe
     Route::get('/', [App\Http\Controllers\Api\ExpenseController::class, 'index']);
     Route::post('/', [App\Http\Controllers\Api\ExpenseController::class, 'store']);
     Route::get('/categories', [App\Http\Controllers\Api\ExpenseController::class, 'categories']);
+    Route::patch('/categories/{id}/budget', [App\Http\Controllers\Api\ExpenseController::class, 'updateCategoryBudget'])->whereNumber('id');
     Route::get('/summary', [App\Http\Controllers\Api\ExpenseController::class, 'summary']);
     // Static path before /{id}
     Route::get('/settings/purchase-auto', [App\Http\Controllers\Api\PurchaseExpenseSettingsController::class, 'show']);

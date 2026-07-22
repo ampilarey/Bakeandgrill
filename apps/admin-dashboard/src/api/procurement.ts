@@ -24,6 +24,10 @@ export type PurchaseRequestItem = {
   actual_total_laar?: number | null;
   supplier_id?: number | null;
   verified_notes?: string | null;
+  price_hint?: {
+    last_paid: number | null;
+    cheapest: { supplier_id: number; supplier_name: string | null; unit_price: number } | null;
+  };
 };
 
 export type PurchaseRequest = {
@@ -177,7 +181,15 @@ export async function promotePurchaseRequestItemToInventory(
 }
 
 export async function getPurchaseRequestAutoExpenseSettings(): Promise<{
-  settings: { auto_expense: boolean; default_expense_category_id: number | null };
+  settings: {
+    auto_expense: boolean;
+    default_expense_category_id: number | null;
+    show_price_hints?: boolean;
+    auto_on_low_stock?: boolean;
+    auto_approve_under_laar?: number;
+    auto_approve_under_mvr?: number;
+    recurring_lists_enabled?: boolean;
+  };
 }> {
   return req('/purchase-requests/settings/auto-expense');
 }
@@ -185,14 +197,90 @@ export async function getPurchaseRequestAutoExpenseSettings(): Promise<{
 export async function updatePurchaseRequestAutoExpenseSettings(data: {
   auto_expense?: boolean;
   default_expense_category_id?: number | null;
+  show_price_hints?: boolean;
+  auto_on_low_stock?: boolean;
+  auto_approve_under_mvr?: number | null;
+  auto_approve_under_laar?: number | null;
+  recurring_lists_enabled?: boolean;
 }): Promise<{
-  settings: { auto_expense: boolean; default_expense_category_id: number | null };
+  settings: {
+    auto_expense: boolean;
+    default_expense_category_id: number | null;
+    show_price_hints?: boolean;
+    auto_on_low_stock?: boolean;
+    auto_approve_under_laar?: number;
+    auto_approve_under_mvr?: number;
+    recurring_lists_enabled?: boolean;
+  };
   message: string;
 }> {
   return req('/purchase-requests/settings/auto-expense', {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+}
+
+export async function fetchPurchaseRequestReconciliation(params?: {
+  from?: string;
+  to?: string;
+  buyer_id?: number;
+}): Promise<{
+  from: string;
+  to: string;
+  buyers: Array<{
+    buyer_id: number;
+    buyer_name: string;
+    request_count: number;
+    bought_laar: number;
+    expense_laar: number;
+    cash_out_laar: number;
+    receipt_count: number;
+    bought_vs_expense_laar: number;
+    cash_vs_bought_laar: number;
+  }>;
+  totals: Record<string, number>;
+}> {
+  const q = new URLSearchParams();
+  if (params?.from) q.set('from', params.from);
+  if (params?.to) q.set('to', params.to);
+  if (params?.buyer_id) q.set('buyer_id', String(params.buyer_id));
+  const qs = q.toString();
+  return req(`/purchase-requests/reconciliation${qs ? `?${qs}` : ''}`);
+}
+
+export type RecurringShoppingList = {
+  id: number;
+  name: string;
+  is_active: boolean;
+  recurrence_interval: string;
+  next_run_date: string | null;
+  priority: string;
+  title_template: string | null;
+  items: Array<{
+    id?: number;
+    inventory_item_id: number | null;
+    inventory_item_name?: string | null;
+    free_text_name: string | null;
+    qty: number;
+    unit: string;
+    estimated_unit_cost_laar: number | null;
+  }>;
+};
+
+export async function fetchRecurringShoppingLists(): Promise<{ lists: RecurringShoppingList[] }> {
+  return req('/recurring-shopping-lists');
+}
+
+export async function createRecurringShoppingList(data: Partial<RecurringShoppingList> & { name: string; items: RecurringShoppingList['items'] }): Promise<{ list: RecurringShoppingList }> {
+  return req('/recurring-shopping-lists', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateRecurringShoppingList(id: number, data: Partial<RecurringShoppingList> & { items?: RecurringShoppingList['items'] }): Promise<{ list: RecurringShoppingList }> {
+  return req(`/recurring-shopping-lists/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteRecurringShoppingList(id: number): Promise<{ message: string }> {
+  return req(`/recurring-shopping-lists/${id}`, { method: 'DELETE' });
 }
 
 export async function mergePurchaseRequests(targetId: number, sourceIds: number[]): Promise<{ request: PurchaseRequest }> {

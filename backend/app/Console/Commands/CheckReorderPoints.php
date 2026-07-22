@@ -11,6 +11,7 @@ use App\Models\InventoryReorderAlert;
 use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class CheckReorderPoints extends Command
@@ -91,7 +92,44 @@ class CheckReorderPoints extends Command
             $this->maybeSendReorderSms($sms, $notifyNames);
         }
 
+        if ($created > 0) {
+            $this->maybeAutoRestockRequest();
+        }
+
         return self::SUCCESS;
+    }
+
+    private function maybeAutoRestockRequest(): void
+    {
+        if (!filter_var(SiteSetting::get('purchase_requests_auto_on_low_stock', '0'), FILTER_VALIDATE_BOOLEAN)) {
+            return;
+        }
+
+        $actor = User::query()
+            ->where('is_active', true)
+            ->whereHas('role', fn ($q) => $q->whereIn('slug', ['owner', 'manager']))
+            ->orderBy('id')
+            ->first();
+
+        if (!$actor) {
+            Log::warning('inventory:check-reorder auto restock PR skipped — no manager/owner user');
+
+            return;
+        }
+
+        try {
+            $request = Request::create('/api/forecasts/restock/generate-request', 'POST');
+            $request->setUserResolver(fn () => $actor);
+            $result = app(\App\Domains\Inventory\Services\RestockIntelligenceService::class)
+                ->buildRestockRequestDraft($actor, $request, onlyBelowRop: true);
+
+            if ($result['request']) {
+                $this->info('Auto restock PR created: ' . $result['request']->request_no);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('inventory:check-reorder auto restock PR failed', ['error' => $e->getMessage()]);
+            $this->warn('Auto restock PR failed: ' . $e->getMessage());
+        }
     }
 
     /**

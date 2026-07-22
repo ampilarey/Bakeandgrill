@@ -95,6 +95,11 @@ Schedule::command('expenses:generate-recurring')
     ->onFailure($alertOnFailure('expenses:generate-recurring'))
     ->after($trackSuccess('expenses:generate-recurring'));
 
+Schedule::command('purchase-requests:generate-recurring-lists')
+    ->dailyAt('06:15')
+    ->onFailure($alertOnFailure('purchase-requests:generate-recurring-lists'))
+    ->after($trackSuccess('purchase-requests:generate-recurring-lists'));
+
 // Finance: mark overdue invoices daily at 07:00
 Schedule::command('invoices:mark-overdue')
     ->dailyAt('07:00')

@@ -125,10 +125,33 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
                   <div style={{ fontWeight: 600 }}>{item.name}</div>
                   <div style={{ fontSize: type.bodySm.fontSize, color: palette.panelMuted, marginBottom: space.s }}>
                     Need {item.approved_qty ?? item.requested_qty} {item.requested_unit}
+                    {item.price_hint?.cheapest && (
+                      <> · Cheapest {item.price_hint.cheapest.supplier_name ?? "shop"} @ MVR {item.price_hint.cheapest.unit_price.toFixed(2)}</>
+                    )}
+                    {item.price_hint?.last_paid != null && (
+                      <> · Last MVR {item.price_hint.last_paid.toFixed(2)}</>
+                    )}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: space.s, marginBottom: space.s }}>
                     <input placeholder="Actual qty" value={d.actualQty} onChange={(e) => setDraft(item, { actualQty: e.target.value })} style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }} />
-                    <input placeholder="Unit cost MVR" value={d.unitCostMvr} onChange={(e) => setDraft(item, { unitCostMvr: e.target.value })} style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }} />
+                    <input
+                      placeholder="Unit cost MVR"
+                      value={d.unitCostMvr}
+                      onChange={(e) => setDraft(item, { unitCostMvr: e.target.value })}
+                      style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }}
+                    />
+                    {item.price_hint?.cheapest && !d.unitCostMvr && (
+                      <button
+                        type="button"
+                        onClick={() => setDraft(item, {
+                          unitCostMvr: String(item.price_hint!.cheapest!.unit_price),
+                          shopName: item.price_hint!.cheapest!.supplier_name ?? d.shopName,
+                        })}
+                        style={{ padding: "8px 12px", borderRadius: radius.m, border: `1px solid ${palette.border}`, background: "#fff", cursor: "pointer", fontSize: 12 }}
+                      >
+                        Use cheapest
+                      </button>
+                    )}
                     <input placeholder="Shop name" value={d.shopName} onChange={(e) => setDraft(item, { shopName: e.target.value })} style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }} />
                   </div>
                   <textarea placeholder="Buyer note" value={d.notes} onChange={(e) => setDraft(item, { notes: e.target.value })} rows={2} style={{ width: "100%", padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}`, boxSizing: "border-box", marginBottom: space.s }} />

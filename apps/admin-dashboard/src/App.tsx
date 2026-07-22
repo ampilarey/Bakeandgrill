@@ -29,6 +29,7 @@ const SupplierIntelligencePage = lazyWithRetry(() => import('./pages/SupplierInt
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
 const PurchaseOrdersPage      = lazyWithRetry(() => import('./pages/PurchaseOrdersPage').then((m) => ({ default: m.PurchaseOrdersPage })));
 const PurchaseRequestsPage    = lazyWithRetry(() => import('./pages/PurchaseRequestsPage'));
+const ShoppingListsPage       = lazyWithRetry(() => import('./pages/ShoppingListsPage'));
 const KitchenProductionPage   = lazyWithRetry(() => import('./pages/KitchenProductionPage'));
 const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -311,6 +312,11 @@ export default function App() {
                 <Route path="purchase-requests" element={
                   <PermissionGuard user={user} permission="purchase_requests.view_all">
                     <PurchaseRequestsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="shopping-lists" element={
+                  <PermissionGuard user={user} permission="purchase_requests.create">
+                    <ShoppingListsPage />
                   </PermissionGuard>
                 } />
                 <Route path="kitchen-production" element={

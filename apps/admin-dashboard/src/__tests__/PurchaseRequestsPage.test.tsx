@@ -26,9 +26,17 @@ vi.mock("../api/procurement", () => ({
   }),
   getPurchaseRequest: vi.fn(),
   getPurchaseRequestAutoExpenseSettings: vi.fn().mockResolvedValue({
-    settings: { auto_expense: false, default_expense_category_id: null },
+    settings: {
+      auto_expense: false,
+      default_expense_category_id: null,
+      auto_on_low_stock: false,
+      auto_approve_under_mvr: 0,
+      show_price_hints: true,
+      recurring_lists_enabled: false,
+    },
   }),
   updatePurchaseRequestAutoExpenseSettings: vi.fn(),
+  fetchPurchaseRequestReconciliation: vi.fn().mockResolvedValue({ from: "", to: "", buyers: [], totals: {} }),
   approvePurchaseRequest: vi.fn(),
   rejectPurchaseRequest: vi.fn(),
   assignPurchaseRequest: vi.fn(),

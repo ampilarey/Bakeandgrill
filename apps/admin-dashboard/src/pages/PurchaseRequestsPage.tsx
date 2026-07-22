@@ -23,6 +23,7 @@ import {
   mergePurchaseRequests,
   promotePurchaseRequestItemToInventory,
   rejectPurchaseRequest,
+  fetchPurchaseRequestReconciliation,
   updatePurchaseRequest,
   updatePurchaseRequestAutoExpenseSettings,
   verifyAllPurchaseRequestItems,
@@ -96,6 +97,12 @@ export default function PurchaseRequestsPage() {
   const [autoExpenseSaving, setAutoExpenseSaving] = useState(false);
   const [defaultExpenseCategoryId, setDefaultExpenseCategoryId] = useState<number | null>(null);
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
+  const [autoOnLowStock, setAutoOnLowStock] = useState(false);
+  const [autoApproveMvr, setAutoApproveMvr] = useState('0');
+  const [showPriceHints, setShowPriceHints] = useState(true);
+  const [recurringEnabled, setRecurringEnabled] = useState(false);
+  const [recon, setRecon] = useState<Awaited<ReturnType<typeof fetchPurchaseRequestReconciliation>> | null>(null);
+  const [showRecon, setShowRecon] = useState(false);
 
   const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
@@ -128,6 +135,10 @@ export default function PurchaseRequestsPage() {
       .then((res) => {
         setAutoExpense(!!res.settings?.auto_expense);
         setDefaultExpenseCategoryId(res.settings?.default_expense_category_id ?? null);
+        setAutoOnLowStock(!!res.settings?.auto_on_low_stock);
+        setAutoApproveMvr(String(res.settings?.auto_approve_under_mvr ?? 0));
+        setShowPriceHints(res.settings?.show_price_hints !== false);
+        setRecurringEnabled(!!res.settings?.recurring_lists_enabled);
       })
       .catch(() => {});
     void getExpenseCategories()
@@ -138,6 +149,10 @@ export default function PurchaseRequestsPage() {
   const saveAutoExpenseSettings = async (next: {
     auto_expense?: boolean;
     default_expense_category_id?: number | null;
+    show_price_hints?: boolean;
+    auto_on_low_stock?: boolean;
+    auto_approve_under_mvr?: number | null;
+    recurring_lists_enabled?: boolean;
   }) => {
     if (!can('purchase_requests.convert_to_expense')) {
       toast.error('You need convert-to-expense permission to change this setting.');
@@ -148,6 +163,10 @@ export default function PurchaseRequestsPage() {
       const res = await updatePurchaseRequestAutoExpenseSettings(next);
       setAutoExpense(!!res.settings.auto_expense);
       setDefaultExpenseCategoryId(res.settings.default_expense_category_id ?? null);
+      setAutoOnLowStock(!!res.settings.auto_on_low_stock);
+      setAutoApproveMvr(String(res.settings.auto_approve_under_mvr ?? 0));
+      setShowPriceHints(res.settings.show_price_hints !== false);
+      setRecurringEnabled(!!res.settings.recurring_lists_enabled);
       toast.success('Expense settings saved.');
     } catch (e) {
       toast.error((e as Error).message);
@@ -319,6 +338,58 @@ export default function PurchaseRequestsPage() {
           <span style={{ fontSize: 12, color: '#6B5D4F' }}>
             Creates a pending expense only — never auto-posts to GST/ledger.
           </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Auto low-stock PR</span>
+            <Toggle
+              checked={autoOnLowStock}
+              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
+              onChange={(checked) => void saveAutoExpenseSettings({ auto_on_low_stock: checked })}
+              label={autoOnLowStock ? 'On' : 'Off'}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Price hints</span>
+            <Toggle
+              checked={showPriceHints}
+              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
+              onChange={(checked) => void saveAutoExpenseSettings({ show_price_hints: checked })}
+              label={showPriceHints ? 'On' : 'Off'}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Recurring lists</span>
+            <Toggle
+              checked={recurringEnabled}
+              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
+              onChange={(checked) => void saveAutoExpenseSettings({ recurring_lists_enabled: checked })}
+              label={recurringEnabled ? 'On' : 'Off'}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Auto-approve under MVR</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={autoApproveMvr}
+              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
+              onBlur={() => void saveAutoExpenseSettings({ auto_approve_under_mvr: Number(autoApproveMvr) || 0 })}
+              onChange={(e) => setAutoApproveMvr(e.target.value)}
+              style={{ width: 96, minHeight: 44, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8' }}
+            />
+          </div>
+          <Btn
+            variant="secondary"
+            onClick={() => {
+              setShowRecon(true);
+              void fetchPurchaseRequestReconciliation().then(setRecon).catch((e) => toast.error((e as Error).message));
+            }}
+          >
+            Buyer reconciliation
+          </Btn>
+          <Link to="/shopping-lists" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>
+            Shopping lists →
+          </Link>
         </div>
       )}
 
@@ -409,6 +480,14 @@ export default function PurchaseRequestsPage() {
                     <tr key={item.id}>
                       <td style={TD}>
                         <div>{item.name}</div>
+                        {item.price_hint && (
+                          <div style={{ fontSize: 11, color: '#6B5D4F', marginTop: 2 }}>
+                            {item.price_hint.last_paid != null && <>Last MVR {item.price_hint.last_paid.toFixed(2)} </>}
+                            {item.price_hint.cheapest && (
+                              <>· Cheapest {item.price_hint.cheapest.supplier_name ?? '—'} @ MVR {item.price_hint.cheapest.unit_price.toFixed(2)}</>
+                            )}
+                          </div>
+                        )}
                         {item.free_text_name && !item.inventory_item_id && can('inventory.manage') && (
                           <Btn
                             variant="ghost"
@@ -656,6 +735,50 @@ export default function PurchaseRequestsPage() {
             >
               Reject
             </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {showRecon && (
+        <Modal title="Buyer reconciliation" onClose={() => setShowRecon(false)} maxWidth={640}>
+          {!recon ? (
+            <p style={{ color: '#6B5D4F' }}>Loading…</p>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, color: '#6B5D4F' }}>
+                {recon.from} → {recon.to}. Cash uses category <code>buying_float</code> on cash-out movements.
+              </p>
+              <p style={{ fontSize: 13 }}>
+                Bought MVR {(recon.totals.bought_laar / 100).toFixed(2)} · Expenses MVR {(recon.totals.expense_laar / 100).toFixed(2)} · Cash-out MVR {(recon.totals.cash_out_laar / 100).toFixed(2)}
+              </p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['Buyer', 'Bought', 'Expense', 'Cash', 'Δ bought−exp', 'Receipts'].map((h) => (
+                      <th key={h} style={TH}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {recon.buyers.map((b) => (
+                    <tr key={b.buyer_id}>
+                      <td style={TD}>{b.buyer_name}</td>
+                      <td style={TD}>{laarToMvr(b.bought_laar)}</td>
+                      <td style={TD}>{laarToMvr(b.expense_laar)}</td>
+                      <td style={TD}>{laarToMvr(b.cash_out_laar)}</td>
+                      <td style={TD}>{laarToMvr(b.bought_vs_expense_laar)}</td>
+                      <td style={TD}>{b.receipt_count}</td>
+                    </tr>
+                  ))}
+                  {recon.buyers.length === 0 && (
+                    <tr><td style={TD} colSpan={6}>No buyer activity in range.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </>
+          )}
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setShowRecon(false)}>Close</Btn>
           </ModalActions>
         </Modal>
       )}

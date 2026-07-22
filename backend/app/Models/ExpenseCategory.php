@@ -9,7 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ExpenseCategory extends Model
 {
-    protected $fillable = ['name', 'slug', 'icon', 'is_active'];
+    protected $fillable = ['name', 'slug', 'icon', 'is_active', 'monthly_budget_laar'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'monthly_budget_laar' => 'integer',
+    ];
 
     public function expenses(): HasMany
     {

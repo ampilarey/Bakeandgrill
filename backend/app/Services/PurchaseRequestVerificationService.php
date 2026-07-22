@@ -191,6 +191,16 @@ final class PurchaseRequestVerificationService
             $amountLaar = $pr->total_actual_laar ?? 0;
             $receiptPath = $pr->attachments()->where('type', 'receipt')->latest('id')->value('file_path');
 
+            if ($category) {
+                $budget = app(ExpenseBudgetService::class);
+                $status = $budget->statusForCategory((int) $category->id, (int) $amountLaar);
+                if ($status['over_budget'] && $budget->enforceEnabled()) {
+                    throw ValidationException::withMessages([
+                        'expense' => ['Converting this request would exceed the monthly category budget.'],
+                    ]);
+                }
+            }
+
             $expense = Expense::create([
                 'expense_number' => 'EXP-PR-' . $pr->request_no,
                 'expense_category_id' => $category?->id ?? 1,
@@ -247,21 +257,24 @@ final class PurchaseRequestVerificationService
         return filter_var(SiteSetting::get(self::AUTO_EXPENSE_SETTING, '0'), FILTER_VALIDATE_BOOLEAN);
     }
 
-    /** @return array{auto_expense: bool, default_expense_category_id: int|null} */
+    /** @return array<string, mixed> */
     public function autoExpenseSettings(): array
     {
         $raw = SiteSetting::get(self::DEFAULT_CATEGORY_SETTING);
+        $threshold = (int) SiteSetting::get('purchase_requests_auto_approve_under_laar', '0');
 
         return [
             'auto_expense' => $this->autoExpenseEnabled(),
             'default_expense_category_id' => ($raw !== null && $raw !== '') ? (int) $raw : null,
+            'show_price_hints' => filter_var(SiteSetting::get('purchase_requests_show_price_hints', '1'), FILTER_VALIDATE_BOOLEAN),
+            'auto_on_low_stock' => filter_var(SiteSetting::get('purchase_requests_auto_on_low_stock', '0'), FILTER_VALIDATE_BOOLEAN),
+            'auto_approve_under_laar' => $threshold,
+            'auto_approve_under_mvr' => round($threshold / 100, 2),
+            'recurring_lists_enabled' => filter_var(SiteSetting::get('purchase_requests_recurring_lists_enabled', '0'), FILTER_VALIDATE_BOOLEAN),
         ];
     }
 
-    /**
-     * @param array{auto_expense?: bool, default_expense_category_id?: int|null} $input
-     * @return array{auto_expense: bool, default_expense_category_id: int|null}
-     */
+    /** @param array<string, mixed> $input @return array<string, mixed> */
     public function updateAutoExpenseSettings(array $input): array
     {
         if (array_key_exists('auto_expense', $input)) {
@@ -276,6 +289,38 @@ final class PurchaseRequestVerificationService
             SiteSetting::set(
                 self::DEFAULT_CATEGORY_SETTING,
                 $id === null || $id === '' ? null : (string) (int) $id,
+            );
+        }
+
+        if (array_key_exists('show_price_hints', $input)) {
+            SiteSetting::set(
+                'purchase_requests_show_price_hints',
+                filter_var($input['show_price_hints'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
+            );
+        }
+
+        if (array_key_exists('auto_on_low_stock', $input)) {
+            SiteSetting::set(
+                'purchase_requests_auto_on_low_stock',
+                filter_var($input['auto_on_low_stock'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
+            );
+        }
+
+        if (array_key_exists('auto_approve_under_mvr', $input)) {
+            $mvr = $input['auto_approve_under_mvr'];
+            $laar = $mvr === null || $mvr === '' ? 0 : (int) round(((float) $mvr) * 100);
+            SiteSetting::set('purchase_requests_auto_approve_under_laar', (string) max(0, $laar));
+        } elseif (array_key_exists('auto_approve_under_laar', $input)) {
+            SiteSetting::set(
+                'purchase_requests_auto_approve_under_laar',
+                (string) max(0, (int) $input['auto_approve_under_laar']),
+            );
+        }
+
+        if (array_key_exists('recurring_lists_enabled', $input)) {
+            SiteSetting::set(
+                'purchase_requests_recurring_lists_enabled',
+                filter_var($input['recurring_lists_enabled'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
             );
         }
 

@@ -75,6 +75,8 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         ->middleware('permission:purchase_requests.view_all');
     Route::patch('/purchase-requests/settings/auto-expense', [App\Http\Controllers\Api\PurchaseRequestController::class, 'updateAutoExpenseSettings'])
         ->middleware('permission:purchase_requests.convert_to_expense');
+    Route::get('/purchase-requests/reconciliation', [App\Http\Controllers\Api\PurchaseRequestController::class, 'reconciliation'])
+        ->middleware('permission:purchase_requests.view_all');
     Route::get('/purchase-requests', [App\Http\Controllers\Api\PurchaseRequestController::class, 'index'])
         ->middleware('permission:purchase_requests.view_all');
     Route::get('/purchase-requests/{id}', [App\Http\Controllers\Api\PurchaseRequestController::class, 'show']);
@@ -106,6 +108,13 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         ->middleware('permission:purchase_requests.verify');
     Route::post('/purchase-requests/{id}/items/{itemId}/promote-to-inventory', [App\Http\Controllers\Api\PurchaseRequestController::class, 'promoteToInventory'])
         ->middleware('permission:inventory.manage');
+
+    Route::middleware('permission:purchase_requests.create')->group(function () {
+        Route::get('/recurring-shopping-lists', [App\Http\Controllers\Api\RecurringShoppingListController::class, 'index']);
+        Route::post('/recurring-shopping-lists', [App\Http\Controllers\Api\RecurringShoppingListController::class, 'store']);
+        Route::put('/recurring-shopping-lists/{id}', [App\Http\Controllers\Api\RecurringShoppingListController::class, 'update'])->whereNumber('id');
+        Route::delete('/recurring-shopping-lists/{id}', [App\Http\Controllers\Api\RecurringShoppingListController::class, 'destroy'])->whereNumber('id');
+    });
 }
 
 if (routes_domain_section_is('inventory', 'waste') && !routes_domain_loaded('inventory.waste')) {

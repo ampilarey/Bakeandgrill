@@ -129,12 +129,12 @@ Minimal — mostly reuse:
 - Admin: PurchaseRequestsPage + ForecastPage button tests.
 
 ## 7. Phase 2 — adjacent features (later, only if wanted)
-- **Supplier price comparison** on buying lines (reuse `SupplierPriceHistory`: last-paid / cheapest shop).
-- **Auto-request on low stock** — `LowStockReached` optionally opens/appends a restock PR.
-- **Category budgets** — monthly cap per `ExpenseCategory` with warnings as requests+expenses approach it.
-- **Buyer cash reconciliation** — bought-total vs expense-total vs cash issued (uses receipt photos).
-- **Approval thresholds** — auto-approve requests under MVR X; require approval above.
-- **Recurring shopping list** — weekly staple list auto-generates a PR (reuse recurring-expense scheduler).
+- **Supplier price comparison** on buying lines (reuse `SupplierPriceHistory`: last-paid / cheapest shop). ✅ shipped
+- **Auto-request on low stock** — `LowStockReached` optionally opens/appends a restock PR. ✅ via `inventory:check-reorder` + setting
+- **Category budgets** — monthly cap per `ExpenseCategory` with warnings as requests+expenses approach it. ✅
+- **Buyer cash reconciliation** — bought-total vs expense-total vs cash issued (uses receipt photos). ✅
+- **Approval thresholds** — auto-approve requests under MVR X; require approval above. ✅
+- **Recurring shopping list** — weekly staple list auto-generates a PR (reuse recurring-expense scheduler). ✅
 
 ## 8. Rollout
 Phase 1 in one branch, 3 independent commits (A, B, C). Migrations seed the two settings (defaults

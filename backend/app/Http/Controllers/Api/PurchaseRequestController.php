@@ -82,7 +82,7 @@ class PurchaseRequestController extends Controller
     {
         $validated = $request->validate([
             'title' => ['nullable', 'string', 'max:255'],
-            'source' => ['required', Rule::in(['pos', 'kds', 'admin', 'restock'])],
+            'source' => ['required', Rule::in(['pos', 'kds', 'admin', 'restock', 'recurring_list'])],
             'priority' => ['nullable', Rule::in(['low', 'normal', 'urgent'])],
             'needed_by' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -93,6 +93,7 @@ class PurchaseRequestController extends Controller
             'items.*.category' => ['nullable', 'string', 'max:64'],
             'items.*.requested_qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.requested_unit' => ['required', 'string', 'max:32'],
+            'items.*.estimated_unit_cost_laar' => ['nullable', 'integer', 'min:0'],
             'items.*.reason' => ['nullable', Rule::in(['low_stock', 'finished', 'damaged', 'urgent_order', 'packaging', 'cleaning', 'gas', 'other'])],
             'items.*.notes' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -337,12 +338,34 @@ class PurchaseRequestController extends Controller
         $validated = $request->validate([
             'auto_expense' => ['sometimes', 'boolean'],
             'default_expense_category_id' => ['sometimes', 'nullable', 'integer', 'exists:expense_categories,id'],
+            'show_price_hints' => ['sometimes', 'boolean'],
+            'auto_on_low_stock' => ['sometimes', 'boolean'],
+            'auto_approve_under_mvr' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'auto_approve_under_laar' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'recurring_lists_enabled' => ['sometimes', 'boolean'],
         ]);
 
         return response()->json([
             'settings' => $this->verification->updateAutoExpenseSettings($validated),
             'message' => 'Purchase request expense settings saved.',
         ]);
+    }
+
+    public function reconciliation(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'buyer_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        $report = app(\App\Services\PurchaseRequestReconciliationService::class)->report(
+            $validated['from'] ?? null,
+            $validated['to'] ?? null,
+            isset($validated['buyer_id']) ? (int) $validated['buyer_id'] : null,
+        );
+
+        return response()->json($report);
     }
 
     public function promoteToInventory(Request $request, int $id, int $itemId): JsonResponse
@@ -420,6 +443,10 @@ class PurchaseRequestController extends Controller
             'expense:id,expense_number',
         ]);
 
+        $priceHints = app(\App\Services\PurchaseRequestPriceHintService::class)->hintsForItems(
+            $pr->items->pluck('inventory_item_id')->filter()->map(fn ($id) => (int) $id)->all(),
+        );
+
         $payload = [
             'id' => $pr->id,
             'request_no' => $pr->request_no,
@@ -446,7 +473,7 @@ class PurchaseRequestController extends Controller
             ] : null,
             'created_at' => $pr->created_at?->toIso8601String(),
             'updated_at' => $pr->updated_at?->toIso8601String(),
-            'items' => $pr->items->map(fn (PurchaseRequestItem $i) => $this->formatItem($i, $user, $staffView))->values()->all(),
+            'items' => $pr->items->map(fn (PurchaseRequestItem $i) => $this->formatItem($i, $user, $staffView, $priceHints))->values()->all(),
         ];
 
         if (!$staffView) {
@@ -457,7 +484,8 @@ class PurchaseRequestController extends Controller
         return $payload;
     }
 
-    private function formatItem(PurchaseRequestItem $item, User $user, bool $staffView): array
+    /** @param array<int, array<string, mixed>> $priceHints */
+    private function formatItem(PurchaseRequestItem $item, User $user, bool $staffView, array $priceHints = []): array
     {
         $payload = [
             'id' => $item->id,
@@ -479,6 +507,10 @@ class PurchaseRequestController extends Controller
             'bought_at' => $item->bought_at?->toIso8601String(),
             'received_at' => $item->received_at?->toIso8601String(),
         ];
+
+        if ($item->inventory_item_id && isset($priceHints[$item->inventory_item_id])) {
+            $payload['price_hint'] = $priceHints[$item->inventory_item_id];
+        }
 
         if (!$staffView) {
             $payload['estimated_unit_cost_laar'] = $item->estimated_unit_cost_laar;
