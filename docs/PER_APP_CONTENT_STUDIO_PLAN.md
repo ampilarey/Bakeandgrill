@@ -411,3 +411,39 @@ data, edited via the Hours editor, not free-text content).
   order_payment_compliance, hero titles, cta_band_*, announcement_text (allow `<br><em><strong><a>`).
 - Repeaters (json, per-row schema): hero_slide_*, trust_items, homepage_categories, proof_details,
   about_values, footer_links, preorder_confirm_steps.
+
+---
+
+## Implementation notes
+
+- **Registry defaults:** Generated from Appendix A + CMS seed/Blade fallbacks. Complex JSON heroes default to `{}` / `[]`; live shared DB values remain source of truth after migrate.
+- **`SiteSetting::allPublic()` / `/site-settings/public`:** Resolve via `ContentResolver::for('order_app')` so website-only keys (e.g. `home_open_badge_text`) are not emitted to the order-app public map.
+- **Unique index:** Migration adds `scope`, backfills `shared`, dedupes `(key,scope)`, then swaps unique. SQLite/MySQL/pgsql drop-unique guarded with try/catch.
+- **Content Studio UI (v1):** Functional block cards + Shared/Split + Publish; legacy Website Settings kept with a banner pointing to Content Studio (custom hero/repeater editors still available there).
+- **Rich JSON hero titles:** Sanitised when saved as textarea/rich keys; JSON blobs are not field-level sanitised in v1 (editors still go through update pipeline when edited as text).
+
+## Build log
+
+**Branch:** `claude/per-app-content-studio-plan`  
+**Date:** 2026-07-22
+
+### Stages completed
+| Stage | Commit message | Status |
+|---|---|---|
+| 1 | content: scoped storage + resolver + registry | done |
+| 2 | content: per-app delivery + divergence fix | done |
+| 3 | content: scoped admin API | done |
+| 4 | content: Content Studio admin panel | done |
+| 5 | content: order-app scoped content + PWA | done (this commit) |
+
+### Final test results
+| Suite | Result |
+|---|---|
+| Backend `php artisan test` | **1490 passed**, 3 skipped (5638 assertions) |
+| Admin `npm test -- --run` | **71 passed** (27 files) |
+| Order-app `npm test -- --run` | **82 passed** (25 files) |
+| Admin/order `npm run build` + dist sync | success via `./scripts/build-all.sh admin order` |
+
+### Deviations
+- Content Studio v1 uses textarea/JSON raw editors rather than porting every WebsiteSettings custom repeater; legacy Website Settings remains for those visual editors.
+- Ops/system groups excluded per Appendix A (unchanged).
