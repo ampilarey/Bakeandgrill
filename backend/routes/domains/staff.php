@@ -170,6 +170,13 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
         Route::put('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
         Route::post('/site-settings/upload', [App\Http\Controllers\Api\SiteSettingsController::class, 'upload']);
+
+        Route::get('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'index']);
+        Route::put('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'update']);
+        Route::post('/admin/content/upload', [App\Http\Controllers\Api\ContentController::class, 'upload']);
+        Route::post('/admin/content/{key}/share', [App\Http\Controllers\Api\ContentController::class, 'share']);
+        Route::post('/admin/content/{key}/split', [App\Http\Controllers\Api\ContentController::class, 'split']);
+        Route::post('/admin/content/{key}/copy', [App\Http\Controllers\Api\ContentController::class, 'copy']);
     });
 
     // ─── Permissions Management (Owner only) ───────────────────────────────────

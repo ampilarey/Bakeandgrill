@@ -39,7 +39,7 @@ final class ContentSanitizer
                 } elseif (preg_match('/href\s*=\s*([^\s>]+)/iu', $attrs, $hm)) {
                     $href = trim($hm[1]);
                 }
-                if ($href === '' || preg_match('#^(https?:|mailto:|/|#)#i', $href) !== 1) {
+                if ($href === '' || preg_match('~^(https?:|mailto:|/|#)~i', $href) !== 1) {
                     return '<a>';
                 }
 
