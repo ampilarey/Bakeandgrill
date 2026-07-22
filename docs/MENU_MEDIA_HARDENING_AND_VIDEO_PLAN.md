@@ -349,3 +349,55 @@ Tests: slider/video + itemMedia tests. Manual: iOS Safari + Chrome autoplay, car
 Commit: "media: autoplay video clips in item sheet".
 
 **(Optional) Stage B4 — Category crop pipeline** — separate PR after C.
+
+---
+
+## Implementation notes
+
+Autonomous choices made while implementing (2026-07-22):
+
+1. **Item soft-delete + photos:** Items use SoftDeletes, so FK `cascadeOnDelete` does not remove `item_photos` on soft delete. `ItemObserver::deleting` explicitly deletes photo rows so `ItemPhotoObserver` can clean disk files. Restoring a soft-deleted item will not restore gallery files (files are intentionally gone).
+2. **`StoreItemVideoRequest`:** Validated via `$request->validate($form->rules())` inside `ItemPhotoController::storeVideo` rather than method injection, so `POST /photos` can branch on `media_type` without a separate route.
+3. **Client video limits:** Mirrored in `apps/admin-dashboard/src/pages/MenuPage/videoClip.ts` (`MENU_VIDEO_LIMITS`) to match `config/menu_media.php` — no public settings echo endpoint.
+4. **Skipped B4** (category crop pipeline) per execution instructions.
+5. **Public menu snapshot:** Regenerated `menu.categories.list.json` to include additive `thumb_url: null` on nested items.
+
+---
+
+## Build log
+
+**Branch:** `claude/service-availability-maintenance-zj4whc`  
+**Date:** 2026-07-22  
+**Tip (before dist commit):** `4237d4c5` (+ follow-up dist/snapshot commit)
+
+### Stages completed
+| Stage | Commit message | Status |
+|---|---|---|
+| A1 | media: clean up orphaned image files on delete/replace | done |
+| A2 | media: cap decompression + fix webp validation | done |
+| A3 | media: atomic gallery reorder | done |
+| B1 | media: card thumbnails | done |
+| B2 | media: editable alt text | done |
+| B3 | media: scheduled orphan prune | done |
+| C1 | media: item video upload (backend) | done |
+| C2 | media: video upload UI + poster capture | done |
+| C3 | media: autoplay video clips in item sheet | done |
+| B4 | Category crop pipeline | **skipped** (per brief) |
+
+### Final test results
+| Suite | Result |
+|---|---|
+| Backend `php artisan test` | **1463 passed**, 3 skipped, 0 failed (5277 assertions) |
+| Admin `npm test -- --run` | **70 passed** (26 files) |
+| Order-app `npm test -- --run` | **80 passed** (24 files) |
+| Order-app `npm run build` | **success** (`tsc && vite build`) |
+| Admin/order dist synced | `backend/public/{admin,order}/` via `./scripts/build-all.sh admin order` (`.htaccess` preserved) |
+
+### Deviations / notes
+- Soft-delete cascade for photos handled in observer (see Implementation notes).
+- One intermittent admin `Layout.sidebar` failure seen under parallel load; re-run alone passed — not caused by media changes.
+- SW `CACHE_VERSION` bumped **v9 → v10** with video/range network-only guard.
+
+### Not finished
+- Optional B4 category crop pipeline (deferred).
+- Manual iOS Safari / Chrome autoplay smoke on TEST deploy (code + automated tests cover attributes; device smoke still recommended after migrate).
