@@ -801,6 +801,12 @@ export type RestockPlanItem = {
   reorder_point: number;
   reorder_quantity: number | null;
   daily_usage_rate: number;
+  waste_daily_rate?: number;
+  waste_daily_rate_clamped?: number;
+  waste_pct?: number;
+  high_waste?: boolean;
+  effective_daily_rate?: number;
+  include_waste?: boolean;
   days_of_stock: number | null;
   status: string;
   buy_frequency: RestockBuyFrequency | null;
@@ -837,6 +843,8 @@ export type RestockPlan = {
   buy_lookback_days: number;
   lead_days: number;
   cover_days: number;
+  include_waste?: boolean;
+  high_waste_pct?: number;
   totals: {
     items_count: number;
     due_soon: number;
@@ -855,12 +863,14 @@ export async function getRestockPlan(params: {
   buy_lookback_days?: number;
   lead_days?: number;
   cover_days?: number;
+  include_waste?: boolean;
 } = {}): Promise<RestockPlan> {
   const q = new URLSearchParams();
   if (params.lookback_days != null) q.set('lookback_days', String(params.lookback_days));
   if (params.buy_lookback_days != null) q.set('buy_lookback_days', String(params.buy_lookback_days));
   if (params.lead_days != null) q.set('lead_days', String(params.lead_days));
   if (params.cover_days != null) q.set('cover_days', String(params.cover_days));
+  if (params.include_waste != null) q.set('include_waste', params.include_waste ? '1' : '0');
   const qs = q.toString();
   return req(`/forecasts/restock${qs ? `?${qs}` : ''}`);
 }

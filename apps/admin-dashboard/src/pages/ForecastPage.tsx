@@ -93,6 +93,7 @@ export function ForecastPage() {
     lead_days: String(readRestockDefaults().lead_days),
     cover_days: String(readRestockDefaults().cover_days),
   }));
+  const [includeWaste, setIncludeWaste] = useState(false);
   const [creatingPos, setCreatingPos] = useState(false);
   const [applyingRop, setApplyingRop] = useState(false);
   const [applyingPreferred, setApplyingPreferred] = useState(false);
@@ -174,11 +175,12 @@ export function ForecastPage() {
     setSelectedRestockIds(new Set(plan.items.filter(readyForNewPo).map((i) => i.id)));
   };
 
-  const restockQueryParams = (): RestockPlanDefaults => ({
+  const restockQueryParams = () => ({
     lookback_days: restockParams.lookback_days,
     buy_lookback_days: restockParams.buy_lookback_days,
     lead_days: restockParams.lead_days,
     cover_days: restockParams.cover_days,
+    include_waste: includeWaste,
   });
 
   const load = async () => {
@@ -206,7 +208,7 @@ export function ForecastPage() {
     setLoading(false);
   };
 
-  useEffect(() => { void load(); }, [granularity, from, to, restockParams]);
+  useEffect(() => { void load(); }, [granularity, from, to, restockParams, includeWaste]);
 
   // Deep link: /forecasts?section=restock
   useEffect(() => {
@@ -322,6 +324,8 @@ export function ForecastPage() {
       Stock: i.current_stock,
       Unit: i.unit,
       'Days left': i.days_of_stock ?? '',
+      'Waste %': i.waste_pct ?? '',
+      'High waste': i.high_waste ? 'yes' : '',
       Status: i.status,
       'Next order': i.suggested_next_order_date ?? '',
       Snoozed: i.snoozed ? 'yes' : '',
@@ -1304,8 +1308,20 @@ export function ForecastPage() {
                 <Btn small variant="secondary" disabled={restockBusy || loading} onClick={applyRestockDefaults}>
                   Apply defaults
                 </Btn>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginLeft: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={includeWaste}
+                    disabled={restockBusy || loading}
+                    onChange={(e) => {
+                      setIncludeWaste(e.target.checked);
+                    }}
+                  />
+                  Include waste in suggestions
+                </label>
                 <span style={{ fontSize: 11, color: '#9C8E7E', alignSelf: 'center' }}>
                   Active: usage {restockParams.lookback_days}d · buys {restockParams.buy_lookback_days}d · lead {restockParams.lead_days}d · cover {restockParams.cover_days}d
+                  {includeWaste ? ' · waste ON' : ''}
                   {' '}(saved in this browser)
                 </span>
               </div>
@@ -1500,7 +1516,7 @@ export function ForecastPage() {
                           />
                         ) : null}
                       </th>
-                      {['Item', 'Stock', 'Days left', 'Buy every', 'Next order', 'Lead', 'Cover', 'Order qty', 'ROP', 'Supplier', 'Why'].map((h) => (
+                      {['Item', 'Stock', 'Days left', 'Waste %', 'Buy every', 'Next order', 'Lead', 'Cover', 'Order qty', 'ROP', 'Supplier', 'Why'].map((h) => (
                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
@@ -1673,6 +1689,17 @@ export function ForecastPage() {
                           }}>
                             {item.status.replace('_', ' ')}
                           </span>
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F' }}>
+                          {(item.waste_pct ?? 0) > 0 ? `${(item.waste_pct ?? 0).toFixed(1)}%` : '—'}
+                          {item.high_waste ? (
+                            <span style={{
+                              marginLeft: 6, padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                              background: '#FEE2E2', color: '#B91C1C',
+                            }}>
+                              High waste
+                            </span>
+                          ) : null}
                         </td>
                         <td style={{ padding: '8px 12px', color: '#6B5D4F' }}>
                           {item.buy_frequency?.avg_days_between != null
