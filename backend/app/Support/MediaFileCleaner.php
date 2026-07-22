@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 /**
  * Safe deletion of owned /storage/ menu media. Never removes seed assets,
- * external URLs, or files still referenced by another item/photo row.
+ * external URLs, or files still referenced by another item/photo/category row.
  */
 final class MediaFileCleaner
 {
@@ -54,7 +56,6 @@ final class MediaFileCleaner
         }
 
         // Seed cafe imagery lives under public/images/cafe — never under /storage/.
-        // Extra belt-and-braces if a bad path ever slips through:
         if (str_starts_with($path, 'images/cafe/') || str_contains($path, '/images/cafe/')) {
             return false;
         }
@@ -63,15 +64,16 @@ final class MediaFileCleaner
     }
 
     /**
-     * Whether any item or photo row still references this exact URL string.
+     * Whether any item, photo, or category row still references this exact URL string.
      *
-     * @param list<string> $keepUrls URLs treated as still-referenced (e.g. the new value on replace)
+     * @param list<string> $keepUrls
      */
     public static function isReferenced(
         string $url,
         array $keepUrls = [],
         ?int $exceptPhotoId = null,
         ?int $exceptItemId = null,
+        ?int $exceptCategoryId = null,
     ): bool {
         foreach ($keepUrls as $keep) {
             if (is_string($keep) && $keep !== '' && $keep === $url) {
@@ -83,7 +85,7 @@ final class MediaFileCleaner
             ->where(function ($q) use ($url): void {
                 $q->where('image_url', $url)
                     ->orWhere('image_original_url', $url);
-                if (\Illuminate\Support\Facades\Schema::hasColumn('items', 'thumb_url')) {
+                if (Schema::hasColumn('items', 'thumb_url')) {
                     $q->orWhere('thumb_url', $url);
                 }
             });
@@ -98,18 +100,39 @@ final class MediaFileCleaner
             ->where(function ($q) use ($url): void {
                 $q->where('url', $url)
                     ->orWhere('original_url', $url);
-                if (\Illuminate\Support\Facades\Schema::hasColumn('item_photos', 'thumb_url')) {
+                if (Schema::hasColumn('item_photos', 'thumb_url')) {
                     $q->orWhere('thumb_url', $url);
                 }
-                if (\Illuminate\Support\Facades\Schema::hasColumn('item_photos', 'poster_url')) {
+                if (Schema::hasColumn('item_photos', 'poster_url')) {
                     $q->orWhere('poster_url', $url);
                 }
             });
         if ($exceptPhotoId !== null) {
             $photoQuery->where('id', '!=', $exceptPhotoId);
         }
+        if ($photoQuery->exists()) {
+            return true;
+        }
 
-        return $photoQuery->exists();
+        if (!Schema::hasTable('categories')) {
+            return false;
+        }
+
+        $categoryQuery = Category::query()
+            ->where(function ($q) use ($url): void {
+                $q->where('image_url', $url);
+                if (Schema::hasColumn('categories', 'image_original_url')) {
+                    $q->orWhere('image_original_url', $url);
+                }
+                if (Schema::hasColumn('categories', 'thumb_url')) {
+                    $q->orWhere('thumb_url', $url);
+                }
+            });
+        if ($exceptCategoryId !== null) {
+            $categoryQuery->where('id', '!=', $exceptCategoryId);
+        }
+
+        return $categoryQuery->exists();
     }
 
     /**
@@ -123,13 +146,14 @@ final class MediaFileCleaner
         array $keepUrls = [],
         ?int $exceptPhotoId = null,
         ?int $exceptItemId = null,
+        ?int $exceptCategoryId = null,
     ): bool {
         if (!self::isOwnedUpload($url)) {
             return false;
         }
 
         /** @var string $url */
-        if (self::isReferenced($url, $keepUrls, $exceptPhotoId, $exceptItemId)) {
+        if (self::isReferenced($url, $keepUrls, $exceptPhotoId, $exceptItemId, $exceptCategoryId)) {
             return false;
         }
 

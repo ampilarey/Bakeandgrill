@@ -395,22 +395,32 @@ Autonomous choices made while implementing (2026-07-22):
 | C1 | media: item video upload (backend) | done |
 | C2 | media: video upload UI + poster capture | done |
 | C3 | media: autoplay video clips in item sheet | done |
-| B4 | Category crop pipeline | **skipped** (per brief) |
+| B4 | media: category media parity + file-leak fix (B4) | done |
 
-### Final test results
+### B4 follow-up (2026-07-22)
+Corrected scope (not a new crop pipeline — categories already use `ImageUploadField`):
+- Migration `categories.image_original_url` + `categories.thumb_url`
+- `CategoryObserver` + replace-cleanup via `MediaFileCleaner`; thumbs via `MenuImageProcessor`
+- Admin category form threads `image_original_url` / `thumb_url`; tiles prefer `thumb_url`
+- `menu:generate-thumbnails` backfills categories; `CategoryMediaTest` (5) covers delete/replace/seed/external/idempotent backfill
+- Snapshot `menu.categories.list` additive null keys on category rows
+
+**Tests after B4:** backend **1468 passed**, 3 skipped (5321 assertions); admin **70 passed** (26 files). Admin dist synced via `./scripts/build-all.sh admin`.
+
+### Final test results (Phases A–C tip; see B4 follow-up for latest)
 | Suite | Result |
 |---|---|
-| Backend `php artisan test` | **1463 passed**, 3 skipped, 0 failed (5277 assertions) |
+| Backend `php artisan test` | **1468 passed**, 3 skipped, 0 failed (5321 assertions) |
 | Admin `npm test -- --run` | **70 passed** (26 files) |
 | Order-app `npm test -- --run` | **80 passed** (24 files) |
 | Order-app `npm run build` | **success** (`tsc && vite build`) |
-| Admin/order dist synced | `backend/public/{admin,order}/` via `./scripts/build-all.sh admin order` (`.htaccess` preserved) |
+| Admin dist synced | `backend/public/admin/` via `./scripts/build-all.sh admin` |
 
 ### Deviations / notes
 - Soft-delete cascade for photos handled in observer (see Implementation notes).
 - One intermittent admin `Layout.sidebar` failure seen under parallel load; re-run alone passed — not caused by media changes.
 - SW `CACHE_VERSION` bumped **v9 → v10** with video/range network-only guard.
+- B4 originally skipped, then completed under corrected scope (file-leak + master/thumb parity).
 
 ### Not finished
-- Optional B4 category crop pipeline (deferred).
 - Manual iOS Safari / Chrome autoplay smoke on TEST deploy (code + automated tests cover attributes; device smoke still recommended after migrate).

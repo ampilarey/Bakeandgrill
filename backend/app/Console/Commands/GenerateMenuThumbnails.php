@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
 use App\Services\MenuImageProcessor;
@@ -14,7 +15,7 @@ class GenerateMenuThumbnails extends Command
 {
     protected $signature = 'menu:generate-thumbnails {--dry-run : List rows that would be updated without writing}';
 
-    protected $description = 'Backfill thumb_url for items and item_photos that have a crop but no thumbnail';
+    protected $description = 'Backfill thumb_url for items, item_photos, and categories that have a crop but no thumbnail';
 
     public function handle(MenuImageProcessor $processor): int
     {
@@ -84,6 +85,37 @@ class GenerateMenuThumbnails extends Command
                     } catch (\Throwable $e) {
                         $failed++;
                         $this->warn("photo #{$photo->id}: {$e->getMessage()}");
+                    }
+                }
+            });
+
+        Category::query()
+            ->whereNotNull('image_url')
+            ->where(function ($q): void {
+                $q->whereNull('thumb_url')->orWhere('thumb_url', '');
+            })
+            ->orderBy('id')
+            ->chunkById(50, function ($categories) use ($processor, $dry, &$updated, &$skipped, &$failed): void {
+                foreach ($categories as $category) {
+                    $path = MediaFileCleaner::storagePathFromUrl($category->image_url);
+                    if ($path === null) {
+                        $skipped++;
+
+                        continue;
+                    }
+                    if ($dry) {
+                        $this->line("[dry-run] category #{$category->id} ← {$path}");
+                        $updated++;
+
+                        continue;
+                    }
+                    try {
+                        $thumbRel = $processor->storeThumbnailFromStoragePath($path);
+                        $category->update(['thumb_url' => '/storage/' . ltrim($thumbRel, '/')]);
+                        $updated++;
+                    } catch (\Throwable $e) {
+                        $failed++;
+                        $this->warn("category #{$category->id}: {$e->getMessage()}");
                     }
                 }
             });

@@ -68,7 +68,12 @@ function CategoryFormModal({
         <Field label="Image">
           <ImageUploadField
             value={form.image_url}
-            onChange={({ url }) => set('image_url', url)}
+            originalValue={form.image_original_url}
+            onChange={({ url, original_url, thumb_url }) => {
+              set('image_url', url);
+              set('image_original_url', original_url);
+              set('thumb_url', thumb_url ?? '');
+            }}
           />
         </Field>
         <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -137,7 +142,7 @@ export function MenuPage() {
                 <Card style={{ padding: '14px 18px' }}>
                   <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     {cat.image_url && (
-                      <img src={cat.image_url} alt={cat.name}
+                      <img src={cat.thumb_url || cat.image_url} alt={cat.name}
                         style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     )}
@@ -175,7 +180,7 @@ export function MenuPage() {
                     <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <span style={{ fontSize: 16, color: '#94a3b8', flexShrink: 0 }}>↳</span>
                       {sub.image_url && (
-                        <img src={sub.image_url} alt={sub.name}
+                        <img src={sub.thumb_url || sub.image_url} alt={sub.name}
                           style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                       )}
@@ -255,6 +260,8 @@ export function MenuPage() {
           initial={{
             name: m.editingCat.name, name_dv: m.editingCat.name_dv ?? '',
             description: m.editingCat.description ?? '', image_url: m.editingCat.image_url ?? '',
+            image_original_url: m.editingCat.image_original_url ?? '',
+            thumb_url: m.editingCat.thumb_url ?? '',
             sort_order: m.editingCat.sort_order != null ? String(m.editingCat.sort_order) : '',
             is_active: m.editingCat.is_active,
             parent_id: m.editingCat.parent_id != null ? String(m.editingCat.parent_id) : '',

@@ -6,6 +6,8 @@ export type MenuCategory = {
   name_dv?: string | null;
   description?: string | null;
   image_url?: string | null;
+  image_original_url?: string | null;
+  thumb_url?: string | null;
   sort_order?: number | null;
   is_active: boolean;
   parent_id?: number | null;
@@ -193,6 +195,8 @@ export async function createCategory(data: {
   name_dv?: string | null;
   description?: string | null;
   image_url?: string | null;
+  image_original_url?: string | null;
+  thumb_url?: string | null;
   sort_order?: number | null;
   parent_id?: number | null;
 }): Promise<{ category: MenuCategory }> {
@@ -206,6 +210,8 @@ export async function updateCategory(
     name_dv: string | null;
     description: string | null;
     image_url: string | null;
+    image_original_url: string | null;
+    thumb_url: string | null;
     sort_order: number | null;
     is_active: boolean;
     parent_id: number | null;

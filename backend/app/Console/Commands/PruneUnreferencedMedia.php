@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
 use App\Support\MediaFileCleaner;
@@ -111,6 +112,22 @@ class PruneUnreferencedMedia extends Command
                     $remember($photo->original_url);
                     $remember($photo->getAttribute('thumb_url'));
                     $remember($photo->getAttribute('poster_url'));
+                }
+            });
+
+        $categoryCols = ['id', 'image_url'];
+        if (Schema::hasColumn('categories', 'image_original_url')) {
+            $categoryCols[] = 'image_original_url';
+        }
+        if (Schema::hasColumn('categories', 'thumb_url')) {
+            $categoryCols[] = 'thumb_url';
+        }
+        Category::query()->select($categoryCols)->orderBy('id')
+            ->chunkById(200, function ($categories) use ($remember): void {
+                foreach ($categories as $category) {
+                    $remember($category->image_url);
+                    $remember($category->getAttribute('image_original_url'));
+                    $remember($category->getAttribute('thumb_url'));
                 }
             });
 

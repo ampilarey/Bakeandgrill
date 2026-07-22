@@ -7,10 +7,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Rules\MediaUrl;
+use App\Services\MenuImageProcessor;
+use App\Support\MediaFileCleaner;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
+    public function __construct(
+        private readonly MenuImageProcessor $processor,
+    ) {}
+
     /**
      * Display all categories with items
      */
@@ -50,9 +56,14 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->only(['name', 'name_dv', 'description', 'sort_order', 'is_active', 'image_url', 'parent_id']);
-        if (isset($data['image_url']) && $data['image_url'] === '') {
-            $data['image_url'] = null;
+        $data = $request->only([
+            'name', 'name_dv', 'description', 'sort_order', 'is_active',
+            'image_url', 'image_original_url', 'thumb_url', 'parent_id',
+        ]);
+        foreach (['image_url', 'image_original_url', 'thumb_url'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] === '') {
+                $data[$field] = null;
+            }
         }
         $validated = validator($data, [
             'name' => 'required|string|max:255',
@@ -61,6 +72,8 @@ class CategoryController extends Controller
             'sort_order' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
             'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'image_original_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
@@ -70,6 +83,8 @@ class CategoryController extends Controller
         if (array_key_exists('parent_id', $validated) && $validated['parent_id'] === null) {
             $validated['parent_id'] = null;
         }
+
+        $validated = $this->ensureCategoryThumb($validated);
 
         $category = Category::create($validated);
 
@@ -98,9 +113,14 @@ class CategoryController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $data = $request->only(['name', 'name_dv', 'description', 'sort_order', 'is_active', 'image_url', 'parent_id']);
-        if (isset($data['image_url']) && $data['image_url'] === '') {
-            $data['image_url'] = null;
+        $data = $request->only([
+            'name', 'name_dv', 'description', 'sort_order', 'is_active',
+            'image_url', 'image_original_url', 'thumb_url', 'parent_id',
+        ]);
+        foreach (['image_url', 'image_original_url', 'thumb_url'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] === '') {
+                $data[$field] = null;
+            }
         }
         $validated = validator($data, [
             'name' => 'sometimes|string|max:255',
@@ -109,6 +129,8 @@ class CategoryController extends Controller
             'sort_order' => 'nullable|integer',
             'is_active' => 'sometimes|boolean',
             'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'image_original_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
@@ -129,7 +151,41 @@ class CategoryController extends Controller
             }
         }
 
+        $oldImageUrl = $category->image_url;
+        $oldOriginalUrl = $category->image_original_url;
+        $oldThumbUrl = $category->thumb_url;
+
+        $validated = $this->ensureCategoryThumb($validated, $category);
+
         $category->update($validated);
+
+        $keep = array_values(array_filter([
+            $category->image_url,
+            $category->image_original_url,
+            $category->thumb_url,
+        ], static fn ($u) => is_string($u) && $u !== ''));
+
+        if ($oldImageUrl && $oldImageUrl !== $category->image_url) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced(
+                $oldImageUrl,
+                $keep,
+                exceptCategoryId: (int) $category->id,
+            );
+        }
+        if ($oldOriginalUrl && $oldOriginalUrl !== $category->image_original_url) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced(
+                $oldOriginalUrl,
+                $keep,
+                exceptCategoryId: (int) $category->id,
+            );
+        }
+        if ($oldThumbUrl && $oldThumbUrl !== $category->thumb_url) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced(
+                $oldThumbUrl,
+                $keep,
+                exceptCategoryId: (int) $category->id,
+            );
+        }
 
         return response()->json([
             'message' => 'Category updated successfully',
@@ -156,5 +212,40 @@ class CategoryController extends Controller
         return response()->json([
             'message' => 'Category deleted successfully',
         ]);
+    }
+
+    /**
+     * When an owned crop is set without thumb_url, generate one via MenuImageProcessor.
+     *
+     * @param array<string, mixed> $validated
+     * @return array<string, mixed>
+     */
+    private function ensureCategoryThumb(array $validated, ?Category $existing = null): array
+    {
+        $imageUrl = $validated['image_url'] ?? $existing?->image_url;
+        $thumbUrl = array_key_exists('thumb_url', $validated)
+            ? $validated['thumb_url']
+            : $existing?->thumb_url;
+
+        if (!is_string($imageUrl) || $imageUrl === '') {
+            return $validated;
+        }
+        if (is_string($thumbUrl) && $thumbUrl !== '') {
+            return $validated;
+        }
+
+        $path = MediaFileCleaner::storagePathFromUrl($imageUrl);
+        if ($path === null) {
+            return $validated;
+        }
+
+        try {
+            $thumbRel = $this->processor->storeThumbnailFromStoragePath($path);
+            $validated['thumb_url'] = '/storage/' . ltrim($thumbRel, '/');
+        } catch (\Throwable) {
+            // Leave thumb_url unset — client can retry or backfill later.
+        }
+
+        return $validated;
     }
 }

@@ -10,6 +10,8 @@
             "sort_order": 1,
             "is_active": true,
             "image_url": null,
+            "image_original_url": null,
+            "thumb_url": null,
             "created_at": "__VOLATILE__",
             "updated_at": "__VOLATILE__",
             "items": [
