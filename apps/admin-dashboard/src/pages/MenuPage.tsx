@@ -9,6 +9,75 @@ import { MenuItemEditorModal } from './MenuPage/MenuItemEditorModal';
 import { MenuItemTable } from './MenuPage/MenuItemTable';
 import { EMPTY_CAT, type CatForm, useMenuPage, type View } from './MenuPage/useMenuPage';
 
+function BannerLivePreview({
+  label,
+  maxHeight,
+  name,
+  description,
+  imageUrl,
+  compact = false,
+}: {
+  label: string;
+  maxHeight: number;
+  name: string;
+  description: string;
+  imageUrl: string;
+  compact?: boolean;
+}) {
+  const titleSize = compact ? 13 : 15;
+  const pad = compact ? '8px 10px' : '10px 12px';
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>
+        {label}
+      </div>
+      <div
+        style={{
+          borderRadius: 10,
+          overflow: 'hidden',
+          aspectRatio: '7 / 3',
+          maxHeight,
+          width: '100%',
+          position: 'relative',
+          background: imageUrl
+            ? '#1C1408'
+            : 'linear-gradient(135deg, #c2410c 0%, #7c2d12 100%)',
+          border: '1px solid #E8E0D8',
+        }}
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
+          />
+        ) : null}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(180deg, rgba(28,20,8,0.05) 0%, rgba(28,20,8,0.55) 100%), linear-gradient(90deg, rgba(28,20,8,0.35) 0%, transparent 55%)',
+          }}
+        />
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: pad, color: '#fff' }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85 }}>
+            Category
+          </div>
+          <div style={{ fontSize: titleSize, fontWeight: 800, lineHeight: 1.2 }}>
+            {name.trim() || 'Category name'}
+          </div>
+          {!compact && description.trim() ? (
+            <div style={{ fontSize: 11, marginTop: 3, opacity: 0.92, lineHeight: 1.35 }}>
+              {description.trim()}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CategoryFormModal({
   initial, title, onSave, onClose, categories, editingId,
 }: {
@@ -43,7 +112,7 @@ function CategoryFormModal({
   };
 
   return (
-    <Modal title={title} onClose={onClose}>
+    <Modal title={title} onClose={onClose} maxWidth={640}>
       {error && <ErrorMsg message={error} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -62,15 +131,66 @@ function CategoryFormModal({
             ))}
           </select>
         </Field>
-        <Field label="Description">
-          <FormTextarea value={form.description} onChange={(v) => set('description', v)} placeholder="Short description…" rows={2} />
+        <Field label="Banner caption (optional)">
+          <FormTextarea
+            value={form.description}
+            onChange={(v) => set('description', v)}
+            placeholder="Short line under the title on the order-app banner…"
+            rows={2}
+          />
         </Field>
-        <Field label="Image">
+
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            border: '1px solid #E8E0D8',
+            background: '#F8F6F3',
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1C1408', marginBottom: 4 }}>
+            Order-app menu banner
+          </div>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6B5D4F', lineHeight: 1.4 }}>
+            Wide 7:3 image shown above this category’s items on mobile and desktop.
+            Leave empty for a branded gradient.
+          </p>
           <ImageUploadField
+            variant="banner"
             value={form.image_url}
             onChange={({ url }) => set('image_url', url)}
           />
-        </Field>
+          <div
+            className="form-grid-2"
+            style={{
+              marginTop: 12,
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 10,
+              alignItems: 'end',
+            }}
+          >
+            <BannerLivePreview
+              label="Phone"
+              maxHeight={140}
+              name={form.name}
+              description={form.description}
+              imageUrl={form.image_url}
+              compact
+            />
+            <BannerLivePreview
+              label="Desktop"
+              maxHeight={220}
+              name={form.name}
+              description={form.description}
+              imageUrl={form.image_url}
+            />
+          </div>
+          <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9C8E7E' }}>
+            Live preview — 7:3 crop, height-capped on phone (140px) and desktop (220px).
+          </p>
+        </div>
+
         <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Sort Order">
             <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
@@ -138,7 +258,7 @@ export function MenuPage() {
                   <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     {cat.image_url && (
                       <img src={cat.image_url} alt={cat.name}
-                        style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
+                        style={{ width: 84, height: 36, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
