@@ -1,7 +1,7 @@
 @extends('layout')
 
-@section('title',       \App\Models\SiteSetting::get('hours_meta_title',       'Opening Hours – Bake & Grill'))
-@section('description', \App\Models\SiteSetting::get('hours_meta_description',  'See the latest opening hours for Bake & Grill in Malé, Maldives. Order online or call us to confirm.'))
+@section('title',       content('hours_meta_title',       'Opening Hours – Bake & Grill'))
+@section('description', content('hours_meta_description',  'See the latest opening hours for Bake & Grill in Malé, Maldives. Order online or call us to confirm.'))
 
 @section('styles')
 <style>
@@ -124,12 +124,12 @@
 @section('content')
 
 <div class="page-hero">
-    <span class="page-hero-eyebrow">{{ \App\Models\SiteSetting::get('hours_page_eyebrow', '🕐 Schedule') }}</span>
-    <h1>{{ \App\Models\SiteSetting::get('hours_page_title', 'Opening Hours') }}</h1>
+    <span class="page-hero-eyebrow">{{ content('hours_page_eyebrow', '🕐 Schedule') }}</span>
+    <h1>{{ content('hours_page_title', 'Opening Hours') }}</h1>
     @if($isOpen)
-        <span class="status-badge open">{{ \App\Models\SiteSetting::get('hours_open_status_text', "● We're open right now") }}</span>
+        <span class="status-badge open">{{ content('hours_open_status_text', "● We're open right now") }}</span>
     @else
-        <span class="status-badge closed">{{ \App\Models\SiteSetting::get('hours_closed_status_text', '● Currently closed') }}</span>
+        <span class="status-badge closed">{{ content('hours_closed_status_text', '● Currently closed') }}</span>
     @endif
 </div>
 
@@ -138,7 +138,7 @@
     @if($closureReason)
         <div class="closure-notice">
             <span class="cn-icon">⚠️</span>
-            <div><strong>{{ \App\Models\SiteSetting::get('hours_special_closure_label', 'Special Closure:') }}</strong> {{ $closureReason }}</div>
+            <div><strong>{{ content('hours_special_closure_label', 'Special Closure:') }}</strong> {{ $closureReason }}</div>
         </div>
     @endif
 
@@ -170,15 +170,15 @@
     </div>
 
     <p class="hours-note">
-        {{ \App\Models\SiteSetting::get('hours_page_note', 'Hours may vary on public holidays.') }}<br>
-        {{ \App\Models\SiteSetting::get('hours_call_confirm_label', 'Call us to confirm:') }} <a href="tel:{{ preg_replace('/[^0-9+]/', '', \App\Models\SiteSetting::get('business_phone', config('business.phone'))) }}">{{ \App\Models\SiteSetting::get('business_phone', config('business.phone')) }}</a> &nbsp;·&nbsp;
-        <a href="/contact">{{ \App\Models\SiteSetting::get('hours_contact_page_label', 'Contact page →') }}</a>
+        {{ content('hours_page_note', 'Hours may vary on public holidays.') }}<br>
+        {{ content('hours_call_confirm_label', 'Call us to confirm:') }} <a href="tel:{{ preg_replace('/[^0-9+]/', '', content('business_phone', config('business.phone'))) }}">{{ content('business_phone', config('business.phone')) }}</a> &nbsp;·&nbsp;
+        <a href="/contact">{{ content('hours_contact_page_label', 'Contact page →') }}</a>
     </p>
 
     <div class="order-cta-block">
-        <h3>{{ \App\Models\SiteSetting::get('hours_page_cta_title', 'Ready to order?') }}</h3>
-        <p>{{ \App\Models\SiteSetting::get('hours_page_cta_subtitle', 'Place your order online and have it delivered fresh to your door') }}</p>
-        <a href="/order/" class="order-cta-link">{{ \App\Models\SiteSetting::get('hours_order_btn_label', '🛒 Order Online Now') }}</a>
+        <h3>{{ content('hours_page_cta_title', 'Ready to order?') }}</h3>
+        <p>{{ content('hours_page_cta_subtitle', 'Place your order online and have it delivered fresh to your door') }}</p>
+        <a href="/order/" class="order-cta-link">{{ content('hours_order_btn_label', '🛒 Order Online Now') }}</a>
     </div>
 
 </div>

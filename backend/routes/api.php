@@ -151,6 +151,9 @@ require __DIR__ . '/domains/reservations.php';
 
 require __DIR__ . '/domains/admin_customers.php';
 
+Route::get('/content', [App\Http\Controllers\Api\ContentController::class, 'public'])
+    ->middleware('throttle:60,1');
+
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
     ->middleware('throttle:60,1');
 

@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', \App\Models\SiteSetting::get('refund_meta_title', 'Refund & Cancellation Policy - Bake & Grill'))
+@section('title', content('refund_meta_title', 'Refund & Cancellation Policy - Bake & Grill'))
 
 @section('styles')
 <style>
@@ -61,14 +61,14 @@
 
 @section('content')
 @php
-    $refundTitle        = \App\Models\SiteSetting::get('refund_page_title',    'Refund & Cancellation Policy');
-    $refundSubtitle     = \App\Models\SiteSetting::get('refund_page_subtitle', 'Please read this policy before completing your purchase.');
-    $refundBodyOverride = \App\Models\SiteSetting::get('legal_refund_body');
-    $refundPhone        = \App\Models\SiteSetting::get('business_phone',   config('business.phone'));
-    $refundEmail        = \App\Models\SiteSetting::get('business_email',   config('business.email'));
-    $refundAddress      = \App\Models\SiteSetting::get('business_address', config('business.address.full', config('business.address.line1') . ', ' . config('business.address.city')));
-    $refundWaLink       = \App\Models\SiteSetting::get('business_whatsapp', config('business.social.whatsapp', 'https://wa.me/9609120011'));
-    $refundLastUpdated  = \App\Models\SiteSetting::get('refund_last_updated_label', 'Last updated:');
+    $refundTitle        = content('refund_page_title',    'Refund & Cancellation Policy');
+    $refundSubtitle     = content('refund_page_subtitle', 'Please read this policy before completing your purchase.');
+    $refundBodyOverride = content('legal_refund_body');
+    $refundPhone        = content('business_phone',   config('business.phone'));
+    $refundEmail        = content('business_email',   config('business.email'));
+    $refundAddress      = content('business_address', config('business.address.full', config('business.address.line1') . ', ' . config('business.address.city')));
+    $refundWaLink       = content('business_whatsapp', config('business.social.whatsapp', 'https://wa.me/9609120011'));
+    $refundLastUpdated  = content('refund_last_updated_label', 'Last updated:');
 @endphp
 <div class="policy-wrap">
     <h1>{{ $refundTitle }}</h1>
@@ -121,6 +121,6 @@
         <p>All transactions are in <strong>MVR (Maldivian Rufiyaa)</strong>. No import/export charges or customs duties apply to our food and beverage products.</p>
     @endif
 
-    <p class="updated">{{ $refundLastUpdated }} {{ \App\Models\SiteSetting::get('legal_last_updated_date', 'April 2026') }}</p>
+    <p class="updated">{{ $refundLastUpdated }} {{ content('legal_last_updated_date', 'April 2026') }}</p>
 </div>
 @endsection

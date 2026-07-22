@@ -1,6 +1,6 @@
 @php
-    $logoUrl  = \App\Models\SiteSetting::get('logo',      asset('logo.png'));
-    $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
+    $logoUrl  = content('logo',      asset('logo.png'));
+    $siteName = content('site_name', 'Bake & Grill');
 @endphp
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Accurate daily prayer times for all islands of Maldives.">
     <title>Prayer Times — {{ $siteName }}</title>
-    <link rel="icon" type="image/png" href="{{ \App\Models\SiteSetting::get('favicon', asset('logo.png')) }}">
+    <link rel="icon" type="image/png" href="{{ content('favicon', asset('logo.png')) }}">
 
     {{-- Dhivehi font --}}
     <style>

@@ -51,3 +51,14 @@ if (!function_exists('thumb_url')) {
         return $imageUrl;
     }
 }
+
+if (!function_exists('content')) {
+    /**
+     * Resolve a content block for the marketing website (website scope).
+     * Drop-in replacement for SiteSetting::get() in Blade views.
+     */
+    function content(string $key, mixed $default = null): mixed
+    {
+        return App\Domains\Content\ContentResolver::for('website')->get($key, $default);
+    }
+}

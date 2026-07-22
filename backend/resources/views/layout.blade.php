@@ -25,29 +25,29 @@
         ? ($orderBarMeta['active'] ? '/order/orders/' . $orderBar->id : '/order/order-history')
         : null;
 
-    $siteName    = \App\Models\SiteSetting::get('site_name',        'Bake & Grill');
-    $siteTagline = \App\Models\SiteSetting::get('site_tagline',     'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.');
-    $metaTitle   = \App\Models\SiteSetting::get('meta_title',       $siteName . ' – Café & Online Orders');
-    $metaDesc    = \App\Models\SiteSetting::get('meta_description',  'Fresh Dhivehi food, artisan baking, and premium grills in Malé.');
-    $metaKeywords = \App\Models\SiteSetting::get('meta_keywords', 'Bake and Grill, food delivery Maldives, Male restaurant, cafe, grills, online order');
-    $ogImage     = \App\Models\SiteSetting::get('og_image',          asset('logo.png'));
-    $logoUrl     = \App\Models\SiteSetting::get('logo',              asset('logo.png'));
-    $phone       = \App\Models\SiteSetting::get('business_phone',   '+960 912 0011');
-    $email       = \App\Models\SiteSetting::get('business_email',   'admin@bakeandgrill.mv');
-    $address     = \App\Models\SiteSetting::get('business_address', 'Kalaafaanu Hingun, Malé, Maldives');
-    $landmark    = \App\Models\SiteSetting::get('business_landmark','Near H. Sahara');
-    $mapsUrl     = \App\Models\SiteSetting::get('business_maps_url','https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
-    $waLink      = \App\Models\SiteSetting::get('business_whatsapp','https://wa.me/9609120011');
-    $viberLink   = \App\Models\SiteSetting::get('business_viber',   'viber://chat?number=9609120011');
+    $siteName    = content('site_name',        'Bake & Grill');
+    $siteTagline = content('site_tagline',     'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.');
+    $metaTitle   = content('meta_title',       $siteName . ' – Café & Online Orders');
+    $metaDesc    = content('meta_description',  'Fresh Dhivehi food, artisan baking, and premium grills in Malé.');
+    $metaKeywords = content('meta_keywords', 'Bake and Grill, food delivery Maldives, Male restaurant, cafe, grills, online order');
+    $ogImage     = content('og_image',          asset('logo.png'));
+    $logoUrl     = content('logo',              asset('logo.png'));
+    $phone       = content('business_phone',   '+960 912 0011');
+    $email       = content('business_email',   'admin@bakeandgrill.mv');
+    $address     = content('business_address', 'Kalaafaanu Hingun, Malé, Maldives');
+    $landmark    = content('business_landmark','Near H. Sahara');
+    $mapsUrl     = content('business_maps_url','https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
+    $waLink      = content('business_whatsapp','https://wa.me/9609120011');
+    $viberLink   = content('business_viber',   'viber://chat?number=9609120011');
     $phoneTel    = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
-    $gtmId       = trim((string) \App\Models\SiteSetting::get('google_tag_manager_id', ''));
-    $gaId        = trim((string) \App\Models\SiteSetting::get('google_analytics_id', ''));
-    $navOrderCta = \App\Models\SiteSetting::get('nav_order_cta_text', 'Order Now →');
-    $footerQuickLinksHeading = \App\Models\SiteSetting::get('footer_quick_links_heading', 'Quick Links');
-    $footerLocationHeading   = \App\Models\SiteSetting::get('footer_location_heading', 'Location');
-    $footerContactHeading    = \App\Models\SiteSetting::get('footer_contact_heading', 'Contact');
-    $footerRightsSuffix      = \App\Models\SiteSetting::get('footer_rights_suffix', 'All rights reserved.');
-    $footerText              = trim(\App\Models\SiteSetting::get('footer_text', ''));
+    $gtmId       = trim((string) content('google_tag_manager_id', ''));
+    $gaId        = trim((string) content('google_analytics_id', ''));
+    $navOrderCta = content('nav_order_cta_text', 'Order Now →');
+    $footerQuickLinksHeading = content('footer_quick_links_heading', 'Quick Links');
+    $footerLocationHeading   = content('footer_location_heading', 'Location');
+    $footerContactHeading    = content('footer_contact_heading', 'Contact');
+    $footerRightsSuffix      = content('footer_rights_suffix', 'All rights reserved.');
+    $footerText              = trim(content('footer_text', ''));
     $footerBlurb             = $footerText !== '' ? $footerText : $siteTagline;
 @endphp
 <!DOCTYPE html>
@@ -106,7 +106,7 @@
     <!-- Apply saved theme before first paint to avoid flash -->
     <script nonce="{{ csp_nonce() }}">if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark';</script>
 
-    <link rel="icon" type="image/png" href="{{ \App\Models\SiteSetting::get('favicon', asset('logo.png')) }}">
+    <link rel="icon" type="image/png" href="{{ content('favicon', asset('logo.png')) }}">
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ $logoUrl }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1078,10 +1078,10 @@
 
 {{-- ─── Announcement Banner ──────────────────────────────────────── --}}
 @php
-    $annEnabled = \App\Models\SiteSetting::get('announcement_enabled', 'false') === 'true';
-    $annText    = trim(\App\Models\SiteSetting::get('announcement_text', ''));
-    $annUrl     = trim(\App\Models\SiteSetting::get('announcement_url',  ''));
-    $annStyle   = \App\Models\SiteSetting::get('announcement_style', 'info');
+    $annEnabled = content('announcement_enabled', 'false') === 'true';
+    $annText    = trim(content('announcement_text', ''));
+    $annUrl     = trim(content('announcement_url',  ''));
+    $annStyle   = content('announcement_style', 'info');
 @endphp
 @if($annEnabled && $annText)
 <div class="site-announcement site-announcement--{{ e($annStyle) }}" role="banner" aria-label="Site announcement">

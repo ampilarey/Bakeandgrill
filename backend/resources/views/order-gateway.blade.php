@@ -1,6 +1,6 @@
 @php
-    $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
-    $logoUrl  = \App\Models\SiteSetting::get('logo', asset('logo.png'));
+    $siteName = content('site_name', 'Bake & Grill');
+    $logoUrl  = content('logo', asset('logo.png'));
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -8,7 +8,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loading — {{ $siteName }}</title>
-    <link rel="icon" type="image/png" href="{{ \App\Models\SiteSetting::get('favicon', $logoUrl) }}">
+    <link rel="icon" type="image/png" href="{{ content('favicon', $logoUrl) }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">

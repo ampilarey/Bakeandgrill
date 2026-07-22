@@ -1,25 +1,25 @@
 @extends('layout')
 @php
-    $phone     = \App\Models\SiteSetting::get('business_phone',    '+960 912 0011');
+    $phone     = content('business_phone',    '+960 912 0011');
     $phoneTel  = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
-    $email     = \App\Models\SiteSetting::get('business_email',    'admin@bakeandgrill.mv');
-    $address   = \App\Models\SiteSetting::get('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
-    $landmark  = \App\Models\SiteSetting::get('business_landmark', 'Near H. Sahara');
-    $mapsUrl   = \App\Models\SiteSetting::get('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
-    $waLink    = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
-    $viberLink = \App\Models\SiteSetting::get('business_viber',    'viber://chat?number=9609120011');
+    $email     = content('business_email',    'admin@bakeandgrill.mv');
+    $address   = content('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
+    $landmark  = content('business_landmark', 'Near H. Sahara');
+    $mapsUrl   = content('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
+    $waLink    = content('business_whatsapp', 'https://wa.me/9609120011');
+    $viberLink = content('business_viber',    'viber://chat?number=9609120011');
     // Separate address line + city for the card display
     $addressParts = array_map('trim', explode(',', $address, 2));
     $addressLine1 = $addressParts[0] ?? $address;
     $addressLine2 = $addressParts[1] ?? 'Maldives';
     // Business hours: stored as JSON, fallback to typical hours
-    $hoursRaw    = \App\Models\SiteSetting::get('business_hours', null);
+    $hoursRaw    = content('business_hours', null);
     $hoursData   = $hoursRaw ? json_decode($hoursRaw, true) : null;
-    $siteName    = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
+    $siteName    = content('site_name', 'Bake & Grill');
 @endphp
 
-@section('title', \App\Models\SiteSetting::get('contact_meta_title', 'Contact Us – ' . \App\Models\SiteSetting::get('site_name', 'Bake & Grill')))
-@section('description', 'Find ' . \App\Models\SiteSetting::get('site_name', 'Bake & Grill') . ' in Malé. Call us, WhatsApp, or visit us at ' . \App\Models\SiteSetting::get('business_address', 'Kalaafaanu Hingun, Malé, Maldives') . '.')
+@section('title', content('contact_meta_title', 'Contact Us – ' . content('site_name', 'Bake & Grill')))
+@section('description', 'Find ' . content('site_name', 'Bake & Grill') . ' in Malé. Call us, WhatsApp, or visit us at ' . content('business_address', 'Kalaafaanu Hingun, Malé, Maldives') . '.')
 
 @section('styles')
 <style>
@@ -143,45 +143,45 @@
 @section('content')
 
 <div class="page-hero">
-    <span class="page-hero-eyebrow">{{ \App\Models\SiteSetting::get('contact_page_eyebrow', '📍 Find Us') }}</span>
-    <h1>{{ \App\Models\SiteSetting::get('contact_page_title', 'Contact Us') }}</h1>
-    <p>{{ \App\Models\SiteSetting::get('contact_page_subtitle', "Visit us in Malé, call ahead, or drop us a message on WhatsApp or Viber — we're always happy to help") }}</p>
+    <span class="page-hero-eyebrow">{{ content('contact_page_eyebrow', '📍 Find Us') }}</span>
+    <h1>{{ content('contact_page_title', 'Contact Us') }}</h1>
+    <p>{{ content('contact_page_subtitle', "Visit us in Malé, call ahead, or drop us a message on WhatsApp or Viber — we're always happy to help") }}</p>
 </div>
 
 <div class="contact-section">
 
     <div class="contact-card">
         <div class="contact-card-icon">📍</div>
-        <h2>{{ \App\Models\SiteSetting::get('contact_location_heading', 'Our Location') }}</h2>
+        <h2>{{ content('contact_location_heading', 'Our Location') }}</h2>
         <p><strong>{{ $siteName }}</strong></p>
         <p>{{ $addressLine1 }}</p>
         <p>{{ $addressLine2 }}</p>
         <p>{{ $landmark }}</p>
         <a href="{{ $mapsUrl }}" target="_blank" class="contact-link-row">
-            {{ \App\Models\SiteSetting::get('contact_location_maps_label', 'Open in Maps →') }}
+            {{ content('contact_location_maps_label', 'Open in Maps →') }}
         </a>
     </div>
 
     <div class="contact-card">
         <div class="contact-card-icon">📞</div>
-        <h2>{{ \App\Models\SiteSetting::get('contact_touch_heading', 'Get in Touch') }}</h2>
-        <p><strong>{{ \App\Models\SiteSetting::get('contact_phone_label', 'Phone') }}</strong></p>
+        <h2>{{ content('contact_touch_heading', 'Get in Touch') }}</h2>
+        <p><strong>{{ content('contact_phone_label', 'Phone') }}</strong></p>
         <a href="{{ $phoneTel }}">{{ $phone }}</a>
-        <p style="margin-top:0.75rem;"><strong>{{ \App\Models\SiteSetting::get('contact_email_label', 'Email') }}</strong></p>
+        <p style="margin-top:0.75rem;"><strong>{{ content('contact_email_label', 'Email') }}</strong></p>
         <a href="mailto:{{ $email }}">{{ $email }}</a>
         <div class="contact-msg-btns">
             <a href="{{ $waLink }}" target="_blank" rel="noopener" class="contact-link-wa">
-                {{ \App\Models\SiteSetting::get('contact_whatsapp_label', '💬 WhatsApp') }}
+                {{ content('contact_whatsapp_label', '💬 WhatsApp') }}
             </a>
             <a href="{{ $viberLink }}" class="contact-link-viber">
-                {{ \App\Models\SiteSetting::get('contact_viber_label', '📱 Viber') }}
+                {{ content('contact_viber_label', '📱 Viber') }}
             </a>
         </div>
     </div>
 
     <div class="contact-card">
         <div class="contact-card-icon">🕐</div>
-        <h2>{{ \App\Models\SiteSetting::get('contact_hours_heading', 'Opening Hours') }}</h2>
+        <h2>{{ content('contact_hours_heading', 'Opening Hours') }}</h2>
         @if($hoursData && is_array($hoursData))
             @foreach($hoursData as $period)
                 @if(isset($period['days']) && isset($period['hours']))
@@ -191,7 +191,7 @@
             @endforeach
         @else
             @php
-                $fallbackHours = \App\Models\SiteSetting::get(
+                $fallbackHours = content(
                     'contact_hours_fallback',
                     "Sunday \xe2\x80\x93 Thursday: 7:00 AM \xe2\x80\x93 11:00 PM\nFriday \xe2\x80\x93 Saturday: 7:00 AM \xe2\x80\x93 2:00 AM"
                 );
@@ -204,15 +204,15 @@
             @endforeach
         @endif
         <a href="/hours" class="contact-link-row" style="margin-top:1rem;">
-            {{ \App\Models\SiteSetting::get('contact_schedule_label', 'Full Schedule →') }}
+            {{ content('contact_schedule_label', 'Full Schedule →') }}
         </a>
     </div>
 
 </div>
 
 @php
-    $contactEventsHeadline = \App\Models\SiteSetting::get('contact_events_cta_headline', 'Planning an event?');
-    $contactEventsText = \App\Models\SiteSetting::get('contact_events_cta_text', 'Build a draft order with catering trays and custom lines — we will send a quote.');
+    $contactEventsHeadline = content('contact_events_cta_headline', 'Planning an event?');
+    $contactEventsText = content('contact_events_cta_text', 'Build a draft order with catering trays and custom lines — we will send a quote.');
 @endphp
 <section style="max-width:1100px; margin:0 auto 2rem; padding:0 2rem;">
     <div style="background:var(--amber-light); border:1px solid var(--border); border-radius:16px; padding:1.75rem 2rem; text-align:center;">
@@ -223,11 +223,11 @@
 </section>
 
 <div class="map-section">
-    <h2>{{ \App\Models\SiteSetting::get('contact_map_heading', '📍 Find Us on the Map') }}</h2>
+    <h2>{{ content('contact_map_heading', '📍 Find Us on the Map') }}</h2>
     <div class="map-wrap">
         <iframe
             title="Bake & Grill location on Google Maps"
-            src="{{ \App\Models\SiteSetting::get('maps_embed_url', 'https://www.google.com/maps?q=Kalaafaanu+Hingun+Male+Maldives&output=embed') }}"
+            src="{{ content('maps_embed_url', 'https://www.google.com/maps?q=Kalaafaanu+Hingun+Male+Maldives&output=embed') }}"
             allowfullscreen=""
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade">

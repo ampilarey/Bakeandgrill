@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', \App\Models\SiteSetting::get('privacy_meta_title', 'Privacy Policy - Bake & Grill'))
+@section('title', content('privacy_meta_title', 'Privacy Policy - Bake & Grill'))
 
 @section('styles')
 <style>
@@ -48,19 +48,19 @@
 
 @section('content')
 @php
-    $privacyTitle        = \App\Models\SiteSetting::get('privacy_page_title', 'Privacy Policy');
-    $privacyEmail        = \App\Models\SiteSetting::get('privacy_email', 'privacy@bakeandgrill.mv');
-    $privacyBodyOverride = \App\Models\SiteSetting::get('legal_privacy_body');
-    $privacyPhone        = \App\Models\SiteSetting::get('business_phone', config('business.phone'));
-    $privacyAddress      = \App\Models\SiteSetting::get('business_address', config('business.address.full'));
-    $privacyLastUpdated  = \App\Models\SiteSetting::get('privacy_last_updated_label', 'Last updated:');
-    $privacyEmailLabel   = \App\Models\SiteSetting::get('privacy_email_label',   'Email:');
-    $privacyPhoneLabel   = \App\Models\SiteSetting::get('privacy_phone_label',   'Phone:');
-    $privacyAddressLabel = \App\Models\SiteSetting::get('privacy_address_label', 'Address:');
+    $privacyTitle        = content('privacy_page_title', 'Privacy Policy');
+    $privacyEmail        = content('privacy_email', 'privacy@bakeandgrill.mv');
+    $privacyBodyOverride = content('legal_privacy_body');
+    $privacyPhone        = content('business_phone', config('business.phone'));
+    $privacyAddress      = content('business_address', config('business.address.full'));
+    $privacyLastUpdated  = content('privacy_last_updated_label', 'Last updated:');
+    $privacyEmailLabel   = content('privacy_email_label',   'Email:');
+    $privacyPhoneLabel   = content('privacy_phone_label',   'Phone:');
+    $privacyAddressLabel = content('privacy_address_label', 'Address:');
 @endphp
 <div class="privacy-content">
     <h1>{{ $privacyTitle }}</h1>
-    <p><em>{{ $privacyLastUpdated }} {{ \App\Models\SiteSetting::get('legal_last_updated_date', 'April 2026') }}</em></p>
+    <p><em>{{ $privacyLastUpdated }} {{ content('legal_last_updated_date', 'April 2026') }}</em></p>
 
     @if($privacyBodyOverride)
         {{-- CMS body override: plain text, HTML-escaped, newlines converted to <br> --}}

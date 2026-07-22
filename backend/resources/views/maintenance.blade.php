@@ -9,16 +9,16 @@
       - SiteSetting rows provide phone / hours / address / socials
 --}}
 @php
-    $siteName    = \App\Models\SiteSetting::get('site_name',        'Bake & Grill');
-    $logoUrl     = \App\Models\SiteSetting::get('logo',              asset('logo.png'));
-    $phone       = \App\Models\SiteSetting::get('business_phone',   '+960 912 0011');
-    $email       = \App\Models\SiteSetting::get('business_email',   'admin@bakeandgrill.mv');
-    $address     = \App\Models\SiteSetting::get('business_address', 'Kalaafaanu Hingun, Malé, Maldives');
-    $waLink      = \App\Models\SiteSetting::get('business_whatsapp','https://wa.me/9609120011');
-    $fbUrl       = \App\Models\SiteSetting::get('social_facebook', '');
-    $igUrl       = \App\Models\SiteSetting::get('social_instagram', '');
-    $tiktokUrl   = \App\Models\SiteSetting::get('social_tiktok', '');
-    $hoursSetting = \App\Models\SiteSetting::get('business_hours', null);
+    $siteName    = content('site_name',        'Bake & Grill');
+    $logoUrl     = content('logo',              asset('logo.png'));
+    $phone       = content('business_phone',   '+960 912 0011');
+    $email       = content('business_email',   'admin@bakeandgrill.mv');
+    $address     = content('business_address', 'Kalaafaanu Hingun, Malé, Maldives');
+    $waLink      = content('business_whatsapp','https://wa.me/9609120011');
+    $fbUrl       = content('social_facebook', '');
+    $igUrl       = content('social_instagram', '');
+    $tiktokUrl   = content('social_tiktok', '');
+    $hoursSetting = content('business_hours', null);
 
     $phoneTel = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
     $maintenance = $serviceMaintenance ?? [];

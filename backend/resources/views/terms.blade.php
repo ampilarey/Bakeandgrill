@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', \App\Models\SiteSetting::get('terms_meta_title', 'Terms & Conditions - Bake & Grill'))
+@section('title', content('terms_meta_title', 'Terms & Conditions - Bake & Grill'))
 
 @section('styles')
 <style>
@@ -63,17 +63,17 @@
 @section('content')
 <div class="policy-wrap">
     @php
-        $termsTitle           = \App\Models\SiteSetting::get('terms_page_title', 'Terms & Conditions');
-        $termsSubtitle        = \App\Models\SiteSetting::get('terms_page_subtitle', 'Please read these terms before completing your purchase.');
-        $termsServiceText     = \App\Models\SiteSetting::get('terms_page_corporate_service_text', 'Customer service: Available via WhatsApp, Viber, or the contact details above.');
-        $termsBizName         = \App\Models\SiteSetting::get('site_name',        config('business.name'));
-        $termsBizAddress      = \App\Models\SiteSetting::get('business_address', config('business.address.full'));
-        $termsBizPhone        = \App\Models\SiteSetting::get('business_phone',   config('business.phone'));
-        $termsBizEmail        = \App\Models\SiteSetting::get('business_email',   config('business.email'));
-        $termsBodyOverride    = \App\Models\SiteSetting::get('legal_terms_body');
-        $termsPhoneLabel      = \App\Models\SiteSetting::get('terms_phone_label', 'Phone:');
-        $termsEmailLabel      = \App\Models\SiteSetting::get('terms_email_label', 'Email:');
-        $termsLastUpdated     = \App\Models\SiteSetting::get('terms_last_updated_label', 'Last updated:');
+        $termsTitle           = content('terms_page_title', 'Terms & Conditions');
+        $termsSubtitle        = content('terms_page_subtitle', 'Please read these terms before completing your purchase.');
+        $termsServiceText     = content('terms_page_corporate_service_text', 'Customer service: Available via WhatsApp, Viber, or the contact details above.');
+        $termsBizName         = content('site_name',        config('business.name'));
+        $termsBizAddress      = content('business_address', config('business.address.full'));
+        $termsBizPhone        = content('business_phone',   config('business.phone'));
+        $termsBizEmail        = content('business_email',   config('business.email'));
+        $termsBodyOverride    = content('legal_terms_body');
+        $termsPhoneLabel      = content('terms_phone_label', 'Phone:');
+        $termsEmailLabel      = content('terms_email_label', 'Email:');
+        $termsLastUpdated     = content('terms_last_updated_label', 'Last updated:');
     @endphp
 
     <h1>{{ $termsTitle }}</h1>
@@ -142,6 +142,6 @@
         <p>These terms are governed by the laws of the Republic of Maldives. Any disputes will be resolved through the relevant Maldivian courts or authority.</p>
     @endif
 
-    <p class="updated">{{ $termsLastUpdated }} {{ \App\Models\SiteSetting::get('legal_last_updated_date', 'April 2026') }}</p>
+    <p class="updated">{{ $termsLastUpdated }} {{ content('legal_last_updated_date', 'April 2026') }}</p>
 </div>
 @endsection

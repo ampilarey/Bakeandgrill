@@ -13,7 +13,7 @@
  * caches are cleaned up on activation.
  */
 
-const CACHE_VERSION = 'bg-pwa-v10';
+const CACHE_VERSION = 'bg-pwa-v11';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const API_CACHE     = `${CACHE_VERSION}-api`;
@@ -31,6 +31,7 @@ const CACHEABLE_API_PATTERNS = [
     /\/api\/categories(\?|$)/,
     /\/api\/items(\?|$)/,
     /\/api\/site-settings\/public(\?|$)/,
+    /\/api\/content(\?|$)/,
     /\/api\/ordering\/status(\?|$)/,
     /\/api\/service-status(\?|$)/,
 ];

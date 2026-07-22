@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domains\Content\ContentResolver;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\Providers\DhiraaguSmsProvider;
 use App\Models\Category;
@@ -39,7 +40,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (! $this->app->isProduction()) {
+        if (!$this->app->isProduction()) {
             Model::preventLazyLoading();
             Model::preventSilentlyDiscardingAttributes();
         }
@@ -57,6 +58,21 @@ class AppServiceProvider extends ServiceProvider
             'partials.document-print-footer',
         ], function ($view): void {
             $view->with(DocumentBrandView::variables());
+        });
+
+        View::composer([
+            'layout',
+            'home',
+            'contact',
+            'hours',
+            'privacy',
+            'terms',
+            'refund',
+            'maintenance',
+            'prayer-times',
+            'order-gateway',
+        ], function ($view): void {
+            $view->with('content', ContentResolver::for('website'));
         });
 
         // Force HTTPS scheme in production so generated URLs and redirects are always secure.

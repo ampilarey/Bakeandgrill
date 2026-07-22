@@ -1,8 +1,8 @@
 @extends('layout')
 
 @php
-    $homeMetaTitle = \App\Models\SiteSetting::get('meta_title', 'Bake & Grill – Dhivehi Breakfast & Artisan Baking in Malé');
-    $homeMetaDesc  = \App\Models\SiteSetting::get('meta_description', 'Real food, proper char, baked fresh at 5am daily. Order Dhivehi hedhikaa, artisan pastries and grills online. Fast delivery across Malé.');
+    $homeMetaTitle = content('meta_title', 'Bake & Grill – Dhivehi Breakfast & Artisan Baking in Malé');
+    $homeMetaDesc  = content('meta_description', 'Real food, proper char, baked fresh at 5am daily. Order Dhivehi hedhikaa, artisan pastries and grills online. Fast delivery across Malé.');
 
     if (!function_exists('normalize_public_menu_link')) {
         function normalize_public_menu_link(?string $link): string
@@ -766,7 +766,7 @@
 @php
     $heroSlides = [];
     for ($i = 1; $i <= 3; $i++) {
-        $raw   = \App\Models\SiteSetting::get("hero_slide_{$i}", '{}');
+        $raw   = content("hero_slide_{$i}", '{}');
         $slide = json_decode($raw, true) ?: [];
         if (!empty($slide['title'])) {
             $heroSlides[] = $slide;
@@ -775,52 +775,52 @@
     // When no slides are configured, we render 1 fallback slide — dots/nav should reflect that.
     $slideCount = count($heroSlides) > 0 ? count($heroSlides) : 1;
 
-    $trustItems  = json_decode(\App\Models\SiteSetting::get('trust_items',  '[]'), true) ?: [];
-    $categories  = json_decode(\App\Models\SiteSetting::get('homepage_categories', '[]'), true) ?: [];
+    $trustItems  = json_decode(content('trust_items',  '[]'), true) ?: [];
+    $categories  = json_decode(content('homepage_categories', '[]'), true) ?: [];
 
-    $proofStat    = \App\Models\SiteSetting::get('proof_stat',   '500+');
-    $proofLabel   = \App\Models\SiteSetting::get('proof_label',  'orders delivered in Malé every week — and counting.');
-    $proofDetails = json_decode(\App\Models\SiteSetting::get('proof_details', '[]'), true) ?: [];
+    $proofStat    = content('proof_stat',   '500+');
+    $proofLabel   = content('proof_label',  'orders delivered in Malé every week — and counting.');
+    $proofDetails = json_decode(content('proof_details', '[]'), true) ?: [];
 
-    $ctaHeadline = \App\Models\SiteSetting::get('cta_band_headline', 'Hungry? <em>Order now.</em>');
-    $ctaSubtext  = \App\Models\SiteSetting::get('cta_band_subtext',  'Fresh from our kitchen to your door. Real food, properly made — order online in under a minute.');
+    $ctaHeadline = content('cta_band_headline', 'Hungry? <em>Order now.</em>');
+    $ctaSubtext  = content('cta_band_subtext',  'Fresh from our kitchen to your door. Real food, properly made — order online in under a minute.');
 
-    $phone             = \App\Models\SiteSetting::get('business_phone',    '+960 912 0011');
+    $phone             = content('business_phone',    '+960 912 0011');
     $phoneTel          = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
-    $waLink            = \App\Models\SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
-    $viberLink         = \App\Models\SiteSetting::get('business_viber',    'viber://chat?number=9609120011');
-    $mapsUrl           = \App\Models\SiteSetting::get('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
-    $address           = \App\Models\SiteSetting::get('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
-    $landmark          = \App\Models\SiteSetting::get('business_landmark', 'Near H. Sahara');
-    $deliveryTime      = \App\Models\SiteSetting::get('delivery_time',      '30–45 min');
-    $deliveryThreshold = \App\Models\SiteSetting::get('delivery_threshold', 'MVR 200');
+    $waLink            = content('business_whatsapp', 'https://wa.me/9609120011');
+    $viberLink         = content('business_viber',    'viber://chat?number=9609120011');
+    $mapsUrl           = content('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
+    $address           = content('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
+    $landmark          = content('business_landmark', 'Near H. Sahara');
+    $deliveryTime      = content('delivery_time',      '30–45 min');
+    $deliveryThreshold = content('delivery_threshold', 'MVR 200');
     $waOrderLink       = $waLink . (str_contains($waLink, '?') ? '&' : '?') . 'text=Hi%2C+I%27d+like+to+place+an+order';
 
     // Homepage section copy — managed in Admin → Settings → Website Settings → Homepage
-    $homeCategoriesEyebrow = \App\Models\SiteSetting::get('home_categories_eyebrow', "What we're known for");
-    $homeCategoriesTitle   = \App\Models\SiteSetting::get('home_categories_title',   'Made for Malé');
-    $homeCategoriesSubtitle= \App\Models\SiteSetting::get('home_categories_subtitle','Four things we do properly, every single day.');
-    $homeFeaturedEyebrowBs = \App\Models\SiteSetting::get('home_featured_eyebrow_bestseller', '🔥 Most Ordered');
-    $homeFeaturedEyebrowHp = \App\Models\SiteSetting::get('home_featured_eyebrow_handpicked', '⭐ Handpicked');
-    $homeFeaturedTitleBs   = \App\Models\SiteSetting::get('home_featured_title_bestseller',   'Best Sellers');
-    $homeFeaturedTitleHp   = \App\Models\SiteSetting::get('home_featured_title_handpicked',   'Featured Items');
-    $homeFeaturedSubtitle  = \App\Models\SiteSetting::get('home_featured_subtitle',  'The dishes our regulars order on repeat.');
-    $homeLocationEyebrow   = \App\Models\SiteSetting::get('home_location_eyebrow',   'Find us');
-    $homeLocationTitle     = \App\Models\SiteSetting::get('home_location_title',     'Visit or Order');
-    $homeLocationSubtitle  = \App\Models\SiteSetting::get('home_location_subtitle',  "Come in or stay in — we've got you covered either way.");
-    $homeProofEyebrow      = \App\Models\SiteSetting::get('home_proof_eyebrow',      'Loved by Malé');
-    $homeDeliveryTagline   = \App\Models\SiteSetting::get('home_delivery_tagline',   'Delivery across all of Malé');
-    $homeDeliverySubtitle  = \App\Models\SiteSetting::get('home_delivery_subtitle',  'We come to you — no exceptions within the city');
-    $homeDeliveryQualityLine  = \App\Models\SiteSetting::get('home_delivery_quality_line',  'Hot food at your door, not a cold box');
-    $homeDeliveryPaymentLine  = \App\Models\SiteSetting::get('home_delivery_payment_line',  'Secure BML online payment at checkout');
-    $homeOpenBadgeText        = \App\Models\SiteSetting::get('home_open_badge_text',   "We're open");
-    $homeClosedBadgeText      = \App\Models\SiteSetting::get('home_closed_badge_text', 'Closed now');
-    $homeVisitCardTitle       = \App\Models\SiteSetting::get('home_visit_card_title', 'Visit Us');
-    $homeDeliveryCardTitle    = \App\Models\SiteSetting::get('home_delivery_card_title', 'Order Delivery');
-    $homeChatLabel            = \App\Models\SiteSetting::get('home_chat_label', 'Chat with us');
-    $homeDirectionsCta        = \App\Models\SiteSetting::get('home_directions_cta', 'Get Directions');
-    $homeCallCta              = \App\Models\SiteSetting::get('home_call_cta', 'Call Us');
-    $homeOrderViaAppLabel     = \App\Models\SiteSetting::get('home_order_via_app_label', 'Order via app or chat');
+    $homeCategoriesEyebrow = content('home_categories_eyebrow', "What we're known for");
+    $homeCategoriesTitle   = content('home_categories_title',   'Made for Malé');
+    $homeCategoriesSubtitle= content('home_categories_subtitle','Four things we do properly, every single day.');
+    $homeFeaturedEyebrowBs = content('home_featured_eyebrow_bestseller', '🔥 Most Ordered');
+    $homeFeaturedEyebrowHp = content('home_featured_eyebrow_handpicked', '⭐ Handpicked');
+    $homeFeaturedTitleBs   = content('home_featured_title_bestseller',   'Best Sellers');
+    $homeFeaturedTitleHp   = content('home_featured_title_handpicked',   'Featured Items');
+    $homeFeaturedSubtitle  = content('home_featured_subtitle',  'The dishes our regulars order on repeat.');
+    $homeLocationEyebrow   = content('home_location_eyebrow',   'Find us');
+    $homeLocationTitle     = content('home_location_title',     'Visit or Order');
+    $homeLocationSubtitle  = content('home_location_subtitle',  "Come in or stay in — we've got you covered either way.");
+    $homeProofEyebrow      = content('home_proof_eyebrow',      'Loved by Malé');
+    $homeDeliveryTagline   = content('home_delivery_tagline',   'Delivery across all of Malé');
+    $homeDeliverySubtitle  = content('home_delivery_subtitle',  'We come to you — no exceptions within the city');
+    $homeDeliveryQualityLine  = content('home_delivery_quality_line',  'Hot food at your door, not a cold box');
+    $homeDeliveryPaymentLine  = content('home_delivery_payment_line',  'Secure BML online payment at checkout');
+    $homeOpenBadgeText        = content('home_open_badge_text',   "We're open");
+    $homeClosedBadgeText      = content('home_closed_badge_text', 'Closed now');
+    $homeVisitCardTitle       = content('home_visit_card_title', 'Visit Us');
+    $homeDeliveryCardTitle    = content('home_delivery_card_title', 'Order Delivery');
+    $homeChatLabel            = content('home_chat_label', 'Chat with us');
+    $homeDirectionsCta        = content('home_directions_cta', 'Get Directions');
+    $homeCallCta              = content('home_call_cta', 'Call Us');
+    $homeOrderViaAppLabel     = content('home_order_via_app_label', 'Order via app or chat');
     $featuredReviews = \App\Models\Review::query()
         ->where('status', 'approved')
         ->whereNotNull('comment')
@@ -857,7 +857,7 @@
             @foreach($heroSlides as $sIdx => $slide)
             <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;">
                 @if(!empty($slide['image']))
-                    <img src="{{ $slide['image'] }}" loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}" alt="{{ \App\Models\SiteSetting::get('site_name', 'Bake & Grill') }}">
+                    <img src="{{ $slide['image'] }}" loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}" alt="{{ content('site_name', 'Bake & Grill') }}">
                 @endif
                 <div class="banner-overlay">
                     @if(!empty($slide['eyebrow']))
@@ -877,8 +877,8 @@
         @else
             {{-- Fallback slide when no hero slides are configured in CMS --}}
             @php
-                $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
-                $tagline  = \App\Models\SiteSetting::get('site_tagline', 'Dhivehi Breakfast & Artisan Baking');
+                $siteName = content('site_name', 'Bake & Grill');
+                $tagline  = content('site_tagline', 'Dhivehi Breakfast & Artisan Baking');
             @endphp
             <div class="banner-slide active" style="background: linear-gradient(160deg, #2D1A0A 0%, #1C1408 100%);">
                 <div class="banner-overlay">
@@ -983,8 +983,8 @@
 ══════════════════════════════════════════════════════════ --}}
 @if($todaysSpecials->count() > 0)
 @php
-    $homeSpecialsEyebrow = \App\Models\SiteSetting::get('home_specials_eyebrow', 'Limited time');
-    $homeSpecialsTitle = \App\Models\SiteSetting::get('home_specials_title', "Today's Specials");
+    $homeSpecialsEyebrow = content('home_specials_eyebrow', 'Limited time');
+    $homeSpecialsTitle = content('home_specials_title', "Today's Specials");
 @endphp
 <section class="section">
     <div class="section-inner">
@@ -1344,10 +1344,10 @@
      EVENTS & CATERING
 ══════════════════════════════════════════════════════════ --}}
 @php
-    $eventsHeadline = \App\Models\SiteSetting::get('events_section_headline', 'Events & Catering');
-    $eventsBlurb = \App\Models\SiteSetting::get('events_section_blurb', 'Plan office breakfasts, celebrations, and catering trays with a structured quote — not just a same-day order.');
-    $eventsBrowseCta = \App\Models\SiteSetting::get('events_section_browse_cta', 'Browse catering menu');
-    $eventsPlanCta = \App\Models\SiteSetting::get('events_section_plan_cta', 'Plan your event');
+    $eventsHeadline = content('events_section_headline', 'Events & Catering');
+    $eventsBlurb = content('events_section_blurb', 'Plan office breakfasts, celebrations, and catering trays with a structured quote — not just a same-day order.');
+    $eventsBrowseCta = content('events_section_browse_cta', 'Browse catering menu');
+    $eventsPlanCta = content('events_section_plan_cta', 'Plan your event');
 @endphp
 <section class="events-band" style="padding:3.5rem 2rem; background:var(--surface); border-top:1px solid var(--border);">
     <div style="max-width:640px; margin:0 auto; text-align:center;">

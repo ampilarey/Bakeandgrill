@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Content\ContentResolver;
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
 use Illuminate\Http\JsonResponse;
@@ -13,16 +14,22 @@ use Illuminate\Support\Str;
 
 class SiteSettingsController extends Controller
 {
-    /** GET /api/site-settings/public — no auth, returns all public key:value pairs */
+    /** GET /api/site-settings/public — alias of GET /api/content?app=order_app */
     public function public(): JsonResponse
     {
-        return response()->json(['settings' => SiteSetting::allPublic()]);
+        $settings = ContentResolver::for('order_app')->allPublic();
+
+        return response()->json(['settings' => $settings]);
     }
 
-    /** GET /api/site-settings — owner only, returns all settings grouped for admin form */
+    /** GET /api/site-settings — owner only, returns shared-scope settings grouped for admin form */
     public function index(): JsonResponse
     {
-        $grouped = SiteSetting::orderBy('id')->get()
+        $query = SiteSetting::query()->orderBy('id');
+        if (SiteSetting::hasScopeColumn()) {
+            $query->where('scope', 'shared');
+        }
+        $grouped = $query->get()
             ->groupBy('group')
             ->map(fn ($items) => $items->values());
 

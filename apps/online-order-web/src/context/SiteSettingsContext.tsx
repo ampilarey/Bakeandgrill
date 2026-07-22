@@ -4,6 +4,11 @@ import { AnalyticsTracker } from '../components/AnalyticsTracker';
 const SITE_SETTINGS_URL =
   ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
     (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api')) +
+  '/content?app=order_app';
+
+const SITE_SETTINGS_FALLBACK_URL =
+  ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+    (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api')) +
   '/site-settings/public';
 
 export interface SiteSettings {
@@ -244,19 +249,31 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
+    const apply = (s: Record<string, string | null> | undefined) => {
+      if (s && typeof s === 'object') {
+        const nonNull = Object.fromEntries(
+          Object.entries(s).filter(([, v]) => v != null)
+        ) as SiteSettings;
+        setSettings({ ...DEFAULT_SETTINGS, ...nonNull });
+      }
+    };
+
     fetch(SITE_SETTINGS_URL)
-      .then((r) => r.json())
-      .then(({ settings: s }: { settings: Record<string, string | null> }) => {
-        if (s && typeof s === 'object') {
-          const nonNull = Object.fromEntries(
-            Object.entries(s).filter(([, v]) => v != null)
-          ) as SiteSettings;
-          setSettings({ ...DEFAULT_SETTINGS, ...nonNull });
-        }
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`content ${r.status}`);
+        return r.json();
       })
-      .catch((e) => {
-        if (import.meta.env.DEV) console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
-      });
+      .then((body: { content?: Record<string, string | null>; settings?: Record<string, string | null> }) => {
+        apply(body.content ?? body.settings);
+      })
+      .catch(() =>
+        fetch(SITE_SETTINGS_FALLBACK_URL)
+          .then((r) => r.json())
+          .then(({ settings: s }: { settings: Record<string, string | null> }) => apply(s))
+          .catch((e) => {
+            if (import.meta.env.DEV) console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
+          })
+      );
   }, []);
 
   // Optional brand accent from CMS (valid hex only).
