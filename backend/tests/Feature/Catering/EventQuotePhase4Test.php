@@ -22,7 +22,6 @@ use App\Models\SiteSetting;
 use App\Models\SmsLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -174,7 +173,7 @@ class EventQuotePhase4Test extends TestCase
         // After send, catalog changes — must not affect approval.
         $this->catalogItem->update(['base_price' => 500.00]);
 
-        $res = $this->postJson('/api/event-quotes/'.$row->quote_token.'/approve')
+        $res = $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')
             ->assertOk()
             ->assertJsonStructure(['payment_url', 'payment_id', 'order_number']);
 
@@ -194,7 +193,7 @@ class EventQuotePhase4Test extends TestCase
         $row = $this->makeQuotedEvent(['quote_token' => str_repeat('b', 48)], 100.0);
         $this->catalogItem->update(['is_active' => false, 'is_available' => false]);
 
-        $this->postJson('/api/event-quotes/'.$row->quote_token.'/approve')
+        $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')
             ->assertOk();
 
         $order = Order::query()->where('type', 'catering')->latest('id')->firstOrFail();
@@ -209,7 +208,7 @@ class EventQuotePhase4Test extends TestCase
         $row = $this->makeQuotedEvent(['quote_token' => str_repeat('c', 48)], 220.0);
         $this->catalogItem->delete();
 
-        $this->postJson('/api/event-quotes/'.$row->quote_token.'/approve')->assertOk();
+        $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')->assertOk();
 
         $order = Order::query()->where('type', 'catering')->latest('id')->firstOrFail();
         $line = $order->items()->firstOrFail();
@@ -234,17 +233,17 @@ class EventQuotePhase4Test extends TestCase
             'status' => 'draft',
         ]);
         $this->seedPlaceholder();
-        $this->putJson('/api/admin/customers/catering-requests/'.$row->id.'/lines', [
+        $this->putJson('/api/admin/customers/catering-requests/' . $row->id . '/lines', [
             'lines' => [
                 ['item_id' => $this->catalogItem->id, 'quantity' => 2],
             ],
         ])->assertOk();
-        $previewTotal = (int) $this->getJson('/api/admin/customers/catering-requests/'.$row->id)
+        $previewTotal = (int) $this->getJson('/api/admin/customers/catering-requests/' . $row->id)
             ->json('request.tax_preview.total_laar');
         $payMvr = $deposit
             ? round(($previewTotal / 2) / 100, 2)
             : round($previewTotal / 100, 2);
-        $this->postJson('/api/admin/customers/catering-requests/'.$row->id.'/send-quote', [
+        $this->postJson('/api/admin/customers/catering-requests/' . $row->id . '/send-quote', [
             'payment_amount_mvr' => $payMvr,
             'is_deposit' => $deposit,
         ])->assertOk();
@@ -255,7 +254,7 @@ class EventQuotePhase4Test extends TestCase
     public function test_deposit_payment_confirms_event_once_leaves_partial(): void
     {
         $row = $this->staffSendQuote(true);
-        $approve = $this->postJson('/api/event-quotes/'.$row->quote_token.'/approve')->assertOk();
+        $approve = $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')->assertOk();
         $order = Order::query()->where('order_number', $approve->json('order_number'))->firstOrFail();
         $payment = Payment::query()->where('order_id', $order->id)->firstOrFail();
 
@@ -268,7 +267,7 @@ class EventQuotePhase4Test extends TestCase
         $this->assertSame('partial', $order->payment_status);
 
         $smsCount = SmsLog::query()
-            ->where('idempotency_key', 'like', 'event:'.$row->id.':'.$row->quote_version.':confirmed%')
+            ->where('idempotency_key', 'like', 'event:' . $row->id . ':' . $row->quote_version . ':confirmed%')
             ->count();
         $this->assertGreaterThan(0, $smsCount);
 
@@ -282,7 +281,7 @@ class EventQuotePhase4Test extends TestCase
     public function test_full_payment_confirms_exactly_once(): void
     {
         $row = $this->staffSendQuote(false);
-        $approve = $this->postJson('/api/event-quotes/'.$row->quote_token.'/approve')->assertOk();
+        $approve = $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')->assertOk();
         $order = Order::query()->where('order_number', $approve->json('order_number'))->firstOrFail();
         $payment = Payment::query()->where('order_id', $order->id)->firstOrFail();
 
@@ -291,26 +290,26 @@ class EventQuotePhase4Test extends TestCase
         $this->assertSame('confirmed', $row->status);
 
         $keys = SmsLog::query()
-            ->where('idempotency_key', 'like', 'event:'.$row->id.':%:confirmed:customer_sms')
+            ->where('idempotency_key', 'like', 'event:' . $row->id . ':%:confirmed:customer_sms')
             ->count();
         $this->assertSame(1, $keys);
 
         // OrderPaid may also fire for full pay — confirmation must stay single.
         $before = SmsLog::query()
-            ->where('idempotency_key', 'like', 'event:'.$row->id.':%:confirmed:customer_sms')
+            ->where('idempotency_key', 'like', 'event:' . $row->id . ':%:confirmed:customer_sms')
             ->count();
         app(ConfirmCateringEventOnPaymentListener::class)->handle(new PaymentConfirmed(
             PaymentConfirmedData::fromPaymentAndOrder($payment->fresh(), $order->fresh()),
         ));
         $this->assertSame($before, SmsLog::query()
-            ->where('idempotency_key', 'like', 'event:'.$row->id.':%:confirmed:customer_sms')
+            ->where('idempotency_key', 'like', 'event:' . $row->id . ':%:confirmed:customer_sms')
             ->count());
     }
 
     public function test_pos_can_settle_deposit_balance(): void
     {
         $row = $this->staffSendQuote(true);
-        $approve = $this->postJson('/api/event-quotes/'.$row->quote_token.'/approve')->assertOk();
+        $approve = $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')->assertOk();
         $order = Order::query()->where('order_number', $approve->json('order_number'))->firstOrFail();
         $payment = Payment::query()->where('order_id', $order->id)->firstOrFail();
         $this->confirmBmlPayment($order, $payment);
@@ -326,7 +325,7 @@ class EventQuotePhase4Test extends TestCase
             'amount' => round($remaining / 100, 2),
             'amount_laar' => $remaining,
             'status' => 'confirmed',
-            'idempotency_key' => 'cash:settle:'.$order->id,
+            'idempotency_key' => 'cash:settle:' . $order->id,
             'processed_at' => now(),
         ]);
         app(\App\Domains\Payments\Services\OrderPaymentStateService::class)->syncPaymentStatus($order->fresh());
@@ -347,7 +346,7 @@ class EventQuotePhase4Test extends TestCase
         $this->assertSame('quoted', $row->status);
         $this->assertNull($row->quote_token);
         $this->assertDatabaseHas('sms_logs', [
-            'idempotency_key' => 'event:'.$row->id.':1:quote_expired:customer_sms',
+            'idempotency_key' => 'event:' . $row->id . ':1:quote_expired:customer_sms',
         ]);
 
         // Idempotent second run
@@ -364,7 +363,7 @@ class EventQuotePhase4Test extends TestCase
         ]);
         (new SendCateringEventReminders)->handle(app(CateringLifecycleNotifier::class));
         $this->assertDatabaseHas('sms_logs', [
-            'idempotency_key' => 'event:'.$confirmed->id.':1:reminder:customer_sms',
+            'idempotency_key' => 'event:' . $confirmed->id . ':1:reminder:customer_sms',
         ]);
 
         Sanctum::actingAs($this->eventsStaff, ['staff']);
@@ -373,11 +372,11 @@ class EventQuotePhase4Test extends TestCase
             'quote_token' => str_repeat('g', 48),
             'status' => 'quoted',
         ]);
-        $this->patchJson('/api/admin/customers/catering-requests/'.$toCancel->id, [
+        $this->patchJson('/api/admin/customers/catering-requests/' . $toCancel->id, [
             'status' => 'cancelled',
         ])->assertOk();
         $this->assertDatabaseHas('sms_logs', [
-            'idempotency_key' => 'event:'.$toCancel->id.':1:cancelled:customer_sms',
+            'idempotency_key' => 'event:' . $toCancel->id . ':1:cancelled:customer_sms',
         ]);
     }
 
@@ -387,20 +386,20 @@ class EventQuotePhase4Test extends TestCase
             'quote_token' => str_repeat('h', 48),
             'quote_expires_at' => now()->subMinute(),
         ]);
-        $this->postJson('/api/event-quotes/'.$expired->quote_token.'/approve')->assertStatus(410);
+        $this->postJson('/api/event-quotes/' . $expired->quote_token . '/approve')->assertStatus(410);
 
         $row = $this->makeQuotedEvent(['quote_token' => str_repeat('i', 48)], 100.0, false, 10000);
-        $first = $this->postJson('/api/event-quotes/'.$row->quote_token.'/approve')->assertOk();
-        $second = $this->postJson('/api/event-quotes/'.$row->quote_token.'/approve')->assertOk();
+        $first = $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')->assertOk();
+        $second = $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')->assertOk();
         $this->assertSame($first->json('order_number'), $second->json('order_number'));
         $this->assertSame(1, Order::query()->where('type', 'catering')->count());
 
         Sanctum::actingAs($this->eventsStaff, ['staff']);
-        $this->putJson('/api/admin/customers/catering-requests/'.$row->id.'/lines', [
+        $this->putJson('/api/admin/customers/catering-requests/' . $row->id . '/lines', [
             'lines' => [['item_id' => $this->catalogItem->id, 'quantity' => 1]],
         ])->assertStatus(422);
 
-        $this->patchJson('/api/admin/customers/catering-requests/'.$row->id, [
+        $this->patchJson('/api/admin/customers/catering-requests/' . $row->id, [
             'venue_name' => 'New Hall',
         ])->assertStatus(422);
     }
@@ -445,7 +444,7 @@ class EventQuotePhase4Test extends TestCase
             ->all();
         // Public items endpoint may paginate — assert placeholder not among active listing via query.
         $this->assertFalse(
-            Item::query()->where('is_active', true)->where('id', $placeholder->id)->exists()
+            Item::query()->where('is_active', true)->where('id', $placeholder->id)->exists(),
         );
     }
 }

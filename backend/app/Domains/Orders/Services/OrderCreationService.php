@@ -222,7 +222,7 @@ class OrderCreationService
                 'tax_amount' => 0,
                 'discount_amount' => 0,
                 'total' => 0,
-                'notes' => 'Event '.$request->reference,
+                'notes' => 'Event ' . $request->reference,
                 'customer_notes' => $request->dietary_notes,
                 'ticket_name' => $request->reference,
             ]);
@@ -306,13 +306,13 @@ class OrderCreationService
      * we want a single source of truth for the lock window).
      */
     /**
-     * @param  object|null  $user  Staff actor — when present, POS phone-in
-     *                             delivery skips the public delivery gate.
-     * @param  string|null  $effectiveType  Target fulfillment type for the
-     *                                      re-add (channel assert + stock
-     *                                      deduct). Stock restore always uses
-     *                                      the order's prior type. When null,
-     *                                      keeps the current order type.
+     * @param object|null $user Staff actor — when present, POS phone-in
+     *                          delivery skips the public delivery gate.
+     * @param string|null $effectiveType Target fulfillment type for the
+     *                                   re-add (channel assert + stock
+     *                                   deduct). Stock restore always uses
+     *                                   the order's prior type. When null,
+     *                                   keeps the current order type.
      */
     public function replaceOrderItems(
         Order $order,

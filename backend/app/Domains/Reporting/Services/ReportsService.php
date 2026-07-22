@@ -106,7 +106,11 @@ class ReportsService
             ->pluck('total', 'method');
 
         [$gcSoldCount, $gcSoldLaar] = $this->giftCardsSoldInRange(
-            $from, $to, $userId, $shiftId, $deviceId,
+            $from,
+            $to,
+            $userId,
+            $shiftId,
+            $deviceId,
         );
 
         // FIX 7: split total into "collected" (real tenders) vs "on credit"

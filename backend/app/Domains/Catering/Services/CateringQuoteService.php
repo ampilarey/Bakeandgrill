@@ -41,7 +41,7 @@ class CateringQuoteService
     ) {}
 
     /**
-     * @param  list<array<string, mixed>>  $lines
+     * @param list<array<string, mixed>> $lines
      */
     public function replaceLines(CateringRequest $request, array $lines, User $actor): CateringRequest
     {
@@ -104,7 +104,7 @@ class CateringQuoteService
     }
 
     /**
-     * @param  array{payment_amount_mvr: float|int|string, is_deposit?: bool}  $payload
+     * @param array{payment_amount_mvr: float|int|string, is_deposit?: bool} $payload
      */
     public function sendQuote(CateringRequest $request, array $payload, User $actor): CateringRequest
     {
@@ -474,7 +474,7 @@ class CateringQuoteService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, CateringRequestLine>|iterable<CateringRequestLine>  $lines
+     * @param \Illuminate\Support\Collection<int, CateringRequestLine>|iterable<CateringRequestLine> $lines
      */
     public function computeSubtotalLaar(iterable $lines): ?int
     {
@@ -492,7 +492,7 @@ class CateringQuoteService
     }
 
     /**
-     * @param  list<array<string, mixed>>  $lines
+     * @param list<array<string, mixed>> $lines
      * @return list<array{item_id:?int,variant_id:?int,packaging_option_id:?int,name:string,quantity:int,unit_price:?float,notes:?string,is_custom:bool,price_needs_review:bool}>
      */
     private function resolveStaffLines(array $lines): array

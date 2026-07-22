@@ -10,7 +10,6 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Payments\Listeners\IssuePurchasedGiftCardOnOrderPaidListener;
 use App\Domains\Payments\Listeners\VoidPurchasedGiftCardOnRefundListener;
-use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Models\AuditLog;
 use App\Models\GiftCard;
 use App\Models\GiftCardPurchase;

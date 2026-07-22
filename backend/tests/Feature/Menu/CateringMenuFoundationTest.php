@@ -107,14 +107,14 @@ class CateringMenuFoundationTest extends TestCase
 
         foreach (['takeaway', 'dine_in', 'online_pickup', 'delivery'] as $ch) {
             $ids = collect(
-                $this->getJson("/api/items?channel={$ch}&available_only=1")->json('data') ?? []
+                $this->getJson("/api/items?channel={$ch}&available_only=1")->json('data') ?? [],
             )->pluck('id')->all();
             $this->assertNotContains($buffet->id, $ids, "buffet should be absent from {$ch}");
         }
 
         $this->actingAsStaff();
         $posIds = collect(
-            $this->getJson('/api/pos/menu?channel=takeaway')->json('items') ?? []
+            $this->getJson('/api/pos/menu?channel=takeaway')->json('items') ?? [],
         )->pluck('id')->all();
         $this->assertNotContains($buffet->id, $posIds);
 

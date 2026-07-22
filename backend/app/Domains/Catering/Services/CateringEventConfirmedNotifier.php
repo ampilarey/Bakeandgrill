@@ -111,11 +111,11 @@ class CateringEventConfirmedNotifier
     private function formatVenue(CateringRequest $request): string
     {
         if ($request->venue_name) {
-            return 'Venue: '.$request->venue_name.'.';
+            return 'Venue: ' . $request->venue_name . '.';
         }
         if (($request->fulfillment_method ?? '') === 'delivery' && $request->delivery_address) {
-            return 'Delivery: '.$request->delivery_address
-                .($request->delivery_island ? ', '.$request->delivery_island : '').'.';
+            return 'Delivery: ' . $request->delivery_address
+                . ($request->delivery_island ? ', ' . $request->delivery_island : '') . '.';
         }
 
         return 'Pickup at Bake & Grill.';

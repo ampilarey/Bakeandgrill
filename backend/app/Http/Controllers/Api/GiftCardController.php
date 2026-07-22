@@ -832,7 +832,7 @@ class GiftCardController extends Controller
      * Cap personalised gift-card deliveries per recipient (phone/email) so a
      * paid purchase path can't spam the same number/address with notes.
      *
-     * @param  array<string, mixed>  $validated
+     * @param array<string, mixed> $validated
      */
     private function giftCardRecipientThrottle(array $validated): ?JsonResponse
     {

@@ -66,7 +66,7 @@ final class MediaFileCleaner
     /**
      * Whether any item, photo, or category row still references this exact URL string.
      *
-     * @param  list<string>  $keepUrls
+     * @param list<string> $keepUrls
      */
     public static function isReferenced(
         string $url,
@@ -114,7 +114,7 @@ final class MediaFileCleaner
             return true;
         }
 
-        if (! Schema::hasTable('categories')) {
+        if (!Schema::hasTable('categories')) {
             return false;
         }
 
@@ -139,7 +139,7 @@ final class MediaFileCleaner
      * Delete the file from the public disk only when it is an owned upload
      * and no other row (outside the except* exclusions) still references it.
      *
-     * @param  list<string>  $keepUrls
+     * @param list<string> $keepUrls
      */
     public static function deleteIfOwnedAndUnreferenced(
         ?string $url,
@@ -148,7 +148,7 @@ final class MediaFileCleaner
         ?int $exceptItemId = null,
         ?int $exceptCategoryId = null,
     ): bool {
-        if (! self::isOwnedUpload($url)) {
+        if (!self::isOwnedUpload($url)) {
             return false;
         }
 

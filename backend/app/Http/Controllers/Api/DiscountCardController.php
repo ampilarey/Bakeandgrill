@@ -29,7 +29,7 @@ final class DiscountCardController extends Controller
             $cards = $batch->cardsQuery()->get(['id', 'is_active', 'redemptions_count', 'max_uses', 'deleted_at', 'expires_at']);
             $active = $cards->filter(fn (Promotion $p) => $p->deleted_at === null && $p->is_active)->count();
             $redeemed = $cards->sum(fn (Promotion $p) => (int) $p->redemptions_count);
-            $voided = $cards->filter(fn (Promotion $p) => $p->deleted_at !== null || ! $p->is_active)->count();
+            $voided = $cards->filter(fn (Promotion $p) => $p->deleted_at !== null || !$p->is_active)->count();
 
             return [
                 'id' => $batch->id,
@@ -99,7 +99,7 @@ final class DiscountCardController extends Controller
             'expires_at' => ['nullable', 'date'],
             'max_uses_per_card' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'max_uses_per_customer' => ['nullable', 'integer', 'min:1', 'max:100'],
-            'quantity' => ['required', 'integer', 'min:1', 'max:'.DiscountCardIssueService::MAX_QUANTITY],
+            'quantity' => ['required', 'integer', 'min:1', 'max:' . DiscountCardIssueService::MAX_QUANTITY],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -146,7 +146,7 @@ final class DiscountCardController extends Controller
     {
         $exhausted = $p->max_uses !== null && $p->redemptions_count >= $p->max_uses;
         $expired = $p->expires_at && $p->expires_at->isPast();
-        $voided = $p->deleted_at !== null || ! $p->is_active;
+        $voided = $p->deleted_at !== null || !$p->is_active;
 
         $status = 'active';
         if ($voided) {

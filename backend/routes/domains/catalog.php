@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require __DIR__.'/_helpers.php';
+require __DIR__ . '/_helpers.php';
 
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ItemController;
@@ -16,13 +16,13 @@ use Illuminate\Support\Facades\Route;
 | Barcode label block: loaded inside auth:sanctum + staff.token group.
 */
 
-if (routes_domain_section_is('catalog', 'barcode') && ! routes_domain_loaded('catalog.barcode')) {
+if (routes_domain_section_is('catalog', 'barcode') && !routes_domain_loaded('catalog.barcode')) {
     routes_domain_mark_loaded('catalog.barcode');
 
     Route::get('/items/{id}/barcode-label', [ItemController::class, 'barcodeLabel']);
 }
 
-if (routes_domain_section_is('catalog', 'main') && ! routes_domain_loaded('catalog.main')) {
+if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalog.main')) {
     routes_domain_mark_loaded('catalog.main');
 
     // Public menu access

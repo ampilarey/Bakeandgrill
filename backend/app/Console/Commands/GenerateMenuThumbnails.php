@@ -46,7 +46,7 @@ class GenerateMenuThumbnails extends Command
                     }
                     try {
                         $thumbRel = $processor->storeThumbnailFromStoragePath($path);
-                        $item->update(['thumb_url' => '/storage/'.ltrim($thumbRel, '/')]);
+                        $item->update(['thumb_url' => '/storage/' . ltrim($thumbRel, '/')]);
                         $updated++;
                     } catch (\Throwable $e) {
                         $failed++;
@@ -80,7 +80,7 @@ class GenerateMenuThumbnails extends Command
                             $path,
                             "item-photos/{$photo->item_id}/thumbs",
                         );
-                        $photo->update(['thumb_url' => '/storage/'.ltrim($thumbRel, '/')]);
+                        $photo->update(['thumb_url' => '/storage/' . ltrim($thumbRel, '/')]);
                         $updated++;
                     } catch (\Throwable $e) {
                         $failed++;
@@ -111,7 +111,7 @@ class GenerateMenuThumbnails extends Command
                     }
                     try {
                         $thumbRel = $processor->storeThumbnailFromStoragePath($path);
-                        $category->update(['thumb_url' => '/storage/'.ltrim($thumbRel, '/')]);
+                        $category->update(['thumb_url' => '/storage/' . ltrim($thumbRel, '/')]);
                         $updated++;
                     } catch (\Throwable $e) {
                         $failed++;
@@ -120,7 +120,7 @@ class GenerateMenuThumbnails extends Command
                 }
             });
 
-        $this->info("Thumbnails: updated={$updated} skipped={$skipped} failed={$failed}".($dry ? ' (dry-run)' : ''));
+        $this->info("Thumbnails: updated={$updated} skipped={$skipped} failed={$failed}" . ($dry ? ' (dry-run)' : ''));
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }

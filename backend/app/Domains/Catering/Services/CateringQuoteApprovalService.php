@@ -79,7 +79,7 @@ class CateringQuoteApprovalService
                         ];
                     }
 
-                    $idempotency = 'bml:event:'.$request->id.':v'.$request->quote_version;
+                    $idempotency = 'bml:event:' . $request->id . ':v' . $request->quote_version;
                     $result = $this->payments->initiateBmlPayment($existing, $amountLaar, $idempotency);
 
                     return [
@@ -101,7 +101,7 @@ class CateringQuoteApprovalService
                 ]);
             }
 
-            $idempotency = 'bml:event:'.$request->id.':v'.$request->quote_version;
+            $idempotency = 'bml:event:' . $request->id . ':v' . $request->quote_version;
             $result = $this->payments->initiateBmlPayment($order, $amountLaar, $idempotency);
 
             $request->update([

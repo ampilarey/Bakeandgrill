@@ -123,7 +123,7 @@ class EventWizardFidelityTest extends TestCase
         $this->assertSame($opt->id, $row['packaging_options'][0]['id']);
 
         foreach (['takeaway', 'online_pickup', 'delivery', 'dine_in'] as $ch) {
-            $ids = collect($this->getJson('/api/items?channel='.$ch.'&available_only=1')->json('data') ?? [])
+            $ids = collect($this->getJson('/api/items?channel=' . $ch . '&available_only=1')->json('data') ?? [])
                 ->pluck('id');
             $this->assertFalse($ids->contains($buffet->id), "catering-only must not appear on {$ch}");
         }
@@ -264,14 +264,14 @@ class EventWizardFidelityTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->eventsStaff, ['staff']);
-        $show = $this->getJson('/api/admin/customers/catering-requests/'.$row->id)
+        $show = $this->getJson('/api/admin/customers/catering-requests/' . $row->id)
             ->assertOk();
         $preview = $show->json('request.tax_preview');
         $this->assertSame(60000, $preview['subtotal_laar']); // 200×3
         $this->assertSame(3000, $preview['packaging_fee_laar']); // 10×3 per_unit
         $this->assertGreaterThan(0, $preview['total_laar']);
 
-        $send = $this->postJson('/api/admin/customers/catering-requests/'.$row->id.'/send-quote', [
+        $send = $this->postJson('/api/admin/customers/catering-requests/' . $row->id . '/send-quote', [
             'payment_amount_mvr' => $preview['total_laar'] / 100,
             'is_deposit' => false,
         ])->assertOk();
@@ -279,11 +279,11 @@ class EventWizardFidelityTest extends TestCase
         $this->assertNotEmpty($token);
         $this->assertStringContainsString($token, (string) $send->json('request.quote_url'));
 
-        $public = $this->getJson('/api/event-quotes/'.$token)->assertOk()->json('quote');
+        $public = $this->getJson('/api/event-quotes/' . $token)->assertOk()->json('quote');
         $this->assertSame($preview['packaging_fee_laar'], $public['packaging_fee_laar']);
         $this->assertSame($preview['total_laar'], $public['total_laar']);
 
-        $approve = $this->postJson('/api/event-quotes/'.$token.'/approve')->assertOk();
+        $approve = $this->postJson('/api/event-quotes/' . $token . '/approve')->assertOk();
         $order = Order::query()->where('order_number', $approve->json('order_number'))->firstOrFail();
         $orderItem = $order->items()->first();
         $this->assertSame($box->id, (int) $orderItem->packaging_option_id);
@@ -291,7 +291,7 @@ class EventWizardFidelityTest extends TestCase
         $this->assertSame((int) $public['total_laar'], (int) $order->total_laar);
         $this->assertSame((int) $public['packaging_fee_laar'], (int) $order->packaging_fee_laar);
 
-        $dup = $this->postJson('/api/admin/customers/catering-requests/'.$row->id.'/duplicate')
+        $dup = $this->postJson('/api/admin/customers/catering-requests/' . $row->id . '/duplicate')
             ->assertCreated()
             ->json('request');
         $this->assertSame($box->id, (int) $dup['lines'][0]['packaging_option_id']);
@@ -334,7 +334,7 @@ class EventWizardFidelityTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->eventsStaff, ['staff']);
-        $res = $this->putJson('/api/admin/customers/catering-requests/'.$row->id.'/lines', [
+        $res = $this->putJson('/api/admin/customers/catering-requests/' . $row->id . '/lines', [
             'lines' => [[
                 'item_id' => $item->id,
                 'quantity' => 2,

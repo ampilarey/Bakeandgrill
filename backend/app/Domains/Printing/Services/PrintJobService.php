@@ -175,14 +175,14 @@ class PrintJobService
                 $dietaryNotes = $event->dietary_notes ? trim((string) $event->dietary_notes) : null;
                 $banner = [];
                 if ($setupTime) {
-                    $banner[] = 'SETUP BY '.$setupTime;
+                    $banner[] = 'SETUP BY ' . $setupTime;
                 }
                 if ($dietaryNotes) {
-                    $banner[] = 'DIETARY: '.$dietaryNotes;
+                    $banner[] = 'DIETARY: ' . $dietaryNotes;
                 }
                 if ($banner !== []) {
                     $prefix = implode(' | ', $banner);
-                    $notes = $notes !== '' ? $prefix."\n".$notes : $prefix;
+                    $notes = $notes !== '' ? $prefix . "\n" . $notes : $prefix;
                 }
             }
         }

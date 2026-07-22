@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers\Domains;
 
+use App\Domains\Catering\Events\CateringRequestSubmitted;
+use App\Domains\Catering\Listeners\ConfirmCateringEventOnPaymentListener;
+use App\Domains\Catering\Listeners\SendCateringRequestStaffSmsListener;
 use App\Domains\Credit\Listeners\ReverseCreditOnRefundListener;
 use App\Domains\Gst\Listeners\PostGstOnOrderPaidListener;
 use App\Domains\Gst\Listeners\PostGstOnRefundListener;
@@ -33,7 +36,6 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Orders\Events\OrderStatusChanged;
 use App\Domains\Orders\Listeners\ReleasePreparedStockOnCancelListener;
-use App\Domains\Catering\Listeners\ConfirmCateringEventOnPaymentListener;
 use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Listeners\PaymentConfirmedListener;
 use App\Domains\Payments\Listeners\RedeemGiftCardOnOrderPaidListener;
@@ -50,8 +52,6 @@ use App\Domains\Reservations\Listeners\SendReservationConfirmationListener;
 use App\Domains\Reservations\Listeners\SendReservationConfirmedListener;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Domains\Shifts\Events\ShiftOpened;
-use App\Domains\Catering\Events\CateringRequestSubmitted;
-use App\Domains\Catering\Listeners\SendCateringRequestStaffSmsListener;
 use App\Domains\Sms\Listeners\SendNewCustomerNotificationListener;
 use App\Domains\Sms\Listeners\SendStaffOrderNotificationListener;
 use App\Domains\Webhooks\Listeners\DispatchWebhookOnDomainEvent;

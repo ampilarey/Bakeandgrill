@@ -44,7 +44,7 @@ class PruneUnreferencedMedia extends Command
         $skipped = 0;
 
         foreach (self::SCAN_PREFIXES as $prefix) {
-            if (! Storage::disk('public')->exists(rtrim($prefix, '/'))) {
+            if (!Storage::disk('public')->exists(rtrim($prefix, '/'))) {
                 continue;
             }
             foreach (Storage::disk('public')->allFiles(rtrim($prefix, '/')) as $path) {
@@ -68,7 +68,7 @@ class PruneUnreferencedMedia extends Command
             }
         }
 
-        $this->info("Prune complete: deleted={$deleted} skipped={$skipped}".($dry ? ' (dry-run)' : ''));
+        $this->info("Prune complete: deleted={$deleted} skipped={$skipped}" . ($dry ? ' (dry-run)' : ''));
 
         return self::SUCCESS;
     }

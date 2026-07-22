@@ -70,8 +70,8 @@ class ItemVideoUploadTest extends TestCase
         $this->assertSame('video', $photo['media_type']);
         $this->assertNotEmpty($photo['poster_url']);
         $this->assertStringContainsString('/video/', $photo['url']);
-        $this->assertFileExists(storage_path('app/public/'.ltrim(substr($photo['url'], strlen('/storage/')), '/')));
-        $this->assertFileExists(storage_path('app/public/'.ltrim(substr($photo['poster_url'], strlen('/storage/')), '/')));
+        $this->assertFileExists(storage_path('app/public/' . ltrim(substr($photo['url'], strlen('/storage/')), '/')));
+        $this->assertFileExists(storage_path('app/public/' . ltrim(substr($photo['poster_url'], strlen('/storage/')), '/')));
     }
 
     public function test_requires_poster(): void
@@ -113,12 +113,12 @@ class ItemVideoUploadTest extends TestCase
 
         $videoRel = ltrim(substr($photo['url'], strlen('/storage/')), '/');
         $posterRel = ltrim(substr($photo['poster_url'], strlen('/storage/')), '/');
-        $this->assertFileExists(storage_path('app/public/'.$videoRel));
-        $this->assertFileExists(storage_path('app/public/'.$posterRel));
+        $this->assertFileExists(storage_path('app/public/' . $videoRel));
+        $this->assertFileExists(storage_path('app/public/' . $posterRel));
 
         ItemPhoto::findOrFail($photo['id'])->delete();
 
-        $this->assertFileDoesNotExist(storage_path('app/public/'.$videoRel));
-        $this->assertFileDoesNotExist(storage_path('app/public/'.$posterRel));
+        $this->assertFileDoesNotExist(storage_path('app/public/' . $videoRel));
+        $this->assertFileDoesNotExist(storage_path('app/public/' . $posterRel));
     }
 }

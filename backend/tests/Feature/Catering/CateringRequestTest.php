@@ -117,12 +117,12 @@ class CateringRequestTest extends TestCase
         $this->assertFalse($resolver->isItemVisibleForChannel($off, 'catering'));
 
         $deliveryIds = collect(
-            $this->getJson('/api/items?channel=delivery&available_only=1')->json('data') ?? []
+            $this->getJson('/api/items?channel=delivery&available_only=1')->json('data') ?? [],
         )->pluck('id')->all();
         $this->assertContains($on->id, $deliveryIds);
 
         $cateringIds = collect(
-            $this->getJson('/api/items?channel=catering&available_only=1')->json('data') ?? []
+            $this->getJson('/api/items?channel=catering&available_only=1')->json('data') ?? [],
         )->pluck('id')->all();
         $this->assertContains($on->id, $cateringIds);
         $this->assertNotContains($off->id, $cateringIds);

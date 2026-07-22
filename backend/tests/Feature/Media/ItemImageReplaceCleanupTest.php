@@ -49,7 +49,7 @@ class ItemImageReplaceCleanupTest extends TestCase
     {
         Storage::disk('public')->put($relative, 'fake-bytes');
 
-        return '/storage/'.ltrim($relative, '/');
+        return '/storage/' . ltrim($relative, '/');
     }
 
     public function test_updating_image_url_deletes_superseded_owned_file(): void

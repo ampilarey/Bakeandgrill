@@ -74,6 +74,7 @@ class OrderNumberSequenceRaceTest extends TestCase
                 DB::table('daily_sequences')
                     ->where('date', $date)
                     ->update(['last_order_number' => $next, 'updated_at' => now()]);
+
                 return $next;
             });
             $this->assertSame($i, $seq);

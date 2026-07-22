@@ -42,7 +42,7 @@ class PromotionEvaluator
     /**
      * Preview a promo against POS cart lines without persisting an order.
      *
-     * @param  array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}>  $lines
+     * @param array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}> $lines
      * @return array{valid: bool, discount_laar: int, message: string, promotion: ?Promotion}
      */
     public function evaluateForCart(string $code, array $lines, ?int $customerId = null): array
@@ -138,7 +138,7 @@ class PromotionEvaluator
     }
 
     /**
-     * @param  array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}>  $lines
+     * @param array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}> $lines
      */
     private function ephemeralOrderFromLines(array $lines): Order
     {

@@ -175,7 +175,7 @@ class CateringEventFireService
                     $available = (int) $variant->stock_quantity;
                     if ($available < $qty) {
                         $shortages[] = [
-                            'item_name' => trim(($line->item_name ?? '').($line->variant_name ? ' — '.$line->variant_name : '')),
+                            'item_name' => trim(($line->item_name ?? '') . ($line->variant_name ? ' — ' . $line->variant_name : '')),
                             'order_item_id' => (int) $line->id,
                             'requested' => $qty,
                             'available' => $available,
@@ -228,7 +228,7 @@ class CateringEventFireService
                 continue;
             }
 
-            $key = 'catering:fire:order:'.$order->id.':item:'.$line->id;
+            $key = 'catering:fire:order:' . $order->id . ':item:' . $line->id;
 
             if ($line->variant_id) {
                 $variant = Variant::query()->lockForUpdate()->find($line->variant_id);

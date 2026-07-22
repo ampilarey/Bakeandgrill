@@ -129,7 +129,7 @@ class CateringNotifyRecipients
     }
 
     /**
-     * @param  list<array{phone:?string,email:?string,source:string,user_id?:int}>  ...$groups
+     * @param list<array{phone:?string,email:?string,source:string,user_id?:int}> ...$groups
      * @return list<array{phone:?string,email:?string,source:string,user_id?:int}>
      */
     private function mergeUnique(array ...$groups): array

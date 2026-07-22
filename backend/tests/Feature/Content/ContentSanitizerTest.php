@@ -12,8 +12,8 @@ class ContentSanitizerTest extends TestCase
     public function test_strips_script_and_onclick_keeps_allowed_tags(): void
     {
         $dirty = '<p>Hello <strong>world</strong><script>alert(1)</script></p>'
-            .'<a href="https://bakeandgrill.mv" onclick="evil()">Link</a>'
-            .'<a href="javascript:alert(1)">Bad</a>';
+            . '<a href="https://bakeandgrill.mv" onclick="evil()">Link</a>'
+            . '<a href="javascript:alert(1)">Bad</a>';
 
         $clean = ContentSanitizer::clean($dirty);
 

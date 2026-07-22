@@ -29,20 +29,20 @@ class CategoryController extends Controller
 
         // POS only needs category pills — skip nesting every item here
         // (items are loaded via GET /items with channel filtering).
-        $withItems = ! in_array($request->query('with_items'), ['0', 'false', 'no'], true);
+        $withItems = !in_array($request->query('with_items'), ['0', 'false', 'no'], true);
 
         $query = Category::query();
 
         if ($withItems) {
             $query->with(['items' => function ($q) use ($isAdmin) {
-                if (! $isAdmin) {
+                if (!$isAdmin) {
                     $q->where('is_active', true)->where('is_available', true);
                 }
                 $q->orderBy('sort_order')->orderBy('name');
             }]);
         }
 
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $query->where('is_active', true);
         }
 
@@ -141,7 +141,7 @@ class CategoryController extends Controller
         $category = Category::findOrFail($id);
 
         // Prevent circular reference: a category cannot be its own parent or descendant.
-        if (! empty($validated['parent_id'])) {
+        if (!empty($validated['parent_id'])) {
             if ($validated['parent_id'] === (int) $id) {
                 return response()->json(['message' => 'A category cannot be its own parent.'], 422);
             }
@@ -217,7 +217,7 @@ class CategoryController extends Controller
     /**
      * When an owned crop is set without thumb_url, generate one via MenuImageProcessor.
      *
-     * @param  array<string, mixed>  $validated
+     * @param array<string, mixed> $validated
      * @return array<string, mixed>
      */
     private function ensureCategoryThumb(array $validated, ?Category $existing = null): array
@@ -227,7 +227,7 @@ class CategoryController extends Controller
             ? $validated['thumb_url']
             : $existing?->thumb_url;
 
-        if (! is_string($imageUrl) || $imageUrl === '') {
+        if (!is_string($imageUrl) || $imageUrl === '') {
             return $validated;
         }
         if (is_string($thumbUrl) && $thumbUrl !== '') {
@@ -241,7 +241,7 @@ class CategoryController extends Controller
 
         try {
             $thumbRel = $this->processor->storeThumbnailFromStoragePath($path);
-            $validated['thumb_url'] = '/storage/'.ltrim($thumbRel, '/');
+            $validated['thumb_url'] = '/storage/' . ltrim($thumbRel, '/');
         } catch (\Throwable) {
             // Leave thumb_url unset — client can retry or backfill later.
         }

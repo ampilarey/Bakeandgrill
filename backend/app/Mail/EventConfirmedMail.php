@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use App\Models\CateringRequest;
@@ -23,7 +25,7 @@ class EventConfirmedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Event confirmed '.$this->request->reference.' — Bake & Grill',
+            subject: 'Event confirmed ' . $this->request->reference . ' — Bake & Grill',
         );
     }
 
@@ -35,7 +37,7 @@ class EventConfirmedMail extends Mailable
             : null;
         $venue = $this->request->venue_name
             ?: (($this->request->fulfillment_method ?? '') === 'delivery'
-                ? trim(($this->request->delivery_address ?? '').', '.($this->request->delivery_island ?? ''), ', ')
+                ? trim(($this->request->delivery_address ?? '') . ', ' . ($this->request->delivery_island ?? ''), ', ')
                 : 'Bake & Grill (pickup)');
 
         return new Content(

@@ -7,7 +7,6 @@ namespace Tests\Feature\Content;
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
 use App\Models\SiteSetting;
-use Database\Seeders\ContentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

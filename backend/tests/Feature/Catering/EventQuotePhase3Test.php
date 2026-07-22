@@ -6,7 +6,6 @@ namespace Tests\Feature\Catering;
 
 use App\Domains\Catering\Services\CateringNotifyRecipients;
 use App\Domains\Catering\Services\CateringQuoteService;
-use App\Models\AuditLog;
 use App\Models\CateringRequest;
 use App\Models\CateringRequestLine;
 use App\Models\Item;

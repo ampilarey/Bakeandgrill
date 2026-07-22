@@ -47,7 +47,7 @@ class CategoryMediaTest extends TestCase
         Storage::disk('public')->put($relative, 'fake-bytes');
         $this->assertTrue(Storage::disk('public')->exists($relative));
 
-        return '/storage/'.ltrim($relative, '/');
+        return '/storage/' . ltrim($relative, '/');
     }
 
     private function jpegAt(int $width, int $height): UploadedFile
@@ -188,8 +188,8 @@ class CategoryMediaTest extends TestCase
         $processor = app(MenuImageProcessor::class);
         $cropRel = $processor->storeProcessed($this->jpegAt(800, 600), 'menu');
         $masterRel = $processor->storeMaster($this->jpegAt(1200, 900), 'menu-masters');
-        $cropUrl = '/storage/'.$cropRel;
-        $masterUrl = '/storage/'.$masterRel;
+        $cropUrl = '/storage/' . $cropRel;
+        $masterUrl = '/storage/' . $masterRel;
 
         $category = $this->postJson('/api/categories', [
             'name' => 'With Media',
@@ -206,11 +206,11 @@ class CategoryMediaTest extends TestCase
         $this->assertStringStartsWith('/storage/', $category['thumb_url']);
 
         $thumbRel = ltrim(substr((string) $category['thumb_url'], strlen('/storage/')), '/');
-        $this->assertFileExists(storage_path('app/public/'.$thumbRel));
+        $this->assertFileExists(storage_path('app/public/' . $thumbRel));
 
-        @unlink(storage_path('app/public/'.$cropRel));
-        @unlink(storage_path('app/public/'.$masterRel));
-        @unlink(storage_path('app/public/'.$thumbRel));
+        @unlink(storage_path('app/public/' . $cropRel));
+        @unlink(storage_path('app/public/' . $masterRel));
+        @unlink(storage_path('app/public/' . $thumbRel));
     }
 
     public function test_category_thumbnail_backfill_is_idempotent(): void
@@ -222,7 +222,7 @@ class CategoryMediaTest extends TestCase
             'name' => 'Backfill Cat',
             'slug' => 'backfill-cat',
             'is_active' => true,
-            'image_url' => '/storage/'.$cropRel,
+            'image_url' => '/storage/' . $cropRel,
             'thumb_url' => null,
         ]);
 
@@ -233,8 +233,8 @@ class CategoryMediaTest extends TestCase
         Artisan::call('menu:generate-thumbnails');
         $this->assertSame($first, $category->fresh()->thumb_url);
 
-        @unlink(storage_path('app/public/'.$cropRel));
+        @unlink(storage_path('app/public/' . $cropRel));
         $thumbRel = ltrim(substr((string) $first, strlen('/storage/')), '/');
-        @unlink(storage_path('app/public/'.$thumbRel));
+        @unlink(storage_path('app/public/' . $thumbRel));
     }
 }

@@ -26,7 +26,7 @@ class ItemPhotoCleanupTest extends TestCase
         Storage::disk('public')->put($relative, 'fake-bytes');
         $this->assertTrue(Storage::disk('public')->exists($relative));
 
-        return '/storage/'.ltrim($relative, '/');
+        return '/storage/' . ltrim($relative, '/');
     }
 
     public function test_deleting_photo_removes_owned_crop_and_master(): void

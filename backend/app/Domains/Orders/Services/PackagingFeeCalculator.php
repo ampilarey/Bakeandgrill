@@ -38,7 +38,7 @@ class PackagingFeeCalculator
     }
 
     /**
-     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}>  $lines
+     * @param list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}> $lines
      */
     public function previewPackagingForOrderType(string $orderType, array $lines = []): int
     {
@@ -73,7 +73,7 @@ class PackagingFeeCalculator
     }
 
     /**
-     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}>  $lines
+     * @param list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}> $lines
      * @return array{
      *   packaging_fee_laar: int,
      *   packaging_fee_label: string,
@@ -127,7 +127,7 @@ class PackagingFeeCalculator
     }
 
     /**
-     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}>  $lines
+     * @param list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}> $lines
      */
     public function sumPackagingForOrderType(string $orderType, array $lines): int
     {
@@ -197,7 +197,7 @@ class PackagingFeeCalculator
     /**
      * Prefer snapshotted fee/mode on each line; otherwise resolve from catalog.
      *
-     * @param  list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}>  $lines
+     * @param list<array{item_id?: int, quantity?: float|int|string, packaging_fee?: float|int|string|null, packaging_fee_mode?: string|null, packaging_option_id?: int|null}> $lines
      * @return list<array{item_id: int, quantity: float, packaging_fee: float, packaging_fee_mode: string, packaging_option_id: int|null}>
      */
     private function resolveLineFees(array $lines): array

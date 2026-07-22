@@ -51,8 +51,8 @@ class ReservationAuditFixesTest extends TestCase
     private function payload(int $partySize = 2, string $slot = '12:00'): array
     {
         return [
-            'customer_name' => 'Guest '.$partySize,
-            'customer_phone' => '+960777'.str_pad((string) $partySize, 4, '0', STR_PAD_LEFT),
+            'customer_name' => 'Guest ' . $partySize,
+            'customer_phone' => '+960777' . str_pad((string) $partySize, 4, '0', STR_PAD_LEFT),
             'party_size' => $partySize,
             'date' => $this->date,
             'time_slot' => $slot,
@@ -69,7 +69,7 @@ class ReservationAuditFixesTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['time_slot']);
 
-        $avail = $this->getJson('/api/reservations/availability?date='.$this->date.'&party_size=1')
+        $avail = $this->getJson('/api/reservations/availability?date=' . $this->date . '&party_size=1')
             ->assertOk();
         $slot = collect($avail->json('slots'))->firstWhere('time_slot', '12:00');
         $this->assertNotNull($slot);
@@ -85,10 +85,10 @@ class ReservationAuditFixesTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['party_size']);
 
-        $this->getJson('/api/reservations/availability?date='.$this->date.'&party_size=4')
+        $this->getJson('/api/reservations/availability?date=' . $this->date . '&party_size=4')
             ->assertStatus(422);
 
-        $this->getJson('/api/reservations/availability?date='.$this->date.'&party_size=2')
+        $this->getJson('/api/reservations/availability?date=' . $this->date . '&party_size=2')
             ->assertOk()
             ->assertJsonPath('meta.max_party_size', 3);
 

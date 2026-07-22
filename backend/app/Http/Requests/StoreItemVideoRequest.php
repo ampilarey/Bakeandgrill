@@ -23,15 +23,15 @@ class StoreItemVideoRequest extends FormRequest
             'video' => [
                 'required',
                 'file',
-                'max:'.$maxKb,
-                'mimetypes:'.$mimes,
+                'max:' . $maxKb,
+                'mimetypes:' . $mimes,
             ],
             'poster' => [
                 'required',
                 'file',
                 'image',
                 'mimes:jpeg,jpg,png,webp',
-                'max:'.(int) config('menu_media.image.max_kb', 10240),
+                'max:' . (int) config('menu_media.image.max_kb', 10240),
             ],
             'alt_text' => ['nullable', 'string', 'max:200'],
             'is_primary' => ['sometimes', 'boolean'],

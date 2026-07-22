@@ -197,8 +197,8 @@ final class CustomerSegmentationService
             // Inline numeric thresholds (not bindings): leftJoinSub already binds
             // excluded order statuses; extra ? bindings here collide on SQLite/PDO.
             'vip_customers' => $query
-                ->whereRaw('COALESCE(po.orders_count_paid, 0) >= '.(int) $this->vipSettings->minPaidOrders())
-                ->whereRaw('COALESCE(po.total_paid_spend, 0) >= '.(float) $this->vipSettings->minSpendMvr()),
+                ->whereRaw('COALESCE(po.orders_count_paid, 0) >= ' . (int) $this->vipSettings->minPaidOrders())
+                ->whereRaw('COALESCE(po.total_paid_spend, 0) >= ' . (float) $this->vipSettings->minSpendMvr()),
             'dormant_30d' => $query
                 ->whereRaw('COALESCE(po.orders_count_paid, 0) >= 1')
                 ->where('po.last_paid_at', '<', now()->subDays(30)),

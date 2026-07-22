@@ -47,7 +47,7 @@ class ItemPhotoController extends Controller
                 'original_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             ]);
         } catch (ValidationException $e) {
-            if (! ImageCapabilities::supportsWebp()) {
+            if (!ImageCapabilities::supportsWebp()) {
                 $file = $request->file('photo');
                 if ($file && str_contains(strtolower((string) $file->getMimeType()), 'webp')) {
                     throw ValidationException::withMessages([
@@ -73,16 +73,16 @@ class ItemPhotoController extends Controller
                     $request->file('original'),
                     "item-photos/{$itemId}/masters",
                 );
-                $originalUrl = '/storage/'.ltrim($origPath, '/');
-            } elseif (! empty($validated['original_url'])) {
+                $originalUrl = '/storage/' . ltrim($origPath, '/');
+            } elseif (!empty($validated['original_url'])) {
                 $originalUrl = $validated['original_url'];
             }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $url = '/storage/'.ltrim($path, '/');
-        $thumbUrl = '/storage/'.ltrim($thumbPath, '/');
+        $url = '/storage/' . ltrim($path, '/');
+        $thumbUrl = '/storage/' . ltrim($thumbPath, '/');
 
         if ($validated['is_primary'] ?? false) {
             $item->photos()->update(['is_primary' => false]);
@@ -116,13 +116,13 @@ class ItemPhotoController extends Controller
         $video = $request->file('video');
         $poster = $request->file('poster');
         $allowedVideo = config('menu_media.video.mimetypes', ['video/mp4', 'video/webm']);
-        if (! in_array((string) $video->getMimeType(), $allowedVideo, true)) {
+        if (!in_array((string) $video->getMimeType(), $allowedVideo, true)) {
             return response()->json(['message' => 'Video must be MP4 or WebM.'], 422);
         }
 
         try {
             $ext = strtolower((string) $video->getClientOriginalExtension()) ?: 'mp4';
-            if (! in_array($ext, config('menu_media.video.extensions', ['mp4', 'webm']), true)) {
+            if (!in_array($ext, config('menu_media.video.extensions', ['mp4', 'webm']), true)) {
                 $ext = str_contains((string) $video->getMimeType(), 'webm') ? 'webm' : 'mp4';
             }
             $videoRel = $this->processor->storeRaw(
@@ -144,10 +144,10 @@ class ItemPhotoController extends Controller
 
         $photo = ItemPhoto::create([
             'item_id' => $item->id,
-            'url' => '/storage/'.ltrim($videoRel, '/'),
+            'url' => '/storage/' . ltrim($videoRel, '/'),
             'original_url' => null,
-            'thumb_url' => '/storage/'.ltrim($thumbRel, '/'),
-            'poster_url' => '/storage/'.ltrim($posterRel, '/'),
+            'thumb_url' => '/storage/' . ltrim($thumbRel, '/'),
+            'poster_url' => '/storage/' . ltrim($posterRel, '/'),
             'media_type' => 'video',
             'alt_text' => $validated['alt_text'] ?? null,
             'sort_order' => $maxOrder + 1,
@@ -168,7 +168,7 @@ class ItemPhotoController extends Controller
             'original_url' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
 
-        if (! empty($validated['is_primary'])) {
+        if (!empty($validated['is_primary'])) {
             ItemPhoto::where('item_id', $itemId)->update(['is_primary' => false]);
         }
 
@@ -200,7 +200,7 @@ class ItemPhotoController extends Controller
         }
 
         foreach ($order as $photoId) {
-            if (! $photos->has($photoId)) {
+            if (!$photos->has($photoId)) {
                 return response()->json([
                     'message' => 'One or more photo IDs do not belong to this item.',
                 ], 422);

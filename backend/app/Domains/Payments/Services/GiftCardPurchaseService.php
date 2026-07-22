@@ -60,17 +60,17 @@ final class GiftCardPurchaseService
         $email = isset($data['recipient_email']) ? strtolower(trim((string) $data['recipient_email'])) : '';
         if ($email === '') {
             $email = null;
-        } elseif (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('Invalid recipient email.');
         }
 
-        if (! $phone && ! $email) {
+        if (!$phone && !$email) {
             throw new \InvalidArgumentException('Provide a recipient phone or email so we can deliver the code.');
         }
 
         $anonymous = filter_var($data['send_anonymously'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $senderName = isset($data['sender_name']) ? trim((string) $data['sender_name']) : '';
-        if (! $anonymous && $senderName === '') {
+        if (!$anonymous && $senderName === '') {
             throw new \InvalidArgumentException('Enter your name for the recipient, or choose send anonymously.');
         }
         if ($anonymous) {

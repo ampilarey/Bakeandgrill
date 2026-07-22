@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use App\Models\CateringRequest;
@@ -22,7 +24,7 @@ class EventQuoteSentMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your event quote '.$this->request->reference.' — Bake & Grill',
+            subject: 'Your event quote ' . $this->request->reference . ' — Bake & Grill',
         );
     }
 

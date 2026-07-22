@@ -58,7 +58,7 @@ class ReferralTest extends TestCase
     private function pendingOrderFor(Customer $customer): Order
     {
         return Order::create([
-            'order_number' => 'BG-REF-'.uniqid(),
+            'order_number' => 'BG-REF-' . uniqid(),
             'type' => 'online_pickup',
             'status' => 'payment_pending',
             'payment_status' => 'unpaid',

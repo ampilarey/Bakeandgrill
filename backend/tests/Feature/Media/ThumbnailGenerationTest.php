@@ -66,8 +66,8 @@ class ThumbnailGenerationTest extends TestCase
         $this->assertIsString($thumb);
         $this->assertStringStartsWith('/storage/', $thumb);
         $rel = ltrim(substr($thumb, strlen('/storage/')), '/');
-        $this->assertFileExists(storage_path('app/public/'.$rel));
-        @unlink(storage_path('app/public/'.$rel));
+        $this->assertFileExists(storage_path('app/public/' . $rel));
+        @unlink(storage_path('app/public/' . $rel));
     }
 
     public function test_photo_upload_persists_thumb_url(): void
@@ -89,7 +89,7 @@ class ThumbnailGenerationTest extends TestCase
 
         foreach (['url', 'thumb_url'] as $key) {
             $rel = ltrim(substr((string) $photo[$key], strlen('/storage/')), '/');
-            @unlink(storage_path('app/public/'.$rel));
+            @unlink(storage_path('app/public/' . $rel));
         }
     }
 
@@ -100,7 +100,7 @@ class ThumbnailGenerationTest extends TestCase
         $processor = app(MenuImageProcessor::class);
         $cropRel = $processor->storeProcessed($file, 'menu');
         $item = Item::factory()->create([
-            'image_url' => '/storage/'.$cropRel,
+            'image_url' => '/storage/' . $cropRel,
             'thumb_url' => null,
         ]);
 
@@ -111,9 +111,9 @@ class ThumbnailGenerationTest extends TestCase
         Artisan::call('menu:generate-thumbnails');
         $this->assertSame($first, $item->fresh()->thumb_url);
 
-        @unlink(storage_path('app/public/'.$cropRel));
+        @unlink(storage_path('app/public/' . $cropRel));
         $thumbRel = ltrim(substr((string) $first, strlen('/storage/')), '/');
-        @unlink(storage_path('app/public/'.$thumbRel));
+        @unlink(storage_path('app/public/' . $thumbRel));
     }
 
     public function test_backfill_skips_rows_that_already_have_thumb(): void

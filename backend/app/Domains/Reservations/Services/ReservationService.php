@@ -68,7 +68,7 @@ class ReservationService
 
             // Skip past slots for today
             if ($parsedDate->isToday()) {
-                $slotTime = Carbon::parse($date.' '.$slot);
+                $slotTime = Carbon::parse($date . ' ' . $slot);
                 if ($slotTime->isPast()) {
                     continue;
                 }
@@ -202,7 +202,7 @@ class ReservationService
      * Shared capacity math used by availability() and create().
      * remaining = sum(active table capacities) − booked party sizes for the slot.
      *
-     * @param  Collection<int, Reservation>  $existing
+     * @param Collection<int, Reservation> $existing
      */
     public function remainingCapacityForSlot(string $timeSlot, Collection $existing, ?int $totalCapacity = null): int
     {
@@ -260,7 +260,7 @@ class ReservationService
     }
 
     /**
-     * @param  Collection<int, Reservation>|null  $existing
+     * @param Collection<int, Reservation>|null $existing
      */
     private function tryAssignTable(Reservation $reservation, ?Collection $existing = null): void
     {

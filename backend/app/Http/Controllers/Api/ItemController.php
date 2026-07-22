@@ -52,26 +52,26 @@ class ItemController extends Controller
         $isPosView = $request->query('view') === 'pos';
 
         $with = ['category', 'variants', 'modifiers', 'packagingOptions'];
-        if ($isAdmin && ! $isPosView) {
+        if ($isAdmin && !$isPosView) {
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
             $with[] = 'comboItems.item';
             $with[] = 'recipe.recipeItems.inventoryItem';
         }
         // Public / POS need catering flag for Events & Catering sections.
-        if (! $isAdmin || $isPosView) {
+        if (!$isAdmin || $isPosView) {
             $with[] = 'channelAvailabilities';
         }
         $query = Item::with($with);
 
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $query->withCount(['reviews as review_count' => fn ($q) => $q->where('status', 'approved')])
                 ->withAvg(['reviews as avg_rating' => fn ($q) => $q->where('status', 'approved')], 'rating');
         }
 
         $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
 
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $query->where('is_active', true);
             $query->with([
                 'comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants',
@@ -101,7 +101,7 @@ class ItemController extends Controller
         }
 
         // Filter by availability (public only)
-        if (! $isAdmin && $request->has('available_only')) {
+        if (!$isAdmin && $request->has('available_only')) {
             $query->where('is_available', true)
                 ->where(function ($q) {
                     $q->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', now());
@@ -117,8 +117,8 @@ class ItemController extends Controller
 
         // Admin gets full data; public / POS get stripped response + availability metadata
         $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing) {
-            $includeAvailability = ! $isAdmin || $isPosView;
-            $includeAdminExtras = $isAdmin && ! $isPosView;
+            $includeAvailability = !$isAdmin || $isPosView;
+            $includeAdminExtras = $isAdmin && !$isPosView;
             $recipeCosts = $includeAdminExtras ? app(RecipeCostCalculator::class) : null;
             $activeSpecial = $includeAvailability
                 ? $specialPricing->activeSpecialsByItemId()->get($item->id)
@@ -218,7 +218,7 @@ class ItemController extends Controller
             // Public / POS callers receive availability metadata
             if ($includeAvailability) {
                 $specialBlock = $baseSpecial?->toApiBlock();
-                if (! $specialBlock && $activeSpecial) {
+                if (!$specialBlock && $activeSpecial) {
                     $hasVariantDiscount = $item->has_variants
                         && collect($data['variants'])->contains(fn ($v) => isset($v['effective_price']));
                     if ($hasVariantDiscount) {
@@ -240,7 +240,7 @@ class ItemController extends Controller
                     $data['special'] = $specialBlock;
                 }
 
-                if (! $isAdmin) {
+                if (!$isAdmin) {
                     $data['spice_level'] = $item->spice_level ?? null;
                     $data['is_combo'] = (bool) ($item->is_combo ?? false);
                     $data['combo_discount_pct'] = $item->combo_discount_pct;
@@ -420,9 +420,9 @@ class ItemController extends Controller
             ->findOrFail($id);
 
         $channel = 'online_pickup';
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
-            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+            if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
                 abort(404);
             }
         }
@@ -469,7 +469,7 @@ class ItemController extends Controller
             ),
         ];
 
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $payload = $availability->withPublicAliases(
                 $payload,
                 $availability->check($item, $channel),
@@ -571,7 +571,7 @@ class ItemController extends Controller
             $item->refresh();
             if ($item->is_combo && is_array($comboRows)) {
                 $combos->sync($item, $comboRows);
-            } elseif (! $item->is_combo) {
+            } elseif (!$item->is_combo) {
                 $combos->sync($item, []);
             }
         }
@@ -625,9 +625,9 @@ class ItemController extends Controller
             ->where('is_available', true)
             ->firstOrFail();
 
-        if (! $isStaff) {
+        if (!$isStaff) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
-            if (! $kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
+            if (!$kitchenMenuResolver->isItemVisibleForChannel($item, $channel)) {
                 abort(404);
             }
         }
@@ -670,7 +670,7 @@ class ItemController extends Controller
     public function toggleAvailability($id)
     {
         $item = Item::findOrFail($id);
-        $item->update(['is_available' => ! $item->is_available]);
+        $item->update(['is_available' => !$item->is_available]);
 
         return response()->json([
             'message' => 'Item availability updated',
@@ -732,7 +732,7 @@ class ItemController extends Controller
         $public = $items->map(fn ($item) => [
             'id' => $item->id,
             'is_available' => $item->availability_type !== 'unavailable'
-                && (! $item->track_stock || $item->stock_quantity > 0),
+                && (!$item->track_stock || $item->stock_quantity > 0),
         ]);
 
         return response()->json(['items' => $public]);

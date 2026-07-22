@@ -40,7 +40,7 @@ class OrderTrackPageTest extends TestCase
     public function test_tracking_path_serves_order_spa_shell(): void
     {
         $path = public_path('order/index.html');
-        if (! is_file($path)) {
+        if (!is_file($path)) {
             $this->markTestSkipped('Order app not deployed to public/order.');
         }
 
@@ -60,7 +60,7 @@ class OrderTrackPageTest extends TestCase
     public function test_unknown_token_still_serves_spa_shell_for_client_error(): void
     {
         $path = public_path('order/index.html');
-        if (! is_file($path)) {
+        if (!is_file($path)) {
             $this->markTestSkipped('Order app not deployed to public/order.');
         }
 

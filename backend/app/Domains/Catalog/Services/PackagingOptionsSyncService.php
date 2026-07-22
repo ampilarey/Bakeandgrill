@@ -15,7 +15,7 @@ final class PackagingOptionsSyncService
     ) {}
 
     /**
-     * @param  list<array<string, mixed>>|null  $rows
+     * @param list<array<string, mixed>>|null $rows
      */
     public function sync(Item $item, ?array $rows): void
     {

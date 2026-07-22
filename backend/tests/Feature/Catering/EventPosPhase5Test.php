@@ -174,7 +174,7 @@ class EventPosPhase5Test extends TestCase
         ]);
 
         $order = Order::create(array_merge([
-            'order_number' => 'BG-CAT-'.uniqid(),
+            'order_number' => 'BG-CAT-' . uniqid(),
             'type' => 'catering',
             'status' => 'payment_pending',
             'payment_status' => 'partial',
@@ -184,7 +184,7 @@ class EventPosPhase5Test extends TestCase
             'discount_amount' => 0,
             'total' => 900,
             'total_laar' => 90000,
-            'notes' => 'Event '.$event->reference,
+            'notes' => 'Event ' . $event->reference,
             'customer_notes' => 'No nuts',
             'fired_at' => null,
             'shift_id' => null,
@@ -242,12 +242,12 @@ class EventPosPhase5Test extends TestCase
 
         Sanctum::actingAs($this->cashier, ['staff']);
         $this->withHeaders($this->deviceHeaders())
-            ->postJson('/api/pos/events/'.$event->id.'/fire')
+            ->postJson('/api/pos/events/' . $event->id . '/fire')
             ->assertForbidden();
 
         Sanctum::actingAs($this->eventsStaff, ['staff']);
         $this->withHeaders($this->deviceHeaders())
-            ->postJson('/api/pos/events/'.$event->id.'/fire')
+            ->postJson('/api/pos/events/' . $event->id . '/fire')
             ->assertStatus(409)
             ->assertJsonPath('requires_confirmation', true);
 
@@ -255,7 +255,7 @@ class EventPosPhase5Test extends TestCase
         $this->assertSame(1, (int) $this->stockItem->fresh()->stock_quantity);
 
         $this->withHeaders($this->deviceHeaders())
-            ->postJson('/api/pos/events/'.$event->id.'/fire', ['confirm_shortages' => true])
+            ->postJson('/api/pos/events/' . $event->id . '/fire', ['confirm_shortages' => true])
             ->assertOk()
             ->assertJsonPath('order.status', 'pending');
 
@@ -270,7 +270,7 @@ class EventPosPhase5Test extends TestCase
 
         // Re-fire is idempotent — no double stock movement, same print key.
         $this->withHeaders($this->deviceHeaders())
-            ->postJson('/api/pos/events/'.$event->id.'/fire', ['confirm_shortages' => true])
+            ->postJson('/api/pos/events/' . $event->id . '/fire', ['confirm_shortages' => true])
             ->assertOk()
             ->assertJsonPath('already_fired', true);
 
@@ -296,7 +296,7 @@ class EventPosPhase5Test extends TestCase
         $shift = Shift::query()->where('user_id', $this->cashier->id)->whereNull('closed_at')->firstOrFail();
 
         $this->withHeaders($this->deviceHeaders())
-            ->postJson('/api/orders/'.$order->id.'/payments', [
+            ->postJson('/api/orders/' . $order->id . '/payments', [
                 'payments' => [
                     ['method' => 'cash', 'amount' => 675.00],
                 ],
@@ -323,7 +323,7 @@ class EventPosPhase5Test extends TestCase
         $shift = Shift::query()->where('user_id', $this->cashier->id)->whereNull('closed_at')->firstOrFail();
 
         $close = $this->withHeaders($this->deviceHeaders())
-            ->postJson('/api/shifts/'.$shift->id.'/close', ['closing_cash' => 100])
+            ->postJson('/api/shifts/' . $shift->id . '/close', ['closing_cash' => 100])
             ->assertOk();
         $this->assertArrayNotHasKey('open_unpaid_orders', $close->json());
 
@@ -349,7 +349,7 @@ class EventPosPhase5Test extends TestCase
         $this->assertNotContains($order->id, $kdsIds);
 
         $this->withHeaders($this->deviceHeaders())
-            ->postJson('/api/pos/events/'.$event->id.'/fire')
+            ->postJson('/api/pos/events/' . $event->id . '/fire')
             ->assertOk();
 
         // Still never in Active Orders (catering excluded by type).
@@ -373,7 +373,7 @@ class EventPosPhase5Test extends TestCase
 
         Sanctum::actingAs($this->eventsStaff, ['staff']);
         $this->withHeaders($this->deviceHeaders())
-            ->postJson('/api/pos/events/'.$event->id.'/cancel')
+            ->postJson('/api/pos/events/' . $event->id . '/cancel')
             ->assertOk()
             ->assertJsonPath('event.status', 'cancelled');
 

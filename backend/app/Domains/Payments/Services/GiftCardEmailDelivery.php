@@ -26,7 +26,7 @@ final class GiftCardEmailDelivery
         ?string $viewUrl = null,
     ): array {
         $normalized = strtolower(trim($email));
-        if ($normalized === '' || ! filter_var($normalized, FILTER_VALIDATE_EMAIL)) {
+        if ($normalized === '' || !filter_var($normalized, FILTER_VALIDATE_EMAIL)) {
             return [
                 'ok' => false,
                 'email' => $email,

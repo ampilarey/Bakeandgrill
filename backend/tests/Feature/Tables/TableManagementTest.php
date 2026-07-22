@@ -244,7 +244,7 @@ class TableManagementTest extends TestCase
 
         $shift = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
             ->postJson('/api/shifts/open', ['opening_cash' => 50], $this->managerHeaders);
-        $this->assertTrue($shift->isSuccessful(), 'shift open: '.$shift->getContent());
+        $this->assertTrue($shift->isSuccessful(), 'shift open: ' . $shift->getContent());
 
         $first = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
             ->postJson('/api/orders', [
@@ -253,7 +253,7 @@ class TableManagementTest extends TestCase
                 'print' => false,
                 'items' => [['item_id' => $item->id, 'quantity' => 1]],
             ], $this->managerHeaders);
-        $this->assertSame(201, $first->status(), 'first order: '.$first->getContent());
+        $this->assertSame(201, $first->status(), 'first order: ' . $first->getContent());
 
         $second = $this->withHeader('X-Device-Identifier', self::DEVICE_ID)
             ->postJson('/api/orders', [
@@ -262,7 +262,7 @@ class TableManagementTest extends TestCase
                 'print' => false,
                 'items' => [['item_id' => $item->id, 'quantity' => 1]],
             ], $this->managerHeaders);
-        $this->assertSame(422, $second->status(), 'second order: '.$second->getContent());
+        $this->assertSame(422, $second->status(), 'second order: ' . $second->getContent());
         $this->assertStringContainsString('Table already has an open order', $second->getContent());
     }
 

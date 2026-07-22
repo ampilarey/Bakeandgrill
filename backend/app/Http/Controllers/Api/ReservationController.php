@@ -28,7 +28,7 @@ class ReservationController extends Controller
 
         $validated = $request->validate([
             'date' => ['required', 'date', 'after_or_equal:today'],
-            'party_size' => ['required', 'integer', 'min:1', 'max:'.$maxParty],
+            'party_size' => ['required', 'integer', 'min:1', 'max:' . $maxParty],
         ]);
 
         $slots = $this->service->availableSlots($validated['date'], (int) $validated['party_size']);
@@ -54,7 +54,7 @@ class ReservationController extends Controller
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:120'],
             'customer_phone' => ['required', 'string', 'max:20'],
-            'party_size' => ['required', 'integer', 'min:1', 'max:'.$maxParty],
+            'party_size' => ['required', 'integer', 'min:1', 'max:' . $maxParty],
             'date' => ['required', 'date', 'after_or_equal:today'],
             'time_slot' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -68,7 +68,7 @@ class ReservationController extends Controller
             customerPhone: $validated['customer_phone'],
             partySize: (int) $validated['party_size'],
             date: $validated['date'],
-            timeSlot: $validated['time_slot'].':00',
+            timeSlot: $validated['time_slot'] . ':00',
             notes: $validated['notes'] ?? null,
             customerId: $customerId,
         ));

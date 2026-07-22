@@ -40,12 +40,12 @@ final class DiscountCardIssueService
         $quantity = (int) $data['quantity'];
         if ($quantity < 1 || $quantity > self::MAX_QUANTITY) {
             throw new \InvalidArgumentException(
-                'Quantity must be between 1 and '.self::MAX_QUANTITY.'.',
+                'Quantity must be between 1 and ' . self::MAX_QUANTITY . '.',
             );
         }
 
         $type = (string) $data['type'];
-        if (! in_array($type, ['percentage', 'fixed'], true)) {
+        if (!in_array($type, ['percentage', 'fixed'], true)) {
             throw new \InvalidArgumentException('Type must be percentage or fixed.');
         }
 
@@ -91,7 +91,7 @@ final class DiscountCardIssueService
             for ($i = 1; $i <= $quantity; $i++) {
                 $code = $this->uniqueCode();
                 $promo = Promotion::create([
-                    'name' => $batch->name.($quantity > 1 ? " #{$i}" : ''),
+                    'name' => $batch->name . ($quantity > 1 ? " #{$i}" : ''),
                     'code' => $code,
                     'type' => $type,
                     'discount_value' => $value,
@@ -139,8 +139,8 @@ final class DiscountCardIssueService
     private function uniqueCode(): string
     {
         for ($attempt = 0; $attempt < 20; $attempt++) {
-            $code = 'DC-'.strtoupper(Str::random(4)).'-'.strtoupper(Str::random(4));
-            if (! Promotion::withTrashed()->where('code', $code)->exists()) {
+            $code = 'DC-' . strtoupper(Str::random(4)) . '-' . strtoupper(Str::random(4));
+            if (!Promotion::withTrashed()->where('code', $code)->exists()) {
                 return $code;
             }
         }

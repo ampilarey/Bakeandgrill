@@ -187,7 +187,7 @@ return new class extends Migration
         Schema::table('catering_requests', function (Blueprint $table) {
             try {
                 $table->dropIndex('catering_requests_event_date_status_index');
-            } catch (\Throwable) {
+            } catch (Throwable) {
             }
 
             foreach ([

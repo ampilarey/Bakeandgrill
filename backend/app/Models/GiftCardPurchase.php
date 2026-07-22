@@ -62,7 +62,7 @@ class GiftCardPurchase extends Model
             return null;
         }
 
-        return 'From: '.$name;
+        return 'From: ' . $name;
     }
 
     public function order(): BelongsTo

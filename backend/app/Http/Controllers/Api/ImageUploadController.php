@@ -45,8 +45,8 @@ class ImageUploadController extends Controller
 
         $file = $request->file('image');
         $allowed = MenuImageValidation::allowedMimeTypes();
-        if (! in_array($file->getMimeType(), $allowed, true)) {
-            $message = (! ImageCapabilities::supportsWebp() && $file->getMimeType() === 'image/webp')
+        if (!in_array($file->getMimeType(), $allowed, true)) {
+            $message = (!ImageCapabilities::supportsWebp() && $file->getMimeType() === 'image/webp')
                 ? MenuImageValidation::webpUnsupportedMessage()
                 : 'Invalid file type.';
 
@@ -65,19 +65,19 @@ class ImageUploadController extends Controller
             $originalUrl = null;
             if ($request->hasFile('original')) {
                 $orig = $request->file('original');
-                if (! in_array($orig->getMimeType(), $allowed, true)) {
+                if (!in_array($orig->getMimeType(), $allowed, true)) {
                     return response()->json(['message' => 'Invalid original file type.'], 422);
                 }
                 $origRelative = $this->processor->storeMaster($orig, 'menu-masters');
-                $originalUrl = '/storage/'.ltrim($origRelative, '/');
+                $originalUrl = '/storage/' . ltrim($origRelative, '/');
             }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json([
-            'url' => '/storage/'.ltrim($relative, '/'),
-            'thumb_url' => '/storage/'.ltrim($thumbRelative, '/'),
+            'url' => '/storage/' . ltrim($relative, '/'),
+            'thumb_url' => '/storage/' . ltrim($thumbRelative, '/'),
             'original_url' => $originalUrl,
             'width' => $width,
             'height' => $height,

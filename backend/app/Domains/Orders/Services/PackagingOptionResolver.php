@@ -73,7 +73,7 @@ final class PackagingOptionResolver
     }
 
     /**
-     * @param  list<array<string, mixed>>  $options
+     * @param list<array<string, mixed>> $options
      * @return list<array{name: string, name_dv: ?string, fee: float, is_default: bool, is_active: bool, sort_order: int, id?: int}>
      */
     public function normalizeOptionsPayload(array $options): array

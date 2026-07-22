@@ -22,8 +22,8 @@ final class MenuImageValidation
             $required ? 'required' : 'sometimes',
             'file',
             'image',
-            'mimes:'.implode(',', $mimes),
-            'max:'.$maxKb,
+            'mimes:' . implode(',', $mimes),
+            'max:' . $maxKb,
             "dimensions:max_width={$maxEdge},max_height={$maxEdge}",
         ];
 
@@ -34,10 +34,10 @@ final class MenuImageValidation
     public static function allowedMimes(): array
     {
         $mimes = config('menu_media.image.mimes', ['jpeg', 'jpg', 'png', 'webp']);
-        if (! ImageCapabilities::supportsWebp()) {
+        if (!ImageCapabilities::supportsWebp()) {
             $mimes = array_values(array_filter(
                 $mimes,
-                static fn (string $m): bool => ! in_array($m, ['webp'], true),
+                static fn (string $m): bool => !in_array($m, ['webp'], true),
             ));
         }
 
@@ -48,7 +48,7 @@ final class MenuImageValidation
     public static function allowedMimeTypes(): array
     {
         $types = config('menu_media.image.mime_types', ['image/jpeg', 'image/png', 'image/webp']);
-        if (! ImageCapabilities::supportsWebp()) {
+        if (!ImageCapabilities::supportsWebp()) {
             $types = array_values(array_filter(
                 $types,
                 static fn (string $m): bool => $m !== 'image/webp',

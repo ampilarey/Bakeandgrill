@@ -91,16 +91,16 @@ class MenuImageProcessor
         if ($ext === '') {
             $ext = 'bin';
         }
-        $filename = Str::uuid()->toString().'.'.$ext;
-        $relative = trim($directory, '/').'/'.$filename;
-        $absolute = storage_path('app/public/'.$relative);
+        $filename = Str::uuid()->toString() . '.' . $ext;
+        $relative = trim($directory, '/') . '/' . $filename;
+        $absolute = storage_path('app/public/' . $relative);
 
         $dir = dirname($absolute);
-        if (! is_dir($dir) && ! mkdir($dir, 0755, true) && ! is_dir($dir)) {
+        if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
             throw new RuntimeException('Could not create media storage directory.');
         }
 
-        if (! copy($file->getRealPath(), $absolute)) {
+        if (!copy($file->getRealPath(), $absolute)) {
             throw new RuntimeException('Could not save uploaded media file.');
         }
 
@@ -152,8 +152,8 @@ class MenuImageProcessor
      */
     public function storeThumbnailFromStoragePath(string $relativePath, ?string $directory = null): string
     {
-        $absolute = storage_path('app/public/'.ltrim($relativePath, '/'));
-        if (! is_readable($absolute)) {
+        $absolute = storage_path('app/public/' . ltrim($relativePath, '/'));
+        if (!is_readable($absolute)) {
             throw new RuntimeException('Source image for thumbnail is not readable.');
         }
 
@@ -206,12 +206,12 @@ class MenuImageProcessor
 
     private function writeBinary(string $binary, string $directory): string
     {
-        $filename = Str::uuid()->toString().'.jpg';
-        $relative = trim($directory, '/').'/'.$filename;
-        $absolute = storage_path('app/public/'.$relative);
+        $filename = Str::uuid()->toString() . '.jpg';
+        $relative = trim($directory, '/') . '/' . $filename;
+        $absolute = storage_path('app/public/' . $relative);
 
         $dir = dirname($absolute);
-        if (! is_dir($dir) && ! mkdir($dir, 0755, true) && ! is_dir($dir)) {
+        if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
             throw new RuntimeException('Could not create image storage directory.');
         }
 
@@ -225,7 +225,7 @@ class MenuImageProcessor
     private function loadUploaded(UploadedFile $file): \GdImage
     {
         $path = $file->getRealPath();
-        if ($path === false || ! is_readable($path)) {
+        if ($path === false || !is_readable($path)) {
             throw new RuntimeException('Uploaded image is not readable.');
         }
 
@@ -254,7 +254,7 @@ class MenuImageProcessor
 
         $mime = (string) ($file->getMimeType() ?: ($info['mime'] ?? ''));
         if (str_contains(strtolower($mime), 'webp') || strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'webp') {
-            if (! \App\Support\ImageCapabilities::supportsWebp()) {
+            if (!\App\Support\ImageCapabilities::supportsWebp()) {
                 throw new RuntimeException(
                     "WebP isn't supported on this server; upload JPEG or PNG.",
                 );
