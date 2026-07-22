@@ -262,6 +262,10 @@ export interface ItemPhoto {
   item_id: number;
   url: string;
   original_url?: string | null;
+  alt_text?: string | null;
+  thumb_url?: string | null;
+  media_type?: 'image' | 'video';
+  poster_url?: string | null;
   sort_order: number;
   is_primary: boolean;
   created_at: string;
@@ -274,12 +278,13 @@ export async function getItemPhotos(itemId: number): Promise<{ photos: ItemPhoto
 export async function uploadItemPhoto(
   itemId: number,
   file: File,
-  options?: { original?: File; original_url?: string | null },
+  options?: { original?: File; original_url?: string | null; alt_text?: string | null },
 ): Promise<{ photo: ItemPhoto }> {
   const form = new FormData();
   form.append('photo', file);
   if (options?.original) form.append('original', options.original);
   if (options?.original_url) form.append('original_url', options.original_url);
+  if (options?.alt_text) form.append('alt_text', options.alt_text);
   return req(`/items/${itemId}/photos`, { method: 'POST', body: form });
 }
 
@@ -289,6 +294,16 @@ export async function updateItemPhoto(
   data: { sort_order?: number; is_primary?: boolean; original_url?: string | null; alt_text?: string | null },
 ): Promise<{ photo: ItemPhoto }> {
   return req(`/items/${itemId}/photos/${photoId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function reorderItemPhotos(
+  itemId: number,
+  order: number[],
+): Promise<{ photos: ItemPhoto[] }> {
+  return req(`/items/${itemId}/photos/reorder`, {
+    method: 'POST',
+    body: JSON.stringify({ order }),
+  });
 }
 
 export async function deleteItemPhoto(itemId: number, photoId: number): Promise<void> {

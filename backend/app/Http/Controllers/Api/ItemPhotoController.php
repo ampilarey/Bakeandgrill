@@ -112,6 +112,47 @@ class ItemPhotoController extends Controller
         return response()->json(['photo' => $photo->fresh()]);
     }
 
+    /**
+     * Atomically set contiguous sort_order from an ordered list of photo IDs.
+     * POST /api/items/{itemId}/photos/reorder  body: { order: number[] }
+     */
+    public function reorder(Request $request, int $itemId): JsonResponse
+    {
+        $item = Item::findOrFail($itemId);
+        $validated = $request->validate([
+            'order' => ['required', 'array', 'min:1'],
+            'order.*' => ['integer', 'distinct'],
+        ]);
+
+        /** @var list<int> $order */
+        $order = array_map('intval', $validated['order']);
+        $photos = $item->photos()->get()->keyBy('id');
+
+        if ($photos->count() !== count($order)) {
+            return response()->json([
+                'message' => 'Order must include every photo for this item exactly once.',
+            ], 422);
+        }
+
+        foreach ($order as $photoId) {
+            if (!$photos->has($photoId)) {
+                return response()->json([
+                    'message' => 'One or more photo IDs do not belong to this item.',
+                ], 422);
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order, $photos): void {
+            foreach ($order as $index => $photoId) {
+                $photos->get($photoId)->update(['sort_order' => $index + 1]);
+            }
+        });
+
+        return response()->json([
+            'photos' => $item->photos()->orderBy('sort_order')->get(),
+        ]);
+    }
+
     public function destroy(int $itemId, int $photoId): JsonResponse
     {
         $photo = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);

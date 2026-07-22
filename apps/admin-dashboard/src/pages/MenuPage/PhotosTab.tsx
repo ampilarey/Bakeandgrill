@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Crop, Star, Trash2, Upload } from 'lucide-react';
-import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, type ItemPhoto } from '../../api';
+import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, reorderItemPhotos, type ItemPhoto } from '../../api';
 import { ImageCropModal } from './ImageCropModal';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
@@ -126,20 +126,12 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     const idx = sorted.findIndex((p) => p.id === photoId);
     const swapIdx = idx + direction;
     if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
-    const a = sorted[idx];
-    const b = sorted[swapIdx];
-    const aOrder = a.sort_order;
-    const bOrder = b.sort_order;
+    const next = [...sorted];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    const order = next.map((p) => p.id);
     try {
-      await Promise.all([
-        updateItemPhoto(itemId, a.id, { sort_order: bOrder }),
-        updateItemPhoto(itemId, b.id, { sort_order: aOrder }),
-      ]);
-      setPhotos((list) => list.map((ph) => {
-        if (ph.id === a.id) return { ...ph, sort_order: bOrder };
-        if (ph.id === b.id) return { ...ph, sort_order: aOrder };
-        return ph;
-      }));
+      const res = await reorderItemPhotos(itemId, order);
+      setPhotos(Array.isArray(res.photos) ? res.photos : next.map((p, i) => ({ ...p, sort_order: i + 1 })));
     } catch (e) { setError((e as Error).message); }
   };
 

@@ -65,6 +65,7 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {
         Route::post('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);
+        Route::post('/items/{itemId}/photos/reorder', [App\Http\Controllers\Api\ItemPhotoController::class, 'reorder']);
         Route::patch('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'update']);
         Route::delete('/items/{itemId}/photos/{photoId}', [App\Http\Controllers\Api\ItemPhotoController::class, 'destroy']);
     });
