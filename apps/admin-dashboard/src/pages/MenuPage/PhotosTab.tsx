@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Crop, Star, Trash2, Upload } from 'lucide-react';
-import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, reorderItemPhotos, type ItemPhoto } from '../../api';
+import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, reorderItemPhotos, uploadItemVideo, type ItemPhoto } from '../../api';
 import { ImageCropModal } from './ImageCropModal';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
+import { MENU_VIDEO_LIMITS, prepareVideoClip } from './videoClip';
 
 export function PhotosTab({ itemId }: { itemId: number }) {
   const [photos, setPhotos] = useState<ItemPhoto[]>([]);
@@ -14,6 +15,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
   const [replacingPhoto, setReplacingPhoto] = useState<ItemPhoto | null>(null);
   const [pendingMaster, setPendingMaster] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -107,6 +109,21 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     finally { setUploading(false); }
   };
 
+  const handleVideoPick = async (file: File) => {
+    setUploading(true);
+    setError('');
+    try {
+      const { video, poster } = await prepareVideoClip(file);
+      const { photo } = await uploadItemVideo(itemId, video, poster);
+      if (!photo) throw new Error('Upload succeeded but no video was returned.');
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const setPrimary = async (photoId: number) => {
     try {
       await updateItemPhoto(itemId, photoId, { is_primary: true });
@@ -162,8 +179,22 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         <Upload size={15} />
         {uploading && !cropSrc ? 'Preparing…' : 'Upload & crop photo'}
       </button>
+      <button
+        type="button"
+        onClick={() => videoRef.current?.click()}
+        disabled={uploading}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '10px 16px', background: '#EEF6FF', border: '2px dashed #bfdbfe',
+          borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
+          fontSize: 13, fontWeight: 600, color: '#1e40af',
+        }}
+      >
+        <Upload size={15} />
+        Add video clip (≤{MENU_VIDEO_LIMITS.maxSeconds}s)
+      </button>
       <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
-        1200×900 crop for the menu; full photo kept for re-crop later.
+        Photos: 1200×900 crop. Videos play muted in the item sheet only (cards show the poster). Max {(MENU_VIDEO_LIMITS.maxBytes / (1024 * 1024)).toFixed(0)} MB.
       </p>
       <input
         ref={fileRef}
@@ -173,6 +204,17 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) void openCropperFromFile(f);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={videoRef}
+        type="file"
+        accept={MENU_VIDEO_LIMITS.accept}
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleVideoPick(f);
           e.target.value = '';
         }}
       />
@@ -195,10 +237,15 @@ export function PhotosTab({ itemId }: { itemId: number }) {
           {[...photos].sort((a, b) => a.sort_order - b.sort_order).map((ph, index, sorted) => (
             <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid #D4813A' : '2px solid #E8E0D8' }}>
               <img
-                src={resolveMediaUrl(ph.url)}
+                src={resolveMediaUrl(ph.media_type === 'video' ? (ph.poster_url || ph.thumb_url || ph.url) : ph.url)}
                 alt={ph.alt_text || ''}
                 style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', background: '#F8F6F3' }}
               />
+              {ph.media_type === 'video' && (
+                <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(28,20,8,0.75)', color: '#fff', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700 }}>
+                  ▶ Video
+                </div>
+              )}
               {ph.is_primary && (
                 <div style={{ position: 'absolute', top: 4, left: 4, background: '#D4813A', color: '#fff', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700 }}>
                   Primary
@@ -224,15 +271,17 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                 />
               </div>
               <div style={{ display: 'flex', gap: 4, padding: '6px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  title="Edit / re-crop"
-                  disabled={uploading}
-                  onClick={() => void openCropperFromExisting(ph)}
-                  style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', background: '#FEF3E8', border: '1px solid #F0D9C0', borderRadius: 6, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 700, color: '#B86820' }}
-                >
-                  <Crop size={12} /> Edit crop
-                </button>
+                {ph.media_type !== 'video' && (
+                  <button
+                    type="button"
+                    title="Edit / re-crop"
+                    disabled={uploading}
+                    onClick={() => void openCropperFromExisting(ph)}
+                    style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px', background: '#FEF3E8', border: '1px solid #F0D9C0', borderRadius: 6, cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 700, color: '#B86820' }}
+                  >
+                    <Crop size={12} /> Edit crop
+                  </button>
+                )}
                 <button
                   type="button"
                   title="Move earlier"

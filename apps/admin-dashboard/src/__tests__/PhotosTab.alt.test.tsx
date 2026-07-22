@@ -21,6 +21,7 @@ vi.mock('../api', () => ({
   updateItemPhoto: (...args: unknown[]) => updateItemPhoto(...args),
   deleteItemPhoto: vi.fn(),
   reorderItemPhotos: vi.fn(),
+  uploadItemVideo: vi.fn(),
 }));
 
 vi.mock('../pages/MenuPage/mediaUrl', () => ({

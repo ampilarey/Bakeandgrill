@@ -107,6 +107,7 @@ export type MenuItemPayload = {
   sku?: string | null;
   image_url?: string | null;
   image_original_url?: string | null;
+  thumb_url?: string | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -306,6 +307,21 @@ export async function reorderItemPhotos(
     method: 'POST',
     body: JSON.stringify({ order }),
   });
+}
+
+export async function uploadItemVideo(
+  itemId: number,
+  video: File,
+  poster: File,
+  options?: { alt_text?: string | null; is_primary?: boolean },
+): Promise<{ photo: ItemPhoto }> {
+  const form = new FormData();
+  form.append('media_type', 'video');
+  form.append('video', video);
+  form.append('poster', poster);
+  if (options?.alt_text) form.append('alt_text', options.alt_text);
+  if (options?.is_primary) form.append('is_primary', '1');
+  return req(`/items/${itemId}/photos`, { method: 'POST', body: form });
 }
 
 export async function deleteItemPhoto(itemId: number, photoId: number): Promise<void> {
