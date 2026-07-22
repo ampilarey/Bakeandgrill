@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { cardDescriptionPreview } from '@shared/utils';
 import type { Item, Variant } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
-import { buildItemSlideUrls } from '../../utils/itemMedia';
+import { buildItemSlides } from '../../utils/itemMedia';
 import { MenuImageSlider } from './MenuImageSlider';
 
 export type ProductCardProps = {
@@ -45,8 +45,8 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
     || item.name;
 
   const slides = useMemo(
-    () => buildItemSlideUrls(item, { preferThumb: true }),
-    [item.image_url, item.thumb_url, item.photos],
+    () => buildItemSlides(item, { preferThumb: true, fallbackAlt: mediaAlt }),
+    [item.image_url, item.thumb_url, item.photos, mediaAlt],
   );
   const descPreview = useMemo(
     () => cardDescriptionPreview(item.description),
@@ -118,7 +118,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
     >
       {/* ── Image (auto-slides when Image + Photos exist) ── */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <MenuImageSlider slides={slides} alt={mediaAlt} />
+        <MenuImageSlider slides={slides} alt={mediaAlt} posterOnly />
 
         {/* Unavailable overlay */}
         {isUnavailable && (

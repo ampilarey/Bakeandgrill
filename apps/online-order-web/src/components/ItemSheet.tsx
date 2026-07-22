@@ -7,7 +7,7 @@ import { fetchCartRecommendations, getItemReviews, getItemPhotos } from '../api'
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { Variant } from '@shared/types';
 import { useCart } from '../context/CartContext';
-import { buildItemSlideUrls } from '../utils/itemMedia';
+import { buildItemSlides } from '../utils/itemMedia';
 import { MenuImageSlider } from './menu/MenuImageSlider';
 
 export type ItemSheetProps = {
@@ -77,8 +77,8 @@ export function ItemSheet({
   const [pairings, setPairings] = useState<Item[]>([]);
 
   const slides = useMemo(
-    () => buildItemSlideUrls({ image_url: item.image_url, photos }),
-    [item.image_url, photos],
+    () => buildItemSlides({ image_url: item.image_url, thumb_url: item.thumb_url, name: item.name, photos }),
+    [item.image_url, item.thumb_url, item.name, photos],
   );
 
   useEffect(() => {
