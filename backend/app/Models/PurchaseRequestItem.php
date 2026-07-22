@@ -61,6 +61,11 @@ class PurchaseRequestItem extends Model
         return $this->hasMany(PurchaseRequestAttachment::class);
     }
 
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(PurchaseRequestItemQuote::class);
+    }
+
     public function displayName(): string
     {
         if ($this->free_text_name) {

@@ -7,7 +7,9 @@ namespace App\Services;
 use App\Models\InventoryItem;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
+use App\Models\PurchaseRequestItemQuote;
 use App\Models\SiteSetting;
+use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -226,6 +228,28 @@ final class PurchaseRequestService
         $this->assertCanBuy($item, $user);
 
         return DB::transaction(function () use ($item, $user, $data, $request) {
+            $quote = null;
+            if (!empty($data['from_quote_id'])) {
+                $quote = PurchaseRequestItemQuote::query()
+                    ->where('purchase_request_item_id', $item->id)
+                    ->where('id', (int) $data['from_quote_id'])
+                    ->first();
+                if (!$quote) {
+                    throw ValidationException::withMessages(['from_quote_id' => ['Quote not found for this line.']]);
+                }
+                $data['actual_unit_cost_laar'] = $quote->unit_price_laar;
+                $data['actual_unit'] = $data['actual_unit'] ?? $quote->unit ?? $item->requested_unit;
+                if ($quote->supplier_id) {
+                    $data['supplier_id'] = $quote->supplier_id;
+                }
+                if ($quote->supplier_name_text) {
+                    $data['supplier_name_text'] = $quote->supplier_name_text;
+                } elseif ($quote->supplier_id) {
+                    $data['supplier_name_text'] = $data['supplier_name_text']
+                        ?? Supplier::find($quote->supplier_id)?->name;
+                }
+            }
+
             $qty = (float) ($data['actual_qty'] ?? $item->approved_qty ?? $item->requested_qty);
             $unitCostLaar = isset($data['actual_unit_cost_laar']) ? (int) $data['actual_unit_cost_laar'] : null;
             $totalLaar = $unitCostLaar !== null ? (int) round($qty * $unitCostLaar) : null;
@@ -242,13 +266,132 @@ final class PurchaseRequestService
                 'bought_at' => now(),
             ]);
 
+            if ($quote) {
+                PurchaseRequestItemQuote::query()
+                    ->where('purchase_request_item_id', $item->id)
+                    ->whereNotNull('selected_at')
+                    ->update(['selected_at' => null, 'savings_laar' => null]);
+
+                $quote->update([
+                    'selected_at' => now(),
+                    'savings_laar' => $this->quoteSavingsLaar($item->fresh(), $quote, $qty, $unitCostLaar),
+                ]);
+            }
+
             $pr = $item->purchaseRequest;
             $this->recomputeTotals($pr);
             $this->recomputeRequestStatus($pr);
             $this->auditItem('purchase_request.bought', $item->fresh(), ['status' => 'assigned'], ['status' => 'bought'], $request, $user);
 
-            return $item->fresh(['purchaseRequest', 'inventoryItem']);
+            return $item->fresh(['purchaseRequest', 'inventoryItem', 'quotes']);
         });
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function addQuote(PurchaseRequestItem $item, User $user, array $data, Request $request): PurchaseRequestItemQuote
+    {
+        $this->assertCanBuy($item, $user);
+
+        if (in_array($item->status, PurchaseRequestItem::TERMINAL_STATUSES, true)
+            || in_array($item->status, ['bought', 'partially_bought', 'received'], true)
+        ) {
+            throw ValidationException::withMessages(['item' => ['Cannot add quotes after the line is bought or closed.']]);
+        }
+
+        if (empty($data['supplier_id']) && empty($data['supplier_name_text'])) {
+            throw ValidationException::withMessages(['supplier_name_text' => ['Provide a supplier or shop name.']]);
+        }
+
+        $quote = PurchaseRequestItemQuote::create([
+            'purchase_request_item_id' => $item->id,
+            'supplier_id' => $data['supplier_id'] ?? null,
+            'supplier_name_text' => $data['supplier_name_text'] ?? null,
+            'unit_price_laar' => (int) $data['unit_price_laar'],
+            'unit' => $data['unit'] ?? $item->requested_unit,
+            'note' => $data['note'] ?? null,
+            'quoted_by' => $user->id,
+        ]);
+
+        $this->auditItem(
+            'purchase_request.quote_added',
+            $item->fresh(),
+            [],
+            ['quote_id' => $quote->id, 'unit_price_laar' => $quote->unit_price_laar],
+            $request,
+            $user,
+        );
+
+        return $quote->fresh(['supplier']);
+    }
+
+    public function removeQuote(PurchaseRequestItem $item, PurchaseRequestItemQuote $quote, User $user, Request $request): void
+    {
+        $this->assertCanBuy($item, $user);
+
+        if ((int) $quote->purchase_request_item_id !== (int) $item->id) {
+            throw ValidationException::withMessages(['quote' => ['Quote does not belong to this line.']]);
+        }
+
+        $quoteId = $quote->id;
+        $quote->delete();
+
+        $this->auditItem(
+            'purchase_request.quote_removed',
+            $item->fresh(),
+            ['quote_id' => $quoteId],
+            [],
+            $request,
+            $user,
+        );
+    }
+
+    public function cheapestQuote(PurchaseRequestItem $item): ?PurchaseRequestItemQuote
+    {
+        return PurchaseRequestItemQuote::query()
+            ->where('purchase_request_item_id', $item->id)
+            ->orderBy('unit_price_laar')
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * Savings vs historical cheapest (laari), else vs the highest other quote on the line.
+     */
+    private function quoteSavingsLaar(
+        PurchaseRequestItem $item,
+        PurchaseRequestItemQuote $selected,
+        float $qty,
+        ?int $paidUnitLaar,
+    ): int {
+        if ($paidUnitLaar === null || $qty <= 0) {
+            return 0;
+        }
+
+        $benchmarkLaar = null;
+        if ($item->inventory_item_id) {
+            $hints = app(PurchaseRequestPriceHintService::class)->hintsForItems([(int) $item->inventory_item_id]);
+            $hist = $hints[(int) $item->inventory_item_id]['cheapest']['unit_price'] ?? null;
+            if ($hist !== null) {
+                // supplier_price_history stores MVR; convert to laari
+                $benchmarkLaar = (int) round(((float) $hist) * 100);
+            }
+        }
+
+        if ($benchmarkLaar === null) {
+            $otherMax = PurchaseRequestItemQuote::query()
+                ->where('purchase_request_item_id', $item->id)
+                ->where('id', '!=', $selected->id)
+                ->max('unit_price_laar');
+            $benchmarkLaar = $otherMax !== null ? (int) $otherMax : null;
+        }
+
+        if ($benchmarkLaar === null) {
+            return 0;
+        }
+
+        return max(0, (int) round(($benchmarkLaar - $paidUnitLaar) * $qty));
     }
 
     /** @param array<string, mixed> $data */

@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePurchaseRequestItemQuoteRequest;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestAttachment;
 use App\Models\PurchaseRequestItem;
+use App\Models\PurchaseRequestItemQuote;
 use App\Models\User;
+use App\Services\PurchaseRequestPriceHintService;
 use App\Services\PurchaseRequestService;
 use App\Services\PurchaseRequestVerificationService;
 use Illuminate\Http\JsonResponse;
@@ -197,6 +200,7 @@ class PurchaseRequestController extends Controller
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_name_text' => ['nullable', 'string', 'max:255'],
             'buyer_notes' => ['nullable', 'string', 'max:1000'],
+            'from_quote_id' => ['nullable', 'integer', 'exists:purchase_request_item_quotes,id'],
         ]);
         /** @var User $user */
         $user = $request->user();
@@ -410,9 +414,90 @@ class PurchaseRequestController extends Controller
         return response()->json(['request' => $this->formatRequest($pr, $user, false)]);
     }
 
+    public function listQuotes(Request $request, int $id, int $itemId): JsonResponse
+    {
+        $item = $this->findItem($id, $itemId);
+        /** @var User $user */
+        $user = $request->user();
+        $this->authorizeView($item->purchaseRequest, $user);
+
+        return response()->json($this->formatQuotesPayload($item));
+    }
+
+    public function storeQuote(StorePurchaseRequestItemQuoteRequest $request, int $id, int $itemId): JsonResponse
+    {
+        $item = $this->findItem($id, $itemId);
+        /** @var User $user */
+        $user = $request->user();
+        $quote = $this->service->addQuote($item, $user, $request->validated(), $request);
+
+        return response()->json([
+            'quote' => $this->formatQuote($quote, $this->service->cheapestQuote($item)?->id),
+            ...$this->formatQuotesPayload($item->fresh()),
+        ], 201);
+    }
+
+    public function destroyQuote(Request $request, int $id, int $itemId, int $quoteId): JsonResponse
+    {
+        $item = $this->findItem($id, $itemId);
+        $quote = PurchaseRequestItemQuote::query()
+            ->where('purchase_request_item_id', $item->id)
+            ->where('id', $quoteId)
+            ->firstOrFail();
+        /** @var User $user */
+        $user = $request->user();
+        $this->service->removeQuote($item, $quote, $user, $request);
+
+        return response()->json($this->formatQuotesPayload($item->fresh()));
+    }
+
     private function findItem(int $requestId, int $itemId): PurchaseRequestItem
     {
         return PurchaseRequestItem::where('purchase_request_id', $requestId)->where('id', $itemId)->firstOrFail();
+    }
+
+    /** @return array{quotes: list<array<string, mixed>>, cheapest_quote_id: int|null, price_hint: array<string, mixed>|null} */
+    private function formatQuotesPayload(PurchaseRequestItem $item): array
+    {
+        $quotes = PurchaseRequestItemQuote::query()
+            ->where('purchase_request_item_id', $item->id)
+            ->with('supplier:id,name')
+            ->orderBy('unit_price_laar')
+            ->orderBy('id')
+            ->get();
+        $cheapestId = $quotes->first()?->id;
+
+        $priceHint = null;
+        if ($item->inventory_item_id) {
+            $hints = app(PurchaseRequestPriceHintService::class)->hintsForItems([(int) $item->inventory_item_id]);
+            $priceHint = $hints[(int) $item->inventory_item_id] ?? null;
+        }
+
+        return [
+            'quotes' => $quotes->map(fn (PurchaseRequestItemQuote $q) => $this->formatQuote($q, $cheapestId))->values()->all(),
+            'cheapest_quote_id' => $cheapestId,
+            'price_hint' => $priceHint,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function formatQuote(PurchaseRequestItemQuote $quote, ?int $cheapestId): array
+    {
+        return [
+            'id' => $quote->id,
+            'purchase_request_item_id' => $quote->purchase_request_item_id,
+            'supplier_id' => $quote->supplier_id,
+            'supplier_name' => $quote->supplier?->name ?? $quote->supplier_name_text,
+            'supplier_name_text' => $quote->supplier_name_text,
+            'unit_price_laar' => $quote->unit_price_laar,
+            'unit' => $quote->unit,
+            'note' => $quote->note,
+            'quoted_by' => $quote->quoted_by,
+            'selected_at' => $quote->selected_at?->toIso8601String(),
+            'savings_laar' => $quote->savings_laar,
+            'is_cheapest' => $cheapestId !== null && (int) $quote->id === (int) $cheapestId,
+            'created_at' => $quote->created_at?->toIso8601String(),
+        ];
     }
 
     private function authorizeView(PurchaseRequest $pr, User $user): void
@@ -443,7 +528,7 @@ class PurchaseRequestController extends Controller
             'expense:id,expense_number',
         ]);
 
-        $priceHints = app(\App\Services\PurchaseRequestPriceHintService::class)->hintsForItems(
+        $priceHints = app(PurchaseRequestPriceHintService::class)->hintsForItems(
             $pr->items->pluck('inventory_item_id')->filter()->map(fn ($id) => (int) $id)->all(),
         );
 

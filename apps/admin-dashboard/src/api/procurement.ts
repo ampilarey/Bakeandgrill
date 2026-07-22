@@ -180,6 +180,81 @@ export async function promotePurchaseRequestItemToInventory(
   });
 }
 
+export type PurchaseRequestItemQuote = {
+  id: number;
+  purchase_request_item_id: number;
+  supplier_id: number | null;
+  supplier_name: string | null;
+  supplier_name_text: string | null;
+  unit_price_laar: number;
+  unit: string;
+  note: string | null;
+  quoted_by: number | null;
+  selected_at: string | null;
+  savings_laar: number | null;
+  is_cheapest: boolean;
+  created_at: string | null;
+};
+
+export type PurchaseRequestQuotesPayload = {
+  quotes: PurchaseRequestItemQuote[];
+  cheapest_quote_id: number | null;
+  price_hint?: PurchaseRequestItem['price_hint'] | null;
+};
+
+export async function fetchPurchaseRequestItemQuotes(
+  requestId: number,
+  itemId: number,
+): Promise<PurchaseRequestQuotesPayload> {
+  return req(`/purchase-requests/${requestId}/items/${itemId}/quotes`);
+}
+
+export async function addPurchaseRequestItemQuote(
+  requestId: number,
+  itemId: number,
+  data: {
+    supplier_id?: number | null;
+    supplier_name_text?: string;
+    unit_price_laar: number;
+    unit?: string;
+    note?: string;
+  },
+): Promise<PurchaseRequestQuotesPayload & { quote: PurchaseRequestItemQuote }> {
+  return req(`/purchase-requests/${requestId}/items/${itemId}/quotes`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deletePurchaseRequestItemQuote(
+  requestId: number,
+  itemId: number,
+  quoteId: number,
+): Promise<PurchaseRequestQuotesPayload> {
+  return req(`/purchase-requests/${requestId}/items/${itemId}/quotes/${quoteId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function markPurchaseRequestItemBought(
+  requestId: number,
+  itemId: number,
+  data: {
+    actual_qty?: number;
+    actual_unit?: string;
+    actual_unit_cost_laar?: number;
+    supplier_id?: number | null;
+    supplier_name_text?: string;
+    buyer_notes?: string;
+    from_quote_id?: number;
+  },
+): Promise<{ item: PurchaseRequestItem; request: PurchaseRequest }> {
+  return req(`/purchase-requests/${requestId}/items/${itemId}/mark-bought`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function getPurchaseRequestAutoExpenseSettings(): Promise<{
   settings: {
     auto_expense: boolean;
