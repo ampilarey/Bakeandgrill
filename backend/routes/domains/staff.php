@@ -174,6 +174,13 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::get('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'index']);
         Route::put('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'update']);
         Route::post('/admin/content/upload', [App\Http\Controllers\Api\ContentController::class, 'upload']);
+        Route::get('/admin/content/export', [App\Http\Controllers\Api\ContentController::class, 'export']);
+        Route::post('/admin/content/import', [App\Http\Controllers\Api\ContentController::class, 'import']);
+        Route::post('/admin/content/schedule', [App\Http\Controllers\Api\ContentController::class, 'schedule']);
+        Route::get('/admin/content/schedules', [App\Http\Controllers\Api\ContentController::class, 'schedules']);
+        Route::delete('/admin/content/schedules/{id}', [App\Http\Controllers\Api\ContentController::class, 'cancelSchedule']);
+        Route::get('/admin/content/{key}/revisions', [App\Http\Controllers\Api\ContentController::class, 'revisions']);
+        Route::post('/admin/content/{key}/revisions/{id}/restore', [App\Http\Controllers\Api\ContentController::class, 'restoreRevision']);
         Route::post('/admin/content/{key}/share', [App\Http\Controllers\Api\ContentController::class, 'share']);
         Route::post('/admin/content/{key}/split', [App\Http\Controllers\Api\ContentController::class, 'split']);
         Route::post('/admin/content/{key}/copy', [App\Http\Controllers\Api\ContentController::class, 'copy']);

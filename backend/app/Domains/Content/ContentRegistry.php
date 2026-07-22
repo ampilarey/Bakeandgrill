@@ -13,6 +13,9 @@ final class ContentRegistry
 
     public const SCOPES = ['shared', 'website', 'order_app'];
 
+    /** Content locales (English + Dhivehi). */
+    public const LOCALES = ['en', 'dv'];
+
     /**
      * @return array<string, array<string, mixed>>
      */

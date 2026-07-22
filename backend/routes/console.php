@@ -140,6 +140,13 @@ Schedule::command('service-availability:activate-scheduled')
     ->onFailure($alertOnFailure('service-availability:activate-scheduled'))
     ->after($trackSuccess('service-availability:activate-scheduled'));
 
+// Content Studio: apply due scheduled publishes
+Schedule::command('content:publish-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('content:publish-scheduled'))
+    ->after($trackSuccess('content:publish-scheduled'));
+
 // Orders: cancel stale payment_pending orders every 5 minutes
 Schedule::command('orders:cancel-stale')
     ->everyFiveMinutes()

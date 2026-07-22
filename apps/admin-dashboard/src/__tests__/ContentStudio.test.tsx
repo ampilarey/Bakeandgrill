@@ -5,6 +5,8 @@ import ContentStudioPage from '../pages/ContentStudio/ContentStudioPage';
 
 vi.mock('../api/content', () => ({
   getContentBlocks: vi.fn(async () => ({
+    locale: 'en',
+    locales: ['en', 'dv'],
     blocks: [
       {
         key: 'business_phone',
@@ -23,11 +25,18 @@ vi.mock('../api/content', () => ({
       },
     ],
   })),
+  getContentSchedules: vi.fn(async () => ({ schedules: [] })),
   updateContent: vi.fn(),
   shareContentBlock: vi.fn(),
   splitContentBlock: vi.fn(),
   copyContentBlock: vi.fn(),
   uploadContentImage: vi.fn(),
+  exportContent: vi.fn(),
+  importContent: vi.fn(),
+  getContentRevisions: vi.fn(async () => ({ revisions: [] })),
+  restoreContentRevision: vi.fn(),
+  scheduleContent: vi.fn(),
+  cancelContentSchedule: vi.fn(),
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));

@@ -7,11 +7,18 @@ import * as contentApi from '../api/content';
 
 vi.mock('../api/content', () => ({
   getContentBlocks: vi.fn(),
+  getContentSchedules: vi.fn(async () => ({ schedules: [] })),
   updateContent: vi.fn(),
   shareContentBlock: vi.fn(),
   splitContentBlock: vi.fn(),
   copyContentBlock: vi.fn(),
   uploadContentImage: vi.fn(),
+  exportContent: vi.fn(),
+  importContent: vi.fn(),
+  getContentRevisions: vi.fn(async () => ({ revisions: [] })),
+  restoreContentRevision: vi.fn(),
+  scheduleContent: vi.fn(),
+  cancelContentSchedule: vi.fn(),
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
@@ -93,6 +100,8 @@ function categoriesBlock(): ContentBlock {
 describe('ContentStudio visual editors', () => {
   beforeEach(() => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
+      locale: 'en',
+      locales: ['en', 'dv'],
       blocks: [heroBlock('shared'), categoriesBlock()],
     });
     vi.mocked(contentApi.uploadContentImage).mockResolvedValue({
@@ -151,6 +160,8 @@ describe('ContentStudio visual editors', () => {
         'homepage_categories',
         'shared',
         expect.any(File),
+        undefined,
+        'en',
       );
     });
 
@@ -186,6 +197,8 @@ describe('ContentStudio visual editors', () => {
 
   it('reset-to-shared clears overrides', async () => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
+      locale: 'en',
+      locales: ['en', 'dv'],
       blocks: [heroBlock('split'), categoriesBlock()],
     });
 
@@ -204,7 +217,7 @@ describe('ContentStudio visual editors', () => {
     fireEvent.click(screen.getByText(/Reset to shared/i));
 
     await waitFor(() => {
-      expect(contentApi.shareContentBlock).toHaveBeenCalledWith('hero_slide_1');
+      expect(contentApi.shareContentBlock).toHaveBeenCalledWith('hero_slide_1', 'en');
     });
   });
 });

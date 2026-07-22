@@ -12,33 +12,36 @@ use Illuminate\Support\Facades\Schema;
 
 class SiteSetting extends Model
 {
-    protected $fillable = ['key', 'scope', 'value', 'type', 'group', 'label', 'description', 'is_public'];
+    protected $fillable = ['key', 'scope', 'locale', 'value', 'type', 'group', 'label', 'description', 'is_public'];
 
     protected $casts = [
         'is_public' => 'boolean',
     ];
 
     /**
-     * Back-compat: always returns the shared-scope value (or default).
+     * Back-compat: always returns the shared/en value (or default).
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        $value = self::getScoped($key, 'shared');
+        $value = self::getScoped($key, 'shared', 'en');
 
         return ($value !== null && $value !== '') ? $value : $default;
     }
 
     /**
-     * Read a single scoped row value (null if missing / empty).
+     * Read a single scoped (+locale) row value (null if missing / empty).
      */
-    public static function getScoped(string $key, string $scope = 'shared'): mixed
+    public static function getScoped(string $key, string $scope = 'shared', string $locale = 'en'): mixed
     {
-        $cacheKey = self::cacheKeyFor($key, $scope);
+        $cacheKey = self::cacheKeyFor($key, $scope, $locale);
 
-        $value = Cache::rememberForever($cacheKey, function () use ($key, $scope) {
+        $value = Cache::rememberForever($cacheKey, function () use ($key, $scope, $locale) {
             $query = static::query()->where('key', $key);
             if (self::hasScopeColumn()) {
                 $query->where('scope', $scope);
+            }
+            if (self::hasLocaleColumn()) {
+                $query->where('locale', $locale);
             }
 
             return $query->value('value');
@@ -48,13 +51,16 @@ class SiteSetting extends Model
     }
 
     /**
-     * Save a setting value for a scope (default shared — back-compat).
+     * Save a setting value for a scope (+locale).
      */
-    public static function set(string $key, mixed $value, string $scope = 'shared'): void
+    public static function set(string $key, mixed $value, string $scope = 'shared', string $locale = 'en'): void
     {
         $attrs = ['key' => $key];
         if (self::hasScopeColumn()) {
             $attrs['scope'] = $scope;
+        }
+        if (self::hasLocaleColumn()) {
+            $attrs['locale'] = $locale;
         }
 
         $row = static::firstOrNew($attrs);
@@ -66,9 +72,10 @@ class SiteSetting extends Model
         if (self::hasScopeColumn() && !$row->exists) {
             $row->scope = $scope;
         }
+        if (self::hasLocaleColumn() && !$row->exists) {
+            $row->locale = $locale;
+        }
 
-        // Only set metadata fields when the row is brand new — otherwise
-        // we'd overwrite seeded type/group/label/is_public.
         if (!$row->exists) {
             $row->type = $row->type ?? 'text';
             $row->group = $row->group ?? 'System';
@@ -78,8 +85,7 @@ class SiteSetting extends Model
 
         $row->save();
 
-        Cache::forget(self::cacheKeyFor($key, $scope));
-        // Legacy shared cache key
+        Cache::forget(self::cacheKeyFor($key, $scope, $locale));
         Cache::forget("site_setting.{$key}");
         Cache::forget('site_settings.public');
         Cache::forget('site_settings.all');
@@ -92,21 +98,21 @@ class SiteSetting extends Model
         if (self::hasScopeColumn()) {
             $query->where('scope', 'shared');
         }
+        if (self::hasLocaleColumn()) {
+            $query->where('locale', 'en');
+        }
 
         return $query->orderBy('id')->get();
     }
 
     /**
-     * Public map for the order app (resolved: override → shared → default).
-     * Keeps /site-settings/public working for the deployed bundle.
-     *
      * @return array<string, mixed>
      */
     public static function allPublic(): array
     {
         return Cache::rememberForever('site_settings.public', function () {
             if (class_exists(ContentResolver::class) && self::hasScopeColumn()) {
-                return ContentResolver::for('order_app')->allPublic();
+                return ContentResolver::for('order_app', 'en')->allPublic();
             }
 
             return static::where('is_public', true)->pluck('value', 'key')->toArray();
@@ -117,9 +123,7 @@ class SiteSetting extends Model
     {
         Cache::forget('site_settings.public');
         Cache::forget('site_settings.all');
-        foreach (['website', 'order_app'] as $app) {
-            Cache::forget("content.resolved.{$app}");
-        }
+        ContentResolver::bust();
     }
 
     public static function hasScopeColumn(): bool
@@ -132,10 +136,22 @@ class SiteSetting extends Model
         return $has;
     }
 
-    private static function cacheKeyFor(string $key, string $scope): string
+    public static function hasLocaleColumn(): bool
     {
-        return $scope === 'shared'
-            ? "site_setting.{$key}"
-            : "site_setting.{$key}.{$scope}";
+        static $has = null;
+        if ($has === null) {
+            $has = Schema::hasColumn((new static)->getTable(), 'locale');
+        }
+
+        return $has;
+    }
+
+    private static function cacheKeyFor(string $key, string $scope, string $locale): string
+    {
+        if ($locale === 'en' && $scope === 'shared') {
+            return "site_setting.{$key}";
+        }
+
+        return "site_setting.{$key}.{$scope}.{$locale}";
     }
 }

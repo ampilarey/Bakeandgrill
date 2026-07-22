@@ -4,7 +4,7 @@ import { AnalyticsTracker } from '../components/AnalyticsTracker';
 const SITE_SETTINGS_URL =
   ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
     (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api')) +
-  '/content?app=order_app';
+  '/content?app=order_app&locale=en';
 
 const SITE_SETTINGS_FALLBACK_URL =
   ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??

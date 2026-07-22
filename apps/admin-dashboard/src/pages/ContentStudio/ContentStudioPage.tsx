@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, LayoutTemplate, Save, Search } from 'lucide-react';
+import { Copy, Download, History, LayoutTemplate, Save, Search, Upload as UploadIcon } from 'lucide-react';
 import {
+  cancelContentSchedule,
   copyContentBlock,
+  exportContent,
   getContentBlocks,
+  getContentRevisions,
+  getContentSchedules,
+  importContent,
+  restoreContentRevision,
+  scheduleContent,
   shareContentBlock,
   splitContentBlock,
   updateContent,
   uploadContentImage,
   type ContentBlock,
+  type ContentLocale,
+  type ContentRevision,
+  type ContentScheduleRow,
   type ContentScope,
 } from '../../api/content';
 import { PageHeader, Btn } from '../../components/SharedUI';
@@ -54,6 +64,16 @@ function previewAppLabel(block: ContentBlock, editScope: ContentScope, appTab: '
   return 'Shared';
 }
 
+function collectChanges(drafts: DraftMap, locale: ContentLocale) {
+  const changes: Array<{ key: string; scope: ContentScope; value: string; locale: ContentLocale }> = [];
+  for (const [key, scopes] of Object.entries(drafts)) {
+    for (const [scope, value] of Object.entries(scopes)) {
+      changes.push({ key, scope: scope as ContentScope, value, locale });
+    }
+  }
+  return changes;
+}
+
 export default function ContentStudioPage() {
   usePageTitle('Content Studio');
   const { success, error } = useToast();
@@ -64,27 +84,47 @@ export default function ContentStudioPage() {
   const [q, setQ] = useState('');
   const [drafts, setDrafts] = useState<DraftMap>({});
   const [appTab, setAppTab] = useState<'website' | 'order_app'>('website');
+  const [locale, setLocale] = useState<ContentLocale>('en');
+  const [historyKey, setHistoryKey] = useState<string | null>(null);
+  const [historyScope, setHistoryScope] = useState<ContentScope>('shared');
+  const [revisions, setRevisions] = useState<ContentRevision[]>([]);
+  const [schedules, setSchedules] = useState<ContentScheduleRow[]>([]);
+  const [scheduleAt, setScheduleAt] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const uploadCtx = useRef<{
     blockKey: string;
     scope: ContentScope;
     onDone: (url: string) => void;
   } | null>(null);
 
-  const load = async () => {
+  const loadGen = useRef(0);
+
+  const load = async (loc: ContentLocale = locale) => {
+    const gen = ++loadGen.current;
     setLoading(true);
     try {
-      const { blocks: b } = await getContentBlocks();
+      const [{ blocks: b }, { schedules: s }] = await Promise.all([
+        getContentBlocks(loc),
+        getContentSchedules('pending'),
+      ]);
+      if (gen !== loadGen.current) return;
       setBlocks(b);
+      setSchedules(s);
       setDrafts({});
     } catch (e) {
+      if (gen !== loadGen.current) return;
       error(e instanceof Error ? e.message : 'Failed to load content');
     } finally {
-      setLoading(false);
+      if (gen === loadGen.current) setLoading(false);
     }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load(locale);
+    return () => { loadGen.current += 1; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when locale changes
+  }, [locale]);
 
   const groups = useMemo(() => {
     const g = new Set(blocks.map((b) => b.group));
@@ -116,16 +156,11 @@ export default function ContentStudioPage() {
   };
 
   const publish = async () => {
-    const changes: Array<{ key: string; scope: ContentScope; value: string }> = [];
-    for (const [key, scopes] of Object.entries(drafts)) {
-      for (const [scope, value] of Object.entries(scopes)) {
-        changes.push({ key, scope: scope as ContentScope, value });
-      }
-    }
+    const changes = collectChanges(drafts, locale);
     if (changes.length === 0) return;
     setSaving(true);
     try {
-      const { blocks: b } = await updateContent(changes);
+      const { blocks: b } = await updateContent(changes, locale);
       setBlocks(b);
       setDrafts({});
       success('Content published');
@@ -136,15 +171,36 @@ export default function ContentStudioPage() {
     }
   };
 
+  const schedulePublish = async () => {
+    const changes = collectChanges(drafts, locale);
+    if (changes.length === 0 || !scheduleAt) {
+      error('Set a future time and make some edits first');
+      return;
+    }
+    setSaving(true);
+    try {
+      await scheduleContent(new Date(scheduleAt).toISOString(), changes, locale);
+      setDrafts({});
+      setScheduleAt('');
+      const { schedules: s } = await getContentSchedules('pending');
+      setSchedules(s);
+      success('Publish scheduled');
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Schedule failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const toggleSplit = async (block: ContentBlock) => {
     try {
       if (block.state === 'shared') {
-        const { blocks: b } = await splitContentBlock(block.key);
+        const { blocks: b } = await splitContentBlock(block.key, locale);
         setBlocks(b);
         success('Now editing per app');
       } else {
         if (!window.confirm('Reset to shared? Per-app overrides will be removed.')) return;
-        const { blocks: b } = await shareContentBlock(block.key);
+        const { blocks: b } = await shareContentBlock(block.key, locale);
         setBlocks(b);
         success('Back to shared');
       }
@@ -155,7 +211,7 @@ export default function ContentStudioPage() {
 
   const copy = async (block: ContentBlock, from: ContentScope, to: ContentScope) => {
     try {
-      const { blocks: b } = await copyContentBlock(block.key, from, to);
+      const { blocks: b } = await copyContentBlock(block.key, from, to, locale);
       setBlocks(b);
       success(`Copied ${from} → ${to}`);
     } catch (e) {
@@ -165,7 +221,7 @@ export default function ContentStudioPage() {
 
   const onUpload = async (block: ContentBlock, scope: ContentScope, file: File) => {
     try {
-      const res = await uploadContentImage(block.key, scope, file);
+      const res = await uploadContentImage(block.key, scope, file, undefined, locale);
       setDraft(block.key, scope, res.url);
       success('Image uploaded');
     } catch (e) {
@@ -173,7 +229,6 @@ export default function ContentStudioPage() {
     }
   };
 
-  /** Scoped crop upload for visual editors — embeds URL into draft JSON (does not wipe the block). */
   const makeTriggerUpload = (block: ContentBlock, scope: ContentScope) =>
     (_legacyKey: string, onDone: (url: string) => void) => {
       uploadCtx.current = { blockKey: block.key, scope, onDone };
@@ -187,11 +242,68 @@ export default function ContentStudioPage() {
     uploadCtx.current = null;
     if (!file || !ctx) return;
     try {
-      const res = await uploadContentImage(ctx.blockKey, ctx.scope, file);
+      const res = await uploadContentImage(ctx.blockKey, ctx.scope, file, undefined, locale);
       ctx.onDone(res.url);
       success('Image uploaded');
     } catch (err) {
       error(err instanceof Error ? err.message : 'Upload failed');
+    }
+  };
+
+  const openHistory = async (block: ContentBlock, scope: ContentScope) => {
+    setHistoryKey(block.key);
+    setHistoryScope(scope);
+    try {
+      const { revisions: r } = await getContentRevisions(block.key, scope, locale);
+      setRevisions(r);
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Failed to load history');
+    }
+  };
+
+  const restore = async (id: number) => {
+    if (!historyKey) return;
+    if (!window.confirm('Restore this revision? Current value is saved to history first.')) return;
+    try {
+      const { blocks: b } = await restoreContentRevision(historyKey, id);
+      setBlocks(b);
+      const { revisions: r } = await getContentRevisions(historyKey, historyScope, locale);
+      setRevisions(r);
+      success('Revision restored');
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Restore failed');
+    }
+  };
+
+  const doExport = async () => {
+    try {
+      const bundle = await exportContent(locale);
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `content-export-${locale}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      success('Export downloaded');
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Export failed');
+    }
+  };
+
+  const doImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const bundle = JSON.parse(text);
+      if (!bundle?.entries) throw new Error('Invalid bundle');
+      const { blocks: b, applied } = await importContent(bundle);
+      setBlocks(b);
+      success(`Imported ${applied} entries`);
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Import failed');
     }
   };
 
@@ -232,21 +344,86 @@ export default function ContentStudioPage() {
     <div>
       <PageHeader
         title="Content Studio"
-        subtitle="Shared or per-app copy for the website and order app"
+        subtitle="Shared or per-app copy · EN / DV · schedule · history · import/export"
         action={
-          <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0}>
-            <Save size={16} /> {saving ? 'Publishing…' : `Publish${dirtyCount ? ` (${dirtyCount})` : ''}`}
-          </Btn>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Btn onClick={() => void doExport()} variant="secondary">
+              <Download size={16} /> Export
+            </Btn>
+            <Btn onClick={() => importInputRef.current?.click()} variant="secondary">
+              <UploadIcon size={16} /> Import
+            </Btn>
+            <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0}>
+              <Save size={16} /> {saving ? 'Publishing…' : `Publish${dirtyCount ? ` (${dirtyCount})` : ''}`}
+            </Btn>
+          </div>
         }
       />
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        onChange={(e) => void handleEmbedFile(e)}
-      />
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => void handleEmbedFile(e)} />
+      <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => void doImport(e)} />
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+        {(['en', 'dv'] as const).map((loc) => (
+          <button
+            key={loc}
+            type="button"
+            onClick={() => setLocale(loc)}
+            style={{
+              height: 36, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+              fontWeight: locale === loc ? 700 : 500, fontSize: 13,
+              border: locale === loc ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+              background: locale === loc ? '#FFF7ED' : '#fff', color: '#1C1408',
+            }}
+          >
+            {loc === 'en' ? 'English' : 'Dhivehi (ދިވެހި)'}
+          </button>
+        ))}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
+          <input
+            type="datetime-local"
+            value={scheduleAt}
+            onChange={(e) => setScheduleAt(e.target.value)}
+            style={{ height: 36, borderRadius: 10, border: '1px solid #E8E0D8', padding: '0 10px', fontFamily: 'inherit', fontSize: 13 }}
+          />
+          <button
+            type="button"
+            onClick={() => void schedulePublish()}
+            disabled={saving || dirtyCount === 0 || !scheduleAt}
+            style={{
+              height: 36, padding: '0 12px', borderRadius: 10, border: '1px solid #E8E0D8',
+              background: '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+              opacity: dirtyCount === 0 || !scheduleAt ? 0.5 : 1,
+            }}
+          >
+            Schedule publish
+          </button>
+        </div>
+      </div>
+
+      {schedules.length > 0 ? (
+        <div style={{
+          marginBottom: 14, padding: 12, borderRadius: 12, background: '#FFF7ED', border: '1px solid #F5D0A9',
+          fontSize: 13, color: '#1C1408',
+        }}>
+          <strong>{schedules.length}</strong> pending schedule{schedules.length === 1 ? '' : 's'}
+          <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+            {schedules.slice(0, 5).map((s) => (
+              <li key={s.id} style={{ marginBottom: 4 }}>
+                {s.key} · {s.scope} · {s.locale} → {new Date(s.publish_at).toLocaleString()}
+                {' '}
+                <button
+                  type="button"
+                  onClick={() => void cancelContentSchedule(s.id).then(() => load()).catch((e) => error(e instanceof Error ? e.message : 'Cancel failed'))}
+                  style={{ background: 'none', border: 'none', color: '#D4813A', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}
+                >
+                  Cancel
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }} className="form-grid-2">
         <aside style={{
@@ -298,47 +475,59 @@ export default function ContentStudioPage() {
             const showPreview = !!block.editor && VISUAL_PREVIEW_EDITORS.has(block.editor);
 
             return (
-              <div key={block.key} style={{
+              <div key={`${block.key}-${locale}`} style={{
                 background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, color: '#1C1408' }}>{block.label}</div>
                     <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>
-                      {block.key} · {block.type}{block.editor ? ` · ${block.editor}` : ''} · {appsLabel}
+                      {block.key} · {block.type}{block.editor ? ` · ${block.editor}` : ''} · {locale} · {appsLabel}
                       {' · '}
                       <span style={{ color: block.state === 'split' ? '#D4813A' : '#3d7a4a', fontWeight: 600 }}>
                         {block.state === 'split' ? 'Different per app' : 'Shared'}
                       </span>
                     </div>
                   </div>
-                  {block.shareable ? (
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => void toggleSplit(block)}
-                        style={{
-                          height: 36, padding: '0 12px', borderRadius: 10, border: '1px solid #E8E0D8',
-                          background: block.state === 'split' ? '#FFF7ED' : '#F8F6F3', cursor: 'pointer',
-                          fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-                        }}
-                      >
-                        {block.state === 'shared' ? 'Make different per app' : 'Reset to shared'}
-                      </button>
-                      {block.state === 'split' ? (
-                        <>
-                          <button type="button" onClick={() => void copy(block, 'website', 'order_app')}
-                            style={{ height: 36, padding: '0 10px', borderRadius: 10, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
-                            <Copy size={12} style={{ verticalAlign: -1 }} /> Web→Order
-                          </button>
-                          <button type="button" onClick={() => void copy(block, 'order_app', 'website')}
-                            style={{ height: 36, padding: '0 10px', borderRadius: 10, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
-                            Order→Web
-                          </button>
-                        </>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => void openHistory(block, editScope)}
+                      style={{
+                        height: 36, padding: '0 10px', borderRadius: 10, border: '1px solid #E8E0D8',
+                        background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12,
+                      }}
+                    >
+                      <History size={12} style={{ verticalAlign: -1 }} /> History
+                    </button>
+                    {block.shareable ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void toggleSplit(block)}
+                          style={{
+                            height: 36, padding: '0 12px', borderRadius: 10, border: '1px solid #E8E0D8',
+                            background: block.state === 'split' ? '#FFF7ED' : '#F8F6F3', cursor: 'pointer',
+                            fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                          }}
+                        >
+                          {block.state === 'shared' ? 'Make different per app' : 'Reset to shared'}
+                        </button>
+                        {block.state === 'split' ? (
+                          <>
+                            <button type="button" onClick={() => void copy(block, 'website', 'order_app')}
+                              style={{ height: 36, padding: '0 10px', borderRadius: 10, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
+                              <Copy size={12} style={{ verticalAlign: -1 }} /> Web→Order
+                            </button>
+                            <button type="button" onClick={() => void copy(block, 'order_app', 'website')}
+                              style={{ height: 36, padding: '0 10px', borderRadius: 10, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
+                              Order→Web
+                            </button>
+                          </>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
                 </div>
 
                 {block.shareable && block.state === 'split' ? (
@@ -359,6 +548,31 @@ export default function ContentStudioPage() {
                         {t === 'website' ? 'Website' : 'Order app'}
                       </button>
                     ))}
+                  </div>
+                ) : null}
+
+                {historyKey === block.key ? (
+                  <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: '#F8F6F3', border: '1px solid #E8E0D8' }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>History · {historyScope} · {locale}</div>
+                    {revisions.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>No revisions yet.</p> : null}
+                    {revisions.map((r) => (
+                      <div key={r.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8, fontSize: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: '#9C8E7E' }}>{new Date(r.created_at).toLocaleString()}</div>
+                          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 60, overflow: 'hidden' }}>
+                            {(r.value || '—').slice(0, 200)}
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => void restore(r.id)}
+                          style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setHistoryKey(null)}
+                      style={{ background: 'none', border: 'none', color: '#9C8E7E', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                      Close
+                    </button>
                   </div>
                 ) : null}
 
@@ -396,6 +610,7 @@ export default function ContentStudioPage() {
                     value={val}
                     onChange={(e) => setDraft(block.key, editScope, e.target.value)}
                     rows={block.type === 'json' ? 6 : 4}
+                    dir={locale === 'dv' ? 'rtl' : 'ltr'}
                     style={{
                       width: '100%', borderRadius: 10, border: '1px solid #E8E0D8', padding: 10,
                       fontFamily: block.type === 'json' ? 'ui-monospace, monospace' : 'inherit', fontSize: 13,
@@ -405,6 +620,7 @@ export default function ContentStudioPage() {
                   <input
                     value={val}
                     onChange={(e) => setDraft(block.key, editScope, e.target.value)}
+                    dir={locale === 'dv' ? 'rtl' : 'ltr'}
                     style={{
                       width: '100%', height: 44, borderRadius: 10, border: '1px solid #E8E0D8',
                       padding: '0 12px', fontFamily: 'inherit', fontSize: 14,
@@ -416,7 +632,7 @@ export default function ContentStudioPage() {
                   <VisualBlockPreview
                     editor={block.editor}
                     value={val}
-                    appLabel={previewAppLabel(block, editScope, appTab)}
+                    appLabel={`${previewAppLabel(block, editScope, appTab)} · ${locale}`}
                   />
                 ) : (
                   <div style={{ marginTop: 10, fontSize: 12, color: '#9C8E7E' }}>

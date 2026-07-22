@@ -16,7 +16,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class ContentBlockResource extends JsonResource
 {
     /**
-     * @param array{key: string, block: array<string, mixed>} $resource
+     * @param array{key: string, block: array<string, mixed>, locale?: string} $resource
      */
     public function __construct($resource)
     {
@@ -28,17 +28,18 @@ class ContentBlockResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var array{key: string, block: array<string, mixed>} $data */
+        /** @var array{key: string, block: array<string, mixed>, locale?: string} $data */
         $data = $this->resource;
         $key = $data['key'];
         $block = $data['block'];
+        $locale = $data['locale'] ?? 'en';
 
-        $shared = SiteSetting::getScoped($key, 'shared');
-        $website = SiteSetting::getScoped($key, 'website');
-        $orderApp = SiteSetting::getScoped($key, 'order_app');
+        $shared = SiteSetting::getScoped($key, 'shared', $locale);
+        $website = SiteSetting::getScoped($key, 'website', $locale);
+        $orderApp = SiteSetting::getScoped($key, 'order_app', $locale);
 
-        $hasWebsite = $website !== null && $website !== '';
-        $hasOrder = $orderApp !== null && $orderApp !== '';
+        $hasWebsite = $this->hasAnyOverride($key, 'website');
+        $hasOrder = $this->hasAnyOverride($key, 'order_app');
         $state = ($hasWebsite || $hasOrder) ? 'split' : 'shared';
 
         return [
@@ -47,6 +48,7 @@ class ContentBlockResource extends JsonResource
             'group' => $block['group'] ?? 'General',
             'type' => $block['type'] ?? 'text',
             'editor' => $block['editor'] ?? null,
+            'locale' => $locale,
             'apps' => $block['apps'] ?? [],
             'shareable' => (bool) ($block['shareable'] ?? false),
             'public' => (bool) ($block['public'] ?? false),
@@ -55,20 +57,35 @@ class ContentBlockResource extends JsonResource
             'shared' => $shared,
             'website' => $website,
             'order_app' => $orderApp,
-            'resolved_website' => ContentResolver::for('website')->get($key),
-            'resolved_order_app' => ContentResolver::for('order_app')->get($key),
+            'resolved_website' => ContentResolver::for('website', $locale)->get($key),
+            'resolved_order_app' => ContentResolver::for('order_app', $locale)->get($key),
             'state' => $state,
         ];
+    }
+
+    private function hasAnyOverride(string $key, string $scope): bool
+    {
+        $query = SiteSetting::query()->where('key', $key)->where('scope', $scope)
+            ->whereNotNull('value')->where('value', '!=', '');
+        if (SiteSetting::hasLocaleColumn()) {
+            // any locale counts as split
+        }
+
+        return $query->exists();
     }
 
     /**
      * @return list<array<string, mixed>>
      */
-    public static function collectionFromRegistry(): array
+    public static function collectionFromRegistry(string $locale = 'en'): array
     {
         $out = [];
         foreach (ContentRegistry::blocks() as $key => $block) {
-            $out[] = (new self(['key' => (string) $key, 'block' => $block]))->resolve();
+            $out[] = (new self([
+                'key' => (string) $key,
+                'block' => $block,
+                'locale' => $locale,
+            ]))->resolve();
         }
 
         return $out;

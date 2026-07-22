@@ -21,9 +21,11 @@ class UpdateContentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'changes' => ['required', 'array', 'min:1'],
             'changes.*.key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
             'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'changes.*.locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'changes.*.value' => ['nullable'],
         ];
     }
