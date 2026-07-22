@@ -19,7 +19,7 @@ const LEGACY_TAB_REDIRECTS: Record<string, string> = {
 
 // ─── Sub-page cards ───────────────────────────────────────────────────────────
 const HUB_CARDS = [
-  { id: 'website',       icon: Globe,        label: 'Website Settings',      desc: 'Hero slides, homepage content, contact info, branding & SEO' },
+  { id: 'website',       icon: Globe,        label: 'Website Settings',      desc: 'Moved to Content Studio — shared & per-app marketing copy' },
   { id: 'permissions',   icon: Shield,       label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
   // Devices intentionally NOT a Settings sub-page: the top-level
   // /devices route owns the full device management UX (pre-provision,

@@ -65,9 +65,39 @@ class ContentMediaTest extends TestCase
         $this->assertSame($res['url'], SiteSetting::get('logo'));
 
         $rel = ltrim(substr($res['url'], strlen('/storage/')), '/');
-        $this->assertFileExists(storage_path('app/public/'.$rel));
-        @unlink(storage_path('app/public/'.$rel));
+        $this->assertFileExists(storage_path('app/public/' . $rel));
+        @unlink(storage_path('app/public/' . $rel));
         $trel = ltrim(substr($res['thumb_url'], strlen('/storage/')), '/');
-        @unlink(storage_path('app/public/'.$trel));
+        @unlink(storage_path('app/public/' . $trel));
+    }
+
+    public function test_hero_json_embed_upload_returns_url_without_wiping_json(): void
+    {
+        $this->actingAsOwner();
+
+        SiteSetting::set('hero_slide_1', json_encode([
+            'image' => '/old.jpg',
+            'title' => 'Keep me',
+        ]), 'website');
+
+        $res = $this->post('/api/admin/content/upload', [
+            'key' => 'hero_slide_1',
+            'scope' => 'website',
+            'file' => $this->jpegAt(800, 600),
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->json();
+
+        $this->assertTrue($res['embed'] ?? false);
+        $this->assertStringStartsWith('/storage/', $res['url']);
+
+        $stored = SiteSetting::getScoped('hero_slide_1', 'website');
+        $this->assertStringContainsString('Keep me', (string) $stored);
+        $this->assertStringNotContainsString($res['url'], (string) $stored);
+
+        $rel = ltrim(substr($res['url'], strlen('/storage/')), '/');
+        @unlink(storage_path('app/public/' . $rel));
+        $trel = ltrim(substr($res['thumb_url'], strlen('/storage/')), '/');
+        @unlink(storage_path('app/public/' . $trel));
     }
 }

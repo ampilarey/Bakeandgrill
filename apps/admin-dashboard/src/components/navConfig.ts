@@ -114,8 +114,8 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Wrench,
     items: [
       { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
-      { to: '/content-studio', icon: LayoutTemplate, label: 'Content Studio', permission: 'website.manage', description: 'Website & order-app content' },
-      { to: '/settings',      icon: Settings,    label: 'Settings',       permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Operational settings & charges' },
+      { to: '/content-studio', icon: LayoutTemplate, label: 'Content Studio', permission: 'website.manage', description: 'Visual editors & per-app marketing copy' },
+      { to: '/settings',      icon: Settings,    label: 'Settings',       permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Roles, SMS notifications & ops' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
       { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'webhooks.manage', description: 'Outbound integrations' },

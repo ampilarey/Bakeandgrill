@@ -2,11 +2,23 @@ import { req } from './client';
 
 export type ContentScope = 'shared' | 'website' | 'order_app';
 
+export type ContentEditorHint =
+  | 'hero'
+  | 'categories'
+  | 'trust'
+  | 'proof'
+  | 'about_values'
+  | 'preorder_steps'
+  | 'footer_links'
+  | 'business_hours';
+
 export type ContentBlock = {
   key: string;
   label: string;
   group: string;
   type: string;
+  /** Visual editor hint from registry (additive metadata). */
+  editor?: ContentEditorHint | string | null;
   apps: string[];
   shareable: boolean;
   public: boolean;

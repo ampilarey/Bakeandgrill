@@ -46,6 +46,7 @@ class ContentBlockResource extends JsonResource
             'label' => $block['label'] ?? $key,
             'group' => $block['group'] ?? 'General',
             'type' => $block['type'] ?? 'text',
+            'editor' => $block['editor'] ?? null,
             'apps' => $block['apps'] ?? [],
             'shareable' => (bool) ($block['shareable'] ?? false),
             'public' => (bool) ($block['public'] ?? false),

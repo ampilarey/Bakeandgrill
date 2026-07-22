@@ -419,8 +419,11 @@ data, edited via the Hours editor, not free-text content).
 - **Registry defaults:** Generated from Appendix A + CMS seed/Blade fallbacks. Complex JSON heroes default to `{}` / `[]`; live shared DB values remain source of truth after migrate.
 - **`SiteSetting::allPublic()` / `/site-settings/public`:** Resolve via `ContentResolver::for('order_app')` so website-only keys (e.g. `home_open_badge_text`) are not emitted to the order-app public map.
 - **Unique index:** Migration adds `scope`, backfills `shared`, dedupes `(key,scope)`, then swaps unique. SQLite/MySQL/pgsql drop-unique guarded with try/catch.
-- **Content Studio UI (v1):** Functional block cards + Shared/Split + Publish; legacy Website Settings kept with a banner pointing to Content Studio (custom hero/repeater editors still available there).
+- **Content Studio UI (v1→Stage 6):** Visual editors for registry `editor` hints; legacy Website Settings hub card redirects to Content Studio.
 - **Rich JSON hero titles:** Sanitised when saved as textarea/rich keys; JSON blobs are not field-level sanitised in v1 (editors still go through update pipeline when edited as text).
+- **Stage 6 — `editor` hint:** Additive metadata only on `hero_slide_*`, `homepage_categories`, `trust_items`, `proof_details`, `about_values`, `preorder_confirm_steps`, `footer_links`. No key/default/value changes.
+- **Stage 6 — business hours:** `BusinessHoursEditor` extracted for reuse, but `business_hours` / `business_hours_json` stay outside the Content registry (OpeningHoursService / ops) per Appendix A — no new keys. Not wired in Content Studio.
+- **Stage 6 — JSON embed uploads:** `POST /admin/content/upload` for `editor` ∈ `{hero,categories}` stores cropped media under the active scope dir and returns URL without overwriting the JSON setting (client embeds into draft). Direct `type=image` keys still persist as before.
 
 ## Build log
 
@@ -434,19 +437,21 @@ data, edited via the Hours editor, not free-text content).
 | 2 | content: per-app delivery + divergence fix | done |
 | 3 | content: scoped admin API | done |
 | 4 | content: Content Studio admin panel | done |
-| 5 | content: order-app scoped content + PWA | done (this commit) |
+| 5 | content: order-app scoped content + PWA | done |
+| 6 | content: visual editors + live preview in Content Studio (Stage 6) | done (this commit) |
 
 ### Final test results
 | Suite | Result |
 |---|---|
-| Backend `php artisan test` | **1490 passed**, 3 skipped (5638 assertions) |
-| Admin `npm test -- --run` | **71 passed** (27 files) |
+| Backend `php artisan test` | **1491 passed**, 3 skipped (5643 assertions) |
+| Admin `npm test -- --run` | **75 passed** (28 files) |
 | Order-app `npm test -- --run` | **82 passed** (25 files) |
-| Admin/order `npm run build` + dist sync | success via `./scripts/build-all.sh admin order` |
+| Admin `./scripts/build-all.sh admin` | success — dist synced to `backend/public/admin` |
 
 ### Deviations
-- Content Studio v1 uses textarea/JSON raw editors rather than porting every WebsiteSettings custom repeater; legacy Website Settings remains for those visual editors.
 - Ops/system groups excluded per Appendix A (unchanged).
+- `business_hours` not added to Content Studio registry (no new keys); editor component extracted only.
+- JSON hero/category uploads are embed-only (URL return) so Stage 3 crop pipeline does not wipe JSON values.
 
 ---
 

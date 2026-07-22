@@ -33,6 +33,7 @@ return [
             'default' => 'About Bake & Grill',
         ],
         'about_values' => [
+            'editor' => 'about_values',
             'label' => 'About Values',
             'group' => 'Pages',
             'type' => 'json',
@@ -462,6 +463,7 @@ return [
             'default' => 'Contact',
         ],
         'footer_links' => [
+            'editor' => 'footer_links',
             'label' => 'Footer Links',
             'group' => 'Footer',
             'type' => 'json',
@@ -517,6 +519,7 @@ return [
             'default' => '© 2026 Bake & Grill. All rights reserved.',
         ],
         'hero_slide_1' => [
+            'editor' => 'hero',
             'label' => 'Hero Slide 1',
             'group' => 'Hero',
             'type' => 'json',
@@ -528,6 +531,7 @@ return [
             'default' => '{}',
         ],
         'hero_slide_2' => [
+            'editor' => 'hero',
             'label' => 'Hero Slide 2',
             'group' => 'Hero',
             'type' => 'json',
@@ -539,6 +543,7 @@ return [
             'default' => '{}',
         ],
         'hero_slide_3' => [
+            'editor' => 'hero',
             'label' => 'Hero Slide 3',
             'group' => 'Hero',
             'type' => 'json',
@@ -792,6 +797,7 @@ return [
             'default' => '',
         ],
         'homepage_categories' => [
+            'editor' => 'categories',
             'label' => 'Hedhikaa',
             'group' => 'Pages',
             'type' => 'json',
@@ -1210,6 +1216,7 @@ return [
             'default' => 'Your pre-order request has been submitted successfully.',
         ],
         'preorder_confirm_steps' => [
+            'editor' => 'preorder_steps',
             'label' => 'Preorder Confirm Steps',
             'group' => 'Pages',
             'type' => 'json',
@@ -1353,6 +1360,7 @@ return [
             'default' => 'Phone:',
         ],
         'proof_details' => [
+            'editor' => 'proof',
             'label' => 'Baking starts',
             'group' => 'Pages',
             'type' => 'json',
@@ -1529,6 +1537,7 @@ return [
             'default' => 'Phone:',
         ],
         'trust_items' => [
+            'editor' => 'trust',
             'label' => 'Trust Items',
             'group' => 'Pages',
             'type' => 'json',

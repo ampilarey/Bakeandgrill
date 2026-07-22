@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, LayoutTemplate, Save, Search } from 'lucide-react';
 import {
   copyContentBlock,
@@ -11,10 +11,24 @@ import {
   type ContentScope,
 } from '../../api/content';
 import { PageHeader, Btn } from '../../components/SharedUI';
+import {
+  AboutValuesEditor,
+  CategoriesEditor,
+  FooterLinksEditor,
+  HeroSlideEditor,
+  PreorderStepsEditor,
+  ProofDetailsEditor,
+  TrustItemsEditor,
+} from '../../components/content-editors';
+import { VisualBlockPreview } from '../../components/content-editors/VisualBlockPreview';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 
 type DraftMap = Record<string, Partial<Record<ContentScope, string>>>;
+
+const VISUAL_PREVIEW_EDITORS = new Set([
+  'hero', 'trust', 'categories', 'proof', 'about_values', 'preorder_steps', 'footer_links', 'business_hours',
+]);
 
 function scopeForEdit(block: ContentBlock, tab: ContentScope): ContentScope {
   if (!block.shareable) {
@@ -31,6 +45,15 @@ function valueFor(block: ContentBlock, scope: ContentScope, drafts: DraftMap): s
   return block.order_app ?? block.shared ?? block.default ?? '';
 }
 
+function previewAppLabel(block: ContentBlock, editScope: ContentScope, appTab: 'website' | 'order_app'): string {
+  if (block.state === 'split' && block.shareable) {
+    return appTab === 'website' ? 'Website' : 'Order app';
+  }
+  if (editScope === 'order_app') return 'Order app';
+  if (editScope === 'website') return 'Website';
+  return 'Shared';
+}
+
 export default function ContentStudioPage() {
   usePageTitle('Content Studio');
   const { success, error } = useToast();
@@ -41,6 +64,12 @@ export default function ContentStudioPage() {
   const [q, setQ] = useState('');
   const [drafts, setDrafts] = useState<DraftMap>({});
   const [appTab, setAppTab] = useState<'website' | 'order_app'>('website');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadCtx = useRef<{
+    blockKey: string;
+    scope: ContentScope;
+    onDone: (url: string) => void;
+  } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -144,6 +173,61 @@ export default function ContentStudioPage() {
     }
   };
 
+  /** Scoped crop upload for visual editors — embeds URL into draft JSON (does not wipe the block). */
+  const makeTriggerUpload = (block: ContentBlock, scope: ContentScope) =>
+    (_legacyKey: string, onDone: (url: string) => void) => {
+      uploadCtx.current = { blockKey: block.key, scope, onDone };
+      fileInputRef.current?.click();
+    };
+
+  const handleEmbedFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const ctx = uploadCtx.current;
+    e.target.value = '';
+    uploadCtx.current = null;
+    if (!file || !ctx) return;
+    try {
+      const res = await uploadContentImage(ctx.blockKey, ctx.scope, file);
+      ctx.onDone(res.url);
+      success('Image uploaded');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Upload failed');
+    }
+  };
+
+  const renderVisualEditor = (block: ContentBlock, editScope: ContentScope, val: string) => {
+    const onChange = (next: string) => setDraft(block.key, editScope, next);
+    const triggerUpload = makeTriggerUpload(block, editScope);
+    const common = { label: block.label, value: val, onChange };
+
+    switch (block.editor) {
+      case 'hero': {
+        const slideNum = block.key.replace('hero_slide_', '') || '1';
+        return (
+          <HeroSlideEditor
+            {...common}
+            uploadKey={`hero_${slideNum}_image`}
+            triggerUpload={triggerUpload}
+          />
+        );
+      }
+      case 'categories':
+        return <CategoriesEditor {...common} triggerUpload={triggerUpload} />;
+      case 'trust':
+        return <TrustItemsEditor {...common} />;
+      case 'proof':
+        return <ProofDetailsEditor {...common} />;
+      case 'about_values':
+        return <AboutValuesEditor {...common} />;
+      case 'preorder_steps':
+        return <PreorderStepsEditor {...common} />;
+      case 'footer_links':
+        return <FooterLinksEditor {...common} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -154,6 +238,14 @@ export default function ContentStudioPage() {
             <Save size={16} /> {saving ? 'Publishing…' : `Publish${dirtyCount ? ` (${dirtyCount})` : ''}`}
           </Btn>
         }
+      />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => void handleEmbedFile(e)}
       />
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }} className="form-grid-2">
@@ -202,6 +294,8 @@ export default function ContentStudioPage() {
             const editScope = scopeForEdit(block, appTab);
             const val = valueFor(block, editScope, drafts);
             const appsLabel = block.apps.length > 1 ? 'Both apps' : (block.apps[0] === 'website' ? 'Website' : 'Order app');
+            const visual = block.editor ? renderVisualEditor(block, editScope, val) : null;
+            const showPreview = !!block.editor && VISUAL_PREVIEW_EDITORS.has(block.editor);
 
             return (
               <div key={block.key} style={{
@@ -211,7 +305,7 @@ export default function ContentStudioPage() {
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, color: '#1C1408' }}>{block.label}</div>
                     <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>
-                      {block.key} · {block.type} · {appsLabel}
+                      {block.key} · {block.type}{block.editor ? ` · ${block.editor}` : ''} · {appsLabel}
                       {' · '}
                       <span style={{ color: block.state === 'split' ? '#D4813A' : '#3d7a4a', fontWeight: 600 }}>
                         {block.state === 'split' ? 'Different per app' : 'Shared'}
@@ -268,7 +362,9 @@ export default function ContentStudioPage() {
                   </div>
                 ) : null}
 
-                {block.type === 'boolean' ? (
+                {visual ? (
+                  visual
+                ) : block.type === 'boolean' ? (
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                     <input
                       type="checkbox"
@@ -316,11 +412,19 @@ export default function ContentStudioPage() {
                   />
                 )}
 
-                <div style={{ marginTop: 10, fontSize: 12, color: '#9C8E7E' }}>
-                  Preview: website “{(block.resolved_website || '—').toString().slice(0, 80)}”
-                  {' · '}
-                  order “{(block.resolved_order_app || '—').toString().slice(0, 80)}”
-                </div>
+                {showPreview && block.editor ? (
+                  <VisualBlockPreview
+                    editor={block.editor}
+                    value={val}
+                    appLabel={previewAppLabel(block, editScope, appTab)}
+                  />
+                ) : (
+                  <div style={{ marginTop: 10, fontSize: 12, color: '#9C8E7E' }}>
+                    Preview: website “{(block.resolved_website || '—').toString().slice(0, 80)}”
+                    {' · '}
+                    order “{(block.resolved_order_app || '—').toString().slice(0, 80)}”
+                  </div>
+                )}
               </div>
             );
           })}

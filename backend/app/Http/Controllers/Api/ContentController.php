@@ -244,11 +244,16 @@ class ContentController extends Controller
 
         $key = $data['key'];
         $scope = $data['scope'];
-        if (ContentRegistry::type($key) !== 'image' && !str_contains($key, 'hero') && !str_contains($key, 'image')) {
-            // Allow image-typed registry keys and brand assets.
-            if (!in_array(ContentRegistry::type($key), ['image'], true)) {
-                return response()->json(['message' => 'Key is not an image block.'], 422);
-            }
+        $type = ContentRegistry::type($key);
+        $editor = ContentRegistry::block($key)['editor'] ?? null;
+        // Direct image blocks persist the URL; JSON visual editors (hero/categories)
+        // only store the file under the active scope and return the URL for the client
+        // to embed into draft JSON (legacy SiteSettings upload behaviour).
+        $isDirectImage = $type === 'image';
+        $isEmbedUpload = $type === 'json' && in_array($editor, ['hero', 'categories'], true);
+
+        if (!$isDirectImage && !$isEmbedUpload) {
+            return response()->json(['message' => 'Key is not an image block.'], 422);
         }
 
         $file = $request->file('file');
@@ -269,26 +274,38 @@ class ContentController extends Controller
         $url = '/storage/' . ltrim($relative, '/');
         $thumbUrl = '/storage/' . ltrim($thumbRelative, '/');
 
-        $old = SiteSetting::getScoped($key, $scope);
-        $this->ensureRow($key, $scope);
-        SiteSetting::set($key, $url, $scope);
+        if ($isDirectImage) {
+            $old = SiteSetting::getScoped($key, $scope);
+            $this->ensureRow($key, $scope);
+            SiteSetting::set($key, $url, $scope);
 
-        if ($old && $old !== $url) {
-            MediaFileCleaner::deleteIfOwnedAndUnreferenced($old, keepUrls: [$url, $thumbUrl, (string) $originalUrl]);
+            if ($old && $old !== $url) {
+                MediaFileCleaner::deleteIfOwnedAndUnreferenced($old, keepUrls: [$url, $thumbUrl, (string) $originalUrl]);
+            }
+
+            $this->audit->log(
+                action: 'content.uploaded',
+                modelType: SiteSetting::class,
+                modelId: null,
+                oldValues: ['value' => $old],
+                newValues: ['value' => $url],
+                meta: ['setting_key' => $key, 'scope' => $scope],
+                request: $request,
+            );
+
+            SiteSetting::bust();
+            ContentResolver::bust();
+        } else {
+            $this->audit->log(
+                action: 'content.uploaded',
+                modelType: SiteSetting::class,
+                modelId: null,
+                oldValues: [],
+                newValues: ['url' => $url],
+                meta: ['setting_key' => $key, 'scope' => $scope, 'embed' => true],
+                request: $request,
+            );
         }
-
-        $this->audit->log(
-            action: 'content.uploaded',
-            modelType: SiteSetting::class,
-            modelId: null,
-            oldValues: ['value' => $old],
-            newValues: ['value' => $url],
-            meta: ['setting_key' => $key, 'scope' => $scope],
-            request: $request,
-        );
-
-        SiteSetting::bust();
-        ContentResolver::bust();
 
         return response()->json([
             'url' => $url,
@@ -296,6 +313,7 @@ class ContentController extends Controller
             'original_url' => $originalUrl,
             'key' => $key,
             'scope' => $scope,
+            'embed' => $isEmbedUpload,
         ], 201);
     }
 
