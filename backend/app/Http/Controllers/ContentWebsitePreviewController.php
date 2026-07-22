@@ -18,13 +18,13 @@ class ContentWebsitePreviewController extends Controller
 {
     public function home(Request $request): Response
     {
-        if (! $request->hasValidSignature()) {
+        if (!$request->hasValidSignature()) {
             abort(403, 'Invalid or expired preview signature.');
         }
 
         $token = (string) $request->query('token', '');
         $draft = ContentDraftStore::get($token);
-        if (! $draft || ($draft['app'] ?? '') !== 'website') {
+        if (!$draft || ($draft['app'] ?? '') !== 'website') {
             abort(403, 'Invalid or expired preview token.');
         }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, act } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppContentEditor } from '../pages/ContentStudio/AppContentEditor';
 import type { ContentBlock } from '../api/content';
@@ -71,12 +71,11 @@ describe('Content Studio autosave + WYSIWYG', () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
+  // Real timers only — fake timers in this file previously timed out sibling suites.
   it('renders WYSIWYG for rich blocks and autosaves drafts', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     render(
       <MemoryRouter>
         <AppContentEditor app="website" />
@@ -89,20 +88,18 @@ describe('Content Studio autosave + WYSIWYG', () => {
     editor.innerHTML = 'Edited draft';
     fireEvent.input(editor);
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-
-    await waitFor(() => {
-      expect(contentApi.saveContentDrafts).toHaveBeenCalled();
-    });
+    await waitFor(
+      () => {
+        expect(contentApi.saveContentDrafts).toHaveBeenCalled();
+      },
+      { timeout: 5000 },
+    );
 
     const calls = vi.mocked(contentApi.saveContentDrafts).mock.calls;
     const [changes] = calls[calls.length - 1];
     expect(changes[0].scope).toBe('website');
     expect(changes[0].key).toBe('cta_band_headline');
-    vi.useRealTimers();
-  });
+  }, 10000);
 
   it('publish promotes via updateContent', async () => {
     render(
