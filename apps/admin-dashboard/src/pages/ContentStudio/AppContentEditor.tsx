@@ -5,10 +5,12 @@ import {
   createContentPreviewToken,
   exportContent,
   getContentBlocks,
+  getContentDrafts,
   getContentRevisions,
   getContentSchedules,
   importContent,
   restoreContentRevision,
+  saveContentDrafts,
   scheduleContent,
   updateContent,
   uploadContentImage,
@@ -28,6 +30,7 @@ import {
   HeroSlidesEditor,
   PreorderStepsEditor,
   ProofDetailsEditor,
+  RichTextEditor,
   TrustItemsEditor,
 } from '../../components/content-editors';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -85,12 +88,16 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
   const [scheduleAt, setScheduleAt] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [autosaving, setAutosaving] = useState(false);
+  const [serverDraftSynced, setServerDraftSynced] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const uploadCtx = useRef<{
     blockKey: string;
     onDone: (url: string) => void;
   } | null>(null);
+  const draftsRef = useRef<DraftMap>({});
 
   const loadGen = useRef(0);
 
@@ -98,14 +105,19 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
     const gen = ++loadGen.current;
     setLoading(true);
     try {
-      const [{ blocks: b }, { schedules: s }] = await Promise.all([
+      const [{ blocks: b }, { schedules: s }, draftRes] = await Promise.all([
         getContentBlocks(loc),
         getContentSchedules('pending'),
+        getContentDrafts(app, loc).catch(() => ({ drafts: {} as Record<string, string>, saved_at: null })),
       ]);
       if (gen !== loadGen.current) return;
       setBlocks(b);
       setSchedules(s);
-      setDrafts({});
+      const restored = draftRes.drafts || {};
+      setDrafts(restored);
+      draftsRef.current = restored;
+      setLastSavedAt(draftRes.saved_at);
+      setServerDraftSynced(true);
     } catch (e) {
       if (gen !== loadGen.current) return;
       error(e instanceof Error ? e.message : 'Failed to load content');
@@ -117,8 +129,8 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
   useEffect(() => {
     void load(locale);
     return () => { loadGen.current += 1; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when locale changes
-  }, [locale]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when locale or app editor changes
+  }, [locale, app]);
 
   const appBlocks = useMemo(
     () => blocks.filter((b) => {
@@ -171,10 +183,46 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
   }, [appBlocks, group, app]);
 
   const dirtyCount = useMemo(() => Object.keys(drafts).length, [drafts]);
+  const hasUnsaved = dirtyCount > 0 && !serverDraftSynced;
 
   const setDraft = (key: string, value: string) => {
-    setDrafts((prev) => ({ ...prev, [key]: value }));
+    setDrafts((prev) => {
+      const next = { ...prev, [key]: value };
+      draftsRef.current = next;
+      return next;
+    });
+    setServerDraftSynced(false);
   };
+
+  // Autosave drafts every few seconds (server draft store — not live).
+  useEffect(() => {
+    if (dirtyCount === 0 || serverDraftSynced) return;
+    const t = window.setTimeout(() => {
+      const changes = collectChanges(draftsRef.current, app, locale);
+      if (changes.length === 0) return;
+      setAutosaving(true);
+      void saveContentDrafts(changes, locale)
+        .then((res) => {
+          setLastSavedAt(res.saved_at);
+          setServerDraftSynced(true);
+        })
+        .catch(() => { /* keep unsynced; user can still publish */ })
+        .finally(() => setAutosaving(false));
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, [drafts, dirtyCount, serverDraftSynced, app, locale]);
+
+  // Unsaved-changes guard (navigate / close tab).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasUnsaved && dirtyCount === 0) return;
+      if (dirtyCount === 0) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasUnsaved, dirtyCount]);
 
   const publish = async () => {
     const changes = collectChanges(drafts, app, locale);
@@ -184,6 +232,9 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
       const { blocks: b } = await updateContent(changes, locale);
       setBlocks(b);
       setDrafts({});
+      draftsRef.current = {};
+      setServerDraftSynced(true);
+      setLastSavedAt(new Date().toISOString());
       success('Content published');
     } catch (e) {
       error(e instanceof Error ? e.message : 'Save failed');
@@ -202,6 +253,8 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
     try {
       await scheduleContent(new Date(scheduleAt).toISOString(), changes, locale);
       setDrafts({});
+      draftsRef.current = {};
+      setServerDraftSynced(true);
       setScheduleAt('');
       const { schedules: s } = await getContentSchedules('pending');
       setSchedules(s);
@@ -303,6 +356,8 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
   const onCopyDone = (b: ContentBlock[]) => {
     setBlocks(b);
     setDrafts({});
+    draftsRef.current = {};
+    setServerDraftSynced(true);
     success('Copied from the other app');
   };
 
@@ -355,6 +410,15 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
             <Btn onClick={() => importInputRef.current?.click()} variant="secondary">
               <UploadIcon size={16} /> Import
             </Btn>
+            <span data-testid="draft-save-status" style={{ fontSize: 12, color: '#9C8E7E', minWidth: 120 }}>
+              {autosaving
+                ? 'Saving draft…'
+                : lastSavedAt
+                  ? `Draft saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+                  : dirtyCount > 0
+                    ? 'Unsaved draft'
+                    : 'All published'}
+            </span>
             <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0} className="content-studio-publish-desktop">
               <Save size={16} /> {saving ? 'Publishing…' : `Publish${dirtyCount ? ` (${dirtyCount})` : ''}`}
             </Btn>
@@ -548,6 +612,13 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
 
                 {visual ? (
                   visual
+                ) : block.rich ? (
+                  <RichTextEditor
+                    key={`${block.key}-${locale}`}
+                    label=""
+                    value={val}
+                    onChange={(v) => setDraft(block.key, v)}
+                  />
                 ) : block.type === 'boolean' ? (
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                     <input

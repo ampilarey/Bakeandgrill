@@ -173,6 +173,8 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
 
         Route::get('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'index']);
         Route::put('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'update']);
+        Route::get('/admin/content/drafts', [App\Http\Controllers\Api\ContentController::class, 'drafts']);
+        Route::put('/admin/content/drafts', [App\Http\Controllers\Api\ContentController::class, 'saveDrafts']);
         Route::post('/admin/content/upload', [App\Http\Controllers\Api\ContentController::class, 'upload']);
         Route::post('/admin/content/upload-video', [App\Http\Controllers\Api\ContentController::class, 'uploadVideo']);
         Route::post('/admin/content/preview-token', [App\Http\Controllers\Api\ContentPreviewController::class, 'createToken']);

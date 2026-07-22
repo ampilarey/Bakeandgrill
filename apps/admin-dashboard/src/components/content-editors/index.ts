@@ -7,6 +7,7 @@ export { HeroSlidesEditor } from './HeroSlidesEditor';
 export { PreorderStepsEditor } from './PreorderStepsEditor';
 export { ProofDetailsEditor } from './ProofDetailsEditor';
 export { TrustItemsEditor } from './TrustItemsEditor';
+export { RichTextEditor } from './RichTextEditor';
 export { RepeaterShell } from './RepeaterShell';
 export type {
   ContentEditorProps,

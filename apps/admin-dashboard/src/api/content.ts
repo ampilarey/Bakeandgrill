@@ -43,6 +43,8 @@ export type ContentRevision = {
   value: string | null;
   user_id: number | null;
   created_at: string;
+  published_at?: string | null;
+  is_draft?: boolean;
 };
 
 export type ContentScheduleRow = {
@@ -76,6 +78,26 @@ export async function updateContent(
   locale: ContentLocale = 'en',
 ): Promise<{ blocks: ContentBlock[] }> {
   return req('/admin/content', {
+    method: 'PUT',
+    body: JSON.stringify({ locale, changes }),
+  });
+}
+
+/** Load autosaved drafts for an app scope (never public). */
+export async function getContentDrafts(
+  scope: ContentScope,
+  locale: ContentLocale = 'en',
+): Promise<{ drafts: Record<string, string>; saved_at: string | null }> {
+  const q = new URLSearchParams({ scope, locale });
+  return req(`/admin/content/drafts?${q}`);
+}
+
+/** Autosave unpublished drafts — does not promote to live SiteSetting. */
+export async function saveContentDrafts(
+  changes: Array<{ key: string; scope: ContentScope; value: string | null; locale?: ContentLocale }>,
+  locale: ContentLocale = 'en',
+): Promise<{ drafts: Record<string, string>; saved_at: string }> {
+  return req('/admin/content/drafts', {
     method: 'PUT',
     body: JSON.stringify({ locale, changes }),
   });

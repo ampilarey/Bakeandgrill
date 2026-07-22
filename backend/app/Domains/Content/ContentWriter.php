@@ -40,6 +40,8 @@ final class ContentWriter
                 'scope' => $scope,
                 'locale' => $locale,
                 'value' => $old,
+                'is_draft' => false,
+                'published_at' => now(),
                 'user_id' => $request?->user() instanceof \App\Models\User
                     ? $request->user()->id
                     : null,
@@ -48,6 +50,14 @@ final class ContentWriter
         }
 
         SiteSetting::set($key, $value, $scope, $locale);
+
+        // Promote / clear any autosaved draft for this key.
+        ContentRevision::query()
+            ->where('key', $key)
+            ->where('scope', $scope)
+            ->where('locale', $locale)
+            ->where('is_draft', true)
+            ->delete();
 
         $this->audit->log(
             action: $auditAction,

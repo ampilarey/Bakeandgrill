@@ -15,6 +15,7 @@ use App\Models\ContentSchedule;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
 use App\Services\MenuImageProcessor;
+use App\Support\ContentSanitizer;
 use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -98,8 +99,123 @@ class ContentController extends Controller
         SiteSetting::bust();
 
         return response()->json([
-            'message' => 'Content saved.',
+            'message' => 'Content published.',
             'blocks' => ContentBlockResource::collectionFromRegistry($locale),
+        ]);
+    }
+
+    /**
+     * GET /api/admin/content/drafts?scope=website&locale=en
+     */
+    public function drafts(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+        ]);
+        $locale = $data['locale'] ?? 'en';
+
+        $rows = ContentRevision::query()
+            ->where('is_draft', true)
+            ->where('scope', $data['scope'])
+            ->where('locale', $locale)
+            ->orderByDesc('id')
+            ->get(['id', 'key', 'scope', 'locale', 'value', 'user_id', 'created_at']);
+
+        $draftMap = [];
+        foreach ($rows as $row) {
+            // Newest draft wins per key.
+            if (!array_key_exists($row->key, $draftMap)) {
+                $draftMap[$row->key] = (string) ($row->value ?? '');
+            }
+        }
+
+        $savedAt = $rows->first()?->created_at?->toIso8601String();
+
+        return response()->json([
+            'scope' => $data['scope'],
+            'locale' => $locale,
+            'drafts' => $draftMap,
+            'saved_at' => $savedAt,
+        ]);
+    }
+
+    /**
+     * PUT /api/admin/content/drafts — autosave unpublished drafts (does not touch live SiteSetting).
+     */
+    public function saveDrafts(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'changes' => ['required', 'array', 'min:1'],
+            'changes.*.key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
+            'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'changes.*.locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'changes.*.value' => ['nullable'],
+        ]);
+
+        $locale = $data['locale'] ?? 'en';
+        $userId = $request->user() instanceof \App\Models\User ? $request->user()->id : null;
+        $saved = [];
+
+        DB::transaction(function () use ($data, $locale, $userId, &$saved): void {
+            foreach ($data['changes'] as $change) {
+                $key = (string) $change['key'];
+                $scope = (string) $change['scope'];
+                $changeLocale = (string) ($change['locale'] ?? $locale);
+                $value = $change['value'] ?? '';
+                if (is_array($value) || is_object($value)) {
+                    $value = json_encode($value, JSON_UNESCAPED_UNICODE);
+                }
+                $value = (string) $value;
+
+                if (ContentRegistry::isRich($key) || ContentRegistry::type($key) === 'textarea') {
+                    $value = ContentSanitizer::clean($value);
+                }
+
+                $draft = ContentRevision::query()
+                    ->where('key', $key)
+                    ->where('scope', $scope)
+                    ->where('locale', $changeLocale)
+                    ->where('is_draft', true)
+                    ->first();
+
+                if ($draft) {
+                    $draft->value = $value;
+                    $draft->user_id = $userId;
+                    $draft->created_at = now();
+                    $draft->save();
+                } else {
+                    $draft = ContentRevision::query()->create([
+                        'key' => $key,
+                        'scope' => $scope,
+                        'locale' => $changeLocale,
+                        'value' => $value,
+                        'is_draft' => true,
+                        'published_at' => null,
+                        'user_id' => $userId,
+                        'created_at' => now(),
+                    ]);
+                }
+
+                $saved[$key] = (string) ($draft->value ?? '');
+            }
+        });
+
+        $this->audit->log(
+            action: 'content.draft_saved',
+            modelType: ContentRevision::class,
+            modelId: null,
+            oldValues: [],
+            newValues: ['keys' => array_keys($saved)],
+            meta: ['locale' => $locale, 'count' => count($saved)],
+            request: $request,
+        );
+
+        return response()->json([
+            'message' => 'Draft saved.',
+            'drafts' => $saved,
+            'saved_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -122,9 +238,12 @@ class ContentController extends Controller
             ->where('key', $key)
             ->where('scope', $data['scope'])
             ->where('locale', $locale)
+            ->where(function ($q) {
+                $q->where('is_draft', false)->orWhereNull('is_draft');
+            })
             ->orderByDesc('id')
             ->limit(50)
-            ->get(['id', 'key', 'scope', 'locale', 'value', 'user_id', 'created_at']);
+            ->get(['id', 'key', 'scope', 'locale', 'value', 'user_id', 'created_at', 'published_at']);
 
         return response()->json(['revisions' => $rows]);
     }
