@@ -6,7 +6,9 @@ namespace App\Domains\Inventory\Services;
 
 use App\Models\InventoryItem;
 use App\Models\InventoryReorderAlert;
+use App\Models\SiteSetting;
 use App\Models\SupplierPriceHistory;
+use App\Models\WasteLog;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -17,12 +19,20 @@ use Illuminate\Support\Facades\DB;
 final class RestockIntelligenceService
 {
     /**
+     * Max share of usage that waste may add to the effective daily rate (clamp).
+     * Prevents absurd order sizes when waste spikes.
+     */
+    private const WASTE_RATE_CLAMP_VS_USAGE = 1.0;
+
+    /**
      * @return array{
      *     lookback_days: int,
      *     buy_lookback_days: int,
      *     lead_days: int,
      *     cover_days: int,
-     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int, open_alerts: int, snoozed: int, excluded: int},
+     *     include_waste: bool,
+     *     high_waste_pct: float,
+     *     totals: array{items_count: int, due_soon: int, below_rop: int, with_open_po: int, price_up: int, open_alerts: int, snoozed: int, excluded: int, high_waste: int},
      *     items: list<array<string, mixed>>
      * }
      */
@@ -31,13 +41,27 @@ final class RestockIntelligenceService
         int $buyLookbackDays = 90,
         int $leadDays = 3,
         int $coverDays = 14,
+        ?bool $includeWaste = null,
     ): array {
         $lookbackDays = min(max($lookbackDays, 7), 180);
         $buyLookbackDays = min(max($buyLookbackDays, 30), 365);
         $leadDays = min(max($leadDays, 0), 30);
         $coverDays = min(max($coverDays, 1), 90);
 
+        $includeWaste = $includeWaste ?? filter_var(
+            SiteSetting::get('restock_include_waste', '0'),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+        $highWastePct = (float) SiteSetting::get('restock_high_waste_pct', '15');
+        if ($highWastePct < 0) {
+            $highWastePct = 0;
+        }
+        if ($highWastePct > 100) {
+            $highWastePct = 100;
+        }
+
         $usageByItem = $this->usageByItem($lookbackDays);
+        $wasteByItem = $this->wasteByItem($lookbackDays);
         $buyByItem = $this->buyHistoryByItem($buyLookbackDays);
         $today = now()->startOfDay();
 
@@ -60,13 +84,26 @@ final class RestockIntelligenceService
         $withOpenAlert = 0;
         $snoozedCount = 0;
         $excludedCount = 0;
+        $highWasteCount = 0;
 
         foreach ($items as $item) {
             $stock = (float) ($item->current_stock ?? 0);
             $rop = (float) ($item->reorder_point ?? 0);
             $reorderQty = (float) ($item->reorder_quantity ?? 0);
             $consumed = (float) ($usageByItem[$item->id] ?? 0);
-            $dailyRate = $lookbackDays > 0 ? round($consumed / $lookbackDays, 4) : 0.0;
+            $wasted = (float) ($wasteByItem[$item->id] ?? 0);
+            $usageDaily = $lookbackDays > 0 ? round($consumed / $lookbackDays, 4) : 0.0;
+            $wasteDailyRaw = $lookbackDays > 0 ? round($wasted / $lookbackDays, 4) : 0.0;
+            $wasteDaily = $this->clampWasteDailyRate($usageDaily, $wasteDailyRaw);
+            $wastePct = ($usageDaily + $wasteDailyRaw) > 0
+                ? round(($wasteDailyRaw / ($usageDaily + $wasteDailyRaw)) * 100, 2)
+                : 0.0;
+            $highWaste = $wastePct >= $highWastePct && $wasteDailyRaw > 0;
+
+            $dailyRate = $includeWaste
+                ? round($usageDaily + $wasteDaily, 4)
+                : $usageDaily;
+
             $daysLeft = $dailyRate > 0 ? (int) floor($stock / $dailyRate) : null;
             $status = $this->stockStatus($stock, $rop, $daysLeft);
 
@@ -113,8 +150,8 @@ final class RestockIntelligenceService
             // Snoozed / excluded SKUs drop out of due-soon / draft-PO urgency.
             $dueSoonFlag = $wouldBeDueSoon && !$isSnoozed && !$isExcluded;
 
-            // Keep the plan focused: items with usage, buy history, or below ROP.
-            if ($dailyRate <= 0 && $buy === null && !($rop > 0 && $stock <= $rop)) {
+            // Keep the plan focused: items with usage, waste, buy history, or below ROP.
+            if ($usageDaily <= 0 && $wasteDailyRaw <= 0 && $buy === null && !($rop > 0 && $stock <= $rop)) {
                 continue;
             }
 
@@ -128,6 +165,9 @@ final class RestockIntelligenceService
             }
             if ($rop > 0 && $stock <= $rop && !$isExcluded) {
                 $belowRop++;
+            }
+            if ($highWaste && !$isExcluded) {
+                $highWasteCount++;
             }
 
             $supplier = null;
@@ -180,7 +220,13 @@ final class RestockIntelligenceService
                 'current_stock' => $stock,
                 'reorder_point' => $rop,
                 'reorder_quantity' => $reorderQty > 0 ? $reorderQty : null,
-                'daily_usage_rate' => $dailyRate,
+                'daily_usage_rate' => $usageDaily,
+                'waste_daily_rate' => $wasteDailyRaw,
+                'waste_daily_rate_clamped' => $wasteDaily,
+                'waste_pct' => $wastePct,
+                'high_waste' => $highWaste,
+                'effective_daily_rate' => $dailyRate,
+                'include_waste' => $includeWaste,
                 'days_of_stock' => $daysLeft,
                 'status' => $status,
                 'buy_frequency' => $buy,
@@ -224,6 +270,8 @@ final class RestockIntelligenceService
             'buy_lookback_days' => $buyLookbackDays,
             'lead_days' => $leadDays,
             'cover_days' => $coverDays,
+            'include_waste' => $includeWaste,
+            'high_waste_pct' => $highWastePct,
             'totals' => [
                 'items_count' => count($rows),
                 'due_soon' => $dueSoon,
@@ -233,9 +281,47 @@ final class RestockIntelligenceService
                 'open_alerts' => $withOpenAlert,
                 'snoozed' => $snoozedCount,
                 'excluded' => $excludedCount,
+                'high_waste' => $highWasteCount,
             ],
             'items' => $rows,
         ];
+    }
+
+    /**
+     * @return array<int, float> inventory_item_id => total waste qty in lookback
+     */
+    private function wasteByItem(int $lookbackDays): array
+    {
+        $since = now()->subDays($lookbackDays)->startOfDay();
+
+        $rows = WasteLog::query()
+            ->whereNotNull('inventory_item_id')
+            ->where('created_at', '>=', $since)
+            ->selectRaw('inventory_item_id, SUM(ABS(quantity)) as total')
+            ->groupBy('inventory_item_id')
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row->inventory_item_id] = (float) $row->total;
+        }
+
+        return $out;
+    }
+
+    private function clampWasteDailyRate(float $usageDaily, float $wasteDailyRaw): float
+    {
+        if ($wasteDailyRaw <= 0) {
+            return 0.0;
+        }
+        if ($usageDaily <= 0) {
+            // No usage baseline — allow waste but cap to raw (still surfaces the item).
+            return round($wasteDailyRaw, 4);
+        }
+
+        $cap = $usageDaily * self::WASTE_RATE_CLAMP_VS_USAGE;
+
+        return round(min($wasteDailyRaw, $cap), 4);
     }
 
     /**

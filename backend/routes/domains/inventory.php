@@ -100,6 +100,11 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
     Route::post('/purchase-requests/{id}/attachments', [App\Http\Controllers\Api\PurchaseRequestController::class, 'uploadAttachment']);
     Route::post('/purchase-requests/{id}/items/{itemId}/mark-bought', [App\Http\Controllers\Api\PurchaseRequestController::class, 'markBought'])
         ->middleware('permission:purchase_requests.buy');
+    Route::get('/purchase-requests/{id}/items/{itemId}/quotes', [App\Http\Controllers\Api\PurchaseRequestController::class, 'listQuotes']);
+    Route::post('/purchase-requests/{id}/items/{itemId}/quotes', [App\Http\Controllers\Api\PurchaseRequestController::class, 'storeQuote'])
+        ->middleware('permission:purchase_requests.buy');
+    Route::delete('/purchase-requests/{id}/items/{itemId}/quotes/{quoteId}', [App\Http\Controllers\Api\PurchaseRequestController::class, 'destroyQuote'])
+        ->middleware('permission:purchase_requests.buy');
     Route::post('/purchase-requests/{id}/items/{itemId}/mark-partial', [App\Http\Controllers\Api\PurchaseRequestController::class, 'markPartial'])
         ->middleware('permission:purchase_requests.buy');
     Route::post('/purchase-requests/{id}/items/{itemId}/mark-not-available', [App\Http\Controllers\Api\PurchaseRequestController::class, 'markNotAvailable'])

@@ -69,6 +69,11 @@ Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('rep
     Route::get('/accounts-receivable', [App\Http\Controllers\Api\FinanceReportController::class, 'accountsReceivable']);
 });
 
+Route::middleware(['auth:sanctum', 'permission:reports.financial'])->get(
+    '/reports/procurement',
+    [App\Http\Controllers\Api\ProcurementReportController::class, 'show'],
+);
+
 // ─── Supplier Intelligence ─────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:suppliers.manage'])->prefix('suppliers')->group(function () {
     // Static routes MUST come before parameterised /{id} routes

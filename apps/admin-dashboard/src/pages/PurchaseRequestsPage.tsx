@@ -28,8 +28,13 @@ import {
   updatePurchaseRequestAutoExpenseSettings,
   verifyAllPurchaseRequestItems,
   verifyPurchaseRequestItem,
+  fetchPurchaseRequestItemQuotes,
+  addPurchaseRequestItemQuote,
+  deletePurchaseRequestItemQuote,
+  markPurchaseRequestItemBought,
   type PurchaseRequest,
   type PurchaseRequestItem,
+  type PurchaseRequestItemQuote,
 } from '../api/procurement';
 import { Toggle } from '../components/ui';
 
@@ -478,37 +483,54 @@ export default function PurchaseRequestsPage() {
                 <tbody>
                   {detail.items.map((item) => (
                     <tr key={item.id}>
-                      <td style={TD}>
-                        <div>{item.name}</div>
-                        {item.price_hint && (
-                          <div style={{ fontSize: 11, color: '#6B5D4F', marginTop: 2 }}>
-                            {item.price_hint.last_paid != null && <>Last MVR {item.price_hint.last_paid.toFixed(2)} </>}
-                            {item.price_hint.cheapest && (
-                              <>· Cheapest {item.price_hint.cheapest.supplier_name ?? '—'} @ MVR {item.price_hint.cheapest.unit_price.toFixed(2)}</>
+                      <td style={TD} colSpan={6}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) repeat(4, minmax(0, 0.7fr)) minmax(0, 0.8fr)', gap: 8, alignItems: 'start' }}>
+                          <div>
+                            <div>{item.name}</div>
+                            {item.price_hint && (
+                              <div style={{ fontSize: 11, color: '#6B5D4F', marginTop: 2 }}>
+                                {item.price_hint.last_paid != null && <>Last MVR {item.price_hint.last_paid.toFixed(2)} </>}
+                                {item.price_hint.cheapest && (
+                                  <>· Cheapest {item.price_hint.cheapest.supplier_name ?? '—'} @ MVR {item.price_hint.cheapest.unit_price.toFixed(2)}</>
+                                )}
+                              </div>
+                            )}
+                            {item.free_text_name && !item.inventory_item_id && can('inventory.manage') && (
+                              <Btn
+                                variant="ghost"
+                                onClick={() => {
+                                  setPromoteItem(item);
+                                  setPromoteName(item.free_text_name || item.name);
+                                  setPromoteUnit(item.requested_unit || 'pcs');
+                                  setPromoteRop('');
+                                  setPromoteRoq('');
+                                }}
+                                style={{ marginTop: 4, fontSize: 12, padding: '4px 8px' }}
+                              >
+                                Add to catalog
+                              </Btn>
+                            )}
+                            {can('purchase_requests.buy') && !['received', 'cancelled', 'not_available'].includes(item.status) && (
+                              <QuotesExpander
+                                requestId={detail.id}
+                                item={item}
+                                busy={actionBusy}
+                                onBought={async () => {
+                                  await refreshDetail(detail.id);
+                                  await load();
+                                }}
+                                setBusy={setActionBusy}
+                                toast={toast}
+                              />
                             )}
                           </div>
-                        )}
-                        {item.free_text_name && !item.inventory_item_id && can('inventory.manage') && (
-                          <Btn
-                            variant="ghost"
-                            onClick={() => {
-                              setPromoteItem(item);
-                              setPromoteName(item.free_text_name || item.name);
-                              setPromoteUnit(item.requested_unit || 'pcs');
-                              setPromoteRop('');
-                              setPromoteRoq('');
-                            }}
-                            style={{ marginTop: 4, fontSize: 12, padding: '4px 8px' }}
-                          >
-                            Add to catalog
-                          </Btn>
-                        )}
+                          <div>{item.requested_qty} {item.requested_unit}</div>
+                          <div>{item.approved_qty != null ? `${item.approved_qty} ${item.requested_unit}` : '—'}</div>
+                          <div>{item.actual_qty != null ? `${item.actual_qty} ${item.actual_unit ?? item.requested_unit}` : '—'}</div>
+                          <div><Badge color={STATUS_COLOR[item.status] ?? 'gray'}>{item.status.replace(/_/g, ' ')}</Badge></div>
+                          <div>MVR {laarToMvr(item.actual_total_laar ?? item.actual_unit_cost_laar)}</div>
+                        </div>
                       </td>
-                      <td style={TD}>{item.requested_qty} {item.requested_unit}</td>
-                      <td style={TD}>{item.approved_qty != null ? `${item.approved_qty} ${item.requested_unit}` : '—'}</td>
-                      <td style={TD}>{item.actual_qty != null ? `${item.actual_qty} ${item.actual_unit ?? item.requested_unit}` : '—'}</td>
-                      <td style={TD}><Badge color={STATUS_COLOR[item.status] ?? 'gray'}>{item.status.replace(/_/g, ' ')}</Badge></td>
-                      <td style={TD}>MVR {laarToMvr(item.actual_total_laar ?? item.actual_unit_cost_laar)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -876,6 +898,181 @@ export default function PurchaseRequestsPage() {
       )}
 
       <ConfirmDialog state={dlg} close={closeDlg} />
+    </div>
+  );
+}
+
+function QuotesExpander({
+  requestId,
+  item,
+  busy,
+  onBought,
+  setBusy,
+  toast,
+}: {
+  requestId: number;
+  item: PurchaseRequestItem;
+  busy: boolean;
+  onBought: () => Promise<void>;
+  setBusy: (v: boolean) => void;
+  toast: { success: (m: string) => void; error: (m: string) => void };
+}) {
+  const [open, setOpen] = useState(false);
+  const [quotes, setQuotes] = useState<PurchaseRequestItemQuote[]>([]);
+  const [cheapestId, setCheapestId] = useState<number | null>(null);
+  const [shop, setShop] = useState('');
+  const [priceMvr, setPriceMvr] = useState('');
+  const [loading, setLoading] = useState(false);
+  const canBuy = !['bought', 'partially_bought', 'received', 'cancelled', 'not_available'].includes(item.status);
+
+  const loadQuotes = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchPurchaseRequestItemQuotes(requestId, item.id);
+      setQuotes(res.quotes);
+      setCheapestId(res.cheapest_quote_id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load quotes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open) void loadQuotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when expander opens
+  }, [open, item.id]);
+
+  const addQuote = async () => {
+    const mvr = Number(priceMvr);
+    if (!shop.trim() || !Number.isFinite(mvr) || mvr < 0) {
+      toast.error('Enter shop name and a valid unit price (MVR)');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await addPurchaseRequestItemQuote(requestId, item.id, {
+        supplier_name_text: shop.trim(),
+        unit_price_laar: Math.round(mvr * 100),
+        unit: item.requested_unit,
+      });
+      setQuotes(res.quotes);
+      setCheapestId(res.cheapest_quote_id);
+      setShop('');
+      setPriceMvr('');
+      toast.success('Quote added');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to add quote');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeQuote = async (quoteId: number) => {
+    setBusy(true);
+    try {
+      const res = await deletePurchaseRequestItemQuote(requestId, item.id, quoteId);
+      setQuotes(res.quotes);
+      setCheapestId(res.cheapest_quote_id);
+      toast.success('Quote removed');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to remove quote');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const buyFromCheapest = async () => {
+    const cheapest = quotes.find((q) => q.id === cheapestId) ?? quotes[0];
+    if (!cheapest) {
+      toast.error('Add at least one quote first');
+      return;
+    }
+    setBusy(true);
+    try {
+      await markPurchaseRequestItemBought(requestId, item.id, {
+        from_quote_id: cheapest.id,
+        actual_qty: item.approved_qty ?? item.requested_qty,
+      });
+      toast.success('Marked bought from cheapest quote');
+      await onBought();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Buy from cheapest failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: '#D4813A',
+        }}
+      >
+        {open ? '▾' : '▸'} Quotes{quotes.length ? ` (${quotes.length})` : ''}
+      </button>
+      {open && (
+        <div style={{
+          marginTop: 8, padding: 10, borderRadius: 10, background: '#F8F6F3',
+          border: '1px solid #E8E0D8', fontSize: 12,
+        }}>
+          {loading ? <p style={{ margin: 0, color: '#9C8E7E' }}>Loading quotes…</p> : null}
+          {!loading && quotes.length === 0 ? (
+            <p style={{ margin: '0 0 8px', color: '#9C8E7E' }}>No quotes yet — optional before buying.</p>
+          ) : null}
+          {quotes.map((q) => (
+            <div key={q.id} style={{
+              display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+              marginBottom: 6, padding: '6px 8px', borderRadius: 8,
+              background: q.is_cheapest ? '#FFF7ED' : '#fff',
+              border: q.is_cheapest ? '1px solid #F5D0A9' : '1px solid #E8E0D8',
+            }}>
+              <span style={{ fontWeight: 600, flex: 1, minWidth: 80 }}>
+                {q.supplier_name || q.supplier_name_text || 'Shop'}
+                {q.is_cheapest ? ' · cheapest' : ''}
+              </span>
+              <span>MVR {(q.unit_price_laar / 100).toFixed(2)} / {q.unit}</span>
+              {canBuy && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void removeQuote(q.id)}
+                  style={{ background: 'none', border: 'none', color: '#9C8E7E', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11 }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          {canBuy && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+              <input
+                value={shop}
+                onChange={(e) => setShop(e.target.value)}
+                placeholder="Shop name"
+                style={{ flex: 1, minWidth: 100, height: 36, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 8px', fontFamily: 'inherit' }}
+              />
+              <input
+                value={priceMvr}
+                onChange={(e) => setPriceMvr(e.target.value)}
+                placeholder="MVR / unit"
+                type="number"
+                min="0"
+                step="0.01"
+                style={{ width: 110, height: 36, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 8px', fontFamily: 'inherit' }}
+              />
+              <Btn small variant="secondary" disabled={busy} onClick={() => void addQuote()}>Add quote</Btn>
+              <Btn small disabled={busy || quotes.length === 0} onClick={() => void buyFromCheapest()}>
+                Buy from cheapest
+              </Btn>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

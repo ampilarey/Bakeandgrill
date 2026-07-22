@@ -246,11 +246,16 @@ class ForecastController extends Controller
 
     public function restockIntelligence(Request $request): JsonResponse
     {
+        $includeWaste = $request->has('include_waste')
+            ? filter_var($request->query('include_waste'), FILTER_VALIDATE_BOOLEAN)
+            : null;
+
         return response()->json($this->restock->restockPlan(
             (int) $request->query('lookback_days', 30),
             (int) $request->query('buy_lookback_days', 90),
             (int) $request->query('lead_days', 3),
             (int) $request->query('cover_days', 14),
+            $includeWaste,
         ));
     }
 
