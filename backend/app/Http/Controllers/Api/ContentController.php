@@ -15,10 +15,12 @@ use App\Models\ContentSchedule;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
 use App\Services\MenuImageProcessor;
+use App\Support\ContentSanitizer;
 use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ContentController extends Controller
@@ -98,8 +100,162 @@ class ContentController extends Controller
         SiteSetting::bust();
 
         return response()->json([
-            'message' => 'Content saved.',
+            'message' => 'Content published.',
             'blocks' => ContentBlockResource::collectionFromRegistry($locale),
+        ]);
+    }
+
+    /**
+     * GET /api/admin/content/drafts?scope=website&locale=en
+     */
+    public function drafts(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+        ]);
+        $locale = $data['locale'] ?? 'en';
+
+        $rows = ContentRevision::query()
+            ->where('is_draft', true)
+            ->where('scope', $data['scope'])
+            ->where('locale', $locale)
+            ->orderByDesc('id')
+            ->get(['id', 'key', 'scope', 'locale', 'value', 'user_id', 'created_at']);
+
+        $draftMap = [];
+        foreach ($rows as $row) {
+            // Newest draft wins per key.
+            if (!array_key_exists($row->key, $draftMap)) {
+                $draftMap[$row->key] = (string) ($row->value ?? '');
+            }
+        }
+
+        $savedAt = $rows->first()?->created_at?->toIso8601String();
+
+        return response()->json([
+            'scope' => $data['scope'],
+            'locale' => $locale,
+            'drafts' => $draftMap,
+            'saved_at' => $savedAt,
+        ]);
+    }
+
+    /**
+     * PUT /api/admin/content/drafts — autosave unpublished drafts (does not touch live SiteSetting).
+     */
+    public function saveDrafts(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'changes' => ['required', 'array', 'min:1'],
+            'changes.*.key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
+            'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'changes.*.locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'changes.*.value' => ['nullable'],
+        ]);
+
+        $locale = $data['locale'] ?? 'en';
+        $userId = $request->user() instanceof \App\Models\User ? $request->user()->id : null;
+        $saved = [];
+
+        DB::transaction(function () use ($data, $locale, $userId, &$saved): void {
+            foreach ($data['changes'] as $change) {
+                $key = (string) $change['key'];
+                $scope = (string) $change['scope'];
+                $changeLocale = (string) ($change['locale'] ?? $locale);
+                $value = $change['value'] ?? '';
+                if (is_array($value) || is_object($value)) {
+                    $value = json_encode($value, JSON_UNESCAPED_UNICODE);
+                }
+                $value = (string) $value;
+
+                if (ContentRegistry::isRich($key) || ContentRegistry::type($key) === 'textarea') {
+                    $value = ContentSanitizer::clean($value);
+                }
+
+                $draft = ContentRevision::query()
+                    ->where('key', $key)
+                    ->where('scope', $scope)
+                    ->where('locale', $changeLocale)
+                    ->where('is_draft', true)
+                    ->first();
+
+                if ($draft) {
+                    $draft->value = $value;
+                    $draft->user_id = $userId;
+                    $draft->created_at = now();
+                    $draft->save();
+                } else {
+                    $draft = ContentRevision::query()->create([
+                        'key' => $key,
+                        'scope' => $scope,
+                        'locale' => $changeLocale,
+                        'value' => $value,
+                        'is_draft' => true,
+                        'published_at' => null,
+                        'user_id' => $userId,
+                        'created_at' => now(),
+                    ]);
+                }
+
+                $saved[$key] = (string) ($draft->value ?? '');
+            }
+        });
+
+        $this->audit->log(
+            action: 'content.draft_saved',
+            modelType: ContentRevision::class,
+            modelId: null,
+            oldValues: [],
+            newValues: ['keys' => array_keys($saved)],
+            meta: ['locale' => $locale, 'count' => count($saved)],
+            request: $request,
+        );
+
+        return response()->json([
+            'message' => 'Draft saved.',
+            'drafts' => $saved,
+            'saved_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * GET /api/admin/content/media — browse owned content uploads for reuse.
+     */
+    public function media(Request $request): JsonResponse
+    {
+        $disk = Storage::disk('public');
+        $items = [];
+
+        foreach (['site', 'site/website', 'site/order_app'] as $dir) {
+            if (!$disk->exists($dir)) {
+                continue;
+            }
+            foreach ($disk->allFiles($dir) as $path) {
+                // Skip masters/thumbs/video posters nesting noise for thumbs — still list images.
+                if (preg_match('/\.(jpe?g|png|webp)$/i', $path) !== 1) {
+                    continue;
+                }
+                if (str_contains($path, '/masters/') || str_contains($path, '/video/')) {
+                    continue;
+                }
+                $url = '/storage/' . ltrim($path, '/');
+                $thumbCandidate = preg_replace('#^(site(?:/website|/order_app)?)/#', '$1/thumbs/', $path) ?? $path;
+                $thumbUrl = $disk->exists($thumbCandidate) ? '/storage/' . ltrim($thumbCandidate, '/') : null;
+                $items[] = [
+                    'url' => $url,
+                    'thumb_url' => $thumbUrl,
+                    'name' => basename($path),
+                    'updated_at' => date('c', $disk->lastModified($path)),
+                ];
+            }
+        }
+
+        usort($items, static fn (array $a, array $b): int => strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? '')));
+
+        return response()->json([
+            'items' => array_slice($items, 0, 200),
         ]);
     }
 
@@ -122,9 +278,12 @@ class ContentController extends Controller
             ->where('key', $key)
             ->where('scope', $data['scope'])
             ->where('locale', $locale)
+            ->where(function ($q) {
+                $q->where('is_draft', false)->orWhereNull('is_draft');
+            })
             ->orderByDesc('id')
             ->limit(50)
-            ->get(['id', 'key', 'scope', 'locale', 'value', 'user_id', 'created_at']);
+            ->get(['id', 'key', 'scope', 'locale', 'value', 'user_id', 'created_at', 'published_at']);
 
         return response()->json(['revisions' => $rows]);
     }
@@ -423,9 +582,18 @@ class ContentController extends Controller
             return response()->json(['message' => 'from and to must differ.'], 422);
         }
 
-        $value = SiteSetting::getScoped($key, $from, $locale);
-        if ($value === null || $value === '') {
-            $value = (string) (ContentRegistry::default($key) ?? '');
+        // Copy the RESOLVED source value so seed/shared content is included when the
+        // source app has no override row yet (app → shared → default).
+        if (in_array($from, ContentRegistry::APPS, true)) {
+            $resolved = ContentResolver::for($from, $locale)->get($key);
+            $value = $resolved !== null && $resolved !== ''
+                ? (string) $resolved
+                : (string) (ContentRegistry::default($key) ?? '');
+        } else {
+            $value = SiteSetting::getScoped($key, $from, $locale);
+            if ($value === null || $value === '') {
+                $value = (string) (ContentRegistry::default($key) ?? '');
+            }
         }
 
         $this->ensureRow($key, $to, $locale);
@@ -470,11 +638,10 @@ class ContentController extends Controller
         try {
             $relative = $this->processor->storeProcessed($file, $dir);
             $thumbRelative = $this->processor->storeThumbnail($file, $dir . '/thumbs');
-            $originalUrl = null;
-            if ($request->hasFile('original')) {
-                $origRelative = $this->processor->storeMaster($request->file('original'), $dir . '/masters');
-                $originalUrl = '/storage/' . ltrim($origRelative, '/');
-            }
+            // Always keep a high-res master for re-crop (prefer explicit original, else source file).
+            $masterSource = $request->hasFile('original') ? $request->file('original') : $file;
+            $origRelative = $this->processor->storeMaster($masterSource, $dir . '/masters');
+            $originalUrl = '/storage/' . ltrim($origRelative, '/');
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -512,6 +679,62 @@ class ContentController extends Controller
             'scope' => $scope,
             'locale' => $locale,
             'embed' => $isEmbedUpload,
+        ], 201);
+    }
+
+    /**
+     * Hero video upload — muted autoplay background (reuses MenuImageProcessor raw + poster).
+     */
+    public function uploadVideo(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => ['required', 'string', Rule::in(['hero_slides'])],
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm', 'max:51200'],
+            'poster' => ['required', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
+        ]);
+
+        $key = $data['key'];
+        $scope = $data['scope'];
+        $locale = $data['locale'] ?? 'en';
+        $dir = $scope === 'shared' ? 'site/video' : "site/{$scope}/video";
+
+        try {
+            $video = $request->file('video');
+            $poster = $request->file('poster');
+            $ext = strtolower((string) $video->getClientOriginalExtension()) ?: 'mp4';
+            if (!in_array($ext, ['mp4', 'webm'], true)) {
+                $ext = str_contains((string) $video->getMimeType(), 'webm') ? 'webm' : 'mp4';
+            }
+            $videoRel = $this->processor->storeRaw($video, $dir, $ext);
+            $posterRel = $this->processor->storeProcessed($poster, $dir . '/posters');
+            $thumbRel = $this->processor->storeThumbnail($poster, $dir . '/thumbs');
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $url = '/storage/' . ltrim($videoRel, '/');
+        $posterUrl = '/storage/' . ltrim($posterRel, '/');
+        $thumbUrl = '/storage/' . ltrim($thumbRel, '/');
+
+        $this->audit->log(
+            action: 'content.video_uploaded',
+            modelType: SiteSetting::class,
+            modelId: null,
+            oldValues: [],
+            newValues: ['url' => $url, 'poster_url' => $posterUrl],
+            meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale],
+            request: $request,
+        );
+
+        return response()->json([
+            'url' => $url,
+            'poster_url' => $posterUrl,
+            'thumb_url' => $thumbUrl,
+            'key' => $key,
+            'scope' => $scope,
+            'locale' => $locale,
         ], 201);
     }
 

@@ -41,13 +41,20 @@ export function VisualBlockPreview({ editor, value, appLabel }: PreviewProps) {
 function renderPreview(editor: string, value: string) {
   switch (editor) {
     case 'hero': {
-      const slide = safeParse<Record<string, string>>(value, {});
+      const parsed = safeParse<unknown>(value, []);
+      const slides = Array.isArray(parsed)
+        ? (parsed as Record<string, string>[])
+        : parsed && typeof parsed === 'object'
+          ? [parsed as Record<string, string>]
+          : [];
+      const slide = slides[0] || {};
       return (
         <div style={{ position: 'relative', minHeight: 120, borderRadius: 10, overflow: 'hidden', background: '#2a2118' }}>
           {slide.image ? (
             <img src={slide.image} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45 }} />
           ) : null}
           <div style={{ position: 'relative', padding: 16 }}>
+            <div style={{ fontSize: 10, color: '#9C8E7E', marginBottom: 6 }}>{slides.length} slide{slides.length === 1 ? '' : 's'}</div>
             {slide.eyebrow ? <div style={{ fontSize: 11, color: '#D4813A', fontWeight: 600, marginBottom: 4 }}>{slide.eyebrow}</div> : null}
             <div style={{ fontSize: 18, fontWeight: 700 }} dangerouslySetInnerHTML={{ __html: slide.title || 'Hero title' }} />
             {slide.subtitle ? <p style={{ margin: '6px 0 0', color: '#E8E0D8', fontSize: 12 }}>{slide.subtitle}</p> : null}
@@ -63,7 +70,7 @@ function renderPreview(editor: string, value: string) {
       const items = safeParse<{ icon: string; heading: string; subtext: string }[]>(value, []);
       return (
         <div className="content-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {items.slice(0, 4).map((item, i) => (
+          {items.map((item, i) => (
             <div key={i} style={{ background: '#2a2118', borderRadius: 8, padding: 10 }}>
               <div style={{ fontSize: 16 }}>{item.icon || '·'}</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>{item.heading || '—'}</div>
@@ -77,7 +84,7 @@ function renderPreview(editor: string, value: string) {
       const items = safeParse<{ icon: string; name: string; hook: string; image_url: string }[]>(value, []);
       return (
         <div className="content-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {items.slice(0, 4).map((item, i) => (
+          {items.map((item, i) => (
             <div key={i} style={{ background: '#2a2118', borderRadius: 8, overflow: 'hidden' }}>
               {item.image_url ? (
                 <img src={item.image_url} alt="" style={{ width: '100%', height: 56, objectFit: 'cover' }} />
@@ -97,7 +104,7 @@ function renderPreview(editor: string, value: string) {
       const items = safeParse<{ value: string; label: string }[]>(value, []);
       return (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {items.slice(0, 3).map((item, i) => (
+          {items.map((item, i) => (
             <div key={i} style={{ textAlign: 'center', minWidth: 72 }}>
               <div style={{ fontSize: 20, fontWeight: 800, color: '#D4813A' }}>{item.value || '—'}</div>
               <div style={{ fontSize: 11, color: '#9C8E7E' }}>{item.label}</div>
@@ -110,7 +117,7 @@ function renderPreview(editor: string, value: string) {
       const items = safeParse<{ initial: string; title: string; description: string }[]>(value, []);
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {items.slice(0, 4).map((item, i) => (
+          {items.map((item, i) => (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <div style={{ width: 28, height: 28, borderRadius: 8, background: '#D4813A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{item.initial || '?'}</div>
               <div>
@@ -126,7 +133,7 @@ function renderPreview(editor: string, value: string) {
       const items = safeParse<{ text: string }[]>(value, []);
       return (
         <ol style={{ margin: 0, paddingLeft: 18 }}>
-          {items.slice(0, 3).map((item, i) => (
+          {items.map((item, i) => (
             <li key={i} style={{ marginBottom: 6 }}>{item.text || '—'}</li>
           ))}
         </ol>

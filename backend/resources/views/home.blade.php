@@ -764,14 +764,7 @@
 
 @section('content')
 @php
-    $heroSlides = [];
-    for ($i = 1; $i <= 3; $i++) {
-        $raw   = content("hero_slide_{$i}", '{}');
-        $slide = json_decode($raw, true) ?: [];
-        if (!empty($slide['title'])) {
-            $heroSlides[] = $slide;
-        }
-    }
+    $heroSlides = \App\Domains\Content\HeroSlides::resolve(static fn (string $key, mixed $default) => content($key, $default));
     // When no slides are configured, we render 1 fallback slide — dots/nav should reflect that.
     $slideCount = count($heroSlides) > 0 ? count($heroSlides) : 1;
 
@@ -856,8 +849,26 @@
         @if(count($heroSlides) > 0)
             @foreach($heroSlides as $sIdx => $slide)
             <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;">
-                @if(!empty($slide['image']))
-                    <img src="{{ $slide['image'] }}" loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}" alt="{{ content('site_name', 'Bake & Grill') }}">
+                @php
+                    $focalX = isset($slide['image_focal_x']) ? (float) $slide['image_focal_x'] : 50;
+                    $focalY = isset($slide['image_focal_y']) ? (float) $slide['image_focal_y'] : 50;
+                    $imgAlt = $slide['image_alt'] ?? content('site_name', 'Bake & Grill');
+                @endphp
+                @if(!empty($slide['video']))
+                    <video
+                        class="banner-video"
+                        src="{{ $slide['video'] }}"
+                        poster="{{ $slide['video_poster'] ?? ($slide['image'] ?? '') }}"
+                        autoplay muted loop playsinline
+                        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ $focalX }}% {{ $focalY }}%;"
+                    ></video>
+                @elseif(!empty($slide['image']))
+                    <img
+                        src="{{ $slide['image'] }}"
+                        loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}"
+                        alt="{{ $imgAlt }}"
+                        style="object-position:{{ $focalX }}% {{ $focalY }}%;"
+                    >
                 @endif
                 <div class="banner-overlay">
                     @if(!empty($slide['eyebrow']))
@@ -1060,7 +1071,7 @@
                 <div class="cat-img">
                     @if(!empty($cat['image_url']))
                         <img src="{{ $cat['image_url'] }}"
-                             alt="{{ $cat['name'] ?? '' }}"
+                             alt="{{ $cat['image_alt'] ?? ($cat['name'] ?? '') }}"
                              data-fallback-class="cat-img-placeholder"
                              data-fallback-icon="{{ $cat['icon'] ?? '🍽️' }}">
                     @else

@@ -10,7 +10,7 @@ namespace App\Support;
 final class ContentSanitizer
 {
     /** @var list<string> */
-    private const ALLOWED_TAGS = ['br', 'em', 'strong', 'a', 'p', 'ul', 'ol', 'li'];
+    private const ALLOWED_TAGS = ['br', 'em', 'strong', 'b', 'i', 'a', 'p', 'ul', 'ol', 'li'];
 
     public static function clean(?string $html): string
     {
@@ -27,6 +27,10 @@ final class ContentSanitizer
 
         $allowed = '<' . implode('><', self::ALLOWED_TAGS) . '>';
         $clean = strip_tags($html, $allowed);
+
+        // Normalise browser execCommand tags to semantic equivalents.
+        $clean = str_ireplace(['<b>', '</b>'], ['<strong>', '</strong>'], $clean);
+        $clean = str_ireplace(['<i>', '</i>'], ['<em>', '</em>'], $clean);
 
         // Restrict <a> to http(s)/mailto/relative and drop other attributes.
         $clean = preg_replace_callback(

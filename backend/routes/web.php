@@ -39,6 +39,11 @@ Route::middleware('service.banner')->group(function () {
     Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
     Route::get('/refund', [HomeController::class, 'refund'])->name('refund');
 });
+
+// Staff-signed Content Studio website preview (draft overlay; never listed publicly).
+Route::get('/admin/preview/website/home', [App\Http\Controllers\ContentWebsitePreviewController::class, 'home'])
+    ->name('content.preview.website')
+    ->middleware('signed');
 Route::redirect('/menu', '/order/menu', 301)->name('menu');
 Route::redirect('/privacy', '/order/privacy', 301)->name('privacy');
 

@@ -1,17 +1,21 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import ContentStudioPage from '../pages/ContentStudio/ContentStudioPage';
+import { AppContentEditor } from '../pages/ContentStudio/AppContentEditor';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 
 vi.mock('../api/content', () => ({
   getContentBlocks: vi.fn(),
   getContentSchedules: vi.fn(async () => ({ schedules: [] })),
+  getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
+  saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
+  getContentMedia: vi.fn(async () => ({ items: [] })),
   updateContent: vi.fn(),
   shareContentBlock: vi.fn(),
   splitContentBlock: vi.fn(),
   copyContentBlock: vi.fn(),
+  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -19,6 +23,13 @@ vi.mock('../api/content', () => ({
   restoreContentRevision: vi.fn(),
   scheduleContent: vi.fn(),
   cancelContentSchedule: vi.fn(),
+  createContentPreviewToken: vi.fn(async () => ({
+    token: 't',
+    website_url: 'https://example.test/preview',
+    order_app_url: 'https://example.test/order/?previewToken=t',
+    expires_in: 900,
+  })),
+  uploadContentVideo: vi.fn(),
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
@@ -30,51 +41,39 @@ vi.mock('../components/ui', async () => {
   };
 });
 
-const heroShared = JSON.stringify({
-  image: '/images/a.jpg',
-  eyebrow: 'Shared eyebrow',
-  title: 'Shared title',
-  subtitle: 'Sub',
-  cta_text: 'Order',
-  cta_url: '/order/',
-  cta2_text: 'Menu',
-  cta2_url: '/menu',
-});
-
-const heroWebsite = JSON.stringify({
-  image: '/images/w.jpg',
-  eyebrow: 'Web eyebrow',
-  title: 'Web title',
-  subtitle: 'Web sub',
-  cta_text: 'Order',
-  cta_url: '/order/',
-  cta2_text: 'Menu',
-  cta2_url: '/menu',
-});
+const heroSlides = JSON.stringify([
+  {
+    image: '/images/a.jpg',
+    eyebrow: 'Shared eyebrow',
+    title: 'Shared title',
+    subtitle: 'Sub',
+    cta_text: 'Order',
+    cta_url: '/order/',
+    cta2_text: 'Menu',
+    cta2_url: '/menu',
+  },
+]);
 
 const categoriesShared = JSON.stringify([
   { icon: '🥐', label: 'Bakery', name: 'Pastries', hook: 'Fresh', image_url: '', link: '/menu' },
-  { icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' },
-  { icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' },
-  { icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' },
 ]);
 
-function heroBlock(state: 'shared' | 'split' = 'shared'): ContentBlock {
+function heroBlock(): ContentBlock {
   return {
-    key: 'hero_slide_1',
-    label: 'Hero Slide 1',
+    key: 'hero_slides',
+    label: 'Hero Slides',
     group: 'Hero',
     type: 'json',
     editor: 'hero',
     apps: ['website', 'order_app'],
     shareable: true,
     public: true,
-    shared: heroShared,
-    website: state === 'split' ? heroWebsite : null,
-    order_app: state === 'split' ? heroShared : null,
-    resolved_website: state === 'split' ? heroWebsite : heroShared,
-    resolved_order_app: heroShared,
-    state,
+    shared: heroSlides,
+    website: null,
+    order_app: null,
+    resolved_website: heroSlides,
+    resolved_order_app: heroSlides,
+    state: 'shared',
   };
 }
 
@@ -97,29 +96,23 @@ function categoriesBlock(): ContentBlock {
   };
 }
 
-describe('ContentStudio visual editors', () => {
+describe('ContentStudio visual editors (per-app)', () => {
   beforeEach(() => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
       locales: ['en', 'dv'],
-      blocks: [heroBlock('shared'), categoriesBlock()],
+      blocks: [heroBlock(), categoriesBlock()],
     });
     vi.mocked(contentApi.uploadContentImage).mockResolvedValue({
       url: '/storage/site/website/hero.jpg',
       thumb_url: '/storage/site/website/thumbs/hero.jpg',
     });
-    vi.mocked(contentApi.splitContentBlock).mockResolvedValue({
-      blocks: [heroBlock('split'), categoriesBlock()],
-    });
-    vi.mocked(contentApi.shareContentBlock).mockResolvedValue({
-      blocks: [heroBlock('shared'), categoriesBlock()],
-    });
   });
 
-  it('hero editor edits a slide field into the active shared draft', async () => {
+  it('hero editor edits a slide field into the active website draft', async () => {
     render(
       <MemoryRouter>
-        <ContentStudioPage />
+        <AppContentEditor app="website" />
       </MemoryRouter>,
     );
 
@@ -132,15 +125,14 @@ describe('ContentStudio visual editors', () => {
     });
     expect(screen.getByDisplayValue('Edited eyebrow')).toBeTruthy();
     await waitFor(() => {
-      const previews = screen.getAllByTestId('content-live-preview');
-      expect(previews.some((el) => el.textContent?.includes('Edited eyebrow'))).toBe(true);
+      expect(screen.getByTestId('live-preview-frame')).toBeTruthy();
     });
   });
 
-  it('category image upload sets the scoped draft image_url via crop endpoint', async () => {
+  it('category image upload sets the app-scoped draft image_url via crop endpoint', async () => {
     render(
       <MemoryRouter>
-        <ContentStudioPage />
+        <AppContentEditor app="website" />
       </MemoryRouter>,
     );
 
@@ -158,7 +150,7 @@ describe('ContentStudio visual editors', () => {
     await waitFor(() => {
       expect(contentApi.uploadContentImage).toHaveBeenCalledWith(
         'homepage_categories',
-        'shared',
+        'website',
         expect.any(File),
         undefined,
         'en',
@@ -170,54 +162,46 @@ describe('ContentStudio visual editors', () => {
     });
   });
 
-  it('switching app tab shows that scope repeater rows after split', async () => {
-    render(
-      <MemoryRouter>
-        <ContentStudioPage />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Hero Slide 1').length).toBeGreaterThan(0);
-    });
-
-    fireEvent.click(screen.getAllByText(/Make different per app/i)[0]);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Website' })).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'Order app' })).toBeTruthy();
-    });
-
-    expect(screen.getByDisplayValue('Web eyebrow')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Order app' }));
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('Shared eyebrow')).toBeTruthy();
-    });
-  });
-
-  it('reset-to-shared clears overrides', async () => {
+  it('hides legacy hero_slide_* blocks from the editor list', async () => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
       locales: ['en', 'dv'],
-      blocks: [heroBlock('split'), categoriesBlock()],
+      blocks: [
+        heroBlock(),
+        {
+          ...heroBlock(),
+          key: 'hero_slide_1',
+          label: 'Hero Slide 1 (legacy)',
+          editor: null,
+        },
+      ],
     });
-
-    window.confirm = vi.fn(() => true);
 
     render(
       <MemoryRouter>
-        <ContentStudioPage />
+        <AppContentEditor app="website" />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Reset to shared/i)).toBeTruthy();
+      expect(screen.getAllByText('Hero Slides').length).toBeGreaterThan(0);
     });
+    expect(screen.queryByText('Hero Slide 1 (legacy)')).toBeNull();
+  });
 
-    fireEvent.click(screen.getByText(/Reset to shared/i));
+  it('does not expose reset-to-shared or shareContentBlock', async () => {
+    render(
+      <MemoryRouter>
+        <AppContentEditor app="website" />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
-      expect(contentApi.shareContentBlock).toHaveBeenCalledWith('hero_slide_1', 'en');
+      expect(screen.getAllByText('Hero Slides').length).toBeGreaterThan(0);
     });
+
+    expect(screen.queryByText(/Reset to shared/i)).toBeNull();
+    expect(contentApi.shareContentBlock).not.toHaveBeenCalled();
+    expect(contentApi.splitContentBlock).not.toHaveBeenCalled();
   });
 });

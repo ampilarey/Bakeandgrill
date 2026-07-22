@@ -27,6 +27,7 @@ export interface SiteSettings {
   delivery_eta?: string;
   delivery_time?: string;
   trust_items?: string;
+  hero_slides?: string;
   hero_slide_1?: string;
   hero_slide_2?: string;
   hero_slide_3?: string;
@@ -99,6 +100,10 @@ export interface TrustItemRow {
 
 export interface HeroSlideRow {
   image?: string;
+  image_master?: string;
+  image_focal_x?: number | string;
+  image_focal_y?: number | string;
+  image_alt?: string;
   eyebrow?: string;
   title?: string;
   subtitle?: string;
@@ -106,6 +111,8 @@ export interface HeroSlideRow {
   cta_url?: string;
   cta2_text?: string;
   cta2_url?: string;
+  video?: string;
+  video_poster?: string;
 }
 
 export interface HomepageCategoryRow {
@@ -114,6 +121,7 @@ export interface HomepageCategoryRow {
   name?: string;
   hook?: string;
   image_url?: string;
+  image_alt?: string;
   link?: string;
 }
 
@@ -176,6 +184,23 @@ function parseTrustItems(raw: string | undefined | null): TrustItemRow[] {
 }
 
 function parseHeroSlides(rawMap: Record<string, string | undefined>): HeroSlideRow[] {
+  const arrayRaw = rawMap.hero_slides;
+  if (arrayRaw) {
+    try {
+      const parsed = JSON.parse(arrayRaw) as unknown;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter(
+          (slide): slide is HeroSlideRow =>
+            !!slide && typeof slide === 'object' && !!(slide as HeroSlideRow).title
+            && String((slide as HeroSlideRow).title).trim() !== '',
+        );
+      }
+    } catch {
+      /* fall through to legacy */
+    }
+  }
+
+  // Legacy fallback: hero_slide_1/2/3 during transition.
   const out: HeroSlideRow[] = [];
   for (let i = 1; i <= 3; i++) {
     const raw = rawMap[`hero_slide_${i}`];
@@ -258,7 +283,15 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       }
     };
 
-    fetch(SITE_SETTINGS_URL)
+    const previewToken = new URLSearchParams(window.location.search).get('previewToken');
+    const apiBase =
+      ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+        (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api'));
+    const previewUrl = previewToken
+      ? `${apiBase}/content/preview?token=${encodeURIComponent(previewToken)}`
+      : null;
+
+    fetch(previewUrl || SITE_SETTINGS_URL)
       .then(async (r) => {
         if (!r.ok) throw new Error(`content ${r.status}`);
         return r.json();
@@ -266,14 +299,15 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       .then((body: { content?: Record<string, string | null>; settings?: Record<string, string | null> }) => {
         apply(body.content ?? body.settings);
       })
-      .catch(() =>
-        fetch(SITE_SETTINGS_FALLBACK_URL)
+      .catch(() => {
+        if (previewToken) return; // never fall back to public content when previewing
+        return fetch(SITE_SETTINGS_FALLBACK_URL)
           .then((r) => r.json())
           .then(({ settings: s }: { settings: Record<string, string | null> }) => apply(s))
           .catch((e) => {
             if (import.meta.env.DEV) console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
-          })
-      );
+          });
+      });
   }, []);
 
   // Optional brand accent from CMS (valid hex only).
@@ -302,7 +336,7 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   const trustItems = useMemo(() => parseTrustItems(settings.trust_items), [settings.trust_items]);
   const heroSlides = useMemo(
     () => parseHeroSlides(settings as Record<string, string | undefined>),
-    [settings.hero_slide_1, settings.hero_slide_2, settings.hero_slide_3],
+    [settings.hero_slides, settings.hero_slide_1, settings.hero_slide_2, settings.hero_slide_3],
   );
   const homepageCategories = useMemo(
     () => parseHomepageCategories(settings.homepage_categories),

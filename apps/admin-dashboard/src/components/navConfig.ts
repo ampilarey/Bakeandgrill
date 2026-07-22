@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Menu, Zap, MapPin,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate,
+  AlertTriangle, LayoutTemplate, Smartphone,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -116,7 +116,8 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Wrench,
     items: [
       { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
-      { to: '/content-studio', icon: LayoutTemplate, label: 'Content Studio', permission: 'website.manage', description: 'Visual editors & per-app marketing copy' },
+      { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website marketing copy & visuals' },
+      { to: '/content/order-app', icon: Smartphone, label: 'Order App Content', permission: 'website.manage', description: 'Order app marketing copy & visuals' },
       { to: '/settings',      icon: Settings,    label: 'Settings',       permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Roles, SMS notifications & ops' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },

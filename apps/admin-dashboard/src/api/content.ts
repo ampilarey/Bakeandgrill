@@ -1,6 +1,8 @@
 import { req } from './client';
 
 export type ContentScope = 'shared' | 'website' | 'order_app';
+/** App scopes used by the two Content Studio editors (excludes invisible seed `shared`). */
+export type ContentApp = 'website' | 'order_app';
 export type ContentLocale = 'en' | 'dv';
 
 export type ContentEditorHint =
@@ -41,6 +43,8 @@ export type ContentRevision = {
   value: string | null;
   user_id: number | null;
   created_at: string;
+  published_at?: string | null;
+  is_draft?: boolean;
 };
 
 export type ContentScheduleRow = {
@@ -79,6 +83,26 @@ export async function updateContent(
   });
 }
 
+/** Load autosaved drafts for an app scope (never public). */
+export async function getContentDrafts(
+  scope: ContentScope,
+  locale: ContentLocale = 'en',
+): Promise<{ drafts: Record<string, string>; saved_at: string | null }> {
+  const q = new URLSearchParams({ scope, locale });
+  return req(`/admin/content/drafts?${q}`);
+}
+
+/** Autosave unpublished drafts — does not promote to live SiteSetting. */
+export async function saveContentDrafts(
+  changes: Array<{ key: string; scope: ContentScope; value: string | null; locale?: ContentLocale }>,
+  locale: ContentLocale = 'en',
+): Promise<{ drafts: Record<string, string>; saved_at: string }> {
+  return req('/admin/content/drafts', {
+    method: 'PUT',
+    body: JSON.stringify({ locale, changes }),
+  });
+}
+
 export async function shareContentBlock(key: string, locale: ContentLocale = 'en'): Promise<{ blocks: ContentBlock[] }> {
   return req(`/admin/content/${encodeURIComponent(key)}/share`, {
     method: 'POST',
@@ -105,6 +129,21 @@ export async function copyContentBlock(
   });
 }
 
+/** Client-side section copy — loops per-block copy (no batch endpoint). */
+export async function copyContentSection(
+  keys: string[],
+  from: ContentScope,
+  to: ContentScope,
+  locale: ContentLocale = 'en',
+): Promise<{ blocks: ContentBlock[] }> {
+  let blocks: ContentBlock[] = [];
+  for (const key of keys) {
+    const res = await copyContentBlock(key, from, to, locale);
+    blocks = res.blocks;
+  }
+  return { blocks };
+}
+
 export async function uploadContentImage(
   key: string,
   scope: ContentScope,
@@ -119,6 +158,23 @@ export async function uploadContentImage(
   form.append('file', file);
   if (original) form.append('original', original);
   return req('/admin/content/upload', { method: 'POST', body: form });
+}
+
+/** Hero video — reuses item video pipeline (raw clip + poster). */
+export async function uploadContentVideo(
+  key: string,
+  scope: ContentScope,
+  video: File,
+  poster: File,
+  locale: ContentLocale = 'en',
+): Promise<{ url: string; poster_url: string; thumb_url?: string }> {
+  const form = new FormData();
+  form.append('key', key);
+  form.append('scope', scope);
+  form.append('locale', locale);
+  form.append('video', video);
+  form.append('poster', poster);
+  return req('/admin/content/upload-video', { method: 'POST', body: form });
 }
 
 export async function getContentRevisions(
@@ -170,4 +226,26 @@ export async function importContent(bundle: ContentExportBundle): Promise<{ appl
     method: 'POST',
     body: JSON.stringify(bundle),
   });
+}
+
+export async function createContentPreviewToken(
+  app: ContentApp,
+  overrides: Record<string, string>,
+  locale: ContentLocale = 'en',
+): Promise<{ token: string; website_url: string; order_app_url: string; expires_in: number }> {
+  return req('/admin/content/preview-token', {
+    method: 'POST',
+    body: JSON.stringify({ app, locale, overrides }),
+  });
+}
+
+export type ContentMediaItem = {
+  url: string;
+  thumb_url?: string | null;
+  name: string;
+  updated_at?: string | null;
+};
+
+export async function getContentMedia(): Promise<{ items: ContentMediaItem[] }> {
+  return req('/admin/content/media');
 }

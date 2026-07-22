@@ -100,7 +100,7 @@ export function CategoryShortcuts({ categories, eyebrow, title }: Props) {
                   {img ? (
                     <img
                       src={img}
-                      alt=""
+                      alt={cat.image_alt || label}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
