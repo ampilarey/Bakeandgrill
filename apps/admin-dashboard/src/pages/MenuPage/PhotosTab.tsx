@@ -135,6 +135,13 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     } catch (e) { setError((e as Error).message); }
   };
 
+  const setAltText = async (photoId: number, altText: string) => {
+    try {
+      const { photo } = await updateItemPhoto(itemId, photoId, { alt_text: altText });
+      setPhotos((list) => list.map((ph) => (ph.id === photoId ? { ...ph, alt_text: photo.alt_text ?? altText } : ph)));
+    } catch (e) { setError((e as Error).message); }
+  };
+
   if (loading) return <div style={{ padding: 24, textAlign: 'center', color: '#9C8E7E', fontSize: 14 }}>Loading photos…</div>;
 
   return (
@@ -189,7 +196,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
             <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid #D4813A' : '2px solid #E8E0D8' }}>
               <img
                 src={resolveMediaUrl(ph.url)}
-                alt=""
+                alt={ph.alt_text || ''}
                 style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', background: '#F8F6F3' }}
               />
               {ph.is_primary && (
@@ -197,6 +204,25 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                   Primary
                 </div>
               )}
+              <div style={{ padding: '6px 6px 0' }}>
+                <input
+                  type="text"
+                  defaultValue={ph.alt_text ?? ''}
+                  placeholder="Alt text (a11y)"
+                  aria-label={`Alt text for photo ${ph.id}`}
+                  onBlur={(e) => {
+                    const next = e.target.value.trim();
+                    if (next !== (ph.alt_text ?? '').trim()) {
+                      void setAltText(ph.id, next);
+                    }
+                  }}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', minHeight: 32,
+                    border: '1px solid #E8E0D8', borderRadius: 6, padding: '4px 6px',
+                    fontSize: 11, fontFamily: 'inherit', color: '#1C1408', background: '#fff',
+                  }}
+                />
+              </div>
               <div style={{ display: 'flex', gap: 4, padding: '6px', flexWrap: 'wrap' }}>
                 <button
                   type="button"

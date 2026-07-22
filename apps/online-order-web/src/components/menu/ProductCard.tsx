@@ -39,6 +39,11 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
   const needsConfigure =
     !!item.has_variants || (item.packaging_options?.length ?? 0) > 1;
 
+  const mediaAlt =
+    item.photos?.find((p) => p.is_primary)?.alt_text
+    || item.photos?.find((p) => p.alt_text)?.alt_text
+    || item.name;
+
   const slides = useMemo(
     () => buildItemSlideUrls(item, { preferThumb: true }),
     [item.image_url, item.thumb_url, item.photos],
@@ -113,7 +118,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
     >
       {/* ── Image (auto-slides when Image + Photos exist) ── */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <MenuImageSlider slides={slides} alt={item.name} />
+        <MenuImageSlider slides={slides} alt={mediaAlt} />
 
         {/* Unavailable overlay */}
         {isUnavailable && (
