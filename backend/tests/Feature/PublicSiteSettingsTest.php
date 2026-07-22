@@ -33,7 +33,6 @@ class PublicSiteSettingsTest extends TestCase
             'home_hero_fallback_title',
             'nav_order_cta_text',
             'footer_quick_links_heading',
-            'home_open_badge_text',
             'cta_band_headline',
             'home_categories_eyebrow',
             'legal_privacy_body',
@@ -68,7 +67,7 @@ class PublicSiteSettingsTest extends TestCase
     public function test_public_api_returns_updated_menu_page_title(): void
     {
         SiteSetting::updateOrCreate(
-            ['key' => 'menu_page_title'],
+            ['key' => 'menu_page_title', 'scope' => 'shared'],
             [
                 'value' => 'Test Menu Headline',
                 'type' => 'text',

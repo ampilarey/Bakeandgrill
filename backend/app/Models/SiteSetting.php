@@ -4,51 +4,68 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domains\Content\ContentResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class SiteSetting extends Model
 {
-    protected $fillable = ['key', 'value', 'type', 'group', 'label', 'description', 'is_public'];
+    protected $fillable = ['key', 'scope', 'value', 'type', 'group', 'label', 'description', 'is_public'];
 
     protected $casts = [
         'is_public' => 'boolean',
     ];
 
+    /**
+     * Back-compat: always returns the shared-scope value (or default).
+     */
     public static function get(string $key, mixed $default = null): mixed
     {
-        // Cache the raw DB value only — never cache the caller's default,
-        // so different callers can supply different fallbacks for the same key.
-        $value = Cache::rememberForever("site_setting.{$key}", function () use ($key) {
-            return static::where('key', $key)->value('value');
-        });
+        $value = self::getScoped($key, 'shared');
 
-        // Treat null or empty-string DB values as "not set" and fall back to default.
         return ($value !== null && $value !== '') ? $value : $default;
     }
 
     /**
-     * Save a setting value.
-     *
-     * Critical behaviour: type / group / label / is_public are SEEDED metadata
-     * that the admin UI relies on to render the right editor (JSON vs image vs
-     * color picker), keep settings in the correct tab, and expose public-only
-     * keys without auth. They must NOT be clobbered on update.
-     *
-     * Pre-fix `updateOrCreate` re-applied {type:'text', group:'System',
-     * label:$key, is_public:false} to every existing row on every save —
-     * meaning a single PUT /api/site-settings would silently downgrade every
-     * hero/category JSON to plain text and flip every public key to private,
-     * breaking the public website until the seeder was re-run.
+     * Read a single scoped row value (null if missing / empty).
      */
-    public static function set(string $key, mixed $value): void
+    public static function getScoped(string $key, string $scope = 'shared'): mixed
     {
-        $row = static::firstOrNew(['key' => $key]);
+        $cacheKey = self::cacheKeyFor($key, $scope);
+
+        $value = Cache::rememberForever($cacheKey, function () use ($key, $scope) {
+            $query = static::query()->where('key', $key);
+            if (self::hasScopeColumn()) {
+                $query->where('scope', $scope);
+            }
+
+            return $query->value('value');
+        });
+
+        return $value;
+    }
+
+    /**
+     * Save a setting value for a scope (default shared — back-compat).
+     */
+    public static function set(string $key, mixed $value, string $scope = 'shared'): void
+    {
+        $attrs = ['key' => $key];
+        if (self::hasScopeColumn()) {
+            $attrs['scope'] = $scope;
+        }
+
+        $row = static::firstOrNew($attrs);
 
         $row->value = is_array($value) || is_object($value)
             ? json_encode($value, JSON_UNESCAPED_UNICODE)
             : $value;
+
+        if (self::hasScopeColumn() && !$row->exists) {
+            $row->scope = $scope;
+        }
 
         // Only set metadata fields when the row is brand new — otherwise
         // we'd overwrite seeded type/group/label/is_public.
@@ -61,19 +78,37 @@ class SiteSetting extends Model
 
         $row->save();
 
+        Cache::forget(self::cacheKeyFor($key, $scope));
+        // Legacy shared cache key
         Cache::forget("site_setting.{$key}");
         Cache::forget('site_settings.public');
         Cache::forget('site_settings.all');
+        ContentResolver::bust();
     }
 
     public static function getGroup(string $group): Collection
     {
-        return static::where('group', $group)->orderBy('id')->get();
+        $query = static::where('group', $group);
+        if (self::hasScopeColumn()) {
+            $query->where('scope', 'shared');
+        }
+
+        return $query->orderBy('id')->get();
     }
 
+    /**
+     * Public map for the order app (resolved: override → shared → default).
+     * Keeps /site-settings/public working for the deployed bundle.
+     *
+     * @return array<string, mixed>
+     */
     public static function allPublic(): array
     {
         return Cache::rememberForever('site_settings.public', function () {
+            if (class_exists(ContentResolver::class) && self::hasScopeColumn()) {
+                return ContentResolver::for('order_app')->allPublic();
+            }
+
             return static::where('is_public', true)->pluck('value', 'key')->toArray();
         });
     }
@@ -82,5 +117,25 @@ class SiteSetting extends Model
     {
         Cache::forget('site_settings.public');
         Cache::forget('site_settings.all');
+        foreach (['website', 'order_app'] as $app) {
+            Cache::forget("content.resolved.{$app}");
+        }
+    }
+
+    public static function hasScopeColumn(): bool
+    {
+        static $has = null;
+        if ($has === null) {
+            $has = Schema::hasColumn((new static)->getTable(), 'scope');
+        }
+
+        return $has;
+    }
+
+    private static function cacheKeyFor(string $key, string $scope): string
+    {
+        return $scope === 'shared'
+            ? "site_setting.{$key}"
+            : "site_setting.{$key}.{$scope}";
     }
 }
