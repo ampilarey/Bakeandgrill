@@ -17,9 +17,19 @@ class ItemPhoto extends Model
         'alt_text',
         'sort_order',
         'is_primary',
+        'media_type',
+        'poster_url',
     ];
 
-    protected $casts = ['sort_order' => 'integer', 'is_primary' => 'boolean'];
+    protected $casts = [
+        'sort_order' => 'integer',
+        'is_primary' => 'boolean',
+    ];
+
+    public function isVideo(): bool
+    {
+        return ($this->media_type ?? 'image') === 'video';
+    }
 
     public function item(): BelongsTo
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\StoreItemVideoRequest;
 use App\Models\Item;
 use App\Models\ItemPhoto;
 use App\Services\MenuImageProcessor;
@@ -30,6 +31,10 @@ class ItemPhotoController extends Controller
 
     public function store(Request $request, int $itemId): JsonResponse
     {
+        if ($request->input('media_type') === 'video') {
+            return $this->storeVideo($request, $itemId);
+        }
+
         $item = Item::findOrFail($itemId);
 
         try {
@@ -90,6 +95,60 @@ class ItemPhotoController extends Controller
             'url' => $url,
             'original_url' => $originalUrl,
             'thumb_url' => $thumbUrl,
+            'alt_text' => $validated['alt_text'] ?? null,
+            'sort_order' => $maxOrder + 1,
+            'is_primary' => (bool) ($validated['is_primary'] ?? false),
+            'media_type' => 'image',
+        ]);
+
+        return response()->json(['photo' => $photo], 201);
+    }
+
+    /**
+     * Gallery video clip — raw file + required poster image. No transcoding.
+     */
+    private function storeVideo(Request $request, int $itemId): JsonResponse
+    {
+        $item = Item::findOrFail($itemId);
+        $form = new StoreItemVideoRequest;
+        $validated = $request->validate($form->rules(), $form->messages());
+
+        $video = $request->file('video');
+        $poster = $request->file('poster');
+        $allowedVideo = config('menu_media.video.mimetypes', ['video/mp4', 'video/webm']);
+        if (!in_array((string) $video->getMimeType(), $allowedVideo, true)) {
+            return response()->json(['message' => 'Video must be MP4 or WebM.'], 422);
+        }
+
+        try {
+            $ext = strtolower((string) $video->getClientOriginalExtension()) ?: 'mp4';
+            if (!in_array($ext, config('menu_media.video.extensions', ['mp4', 'webm']), true)) {
+                $ext = str_contains((string) $video->getMimeType(), 'webm') ? 'webm' : 'mp4';
+            }
+            $videoRel = $this->processor->storeRaw(
+                $video,
+                "item-photos/{$itemId}/video",
+                $ext,
+            );
+            $posterRel = $this->processor->storeProcessed($poster, "item-photos/{$itemId}/posters");
+            $thumbRel = $this->processor->storeThumbnail($poster, "item-photos/{$itemId}/thumbs");
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($validated['is_primary'] ?? false) {
+            $item->photos()->update(['is_primary' => false]);
+        }
+
+        $maxOrder = $item->photos()->max('sort_order') ?? 0;
+
+        $photo = ItemPhoto::create([
+            'item_id' => $item->id,
+            'url' => '/storage/' . ltrim($videoRel, '/'),
+            'original_url' => null,
+            'thumb_url' => '/storage/' . ltrim($thumbRel, '/'),
+            'poster_url' => '/storage/' . ltrim($posterRel, '/'),
+            'media_type' => 'video',
             'alt_text' => $validated['alt_text'] ?? null,
             'sort_order' => $maxOrder + 1,
             'is_primary' => (bool) ($validated['is_primary'] ?? false),
