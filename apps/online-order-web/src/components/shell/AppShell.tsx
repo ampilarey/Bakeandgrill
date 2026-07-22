@@ -6,7 +6,6 @@ import { useLanguage } from '../../context/LanguageContext';
 import { ShellNavProvider, useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useCart } from '../../context/CartContext';
-import { ServiceBanner } from '../ServiceBanner';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getCustomerMe } from '../../api';
 import { isEventFlowPath } from '../../utils/eventFlowPath';
@@ -65,8 +64,6 @@ function AppShellChrome() {
       </a>
 
       {isDesktopShell && <TopNav />}
-
-      <ServiceBanner />
 
       {annEnabled && annText && (
         <div

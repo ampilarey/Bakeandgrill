@@ -19,10 +19,9 @@ use Illuminate\Support\Facades\View;
  * work. This middleware is applied ONLY to the public marketing routes (see
  * `HomeController` route registrations in `routes/web.php`).
  *
- * Banner precedence — the FIRST public, non-available key wins (the
- * customer only sees ONE banner even if several services are down). We skip
- * the marketing_site key itself because that path serves the full-screen
- * maintenance view instead.
+ * Top amber banners are intentionally not shown (order-app hero / gate UI
+ * already covers ordering status). `marketing_site` still serves the
+ * full-screen maintenance view.
  */
 class ShareServiceAvailability
 {
@@ -55,32 +54,11 @@ class ShareServiceAvailability
             ]);
         }
 
-        // 2. Banner mode — pick the first non-marketing public key that is down.
-        $banner = null;
-        foreach ($snapshot as $key => $state) {
-            if ($key === 'marketing_site') {
-                continue;
-            }
-            if (($state['group'] ?? 'public') !== 'public') {
-                continue;
-            }
-            if ($state['available'] ?? true) {
-                continue;
-            }
-            if (!$state['public_message']) {
-                continue;
-            }
-            $banner = [
-                'service_key' => $key,
-                'message' => $state['public_message'],
-                'alternatives' => $state['alternatives'] ?? [],
-                'retry_at' => $state['ends_at'] ?? null,
-                'notify_enabled' => (bool) ($state['notify_enabled'] ?? false),
-            ];
-            break;
-        }
-
-        View::share('serviceBanner', $banner);
+        // 2. No top-of-page amber banner. Ordering/delivery status already
+        // surfaces in the order-app hero (OpeningStatusBadge / ordering
+        // status). A second global strip was redundant and confusing.
+        // Full-page `marketing_site` maintenance (above) is unchanged.
+        View::share('serviceBanner', null);
         View::share('serviceMaintenance', null);
 
         return $next($request);

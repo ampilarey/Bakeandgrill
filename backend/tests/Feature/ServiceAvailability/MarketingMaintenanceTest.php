@@ -62,7 +62,7 @@ class MarketingMaintenanceTest extends TestCase
         $this->get('/hours')->assertStatus(503)->assertViewIs('maintenance');
     }
 
-    public function test_service_banner_is_shared_when_a_public_service_is_down(): void
+    public function test_no_top_banner_when_a_public_service_is_down(): void
     {
         app(ServiceAvailabilityService::class)->setState('online_checkout', [
             'status' => 'unavailable',
@@ -74,9 +74,9 @@ class MarketingMaintenanceTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk();
-        // Banner partial output includes both the message and alternatives text.
-        $response->assertSee('Checkout paused for updates.', false);
-        $response->assertSee('pickup', false);
+        // Top amber strip intentionally disabled — order-app hero / gates own this UX.
+        $response->assertDontSee('Checkout paused for updates.', false);
+        $response->assertDontSee('site-service-banner', false);
     }
 
     public function test_no_banner_shared_when_only_internal_services_are_down(): void

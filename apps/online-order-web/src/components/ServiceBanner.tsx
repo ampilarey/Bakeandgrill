@@ -2,15 +2,13 @@ import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import type { ServiceKey } from '../api/serviceStatus';
 
 /**
- * Order-app service maintenance banner.
+ * Order-app service maintenance banner (unused in shell).
  *
- * Read-only in Stage 2 — surfaces the first disabled public service so the
- * customer sees ONE clear message. Backend is authoritative for actual
- * gating; this banner is UX.
+ * Kept for unit coverage / possible future opt-in. Not mounted in AppShell —
+ * the hero OpeningStatusBadge + ordering/delivery status already cover this
+ * UX, and a second top strip was redundant.
  *
- * Precedence order matches the plan: checkout > payment > pickup > delivery
- * > catering > registration. Umbrella `online_ordering` is checked first
- * for the "everything paused" case.
+ * Precedence: checkout > payment > pickup > delivery > catering > registration.
  */
 const BANNER_PRIORITY: ServiceKey[] = [
   'online_ordering',
