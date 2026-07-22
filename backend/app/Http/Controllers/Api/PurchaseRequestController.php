@@ -327,6 +327,24 @@ class PurchaseRequestController extends Controller
         return response()->json(['expense' => $expense, 'request' => $this->formatRequest($pr->fresh(), $user, false)]);
     }
 
+    public function autoExpenseSettings(): JsonResponse
+    {
+        return response()->json(['settings' => $this->verification->autoExpenseSettings()]);
+    }
+
+    public function updateAutoExpenseSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'auto_expense' => ['sometimes', 'boolean'],
+            'default_expense_category_id' => ['sometimes', 'nullable', 'integer', 'exists:expense_categories,id'],
+        ]);
+
+        return response()->json([
+            'settings' => $this->verification->updateAutoExpenseSettings($validated),
+            'message' => 'Purchase request expense settings saved.',
+        ]);
+    }
+
     public function promoteToInventory(Request $request, int $id, int $itemId): JsonResponse
     {
         $validated = $request->validate([

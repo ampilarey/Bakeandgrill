@@ -71,6 +71,10 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         ->middleware('permission:purchase_requests.view_own');
     Route::get('/purchase-requests/assigned-to-me', [App\Http\Controllers\Api\PurchaseRequestController::class, 'assignedToMe'])
         ->middleware('permission:purchase_requests.view_own');
+    Route::get('/purchase-requests/settings/auto-expense', [App\Http\Controllers\Api\PurchaseRequestController::class, 'autoExpenseSettings'])
+        ->middleware('permission:purchase_requests.view_all');
+    Route::patch('/purchase-requests/settings/auto-expense', [App\Http\Controllers\Api\PurchaseRequestController::class, 'updateAutoExpenseSettings'])
+        ->middleware('permission:purchase_requests.convert_to_expense');
     Route::get('/purchase-requests', [App\Http\Controllers\Api\PurchaseRequestController::class, 'index'])
         ->middleware('permission:purchase_requests.view_all');
     Route::get('/purchase-requests/{id}', [App\Http\Controllers\Api\PurchaseRequestController::class, 'show']);

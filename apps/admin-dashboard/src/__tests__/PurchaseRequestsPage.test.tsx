@@ -8,9 +8,15 @@ vi.mock("../hooks/usePermissions", () => ({
 }));
 vi.mock("../components/ui", () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn() }),
+  Toggle: ({ label, checked }: { label?: string; checked: boolean }) => (
+    <button type="button">{label ?? (checked ? "On" : "Off")}</button>
+  ),
 }));
 vi.mock("../api", () => ({
   fetchStaff: vi.fn().mockResolvedValue({ staff: [{ id: 2, name: "Buyer" }], roles: [] }),
+}));
+vi.mock("../api/finance", () => ({
+  getExpenseCategories: vi.fn().mockResolvedValue({ categories: [{ id: 1, name: "Supplies", icon: "", slug: "supplies" }] }),
 }));
 vi.mock("../api/procurement", () => ({
   fetchPurchaseRequests: vi.fn().mockResolvedValue({
@@ -18,15 +24,22 @@ vi.mock("../api/procurement", () => ({
     meta: { current_page: 1, last_page: 1, total: 1 },
   }),
   getPurchaseRequest: vi.fn(),
+  getPurchaseRequestAutoExpenseSettings: vi.fn().mockResolvedValue({
+    settings: { auto_expense: false, default_expense_category_id: null },
+  }),
+  updatePurchaseRequestAutoExpenseSettings: vi.fn(),
   approvePurchaseRequest: vi.fn(),
   rejectPurchaseRequest: vi.fn(),
   assignPurchaseRequest: vi.fn(),
   cancelPurchaseRequest: vi.fn(),
+  createPurchaseRequest: vi.fn(),
   updatePurchaseRequest: vi.fn(),
   verifyPurchaseRequestItem: vi.fn(),
   verifyAllPurchaseRequestItems: vi.fn(),
   convertPurchaseRequestToPurchase: vi.fn(),
   convertPurchaseRequestToExpense: vi.fn(),
+  promotePurchaseRequestItemToInventory: vi.fn(),
+  mergePurchaseRequests: vi.fn(),
   laarToMvr: (l: number | null) => (l == null ? "—" : (l / 100).toFixed(2)),
 }));
 

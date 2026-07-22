@@ -8,6 +8,7 @@ import {
 } from '../components/SharedUI';
 import { useToast } from '../components/ui';
 import { fetchStaff } from '../api';
+import { getExpenseCategories, type ExpenseCategory } from '../api/finance';
 import {
   approvePurchaseRequest,
   assignPurchaseRequest,
@@ -17,16 +18,19 @@ import {
   createPurchaseRequest,
   fetchPurchaseRequests,
   getPurchaseRequest,
+  getPurchaseRequestAutoExpenseSettings,
   laarToMvr,
   mergePurchaseRequests,
   promotePurchaseRequestItemToInventory,
   rejectPurchaseRequest,
   updatePurchaseRequest,
+  updatePurchaseRequestAutoExpenseSettings,
   verifyAllPurchaseRequestItems,
   verifyPurchaseRequestItem,
   type PurchaseRequest,
   type PurchaseRequestItem,
 } from '../api/procurement';
+import { Toggle } from '../components/ui';
 
 const TABS = [
   { id: 'pending', label: 'Pending', statuses: 'requested' },
@@ -87,6 +91,10 @@ export default function PurchaseRequestsPage() {
   const [promoteUnit, setPromoteUnit] = useState('pcs');
   const [promoteRop, setPromoteRop] = useState('');
   const [promoteRoq, setPromoteRoq] = useState('');
+  const [autoExpense, setAutoExpense] = useState(false);
+  const [autoExpenseSaving, setAutoExpenseSaving] = useState(false);
+  const [defaultExpenseCategoryId, setDefaultExpenseCategoryId] = useState<number | null>(null);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
 
   const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
@@ -113,6 +121,39 @@ export default function PurchaseRequestsPage() {
       setStaffOptions((res.staff ?? []).map((s) => ({ id: s.id, name: s.name })));
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    void getPurchaseRequestAutoExpenseSettings()
+      .then((res) => {
+        setAutoExpense(!!res.settings?.auto_expense);
+        setDefaultExpenseCategoryId(res.settings?.default_expense_category_id ?? null);
+      })
+      .catch(() => {});
+    void getExpenseCategories()
+      .then((res) => setExpenseCategories(res.categories ?? []))
+      .catch(() => {});
+  }, []);
+
+  const saveAutoExpenseSettings = async (next: {
+    auto_expense?: boolean;
+    default_expense_category_id?: number | null;
+  }) => {
+    if (!can('purchase_requests.convert_to_expense')) {
+      toast.error('You need convert-to-expense permission to change this setting.');
+      return;
+    }
+    setAutoExpenseSaving(true);
+    try {
+      const res = await updatePurchaseRequestAutoExpenseSettings(next);
+      setAutoExpense(!!res.settings.auto_expense);
+      setDefaultExpenseCategoryId(res.settings.default_expense_category_id ?? null);
+      toast.success('Expense settings saved.');
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setAutoExpenseSaving(false);
+    }
+  };
 
   const openDetail = async (id: number) => {
     setDetailLoading(true);
@@ -221,6 +262,52 @@ export default function PurchaseRequestsPage() {
           </Btn>
         ))}
       </div>
+
+      {can('purchase_requests.view_all') && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 16,
+            alignItems: 'center',
+            marginBottom: 16,
+            padding: '12px 14px',
+            background: '#Faf7f2',
+            borderRadius: 10,
+            border: '1px solid #E8E0D8',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>Auto-expense on verify</span>
+            <Toggle
+              checked={autoExpense}
+              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
+              onChange={(checked) => void saveAutoExpenseSettings({ auto_expense: checked })}
+              label={autoExpense ? 'On' : 'Off'}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 220px' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', whiteSpace: 'nowrap' }}>Default category</label>
+            <select
+              value={defaultExpenseCategoryId ?? ''}
+              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : null;
+                void saveAutoExpenseSettings({ default_expense_category_id: val });
+              }}
+              style={{ flex: 1, minHeight: 44, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8' }}
+            >
+              <option value="">First category (fallback)</option>
+              {expenseCategories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <span style={{ fontSize: 12, color: '#6B5D4F' }}>
+            Creates a pending expense only — never auto-posts to GST/ledger.
+          </span>
+        </div>
+      )}
 
       <TableStateBar error={error} onRetry={() => void load()} />
 

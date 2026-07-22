@@ -11,6 +11,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
+use App\Models\SiteSetting;
 use App\Models\StockMovement;
 use App\Models\SupplierPriceHistory;
 use App\Models\User;
@@ -20,6 +21,10 @@ use Illuminate\Validation\ValidationException;
 
 final class PurchaseRequestVerificationService
 {
+    public const AUTO_EXPENSE_SETTING = 'purchase_requests_auto_expense';
+
+    public const DEFAULT_CATEGORY_SETTING = 'purchase_requests_default_expense_category_id';
+
     public function __construct(
         private readonly AuditLogService $audit,
         private readonly PurchaseRequestService $requests,
@@ -74,6 +79,9 @@ final class PurchaseRequestVerificationService
                 $freshPr->update(['status' => 'closed']);
             }
 
+            $this->maybeAutoExpense($freshPr, $user, $request);
+            $freshPr = $freshPr->fresh(['items', 'requester', 'assignee', 'expense']);
+
             return [
                 'item' => $item->fresh(['inventoryItem', 'purchaseRequest']),
                 'request' => $freshPr,
@@ -95,8 +103,9 @@ final class PurchaseRequestVerificationService
 
         $pr->refresh();
         $pr->update(['status' => 'closed', 'verified_by' => $user->id]);
+        $this->maybeAutoExpense($pr->fresh(), $user, $request);
 
-        return $pr->fresh(['items', 'requester', 'assignee', 'verifier']);
+        return $pr->fresh(['items', 'requester', 'assignee', 'verifier', 'expense']);
     }
 
     public function convertToPurchase(PurchaseRequest $pr, User $user, Request $request): Purchase
@@ -178,7 +187,7 @@ final class PurchaseRequestVerificationService
         }
 
         return DB::transaction(function () use ($pr, $user, $request) {
-            $category = ExpenseCategory::query()->orderBy('id')->first();
+            $category = $this->resolveExpenseCategory();
             $amountLaar = $pr->total_actual_laar ?? 0;
             $receiptPath = $pr->attachments()->where('type', 'receipt')->latest('id')->value('file_path');
 
@@ -205,6 +214,85 @@ final class PurchaseRequestVerificationService
 
             return $expense->fresh(['category', 'supplier']);
         });
+    }
+
+    /**
+     * When auto-expense is ON and the request is fully verified (closed) with a
+     * positive actual total and no linked expense yet, create a pending expense.
+     */
+    public function maybeAutoExpense(PurchaseRequest $pr, User $user, Request $request): ?Expense
+    {
+        if (!$this->autoExpenseEnabled()) {
+            return null;
+        }
+
+        $pr->refresh();
+        if ($pr->expense_id) {
+            return Expense::find($pr->expense_id);
+        }
+
+        if ($pr->status !== 'closed') {
+            return null;
+        }
+
+        if (($pr->total_actual_laar ?? 0) <= 0) {
+            return null;
+        }
+
+        return $this->convertToExpense($pr, $user, $request);
+    }
+
+    public function autoExpenseEnabled(): bool
+    {
+        return filter_var(SiteSetting::get(self::AUTO_EXPENSE_SETTING, '0'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /** @return array{auto_expense: bool, default_expense_category_id: int|null} */
+    public function autoExpenseSettings(): array
+    {
+        $raw = SiteSetting::get(self::DEFAULT_CATEGORY_SETTING);
+
+        return [
+            'auto_expense' => $this->autoExpenseEnabled(),
+            'default_expense_category_id' => ($raw !== null && $raw !== '') ? (int) $raw : null,
+        ];
+    }
+
+    /**
+     * @param array{auto_expense?: bool, default_expense_category_id?: int|null} $input
+     * @return array{auto_expense: bool, default_expense_category_id: int|null}
+     */
+    public function updateAutoExpenseSettings(array $input): array
+    {
+        if (array_key_exists('auto_expense', $input)) {
+            SiteSetting::set(
+                self::AUTO_EXPENSE_SETTING,
+                filter_var($input['auto_expense'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
+            );
+        }
+
+        if (array_key_exists('default_expense_category_id', $input)) {
+            $id = $input['default_expense_category_id'];
+            SiteSetting::set(
+                self::DEFAULT_CATEGORY_SETTING,
+                $id === null || $id === '' ? null : (string) (int) $id,
+            );
+        }
+
+        return $this->autoExpenseSettings();
+    }
+
+    private function resolveExpenseCategory(): ?ExpenseCategory
+    {
+        $raw = SiteSetting::get(self::DEFAULT_CATEGORY_SETTING);
+        if ($raw !== null && $raw !== '') {
+            $configured = ExpenseCategory::query()->find((int) $raw);
+            if ($configured) {
+                return $configured;
+            }
+        }
+
+        return ExpenseCategory::query()->orderBy('id')->first();
     }
 
     private function applyStockIn(PurchaseRequestItem $item, int $inventoryItemId, User $user, Request $request): void

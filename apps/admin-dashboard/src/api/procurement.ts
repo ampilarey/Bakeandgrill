@@ -176,6 +176,25 @@ export async function promotePurchaseRequestItemToInventory(
   });
 }
 
+export async function getPurchaseRequestAutoExpenseSettings(): Promise<{
+  settings: { auto_expense: boolean; default_expense_category_id: number | null };
+}> {
+  return req('/purchase-requests/settings/auto-expense');
+}
+
+export async function updatePurchaseRequestAutoExpenseSettings(data: {
+  auto_expense?: boolean;
+  default_expense_category_id?: number | null;
+}): Promise<{
+  settings: { auto_expense: boolean; default_expense_category_id: number | null };
+  message: string;
+}> {
+  return req('/purchase-requests/settings/auto-expense', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function mergePurchaseRequests(targetId: number, sourceIds: number[]): Promise<{ request: PurchaseRequest }> {
   return req(`/purchase-requests/${targetId}/merge`, {
     method: 'POST',
