@@ -107,8 +107,21 @@ If GD lacks WebP (`!function_exists('imagecreatefromwebp')`), reject WebP **at v
 ### B3. Scheduled orphan-file prune (safety net) — **Low**
 - **New** command `backend/app/Console/Commands/PruneUnreferencedMedia.php` — scans `storage/app/public/{menu,item-photos,menu-masters,thumbs}`, deletes files not referenced by any `items`/`item_photos` row, older than N days (default 7, dry-run flag). Schedule weekly in `routes/console.php` with the existing `onFailure`/`after(trackSuccess)` wrappers.
 
-### B4. (Optional) Category crop pipeline — **Medium value, larger**
-Give categories the same `ImageUploadField` + `MenuImageProcessor` flow (crop, master, cleanup) instead of a raw URL string. Add `image_original_url` + `thumb_url` to `categories`. Mark this **optional / can be a later PR** — it doesn't block A/B/C.
+### B4. Category media parity — **Medium value** (corrected scope after re-inspection)
+**Re-inspection finding (important):** categories are NOT the raw-URL-only case the original audit implied. The admin category editor **already routes images through the crop pipeline** — `apps/admin-dashboard/src/pages/MenuPage.tsx:69-71` uses the same `ImageUploadField` → `POST /admin/upload-image` → `MenuImageProcessor::storeProcessed` (1200×900 crop). So categories ARE cropped today. What they lack vs items is narrower — and one gap is a real bug:
+
+1. **File leak on category delete/replace — BUG (same class Phase A fixed for items, still live for categories).** `CategoryController::destroy` is a bare `$category->delete()` (verified `backend/app/Http/Controllers/Api/CategoryController.php`); `store/update` never remove replaced files; there is **no `CategoryObserver`** registered. Every deleted/re-imaged category orphans its `/storage/` crop. **This is the highest-value part of B4.**
+2. **Master discarded — no re-crop-later.** The category `ImageUploadField` `onChange={({ url }) => set('image_url', url)}` throws away `original_url`, so categories can't be re-cropped like items. Store it in a new `categories.image_original_url`.
+3. **No thumbnail.** Add `categories.thumb_url` and use it wherever category cards/tiles render an image.
+
+**Work:**
+- **New** migration `…_add_media_columns_to_categories.php` — `image_original_url` (string 500, null) + `thumb_url` (string 500, null). Additive/default-safe.
+- **New** `backend/app/Observers/CategoryObserver.php` — on `deleting`, delete owned `/storage/` `image_url`/`image_original_url`/`thumb_url` files via the existing `App\Support\MediaFileCleaner` (with the same seed/external/shared-reference guards). Register in `AppServiceProvider`.
+- `CategoryController::store/update` — accept + persist `image_original_url` and `thumb_url`; on update, clean the superseded owned file (reuse `MediaFileCleaner::deleteIfOwnedAndUnreferenced`, same as `ItemController::update` from A1).
+- Admin `MenuPage.tsx` category form — capture `original_url` from `ImageUploadField` (pass `image_original_url` like the item editor does) and thread `thumb_url`; category tiles/`<img>` (lines ~139, ~177) prefer `thumb_url`.
+- Backfill: extend the `menu:generate-thumbnails` command (B1) to also backfill `categories.thumb_url`.
+
+**Not in scope:** category video, category master re-crop UI beyond wiring `original_url` through (the existing `ImageCropModal` already supports edit-from-master — reuse as-is). Keep it lean.
 
 ### B5. WebP output (optional) — smaller files
 Add a config switch to emit WebP (with JPEG fallback for old clients). Defer unless server GD-WebP is confirmed present.
