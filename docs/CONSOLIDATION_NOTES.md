@@ -62,4 +62,4 @@ First admin run (parallel with full backend + order suites) had 4× 5s timeouts 
 
 ## Tip after push
 
-Expect `main` tip at the consolidation-notes commit (after `2a28e7ce`).
+`main` @ `5733e414` (notes `e2645f32`, Wave8+dist `2a28e7ce`, merges `d490f5db` / `27be5c4b`). Follow-up `5733e414` is pint-only from the verify run.
