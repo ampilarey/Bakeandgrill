@@ -737,3 +737,7 @@ New feature-specific test files added:
 ### Anything unfinished
 
 None — every task in Stages 5–8 landed with tests. The admin dist and order-app dist have been rebuilt and synced into `backend/public/{admin,order}/` so the branch is deploy-ready.
+
+### Follow-up: workspace `dompurify` install (build fix)
+
+Unrelated to feature logic: CI/`tsc` could fail with `Cannot find module 'dompurify'` when the workspace lockfile did not cleanly resolve the order-app dependency. Fix: confirmed `dompurify` + `@types/dompurify` in `apps/online-order-web/package.json`, re-ran root `npm install -w online-order-web` so the root `package-lock.json` records a resolvable `node_modules/dompurify` entry (resolved to 3.4.12), verified cold install (`rm -rf node_modules apps/*/node_modules && npm ci && npm run build --workspaces --if-present` — all workspaces exit 0), and re-synced order/admin via `./scripts/build-all.sh order admin` (admin `.htaccess` preserved; admin hashed assets unchanged). Final suites: backend 1437 passed / 2 skipped; online-order-web 75 passed; admin-dashboard 66 passed.
