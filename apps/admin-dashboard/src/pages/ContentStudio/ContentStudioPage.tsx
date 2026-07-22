@@ -341,19 +341,19 @@ export default function ContentStudioPage() {
   };
 
   return (
-    <div>
+    <div className={`content-studio-page${dirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
       <PageHeader
         title="Content Studio"
         subtitle="Shared or per-app copy · EN / DV · schedule · history · import/export"
         action={
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="content-studio-header-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Btn onClick={() => void doExport()} variant="secondary">
               <Download size={16} /> Export
             </Btn>
             <Btn onClick={() => importInputRef.current?.click()} variant="secondary">
               <UploadIcon size={16} /> Import
             </Btn>
-            <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0}>
+            <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0} className="content-studio-publish-desktop">
               <Save size={16} /> {saving ? 'Publishing…' : `Publish${dirtyCount ? ` (${dirtyCount})` : ''}`}
             </Btn>
           </div>
@@ -363,28 +363,30 @@ export default function ContentStudioPage() {
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => void handleEmbedFile(e)} />
       <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => void doImport(e)} />
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-        {(['en', 'dv'] as const).map((loc) => (
-          <button
-            key={loc}
-            type="button"
-            onClick={() => setLocale(loc)}
-            style={{
-              height: 36, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-              fontWeight: locale === loc ? 700 : 500, fontSize: 13,
-              border: locale === loc ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
-              background: locale === loc ? '#FFF7ED' : '#fff', color: '#1C1408',
-            }}
-          >
-            {loc === 'en' ? 'English' : 'Dhivehi (ދިވެހި)'}
-          </button>
-        ))}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
+      <div className="content-studio-toolbar" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="content-studio-locale tab-scroll-row" style={{ display: 'flex', gap: 8 }}>
+          {(['en', 'dv'] as const).map((loc) => (
+            <button
+              key={loc}
+              type="button"
+              onClick={() => setLocale(loc)}
+              style={{
+                height: 36, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                fontWeight: locale === loc ? 700 : 500, fontSize: 13,
+                border: locale === loc ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+                background: locale === loc ? '#FFF7ED' : '#fff', color: '#1C1408',
+              }}
+            >
+              {loc === 'en' ? 'English' : 'Dhivehi (ދިވެހި)'}
+            </button>
+          ))}
+        </div>
+        <div className="content-studio-toolbar-schedule" style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
           <input
             type="datetime-local"
             value={scheduleAt}
             onChange={(e) => setScheduleAt(e.target.value)}
-            style={{ height: 36, borderRadius: 10, border: '1px solid #E8E0D8', padding: '0 10px', fontFamily: 'inherit', fontSize: 13 }}
+            style={{ height: 36, borderRadius: 10, border: '1px solid #E8E0D8', padding: '0 10px', fontFamily: 'inherit', fontSize: 13, flex: 1, minWidth: 0 }}
           />
           <button
             type="button"
@@ -393,7 +395,7 @@ export default function ContentStudioPage() {
             style={{
               height: 36, padding: '0 12px', borderRadius: 10, border: '1px solid #E8E0D8',
               background: '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-              opacity: dirtyCount === 0 || !scheduleAt ? 0.5 : 1,
+              opacity: dirtyCount === 0 || !scheduleAt ? 0.5 : 1, whiteSpace: 'nowrap',
             }}
           >
             Schedule publish
@@ -407,7 +409,7 @@ export default function ContentStudioPage() {
           fontSize: 13, color: '#1C1408',
         }}>
           <strong>{schedules.length}</strong> pending schedule{schedules.length === 1 ? '' : 's'}
-          <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 18, wordBreak: 'break-word' }}>
             {schedules.slice(0, 5).map((s) => (
               <li key={s.id} style={{ marginBottom: 4 }}>
                 {s.key} · {s.scope} · {s.locale} → {new Date(s.publish_at).toLocaleString()}
@@ -415,7 +417,7 @@ export default function ContentStudioPage() {
                 <button
                   type="button"
                   onClick={() => void cancelContentSchedule(s.id).then(() => load()).catch((e) => error(e instanceof Error ? e.message : 'Cancel failed'))}
-                  style={{ background: 'none', border: 'none', color: '#D4813A', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}
+                  style={{ background: 'none', border: 'none', color: '#D4813A', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, minHeight: 32 }}
                 >
                   Cancel
                 </button>
@@ -425,15 +427,15 @@ export default function ContentStudioPage() {
         </div>
       ) : null}
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }} className="form-grid-2">
-        <aside style={{
+      <div className="content-studio-shell" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <aside className="content-studio-aside" style={{
           width: 220, flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8',
           borderRadius: 14, padding: 12, position: 'sticky', top: 12,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, color: '#1C1408', fontWeight: 700 }}>
+          <div className="content-studio-aside-title" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, color: '#1C1408', fontWeight: 700 }}>
             <LayoutTemplate size={16} /> Groups
           </div>
-          <div style={{ position: 'relative', marginBottom: 10 }}>
+          <div className="content-studio-search" style={{ position: 'relative', marginBottom: 10 }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: 11, color: '#9C8E7E' }} />
             <input
               value={q}
@@ -441,29 +443,32 @@ export default function ContentStudioPage() {
               placeholder="Search blocks…"
               style={{
                 width: '100%', height: 36, paddingLeft: 30, borderRadius: 10,
-                border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit',
+                border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
               }}
             />
           </div>
-          {groups.map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => setGroup(g)}
-              style={{
-                display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px',
-                border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
-                fontSize: 13, fontWeight: group === g ? 700 : 500,
-                background: group === g ? '#F5E6D3' : 'transparent',
-                color: group === g ? '#1C1408' : '#6B5D4F',
-              }}
-            >
-              {g}
-            </button>
-          ))}
+          <div className="content-studio-groups">
+            {groups.map((g) => (
+              <button
+                key={g}
+                type="button"
+                aria-pressed={group === g}
+                onClick={() => setGroup(g)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px',
+                  border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 13, fontWeight: group === g ? 700 : 500,
+                  background: group === g ? '#F5E6D3' : 'transparent',
+                  color: group === g ? '#1C1408' : '#6B5D4F',
+                }}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
         </aside>
 
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="content-studio-blocks" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {loading ? <p style={{ color: '#9C8E7E' }}>Loading…</p> : null}
           {!loading && filtered.length === 0 ? <p style={{ color: '#9C8E7E' }}>No blocks match.</p> : null}
 
@@ -475,13 +480,13 @@ export default function ContentStudioPage() {
             const showPreview = !!block.editor && VISUAL_PREVIEW_EDITORS.has(block.editor);
 
             return (
-              <div key={`${block.key}-${locale}`} style={{
+              <div key={`${block.key}-${locale}`} className="content-studio-block" style={{
                 background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16,
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-                  <div>
+                <div className="content-studio-block-head" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <div style={{ minWidth: 0, flex: '1 1 160px' }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: '#1C1408' }}>{block.label}</div>
-                    <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>
+                    <div className="content-studio-block-meta" style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2, wordBreak: 'break-word' }}>
                       {block.key} · {block.type}{block.editor ? ` · ${block.editor}` : ''} · {locale} · {appsLabel}
                       {' · '}
                       <span style={{ color: block.state === 'split' ? '#D4813A' : '#3d7a4a', fontWeight: 600 }}>
@@ -489,7 +494,7 @@ export default function ContentStudioPage() {
                       </span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div className="content-studio-block-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       onClick={() => void openHistory(block, editScope)}
@@ -531,7 +536,7 @@ export default function ContentStudioPage() {
                 </div>
 
                 {block.shareable && block.state === 'split' ? (
-                  <div style={{ display: 'flex', gap: 0, marginBottom: 10, borderBottom: '1px solid #E8E0D8' }}>
+                  <div className="tab-scroll-row content-studio-app-tabs" style={{ display: 'flex', gap: 0, marginBottom: 10, borderBottom: '1px solid #E8E0D8' }}>
                     {(['website', 'order_app'] as const).map((t) => (
                       <button
                         key={t}
@@ -646,6 +651,15 @@ export default function ContentStudioPage() {
           })}
         </div>
       </div>
+
+      {dirtyCount > 0 ? (
+        <div className="content-studio-sticky-bar" role="region" aria-label="Unsaved changes">
+          <span className="content-studio-sticky-bar-label">{dirtyCount} unsaved change{dirtyCount === 1 ? '' : 's'}</span>
+          <Btn onClick={() => void publish()} disabled={saving} style={{ flex: 1 }}>
+            <Save size={16} /> {saving ? 'Publishing…' : `Publish (${dirtyCount})`}
+          </Btn>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -16,7 +16,7 @@ export function ProofDetailsEditor({ label, description, value, onChange }: Cont
       {description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{description}</p>}
       <div style={{ background: '#fff', border: '1.5px solid #E8E0D8', borderRadius: 12, overflow: 'hidden' }}>
         {items.slice(0, 3).map((item, idx) => (
-          <div key={idx} style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderTop: idx === 0 ? 'none' : '1px solid #F0EBE5', gap: 8 }}>
+          <div key={idx} className="content-editor-row" style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderTop: idx === 0 ? 'none' : '1px solid #F0EBE5', gap: 8 }}>
             <input value={item.value} onChange={(e) => update(idx, 'value', e.target.value)} placeholder="500+"
               style={{ width: 90, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none', color: '#1C1408', flexShrink: 0 }} />
             <input value={item.label} onChange={(e) => update(idx, 'label', e.target.value)} placeholder="Label"

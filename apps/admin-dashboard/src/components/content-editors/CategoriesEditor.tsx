@@ -19,8 +19,8 @@ export function CategoriesEditor({ label, description, value, onChange, triggerU
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {items.slice(0, 4).map((item, idx) => (
           <div key={idx} style={{ background: '#fff', border: '1.5px solid #E8E0D8', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <input value={item.icon} onChange={(e) => update(idx, 'icon', e.target.value)} placeholder="🥐" title="Emoji icon"
+            <div className="content-editor-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <input className="content-editor-icon" value={item.icon} onChange={(e) => update(idx, 'icon', e.target.value)} placeholder="🥐" title="Emoji icon"
                 style={{ width: 40, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', textAlign: 'center', fontSize: 18, fontFamily: 'inherit', outline: 'none', flexShrink: 0 }} />
               <input value={item.label} onChange={(e) => update(idx, 'label', e.target.value)} placeholder="Label tag"
                 style={{ flex: 1, minWidth: 80, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }} />
@@ -31,7 +31,7 @@ export function CategoriesEditor({ label, description, value, onChange, triggerU
             </div>
             <input value={item.hook} onChange={(e) => update(idx, 'hook', e.target.value)} placeholder="Short hook text shown on the card"
               style={{ height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className="content-editor-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {item.image_url ? (
                 <img src={item.image_url} alt="cat" style={{ height: 36, width: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid #E8E0D8', flexShrink: 0 }} />
               ) : (

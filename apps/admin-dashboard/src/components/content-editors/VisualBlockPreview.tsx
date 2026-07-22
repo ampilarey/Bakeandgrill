@@ -62,7 +62,7 @@ function renderPreview(editor: string, value: string) {
     case 'trust': {
       const items = safeParse<{ icon: string; heading: string; subtext: string }[]>(value, []);
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="content-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {items.slice(0, 4).map((item, i) => (
             <div key={i} style={{ background: '#2a2118', borderRadius: 8, padding: 10 }}>
               <div style={{ fontSize: 16 }}>{item.icon || '·'}</div>
@@ -76,7 +76,7 @@ function renderPreview(editor: string, value: string) {
     case 'categories': {
       const items = safeParse<{ icon: string; name: string; hook: string; image_url: string }[]>(value, []);
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="content-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {items.slice(0, 4).map((item, i) => (
             <div key={i} style={{ background: '#2a2118', borderRadius: 8, overflow: 'hidden' }}>
               {item.image_url ? (
