@@ -522,10 +522,9 @@ Single stage: "content: visual editors + live preview in Content Studio (Stage 6
 ## Remaining backlog after Stage 6 (optional, not required)
 
 These are enhancements — the feature is complete without them:
-1. **Revision restore** — dedicated `content_revisions` table + one-click restore (today: audit
-   log records changes but no restore button).
-2. **Scheduled publish** — `publish_at` per block/scope so copy can go live at a set time.
-3. **Multi-language per scope** — Dhivehi/English variants per block (there is `name_dv` on some
-   models; content blocks are single-language today).
-4. **Import/export** — download/upload a content bundle to clone between environments (e.g. copy
-   test → prod).
+1. **Revision restore** — ✅ shipped Stage 7 (`content_revisions` + History/Restore in Content Studio)
+2. **Scheduled publish** — ✅ shipped Stage 8 (`content_schedules` + `content:publish-scheduled`)
+3. **Multi-language per scope** — ✅ shipped Stage 9 (`locale` en/dv on `site_settings`, admin EN/DV tabs)
+4. **Import/export** — ✅ shipped Stage 10 (JSON bundle export/import)
+
+See `docs/CONTENT_STUDIO_STAGES_7_10.md`.
