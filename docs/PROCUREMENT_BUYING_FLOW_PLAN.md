@@ -157,3 +157,26 @@ gap is behind its own endpoint/setting; rollback = revert commit / leave setting
 - Reuse `convertToExpense` (idempotent via `expense_id`) — do not write a second expense path.
 - Free-text promotion must guard against duplicate catalog items.
 - Restock-generated PRs start in `requested` status (manager still approves/assigns).
+
+## Implementation notes
+
+- Verify API method is `verifyItem` (route `verify-received`), not a separate `verifyReceived`. Auto-expense runs via `maybeAutoExpense` after `verifyItem` when the PR status becomes `closed`, and again at the end of `verifyAll` (idempotent via `expense_id`).
+- Partial verifies do not create expenses until all lines are terminal and the request closes — avoids incomplete totals.
+- Default expense category uses `purchase_requests_default_expense_category_id`; falls back to first `ExpenseCategory` when unset/missing.
+- Settings API: `GET|PATCH /api/purchase-requests/settings/auto-expense` (view_all / convert_to_expense).
+- Restock draft uses `source='restock'` (store validation + create path). Skips excluded/snoozed and items already on an open restock-sourced PR. Empty selection → HTTP 422, no PR row.
+- Forecast deep-link opens the new PR via `/purchase-requests?open={id}`.
+
+## Build log
+
+| Gap | Commit | Status |
+|---|---|---|
+| A — promote free-text → catalog | `981fb382` | done |
+| B — optional auto-expense on verify | `9f0e203b` | done |
+| C — generate buying list from restock | `58acb065` | done |
+
+**Decisions:** auto-expense only when PR reaches `closed`; reuse `convertToExpense`; expenses stay `pending`; restock PRs start `requested`.
+
+**Tests (related suite):** `47` passed (`PromoteFreeTextItemTest` 4, `AutoExpenseOnVerifyTest` 5, `GenerateRestockRequestTest` 4, plus PurchaseRequest / RestockIntelligence / NonStockPurchaseExpense regressions). Admin: PurchaseRequestsPage + Finance/Forecast clients rebuilt; ContentStudio editor timeout is flaky/unrelated and passes on re-run.
+
+**Admin dist:** rebuilt via `./scripts/build-all.sh admin` → `backend/public/admin/`.
