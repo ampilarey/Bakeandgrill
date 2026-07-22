@@ -327,6 +327,34 @@ class PurchaseRequestController extends Controller
         return response()->json(['expense' => $expense, 'request' => $this->formatRequest($pr->fresh(), $user, false)]);
     }
 
+    public function promoteToInventory(Request $request, int $id, int $itemId): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'unit' => ['nullable', 'string', 'max:50'],
+            'category_id' => ['nullable', 'integer', 'exists:inventory_categories,id'],
+            'reorder_point' => ['nullable', 'numeric', 'min:0'],
+            'reorder_quantity' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $item = $this->findItem($id, $itemId);
+        if (!$item->free_text_name && !$item->inventory_item_id) {
+            return response()->json(['message' => 'Line has no free-text name to promote.'], 422);
+        }
+
+        /** @var User $user */
+        $user = $request->user();
+        $result = $this->service->promoteToInventory($item, $validated, $user, $request);
+        $pr = PurchaseRequest::with(['items', 'requester', 'assignee'])->findOrFail($id);
+
+        return response()->json([
+            'item' => $this->formatItem($result['item'], $user, false),
+            'inventory_item' => $result['inventory_item'],
+            'created' => $result['created'],
+            'request' => $this->formatRequest($pr, $user, false),
+        ]);
+    }
+
     public function merge(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([

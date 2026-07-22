@@ -154,6 +154,28 @@ export async function convertPurchaseRequestToExpense(id: number): Promise<{
   return req(`/purchase-requests/${id}/convert-to-expense`, { method: 'POST' });
 }
 
+export async function promotePurchaseRequestItemToInventory(
+  requestId: number,
+  itemId: number,
+  data: {
+    name?: string;
+    unit?: string;
+    category_id?: number | null;
+    reorder_point?: number | null;
+    reorder_quantity?: number | null;
+  },
+): Promise<{
+  item: PurchaseRequestItem;
+  inventory_item: { id: number; name: string; unit: string };
+  created: boolean;
+  request: PurchaseRequest;
+}> {
+  return req(`/purchase-requests/${requestId}/items/${itemId}/promote-to-inventory`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function mergePurchaseRequests(targetId: number, sourceIds: number[]): Promise<{ request: PurchaseRequest }> {
   return req(`/purchase-requests/${targetId}/merge`, {
     method: 'POST',

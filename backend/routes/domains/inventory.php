@@ -100,6 +100,8 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         ->middleware('permission:purchase_requests.buy');
     Route::post('/purchase-requests/{id}/items/{itemId}/verify-received', [App\Http\Controllers\Api\PurchaseRequestController::class, 'verifyItem'])
         ->middleware('permission:purchase_requests.verify');
+    Route::post('/purchase-requests/{id}/items/{itemId}/promote-to-inventory', [App\Http\Controllers\Api\PurchaseRequestController::class, 'promoteToInventory'])
+        ->middleware('permission:inventory.manage');
 }
 
 if (routes_domain_section_is('inventory', 'waste') && !routes_domain_loaded('inventory.waste')) {

@@ -408,6 +408,71 @@ final class PurchaseRequestService
             ->all();
     }
 
+    /**
+     * Promote a free-text request line into the inventory catalog (idempotent on name).
+     *
+     * @param array<string, mixed> $data
+     * @return array{item: PurchaseRequestItem, inventory_item: InventoryItem, created: bool}
+     */
+    public function promoteToInventory(PurchaseRequestItem $item, array $data, User $user, Request $request): array
+    {
+        if ($item->inventory_item_id) {
+            $existing = InventoryItem::findOrFail($item->inventory_item_id);
+
+            return ['item' => $item->fresh(['inventoryItem']), 'inventory_item' => $existing, 'created' => false];
+        }
+
+        $name = trim((string) ($data['name'] ?? $item->free_text_name ?? ''));
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => ['A name is required to add this item to the catalog.']]);
+        }
+
+        $unit = trim((string) ($data['unit'] ?? $item->requested_unit ?? ''));
+        if ($unit === '') {
+            throw ValidationException::withMessages(['unit' => ['Unit is required.']]);
+        }
+
+        return DB::transaction(function () use ($item, $data, $user, $request, $name, $unit) {
+            $existing = InventoryItem::query()
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                ->first();
+
+            $created = false;
+            if ($existing) {
+                $inventory = $existing;
+            } else {
+                $inventory = InventoryItem::create([
+                    'name' => $name,
+                    'unit' => $unit,
+                    'current_stock' => 0,
+                    'reorder_point' => isset($data['reorder_point']) ? (float) $data['reorder_point'] : null,
+                    'reorder_quantity' => isset($data['reorder_quantity']) ? (float) $data['reorder_quantity'] : null,
+                    'inventory_category_id' => $data['category_id'] ?? null,
+                    'is_active' => true,
+                ]);
+                $created = true;
+            }
+
+            $old = ['inventory_item_id' => $item->inventory_item_id, 'free_text_name' => $item->free_text_name];
+            $item->update([
+                'inventory_item_id' => $inventory->id,
+                // Keep free_text_name for history; displayName prefers inventory name when linked.
+            ]);
+
+            $this->auditItem('purchase_request.promoted_to_inventory', $item->fresh(), $old, [
+                'inventory_item_id' => $inventory->id,
+                'inventory_item_name' => $inventory->name,
+                'created' => $created,
+            ], $request, $user);
+
+            return [
+                'item' => $item->fresh(['inventoryItem']),
+                'inventory_item' => $inventory,
+                'created' => $created,
+            ];
+        });
+    }
+
     /** @param array<string, mixed> $old */
     /** @param array<string, mixed> $new */
     private function auditPurchaseRequest(string $action, PurchaseRequest $pr, array $old, array $new, Request $request, User $user, array $meta = []): void

@@ -19,11 +19,13 @@ import {
   getPurchaseRequest,
   laarToMvr,
   mergePurchaseRequests,
+  promotePurchaseRequestItemToInventory,
   rejectPurchaseRequest,
   updatePurchaseRequest,
   verifyAllPurchaseRequestItems,
   verifyPurchaseRequestItem,
   type PurchaseRequest,
+  type PurchaseRequestItem,
 } from '../api/procurement';
 
 const TABS = [
@@ -80,6 +82,11 @@ export default function PurchaseRequestsPage() {
   const [createUnit, setCreateUnit] = useState('pcs');
   const [createPriority, setCreatePriority] = useState<'low' | 'normal' | 'urgent'>('normal');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [promoteItem, setPromoteItem] = useState<PurchaseRequestItem | null>(null);
+  const [promoteName, setPromoteName] = useState('');
+  const [promoteUnit, setPromoteUnit] = useState('pcs');
+  const [promoteRop, setPromoteRop] = useState('');
+  const [promoteRoq, setPromoteRoq] = useState('');
 
   const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
@@ -300,7 +307,24 @@ export default function PurchaseRequestsPage() {
                 <tbody>
                   {detail.items.map((item) => (
                     <tr key={item.id}>
-                      <td style={TD}>{item.name}</td>
+                      <td style={TD}>
+                        <div>{item.name}</div>
+                        {item.free_text_name && !item.inventory_item_id && can('inventory.manage') && (
+                          <Btn
+                            variant="ghost"
+                            onClick={() => {
+                              setPromoteItem(item);
+                              setPromoteName(item.free_text_name || item.name);
+                              setPromoteUnit(item.requested_unit || 'pcs');
+                              setPromoteRop('');
+                              setPromoteRoq('');
+                            }}
+                            style={{ marginTop: 4, fontSize: 12, padding: '4px 8px' }}
+                          >
+                            Add to catalog
+                          </Btn>
+                        )}
+                      </td>
                       <td style={TD}>{item.requested_qty} {item.requested_unit}</td>
                       <td style={TD}>{item.approved_qty != null ? `${item.approved_qty} ${item.requested_unit}` : '—'}</td>
                       <td style={TD}>{item.actual_qty != null ? `${item.actual_qty} ${item.actual_unit ?? item.requested_unit}` : '—'}</td>
@@ -531,6 +555,67 @@ export default function PurchaseRequestsPage() {
               })}
             >
               Reject
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {promoteItem && detail && (
+        <Modal title="Add to inventory catalog" onClose={() => setPromoteItem(null)} maxWidth={420}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Name</label>
+          <input
+            value={promoteName}
+            onChange={(e) => setPromoteName(e.target.value)}
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }}
+          />
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Unit</label>
+          <input
+            value={promoteUnit}
+            onChange={(e) => setPromoteUnit(e.target.value)}
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Reorder point (optional)</label>
+              <input
+                value={promoteRop}
+                onChange={(e) => setPromoteRop(e.target.value)}
+                type="number"
+                min="0"
+                step="any"
+                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Reorder qty (optional)</label>
+              <input
+                value={promoteRoq}
+                onChange={(e) => setPromoteRoq(e.target.value)}
+                type="number"
+                min="0"
+                step="any"
+                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }}
+              />
+            </div>
+          </div>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setPromoteItem(null)}>Cancel</Btn>
+            <Btn
+              disabled={actionBusy || !promoteName.trim() || !promoteUnit.trim()}
+              onClick={() => void runAction(async () => {
+                const res = await promotePurchaseRequestItemToInventory(detail.id, promoteItem.id, {
+                  name: promoteName.trim(),
+                  unit: promoteUnit.trim(),
+                  reorder_point: promoteRop.trim() ? Number(promoteRop) : null,
+                  reorder_quantity: promoteRoq.trim() ? Number(promoteRoq) : null,
+                });
+                toast.success(res.created ? 'Added to catalog.' : 'Linked to existing catalog item.');
+                setPromoteItem(null);
+                setDetail(res.request);
+                await load();
+              })}
+            >
+              {actionBusy ? '…' : 'Add to catalog'}
             </Btn>
           </ModalActions>
         </Modal>
