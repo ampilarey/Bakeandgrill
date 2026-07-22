@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\DeliveryDriver;
 use App\Models\Order;
 use App\Models\Shift;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -54,22 +55,28 @@ class Wave8ReportsTest extends TestCase
 
     public function test_shift_variances_report(): void
     {
-        $owner = $this->makeOwner();
-        $this->actingAs($owner);
+        Carbon::setTestNow(Carbon::parse('2026-06-15 12:00:00'));
 
-        Shift::create([
-            'user_id' => $owner->id,
-            'opened_at' => now()->subHours(8),
-            'closed_at' => now()->subHour(),
-            'opening_cash' => 100,
-            'closing_cash' => 95,
-            'expected_cash' => 100,
-            'variance' => -5,
-        ]);
+        try {
+            $owner = $this->makeOwner();
+            $this->actingAs($owner);
 
-        $this->getJson('/api/reports/shift-variances?from=' . now()->toDateString() . '&to=' . now()->toDateString())
-            ->assertOk()
-            ->assertJsonPath('rows.0.variance', -5);
+            Shift::create([
+                'user_id' => $owner->id,
+                'opened_at' => now()->subHours(8),
+                'closed_at' => now()->subHour(),
+                'opening_cash' => 100,
+                'closing_cash' => 95,
+                'expected_cash' => 100,
+                'variance' => -5,
+            ]);
+
+            $this->getJson('/api/reports/shift-variances?from=' . now()->toDateString() . '&to=' . now()->toDateString())
+                ->assertOk()
+                ->assertJsonPath('rows.0.variance', -5);
+        } finally {
+            Carbon::setTestNow(null);
+        }
     }
 
     public function test_stock_velocity_report(): void
