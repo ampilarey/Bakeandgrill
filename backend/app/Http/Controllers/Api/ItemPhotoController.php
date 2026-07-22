@@ -7,14 +7,15 @@ namespace App\Http\Controllers\Api;
 use App\Models\Item;
 use App\Models\ItemPhoto;
 use App\Services\MenuImageProcessor;
+use App\Support\ImageCapabilities;
+use App\Support\MenuImageValidation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\ValidationException;
 
 class ItemPhotoController extends Controller
 {
-    private const MAX_SIZE_KB = 10240;
-
     public function __construct(
         private readonly MenuImageProcessor $processor,
     ) {}
@@ -31,14 +32,26 @@ class ItemPhotoController extends Controller
     {
         $item = Item::findOrFail($itemId);
 
-        $validated = $request->validate([
-            'photo' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:' . self::MAX_SIZE_KB],
-            'original' => ['sometimes', 'file', 'mimes:jpeg,jpg,png,webp', 'max:' . self::MAX_SIZE_KB],
-            'alt_text' => ['nullable', 'string', 'max:200'],
-            'is_primary' => ['sometimes', 'boolean'],
-            // When re-cropping, keep the existing master without re-uploading it.
-            'original_url' => ['sometimes', 'nullable', 'string', 'max:500'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'photo' => MenuImageValidation::fileRules(required: true),
+                'original' => MenuImageValidation::fileRules(required: false),
+                'alt_text' => ['nullable', 'string', 'max:200'],
+                'is_primary' => ['sometimes', 'boolean'],
+                // When re-cropping, keep the existing master without re-uploading it.
+                'original_url' => ['sometimes', 'nullable', 'string', 'max:500'],
+            ]);
+        } catch (ValidationException $e) {
+            if (!ImageCapabilities::supportsWebp()) {
+                $file = $request->file('photo');
+                if ($file && str_contains(strtolower((string) $file->getMimeType()), 'webp')) {
+                    throw ValidationException::withMessages([
+                        'photo' => [MenuImageValidation::webpUnsupportedMessage()],
+                    ]);
+                }
+            }
+            throw $e;
+        }
 
         try {
             $path = $this->processor->storeProcessed(

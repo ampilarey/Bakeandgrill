@@ -132,7 +132,39 @@ class MenuImageProcessor
             throw new RuntimeException('Uploaded image is not readable.');
         }
 
-        $image = $this->createImageResource($path, (string) $file->getMimeType());
+        $info = @getimagesize($path);
+        if ($info === false || ($info[0] ?? 0) < 1 || ($info[1] ?? 0) < 1) {
+            throw new RuntimeException('Unsupported or corrupt image. Use JPEG, PNG, or WebP.');
+        }
+
+        $width = (int) $info[0];
+        $height = (int) $info[1];
+        $maxEdge = (int) config('menu_media.image.max_edge', 5000);
+        $maxMp = (float) config('menu_media.image.max_megapixels', 25);
+        $pixels = $width * $height;
+
+        if ($width > $maxEdge || $height > $maxEdge) {
+            throw new RuntimeException(
+                "Image is too large ({$width}×{$height}). Maximum edge is {$maxEdge}px.",
+            );
+        }
+
+        if ($pixels > (int) round($maxMp * 1_000_000)) {
+            throw new RuntimeException(
+                "Image has too many pixels ({$width}×{$height}). Maximum is {$maxMp} megapixels.",
+            );
+        }
+
+        $mime = (string) ($file->getMimeType() ?: ($info['mime'] ?? ''));
+        if (str_contains(strtolower($mime), 'webp') || strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'webp') {
+            if (!\App\Support\ImageCapabilities::supportsWebp()) {
+                throw new RuntimeException(
+                    "WebP isn't supported on this server; upload JPEG or PNG.",
+                );
+            }
+        }
+
+        $image = $this->createImageResource($path, $mime);
         if ($image === null) {
             throw new RuntimeException('Unsupported or corrupt image. Use JPEG, PNG, or WebP.');
         }
@@ -186,7 +218,7 @@ class MenuImageProcessor
         return $binary;
     }
 
-    private function createImageResource(string $path, string $mime): \GdImage|null
+    private function createImageResource(string $path, string $mime): ?\GdImage
     {
         $mime = strtolower($mime);
 
@@ -198,7 +230,7 @@ class MenuImageProcessor
         };
     }
 
-    private function createFromExtension(string $path): \GdImage|null
+    private function createFromExtension(string $path): ?\GdImage
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 

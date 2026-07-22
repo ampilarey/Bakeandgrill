@@ -6,15 +6,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\MenuImageProcessor;
+use App\Support\ImageCapabilities;
+use App\Support\MenuImageValidation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ImageUploadController extends Controller
 {
-    private const MAX_SIZE_KB = 10240;
-
-    private const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
-
     public function __construct(
         private readonly MenuImageProcessor $processor,
     ) {}
@@ -27,26 +26,28 @@ class ImageUploadController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
-            'image' => [
-                'required',
-                'image',
-                'mimes:jpeg,png,webp',
-                'max:' . self::MAX_SIZE_KB,
-                'dimensions:max_width=8192,max_height=8192',
-            ],
-            'original' => [
-                'sometimes',
-                'image',
-                'mimes:jpeg,png,webp',
-                'max:' . self::MAX_SIZE_KB,
-                'dimensions:max_width=8192,max_height=8192',
-            ],
-        ]);
+        try {
+            $request->validate([
+                'image' => MenuImageValidation::fileRules(required: true),
+                'original' => MenuImageValidation::fileRules(required: false),
+            ]);
+        } catch (ValidationException $e) {
+            if ($this->looksLikeWebpRejection($request, $e)) {
+                throw ValidationException::withMessages([
+                    'image' => [MenuImageValidation::webpUnsupportedMessage()],
+                ]);
+            }
+            throw $e;
+        }
 
         $file = $request->file('image');
-        if (!in_array($file->getMimeType(), self::ALLOWED_MIME, true)) {
-            return response()->json(['message' => 'Invalid file type.'], 422);
+        $allowed = MenuImageValidation::allowedMimeTypes();
+        if (!in_array($file->getMimeType(), $allowed, true)) {
+            $message = (!ImageCapabilities::supportsWebp() && $file->getMimeType() === 'image/webp')
+                ? MenuImageValidation::webpUnsupportedMessage()
+                : 'Invalid file type.';
+
+            return response()->json(['message' => $message], 422);
         }
 
         try {
@@ -54,7 +55,7 @@ class ImageUploadController extends Controller
             $originalUrl = null;
             if ($request->hasFile('original')) {
                 $orig = $request->file('original');
-                if (!in_array($orig->getMimeType(), self::ALLOWED_MIME, true)) {
+                if (!in_array($orig->getMimeType(), $allowed, true)) {
                     return response()->json(['message' => 'Invalid original file type.'], 422);
                 }
                 $origRelative = $this->processor->storeMaster($orig, 'menu-masters');
@@ -70,5 +71,21 @@ class ImageUploadController extends Controller
             'width' => MenuImageProcessor::WIDTH,
             'height' => MenuImageProcessor::HEIGHT,
         ], 201);
+    }
+
+    private function looksLikeWebpRejection(Request $request, ValidationException $e): bool
+    {
+        if (ImageCapabilities::supportsWebp()) {
+            return false;
+        }
+
+        $file = $request->file('image');
+        if ($file && str_contains(strtolower((string) $file->getMimeType()), 'webp')) {
+            return true;
+        }
+
+        $messages = collect($e->errors())->flatten()->implode(' ');
+
+        return str_contains(strtolower($messages), 'webp');
     }
 }
