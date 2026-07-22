@@ -201,7 +201,14 @@ export function PromoCarousel({
       >
         {slides.map((slide, i) => {
           const imgSrc = resolveImg(slide.image, apiOrigin);
+          const videoSrc = resolveImg(slide.video, apiOrigin);
+          const posterSrc = resolveImg(slide.video_poster || slide.image, apiOrigin);
           const imgBroken = imgErrors.has(i);
+          const focalX = Number(slide.image_focal_x ?? 50);
+          const focalY = Number(slide.image_focal_y ?? 50);
+          const alt =
+            slide.image_alt
+            || (slide.title ? String(slide.title).replace(/<[^>]+>/g, '') : 'Promotional banner');
           return (
             <div
               key={i}
@@ -211,15 +218,27 @@ export function PromoCarousel({
                 overflow: 'hidden',
               }}
             >
-              {imgSrc && !imgBroken ? (
+              {videoSrc ? (
+                <video
+                  src={videoSrc}
+                  poster={posterSrc || undefined}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  style={{
+                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                    objectPosition: `${focalX}% ${focalY}%`,
+                  }}
+                />
+              ) : imgSrc && !imgBroken ? (
                 <img
                   src={imgSrc}
-                  alt={
-                    slide.title
-                      ? String(slide.title).replace(/<[^>]+>/g, '')
-                      : 'Promotional banner'
-                  }
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  alt={alt}
+                  style={{
+                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                    objectPosition: `${focalX}% ${focalY}%`,
+                  }}
                   onError={() => handleImgError(i)}
                 />
               ) : (

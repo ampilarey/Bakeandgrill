@@ -100,6 +100,10 @@ export interface TrustItemRow {
 
 export interface HeroSlideRow {
   image?: string;
+  image_master?: string;
+  image_focal_x?: number | string;
+  image_focal_y?: number | string;
+  image_alt?: string;
   eyebrow?: string;
   title?: string;
   subtitle?: string;
@@ -107,6 +111,8 @@ export interface HeroSlideRow {
   cta_url?: string;
   cta2_text?: string;
   cta2_url?: string;
+  video?: string;
+  video_poster?: string;
 }
 
 export interface HomepageCategoryRow {

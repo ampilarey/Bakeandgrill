@@ -138,6 +138,23 @@ export async function uploadContentImage(
   return req('/admin/content/upload', { method: 'POST', body: form });
 }
 
+/** Hero video — reuses item video pipeline (raw clip + poster). */
+export async function uploadContentVideo(
+  key: string,
+  scope: ContentScope,
+  video: File,
+  poster: File,
+  locale: ContentLocale = 'en',
+): Promise<{ url: string; poster_url: string; thumb_url?: string }> {
+  const form = new FormData();
+  form.append('key', key);
+  form.append('scope', scope);
+  form.append('locale', locale);
+  form.append('video', video);
+  form.append('poster', poster);
+  return req('/admin/content/upload-video', { method: 'POST', body: form });
+}
+
 export async function getContentRevisions(
   key: string,
   scope: ContentScope,

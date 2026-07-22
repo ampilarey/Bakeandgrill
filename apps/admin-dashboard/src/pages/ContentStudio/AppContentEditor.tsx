@@ -11,6 +11,7 @@ import {
   scheduleContent,
   updateContent,
   uploadContentImage,
+  uploadContentVideo,
   type ContentApp,
   type ContentBlock,
   type ContentLocale,
@@ -294,7 +295,14 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
 
     switch (block.editor) {
       case 'hero':
-        return <HeroSlidesEditor {...common} triggerUpload={triggerUpload} />;
+        return (
+          <HeroSlidesEditor
+            {...common}
+            triggerUpload={triggerUpload}
+            uploadImage={(cropped, original) => uploadContentImage(block.key, app, cropped, original, locale)}
+            uploadVideo={(video, poster) => uploadContentVideo(block.key, app, video, poster, locale)}
+          />
+        );
       case 'categories':
         return <CategoriesEditor {...common} triggerUpload={triggerUpload} />;
       case 'trust':

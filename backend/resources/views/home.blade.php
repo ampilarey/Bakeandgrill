@@ -849,8 +849,26 @@
         @if(count($heroSlides) > 0)
             @foreach($heroSlides as $sIdx => $slide)
             <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;">
-                @if(!empty($slide['image']))
-                    <img src="{{ $slide['image'] }}" loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}" alt="{{ content('site_name', 'Bake & Grill') }}">
+                @php
+                    $focalX = isset($slide['image_focal_x']) ? (float) $slide['image_focal_x'] : 50;
+                    $focalY = isset($slide['image_focal_y']) ? (float) $slide['image_focal_y'] : 50;
+                    $imgAlt = $slide['image_alt'] ?? content('site_name', 'Bake & Grill');
+                @endphp
+                @if(!empty($slide['video']))
+                    <video
+                        class="banner-video"
+                        src="{{ $slide['video'] }}"
+                        poster="{{ $slide['video_poster'] ?? ($slide['image'] ?? '') }}"
+                        autoplay muted loop playsinline
+                        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ $focalX }}% {{ $focalY }}%;"
+                    ></video>
+                @elseif(!empty($slide['image']))
+                    <img
+                        src="{{ $slide['image'] }}"
+                        loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}"
+                        alt="{{ $imgAlt }}"
+                        style="object-position:{{ $focalX }}% {{ $focalY }}%;"
+                    >
                 @endif
                 <div class="banner-overlay">
                     @if(!empty($slide['eyebrow']))

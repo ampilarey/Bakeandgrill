@@ -479,11 +479,10 @@ class ContentController extends Controller
         try {
             $relative = $this->processor->storeProcessed($file, $dir);
             $thumbRelative = $this->processor->storeThumbnail($file, $dir . '/thumbs');
-            $originalUrl = null;
-            if ($request->hasFile('original')) {
-                $origRelative = $this->processor->storeMaster($request->file('original'), $dir . '/masters');
-                $originalUrl = '/storage/' . ltrim($origRelative, '/');
-            }
+            // Always keep a high-res master for re-crop (prefer explicit original, else source file).
+            $masterSource = $request->hasFile('original') ? $request->file('original') : $file;
+            $origRelative = $this->processor->storeMaster($masterSource, $dir . '/masters');
+            $originalUrl = '/storage/' . ltrim($origRelative, '/');
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -521,6 +520,62 @@ class ContentController extends Controller
             'scope' => $scope,
             'locale' => $locale,
             'embed' => $isEmbedUpload,
+        ], 201);
+    }
+
+    /**
+     * Hero video upload — muted autoplay background (reuses MenuImageProcessor raw + poster).
+     */
+    public function uploadVideo(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => ['required', 'string', Rule::in(['hero_slides'])],
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm', 'max:51200'],
+            'poster' => ['required', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
+        ]);
+
+        $key = $data['key'];
+        $scope = $data['scope'];
+        $locale = $data['locale'] ?? 'en';
+        $dir = $scope === 'shared' ? 'site/video' : "site/{$scope}/video";
+
+        try {
+            $video = $request->file('video');
+            $poster = $request->file('poster');
+            $ext = strtolower((string) $video->getClientOriginalExtension()) ?: 'mp4';
+            if (!in_array($ext, ['mp4', 'webm'], true)) {
+                $ext = str_contains((string) $video->getMimeType(), 'webm') ? 'webm' : 'mp4';
+            }
+            $videoRel = $this->processor->storeRaw($video, $dir, $ext);
+            $posterRel = $this->processor->storeProcessed($poster, $dir . '/posters');
+            $thumbRel = $this->processor->storeThumbnail($poster, $dir . '/thumbs');
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $url = '/storage/' . ltrim($videoRel, '/');
+        $posterUrl = '/storage/' . ltrim($posterRel, '/');
+        $thumbUrl = '/storage/' . ltrim($thumbRel, '/');
+
+        $this->audit->log(
+            action: 'content.video_uploaded',
+            modelType: SiteSetting::class,
+            modelId: null,
+            oldValues: [],
+            newValues: ['url' => $url, 'poster_url' => $posterUrl],
+            meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale],
+            request: $request,
+        );
+
+        return response()->json([
+            'url' => $url,
+            'poster_url' => $posterUrl,
+            'thumb_url' => $thumbUrl,
+            'key' => $key,
+            'scope' => $scope,
+            'locale' => $locale,
         ], 201);
     }
 
