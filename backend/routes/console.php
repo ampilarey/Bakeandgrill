@@ -185,6 +185,12 @@ Schedule::command('marketing:prune-abandoned-carts')
     ->onFailure($alertOnFailure('marketing:prune-abandoned-carts'))
     ->after($trackSuccess('marketing:prune-abandoned-carts'));
 
+Schedule::command('media:prune-unreferenced --days=7')
+    ->weeklyOn(0, '04:15')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('media:prune-unreferenced'))
+    ->after($trackSuccess('media:prune-unreferenced'));
+
 Schedule::command('insights:compute-item-pairs')
     ->dailyAt('04:00')
     ->withoutOverlapping()
