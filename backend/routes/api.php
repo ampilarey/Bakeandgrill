@@ -154,6 +154,10 @@ require __DIR__ . '/domains/admin_customers.php';
 Route::get('/content', [App\Http\Controllers\Api\ContentController::class, 'public'])
     ->middleware('throttle:60,1');
 
+// Order-app draft preview — requires opaque draft token (never public without it).
+Route::get('/content/preview', [App\Http\Controllers\Api\ContentPreviewController::class, 'draftContent'])
+    ->middleware('throttle:60,1');
+
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
     ->middleware('throttle:60,1');
 

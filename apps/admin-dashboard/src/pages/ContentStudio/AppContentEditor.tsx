@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, History, LayoutTemplate, Save, Search, Upload as UploadIcon } from 'lucide-react';
 import {
   cancelContentSchedule,
+  createContentPreviewToken,
   exportContent,
   getContentBlocks,
   getContentRevisions,
@@ -29,16 +30,12 @@ import {
   ProofDetailsEditor,
   TrustItemsEditor,
 } from '../../components/content-editors';
-import { VisualBlockPreview } from '../../components/content-editors/VisualBlockPreview';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { CopyBlockFromOtherApp, CopySectionFromOtherApp } from './CopyFromOtherApp';
+import { LivePreviewFrame } from './LivePreviewFrame';
 
 type DraftMap = Record<string, string>;
-
-const VISUAL_PREVIEW_EDITORS = new Set([
-  'hero', 'trust', 'categories', 'proof', 'about_values', 'preorder_steps', 'footer_links', 'business_hours',
-]);
 
 function appTitle(app: ContentApp): string {
   return app === 'website' ? 'Website Content' : 'Order App Content';
@@ -86,6 +83,8 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
   const [revisions, setRevisions] = useState<ContentRevision[]>([]);
   const [schedules, setSchedules] = useState<ContentScheduleRow[]>([]);
   const [scheduleAt, setScheduleAt] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const uploadCtx = useRef<{
@@ -130,6 +129,25 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
     }),
     [blocks, app],
   );
+
+  // Debounced real-page preview with draft overlay (staff token).
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const overrides: Record<string, string> = {};
+      for (const b of appBlocks) {
+        overrides[b.key] = valueForApp(b, app, drafts);
+      }
+      if (Object.keys(overrides).length === 0) return;
+      setPreviewLoading(true);
+      void createContentPreviewToken(app, overrides, locale)
+        .then((res) => {
+          setPreviewUrl(app === 'website' ? res.website_url : res.order_app_url);
+        })
+        .catch(() => setPreviewUrl(null))
+        .finally(() => setPreviewLoading(false));
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [drafts, appBlocks, app, locale]);
 
   const groups = useMemo(() => {
     const g = new Set(appBlocks.map((b) => b.group));
@@ -468,7 +486,6 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
           {filtered.map((block) => {
             const val = valueForApp(block, app, drafts);
             const visual = block.editor ? renderVisualEditor(block, val) : null;
-            const showPreview = !!block.editor && VISUAL_PREVIEW_EDITORS.has(block.editor);
 
             return (
               <div key={`${block.key}-${locale}`} className="content-studio-block" data-content-app={app} style={{
@@ -581,22 +598,16 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
                   />
                 )}
 
-                {showPreview && block.editor ? (
-                  <VisualBlockPreview
-                    editor={block.editor}
-                    value={val}
-                    appLabel={`${previewLabel} · ${locale}`}
-                  />
-                ) : (
-                  <div style={{ marginTop: 10, fontSize: 12, color: '#9C8E7E' }}>
-                    Editing {previewLabel}
-                    {' · '}
-                    resolved “{((app === 'website' ? block.resolved_website : block.resolved_order_app) ?? '—').toString().slice(0, 80)}”
-                  </div>
-                )}
+                <div style={{ marginTop: 10, fontSize: 12, color: '#9C8E7E' }}>
+                  Editing {previewLabel}
+                  {' · '}
+                  resolved “{((app === 'website' ? block.resolved_website : block.resolved_order_app) ?? '—').toString().slice(0, 80)}”
+                </div>
               </div>
             );
           })}
+
+          <LivePreviewFrame url={previewUrl} loading={previewLoading} />
         </div>
       </div>
 

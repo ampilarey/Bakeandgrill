@@ -20,6 +20,13 @@ vi.mock('../api/content', () => ({
   restoreContentRevision: vi.fn(),
   scheduleContent: vi.fn(),
   cancelContentSchedule: vi.fn(),
+  createContentPreviewToken: vi.fn(async () => ({
+    token: 't',
+    website_url: 'https://example.test/preview',
+    order_app_url: 'https://example.test/order/?previewToken=t',
+    expires_in: 900,
+  })),
+  uploadContentVideo: vi.fn(),
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
@@ -115,8 +122,7 @@ describe('ContentStudio visual editors (per-app)', () => {
     });
     expect(screen.getByDisplayValue('Edited eyebrow')).toBeTruthy();
     await waitFor(() => {
-      const previews = screen.getAllByTestId('content-live-preview');
-      expect(previews.some((el) => el.textContent?.includes('Edited eyebrow'))).toBe(true);
+      expect(screen.getByTestId('live-preview-frame')).toBeTruthy();
     });
   });
 

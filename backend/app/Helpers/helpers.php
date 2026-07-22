@@ -59,6 +59,17 @@ if (!function_exists('content')) {
      */
     function content(string $key, mixed $default = null): mixed
     {
-        return App\Domains\Content\ContentResolver::for('website')->get($key, $default);
+        // Staff preview draft overlay (set only by ContentWebsitePreviewController).
+        if (app()->bound('content.draft_overrides')) {
+            $overrides = app('content.draft_overrides');
+            if (is_array($overrides) && array_key_exists($key, $overrides) && $overrides[$key] !== null && $overrides[$key] !== '') {
+                return $overrides[$key];
+            }
+        }
+
+        $app = app()->bound('content.draft_app') ? (string) app('content.draft_app') : 'website';
+        $locale = app()->bound('content.draft_locale') ? (string) app('content.draft_locale') : 'en';
+
+        return App\Domains\Content\ContentResolver::for($app, $locale)->get($key, $default);
     }
 }

@@ -205,3 +205,14 @@ export async function importContent(bundle: ContentExportBundle): Promise<{ appl
     body: JSON.stringify(bundle),
   });
 }
+
+export async function createContentPreviewToken(
+  app: ContentApp,
+  overrides: Record<string, string>,
+  locale: ContentLocale = 'en',
+): Promise<{ token: string; website_url: string; order_app_url: string; expires_in: number }> {
+  return req('/admin/content/preview-token', {
+    method: 'POST',
+    body: JSON.stringify({ app, locale, overrides }),
+  });
+}

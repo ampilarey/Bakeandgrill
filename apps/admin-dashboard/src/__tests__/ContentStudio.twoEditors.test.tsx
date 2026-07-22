@@ -20,6 +20,10 @@ vi.mock('../api/content', () => ({
   restoreContentRevision: vi.fn(),
   scheduleContent: vi.fn(),
   cancelContentSchedule: vi.fn(),
+  createContentPreviewToken: vi.fn(async () => ({
+    token: 't', website_url: '/p', order_app_url: '/o', expires_in: 900,
+  })),
+  uploadContentVideo: vi.fn(),
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));

@@ -175,6 +175,7 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::put('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'update']);
         Route::post('/admin/content/upload', [App\Http\Controllers\Api\ContentController::class, 'upload']);
         Route::post('/admin/content/upload-video', [App\Http\Controllers\Api\ContentController::class, 'uploadVideo']);
+        Route::post('/admin/content/preview-token', [App\Http\Controllers\Api\ContentPreviewController::class, 'createToken']);
         Route::get('/admin/content/export', [App\Http\Controllers\Api\ContentController::class, 'export']);
         Route::post('/admin/content/import', [App\Http\Controllers\Api\ContentController::class, 'import']);
         Route::post('/admin/content/schedule', [App\Http\Controllers\Api\ContentController::class, 'schedule']);

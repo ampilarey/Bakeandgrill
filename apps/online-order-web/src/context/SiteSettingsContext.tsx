@@ -282,7 +282,15 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       }
     };
 
-    fetch(SITE_SETTINGS_URL)
+    const previewToken = new URLSearchParams(window.location.search).get('previewToken');
+    const apiBase =
+      ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+        (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api'));
+    const previewUrl = previewToken
+      ? `${apiBase}/content/preview?token=${encodeURIComponent(previewToken)}`
+      : null;
+
+    fetch(previewUrl || SITE_SETTINGS_URL)
       .then(async (r) => {
         if (!r.ok) throw new Error(`content ${r.status}`);
         return r.json();
@@ -290,14 +298,15 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       .then((body: { content?: Record<string, string | null>; settings?: Record<string, string | null> }) => {
         apply(body.content ?? body.settings);
       })
-      .catch(() =>
-        fetch(SITE_SETTINGS_FALLBACK_URL)
+      .catch(() => {
+        if (previewToken) return; // never fall back to public content when previewing
+        return fetch(SITE_SETTINGS_FALLBACK_URL)
           .then((r) => r.json())
           .then(({ settings: s }: { settings: Record<string, string | null> }) => apply(s))
           .catch((e) => {
             if (import.meta.env.DEV) console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
-          })
-      );
+          });
+      });
   }, []);
 
   // Optional brand accent from CMS (valid hex only).
