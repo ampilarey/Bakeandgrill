@@ -6,8 +6,12 @@ namespace App\Providers;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\Providers\DhiraaguSmsProvider;
+use App\Models\Item;
+use App\Models\ItemPhoto;
 use App\Models\Order;
 use App\Models\StaffSchedule;
+use App\Observers\ItemObserver;
+use App\Observers\ItemPhotoObserver;
 use App\Observers\OrderObserver;
 use App\Observers\StaffScheduleObserver;
 use App\Support\BmlSignatureGuard;
@@ -40,6 +44,8 @@ class AppServiceProvider extends ServiceProvider
 
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
+        Item::observe(ItemObserver::class);
+        ItemPhoto::observe(ItemPhotoObserver::class);
 
         View::composer([
             'layouts.pdf',

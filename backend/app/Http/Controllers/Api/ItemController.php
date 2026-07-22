@@ -17,6 +17,7 @@ use App\Services\ItemAvailabilityService;
 use App\Services\RecipeCostCalculator;
 use App\Services\SpecialPricingService;
 use App\Services\VariantSyncService;
+use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -512,7 +513,28 @@ class ItemController extends Controller
         $comboRows = $data['combo_items'] ?? null;
         $packagingOptions = $data['packaging_options'] ?? null;
         unset($data['channel_availability'], $data['variants'], $data['modifier_ids'], $data['combo_items'], $data['packaging_options']);
+
+        $oldImageUrl = $item->image_url;
+        $oldOriginalUrl = $item->image_original_url;
+        $oldThumbUrl = $item->getAttribute('thumb_url');
+
         $item->update($data);
+
+        $keep = array_values(array_filter([
+            $item->image_url,
+            $item->image_original_url,
+            $item->getAttribute('thumb_url'),
+        ], static fn ($u) => is_string($u) && $u !== ''));
+
+        if ($oldImageUrl && $oldImageUrl !== $item->image_url) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldImageUrl, $keep, exceptItemId: (int) $item->id);
+        }
+        if ($oldOriginalUrl && $oldOriginalUrl !== $item->image_original_url) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldOriginalUrl, $keep, exceptItemId: (int) $item->id);
+        }
+        if (is_string($oldThumbUrl) && $oldThumbUrl !== '' && $oldThumbUrl !== $item->getAttribute('thumb_url')) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldThumbUrl, $keep, exceptItemId: (int) $item->id);
+        }
 
         if ($request->has('modifier_ids')) {
             $item->modifiers()->sync($request->modifier_ids);
@@ -693,7 +715,7 @@ class ItemController extends Controller
      * POST /api/items/stock-check
      * Bulk stock availability check for multiple items.
      */
-    public function bulkStockCheck(Request $request): \Illuminate\Http\JsonResponse
+    public function bulkStockCheck(Request $request): JsonResponse
     {
         $request->validate(['item_ids' => 'required|array|max:50', 'item_ids.*' => 'integer']);
         $isStaff = $request->user()?->tokenCan('staff');

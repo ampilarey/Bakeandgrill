@@ -10,7 +10,6 @@ use App\Services\MenuImageProcessor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Storage;
 
 class ItemPhotoController extends Controller
 {
@@ -103,39 +102,9 @@ class ItemPhotoController extends Controller
     public function destroy(int $itemId, int $photoId): JsonResponse
     {
         $photo = ItemPhoto::where('item_id', $itemId)->findOrFail($photoId);
-
-        foreach ([$photo->url, $photo->original_url] as $mediaUrl) {
-            $relativePath = $this->storagePathFromUrl($mediaUrl);
-            if ($relativePath) {
-                Storage::disk('public')->delete($relativePath);
-            }
-        }
-
+        // Disk cleanup is handled by ItemPhotoObserver via MediaFileCleaner.
         $photo->delete();
 
         return response()->json(['message' => 'Photo deleted.']);
-    }
-
-    private function storagePathFromUrl(?string $url): ?string
-    {
-        if (!$url) {
-            return null;
-        }
-
-        if (str_starts_with($url, '/storage/')) {
-            return ltrim(substr($url, strlen('/storage/')), '/');
-        }
-
-        $diskUrl = rtrim(Storage::disk('public')->url('/'), '/');
-        if (str_starts_with($url, $diskUrl)) {
-            return ltrim(substr($url, strlen($diskUrl)), '/');
-        }
-
-        $path = parse_url($url, PHP_URL_PATH);
-        if (is_string($path) && str_starts_with($path, '/storage/')) {
-            return ltrim(substr($path, strlen('/storage/')), '/');
-        }
-
-        return null;
     }
 }
