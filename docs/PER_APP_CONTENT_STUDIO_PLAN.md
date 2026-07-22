@@ -332,3 +332,82 @@ New admin page: block cards, Shared/Different toggle, per-app tabs, editors, cop
 Trim hardcoded defaults to last-resort, verify all consumers, bump SW `CACHE_VERSION`, rebuild+resync order dist. Tests: order-app content. Commit: "content: order-app scoped content + PWA".
 
 **(Phase 4, later)** dedicated `content_revisions` with one-click restore; scheduled/publish-at; multi-language per scope; import/export content bundles.
+
+---
+
+## Appendix A — Verified content registry inventory (ground truth)
+
+Built from the seeded DB (227 total settings) + a literal cross-reference of every content
+key against Blade views/`HomeController` (**W**) and the order-app `src` (**O**). Types are the
+seeded `type`. Use this to author `config/content.php` directly.
+
+**Caveat:** Blade builds a few keys dynamically (`"hero_slide_{$i}"`), which literal grep can't
+see — `hero_slide_1..3` are **both** (W+O), not order-app-only. All content keys are display copy
+→ `public: true`.
+
+### Group 1 — Shared candidates (used by BOTH apps → `apps:['website','order_app']`, `shareable:true`, show Shared/Split toggle)
+| key | type |
+|---|---|
+| hero_slide_1 / _2 / _3 | json (repeater: image, eyebrow, title, subtitle, cta_text/url, cta2_text/url) |
+| trust_items | json (repeater) |
+| homepage_categories | json (repeater) |
+| proof_stat / proof_label / proof_details | text / text / json |
+| cta_band_headline / cta_band_subtext | text |
+| home_categories_eyebrow / _title / _subtitle | text |
+| home_featured_eyebrow_bestseller / _handpicked / _title_bestseller / _title_handpicked / _subtitle | text |
+| home_proof_eyebrow / home_specials_eyebrow / home_specials_title | text |
+| home_delivery_tagline | text |
+| business_phone / _whatsapp / _viber / _email / _address / _landmark / _maps_url | text |
+| maps_embed_url / delivery_time / delivery_threshold | text |
+| announcement_enabled / _text / _url / _style | boolean/text |
+| footer_text / _contact_heading / _location_heading / _quick_links_heading / _rights_suffix | text/textarea |
+| nav_order_cta_text | text |
+| legal_privacy_body | textarea (rich → sanitise) |
+| contact_page_title / contact_page_subtitle | text |
+| hours_page_title / hours_page_note | text |
+| privacy_page_title | text |
+
+### Group 2 — Website-only (Blade) → `apps:['website']` (no toggle)
+contact_email_label, contact_events_cta_headline, contact_events_cta_text, contact_hours_fallback,
+contact_hours_heading, contact_location_heading, contact_location_maps_label, contact_map_heading,
+contact_meta_title, contact_phone_label, contact_schedule_label, contact_touch_heading,
+contact_viber_label, contact_whatsapp_label, contact_page_eyebrow, events_section_blurb,
+events_section_browse_cta, events_section_headline, events_section_plan_cta, home_closed_badge_text,
+home_open_badge_text, home_delivery_payment_line, home_delivery_quality_line, home_delivery_subtitle,
+home_location_eyebrow, home_location_subtitle, home_location_title, legal_refund_body,
+legal_terms_body, hours_call_confirm_label, hours_closed_status_text, hours_contact_page_label,
+hours_meta_description, hours_meta_title, hours_open_status_text, hours_order_btn_label,
+hours_page_cta_subtitle, hours_page_cta_title, hours_page_eyebrow, hours_special_closure_label,
+privacy_address_label, privacy_email, privacy_email_label, privacy_last_updated_label,
+privacy_meta_title, privacy_phone_label, refund_last_updated_label, refund_meta_title,
+refund_page_subtitle, refund_page_title, terms_email_label, terms_last_updated_label,
+terms_meta_title, terms_page_corporate_service_text, terms_page_subtitle, terms_page_title,
+terms_phone_label.
+
+### Group 3 — Order-app-only (React) → `apps:['order_app']` (no toggle)
+about_page_title, about_page_story (textarea/rich), about_values (json repeater), footer_links (json),
+home_hero_fallback_title, home_hero_fallback_subtitle, office_orders_enabled, office_orders_headline,
+office_orders_min_guests, office_orders_subtext, menu_page_title, menu_page_subtitle,
+order_auth_privacy_line, order_checkout_title, order_checkout_subtitle, order_home_reviews_title,
+order_mode_delivery_hint, order_mode_pickup_hint, order_payment_compliance (textarea),
+preorder_confirm_title, preorder_confirm_message, preorder_confirm_steps (json), preorder_page_title,
+preorder_page_subtitle, preorder_submit_label.
+
+### Group 4 — Brand/SEO assets → `apps:['website','order_app']`, image type, cropped
+logo, logo_dark, favicon, og_image, meta_title, meta_description, site_name, site_tagline, primary_color
+(from Branding/SEO groups; already handled by `SiteSettingsController::upload` — route through crop pipeline).
+
+### EXCLUDED from Content Studio (system/ops — leave in existing settings pages)
+Groups: **Charges, Customers, Delivery, Kitchen, Loyalty, Marketing/marketing, notifications,
+operations, Ordering, Online Ordering, Catering & Events, POS, Analytics.** These are operational
+config or gate switches (managed by Ordering Control / Delivery / Service Availability / SMS pages),
+NOT customer-facing content. The registry must not pull them into the scope model.
+`business_hours_json` / `business_closures_json` stay owned by `OpeningHoursService` (Hours group is
+data, edited via the Hours editor, not free-text content).
+
+### Notes for `config/content.php`
+- Defaults: copy today's seeded shared values verbatim (snapshot test enforces parity).
+- Rich blocks (sanitise): about_page_story, legal_privacy_body, legal_terms_body, legal_refund_body,
+  order_payment_compliance, hero titles, cta_band_*, announcement_text (allow `<br><em><strong><a>`).
+- Repeaters (json, per-row schema): hero_slide_*, trust_items, homepage_categories, proof_details,
+  about_values, footer_links, preorder_confirm_steps.
