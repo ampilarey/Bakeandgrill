@@ -77,7 +77,10 @@ export function ItemSheet({
   const [pairings, setPairings] = useState<Item[]>([]);
 
   const slides = useMemo(
-    () => buildItemSlides({ image_url: item.image_url, thumb_url: item.thumb_url, name: item.name, photos }),
+    () => buildItemSlides(
+      { image_url: item.image_url, thumb_url: item.thumb_url, name: item.name, photos },
+      { source: 'gallery' },
+    ),
     [item.image_url, item.thumb_url, item.name, photos],
   );
 

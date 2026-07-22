@@ -36,8 +36,19 @@ type PhotoLike = {
   is_primary?: boolean;
 };
 
+export type BuildItemSlidesOptions = {
+  preferThumb?: boolean;
+  fallbackAlt?: string;
+  /** Customer default: gallery only (main image as empty-gallery fallback). Staff/legacy: `'all'`. */
+  source?: 'gallery' | 'all';
+  /** When source is gallery and photos are empty, emit no slides (no main-image fallback). */
+  strict?: boolean;
+};
+
 /**
- * Typed slides for item sheet / cards. Main image first, then gallery.
+ * Typed slides for item sheet / cards.
+ * Default `source:'gallery'` — customers see gallery only (main image only if gallery empty).
+ * Pass `source:'all'` for legacy main-image-first behaviour.
  */
 export function buildItemSlides(
   item: {
@@ -46,10 +57,12 @@ export function buildItemSlides(
     name?: string | null;
     photos?: PhotoLike[] | null;
   },
-  options?: { preferThumb?: boolean; fallbackAlt?: string },
+  options?: BuildItemSlidesOptions,
 ): MediaSlide[] {
   const preferThumb = options?.preferThumb === true;
   const fallbackAlt = options?.fallbackAlt || item.name || '';
+  const source = options?.source ?? 'gallery';
+  const strict = options?.strict === true;
   const out: MediaSlide[] = [];
   const seen = new Set<string>();
 
@@ -60,21 +73,30 @@ export function buildItemSlides(
     out.push(slide);
   };
 
-  const main = preferThumb ? (item.thumb_url || item.image_url) : item.image_url;
-  const mainResolved = resolveMediaUrl(main);
-  if (mainResolved) {
-    push({
-      type: 'image',
-      url: mainResolved,
-      thumbUrl: resolveMediaUrl(item.thumb_url),
-      alt: fallbackAlt,
-    });
-  }
+  const pushMain = () => {
+    const main = preferThumb ? (item.thumb_url || item.image_url) : item.image_url;
+    const mainResolved = resolveMediaUrl(main);
+    if (mainResolved) {
+      push({
+        type: 'image',
+        url: mainResolved,
+        thumbUrl: resolveMediaUrl(item.thumb_url),
+        alt: fallbackAlt,
+      });
+    }
+  };
 
   const photos = [...(item.photos ?? [])].sort((a, b) => {
     if (!!a.is_primary !== !!b.is_primary) return a.is_primary ? -1 : 1;
     return (a.sort_order ?? 0) - (b.sort_order ?? 0);
   });
+
+  if (source === 'all') {
+    pushMain();
+  } else if (photos.length === 0) {
+    if (!strict) pushMain();
+    return out;
+  }
 
   for (const photo of photos) {
     const isVideo = (photo.media_type || 'image') === 'video';
@@ -113,7 +135,7 @@ export function buildItemSlideUrls(
     thumb_url?: string | null;
     photos?: PhotoLike[] | null;
   },
-  options?: { preferThumb?: boolean },
+  options?: BuildItemSlidesOptions,
 ): string[] {
   return buildItemSlides(item, options).map((s) => {
     if (options?.preferThumb && s.type === 'video') {
