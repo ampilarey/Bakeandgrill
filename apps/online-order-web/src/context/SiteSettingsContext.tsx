@@ -27,6 +27,7 @@ export interface SiteSettings {
   delivery_eta?: string;
   delivery_time?: string;
   trust_items?: string;
+  hero_slides?: string;
   hero_slide_1?: string;
   hero_slide_2?: string;
   hero_slide_3?: string;
@@ -176,6 +177,23 @@ function parseTrustItems(raw: string | undefined | null): TrustItemRow[] {
 }
 
 function parseHeroSlides(rawMap: Record<string, string | undefined>): HeroSlideRow[] {
+  const arrayRaw = rawMap.hero_slides;
+  if (arrayRaw) {
+    try {
+      const parsed = JSON.parse(arrayRaw) as unknown;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter(
+          (slide): slide is HeroSlideRow =>
+            !!slide && typeof slide === 'object' && !!(slide as HeroSlideRow).title
+            && String((slide as HeroSlideRow).title).trim() !== '',
+        );
+      }
+    } catch {
+      /* fall through to legacy */
+    }
+  }
+
+  // Legacy fallback: hero_slide_1/2/3 during transition.
   const out: HeroSlideRow[] = [];
   for (let i = 1; i <= 3; i++) {
     const raw = rawMap[`hero_slide_${i}`];
@@ -302,7 +320,7 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   const trustItems = useMemo(() => parseTrustItems(settings.trust_items), [settings.trust_items]);
   const heroSlides = useMemo(
     () => parseHeroSlides(settings as Record<string, string | undefined>),
-    [settings.hero_slide_1, settings.hero_slide_2, settings.hero_slide_3],
+    [settings.hero_slides, settings.hero_slide_1, settings.hero_slide_2, settings.hero_slide_3],
   );
   const homepageCategories = useMemo(
     () => parseHomepageCategories(settings.homepage_categories),

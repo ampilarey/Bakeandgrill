@@ -75,13 +75,15 @@ class ContentMediaTest extends TestCase
     {
         $this->actingAsOwner();
 
-        SiteSetting::set('hero_slide_1', json_encode([
-            'image' => '/old.jpg',
-            'title' => 'Keep me',
+        SiteSetting::set('hero_slides', json_encode([
+            [
+                'image' => '/old.jpg',
+                'title' => 'Keep me',
+            ],
         ]), 'website');
 
         $res = $this->post('/api/admin/content/upload', [
-            'key' => 'hero_slide_1',
+            'key' => 'hero_slides',
             'scope' => 'website',
             'file' => $this->jpegAt(800, 600),
         ], ['Accept' => 'application/json'])
@@ -91,7 +93,7 @@ class ContentMediaTest extends TestCase
         $this->assertTrue($res['embed'] ?? false);
         $this->assertStringStartsWith('/storage/', $res['url']);
 
-        $stored = SiteSetting::getScoped('hero_slide_1', 'website');
+        $stored = SiteSetting::getScoped('hero_slides', 'website');
         $this->assertStringContainsString('Keep me', (string) $stored);
         $this->assertStringNotContainsString($res['url'], (string) $stored);
 

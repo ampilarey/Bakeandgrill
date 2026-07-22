@@ -518,9 +518,21 @@ return [
             'validate' => 'nullable|string|max:5000',
             'default' => '© 2026 Bake & Grill. All rights reserved.',
         ],
-        'hero_slide_1' => [
+        'hero_slides' => [
             'editor' => 'hero',
-            'label' => 'Hero Slide 1',
+            'label' => 'Hero Slides',
+            'group' => 'Hero',
+            'type' => 'json',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => true,
+            'validate' => 'nullable|string',
+            'default' => '[]',
+        ],
+        // Deprecated — kept for read-fallback during transition; managed via hero_slides.
+        'hero_slide_1' => [
+            'label' => 'Hero Slide 1 (legacy)',
             'group' => 'Hero',
             'type' => 'json',
             'apps' => ['website', 'order_app'],
@@ -529,10 +541,10 @@ return [
             'rich' => true,
             'validate' => 'nullable|string',
             'default' => '{}',
+            'deprecated' => true,
         ],
         'hero_slide_2' => [
-            'editor' => 'hero',
-            'label' => 'Hero Slide 2',
+            'label' => 'Hero Slide 2 (legacy)',
             'group' => 'Hero',
             'type' => 'json',
             'apps' => ['website', 'order_app'],
@@ -541,10 +553,10 @@ return [
             'rich' => true,
             'validate' => 'nullable|string',
             'default' => '{}',
+            'deprecated' => true,
         ],
         'hero_slide_3' => [
-            'editor' => 'hero',
-            'label' => 'Hero Slide 3',
+            'label' => 'Hero Slide 3 (legacy)',
             'group' => 'Hero',
             'type' => 'json',
             'apps' => ['website', 'order_app'],
@@ -553,6 +565,7 @@ return [
             'rich' => true,
             'validate' => 'nullable|string',
             'default' => '{}',
+            'deprecated' => true,
         ],
         'home_categories_eyebrow' => [
             'label' => 'Categories Section — Eyebrow',

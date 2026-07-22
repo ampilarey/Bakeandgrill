@@ -108,20 +108,22 @@ function orderOnlyBlock(): ContentBlock {
 }
 
 function heroBlock(): ContentBlock {
+  const websiteArr = JSON.stringify([JSON.parse(heroShared)]);
+  const orderArr = JSON.stringify([JSON.parse(heroOrder)]);
   return {
-    key: 'hero_slide_1',
-    label: 'Hero Slide 1',
+    key: 'hero_slides',
+    label: 'Hero Slides',
     group: 'Hero',
     type: 'json',
     editor: 'hero',
     apps: ['website', 'order_app'],
     shareable: true,
     public: true,
-    shared: heroShared,
+    shared: websiteArr,
     website: null,
-    order_app: heroOrder,
-    resolved_website: heroShared,
-    resolved_order_app: heroOrder,
+    order_app: orderArr,
+    resolved_website: websiteArr,
+    resolved_order_app: orderArr,
     state: 'split',
   };
 }
@@ -169,7 +171,7 @@ describe('Content Studio two app editors', () => {
       expect(screen.getByText('Phone number')).toBeTruthy();
     });
     expect(screen.getByText('Meta title')).toBeTruthy();
-    expect(screen.getAllByText('Hero Slide 1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Hero Slides').length).toBeGreaterThan(0);
     expect(screen.queryByText('Welcome banner')).toBeNull();
     expect(screen.queryByText(/Make different per app/i)).toBeNull();
     expect(screen.queryByText(/Reset to shared/i)).toBeNull();
@@ -262,7 +264,7 @@ describe('Content Studio two app editors', () => {
 
     const [changes] = vi.mocked(contentApi.updateContent).mock.calls[0];
     expect(changes[0].scope).toBe('order_app');
-    expect(changes[0].key).toBe('hero_slide_1');
+    expect(changes[0].key).toBe('hero_slides');
     expect(String(changes[0].value)).toContain('Edited order eyebrow');
   });
 

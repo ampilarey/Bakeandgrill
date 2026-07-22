@@ -23,7 +23,7 @@ import {
   AboutValuesEditor,
   CategoriesEditor,
   FooterLinksEditor,
-  HeroSlideEditor,
+  HeroSlidesEditor,
   PreorderStepsEditor,
   ProofDetailsEditor,
   TrustItemsEditor,
@@ -121,7 +121,12 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
   }, [locale]);
 
   const appBlocks = useMemo(
-    () => blocks.filter((b) => b.apps.includes(app)),
+    () => blocks.filter((b) => {
+      if (!b.apps.includes(app)) return false;
+      // Hide deprecated legacy hero_slide_1/2/3 — managed via hero_slides.
+      if (/^hero_slide_[123]$/.test(b.key)) return false;
+      return true;
+    }),
     [blocks, app],
   );
 
@@ -288,16 +293,8 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
     const common = { label: block.label, value: val, onChange };
 
     switch (block.editor) {
-      case 'hero': {
-        const slideNum = block.key.replace('hero_slide_', '') || '1';
-        return (
-          <HeroSlideEditor
-            {...common}
-            uploadKey={`hero_${slideNum}_image`}
-            triggerUpload={triggerUpload}
-          />
-        );
-      }
+      case 'hero':
+        return <HeroSlidesEditor {...common} triggerUpload={triggerUpload} />;
       case 'categories':
         return <CategoriesEditor {...common} triggerUpload={triggerUpload} />;
       case 'trust':

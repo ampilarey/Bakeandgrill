@@ -764,14 +764,7 @@
 
 @section('content')
 @php
-    $heroSlides = [];
-    for ($i = 1; $i <= 3; $i++) {
-        $raw   = content("hero_slide_{$i}", '{}');
-        $slide = json_decode($raw, true) ?: [];
-        if (!empty($slide['title'])) {
-            $heroSlides[] = $slide;
-        }
-    }
+    $heroSlides = \App\Domains\Content\HeroSlides::resolve(static fn (string $key, mixed $default) => content($key, $default));
     // When no slides are configured, we render 1 fallback slide — dots/nav should reflect that.
     $slideCount = count($heroSlides) > 0 ? count($heroSlides) : 1;
 

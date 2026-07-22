@@ -31,39 +31,38 @@ vi.mock('../components/ui', async () => {
   };
 });
 
-const heroShared = JSON.stringify({
-  image: '/images/a.jpg',
-  eyebrow: 'Shared eyebrow',
-  title: 'Shared title',
-  subtitle: 'Sub',
-  cta_text: 'Order',
-  cta_url: '/order/',
-  cta2_text: 'Menu',
-  cta2_url: '/menu',
-});
+const heroSlides = JSON.stringify([
+  {
+    image: '/images/a.jpg',
+    eyebrow: 'Shared eyebrow',
+    title: 'Shared title',
+    subtitle: 'Sub',
+    cta_text: 'Order',
+    cta_url: '/order/',
+    cta2_text: 'Menu',
+    cta2_url: '/menu',
+  },
+]);
 
 const categoriesShared = JSON.stringify([
   { icon: '🥐', label: 'Bakery', name: 'Pastries', hook: 'Fresh', image_url: '', link: '/menu' },
-  { icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' },
-  { icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' },
-  { icon: '', label: '', name: '', hook: '', image_url: '', link: '/menu' },
 ]);
 
 function heroBlock(): ContentBlock {
   return {
-    key: 'hero_slide_1',
-    label: 'Hero Slide 1',
+    key: 'hero_slides',
+    label: 'Hero Slides',
     group: 'Hero',
     type: 'json',
     editor: 'hero',
     apps: ['website', 'order_app'],
     shareable: true,
     public: true,
-    shared: heroShared,
+    shared: heroSlides,
     website: null,
     order_app: null,
-    resolved_website: heroShared,
-    resolved_order_app: heroShared,
+    resolved_website: heroSlides,
+    resolved_order_app: heroSlides,
     state: 'shared',
   };
 }
@@ -154,35 +153,31 @@ describe('ContentStudio visual editors (per-app)', () => {
     });
   });
 
-  it('order app editor shows that app resolved hero values', async () => {
-    const orderHero = {
-      ...heroBlock(),
-      order_app: JSON.stringify({
-        ...JSON.parse(heroShared),
-        eyebrow: 'Order eyebrow',
-      }),
-      resolved_order_app: JSON.stringify({
-        ...JSON.parse(heroShared),
-        eyebrow: 'Order eyebrow',
-      }),
-      state: 'split' as const,
-    };
+  it('hides legacy hero_slide_* blocks from the editor list', async () => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
       locales: ['en', 'dv'],
-      blocks: [orderHero, categoriesBlock()],
+      blocks: [
+        heroBlock(),
+        {
+          ...heroBlock(),
+          key: 'hero_slide_1',
+          label: 'Hero Slide 1 (legacy)',
+          editor: null,
+        },
+      ],
     });
 
     render(
       <MemoryRouter>
-        <AppContentEditor app="order_app" />
+        <AppContentEditor app="website" />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Order eyebrow')).toBeTruthy();
+      expect(screen.getAllByText('Hero Slides').length).toBeGreaterThan(0);
     });
-    expect(screen.queryByText(/Make different per app/i)).toBeNull();
+    expect(screen.queryByText('Hero Slide 1 (legacy)')).toBeNull();
   });
 
   it('does not expose reset-to-shared or shareContentBlock', async () => {
@@ -193,7 +188,7 @@ describe('ContentStudio visual editors (per-app)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByText('Hero Slide 1').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Hero Slides').length).toBeGreaterThan(0);
     });
 
     expect(screen.queryByText(/Reset to shared/i)).toBeNull();
