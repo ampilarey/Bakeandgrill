@@ -27,6 +27,7 @@ const GstPage                 = lazyWithRetry(() => import('./pages/GstPage'));
 const ProfitLossPage          = lazyWithRetry(() => import('./pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
 const SupplierIntelligencePage = lazyWithRetry(() => import('./pages/SupplierIntelligencePage').then((m) => ({ default: m.SupplierIntelligencePage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
+const ProcurementReportPage   = lazyWithRetry(() => import('./pages/ProcurementReportPage'));
 const PurchaseOrdersPage      = lazyWithRetry(() => import('./pages/PurchaseOrdersPage').then((m) => ({ default: m.PurchaseOrdersPage })));
 const PurchaseRequestsPage    = lazyWithRetry(() => import('./pages/PurchaseRequestsPage'));
 const ShoppingListsPage       = lazyWithRetry(() => import('./pages/ShoppingListsPage'));
@@ -302,6 +303,11 @@ export default function App() {
                 <Route path="forecasts" element={
                   <PermissionGuard user={user} permission="reports.financial">
                     <ForecastPage />
+                  </PermissionGuard>
+                } />
+                <Route path="procurement-report" element={
+                  <PermissionGuard user={user} permission="reports.financial">
+                    <ProcurementReportPage />
                   </PermissionGuard>
                 } />
                 <Route path="purchase-orders" element={

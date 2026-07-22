@@ -865,6 +865,55 @@ export async function getRestockPlan(params: {
   return req(`/forecasts/restock${qs ? `?${qs}` : ''}`);
 }
 
+export type ProcurementReport = {
+  from: string;
+  to: string;
+  spend_by_category: Array<{ category_id: number | null; category: string; amount_laar: number; count: number }>;
+  spend_by_supplier: Array<{
+    supplier_id: number | null;
+    supplier: string;
+    expense_laar: number;
+    history_spend_mvr: number;
+    expense_count: number;
+  }>;
+  spend_by_buyer: Array<{ buyer_id: number | null; buyer: string; request_count: number; bought_laar: number }>;
+  price_trend: Array<{
+    inventory_item_id: number;
+    item_name: string;
+    date: string;
+    avg_unit_price: number;
+    min_unit_price: number;
+    max_unit_price: number;
+    samples: number;
+  }>;
+  savings: {
+    total_savings_laar: number;
+    quote_picks: number;
+    lines: Array<{
+      quote_id: number;
+      item_id: number;
+      item_name: string;
+      unit_price_laar: number;
+      savings_laar: number;
+      actual_qty: number | null;
+      selected_at: string;
+    }>;
+  };
+};
+
+export async function getProcurementReport(params: {
+  from?: string;
+  to?: string;
+  inventory_item_id?: number;
+} = {}): Promise<ProcurementReport> {
+  const q = new URLSearchParams();
+  if (params.from) q.set('from', params.from);
+  if (params.to) q.set('to', params.to);
+  if (params.inventory_item_id != null) q.set('inventory_item_id', String(params.inventory_item_id));
+  const qs = q.toString();
+  return req(`/reports/procurement${qs ? `?${qs}` : ''}`);
+}
+
 export type ApplySuggestedRopResult = {
   updated_count: number;
   skipped_count: number;

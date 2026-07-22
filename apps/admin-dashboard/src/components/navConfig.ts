@@ -102,6 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // Insights & forecasting — reporting, not catalog ops
       { to: '/analytics',        icon: BarChart2,  label: 'Analytics',       permission: 'customers.analytics', description: 'Advanced insights' },
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
+      { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },
       { to: '/gst',         icon: Receipt,    label: 'GST',           permission: 'reports.financial',   description: 'MIRA GST reports & exports' },
       { to: '/profit-loss', icon: PieChart,   label: 'Profit & Loss', permission: 'finance.profit_loss', description: 'P&L statement' },
       { to: '/invoices',    icon: DollarSign, label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
