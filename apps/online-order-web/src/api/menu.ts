@@ -233,6 +233,30 @@ export async function fetchActiveSpecials(): Promise<{ specials: DailySpecial[] 
   return request('/specials');
 }
 
+export type Offer = {
+  id: string;
+  kind: 'special' | 'promo';
+  title: string;
+  subtitle?: string | null;
+  badge?: string | null;
+  discount_pct?: number | null;
+  effective_price?: number | null;
+  original_price?: number | null;
+  image_url?: string | null;
+  ends_at?: string | null;
+  link: string;
+  target?: {
+    type: string;
+    item_id?: number | null;
+    variant_id?: number | null;
+    category_id?: number | null;
+  };
+};
+
+export async function fetchOffers(): Promise<{ offers: Offer[]; headline?: string | null; subtext?: string | null }> {
+  return request('/offers');
+}
+
 export async function getWaitTimeEstimate(): Promise<{ wait_minutes: number; queue_depth: number }> {
   return request(ENDPOINTS.WAIT_TIME);
 }

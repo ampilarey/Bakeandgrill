@@ -13,6 +13,7 @@ use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
 use App\Services\AvailabilityResult;
+use App\Services\EffectivePriceService;
 use App\Services\ItemAvailabilityService;
 use App\Services\RecipeCostCalculator;
 use App\Services\SpecialPricingService;
@@ -44,7 +45,7 @@ class ItemController extends Controller
     /**
      * Display a listing of items
      */
-    public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver, ItemAvailabilityService $availability, SpecialPricingService $specialPricing)
+    public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver, ItemAvailabilityService $availability, SpecialPricingService $specialPricing, EffectivePriceService $effectivePricing)
     {
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
@@ -116,7 +117,7 @@ class ItemController extends Controller
         $items = $query->orderBy('sort_order')->orderBy('name')->paginate($perPage);
 
         // Admin gets full data; public / POS get stripped response + availability metadata
-        $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing) {
+        $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing, $effectivePricing) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
             $recipeCosts = $includeAdminExtras ? app(RecipeCostCalculator::class) : null;
@@ -124,7 +125,7 @@ class ItemController extends Controller
                 ? $specialPricing->activeSpecialsByItemId()->get($item->id)
                 : null;
             $baseSpecial = $includeAvailability
-                ? $specialPricing->resolveUnitPrice($item->id, (float) $item->base_price, $item)
+                ? $effectivePricing->resolveUnitPrice($item->id, (float) $item->base_price, $item)
                 : null;
             $data = [
                 'id' => $item->id,
@@ -175,7 +176,7 @@ class ItemController extends Controller
                 'availability_type' => $includeAdminExtras ? $item->availability_type : null,
                 'variants' => $item->variants
                     ->sortBy('sort_order')
-                    ->map(function ($v) use ($includeAdminExtras, $includeAvailability, $item, $specialPricing) {
+                    ->map(function ($v) use ($includeAdminExtras, $includeAvailability, $item, $effectivePricing) {
                         $variantRow = $includeAdminExtras ? [
                             'id' => $v->id,
                             'name' => $v->name,
@@ -198,7 +199,7 @@ class ItemController extends Controller
                         ];
 
                         if ($includeAvailability) {
-                            $variantPricing = $specialPricing->resolveUnitPrice($item->id, (float) $v->price, $item, $v->id);
+                            $variantPricing = $effectivePricing->resolveUnitPrice($item->id, (float) $v->price, $item, $v->id);
                             if ($variantPricing->hasDiscount()) {
                                 $variantRow['original_price'] = $variantPricing->originalPrice;
                                 $variantRow['effective_price'] = $variantPricing->unitPrice;

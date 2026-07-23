@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
+use App\Models\SiteSetting;
 use App\Support\LaariConverter;
 
 /**
@@ -37,6 +38,183 @@ class PromotionEvaluator
     public function evaluate(string $code, Order $order, ?int $customerId = null): array
     {
         return $this->evaluateAgainstOrder($code, $order, $customerId, $order->id);
+    }
+
+    /**
+     * Apply all eligible auto-apply (no-code, all-customer) promotions.
+     * Persists OrderPromotion drafts and updates order.promo_discount_laar.
+     * Caller should recalculateAndPersist afterwards.
+     *
+     * When $itemLevelAlreadyInLinePrices is true (EffectivePriceService baked
+     * item/category auto-promos into unit prices), those promos are skipped so
+     * we never double-discount. Order-level auto-promos still apply.
+     *
+     * @return list<array{promotion: Promotion, discount_laar: int}>
+     */
+    public function applyAutomatic(
+        Order $order,
+        ?int $customerId = null,
+        bool $itemLevelAlreadyInLinePrices = false,
+    ): array {
+        $order->loadMissing('items.item');
+
+        $candidates = Promotion::query()
+            ->autoApply()
+            ->active()
+            ->with('targets')
+            ->get()
+            ->filter(fn (Promotion $p) => $p->isValid());
+
+        $eligible = [];
+        foreach ($candidates as $promotion) {
+            if ($itemLevelAlreadyInLinePrices && $this->isItemLevelPromo($promotion)) {
+                continue;
+            }
+
+            $check = $this->eligibilityForPromotion($promotion, $order, $customerId, $order->id);
+            if (!$check['valid']) {
+                continue;
+            }
+
+            $eligible[] = [
+                'promotion' => $promotion,
+                'discount_laar' => (int) $check['discount_laar'],
+            ];
+        }
+
+        if ($eligible === []) {
+            return [];
+        }
+
+        $policy = (string) SiteSetting::get('discount_stacking_policy', 'best_wins');
+        $selected = $this->selectByStackingPolicy($eligible, $policy);
+
+        $applied = [];
+        foreach ($selected as $row) {
+            /** @var Promotion $promotion */
+            $promotion = $row['promotion'];
+            $discountLaar = (int) $row['discount_laar'];
+            $idempotencyKey = 'order-promo:' . $order->id . ':' . $promotion->id;
+
+            OrderPromotion::firstOrCreate(
+                ['idempotency_key' => $idempotencyKey],
+                [
+                    'order_id' => $order->id,
+                    'promotion_id' => $promotion->id,
+                    'discount_laar' => $discountLaar,
+                    'status' => 'draft',
+                ],
+            );
+
+            $applied[] = $row;
+        }
+
+        $totalPromoDiscount = (int) OrderPromotion::where('order_id', $order->id)
+            ->where('status', 'draft')
+            ->sum('discount_laar');
+
+        $order->update(['promo_discount_laar' => $totalPromoDiscount]);
+
+        return $applied;
+    }
+
+    /**
+     * Item/category-targeted promo (has inclusion targets) vs order-level.
+     */
+    public function isItemLevelPromo(Promotion $promo): bool
+    {
+        $promo->loadMissing('targets');
+        $inclusions = $promo->targets->where('is_exclusion', false);
+
+        return $inclusions->isNotEmpty();
+    }
+
+    /**
+     * @param list<array{promotion: Promotion, discount_laar: int}> $eligible
+     * @return list<array{promotion: Promotion, discount_laar: int}>
+     */
+    private function selectByStackingPolicy(array $eligible, string $policy): array
+    {
+        if ($eligible === []) {
+            return [];
+        }
+
+        if ($policy === 'stack') {
+            return $eligible;
+        }
+
+        // best_wins (default): single largest discount among auto-promos.
+        usort($eligible, fn (array $a, array $b) => $b['discount_laar'] <=> $a['discount_laar']);
+
+        return [$eligible[0]];
+    }
+
+    /**
+     * Shared eligibility + discount calc without requiring a code lookup.
+     *
+     * @return array{valid: bool, discount_laar: int, message: string, promotion: ?Promotion}
+     */
+    private function eligibilityForPromotion(
+        Promotion $promotion,
+        Order $order,
+        ?int $customerId,
+        ?int $excludeOrderId,
+    ): array {
+        if (!$promotion->isValid()) {
+            return $this->reject('Promo code is not valid or has expired.');
+        }
+
+        if ($promotion->max_uses && self::campaignUsageIncludingPending($promotion, $excludeOrderId) >= (int) $promotion->max_uses) {
+            return $this->reject('Promo code is not valid or has expired.');
+        }
+
+        if ($promotion->restricted_customer_id !== null) {
+            if ($customerId === null || (int) $promotion->restricted_customer_id !== $customerId) {
+                return $this->reject('This promo code is not valid for your account.');
+            }
+        }
+
+        $order->loadMissing('items');
+        $subtotalLaar = (int) ($order->subtotal_laar ?? round((float) $order->subtotal * 100));
+        if ($subtotalLaar <= 0) {
+            $subtotalLaar = (int) round((float) $order->items->sum('total_price') * 100);
+        }
+
+        if ($promotion->min_order_laar && $subtotalLaar < (int) $promotion->min_order_laar) {
+            $minMvr = number_format($promotion->min_order_laar / 100, 2);
+
+            return $this->reject("Minimum order of MVR {$minMvr} required.");
+        }
+
+        if ($customerId && $promotion->max_uses_per_customer) {
+            $confirmedUsage = $this->redemptionRepo->countByPromotionAndCustomer($promotion->id, $customerId);
+            $pendingQuery = OrderPromotion::where('promotion_id', $promotion->id)
+                ->where('status', 'draft')
+                ->whereHas(
+                    'order',
+                    fn ($q) => $q
+                        ->where('customer_id', $customerId)
+                        ->whereNotIn('status', ['cancelled', 'refunded']),
+                );
+            if ($excludeOrderId !== null) {
+                $pendingQuery->where('order_id', '!=', $excludeOrderId);
+            }
+            if ($confirmedUsage + $pendingQuery->count() >= $promotion->max_uses_per_customer) {
+                return $this->reject('You have already used this promo code the maximum number of times.');
+            }
+        }
+
+        $discountLaar = $this->calculateDiscount($promotion, $order, $subtotalLaar);
+        if ($discountLaar <= 0) {
+            return $this->reject('Promo code does not apply to any items in your order.');
+        }
+
+        return [
+            'valid' => true,
+            'discount_laar' => $discountLaar,
+            'message' => 'Automatic promotion applied.',
+            'promotion' => $promotion,
+        ];
     }
 
     /**

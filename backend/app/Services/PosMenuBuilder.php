@@ -19,6 +19,7 @@ class PosMenuBuilder
     public function __construct(
         private readonly KitchenMenuResolver $kitchenMenuResolver,
         private readonly SpecialPricingService $specialPricing,
+        private readonly EffectivePriceService $effectivePricing,
     ) {}
 
     /**
@@ -118,7 +119,7 @@ class PosMenuBuilder
                         'sort_order' => $v->sort_order,
                     ];
 
-                    $variantPricing = $this->specialPricing->resolveUnitPrice(
+                    $variantPricing = $this->effectivePricing->resolveUnitPrice(
                         $item->id,
                         (float) $v->price,
                         $item,
@@ -135,7 +136,7 @@ class PosMenuBuilder
                 ->all();
 
             $activeSpecial = $this->specialPricing->activeSpecialsByItemId()->get($item->id);
-            $baseSpecial = $this->specialPricing->resolveUnitPrice(
+            $baseSpecial = $this->effectivePricing->resolveUnitPrice(
                 $item->id,
                 (float) $item->base_price,
                 $item,

@@ -990,9 +990,59 @@
 
 
 {{-- ══════════════════════════════════════════════════════════
-     TODAY'S SPECIALS
+     OFFERS (specials + auto-promos)
 ══════════════════════════════════════════════════════════ --}}
-@if($todaysSpecials->count() > 0)
+@php
+    $homeOffers = isset($offers) ? $offers : collect();
+    $offersHeadline = content('offers_headline', 'Offers');
+    $offersSubtext = content('offers_subtext', 'Specials and promos running right now.');
+@endphp
+@if($homeOffers->count() > 0)
+<section class="section" id="offers">
+    <div class="section-inner">
+        <div class="section-header">
+            <span class="section-eyebrow">Limited time</span>
+            <h2 class="section-title">{{ $offersHeadline }}</h2>
+            <p class="section-sub">{{ $offersSubtext }}</p>
+        </div>
+        <div class="specials-scroll">
+            @foreach($homeOffers as $offer)
+            <a href="{{ url('/order' . ($offer['link'] ?? '/menu')) }}" class="special-card">
+                <div class="product-img" style="height: 140px;">
+                    @if(!empty($offer['image_url']))
+                        <img src="{{ $offer['image_url'] }}" alt="{{ $offer['title'] ?? '' }}">
+                    @else
+                        <div class="product-img-placeholder">🍽️</div>
+                    @endif
+                    @if(!empty($offer['badge']))
+                    <div class="special-badge-stack">
+                        <span class="special-badge">{{ $offer['badge'] }}</span>
+                    </div>
+                    @endif
+                </div>
+                <div class="product-body" style="padding: 1rem 1.125rem 1.25rem;">
+                    <div class="product-name" style="font-size: 0.95rem; margin-bottom: 0.5rem;">
+                        {{ $offer['title'] ?? '' }}
+                        @if(!empty($offer['subtitle']))
+                            <span style="display: block; font-size: 0.82rem; font-weight: 600; color: #6B5D4F; margin-top: 0.15rem;">{{ $offer['subtitle'] }}</span>
+                        @endif
+                    </div>
+                    @if(isset($offer['effective_price']) && $offer['effective_price'] !== null)
+                    <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem;">
+                        <span class="price-sale">MVR {{ number_format((float) $offer['effective_price'], 2) }}</span>
+                        @if(isset($offer['original_price']) && (float) $offer['original_price'] > (float) $offer['effective_price'])
+                            <span class="price-was">MVR {{ number_format((float) $offer['original_price'], 2) }}</span>
+                        @endif
+                    </div>
+                    @endif
+                    <span class="cat-link" style="display: inline-flex; margin-top: 0.75rem; font-size: 0.8rem;">Order now →</span>
+                </div>
+            </a>
+            @endforeach
+        </div>
+    </div>
+</section>
+@elseif($todaysSpecials->count() > 0)
 @php
     $homeSpecialsEyebrow = content('home_specials_eyebrow', 'Limited time');
     $homeSpecialsTitle = content('home_specials_title', "Today's Specials");

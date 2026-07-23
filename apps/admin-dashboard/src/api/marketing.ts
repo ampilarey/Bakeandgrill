@@ -2,10 +2,17 @@ import { req } from './client';
 
 // ── Promotions ────────────────────────────────────────────────────────────────
 
+export type PromotionTarget = {
+  id?: number;
+  target_type: 'item' | 'category';
+  target_id: number;
+  is_exclusion?: boolean;
+};
+
 export type Promotion = {
   id: number;
   name: string;
-  code: string;
+  code: string | null;
   type: string;
   discount_value: number;
   scope: string;
@@ -14,16 +21,21 @@ export type Promotion = {
   redemptions_count: number;
   stackable: boolean;
   is_active: boolean;
+  auto_apply?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
+  days_of_week?: number[] | null;
+  starts_time?: string | null;
+  ends_time?: string | null;
   restricted_customer_id?: number | null;
   restricted_customer?: { id: number; name: string | null; phone: string } | null;
+  targets?: PromotionTarget[];
   created_at: string;
 };
 
 export type PromotionPayload = {
   name: string;
-  code: string;
+  code?: string | null;
   type: 'fixed' | 'percentage';
   discount_value: number;
   scope?: string;
@@ -31,9 +43,14 @@ export type PromotionPayload = {
   max_uses?: number | null;
   stackable?: boolean;
   is_active?: boolean;
+  auto_apply?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
+  days_of_week?: number[] | null;
+  starts_time?: string | null;
+  ends_time?: string | null;
   restricted_customer_id?: number | null;
+  targets?: PromotionTarget[];
 };
 
 export async function fetchPromotions(params?: { page?: number; status?: string }): Promise<{ data: Promotion[]; meta?: { current_page: number; last_page: number; total: number } }> {
@@ -61,6 +78,47 @@ export async function updatePromotion(
 
 export async function deletePromotion(id: number): Promise<void> {
   await req(`/admin/promotions/${id}`, { method: 'DELETE' });
+}
+
+export type OffersPerformanceReport = {
+  report: Array<{
+    id: number;
+    name: string;
+    code: string | null;
+    auto_apply?: boolean;
+    is_active?: boolean;
+    type?: string;
+    discount_value?: number;
+    redemptions_count: number;
+    total_discount_laar: number;
+    order_promotions_draft?: number;
+  }>;
+  specials: Array<{
+    id: number;
+    kind: string;
+    name: string;
+    is_active: boolean;
+    sold_count: number;
+    max_quantity?: number | null;
+    discount_pct?: number | null;
+    special_price?: number | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  }>;
+  offers_preview: Array<{
+    id: string;
+    kind: string;
+    title: string;
+    badge?: string | null;
+    effective_price?: number | null;
+    original_price?: number | null;
+    ends_at?: string | null;
+    link: string;
+  }>;
+};
+
+export async function fetchOffersPerformance(): Promise<OffersPerformanceReport> {
+  return req('/admin/reports/promotions');
 }
 
 // ── SMS ──────────────────────────────────────────────────────────────────────

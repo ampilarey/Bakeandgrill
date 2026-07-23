@@ -15,6 +15,8 @@ type Props = {
   onSelect: (id: number) => void;
   dimmed?: boolean;
   counts?: Record<number, number>;
+  showOffersPill?: boolean;
+  onOffersClick?: () => void;
 };
 
 /**
@@ -26,6 +28,8 @@ export function CategoryRail({
   onSelect,
   dimmed = false,
   counts = {},
+  showOffersPill = false,
+  onOffersClick,
 }: Props) {
   const { t } = useLanguage();
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -46,6 +50,32 @@ export function CategoryRail({
       }}
     >
       <div role="tablist" aria-orientation="vertical" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {showOffersPill && onOffersClick && (
+          <button
+            type="button"
+            role="tab"
+            className="cat-rail__item"
+            onClick={onOffersClick}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 4,
+              padding: '0.5rem 0.35rem',
+              border: 'none',
+              background: 'transparent',
+              borderLeft: '3px solid transparent',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              color: 'var(--color-primary)',
+              width: '100%',
+              fontWeight: 700,
+              fontSize: 11,
+            }}
+          >
+            Offers
+          </button>
+        )}
         {categories.map((cat) => {
           const active = activeCategoryId === cat.id;
           const img = cat.image_url

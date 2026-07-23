@@ -71,6 +71,7 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
     });
 
     Route::get('/specials', [App\Http\Controllers\Api\DailySpecialController::class, 'active']);
+    Route::get('/offers', [App\Http\Controllers\Api\OffersController::class, 'index']);
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->prefix('admin/specials')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\DailySpecialController::class, 'index']);

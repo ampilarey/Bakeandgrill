@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, fetchActiveSpecials, getMyFavourites, toggleFavourite, getWaitTimeEstimate, API_ORIGIN } from '../api';
-import type { Category, Item, Modifier, DailySpecial } from '../api';
+import { useSearchParams } from 'react-router-dom';
+import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, fetchOffers, getMyFavourites, toggleFavourite, getWaitTimeEstimate, API_ORIGIN } from '../api';
+import type { Category, Item, Modifier, Offer } from '../api';
 
 function fmtOrderingTime(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -15,7 +15,6 @@ function fmtOrderingTime(iso: string | null | undefined): string {
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
-import { MenuThumb } from '../components/menu/MenuThumb';
 import { ItemSheet } from '../components/ItemSheet';
 import { SearchOverlay } from '../components/SearchOverlay';
 import { useCart } from '../context/CartContext';
@@ -29,6 +28,7 @@ import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
+import { OffersRail } from '../components/home/OffersRail';
 import { pickActiveSectionId } from '../utils/scrollSpy';
 
 function isItemOnSale(item: Item): boolean {
@@ -44,11 +44,6 @@ function isPercentDiscountItem(item: Item): boolean {
 
 function isFixedSpecialItem(item: Item): boolean {
   return isItemOnSale(item) && !isPercentDiscountItem(item);
-}
-
-function showDiscountPctUnderBadge(badge: string | null | undefined, discountPct: number | null | undefined): boolean {
-  if (!badge || !discountPct || discountPct <= 0) return false;
-  return !badge.includes(`${discountPct}%`);
 }
 
 function slugifyCategoryName(name: string): string {
@@ -97,7 +92,9 @@ export function MenuPage() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [specials, setSpecials] = useState<DailySpecial[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [offersHeadline, setOffersHeadline] = useState<string | null>(null);
+  const [offersSubtext, setOffersSubtext] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
@@ -191,8 +188,12 @@ export function MenuPage() {
 
   useEffect(() => {
     loadMenu();
-    fetchActiveSpecials()
-      .then(({ specials: sp }) => setSpecials((sp ?? []).slice(0, 8)))
+    fetchOffers()
+      .then((res) => {
+        setOffers(res.offers ?? []);
+        setOffersHeadline(res.headline ?? null);
+        setOffersSubtext(res.subtext ?? null);
+      })
       .catch(() => { /* non-blocking */ });
     const onChannel = () => loadMenu();
     window.addEventListener('sales_channel_change', onChannel);
@@ -648,6 +649,8 @@ export function MenuPage() {
           onSelect={handleSelectCategory}
           dimmed={loading || filtersActive}
           counts={catItemCounts}
+          showOffersPill={offers.length > 0}
+          onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
         />
 
         {/* ── Main menu column ───────────────────────────────────── */}
@@ -667,68 +670,13 @@ export function MenuPage() {
             </div>
           )}
 
-          {/* Today's Specials */}
-          {specials.length > 0 && (
-            <section style={{ paddingBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <div>
-                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-dark)', margin: 0 }}>{t('home.specials_title')}</h2>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0.15rem 0 0' }}>{t('home.specials_subtitle')}</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.875rem', overflowX: 'auto', paddingBottom: '0.35rem' }}>
-                {specials.map((sp) => {
-                  const cardKey = sp.variant_id ? `${sp.id}-${sp.variant_id}` : String(sp.id);
-                  const imgSrc = sp.item_image
-                    ? sp.item_image.startsWith('http') ? sp.item_image : `${API_ORIGIN}${sp.item_image.startsWith('/') ? '' : '/'}${sp.item_image}`
-                    : null;
-                  const price = Number(sp.effective_price ?? 0);
-                  const wasPrice = sp.original_price != null && Number(sp.original_price) > price
-                    ? Number(sp.original_price)
-                    : null;
-                  const badge = sp.badge_label ?? (sp.discount_pct ? `${sp.discount_pct}% OFF` : 'Special Offer');
-                  const pctUnderBadge = showDiscountPctUnderBadge(sp.badge_label, sp.discount_pct);
-                  return (
-                    <Link
-                      key={cardKey}
-                      to={`/menu?item=${sp.item_id}`}
-                      style={{
-                        flexShrink: 0, width: 168, borderRadius: 'var(--radius-2xl)',
-                        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                        overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column',
-                      }}
-                    >
-                      <div style={{ height: 100, position: 'relative', overflow: 'hidden' }}>
-                        <MenuThumb src={imgSrc} alt={sp.item_name ?? ''} height={100} />
-                        {(badge || sp.discount_pct) && (
-                          <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, zIndex: 2 }}>
-                            <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>
-                              {badge}
-                            </div>
-                            {pctUnderBadge && (
-                              <div style={{ background: 'var(--color-primary)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99, lineHeight: 1.3 }}>
-                                {sp.discount_pct}% OFF
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ padding: '0.65rem 0.75rem', flex: 1 }}>
-                        <p style={{ margin: '0 0 3px', fontWeight: 700, fontSize: 12, color: 'var(--color-dark)', lineHeight: 1.3 }}>{sp.item_name}</p>
-                        {sp.variant_name && (
-                          <p style={{ margin: '0 0 3px', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{sp.variant_name}</p>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                          <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-primary)' }}>MVR {price.toFixed(2)}</span>
-                          {wasPrice && <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>MVR {wasPrice.toFixed(2)}</span>}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+          {/* Unified Offers rail (specials + auto-promos) */}
+          <OffersRail
+            offers={offers}
+            headline={offersHeadline}
+            subtext={offersSubtext}
+            apiOrigin={API_ORIGIN}
+          />
 
           {loading && (
             <div className="menu-grid" style={{ padding: '0 0 1.25rem' }}>
