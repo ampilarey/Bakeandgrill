@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domains\Promotions\Services\OffersService;
 use App\Models\Item;
 use App\Services\OpeningHoursService;
 use App\Services\SpecialPricingService;
@@ -40,8 +41,9 @@ class HomeController extends Controller
 
         $pricing = app(SpecialPricingService::class);
         $todaysSpecials = collect($pricing->activeSpecialsForDisplay());
+        $offers = collect(app(OffersService::class)->activeOffers());
 
-        return view('home', compact('isOpen', 'todayHours', 'featuredItems', 'bestSellers', 'todaysSpecials'));
+        return view('home', compact('isOpen', 'todayHours', 'featuredItems', 'bestSellers', 'todaysSpecials', 'offers'));
     }
 
     public function contact()

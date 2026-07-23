@@ -81,6 +81,7 @@ class Promotion extends Model
         static::saved(function (): void {
             try {
                 app(\App\Domains\Promotions\Services\AutoPromotionPricing::class)->bustCache();
+                app(\App\Domains\Promotions\Services\OffersService::class)->bustCache();
             } catch (\Throwable) {
                 // Ignore during early boot / migrations.
             }
@@ -89,6 +90,7 @@ class Promotion extends Model
         static::deleted(function (): void {
             try {
                 app(\App\Domains\Promotions\Services\AutoPromotionPricing::class)->bustCache();
+                app(\App\Domains\Promotions\Services\OffersService::class)->bustCache();
             } catch (\Throwable) {
                 // Ignore during early boot / migrations.
             }

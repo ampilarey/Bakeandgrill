@@ -27,6 +27,11 @@ class SpecialPricingService
     public function bustCache(): void
     {
         Cache::forget(self::CACHE_KEY);
+        try {
+            app(\App\Domains\Promotions\Services\OffersService::class)->bustCache();
+        } catch (\Throwable) {
+            // Ignore during early boot.
+        }
     }
 
     /**
@@ -214,6 +219,10 @@ class SpecialPricingService
             'discount_pct' => $pct,
             'original_price' => $catalogPrice,
             'effective_price' => $effectivePrice,
+            'end_date' => $special->end_date?->toDateString(),
+            'ends_at' => $special->end_date
+                ? $special->end_date->copy()->endOfDay()->toIso8601String()
+                : null,
         ];
     }
 
