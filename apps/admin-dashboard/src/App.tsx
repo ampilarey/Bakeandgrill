@@ -3,7 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { getMe, logout as apiLogout, type StaffUser } from './api';
 import { ToastProvider } from './components/ui';
-import { Layout } from './components/Layout';
+import { AppShell } from './components/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { CommandPalette } from './components/CommandPalette';
 import { can as userCan, getDefaultNavPath, canAny as userCanAny } from './components/navConfig';
@@ -198,7 +198,7 @@ export default function App() {
         path="/*"
         element={
           <AuthGuard user={user}>
-            <Layout user={user!} onLogout={handleLogout} onSearch={() => setPaletteOpen(true)}>
+            <AppShell user={user!} onLogout={handleLogout} onSearch={() => setPaletteOpen(true)}>
               <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route index element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />
@@ -485,7 +485,7 @@ export default function App() {
                 <Route path="*" element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />
               </Routes>
               </Suspense>
-            </Layout>
+            </AppShell>
           </AuthGuard>
         }
       />

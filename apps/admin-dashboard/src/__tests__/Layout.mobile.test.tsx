@@ -1,19 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { Layout } from '../components/Layout';
+import { AppShell } from '../components/AppShell';
 import type { StaffUser } from '../api';
 
 vi.mock('../api', () => ({
   fetchLowStockItems: vi.fn().mockResolvedValue({ data: [] }),
 }));
 
-const user: StaffUser = {
+const owner: StaffUser = {
   id: 1,
   name: 'Owner',
   email: 'o@test.com',
   role: 'owner',
-  permissions: ['dashboard.view', 'orders.view'],
+  permissions: [],
 };
 
 function mockMobileWidth() {
@@ -21,26 +21,40 @@ function mockMobileWidth() {
   window.dispatchEvent(new Event('resize'));
 }
 
-describe('Layout mobile drawer', () => {
+describe('Layout mobile section sheet', () => {
   beforeEach(() => {
     mockMobileWidth();
+    localStorage.clear();
   });
 
-  it('closes drawer after clicking a nav link', () => {
+  it('opens section sheet when a bottom tab is tapped', () => {
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
-        <Layout user={user} onLogout={() => {}}>
+      <MemoryRouter initialEntries={['/orders']}>
+        <AppShell user={owner} onLogout={() => {}}>
           <div>Page</div>
-        </Layout>
+        </AppShell>
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByLabelText('Open menu'));
-    expect(screen.getByText('Monitor')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Monitor'));
+    expect(screen.getByRole('dialog', { name: /Monitor pages/i })).toBeInTheDocument();
+  });
 
-    const drawerOrders = document.querySelector('.admin-mobile-drawer-tile[href="/orders"]');
-    expect(drawerOrders).toBeTruthy();
-    fireEvent.click(drawerOrders!);
-    expect(screen.queryByText('Monitor')).toBeNull();
+  it('closes the sheet after choosing a page tile', () => {
+    render(
+      <MemoryRouter initialEntries={['/orders']}>
+        <AppShell user={owner} onLogout={() => {}}>
+          <div>Page</div>
+        </AppShell>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByLabelText('Monitor'));
+    const ordersTiles = screen.getAllByText('Orders');
+    // Prefer the tile inside the sheet dialog
+    const sheet = screen.getByRole('dialog');
+    const tile = ordersTiles.find((el) => sheet.contains(el)) ?? ordersTiles[0];
+    fireEvent.click(tile.closest('a')!);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
