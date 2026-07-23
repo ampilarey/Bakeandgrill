@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { fetchKdsOrders } from '../api';
 import type { KdsTicket } from '../api';
 import { fetchMenuGroups, fetchAdminItems } from '../api/menu';
-import { Badge, Btn, Card, ErrorMsg, PageHeader, Spinner, StatCard, statColor } from '../components/Layout';
+import { Badge, Btn, Card, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, statColor } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSse } from '../hooks/useSse';
 import { playChime, playLateAlert } from '../utils/audio';
@@ -189,8 +189,9 @@ export function KDSPage() {
   );
 
   return (
+    <PageShell>
     <div ref={kdsRef} style={isFullscreen ? { background: '#F8F6F3', padding: 20, minHeight: '100vh' } : undefined}>
-      <PageHeader
+      <PageHeader section="Monitor"
         title="Kitchen Display"
         subtitle={sseConnected ? '● Live monitor' : '○ Polling every 15s'}
         action={
@@ -271,6 +272,8 @@ export function KDSPage() {
         </div>
       )}
     </div>
+
+    </PageShell>
   );
 }
 

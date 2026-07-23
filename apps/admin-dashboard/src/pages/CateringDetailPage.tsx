@@ -13,7 +13,7 @@ import {
   type CateringRequestRow,
 } from '../api/catering';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
-import { PageHeader, Btn } from '../components/SharedUI';
+import { PageHeader, PageShell, Btn } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 type DraftLine = {
@@ -273,8 +273,9 @@ export function CateringDetailPage() {
   if (!row) return <p style={{ color: '#b91c1c' }}>{error || 'Not found'}</p>;
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title={row.reference ? `${row.reference}` : `Event #${row.id}`}
         subtitle={`${row.contact_name} · ${row.phone}${row.event_date ? ` · ${row.event_date}` : ''}`}
       />
@@ -572,6 +573,8 @@ export function CateringDetailPage() {
         </div>
       </div>
     </div>
+
+    </PageShell>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getProcurementReport, type ProcurementReport } from '../api/finance';
-import { PageHeader, Btn, StatCard } from '../components/SharedUI';
+import { PageHeader, PageShell, Btn, StatCard } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { downloadCSV } from '../utils/csvExport';
 import { today, daysAgo, monthStart } from '../utils/dateHelpers';
@@ -136,8 +136,9 @@ export default function ProcurementReportPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Analyze"
         title="Procurement"
         subtitle="Spend by category / supplier / buyer · price trends · cheapest-pick savings"
         action={<Btn variant="secondary" onClick={exportCsv} disabled={!data}>Export CSV</Btn>}
@@ -199,5 +200,7 @@ export default function ProcurementReportPage() {
         </div>
       ) : null}
     </div>
+
+    </PageShell>
   );
 }

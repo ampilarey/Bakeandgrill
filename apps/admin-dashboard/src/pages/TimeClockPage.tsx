@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, EmptyState, StatCard, DateInput,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
 import { today } from '../utils/dateHelpers';
@@ -74,8 +74,9 @@ export default function TimeClockPage() {
   }, [tab, canViewSummary]);
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Team"
         title="Time Clock"
         action={
           tab === 'history' && entries.length > 0 ? (
@@ -190,5 +191,7 @@ export default function TimeClockPage() {
         </>
       )}
     </div>
+
+    </PageShell>
   );
 }

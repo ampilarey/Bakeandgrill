@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Card, StatCard } from '../../components/Layout';
+import { Card, ResponsiveTable, StatCard } from '../../components/Layout';
 import { paymentMethodLabel } from '../../lib/paymentMethods';
 import {
   BarCell, DISCOUNT_TYPE_LABELS, mvr, ORDER_TYPE_LABELS, PaymentCommissionBlock,
@@ -84,7 +84,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             {summary.payments && Object.keys(summary.payments).length > 0 && (
               <>
                 <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Payments by method</p>
-                <table style={S.table}>
+                                <ResponsiveTable>
+<table style={S.table}>
                   <thead>
                     <tr>
                       <th style={S.th}>Method</th>
@@ -106,6 +107,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     })}
                   </tbody>
                 </table>
+                </ResponsiveTable>
                 {(summary.collected != null || summary.on_credit != null) && (
                   <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -132,7 +134,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {/* Top Items */}
           <Card>
             <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Top Items</p>
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Item</th>
                 <th style={S.th}>Qty</th>
@@ -151,12 +154,14 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
           </Card>
 
           {/* By Category */}
           <Card>
             <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Revenue by Category</p>
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Category</th>
                 <th style={S.th}>Orders</th>
@@ -175,12 +180,14 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
           </Card>
 
           {/* By Order Type */}
           <Card>
             <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Revenue by Order Type</p>
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Type</th>
                 <th style={S.th}>Orders</th>
@@ -199,12 +206,14 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
           </Card>
 
           {/* By Hour */}
           <Card>
             <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Revenue by Hour</p>
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Hour</th>
                 <th style={S.th}>Orders</th>
@@ -224,6 +233,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
           </Card>
         </div>
       )}
@@ -243,7 +253,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             {(deliveryZones.zones ?? []).length === 0 ? (
               <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed delivery orders in this period.</p>
             ) : (
-              <table style={S.table}>
+                            <ResponsiveTable>
+<table style={S.table}>
                 <thead>
                   <tr>
                     <th style={S.th}>Zone</th>
@@ -265,6 +276,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+              </ResponsiveTable>
             )}
           </Card>
         </>
@@ -295,7 +307,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               {spendHub.purchases.by_supplier.length === 0 ? (
                 <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No received purchases in range.</p>
               ) : (
-                <table style={S.table}>
+                                <ResponsiveTable>
+<table style={S.table}>
                   <thead><tr><th style={S.th}>Supplier</th><th style={S.th}>POs</th><th style={S.th}>Spend</th></tr></thead>
                   <tbody>
                     {spendHub.purchases.by_supplier.map((row) => (
@@ -307,6 +320,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     ))}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               )}
             </Card>
             <Card>
@@ -314,7 +328,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               {spendHub.expenses.by_category.length === 0 ? (
                 <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No approved expenses in range.</p>
               ) : (
-                <table style={S.table}>
+                                <ResponsiveTable>
+<table style={S.table}>
                   <thead><tr><th style={S.th}>Category</th><th style={S.th}>Count</th><th style={S.th}>Total</th></tr></thead>
                   <tbody>
                     {spendHub.expenses.by_category.map((row) => (
@@ -326,6 +341,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     ))}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               )}
             </Card>
             <Card>
@@ -333,7 +349,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               {(spendHub.waste?.by_reason ?? []).length === 0 ? (
                 <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No waste logged in range.</p>
               ) : (
-                <table style={S.table}>
+                                <ResponsiveTable>
+<table style={S.table}>
                   <thead><tr><th style={S.th}>Reason</th><th style={S.th}>Logs</th><th style={S.th}>Cost</th></tr></thead>
                   <tbody>
                     {spendHub.waste.by_reason.map((row) => (
@@ -345,6 +362,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     ))}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               )}
             </Card>
           </div>
@@ -356,7 +374,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             {spendHub.purchases.top_items.length === 0 ? (
               <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No received line items.</p>
             ) : (
-              <table style={S.table}>
+                            <ResponsiveTable>
+<table style={S.table}>
                 <thead><tr><th style={S.th}>Item</th><th style={S.th}>Qty</th><th style={S.th}>Spend</th></tr></thead>
                 <tbody>
                   {spendHub.purchases.top_items.map((row) => (
@@ -372,6 +391,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+              </ResponsiveTable>
             )}
           </Card>
           <Card>
@@ -380,7 +400,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No outflow or waste in this range.</p>
             ) : (
               <div style={{ maxHeight: 320, overflow: 'auto' }}>
-                <table style={S.table}>
+                                <ResponsiveTable>
+<table style={S.table}>
                   <thead>
                     <tr>
                       <th style={S.th}>Date</th>
@@ -404,6 +425,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     ))}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               </div>
             )}
           </Card>
@@ -446,7 +468,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     {Object.keys(data.payments ?? {}).length > 0 && (
                       <>
                         <p style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', margin: '0 0 8px' }}>By Payment Method</p>
-                        <table style={S.table}>
+                                                <ResponsiveTable>
+<table style={S.table}>
                           <thead><tr><th style={S.th}>Method</th><th style={S.th}>Total</th></tr></thead>
                           <tbody>
                             {Object.entries(data.payments ?? {}).map(([method, total]) => {
@@ -463,6 +486,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                             })}
                           </tbody>
                         </table>
+                        </ResponsiveTable>
                         {(data.collected != null || data.on_credit != null) && (
                           <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -500,7 +524,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           </div>
           <Card>
             <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Tax by Rate</p>
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Rate</th>
                 <th style={S.th}>Net Sales</th>
@@ -518,6 +543,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           </Card>
         </>
       )}
@@ -545,7 +571,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>No active inventory items.</p>
             ) : (
               <div style={{ maxHeight: 360, overflow: 'auto' }}>
-                <table style={S.table}>
+                                <ResponsiveTable>
+<table style={S.table}>
                   <thead>
                     <tr>
                       <th style={S.th}>Item</th>
@@ -569,6 +596,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     ))}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               </div>
             )}
           </Card>
@@ -592,7 +620,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>No received purchase lines in this range.</p>
             ) : (
               <div style={{ maxHeight: 420, overflow: 'auto' }}>
-                <table style={S.table}>
+                                <ResponsiveTable>
+<table style={S.table}>
                   <thead>
                     <tr>
                       <th style={S.th}>Item</th>
@@ -626,6 +655,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     ))}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               </div>
             )}
           </Card>
@@ -648,7 +678,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{supplier.supplier_name}</span>
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#ef4444' }}>{mvr(supplier.outstanding_amount)}</span>
               </div>
-              <table style={S.table}>
+                            <ResponsiveTable>
+<table style={S.table}>
                 <thead><tr>
                   <th style={S.th}>Invoice #</th>
                   <th style={S.th}>Amount</th>
@@ -671,6 +702,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+              </ResponsiveTable>
             </Card>
           ))}
         </>
@@ -698,7 +730,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 )}
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#D4813A' }}>{mvr(customer.outstanding_amount)}</span>
               </div>
-              <table style={S.table}>
+                            <ResponsiveTable>
+<table style={S.table}>
                 <thead><tr>
                   <th style={S.th}>Invoice #</th>
                   <th style={S.th}>Amount</th>
@@ -721,6 +754,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+              </ResponsiveTable>
             </Card>
           ))}
         </>
@@ -738,7 +772,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No promotion data.</p></Card>
           ) : (
             <Card>
-              <table style={S.table}>
+                            <ResponsiveTable>
+<table style={S.table}>
                 <thead><tr>
                   <th style={S.th}>Promotion</th>
                   <th style={S.th}>Code</th>
@@ -758,6 +793,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+              </ResponsiveTable>
             </Card>
           )}
         </>
@@ -801,7 +837,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <StatCard label="Discount Types" value={String((discountsReport.rows ?? []).filter(r => r.amount > 0).length)} accent="#D4813A" />
           </div>
           <Card>
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Type</th>
                 <th style={S.th}>Orders</th>
@@ -817,6 +854,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           </Card>
         </>
       )}
@@ -835,7 +873,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
               <Card>
                 <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: '#1C1408' }}>By staff</p>
-                <table style={S.table}>
+                                <ResponsiveTable>
+<table style={S.table}>
                   <thead><tr>
                     <th style={S.th}>Staff</th>
                     <th style={{ ...S.th, textAlign: 'right' }}>Voids</th>
@@ -849,13 +888,15 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     ))}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               </Card>
               <Card>
                 <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: '#1C1408' }}>By reason</p>
                 {(voidsByReason?.rows ?? []).length === 0 ? (
                   <p style={{ textAlign: 'center', padding: '24px 0', color: '#9C8E7E', fontSize: 13 }}>No reason data.</p>
                 ) : (
-                  <table style={S.table}>
+                                    <ResponsiveTable>
+<table style={S.table}>
                     <thead><tr>
                       <th style={S.th}>Reason</th>
                       <th style={{ ...S.th, textAlign: 'right' }}>Voids</th>
@@ -869,6 +910,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                       ))}
                     </tbody>
                   </table>
+                  </ResponsiveTable>
                 )}
               </Card>
             </div>
@@ -887,7 +929,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No refunds in this period.</p></Card>
           ) : (
             <Card>
-              <table style={S.table}>
+                            <ResponsiveTable>
+<table style={S.table}>
                 <thead><tr>
                   <th style={S.th}>Reason</th>
                   <th style={S.th}>Count</th>
@@ -903,6 +946,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+              </ResponsiveTable>
             </Card>
           )}
         </>
@@ -920,7 +964,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           ) : (
             <Card>
               <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Top customers by deposit balance</p>
-              <table style={S.table}>
+                            <ResponsiveTable>
+<table style={S.table}>
                 <thead><tr>
                   <th style={S.th}>Customer</th>
                   <th style={{ ...S.th, textAlign: 'right' }}>Balance</th>
@@ -938,6 +983,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+              </ResponsiveTable>
             </Card>
           )}
         </>
@@ -986,7 +1032,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           ) : (
             <Card>
               <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Top customers by balance</p>
-              <table style={S.table}>
+                            <ResponsiveTable>
+<table style={S.table}>
                 <thead><tr>
                   <th style={S.th}>Customer</th>
                   <th style={{ ...S.th, textAlign: 'right' }}>Balance</th>
@@ -1010,6 +1057,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   ))}
                 </tbody>
               </table>
+              </ResponsiveTable>
             </Card>
           )}
         </>
@@ -1023,7 +1071,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(overridesReport.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No override actions in this period.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>When</th>
                 <th style={S.th}>Staff</th>
@@ -1051,6 +1100,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1063,7 +1113,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(velocityReport.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed sales in this period.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Item</th>
                 <th style={S.th}>Qty sold</th>
@@ -1085,6 +1136,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1097,7 +1149,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(shiftVariances.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No closed shifts in this period.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Cashier</th>
                 <th style={S.th}>Closed</th>
@@ -1123,6 +1176,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1135,7 +1189,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(customerLtv.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No customer orders yet.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Customer</th>
                 <th style={S.th}>Orders</th>
@@ -1155,6 +1210,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1167,7 +1223,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(customerCohorts.cohorts ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No first-time customers in this period.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Cohort month</th>
                 <th style={S.th}>New customers</th>
@@ -1185,6 +1242,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1197,7 +1255,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(cashierPerf.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed orders in this period.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Cashier</th>
                 <th style={S.th}>Orders</th>
@@ -1217,6 +1276,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1227,7 +1287,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(productMargins.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No menu items found.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Item</th>
                 <th style={S.th}>Category</th>
@@ -1249,6 +1310,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1259,7 +1321,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(stockDiscrepancy.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No discrepancies detected.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Type</th>
                 <th style={S.th}>Name</th>
@@ -1275,6 +1338,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1287,7 +1351,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(hourlySales.hours ?? []).every((h) => h.count === 0) ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No orders in this period.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Hour</th>
                 <th style={S.th}>Orders</th>
@@ -1316,6 +1381,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -1328,7 +1394,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           {(stationPerf.rows ?? []).length === 0 ? (
             <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed order lines in this period.</p>
           ) : (
-            <table style={S.table}>
+                        <ResponsiveTable>
+<table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Station</th>
                 <th style={S.th}>Lines</th>
@@ -1346,6 +1413,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 ))}
               </tbody>
             </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}

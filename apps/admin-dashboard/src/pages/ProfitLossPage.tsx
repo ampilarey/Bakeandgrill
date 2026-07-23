@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getProfitAndLoss, getCashFlow, getDailySummary, type PnLReport } from '../api';
-import { Btn, Card, DateInput, ErrorMsg, PageHeader, Spinner, StatCard, TableCard, TD, TH } from '../components/Layout';
+import { Btn, Card, DateInput, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 import { today, daysAgo, monthStart } from '../utils/dateHelpers';
@@ -43,8 +43,9 @@ export function ProfitLossPage() {
   useEffect(() => { void load(); }, [from, to]);
 
   return (
+    <PageShell>
     <>
-      <PageHeader title="Profit & Loss" subtitle="Financial performance overview" />
+      <PageHeader section="Analyze" title="Profit & Loss" subtitle="Financial performance overview" />
       {error && <ErrorMsg message={error} />}
 
       {/* Date filter */}
@@ -157,5 +158,7 @@ export function ProfitLossPage() {
         </div>
       )}
     </>
+
+    </PageShell>
   );
 }

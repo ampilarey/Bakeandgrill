@@ -21,7 +21,7 @@ import {
   Input,
   Modal,
   ModalActions,
-  PageHeader,
+  PageHeader, PageShell,
   Select,
   Spinner,
   StatCard,
@@ -373,8 +373,9 @@ export default function ServiceAvailabilityPage() {
   };
 
   return (
+    <PageShell>
     <div className="svc-avail-page">
-      <PageHeader
+      <PageHeader section="System"
         title="Service Availability"
         subtitle="Pause or restore services during maintenance. Every change is audited."
         action={
@@ -616,6 +617,8 @@ export default function ServiceAvailabilityPage() {
         />
       )}
     </div>
+
+    </PageShell>
   );
 }
 

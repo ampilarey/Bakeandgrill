@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getAnalytics } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard,
+  Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard,
   TableCard, TD, TH,
 } from '../components/Layout';
 
@@ -49,12 +49,27 @@ export default function AnalyticsPage() {
 
   const maxCount = peakHours.length > 0 ? Math.max(...peakHours.map((h) => h.count ?? 0), 1) : 1;
 
-  if (loading) return <><PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" /><Spinner /></>;
-  if (error)   return <><PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" /><ErrorMsg message={error} /></>;
+  if (loading) {
+    return (
+      <PageShell>
+        <PageHeader section="Analyze" title="Analytics" subtitle="Insights, forecasting and profitability" />
+        <Spinner />
+      </PageShell>
+    );
+  }
+  if (error) {
+    return (
+      <PageShell>
+        <PageHeader section="Analyze" title="Analytics" subtitle="Insights, forecasting and profitability" />
+        <ErrorMsg message={error} />
+      </PageShell>
+    );
+  }
 
   return (
+    <PageShell>
     <>
-      <PageHeader title="Analytics" subtitle="Insights, forecasting and profitability" />
+      <PageHeader section="Analyze" title="Analytics" subtitle="Insights, forecasting and profitability" />
 
       {/* Peak Hours bar chart */}
       <div style={{ marginBottom: 24 }}>
@@ -200,5 +215,7 @@ export default function AnalyticsPage() {
         </div>
       )}
     </>
+
+    </PageShell>
   );
 }

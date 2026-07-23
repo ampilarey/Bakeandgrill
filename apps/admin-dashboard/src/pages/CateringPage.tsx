@@ -5,7 +5,7 @@ import {
   fetchCateringRequests,
   type CateringRequestRow,
 } from '../api/catering';
-import { PageHeader, Btn, EmptyState } from '../components/SharedUI';
+import { PageHeader, PageShell, Btn, EmptyState } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export function CateringPage() {
@@ -35,8 +35,9 @@ export function CateringPage() {
   useEffect(() => { load(); }, [page, status, search, assignedToMe]);
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title="Events & Catering"
         subtitle="Draft → quote → customer pay → confirmed"
       />
@@ -160,5 +161,7 @@ export function CateringPage() {
         </div>
       )}
     </div>
+
+    </PageShell>
   );
 }

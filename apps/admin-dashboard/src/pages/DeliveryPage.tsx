@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOrders, getDriverSettlementReport, type Order, type DriverSettlementReport, adminRequest } from '../api';
-import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, Spinner, StatCard, statColor, useConfirmDialog } from '../components/Layout';
+import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today, daysAgo } from '../utils/dateHelpers';
 
@@ -92,8 +92,9 @@ export function DeliveryPage() {
   const finished = orders.filter((o) => ['completed', 'cancelled'].includes(o.status));
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="Monitor"
         title="Delivery Orders"
         subtitle="Manage delivery orders and assign drivers"
         action={<Btn onClick={() => void loadOrders(page)} variant="secondary">↻ Refresh</Btn>}
@@ -290,6 +291,8 @@ export function DeliveryPage() {
         </div>
       )}
     </>
+
+    </PageShell>
   );
 }
 

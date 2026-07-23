@@ -22,7 +22,7 @@ import {
   type ContentScheduleRow,
   type ContentScope,
 } from '../../api/content';
-import { PageHeader, Btn } from '../../components/SharedUI';
+import { PageHeader, PageShell, Btn } from '../../components/SharedUI';
 import {
   AboutValuesEditor,
   CategoriesEditor,
@@ -412,8 +412,9 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
     block.apps.includes(app === 'website' ? 'order_app' : 'website');
 
   return (
+    <PageShell>
     <div className={`content-studio-page${dirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
-      <PageHeader
+      <PageHeader section="System"
         title={appTitle(app)}
         subtitle={appSubtitle(app)}
         action={
@@ -754,5 +755,7 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
         </div>
       ) : null}
     </div>
+
+    </PageShell>
   );
 }

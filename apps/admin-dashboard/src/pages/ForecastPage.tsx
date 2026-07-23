@@ -6,7 +6,7 @@ import {
   generateRestockPurchaseRequest, updateInventoryItem, resolveReorderAlert,
   type ItemForecast, type RestockPlan, type RestockPlanItem,
 } from '../api';
-import { Btn, Card, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard } from '../components/Layout';
+import { Btn, Card, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard } from '../components/Layout';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -1029,8 +1029,9 @@ export function ForecastPage() {
   };
 
   return (
+    <PageShell>
     <>
-      <PageHeader title="Forecasts & Trends" subtitle="Revenue projections, inventory runway, and restock plan" />
+      <PageHeader section="Analyze" title="Forecasts & Trends" subtitle="Revenue projections, inventory runway, and restock plan" />
       {error && <ErrorMsg message={error} />}
       {restockToast && (
         <div style={{
@@ -2096,5 +2097,7 @@ export function ForecastPage() {
         </Modal>
       )}
     </>
+
+    </PageShell>
   );
 }

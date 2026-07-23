@@ -8,7 +8,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions,
-  PageHeader, Spinner, TableCard, TD, TH,
+  PageHeader, PageShell, Spinner, TableCard, TD, TH,
 } from '../components/Layout';
 import { Toggle } from '../components/ui';
 import { downloadCSV } from '../utils/csvExport';
@@ -484,8 +484,9 @@ export function LoyaltyPage() {
   const [tab, setTab] = useState<'accounts' | 'settings' | 'tiers'>('settings');
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title="Loyalty Program"
         subtitle="Configure earn/redeem rules, tiers, and manage customer balances"
       />
@@ -500,5 +501,7 @@ export function LoyaltyPage() {
       {tab === 'tiers' && <TiersPanel />}
       {tab === 'accounts' && <AccountsPanel />}
     </>
+
+    </PageShell>
   );
 }

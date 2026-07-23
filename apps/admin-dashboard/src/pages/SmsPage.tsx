@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Zap, Users, FileText, Clock, Cpu, BellRing } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader } from '../components/Layout';
+import { PageHeader, PageShell } from '../components/Layout';
 import { LogsTab } from './SmsPage/LogsTab';
 import { CampaignsTab } from './SmsPage/CampaignsTab';
 import { PromotionsTab } from './SmsPage/PromotionsTab';
@@ -117,8 +117,9 @@ export function SmsPage() {
   };
 
   return (
+    <PageShell>
     <>
-      <PageHeader title="SMS" subtitle="Transactional alerts, marketing campaigns, and message templates" />
+      <PageHeader section="Customers & Marketing" title="SMS" subtitle="Transactional alerts, marketing campaigns, and message templates" />
 
       <div className="tab-scroll-row" style={S.sectionBar}>
         {SMS_SECTIONS.map((section) => (
@@ -152,5 +153,7 @@ export function SmsPage() {
       {tab === 'templates'   && <TemplatesTab />}
       {tab === 'scheduled'   && <ScheduledTab />}
     </>
+
+    </PageShell>
   );
 }

@@ -14,7 +14,7 @@ import { Customer360Drawer } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, Spinner,
+  Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, PageShell, Spinner,
   StatCard, TableCard, TD, TH,
 } from '../components/SharedUI';
 
@@ -192,8 +192,9 @@ export function CustomerGrowthPage() {
   });
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title="Customer Growth"
         subtitle="Metrics, segments, CRM tools, and data quality"
         action={<Link to="/customers" style={{ fontSize: 14, color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>← Customer list</Link>}
@@ -526,5 +527,7 @@ export function CustomerGrowthPage() {
         <Customer360Drawer customerId={view360Id} onClose={() => setView360Id(null)} />
       )}
     </>
+
+    </PageShell>
   );
 }

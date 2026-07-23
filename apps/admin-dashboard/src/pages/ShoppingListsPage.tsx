@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
-import { PageHeader, TableCard, TH, TD, Btn, Modal, ModalActions, TableSkeleton } from '../components/SharedUI';
+import { PageHeader, PageShell, TableCard, TH, TD, Btn, Modal, ModalActions, TableSkeleton } from '../components/SharedUI';
 import { useToast } from '../components/ui';
 import {
   createRecurringShoppingList,
@@ -42,8 +42,9 @@ export default function ShoppingListsPage() {
   }
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Manage"
         title="Recurring shopping lists"
         action={<Btn onClick={() => setShowCreate(true)}>New list</Btn>}
       />
@@ -130,5 +131,7 @@ export default function ShoppingListsPage() {
         </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }

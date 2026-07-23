@@ -16,7 +16,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   Badge, Btn, Card, EmptyState, TableStateBar,
-  PageHeader, Select, Spinner, statColor,
+  PageHeader, PageShell, Select, Spinner, statColor,
   ConfirmDialog, useConfirmDialog,
 } from '../components/Layout';
 import { downloadCSV } from '../utils/csvExport';
@@ -882,8 +882,9 @@ export function OrdersPage() {
   }, [sseConnected]);
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="Monitor"
         title="Orders"
         subtitle="All customer and POS orders"
         action={
@@ -1133,5 +1134,7 @@ export function OrdersPage() {
         />
       )}
     </>
+
+    </PageShell>
   );
 }

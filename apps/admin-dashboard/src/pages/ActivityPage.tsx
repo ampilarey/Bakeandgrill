@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, RefreshCw } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, TableCard, TH, TD, Btn, EmptyState, DateInput } from '../components/SharedUI';
+import { PageHeader, PageShell, TableCard, TH, TD, Btn, EmptyState, DateInput } from '../components/SharedUI';
 import { fetchStaff } from '../api';
 import {
   fetchAuditLogs,
@@ -101,8 +101,9 @@ export default function ActivityPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Monitor"
         title="POS Activity"
         subtitle="Audit trail of cashier actions — voids, payments, shifts, devices"
         action={
@@ -194,6 +195,8 @@ export default function ActivityPage() {
         </div>
       )}
     </div>
+
+    </PageShell>
   );
 }
 

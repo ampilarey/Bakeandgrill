@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader } from '../components/SharedUI';
+import { PageHeader, PageShell } from '../components/SharedUI';
 import { OrderingControlTabs } from '../components/OrderingControlTabs';
 import {
   getDeliveryStatus,
@@ -369,19 +369,23 @@ export default function DeliverySettingsPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '2rem' }}>
-        <PageHeader title="Delivery Settings" />
-        <p style={{ color: '#9C8575', fontSize: 14 }}>Loading…</p>
-      </div>
+      <PageShell>
+        <div style={{ padding: '2rem' }}>
+          <PageHeader section="Manage" title="Delivery Settings" />
+          <p style={{ color: '#9C8575', fontSize: 14 }}>Loading…</p>
+        </div>
+      </PageShell>
     );
   }
 
   if (error || !status) {
     return (
-      <div style={{ padding: '2rem' }}>
-        <PageHeader title="Delivery Settings" />
-        <p style={{ color: '#DC2626', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
-      </div>
+      <PageShell>
+        <div style={{ padding: '2rem' }}>
+          <PageHeader section="Manage" title="Delivery Settings" />
+          <p style={{ color: '#DC2626', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
+        </div>
+      </PageShell>
     );
   }
 
@@ -389,8 +393,9 @@ export default function DeliverySettingsPage() {
   const overrideActive = status.override_active;
 
   return (
+    <PageShell>
     <div style={{ padding: '1.5rem', maxWidth: 680 }}>
-      <PageHeader
+      <PageHeader section="Manage"
         title="Ordering Control Center"
         subtitle="Delivery gates, zones, fees, and schedules"
       />
@@ -824,5 +829,7 @@ export default function DeliverySettingsPage() {
         </p>
       </div>
     </div>
+
+    </PageShell>
   );
 }

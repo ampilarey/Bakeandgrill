@@ -16,6 +16,7 @@ import {
   type PaymentCommissionSummary,
 } from '../../api';
 import { localISO, today, daysAgo } from '../../utils/dateHelpers';
+import { ResponsiveTable } from '../../components/Layout';
 
 // Re-export for report tab modules that import from here.
 export { localISO, today, daysAgo };
@@ -29,35 +30,37 @@ export function PaymentCommissionBlock({ commission }: { commission?: PaymentCom
   return (
     <div style={{ marginTop: 20 }}>
       <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Card / QR / gateway settlement</p>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={th}>Channel</th>
-            <th style={{ ...th, textAlign: 'right' }}>Gross</th>
-            <th style={{ ...th, textAlign: 'right' }}>Rate</th>
-            <th style={{ ...th, textAlign: 'right' }}>Commission</th>
-            <th style={{ ...th, textAlign: 'right' }}>Net</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(commission.by_channel ?? []).filter((row) => row.gross > 0).map((row) => (
-            <tr key={row.channel}>
-              <td style={td}>{row.label}</td>
-              <td style={{ ...td, textAlign: 'right' }}>{mvr(row.gross)}</td>
-              <td style={{ ...td, textAlign: 'right', color: '#9C8E7E' }}>{row.rate_percent}%</td>
-              <td style={{ ...td, textAlign: 'right', color: '#dc2626' }}>{mvr(row.commission)}</td>
-              <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.net)}</td>
+      <ResponsiveTable>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={th}>Channel</th>
+              <th style={{ ...th, textAlign: 'right' }}>Gross</th>
+              <th style={{ ...th, textAlign: 'right' }}>Rate</th>
+              <th style={{ ...th, textAlign: 'right' }}>Commission</th>
+              <th style={{ ...th, textAlign: 'right' }}>Net</th>
             </tr>
-          ))}
-          <tr>
-            <td style={{ ...td, fontWeight: 700 }}>Total</td>
-            <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(commission.totals.gross_commissionable)}</td>
-            <td style={td} />
-            <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{mvr(commission.totals.commission_total)}</td>
-            <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(commission.totals.net_settlement)}</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {(commission.by_channel ?? []).filter((row) => row.gross > 0).map((row) => (
+              <tr key={row.channel}>
+                <td style={td}>{row.label}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{mvr(row.gross)}</td>
+                <td style={{ ...td, textAlign: 'right', color: '#9C8E7E' }}>{row.rate_percent}%</td>
+                <td style={{ ...td, textAlign: 'right', color: '#dc2626' }}>{mvr(row.commission)}</td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.net)}</td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ ...td, fontWeight: 700 }}>Total</td>
+              <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(commission.totals.gross_commissionable)}</td>
+              <td style={td} />
+              <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{mvr(commission.totals.commission_total)}</td>
+              <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(commission.totals.net_settlement)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </ResponsiveTable>
     </div>
   );
 }

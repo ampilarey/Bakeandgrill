@@ -7,7 +7,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input,
-  PageHeader, Select, Spinner, TableCard, TD, TH, useConfirmDialog,
+  PageHeader, PageShell, ScrollX, Select, Spinner, TableCard, TD, TH, useConfirmDialog,
 } from '../components/Layout';
 import { CustomerSearch } from '../components/CustomerSearch';
 import { downloadCSV } from '../utils/csvExport';
@@ -367,10 +367,11 @@ export function PromotionsPage() {
   };
 
   return (
+    <PageShell>
     <>
       <ConfirmDialog state={dlg} close={closeDlg} />
       {printCard && <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />}
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title="Promotions"
         subtitle="Manage promo codes and discounts"
         action={
@@ -418,7 +419,7 @@ export function PromotionsPage() {
             </div>
           )}
           <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px', color: '#1C1408' }}>Promotion redemptions</h4>
-          <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+          <ScrollX style={{ marginBottom: 16 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
@@ -438,9 +439,9 @@ export function PromotionsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
           <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px', color: '#1C1408' }}>Daily specials</h4>
-          <div style={{ overflowX: 'auto' }}>
+          <ScrollX>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
@@ -460,7 +461,7 @@ export function PromotionsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollX>
         </Card>
       )}
 
@@ -570,5 +571,7 @@ export function PromotionsPage() {
         </TableCard>
       )}
     </>
+
+    </PageShell>
   );
 }

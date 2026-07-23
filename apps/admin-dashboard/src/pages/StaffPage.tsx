@@ -8,7 +8,7 @@ import {
   type StaffMember, type StaffRole, type PermissionItem, type StaffNotificationPref,
 } from '../api';
 import { SchedulesTab } from './StaffPage/SchedulesTab';
-import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
+import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { Toggle, useToast } from '../components/ui';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -754,9 +754,10 @@ export function StaffPage() {
   };
 
   return (
+    <PageShell>
     <>
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader
+      <PageHeader section="Team"
         title="Staff Management"
         subtitle="Accounts, PINs, permissions, SMS prefs, and weekly schedules"
         action={activeTab === 'staff' && canCreateStaff ? <Btn onClick={() => setCreating(true)}>+ Add Staff</Btn> : undefined}
@@ -894,5 +895,7 @@ export function StaffPage() {
         </>
       )}
     </>
+
+    </PageShell>
   );
 }

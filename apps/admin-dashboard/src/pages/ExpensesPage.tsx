@@ -10,7 +10,7 @@ import { Toggle } from '../components/ui';
 import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
 import { ADMIN_EXPENSE_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
-import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
+import { Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog } from '../components/Layout';
 import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -358,10 +358,11 @@ export function ExpensesPage() {
   };
 
   return (
+    <PageShell>
     <>
       <ConfirmDialog state={dlg} close={closeDlg} />
       <input ref={fileInputRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={handleReceiptFile} />
-      <PageHeader
+      <PageHeader section="Analyze"
         title="Expenses"
         subtitle="Track operating costs and overheads"
         action={
@@ -678,5 +679,7 @@ export function ExpensesPage() {
         </Modal>
       )}
     </>
+
+    </PageShell>
   );
 }

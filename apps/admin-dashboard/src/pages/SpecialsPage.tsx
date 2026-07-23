@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
 import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
@@ -552,9 +552,10 @@ export default function SpecialsPage() {
   ];
 
   return (
+    <PageShell>
     <div>
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader title="Item Discounts" action={<Btn onClick={openCreate}>+ Add Discount</Btn>} />
+      <PageHeader section="Manage" title="Item Discounts" action={<Btn onClick={openCreate}>+ Add Discount</Btn>} />
       <p style={{ margin: '-8px 0 20px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.55, maxWidth: 720 }}>
         Schedule a <strong>discount %</strong> or fixed sale price on specific menu items for any date range.
         Active discounts show on the order app menu (badge + sale price), POS, and optionally in Today&apos;s Specials on the homepage.
@@ -814,5 +815,7 @@ export default function SpecialsPage() {
         </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }

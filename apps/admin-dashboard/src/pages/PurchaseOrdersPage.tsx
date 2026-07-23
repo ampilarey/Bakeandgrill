@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier } from '../api';
-import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
+import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
@@ -304,8 +304,9 @@ export function PurchaseOrdersPage() {
   };
 
   return (
+    <PageShell>
     <>
-      <PageHeader title="Purchase Orders" subtitle="Manage procurement workflow" />
+      <PageHeader section="Manage" title="Purchase Orders" subtitle="Manage procurement workflow" />
       {toast && (
         <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {toast}
@@ -696,5 +697,7 @@ export function PurchaseOrdersPage() {
         </Modal>
       )}
     </>
+
+    </PageShell>
   );
 }

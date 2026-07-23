@@ -4,7 +4,7 @@ import {
   getReservationSettings, updateReservationSettings,
   type AdminReservation, type ReservationSettings,
 } from '../api';
-import { Badge, Btn, DateInput, EmptyState, ErrorMsg, PageHeader, Pagination, Spinner, TableCard, TD, TH } from '../components/Layout';
+import { Badge, Btn, DateInput, EmptyState, ErrorMsg, PageHeader, PageShell, Pagination, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -409,8 +409,9 @@ export function ReservationsPage() {
   });
 
   return (
+    <PageShell>
     <>
-      <PageHeader title="Reservations" />
+      <PageHeader section="Manage" title="Reservations" />
 
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E8E0D8', marginBottom: 24 }}>
         <button style={tabBtnStyle(tab === 'list')}     onClick={() => setTab('list')}>Reservations</button>
@@ -420,6 +421,8 @@ export function ReservationsPage() {
       {tab === 'list'     && <ReservationsList />}
       {tab === 'settings' && <ReservationSettingsTab />}
     </>
+
+    </PageShell>
   );
 }
 

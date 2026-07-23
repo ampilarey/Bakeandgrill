@@ -7,7 +7,7 @@ import {
   fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
   type SupplierPerf, type SupplierRating, type PriceHistory, type Supplier,
 } from '../api';
-import { Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH } from '../components/Layout';
+import { Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -209,8 +209,9 @@ export function SupplierIntelligencePage() {
   );
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="Manage"
         title="Supplier Intelligence"
         subtitle="Ratings, performance and price comparison"
         action={
@@ -560,5 +561,7 @@ export function SupplierIntelligencePage() {
         </Modal>
       )}
     </>
+
+    </PageShell>
   );
 }

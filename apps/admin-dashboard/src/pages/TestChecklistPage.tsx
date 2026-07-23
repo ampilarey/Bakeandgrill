@@ -4,6 +4,7 @@
  * State is persisted in localStorage so progress survives page reloads.
  */
 import { useState, useEffect } from 'react';
+import { PageHeader, PageShell } from '../components/SharedUI';
 
 const SECTIONS = [
   // ── 1. Infrastructure ──────────────────────────────────────────────────────
@@ -645,17 +646,12 @@ export default function TestChecklistPage() {
     pct === 100 ? '#10B981' : pct >= 70 ? '#F59E0B' : pct >= 40 ? '#F97316' : '#EF4444';
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px 80px' }}>
-
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0 }}>
-          🧪 Live Testing Checklist
-        </h1>
-        <p style={{ color: '#6B7280', fontSize: 13, marginTop: 4 }}>
-          {SECTIONS.length} sections · {total} checks · Verify everything before going live. Progress saves automatically.
-        </p>
-      </div>
+    <PageShell style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px 80px' }}>
+      <PageHeader
+        section="System"
+        title="Live Testing Checklist"
+        subtitle={`${SECTIONS.length} sections · ${total} checks · Verify everything before going live. Progress saves automatically.`}
+      />
 
       {/* Progress bar */}
       <div style={{ background: 'white', borderRadius: 14, padding: '16px 20px', border: '1px solid #E5E7EB', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
@@ -804,6 +800,6 @@ export default function TestChecklistPage() {
           <p style={{ fontSize: 13, color: '#047857', marginTop: 8 }}>Bake &amp; Grill is fully verified and ready to go live.</p>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

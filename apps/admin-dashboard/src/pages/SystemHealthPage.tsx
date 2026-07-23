@@ -7,7 +7,7 @@ import {
   retryFailedJob,
   type SystemHealthDetailed,
 } from '../api';
-import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard } from '../components/Layout';
+import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 function fmtTime(iso: string | null | undefined): string {
@@ -78,8 +78,9 @@ export function SystemHealthPage() {
   const degraded = data?.status === 'degraded';
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="System"
         title="System Health"
         subtitle="Queue, payments, webhooks, SMS, and print-proxy status"
         action={
@@ -330,5 +331,7 @@ export function SystemHealthPage() {
         </>
       )}
     </div>
+
+    </PageShell>
   );
 }

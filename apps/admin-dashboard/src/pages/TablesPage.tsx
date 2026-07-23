@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
+  PageHeader, PageShell, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
 import {
   fetchTables, createTable, updateTable,
@@ -142,8 +142,9 @@ export default function TablesPage() {
   }, [tables]);
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Monitor"
         title="Table Management"
         action={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -318,5 +319,7 @@ export default function TablesPage() {
         </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }

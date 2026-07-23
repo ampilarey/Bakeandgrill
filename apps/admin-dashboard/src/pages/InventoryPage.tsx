@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
   EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar,
 } from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
@@ -366,9 +366,10 @@ export default function InventoryPage() {
   };
 
   return (
+    <PageShell>
     <div>
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader
+      <PageHeader section="Manage"
         title="Inventory"
         subtitle={lowCount > 0 ? `${lowCount} item${lowCount !== 1 ? 's' : ''} below reorder level` : undefined}
         action={tab === 'stock' && items.length > 0 ? (
@@ -980,5 +981,7 @@ export default function InventoryPage() {
         </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { MenuCategory } from '../api';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, PageHeader, Spinner,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, PageHeader, PageShell, Spinner,
 } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Field, FormTextarea, ImageUploadField } from './MenuPage/menuFormPrimitives';
@@ -221,9 +221,10 @@ export function MenuPage() {
   const m = useMenuPage();
 
   return (
+    <PageShell>
     <>
       <ConfirmDialog state={m.dlg} close={m.closeDlg} />
-      <PageHeader
+      <PageHeader section="Manage"
         title="Menu Management"
         subtitle="Categories, items, prices and availability"
         action={
@@ -485,5 +486,7 @@ export function MenuPage() {
         </div>
       )}
     </>
+
+    </PageShell>
   );
 }

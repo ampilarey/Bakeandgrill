@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
 } from '../components/SharedUI';
 import {
   fetchDiscountCardBatches,
@@ -184,8 +184,9 @@ export default function DiscountCardsPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title="Discount Cards"
         subtitle="Owner-only unique codes for % or fixed off. Redeem like a promo at checkout or POS."
         action={(
@@ -380,6 +381,8 @@ export default function DiscountCardsPage() {
         <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />
       )}
     </div>
+
+    </PageShell>
   );
 }
 

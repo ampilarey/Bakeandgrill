@@ -7,7 +7,7 @@ import {
   createCreditNote, updateInvoice, createInvoice,
   type Invoice, type ManualInvoiceLineItem,
 } from '../api';
-import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
+import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
 import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
 import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -343,9 +343,10 @@ export function InvoicesPage() {
   };
 
   return (
+    <PageShell>
     <>
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader
+      <PageHeader section="Analyze"
         title="Invoices"
         subtitle="Manage sale and purchase invoices"
         action={
@@ -799,5 +800,6 @@ export function InvoicesPage() {
         </Modal>
       )}
     </>
+    </PageShell>
   );
 }

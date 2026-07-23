@@ -4,7 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState,
 } from '../components/SharedUI';
 import {
   fetchLiveShifts, fetchShiftHistory, forceCloseShift,
@@ -196,8 +196,9 @@ export default function ShiftsPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader title="Shifts & Cash Drawer" />
+      <PageHeader section="Team" title="Shifts & Cash Drawer" />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
       <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 16px' }}>
@@ -265,5 +266,7 @@ export default function ShiftsPage() {
         </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }

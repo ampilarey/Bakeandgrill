@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
   StatCard, TableSkeleton, TableStateBar, ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
 import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
@@ -108,8 +108,9 @@ export default function RefundsPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Analyze"
         title="Refunds"
         action={canIssueRefund ? (
           <Btn onClick={() => { resetIssueForm(); setIssueOpen(true); }}>+ Process Refund</Btn>
@@ -211,5 +212,7 @@ export default function RefundsPage() {
 
       <ConfirmDialog state={dlg} close={closeDlg} />
     </div>
+
+    </PageShell>
   );
 }

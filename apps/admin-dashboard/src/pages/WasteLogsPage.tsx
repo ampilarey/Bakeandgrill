@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
 import { fetchWasteLogs, fetchWasteSummary, createWasteLog, type WasteLog, type WasteSummary } from '../api';
 import { ItemSearch, type MenuItemSelection, type InventoryItemSelection } from '../components/ItemSearch';
@@ -126,8 +126,9 @@ export default function WasteLogsPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Manage"
         title="Waste Tracking"
         action={
           <div style={{ display: 'flex', gap: 8 }}>
@@ -465,5 +466,7 @@ export default function WasteLogsPage() {
         </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }

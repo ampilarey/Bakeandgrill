@@ -8,7 +8,7 @@ import {
 } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, TableSkeleton, TableStateBar,
-  PageHeader, Spinner, TableCard, TD, TH, Modal, ModalActions, Input,
+  PageHeader, PageShell, Spinner, TableCard, TD, TH, Modal, ModalActions, Input,
   ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
@@ -280,10 +280,11 @@ export function CustomersPage() {
   };
 
   return (
+    <PageShell>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <ConfirmDialog state={dlg} close={closeDlg} />
 
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title="Customers"
         subtitle={`${meta.total} registered customers`}
         action={
@@ -647,6 +648,8 @@ export function CustomersPage() {
       </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }
 

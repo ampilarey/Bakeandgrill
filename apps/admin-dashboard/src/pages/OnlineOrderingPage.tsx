@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader } from '../components/SharedUI';
+import { PageHeader, PageShell } from '../components/SharedUI';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
 import {
@@ -664,14 +664,15 @@ export default function OnlineOrderingPage() {
 
   if (section === 'events') {
     return (
-      <div style={{ padding: '1.5rem', maxWidth: 680 }}>
-        <PageHeader
-          title="Ordering Control Center"
-          subtitle="Turn pre-order / event requests on or off, set accepting hours, and quote settings"
-        />
-        <OrderingControlTabs />
-        {toastBanner}
-        <>
+      <PageShell>
+        <div style={{ padding: '1.5rem', maxWidth: 680 }}>
+          <PageHeader section="Manage"
+            title="Ordering Control Center"
+            subtitle="Turn pre-order / event requests on or off, set accepting hours, and quote settings"
+          />
+          <OrderingControlTabs />
+          {toastBanner}
+          <>
         <div style={S.card} data-testid="catering-preorder-gate">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
@@ -932,34 +933,40 @@ export default function OnlineOrderingPage() {
             </button>
           </div>
         </div>
-        </>
-      </div>
+          </>
+        </div>
+      </PageShell>
     );
   }
 
   if (loading) {
     return (
-      <div style={{ padding: '2rem' }}>
-        <PageHeader title="Ordering Control" />
-        <OrderingControlTabs />
-        <p style={{ color: '#9C8575', fontSize: 14 }}>Loading…</p>
-      </div>
+      <PageShell>
+        <div style={{ padding: '2rem' }}>
+          <PageHeader section="Manage" title="Ordering Control" />
+          <OrderingControlTabs />
+          <p style={{ color: '#9C8575', fontSize: 14 }}>Loading…</p>
+        </div>
+      </PageShell>
     );
   }
 
   if (error || !status) {
     return (
-      <div style={{ padding: '2rem' }}>
-        <PageHeader title="Ordering Control" />
-        <OrderingControlTabs />
-        <p style={{ color: '#DC2626', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
-      </div>
+      <PageShell>
+        <div style={{ padding: '2rem' }}>
+          <PageHeader section="Manage" title="Ordering Control" />
+          <OrderingControlTabs />
+          <p style={{ color: '#DC2626', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
+        </div>
+      </PageShell>
     );
   }
 
   return (
+    <PageShell>
     <div style={{ padding: '1.5rem', maxWidth: 680 }}>
-      <PageHeader
+      <PageHeader section="Manage"
         title="Ordering Control Center"
         subtitle="Online ordering gates, schedules, fees, and limits"
       />
@@ -1273,5 +1280,7 @@ export default function OnlineOrderingPage() {
       </>)}
 
     </div>
+
+    </PageShell>
   );
 }

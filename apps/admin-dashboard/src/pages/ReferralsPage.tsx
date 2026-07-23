@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, TableCard, Badge, Btn, Modal, ModalActions,
+  PageHeader, PageShell, TableCard, Badge, Btn, Modal, ModalActions,
   Pagination, EmptyState, Spinner, ErrorMsg,
 } from '../components/SharedUI';
 import { fetchAdminReferrals, setReferralCodeActive, validateReferralCode, type ReferralCode } from '../api';
@@ -54,8 +54,9 @@ export default function ReferralsPage() {
   const totalUses = codes.reduce((s, c) => s + c.uses_count, 0);
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title="Referral Codes"
         subtitle={`${total} code${total !== 1 ? 's' : ''} · ${totalUses} total use${totalUses !== 1 ? 's' : ''} on this page`}
         action={<Btn onClick={() => setShowCheck(true)}>Validate Code</Btn>}
@@ -168,5 +169,7 @@ export default function ReferralsPage() {
         </Modal>
       )}
     </>
+
+    </PageShell>
   );
 }

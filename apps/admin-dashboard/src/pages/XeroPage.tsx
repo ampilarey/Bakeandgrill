@@ -7,7 +7,7 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, StatCard, TableCard, TD, TH, statColor, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, PageShell, StatCard, TableCard, TD, TH, statColor, useConfirmDialog,
 } from '../components/SharedUI';
 
 function xeroEntityPath(entityType: string, entityId: number | null | undefined): string | null {
@@ -149,9 +149,10 @@ export default function XeroPage() {
   };
 
   return (
+    <PageShell>
     <>
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader
+      <PageHeader section="System"
         title="Xero Integration"
         subtitle="Sync invoices and expenses with your Xero accounting software"
         action={
@@ -306,5 +307,7 @@ export default function XeroPage() {
         </>
       )}
     </>
+
+    </PageShell>
   );
 }

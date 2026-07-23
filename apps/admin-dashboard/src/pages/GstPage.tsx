@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, StatCard } from '../components/SharedUI';
+import { PageHeader, PageShell, ResponsiveTable, StatCard } from '../components/SharedUI';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Tabs, TabList, Tab } from '../components/ui/Tabs';
@@ -144,8 +144,9 @@ export default function GstPage() {
   const tabs = ['Dashboard', 'Output GST', 'Input GST', 'Ledger', 'Tax Invoices', 'Credit Notes', 'Reconciliation', 'Settings'];
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Analyze"
         title="GST Reporting"
         subtitle="Maldives MIRA-ready GST — General Sector 8% (800 bp). Tourism rates apply only if a tourism taxable activity is configured."
       />
@@ -262,28 +263,30 @@ export default function GstPage() {
             {ledger.length === 0 ? (
               <p style={{ color: '#9C8E7E' }}>No ledger entries for this period.</p>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
-                    {['Doc', 'Date', 'Type', 'Dir', 'Taxable', 'Tax', 'Total'].map((h) => (
-                      <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ledger.map((row) => (
-                    <tr key={row.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
-                      <td style={{ padding: '8px 6px', fontWeight: 600 }}>{row.document_no}</td>
-                      <td style={{ padding: '8px 6px' }}>{String(row.document_date).slice(0, 10)}</td>
-                      <td style={{ padding: '8px 6px' }}>{row.source_type}</td>
-                      <td style={{ padding: '8px 6px' }}>{row.direction}</td>
-                      <td style={{ padding: '8px 6px' }}>{mvr(row.taxable_value_laar)}</td>
-                      <td style={{ padding: '8px 6px' }}>{mvr(row.tax_laar)}</td>
-                      <td style={{ padding: '8px 6px' }}>{mvr(row.total_laar)}</td>
+              <ResponsiveTable>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
+                      {['Doc', 'Date', 'Type', 'Dir', 'Taxable', 'Tax', 'Total'].map((h) => (
+                        <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {ledger.map((row) => (
+                      <tr key={row.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                        <td style={{ padding: '8px 6px', fontWeight: 600 }}>{row.document_no}</td>
+                        <td style={{ padding: '8px 6px' }}>{String(row.document_date).slice(0, 10)}</td>
+                        <td style={{ padding: '8px 6px' }}>{row.source_type}</td>
+                        <td style={{ padding: '8px 6px' }}>{row.direction}</td>
+                        <td style={{ padding: '8px 6px' }}>{mvr(row.taxable_value_laar)}</td>
+                        <td style={{ padding: '8px 6px' }}>{mvr(row.tax_laar)}</td>
+                        <td style={{ padding: '8px 6px' }}>{mvr(row.total_laar)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ResponsiveTable>
             )}
             {ledgerMeta.last_page > 1 && (
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -302,31 +305,33 @@ export default function GstPage() {
           {taxInvoices.length === 0 ? (
             <p style={{ color: '#9C8E7E' }}>No tax invoices in this period.</p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
-                  {['Number', 'Customer TIN', 'Recipient', 'Date', 'Total', 'Status'].map((h) => (
-                    <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {taxInvoices.map((inv) => (
-                  <tr key={inv.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
-                    <td style={{ padding: '8px 6px', fontWeight: 600 }}>
-                      <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
-                        {inv.invoice_number}
-                      </Link>
-                    </td>
-                    <td style={{ padding: '8px 6px' }}>{inv.customer_tin ?? '—'}</td>
-                    <td style={{ padding: '8px 6px' }}>{inv.recipient_name ?? inv.customer?.name ?? '—'}</td>
-                    <td style={{ padding: '8px 6px' }}>{inv.issue_date}</td>
-                    <td style={{ padding: '8px 6px' }}>{mvrFromDecimal(inv.total)}</td>
-                    <td style={{ padding: '8px 6px' }}>{inv.status}</td>
+            <ResponsiveTable>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
+                    {['Number', 'Customer TIN', 'Recipient', 'Date', 'Total', 'Status'].map((h) => (
+                      <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {taxInvoices.map((inv) => (
+                    <tr key={inv.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                      <td style={{ padding: '8px 6px', fontWeight: 600 }}>
+                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                          {inv.invoice_number}
+                        </Link>
+                      </td>
+                      <td style={{ padding: '8px 6px' }}>{inv.customer_tin ?? '—'}</td>
+                      <td style={{ padding: '8px 6px' }}>{inv.recipient_name ?? inv.customer?.name ?? '—'}</td>
+                      <td style={{ padding: '8px 6px' }}>{inv.issue_date}</td>
+                      <td style={{ padding: '8px 6px' }}>{mvrFromDecimal(inv.total)}</td>
+                      <td style={{ padding: '8px 6px' }}>{inv.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -337,30 +342,32 @@ export default function GstPage() {
           {creditNotes.length === 0 ? (
             <p style={{ color: '#9C8E7E' }}>No credit notes in this period.</p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
-                  {['Number', 'Date', 'Total', 'Reason', 'Status'].map((h) => (
-                    <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {creditNotes.map((inv) => (
-                  <tr key={inv.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
-                    <td style={{ padding: '8px 6px', fontWeight: 600 }}>
-                      <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
-                        {inv.invoice_number}
-                      </Link>
-                    </td>
-                    <td style={{ padding: '8px 6px' }}>{inv.issue_date}</td>
-                    <td style={{ padding: '8px 6px' }}>{mvrFromDecimal(inv.total)}</td>
-                    <td style={{ padding: '8px 6px' }}>{inv.credit_note_reason ?? inv.notes ?? '—'}</td>
-                    <td style={{ padding: '8px 6px' }}>{inv.status}</td>
+            <ResponsiveTable>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
+                    {['Number', 'Date', 'Total', 'Reason', 'Status'].map((h) => (
+                      <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {creditNotes.map((inv) => (
+                    <tr key={inv.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                      <td style={{ padding: '8px 6px', fontWeight: 600 }}>
+                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                          {inv.invoice_number}
+                        </Link>
+                      </td>
+                      <td style={{ padding: '8px 6px' }}>{inv.issue_date}</td>
+                      <td style={{ padding: '8px 6px' }}>{mvrFromDecimal(inv.total)}</td>
+                      <td style={{ padding: '8px 6px' }}>{inv.credit_note_reason ?? inv.notes ?? '—'}</td>
+                      <td style={{ padding: '8px 6px' }}>{inv.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ResponsiveTable>
           )}
         </Card>
       )}
@@ -434,5 +441,7 @@ export default function GstPage() {
         </Card>
       )}
     </div>
+
+    </PageShell>
   );
 }

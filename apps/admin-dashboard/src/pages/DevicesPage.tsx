@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
 import {
   fetchDevices, fetchPendingDevices, registerDevice, enableDevice, disableDevice, approveDevice, rejectDevice, deleteDevice,
@@ -155,8 +155,9 @@ export default function DevicesPage() {
   const disabled = devices.filter(d => !d.is_active && d.status !== 'pending').length;
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="System"
         title="Device Management"
         action={
           canManage ? (
@@ -417,5 +418,7 @@ export default function DevicesPage() {
         </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { UserCircle } from 'lucide-react';
 import { getMe, updateMyPreferences } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader } from '../components/SharedUI';
+import { PageHeader, PageShell } from '../components/SharedUI';
 import { Button, Card } from '../components/ui';
 
 const LOCK_OPTIONS: Array<{ value: number; label: string }> = [
@@ -66,8 +66,9 @@ export function MyAccountPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Team"
         title="My Account"
         subtitle="Personal preferences — these apply when you sign in on POS"
       />
@@ -129,6 +130,8 @@ export function MyAccountPage() {
       </Card>
       </div>
     </div>
+
+    </PageShell>
   );
 }
 

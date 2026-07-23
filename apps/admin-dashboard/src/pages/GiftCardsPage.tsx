@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, StatCard, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
+  PageHeader, PageShell, StatCard, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
 } from '../components/SharedUI';
 import { CustomerSearch } from '../components/CustomerSearch';
 import {
@@ -309,9 +309,10 @@ export default function GiftCardsPage() {
   });
 
   return (
+    <PageShell>
     <div>
       {printCard && <PrintCardModal data={printCard} onClose={() => setPrintCard(null)} />}
-      <PageHeader
+      <PageHeader section="Customers & Marketing"
         title="Gift Cards"
         action={<Btn onClick={() => {
           setIssueOpen(true);
@@ -733,5 +734,7 @@ export default function GiftCardsPage() {
         </Modal>
       )}
     </div>
+
+    </PageShell>
   );
 }

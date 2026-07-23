@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Btn, ErrorMsg, PageHeader, Spinner } from '../components/Layout';
+import { Btn, ErrorMsg, PageHeader, PageShell, Spinner } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { downloadCSV } from '../utils/csvExport';
 import { ReportsTabPanels } from './ReportsPage/ReportsTabPanels';
@@ -154,8 +154,9 @@ export function ReportsPage() {
     || (tab === 'Deposit Activity' && depositActivity);
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="Analyze"
         title="Reports"
         subtitle="Sales, finance, operations, inventory, and customer reports"
         action={canExport ? <Btn small variant="secondary" onClick={handleExportCSV}>Export CSV</Btn> : undefined}
@@ -204,5 +205,7 @@ export function ReportsPage() {
 
       <ReportsTabPanels tab={tab} loading={loading} reportData={reportData} />
     </>
+
+    </PageShell>
   );
 }

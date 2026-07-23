@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Pagination, EmptyState, StatCard,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Pagination, EmptyState, StatCard,
 } from '../components/SharedUI';
 import { fetchAdminReviews, moderateReview, type Review } from '../api';
 import { Star, ChevronDown, ChevronUp } from 'lucide-react';
@@ -63,8 +63,9 @@ export default function ReviewsPage() {
   const avgRating = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
   return (
+    <PageShell>
     <div>
-      <PageHeader title="Reviews & Ratings" />
+      <PageHeader section="Customers & Marketing" title="Reviews & Ratings" />
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 20 }}>
@@ -158,5 +159,7 @@ export default function ReviewsPage() {
 
       <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
     </div>
+
+    </PageShell>
   );
 }

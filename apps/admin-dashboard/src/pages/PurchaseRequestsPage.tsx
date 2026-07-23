@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
   TableSkeleton, TableStateBar, ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
 import { useToast } from '../components/ui';
@@ -273,8 +273,9 @@ export default function PurchaseRequestsPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader
+      <PageHeader section="Manage"
         title="Purchase Requests"
         action={(
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -899,6 +900,8 @@ export default function PurchaseRequestsPage() {
 
       <ConfirmDialog state={dlg} close={closeDlg} />
     </div>
+
+    </PageShell>
   );
 }
 

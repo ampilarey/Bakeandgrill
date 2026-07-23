@@ -6,7 +6,7 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, Spinner, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, useConfirmDialog,
 } from '../components/Layout';
 
 function StatusBadge({ status }: { status: string }) {
@@ -287,9 +287,10 @@ export function WebhooksPage() {
   };
 
   return (
+    <PageShell>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader
+      <PageHeader section="System"
         title="Outgoing Webhooks"
         subtitle="Push real-time events to external systems via signed HTTP POST"
         action={!showForm && !editing ? (
@@ -392,5 +393,7 @@ export function WebhooksPage() {
         />
       )}
     </div>
+
+    </PageShell>
   );
 }

@@ -4,7 +4,7 @@ import { RotateCcw, RefreshCw } from 'lucide-react';
 import { fetchPrintJobs, retryPrintJob, type PrintJob } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, Select,
+  Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, PageShell, Select,
   StatCard, TableCard, TD, TH, statColor,
 } from '../components/Layout';
 
@@ -82,8 +82,9 @@ export default function PrintJobsPage() {
   };
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="System"
         title="Print Queue"
         subtitle="Monitor and retry print jobs"
         action={
@@ -224,5 +225,7 @@ export default function PrintJobsPage() {
         </TableCard>
       )}
     </>
+
+    </PageShell>
   );
 }

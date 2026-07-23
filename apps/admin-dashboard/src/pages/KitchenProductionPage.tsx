@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PageHeader } from '../components/SharedUI';
+import { PageHeader, PageShell } from '../components/SharedUI';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Tabs, TabList, Tab } from '../components/ui/Tabs';
@@ -179,8 +179,9 @@ export default function KitchenProductionPage() {
   };
 
   return (
+    <PageShell>
     <div>
-      <PageHeader title="Kitchen Handover" subtitle="Production batches, POS receiving, and variance review" />
+      <PageHeader section="Monitor" title="Kitchen Handover" subtitle="Production batches, POS receiving, and variance review" />
       {err && <p style={{ color: '#ef4444', marginBottom: 12 }}>{err}</p>}
 
       <Tabs active={tab} onChange={(id) => setTab(id as TabId)}>
@@ -342,5 +343,7 @@ export default function KitchenProductionPage() {
         </Card>
       )}
     </div>
+
+    </PageShell>
   );
 }

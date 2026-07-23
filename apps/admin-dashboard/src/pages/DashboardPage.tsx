@@ -27,7 +27,7 @@ import {
   type Order,
   type Shift,
 } from '../api';
-import { Card, ErrorMsg, PageHeader, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
+import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { monthStart, today } from '../utils/dateHelpers';
@@ -601,8 +601,9 @@ export function DashboardPage() {
   }
 
   return (
+    <PageShell>
     <>
-      <PageHeader
+      <PageHeader section="Monitor"
         title="Dashboard"
         subtitle={new Date(summaryDate + 'T00:00:00').toLocaleDateString('en-MV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         action={
@@ -1223,5 +1224,7 @@ export function DashboardPage() {
         <MaintenancePanel onDone={() => { void queryClient.invalidateQueries({ queryKey: ['dashboard', 'pos-overview'] }); }} />
       )}
     </>
+
+    </PageShell>
   );
 }
