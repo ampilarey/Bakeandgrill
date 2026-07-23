@@ -59,7 +59,7 @@ export default defineConfig({
             urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'pos-nav-v2',
+              cacheName: 'pos-nav-v3',
               networkTimeoutSeconds: 3,
               expiration: { maxEntries: 2, maxAgeSeconds: 60 * 10 },
             },

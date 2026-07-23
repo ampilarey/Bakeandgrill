@@ -754,20 +754,20 @@ function ConfigurePanel({
     [item],
   );
 
-  // When modifiers exist alongside variants we pre-select the default
-  // variant so the cashier can flip through modifier chips and then
-  // tap the bottom Add button to commit. In the one-tap-add case
-  // (variants but NO modifiers and no packaging choice) we deliberately
-  // leave the choice empty — the first variant tap IS the add.
-  const oneTapMode = item.has_variants && mods.length === 0 && !showPackagingPicker;
+  // One-tap commit when packaging OR variants are the sole choice
+  // (no modifiers, and not both). Mirrors the existing variant UX so
+  // packaging-only items don't need a second "Add to ticket" tap.
+  const oneTapVariant = item.has_variants && mods.length === 0 && !showPackagingPicker;
+  const oneTapPackaging = showPackagingPicker && !item.has_variants && mods.length === 0;
+  const oneTapMode = oneTapVariant || oneTapPackaging;
   const [chosenVariantId, setChosenVariantId] = useState<number | null>(() => {
     if (!item.has_variants) return null;
-    if (oneTapMode) return null;
+    if (oneTapVariant) return null;
     const def = variants[0];
     return def?.id ?? null;
   });
   const [chosenPackagingId, setChosenPackagingId] = useState<number | null>(() => {
-    if (!packagingEligible) return null;
+    if (!packagingEligible || oneTapPackaging) return null;
     return packagingOptions.find((o) => o.is_default)?.id ?? packagingOptions[0]?.id ?? null;
   });
 
@@ -775,12 +775,13 @@ function ConfigurePanel({
 
   // Headline price reflects the currently-chosen variant (or base price
   // when there are no variants). Keeps the modal honest about what will
-  // hit the receipt. In one-tap mode with nothing yet chosen we show
+  // hit the receipt. In variant one-tap with nothing yet chosen we show
   // "from X" using the cheapest variant so the cashier sees the price
-  // range up-front.
+  // range up-front. Packaging-only one-tap uses base item price (fees
+  // are on the option chips).
   const headlinePrice = chosenVariant
     ? Number(chosenVariant.effective_price ?? chosenVariant.price)
-    : oneTapMode && variants.length > 0
+    : oneTapVariant && variants.length > 0
       ? Math.min(...variants.map((v) => Number(v.effective_price ?? v.price)))
       : effectiveItemPrice(item);
   const headlineOriginal = chosenVariant
@@ -832,7 +833,7 @@ function ConfigurePanel({
           <div style={{ minWidth: 0, paddingRight: 12, flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{item.name}</div>
             <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
-              {oneTapMode && !chosenVariant ? 'from ' : ''}MVR {headlinePrice.toFixed(2)}
+              {oneTapVariant && !chosenVariant ? 'from ' : ''}MVR {headlinePrice.toFixed(2)}
               {headlineOriginal != null && headlineOriginal > headlinePrice && (
                 <span style={{ marginLeft: 6, textDecoration: 'line-through', opacity: 0.75, fontSize: 12 }}>
                   {headlineOriginal.toFixed(2)}
@@ -872,7 +873,7 @@ function ConfigurePanel({
             <div>
               <div style={sectionLabel}>
                 Size / Option
-                {mods.length === 0 && variants.length > 0 && (
+                {oneTapVariant && variants.length > 0 && (
                   <span style={{
                     marginLeft: 8,
                     fontSize: 11,
@@ -902,7 +903,7 @@ function ConfigurePanel({
                         key={v.id}
                         onClick={() => {
                           setChosenVariantId(v.id);
-                          if (oneTapMode) onAdd(v, chosenPackagingId);
+                          if (oneTapVariant) onAdd(v, chosenPackagingId);
                         }}
                         style={{
                           padding: '14px 14px',
@@ -972,7 +973,21 @@ function ConfigurePanel({
 
           {showPackagingPicker && (
             <div>
-              <div style={sectionLabel}>Packaging</div>
+              <div style={sectionLabel}>
+                Packaging
+                {oneTapPackaging && (
+                  <span style={{
+                    marginLeft: 8,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: C.subtle,
+                    textTransform: 'none',
+                    letterSpacing: 0,
+                  }}>
+                    · tap to add
+                  </span>
+                )}
+              </div>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
@@ -984,7 +999,10 @@ function ConfigurePanel({
                     <button
                       key={opt.id}
                       type="button"
-                      onClick={() => setChosenPackagingId(opt.id)}
+                      onClick={() => {
+                        setChosenPackagingId(opt.id);
+                        if (oneTapPackaging) onAdd(chosenVariant, opt.id);
+                      }}
                       style={{
                         padding: '14px 14px',
                         borderRadius: 10,

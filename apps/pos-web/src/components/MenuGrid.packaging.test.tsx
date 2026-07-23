@@ -142,3 +142,114 @@ describe("MenuGrid packaging by order type", () => {
     expect(screen.getByText("Box")).toBeInTheDocument();
   });
 });
+
+describe("MenuGrid packaging one-tap configure", () => {
+  it("packaging-only item: tapping an option adds immediately (Cancel-only footer)", () => {
+    const addToCart = vi.fn();
+    const clearSelectedItem = vi.fn();
+    render(
+      <MenuGrid
+        categories={[]}
+        selectedCategoryId={null}
+        setSelectedCategoryId={() => {}}
+        filteredItems={[packagingItem]}
+        isLoading={false}
+        dataError=""
+        selectedItem={packagingItem}
+        selectedModifiers={[]}
+        handleSelectItem={() => {}}
+        toggleModifier={() => {}}
+        addToCart={addToCart}
+        clearSelectedItem={clearSelectedItem}
+        barcode=""
+        setBarcode={() => {}}
+        onBarcodeSubmit={() => {}}
+        orderType="Takeaway"
+      />,
+    );
+
+    expect(screen.getByText("· tap to add")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Add to ticket/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Box"));
+    expect(addToCart).toHaveBeenCalledTimes(1);
+    expect(addToCart).toHaveBeenCalledWith(packagingItem, {
+      variant: undefined,
+      packagingOptionId: 2,
+    });
+    expect(clearSelectedItem).toHaveBeenCalled();
+  });
+
+  it("variants + packaging: tapping packaging does not add (two-step)", () => {
+    const addToCart = vi.fn();
+    const itemWithBoth: Item = {
+      ...packagingItem,
+      has_variants: true,
+      variants: [
+        { id: 11, name: "Small", price: 20, is_active: true, sort_order: 0 },
+        { id: 12, name: "Large", price: 30, is_active: true, sort_order: 1 },
+      ],
+    } as Item;
+
+    render(
+      <MenuGrid
+        categories={[]}
+        selectedCategoryId={null}
+        setSelectedCategoryId={() => {}}
+        filteredItems={[itemWithBoth]}
+        isLoading={false}
+        dataError=""
+        selectedItem={itemWithBoth}
+        selectedModifiers={[]}
+        handleSelectItem={() => {}}
+        toggleModifier={() => {}}
+        addToCart={addToCart}
+        clearSelectedItem={() => {}}
+        barcode=""
+        setBarcode={() => {}}
+        onBarcodeSubmit={() => {}}
+        orderType="Takeaway"
+      />,
+    );
+
+    expect(screen.queryByText("· tap to add")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Add to ticket/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Box"));
+    expect(addToCart).not.toHaveBeenCalled();
+  });
+
+  it("packaging + modifiers: still two-step (no one-tap add)", () => {
+    const addToCart = vi.fn();
+    const itemWithMods: Item = {
+      ...packagingItem,
+      modifiers: [{ id: 9, name: "Extra sauce", price: 1 } as never],
+    } as Item;
+
+    render(
+      <MenuGrid
+        categories={[]}
+        selectedCategoryId={null}
+        setSelectedCategoryId={() => {}}
+        filteredItems={[itemWithMods]}
+        isLoading={false}
+        dataError=""
+        selectedItem={itemWithMods}
+        selectedModifiers={[]}
+        handleSelectItem={() => {}}
+        toggleModifier={() => {}}
+        addToCart={addToCart}
+        clearSelectedItem={() => {}}
+        barcode=""
+        setBarcode={() => {}}
+        onBarcodeSubmit={() => {}}
+        orderType="Takeaway"
+      />,
+    );
+
+    expect(screen.queryByText("· tap to add")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Add to ticket/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Paper"));
+    expect(addToCart).not.toHaveBeenCalled();
+  });
+});
