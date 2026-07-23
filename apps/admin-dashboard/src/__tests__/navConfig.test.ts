@@ -7,6 +7,9 @@ import {
   getDefaultNavPath,
   canAny,
   getAllNavItems,
+  getActiveSection,
+  getNavGroups,
+  navItemPathname,
 } from '../components/navConfig';
 import type { StaffUser } from '../api';
 
@@ -54,7 +57,8 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/staff', permission: 'staff.view' },
   { to: '/content/website', permission: 'website.manage' },
   { to: '/content/order-app', permission: 'website.manage' },
-  { to: '/settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
+  { to: '/settings?tab=permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
+  { to: '/settings?tab=notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/devices', permission: 'devices.view' },
   { to: '/print-jobs', permission: 'devices.view' },
   { to: '/webhooks', permission: 'webhooks.manage' },
@@ -66,15 +70,21 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
 ];
 
 describe('navConfig', () => {
-  it('has five IA sections with no pinned strip', () => {
+  it('has six IA sections with metadata and no pinned strip', () => {
     expect(PINNED_NAV_ITEMS).toEqual([]);
     expect(NAV_GROUPS.map((g) => g.id)).toEqual([
       'monitor',
       'manage',
       'customers-marketing',
       'analyze',
-      'system-team',
+      'system',
+      'team',
     ]);
+    for (const g of NAV_GROUPS) {
+      expect(g.order).toBeTypeOf('number');
+      expect(g.icon).toBeTruthy();
+      expect(g.label.length).toBeGreaterThan(0);
+    }
   });
 
   it('every routed page appears exactly once with unchanged permissions', () => {
@@ -89,6 +99,31 @@ describe('navConfig', () => {
     }
   });
 
+  it('every item belongs to exactly one section and has a route path', () => {
+    const seen = new Map<string, string>();
+    for (const g of getNavGroups()) {
+      expect(g.items.length).toBeLessThanOrEqual(12);
+      for (const item of g.items) {
+        expect(item.to.startsWith('/') || item.to.startsWith('#')).toBe(true);
+        const key = item.to;
+        expect(seen.has(key)).toBe(false);
+        seen.set(key, g.id);
+      }
+    }
+  });
+
+  it('getActiveSection maps routes to the rebalanced sections', () => {
+    expect(getActiveSection('/orders')?.id).toBe('monitor');
+    expect(getActiveSection('/inventory')?.id).toBe('manage');
+    expect(getActiveSection('/customers')?.id).toBe('customers-marketing');
+    expect(getActiveSection('/reports')?.id).toBe('analyze');
+    expect(getActiveSection('/devices')?.id).toBe('system');
+    expect(getActiveSection('/staff')?.id).toBe('team');
+    expect(getActiveSection('/shifts')?.id).toBe('team');
+    expect(getActiveSection('/settings')?.id).toBe('system');
+    expect(getActiveSection('/delivery-settings')?.id).toBe('manage');
+  });
+
   it('Inventory lives in Manage group, not pinned', () => {
     expect(PINNED_NAV_ITEMS.find((i) => i.to === '/inventory')).toBeUndefined();
     const group = NAV_GROUPS.find((g) => g.id === 'manage');
@@ -97,13 +132,13 @@ describe('navConfig', () => {
   });
 
   it('resolveNavItemForPath matches delivery route', () => {
-    const all = [...PINNED_NAV_ITEMS, ...NAV_GROUPS.flatMap((g) => g.items)];
+    const all = getAllNavItems();
     const match = resolveNavItemForPath('/delivery', all);
     expect(match?.to).toBe('/delivery');
   });
 
   it('resolveNavItemForPath does not match delivery-settings as delivery', () => {
-    const all = [...PINNED_NAV_ITEMS, ...NAV_GROUPS.flatMap((g) => g.items)];
+    const all = getAllNavItems();
     const match = resolveNavItemForPath('/delivery-settings', all);
     expect(match?.to).toBe('/delivery-settings');
   });
@@ -112,6 +147,10 @@ describe('navConfig', () => {
     const group = NAV_GROUPS.find((g) => g.id === 'manage');
     const ordering = group?.items.find((i) => i.to === '/online-ordering');
     expect(ordering?.label).toBe('Ordering Control');
+  });
+
+  it('navItemPathname strips query strings', () => {
+    expect(navItemPathname('/settings?tab=permissions')).toBe('/settings');
   });
 
   it('inventory.view passes for user with inventory.manage only', () => {
