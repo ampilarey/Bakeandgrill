@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CartItem, Item, Modifier, PackagingOption, Variant } from "../types";
 import type { PosCustomer } from "../api";
-import type { PosOrderType } from "../orderTypes";
+import { isPackagingEligible, type PosOrderType } from "../orderTypes";
 import {
   parseServiceChargePublicSettings,
   previewServiceCharge,
@@ -454,7 +454,18 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
         opts?.modifiers ??
         (selectedItem?.id === item.id ? selectedModifiers : []);
 
-      const packaging = resolvePackagingSnapshot(item, opts?.packagingOptionId);
+      // Dine-in never attaches packaging (matches PackagingFeeCalculator).
+      // Explicit null option + zero fee so one-tap / barcode / configure
+      // adds stay consistent; totals already zero packaging for dine_in.
+      const packaging = isPackagingEligible(posOrderType)
+        ? resolvePackagingSnapshot(item, opts?.packagingOptionId)
+        : {
+            packaging_fee: 0,
+            packaging_fee_mode:
+              item.packaging_fee_mode === "per_line" ? ("per_line" as const) : ("per_unit" as const),
+            packaging_option_id: null,
+            packaging_option_name: null,
+          };
 
       // New line is always added with empty `notes`, so the comparison
       // key intentionally uses [] — that way tapping the same item
@@ -519,7 +530,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
         ];
       });
     },
-    [selectedItem, selectedModifiers],
+    [selectedItem, selectedModifiers, posOrderType],
   );
 
   const updateQuantity = useCallback((itemKey: string, delta: number) => {
