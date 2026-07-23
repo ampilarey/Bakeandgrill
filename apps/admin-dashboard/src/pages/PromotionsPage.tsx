@@ -16,9 +16,17 @@ import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal
 const EMPTY: PromotionPayload = {
   name: '', code: '', type: 'fixed', discount_value: 0,
   scope: 'order', min_order_laar: null, max_uses: null,
-  stackable: false, is_active: true, starts_at: null, expires_at: null,
-  restricted_customer_id: null,
+  stackable: false, is_active: true, auto_apply: false,
+  starts_at: null, expires_at: null,
+  days_of_week: null, starts_time: null, ends_time: null,
+  restricted_customer_id: null, targets: [],
 };
+
+const DAY_OPTIONS = [
+  { value: 0, label: 'Sun' }, { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' }, { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+];
 
 function PromotionForm({
   initial, onSave, onCancel,
@@ -30,9 +38,13 @@ function PromotionForm({
   const [form, setForm] = useState<PromotionPayload>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [targetType, setTargetType] = useState<'item' | 'category'>('category');
+  const [targetId, setTargetId] = useState('');
 
   const set = <K extends keyof PromotionPayload>(k: K, v: PromotionPayload[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const autoApply = !!form.auto_apply;
 
   // discount_value: for 'fixed' type, displayed in MVR (we multiply by 100 to store as laari)
   // for 'percentage', stored as-is (e.g. 20 = 20%)
@@ -59,8 +71,28 @@ function PromotionForm({
     set('min_order_laar', n);
   };
 
+  const toggleDay = (day: number) => {
+    const current = form.days_of_week ?? [];
+    const next = current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort();
+    set('days_of_week', next.length ? next : null);
+  };
+
+  const addTarget = () => {
+    const id = parseInt(targetId, 10);
+    if (!Number.isFinite(id) || id < 1) return;
+    const existing = form.targets ?? [];
+    if (existing.some((t) => t.target_type === targetType && t.target_id === id)) return;
+    set('targets', [...existing, { target_type: targetType, target_id: id, is_exclusion: false }]);
+    setTargetId('');
+  };
+
+  const removeTarget = (idx: number) => {
+    set('targets', (form.targets ?? []).filter((_, i) => i !== idx));
+  };
+
   const handleSave = async () => {
-    if (!form.name.trim() || !form.code.trim()) { setError('Name and code are required.'); return; }
+    if (!form.name.trim()) { setError('Name is required.'); return; }
+    if (!autoApply && !form.code?.trim()) { setError('Name and code are required.'); return; }
     if (form.discount_value <= 0) { setError('Discount value must be greater than 0.'); return; }
     if (form.type === 'percentage' && form.discount_value > 100) { setError('Percentage discount cannot exceed 100%.'); return; }
     if (form.type === 'fixed' && form.discount_value > 500000) {
@@ -73,7 +105,15 @@ function PromotionForm({
     }
     setError('');
     setLoading(true);
-    try { await onSave(form); }
+    try {
+      const payload: PromotionPayload = {
+        ...form,
+        code: autoApply ? (form.code?.trim() || null) : form.code,
+        restricted_customer_id: autoApply ? null : form.restricted_customer_id,
+        targets: autoApply ? (form.targets ?? []) : form.targets,
+      };
+      await onSave(payload);
+    }
     catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -81,13 +121,36 @@ function PromotionForm({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {error && <ErrorMsg message={error} />}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', padding: '10px 12px', background: autoApply ? '#F0FDF4' : '#F8F6F3', borderRadius: 8, border: `1px solid ${autoApply ? '#86EFAC' : '#E8E0D8'}` }}>
+        <input
+          type="checkbox"
+          checked={autoApply}
+          onChange={(e) => {
+            const on = e.target.checked;
+            setForm((f) => ({
+              ...f,
+              auto_apply: on,
+              code: on ? '' : f.code,
+              restricted_customer_id: on ? null : f.restricted_customer_id,
+            }));
+          }}
+        />
+        <span>
+          <strong>Automatic (all customers, no code)</strong>
+          <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 2 }}>
+            Applies at checkout to everyone. Hide the code field and use targeting + schedule window instead.
+          </div>
+        </span>
+      </label>
       <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Promo Name">
           <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Ramadan Special" />
         </Field>
-        <Field label="Code">
-          <Input value={form.code} onChange={(v) => set('code', v.toUpperCase())} placeholder="e.g. RAMADAN20" />
-        </Field>
+        {!autoApply && (
+          <Field label="Code">
+            <Input value={form.code ?? ''} onChange={(v) => set('code', v.toUpperCase())} placeholder="e.g. RAMADAN20" />
+          </Field>
+        )}
         <Field label="Discount Type">
           <Select
             value={form.type}
@@ -127,16 +190,74 @@ function PromotionForm({
           <Input value={form.expires_at ?? ''} onChange={(v) => set('expires_at', v || null)} type="datetime-local" />
         </Field>
       </div>
-      <Field label="Restrict to Specific Customer (optional)">
-        <CustomerSearch
-          value={form.restricted_customer_id ?? null}
-          onChange={(id) => set('restricted_customer_id', id)}
-          placeholder="Search by name or phone… (leave empty for public)"
-        />
-        <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 3 }}>
-          If set, only this customer can redeem the code — useful for personal discounts.
-        </div>
-      </Field>
+
+      {autoApply && (
+        <>
+          <Field label="Targets (item or category IDs — leave empty for whole-order)">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Select
+                value={targetType}
+                onChange={(v) => setTargetType(v as 'item' | 'category')}
+                options={[{ value: 'category', label: 'Category' }, { value: 'item', label: 'Item' }]}
+              />
+              <Input value={targetId} onChange={setTargetId} type="number" placeholder="ID" />
+              <Btn small variant="secondary" onClick={addTarget}>Add</Btn>
+            </div>
+            {(form.targets ?? []).length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {(form.targets ?? []).map((t, i) => (
+                  <span key={`${t.target_type}-${t.target_id}-${i}`} style={{ fontSize: 12, background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 6, padding: '4px 8px' }}>
+                    {t.target_type} #{t.target_id}
+                    <button type="button" onClick={() => removeTarget(i)} style={{ marginLeft: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: '#9C8E7E' }}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </Field>
+          <Field label="Days of week (optional — empty = every day)">
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {DAY_OPTIONS.map((d) => {
+                const on = (form.days_of_week ?? []).includes(d.value);
+                return (
+                  <button
+                    key={d.value}
+                    type="button"
+                    onClick={() => toggleDay(d.value)}
+                    style={{
+                      minHeight: 36, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+                      border: `1px solid ${on ? '#D4813A' : '#E8E0D8'}`,
+                      background: on ? '#FFF7ED' : '#fff', color: on ? '#D4813A' : '#6B5D4F', fontWeight: 600, fontSize: 12,
+                    }}
+                  >
+                    {d.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Starts time (optional)">
+              <Input value={form.starts_time ?? ''} onChange={(v) => set('starts_time', v || null)} type="time" />
+            </Field>
+            <Field label="Ends time (optional)">
+              <Input value={form.ends_time ?? ''} onChange={(v) => set('ends_time', v || null)} type="time" />
+            </Field>
+          </div>
+        </>
+      )}
+
+      {!autoApply && (
+        <Field label="Restrict to Specific Customer (optional)">
+          <CustomerSearch
+            value={form.restricted_customer_id ?? null}
+            onChange={(id) => set('restricted_customer_id', id)}
+            placeholder="Search by name or phone… (leave empty for public)"
+          />
+          <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 3 }}>
+            If set, only this customer can redeem the code — useful for personal discounts.
+          </div>
+        </Field>
+      )}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
           <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
@@ -258,12 +379,18 @@ export function PromotionsPage() {
           </h3>
           <PromotionForm
             initial={editing ? {
-              name: editing.name, code: editing.code,
+              name: editing.name, code: editing.code ?? '',
               type: (editing.type === 'percentage' ? 'percentage' : 'fixed') as 'fixed' | 'percentage',
               discount_value: editing.discount_value, scope: editing.scope,
               min_order_laar: editing.min_order_laar, max_uses: editing.max_uses,
               stackable: editing.stackable, is_active: editing.is_active,
+              auto_apply: !!editing.auto_apply,
               starts_at: editing.starts_at, expires_at: editing.expires_at,
+              days_of_week: editing.days_of_week ?? null,
+              starts_time: editing.starts_time ?? null,
+              ends_time: editing.ends_time ?? null,
+              restricted_customer_id: editing.restricted_customer_id ?? null,
+              targets: editing.targets ?? [],
             } : EMPTY}
             onSave={creating ? handleCreate : handleUpdate}
             onCancel={() => { setCreating(false); setEditing(null); }}
@@ -290,6 +417,11 @@ export function PromotionsPage() {
                 <tr key={p.id}>
                   <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>
                     {p.name}
+                    {p.auto_apply && (
+                      <div style={{ fontSize: 11, color: '#059669', fontWeight: 400, marginTop: 2 }}>
+                        Automatic — no code
+                      </div>
+                    )}
                     {p.restricted_customer_id && (
                       <div style={{ fontSize: 11, color: '#059669', fontWeight: 400, marginTop: 2 }}>
                         <Link to={`/customers?customer=${p.restricted_customer_id}`} style={{ color: '#059669', textDecoration: 'none' }}>
@@ -299,9 +431,13 @@ export function PromotionsPage() {
                     )}
                   </td>
                   <td style={TD}>
-                    <code style={{ background: '#F8F6F3', padding: '2px 8px', borderRadius: 6, fontSize: 13, fontWeight: 700, letterSpacing: 1, color: '#1C1408', border: '1px solid #E8E0D8' }}>
-                      {p.code}
-                    </code>
+                    {p.auto_apply ? (
+                      <span style={{ fontSize: 12, color: '#9C8E7E' }}>—</span>
+                    ) : (
+                      <code style={{ background: '#F8F6F3', padding: '2px 8px', borderRadius: 6, fontSize: 13, fontWeight: 700, letterSpacing: 1, color: '#1C1408', border: '1px solid #E8E0D8' }}>
+                        {p.code}
+                      </code>
+                    )}
                   </td>
                   <td style={{ ...TD, color: '#D4813A', fontWeight: 700 }}>
                     {formatDiscount(p)}
@@ -323,11 +459,13 @@ export function PromotionsPage() {
                       <Btn small variant="secondary" onClick={() => { setEditing(p); setCreating(false); }}>Edit</Btn>
                       <Btn small variant="secondary" onClick={() => setPrintCard({
                         type: 'promo',
-                        code: p.code,
+                        code: p.code ?? 'AUTO',
                         title: p.name,
                         subtitle: formatDiscount(p),
                         expiry: p.expires_at ?? null,
-                        note: p.restricted_customer_id ? 'Personal discount — non-transferable' : 'Enter code at checkout',
+                        note: p.auto_apply
+                          ? 'Automatic offer — applied at checkout'
+                          : (p.restricted_customer_id ? 'Personal discount — non-transferable' : 'Enter code at checkout'),
                         logoText: 'Bake & Grill',
                       })}>🖨️ Print</Btn>
                       <Btn small variant="danger" onClick={() => handleDelete(p.id)}>Delete</Btn>

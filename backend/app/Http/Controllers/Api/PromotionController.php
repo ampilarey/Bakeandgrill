@@ -332,6 +332,7 @@ class PromotionController extends Controller
     {
         // Discount cards live under /admin/discount-cards — keep campaign promos clean.
         $promotions = Promotion::withTrashed()
+            ->with('targets')
             ->where(function ($q): void {
                 $q->whereNull('metadata->kind')
                     ->orWhere('metadata->kind', '!=', 'discount_card');
@@ -372,21 +373,40 @@ class PromotionController extends Controller
     {
         $this->authorizeAdminRole($request, 'manager', 'owner');
 
+        $autoApply = $request->boolean('auto_apply');
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:promotions,code',
+            'code' => ($autoApply ? 'nullable' : 'required') . '|string|max:50|unique:promotions,code',
             'type' => 'required|in:percentage,fixed,free_item',
             'discount_value' => 'required|integer|min:0',
             'is_active' => 'boolean',
+            'auto_apply' => 'boolean',
             'starts_at' => 'nullable|date',
             'expires_at' => 'nullable|date|after:starts_at',
+            'days_of_week' => 'nullable|array',
+            'days_of_week.*' => 'integer|min:0|max:6',
+            'starts_time' => 'nullable|date_format:H:i,H:i:s',
+            'ends_time' => 'nullable|date_format:H:i,H:i:s',
             'max_uses' => 'nullable|integer|min:1',
             'max_uses_per_customer' => 'nullable|integer|min:1',
             'stackable' => 'boolean',
             'min_order_laar' => 'nullable|integer|min:0',
             'scope' => 'in:order,item',
             'restricted_customer_id' => 'nullable|integer|exists:customers,id',
+            'targets' => 'nullable|array',
+            'targets.*.target_type' => 'required_with:targets|in:item,category',
+            'targets.*.target_id' => 'required_with:targets|integer|min:1',
+            'targets.*.is_exclusion' => 'boolean',
         ]);
+
+        if ($autoApply) {
+            $validated['auto_apply'] = true;
+            $validated['restricted_customer_id'] = null;
+            $validated['code'] = $validated['code'] ?? null;
+        } else {
+            $validated['auto_apply'] = false;
+        }
 
         // Fixed promos are stored in laari — hard cap MVR 5000.
         if (($validated['type'] ?? '') === 'fixed' && (int) $validated['discount_value'] > 500000) {
@@ -396,7 +416,20 @@ class PromotionController extends Controller
             ], 422);
         }
 
+        $targets = $validated['targets'] ?? [];
+        unset($validated['targets']);
+
         $promotion = Promotion::create($validated);
+
+        foreach ($targets as $target) {
+            $promotion->targets()->create([
+                'target_type' => $target['target_type'],
+                'target_id' => (int) $target['target_id'],
+                'is_exclusion' => (bool) ($target['is_exclusion'] ?? false),
+            ]);
+        }
+
+        $promotion->load('targets');
 
         return response()->json(['promotion' => $promotion], 201);
     }
@@ -410,13 +443,46 @@ class PromotionController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'is_active' => 'sometimes|boolean',
+            'auto_apply' => 'sometimes|boolean',
             'expires_at' => 'nullable|date',
+            'days_of_week' => 'nullable|array',
+            'days_of_week.*' => 'integer|min:0|max:6',
+            'starts_time' => 'nullable|date_format:H:i,H:i:s',
+            'ends_time' => 'nullable|date_format:H:i,H:i:s',
             'max_uses' => 'nullable|integer|min:1',
             'max_uses_per_customer' => 'nullable|integer|min:1',
+            'min_order_laar' => 'nullable|integer|min:0',
             'restricted_customer_id' => 'nullable|integer|exists:customers,id',
+            'targets' => 'nullable|array',
+            'targets.*.target_type' => 'required_with:targets|in:item,category',
+            'targets.*.target_id' => 'required_with:targets|integer|min:1',
+            'targets.*.is_exclusion' => 'boolean',
         ]);
 
+        if (array_key_exists('auto_apply', $validated) && $validated['auto_apply']) {
+            $validated['restricted_customer_id'] = null;
+            if ($promotion->code && !str_starts_with((string) $promotion->code, 'AUTO-')) {
+                // Keep existing code for display; auto mode does not require it.
+            }
+        }
+
+        $targets = $validated['targets'] ?? null;
+        unset($validated['targets']);
+
         $promotion->update($validated);
+
+        if (is_array($targets)) {
+            $promotion->targets()->delete();
+            foreach ($targets as $target) {
+                $promotion->targets()->create([
+                    'target_type' => $target['target_type'],
+                    'target_id' => (int) $target['target_id'],
+                    'is_exclusion' => (bool) ($target['is_exclusion'] ?? false),
+                ]);
+            }
+        }
+
+        $promotion->load('targets');
 
         return response()->json(['promotion' => $promotion]);
     }

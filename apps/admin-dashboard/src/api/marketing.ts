@@ -2,10 +2,17 @@ import { req } from './client';
 
 // ── Promotions ────────────────────────────────────────────────────────────────
 
+export type PromotionTarget = {
+  id?: number;
+  target_type: 'item' | 'category';
+  target_id: number;
+  is_exclusion?: boolean;
+};
+
 export type Promotion = {
   id: number;
   name: string;
-  code: string;
+  code: string | null;
   type: string;
   discount_value: number;
   scope: string;
@@ -14,16 +21,21 @@ export type Promotion = {
   redemptions_count: number;
   stackable: boolean;
   is_active: boolean;
+  auto_apply?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
+  days_of_week?: number[] | null;
+  starts_time?: string | null;
+  ends_time?: string | null;
   restricted_customer_id?: number | null;
   restricted_customer?: { id: number; name: string | null; phone: string } | null;
+  targets?: PromotionTarget[];
   created_at: string;
 };
 
 export type PromotionPayload = {
   name: string;
-  code: string;
+  code?: string | null;
   type: 'fixed' | 'percentage';
   discount_value: number;
   scope?: string;
@@ -31,9 +43,14 @@ export type PromotionPayload = {
   max_uses?: number | null;
   stackable?: boolean;
   is_active?: boolean;
+  auto_apply?: boolean;
   starts_at?: string | null;
   expires_at?: string | null;
+  days_of_week?: number[] | null;
+  starts_time?: string | null;
+  ends_time?: string | null;
   restricted_customer_id?: number | null;
+  targets?: PromotionTarget[];
 };
 
 export async function fetchPromotions(params?: { page?: number; status?: string }): Promise<{ data: Promotion[]; meta?: { current_page: number; last_page: number; total: number } }> {

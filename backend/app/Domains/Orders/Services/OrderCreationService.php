@@ -7,6 +7,7 @@ namespace App\Domains\Orders\Services;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
+use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Models\CateringRequest;
 use App\Models\CateringRequestLine;
 use App\Models\Customer;
@@ -31,6 +32,7 @@ class OrderCreationService
         private KitchenMenuResolver $kitchenMenuResolver,
         private \App\Services\SpecialPricingService $specialPricing,
         private PackagingFeeCalculator $packagingFeeCalculator,
+        private PromotionEvaluator $promotionEvaluator,
     ) {}
 
     public function createFromPayload(array $payload, ?object $user): Order
@@ -140,14 +142,30 @@ class OrderCreationService
 
             $this->addOrderItems($order, $payload['items'] ?? [], $user, !empty($payload['offline_sync']));
 
+            // Seed in-memory subtotal so auto-promo min_order / discount math works
+            // before the first recalculateAndPersist.
+            $order->load('items.item');
+            $computedSubtotalLaar = (int) round(
+                (float) $order->items->sum('total_price') * 100,
+            );
+            $order->subtotal_laar = $computedSubtotalLaar;
+            $order->subtotal = $computedSubtotalLaar / 100;
+
+            // Auto-apply promotions (no code) before any coded promo path.
+            // Item-level line-price baking is Phase 2 (EffectivePriceService); until then
+            // item-targeted auto-promos land as OrderPromotion discounts.
+            $this->promotionEvaluator->applyAutomatic(
+                $order,
+                isset($payload['customer_id']) ? (int) $payload['customer_id'] : null,
+                itemLevelAlreadyInLinePrices: false,
+            );
+
             // Convert any payload-level manual discount to laari and store it so
             // the calculator (single source of truth) can include it correctly.
             // The calculator applies discounts BEFORE tax, matching the intended
             // business rule (tax on discounted price, not gross price).
             $discountAmount = (float) ($payload['discount_amount'] ?? 0);
-            $subtotalLaar = (int) round(
-                $order->items()->sum(\DB::raw('total_price')) * 100,
-            );
+            $subtotalLaar = $computedSubtotalLaar;
             $discountLaar = max(0, min((int) round($discountAmount * 100), $subtotalLaar));
 
             if ($discountLaar > 0) {
