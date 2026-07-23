@@ -2,13 +2,13 @@ import {
   LayoutDashboard, ClipboardList, ChefHat, Truck,
   UtensilsCrossed, Package, Tag, CalendarDays,
   BarChart3, DollarSign, Receipt, TrendingDown, PieChart,
-  Users, Settings, LogOut,
+  Users, LogOut,
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Target, RotateCcw, Trash2, CreditCard,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Printer, Link, ShoppingBag, Menu, Zap, MapPin,
+  Printer, Link, ShoppingBag, Zap, MapPin,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate, Smartphone,
+  AlertTriangle, LayoutTemplate, Smartphone, Shield, Bell, UserCog,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -28,11 +28,15 @@ export interface NavItem {
 export interface NavGroup {
   id: string;
   label: string;
+  /** Short label for compact mobile tab bar */
+  shortLabel?: string;
   icon: React.ElementType;
+  /** Display order in section bar / mobile tabs (ascending) */
+  order: number;
   items: NavItem[];
 }
 
-/** All sidebar pages live in NAV_GROUPS (five sections). Mobile bottom tabs keep quick access. */
+/** All sidebar pages live in NAV_GROUPS. Mobile bottom tabs are derived from sections. */
 export const PINNED_NAV_ITEMS: NavItem[] = [];
 
 /** Paths that should not stay active for nested routes (e.g. /customers vs /customers/growth) */
@@ -40,11 +44,18 @@ export const NAV_EXACT_MATCH_PATHS = new Set(['/customers']);
 
 const PINNED_PATHS = new Set(PINNED_NAV_ITEMS.map((i) => i.to));
 
+/** Strip query/hash so /settings?tab=permissions matches pathname /settings */
+export function navItemPathname(to: string): string {
+  return to.split(/[?#]/)[0] || '/';
+}
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'monitor',
     label: 'Monitor',
+    shortLabel: 'Monitor',
     icon: ConciergeBell,
+    order: 1,
     items: [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'dashboard.view', description: 'Overview & KPIs' },
       { to: '/orders',    icon: ClipboardList,   label: 'Orders',    permission: 'orders.view',    description: 'Live order queue' },
@@ -53,14 +64,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'delivery.view',          description: 'Active delivery queue' },
       { to: '/kitchen-production', icon: Utensils, label: 'Kitchen Handover', permission: 'kitchen.production.view_all', description: 'Production, receiving & variance' },
       { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
-      { to: '/shifts',      icon: Wallet,     label: 'Shifts & Cash',  permission: 'shifts.view_all_history', description: 'Live stations & shift history' },
-      { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permissions: ['staff.view', 'pos.time_clock'], description: 'Punch history & summaries' },
     ],
   },
   {
     id: 'manage',
     label: 'Manage',
+    shortLabel: 'Manage',
     icon: Boxes,
+    order: 2,
     items: [
       { to: '/menu',      icon: UtensilsCrossed, label: 'Menu Items', permission: 'menu.view',      description: 'Categories & items' },
       { to: '/specials',          icon: Tag,         label: 'Daily Specials',   permission: 'menu.manage',     description: 'Scheduled item discounts' },
@@ -70,7 +81,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/purchase-orders',       icon: Package,       label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
       { to: '/supplier-intelligence', icon: Factory,       label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
       { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'inventory.manage',    description: 'Log waste & shrinkage' },
-      // Table booking setup — operational config, not CRM outreach
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.view',   description: 'Table bookings' },
       { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online hours, fees & overrides' },
       { to: '/delivery-settings', icon: MapPin,      label: 'Delivery & Zones', permission: 'settings.update', description: 'Delivery hours, zone fees & alerts' },
@@ -79,7 +89,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'customers-marketing',
     label: 'Customers & Marketing',
+    shortLabel: 'Customers',
     icon: Users,
+    order: 3,
     items: [
       { to: '/customers',        icon: Users,      label: 'Customers',       permission: 'customers.manage',    description: 'Customer database' },
       { to: '/customers/growth', icon: BarChart2,  label: 'Customer Growth', permission: 'customers.manage',    description: 'Metrics, segments & CRM' },
@@ -96,10 +108,11 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'analyze',
     label: 'Analyze',
+    shortLabel: 'Analyze',
     icon: BarChart3,
+    order: 4,
     items: [
       { to: '/reports',     icon: BarChart3,  label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
-      // Insights & forecasting — reporting, not catalog ops
       { to: '/analytics',        icon: BarChart2,  label: 'Analytics',       permission: 'customers.analytics', description: 'Advanced insights' },
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
       { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },
@@ -111,20 +124,34 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: 'system-team',
-    label: 'System & Team',
+    id: 'system',
+    label: 'System',
+    shortLabel: 'System',
     icon: Wrench,
+    order: 5,
     items: [
-      { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
       { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website marketing copy & visuals' },
       { to: '/content/order-app', icon: Smartphone, label: 'Order App Content', permission: 'website.manage', description: 'Order app marketing copy & visuals' },
-      { to: '/settings',      icon: Settings,    label: 'Settings',       permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Roles, SMS notifications & ops' },
+      { to: '/settings?tab=permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Role defaults & per-user overrides' },
+      { to: '/settings?tab=notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
       { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'webhooks.manage', description: 'Outbound integrations' },
       { to: '/xero',          icon: Link,        label: 'Xero',           permission: 'xero.manage',    description: 'Accounting sync' },
       { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permission: 'website.manage', description: 'Queue, webhooks & alerts' },
       { to: '/service-availability', icon: AlertTriangle, label: 'Service Availability', permission: 'service_availability.view', description: 'Maintenance & incident controls' },
+    ],
+  },
+  {
+    id: 'team',
+    label: 'Team',
+    shortLabel: 'Team',
+    icon: UserCog,
+    order: 6,
+    items: [
+      { to: '/staff',         icon: Users,       label: 'Staff',          permission: 'staff.view',     description: 'Team management & schedules' },
+      { to: '/shifts',      icon: Wallet,     label: 'Shifts & Cash',  permission: 'shifts.view_all_history', description: 'Live stations & shift history' },
+      { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permissions: ['staff.view', 'pos.time_clock'], description: 'Punch history & summaries' },
       { to: '/account',       icon: UserCircle,  label: 'My Account',     description: 'Profile & session' },
     ],
   },
@@ -142,7 +169,7 @@ const CHECKLIST_NAV_ITEM: NavItem = {
 const DEV_NAV_ITEM = CHECKLIST_NAV_ITEM;
 
 function withoutPinnedItems(items: NavItem[]): NavItem[] {
-  return items.filter((i) => !PINNED_PATHS.has(i.to));
+  return items.filter((i) => !PINNED_PATHS.has(navItemPathname(i.to)));
 }
 
 /** @deprecated Checklist is always in System nav (permission-gated). Kept for Dashboard CTA. */
@@ -151,13 +178,16 @@ export function showDevNavItems(): boolean {
 }
 
 export function getNavGroups(_includeDevItems = true): NavGroup[] {
-  return NAV_GROUPS.map((g) => {
-    const items = withoutPinnedItems(g.items);
-    if (g.id === 'system-team') {
-      return { ...g, items: [...items, CHECKLIST_NAV_ITEM] };
-    }
-    return { ...g, items };
-  });
+  return NAV_GROUPS
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((g) => {
+      const items = withoutPinnedItems(g.items);
+      if (g.id === 'system') {
+        return { ...g, items: [...items, CHECKLIST_NAV_ITEM] };
+      }
+      return { ...g, items };
+    });
 }
 
 export function getAllNavItems(_includeDevItems = true): NavItem[] {
@@ -168,16 +198,56 @@ export function getAllNavItems(_includeDevItems = true): NavItem[] {
 export function resolveNavItemForPath(pathname: string, items: NavItem[]): NavItem | undefined {
   const path = pathname.replace(/\/$/, '') || '/';
   return [...items]
-    .sort((a, b) => b.to.length - a.to.length)
-    .find((item) => path === item.to || path.startsWith(item.to + '/'));
+    .sort((a, b) => navItemPathname(b.to).length - navItemPathname(a.to).length)
+    .find((item) => {
+      const base = navItemPathname(item.to);
+      if (NAV_EXACT_MATCH_PATHS.has(base)) return path === base;
+      return path === base || path.startsWith(base + '/');
+    });
 }
 
+/**
+ * Section (level-1) that owns the current route.
+ * Prefers longest-matching item across all groups.
+ */
+export function getActiveSection(pathname: string): NavGroup | undefined {
+  const groups = getNavGroups();
+  const allItems = groups.flatMap((g) => g.items.map((item) => ({ group: g, item })));
+  const path = pathname.replace(/\/$/, '') || '/';
+  const match = [...allItems]
+    .sort((a, b) => navItemPathname(b.item.to).length - navItemPathname(a.item.to).length)
+    .find(({ item }) => {
+      const base = navItemPathname(item.to);
+      if (NAV_EXACT_MATCH_PATHS.has(base)) return path === base;
+      return path === base || path.startsWith(base + '/');
+    });
+  return match?.group;
+}
+
+export function getSectionById(id: string): NavGroup | undefined {
+  return getNavGroups().find((g) => g.id === id);
+}
+
+/** Sections that have at least one permitted item for this user. */
+export function getPermittedSections(user: StaffUser): NavGroup[] {
+  return getNavGroups()
+    .map((g) => ({ ...g, items: g.items.filter((item) => canNavItem(user, item)) }))
+    .filter((g) => g.items.length > 0);
+}
+
+export function getFirstPermittedItem(group: NavGroup, user: StaffUser): NavItem | undefined {
+  return group.items.find((item) => canNavItem(user, item) && !item.to.startsWith('#'));
+}
+
+/**
+ * @deprecated Mobile bottom tabs are now section-based (MobileTabBar).
+ * Kept briefly so any leftover imports fail softly at runtime shape.
+ */
 export const BOTTOM_TABS: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home',    permission: 'dashboard.view' },
   { to: '/orders',    icon: ClipboardList,   label: 'Orders',  permission: 'orders.view'  },
   { to: '/kds',       icon: ChefHat,         label: 'Kitchen', permission: 'orders.view'  },
   { to: '/menu',      icon: UtensilsCrossed, label: 'Menu',    permission: 'menu.view'    },
-  { to: '#more',      icon: Menu,            label: 'More'                                },
 ];
 
 /** Returns true if the given user has the specified permission (with legacy alias support). */
@@ -254,10 +324,11 @@ export function getAccessibleNavItems(user: StaffUser): NavItem[] {
 
 /** Map route → group label for search palette subtitles */
 export function getNavItemGroupLabel(to: string): string {
-  if (PINNED_NAV_ITEMS.some((i) => i.to === to)) return 'Quick access';
-  if (to === DEV_NAV_ITEM.to) return 'System & Team';
-  for (const g of NAV_GROUPS) {
-    if (g.items.some((i) => i.to === to)) return g.label;
+  const path = navItemPathname(to);
+  if (PINNED_NAV_ITEMS.some((i) => navItemPathname(i.to) === path)) return 'Quick access';
+  if (path === DEV_NAV_ITEM.to) return 'System';
+  for (const g of getNavGroups()) {
+    if (g.items.some((i) => navItemPathname(i.to) === path || i.to === to)) return g.label;
   }
   return 'Navigate';
 }
