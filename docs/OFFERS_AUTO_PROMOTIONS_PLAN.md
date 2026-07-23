@@ -215,4 +215,4 @@ an admin creates an auto-promo.
 | 2 effective pricing | `6609b5b4` | backend suite green; DailySpecial + EffectivePrice green |
 | 3 offers feed/rail | `06e2db68` | OffersEndpoint + OffersRail/ProductCard tests; order/admin build green |
 | 4 preview/analytics/urgency | `dba91f32` | backend 1558 passed; order 94 tests; admin build green |
-| dist sync | `6badf7f3` | `./scripts/build-all.sh admin order` → `backend/public/{admin,order}` |
+| dist sync | `0266afaa` | `./scripts/build-all.sh admin order` → `backend/public/{admin,order}` |
