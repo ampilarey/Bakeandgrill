@@ -193,7 +193,7 @@ permissions unchanged throughout.
 ## Build log
 
 - Branch: `claude/admin-layout-redesign-plan`
-- Tip: `78313d53` (docs + implementation notes; tests green at `fa25be28`)
+- Tip: `bdac1683`
 - `npm ci` (repo root) — ok
 - `cd apps/admin-dashboard && npm test -- --run` — **101/101 passed** (34 files)
 - `npm run build` / `./scripts/build-all.sh admin` — ok; dist synced to `backend/public/admin/`
