@@ -1,6 +1,6 @@
 # Release notes — Offers & Auto-Promotions + Content Studio Phase 6
 
-**Branch tip on `main`:** `9886ede9`  
+**Branch tip on `main`:** `2b632560`  
 **Consolidation:** Offers feature branch merged, then Content Studio Phase 6 re-applied on top.
 
 ---
