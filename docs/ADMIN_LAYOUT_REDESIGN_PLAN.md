@@ -171,3 +171,32 @@ permissions unchanged throughout.
   theme, EN/DV where present.
 - No heavy new UI dependency for nav/DnD; keep the bundle lean; mobile-first, accessible.
 - Keep every existing page reachable; do not remove any nav item — only reorganize into sections.
+
+## Implementation notes
+
+- **Six sections, not five:** Splitting System & Team yields Monitor / Manage / Customers & Marketing /
+  Analyze / System / Team. Desktop section bar and mobile bottom tabs render all *permitted* sections
+  (horizontally scrollable on narrow viewports). Acceptance criteria that said “5” were treated as
+  “one tab per IA section after rebalance.”
+- **Soft ~10 cap:** Manage stays at 11 items; System is 10 + checklist via `getNavGroups()`. Soft limit
+  per plan (“~10”), not a hard cut that would invent orphan pages.
+- **Team absorbs ops staffing:** Shifts & Time Clock moved from Monitor → Team (alongside Staff / My
+  Account) to match §2.3 recommendation without dropping routes.
+- **Settings hub → rail deep-links:** Replaced single `/settings` nav item with
+  `/settings?tab=permissions` and `/settings?tab=notifications`. Website hub card remains reachable via
+  Content editors + `?tab=website`. Bare `/settings` and legacy tabs still redirect. No new routes.
+- **Layout.tsx:** Thin re-export of `AppShell` so existing `from './Layout'` / SharedUI re-exports keep
+  working. `BOTTOM_TABS` kept but unused by the new mobile shell.
+- **PageHeader breadcrumbs:** `section` prop renders “Section › Page”; page tests assert
+  `getByRole('heading')` to avoid duplicate-text matches with the breadcrumb.
+
+## Build log
+
+- Branch: `claude/admin-layout-redesign-plan`
+- Tip: 
+- `npm ci` (repo root) — ok
+- `cd apps/admin-dashboard && npm test -- --run` — **101/101 passed** (34 files)
+- `npm run build` / `./scripts/build-all.sh admin` — ok; dist synced to `backend/public/admin/`
+- Staged commits: navConfig rebalance → AppShell → SharedUI primitives → Settings fold → per-page
+  PageShell pass → test assertion fixes
+- No PR opened (per instructions)
