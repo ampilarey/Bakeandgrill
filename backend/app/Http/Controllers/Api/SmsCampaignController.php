@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Notifications\Services\BulkSmsService;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\SmsCampaign;
 use App\Models\SmsLog;
@@ -29,7 +30,7 @@ class SmsCampaignController extends Controller
     {
         $validated = $request->validate([
             'type' => 'nullable|in:otp,promotion,campaign,transactional',
-            'status' => 'nullable|in:queued,sent,failed,demo',
+            'status' => 'nullable|in:queued,sent,failed,demo,suppressed,disabled',
             'phone' => 'nullable|string',
             'customer_id' => 'nullable|integer',
             'days' => 'nullable|integer|min:1|max:365',
@@ -62,7 +63,7 @@ class SmsCampaignController extends Controller
         $logs = $query->paginate($validated['per_page'] ?? 50);
 
         $logs->getCollection()->transform(function (SmsLog $log) {
-            if ($log->type === 'otp') {
+            if (SmsTypeRegistry::shouldRedactBody((string) $log->type)) {
                 $log->message = '[redacted]';
             }
 

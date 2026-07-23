@@ -53,7 +53,7 @@ class SendSmsPromotionRecipient implements ShouldQueue
         $log = $smsService->send(new SmsMessage(
             to: $recipient->phone,
             message: $promotion->message,
-            type: 'promotion',
+            type: 'marketing_promotion',
             referenceType: 'App\Models\SmsPromotion',
             referenceId: (string) $promotion->id,
             idempotencyKey: "sms-promo:{$promotion->id}:recipient:{$this->recipientId}",

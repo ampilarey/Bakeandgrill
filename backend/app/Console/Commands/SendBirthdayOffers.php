@@ -68,7 +68,7 @@ class SendBirthdayOffers extends Command
                     $sms->send(new SmsMessage(
                         to: (string) $customer->phone,
                         message: $message,
-                        type: 'promotion',
+                        type: 'marketing_birthday',
                         customerId: $customer->id,
                         referenceType: 'birthday_offer',
                         referenceId: (string) $customer->id,

@@ -71,7 +71,7 @@ class SendTierMilestoneSms extends Command
                     $sms->send(new SmsMessage(
                         to: (string) $customer->phone,
                         message: $message,
-                        type: 'promotion',
+                        type: 'marketing_tier_milestone',
                         customerId: $customer->id,
                         referenceType: 'tier_milestone',
                         referenceId: (string) $account->id,

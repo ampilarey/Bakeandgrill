@@ -127,7 +127,7 @@ class GiftCardEnhancementsTest extends TestCase
         $this->assertDatabaseHas('sms_logs', [
             'reference_type' => 'gift_card',
             'to' => '+9607890123',
-            'type' => 'transactional',
+            'type' => 'giftcard_delivery',
         ]);
 
         $body = SmsLog::query()->where('reference_type', 'gift_card')->latest('id')->value('message');

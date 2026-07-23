@@ -6,6 +6,7 @@ namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Models\Customer;
 use App\Models\SmsLog;
 use App\Rules\MaldivesPhone;
@@ -18,23 +19,16 @@ use Illuminate\Support\Facades\Log;
  * - Delegates transport to SmsProviderInterface (default: DhiraaguSmsProvider).
  * - Logs EVERY send attempt to sms_logs (OTP, promo, campaign, transactional).
  * - Phone normalisation: accepts 7654321, 9607654321, +9607654321.
+ * - Central gate (authoritative): global kill switch → per-type enabled → opt-out.
  */
 class SmsService
 {
     public function __construct(private readonly SmsProviderInterface $provider) {}
 
-    /**
-     * Message types that bypass the customer opt-out flag.
-     *  - 'otp'           : auth flow, never suppressible
-     *  - 'transactional' : receipts, order updates, payment confirmations
-     * Everything else ('campaign', 'promotion', etc.) is marketing and
-     * MUST be suppressed when the customer has opted out.
-     */
-    private const NON_SUPPRESSIBLE_TYPES = ['otp', 'transactional'];
-
     public function send(SmsMessage $sms): SmsLog
     {
         $estimate = $this->estimate($sms->message);
+        $registryEntry = SmsTypeRegistry::resolve($sms->type);
 
         try {
             $normalized = $this->normalizePhone($sms->to);
@@ -57,12 +51,80 @@ class SmsService
             ]);
         }
 
-        // Marketing-class messages: honour the customer opt-out flag. We
-        // log a `suppressed` row so the audit trail still shows the call
-        // was made (and what was *not* sent), but skip the provider entirely.
-        if (!in_array($sms->type, self::NON_SUPPRESSIBLE_TYPES, true)) {
+        // Early exits that write a log row must still honour idempotency so
+        // re-dispatches with the same key do not violate the unique index.
+        $existing = $sms->idempotencyKey
+            ? SmsLog::where('idempotency_key', $sms->idempotencyKey)
+                ->where('created_at', '>=', now()->subDay())
+                ->orderByDesc('id')
+                ->first()
+            : null;
+
+        if ($existing !== null && in_array($existing->status, ['sent', 'disabled', 'suppressed'], true)) {
+            return $existing;
+        }
+
+        // 1. Global kill switch — blocks ALL types including OTP.
+        if (SmsTypeRegistry::isGlobalKillSwitchOn()) {
+            if ($existing !== null) {
+                $existing->update([
+                    'status' => 'disabled',
+                    'error_message' => 'All SMS halted by admin master switch.',
+                    'message' => $this->messageForLog($sms),
+                    'to' => $normalized,
+                ]);
+
+                return $existing->fresh();
+            }
+
+            return $this->disabledLog(
+                $sms,
+                $normalized,
+                $estimate,
+                'All SMS halted by admin master switch.',
+            );
+        }
+
+        // 2. Per-type enabled (always_on types ignore their toggle).
+        if ($registryEntry !== null && !SmsTypeRegistry::isTypeEnabled($registryEntry)) {
+            if ($existing !== null) {
+                $existing->update([
+                    'status' => 'disabled',
+                    'error_message' => 'SMS type disabled in Admin → SMS Control Center.',
+                    'message' => $this->messageForLog($sms),
+                    'to' => $normalized,
+                ]);
+
+                return $existing->fresh();
+            }
+
+            return $this->disabledLog(
+                $sms,
+                $normalized,
+                $estimate,
+                'SMS type disabled in Admin → SMS Control Center.',
+            );
+        }
+
+        // 3. Marketing-class messages: honour customer opt-out via registry suppressible flag.
+        $suppressible = $registryEntry === null
+            ? true
+            : SmsTypeRegistry::isSuppressible($registryEntry);
+
+        if ($suppressible) {
             $optedOut = $this->isOptedOut($normalized, $sms->customerId);
             if ($optedOut) {
+                if ($existing !== null) {
+                    $existing->update([
+                        'status' => 'suppressed',
+                        'error_message' => 'Recipient opted out of marketing SMS.',
+                        'message' => $this->messageForLog($sms),
+                        'to' => $normalized,
+                    ]);
+
+                    return $existing->fresh();
+                }
+
                 return SmsLog::create([
                     'message' => $this->messageForLog($sms),
                     'to' => $normalized,
@@ -81,18 +143,6 @@ class SmsService
                 ]);
             }
         }
-
-        // Idempotency lookup now bounded to the last 24 hours. The same
-        // key being reused months later (e.g. periodic "low stock" reminders
-        // that intentionally share a key per item) should NOT collapse into
-        // an old log row. 24h covers all retry/queue replay windows we
-        // actually run.
-        $existing = $sms->idempotencyKey
-            ? SmsLog::where('idempotency_key', $sms->idempotencyKey)
-                ->where('created_at', '>=', now()->subDay())
-                ->orderByDesc('id')
-                ->first()
-            : null;
 
         // Only treat a carrier-confirmed send as final — allow retries after failed/demo/queued.
         if ($existing !== null && $existing->status === 'sent') {
@@ -189,14 +239,35 @@ class SmsService
         return $log->fresh();
     }
 
-    /** OTP bodies must not be stored verbatim in sms_logs. */
+    /** OTP / auth bodies must not be stored verbatim in sms_logs. */
     private function messageForLog(SmsMessage $sms): string
     {
-        if ($sms->type === 'otp') {
+        if (SmsTypeRegistry::shouldRedactBody($sms->type)) {
             return '[otp redacted]';
         }
 
         return $sms->message;
+    }
+
+    /** @param array{encoding: string, segments: int, cost_mvr: float} $estimate */
+    private function disabledLog(SmsMessage $sms, string $normalized, array $estimate, string $reason): SmsLog
+    {
+        return SmsLog::create([
+            'message' => $this->messageForLog($sms),
+            'to' => $normalized,
+            'type' => $sms->type,
+            'status' => 'disabled',
+            'encoding' => $estimate['encoding'],
+            'segments' => $estimate['segments'],
+            'cost_estimate_mvr' => 0,
+            'provider' => 'dhiraagu',
+            'customer_id' => $sms->customerId,
+            'campaign_id' => $sms->campaignId,
+            'reference_type' => $sms->referenceType,
+            'reference_id' => $sms->referenceId,
+            'idempotency_key' => $sms->idempotencyKey,
+            'error_message' => $reason,
+        ]);
     }
 
     private function isDuplicateIdempotencyKey(QueryException $e): bool

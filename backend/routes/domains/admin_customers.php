@@ -49,7 +49,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
     Route::delete('/{id}/tags/{tag}', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'detachTag']);
     Route::post('/{id}/follow-up-note', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'followUpNote']);
 
-    Route::middleware('permission:integrations.sms')->group(function () {
+    Route::middleware('permission:sms.campaigns.send')->group(function () {
         Route::post('/{id}/send-sms', [App\Http\Controllers\Api\AdminCustomerGrowthController::class, 'sendSms']);
     });
 

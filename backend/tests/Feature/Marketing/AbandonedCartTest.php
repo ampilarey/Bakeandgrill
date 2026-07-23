@@ -75,7 +75,7 @@ class AbandonedCartTest extends TestCase
 
         $this->assertDatabaseHas('sms_logs', [
             'to' => '+9607890456',
-            'type' => 'promotion',
+            'type' => 'marketing_abandoned_cart',
             'reference_type' => 'abandoned_cart',
         ]);
     }
@@ -104,7 +104,7 @@ class AbandonedCartTest extends TestCase
 
         $this->assertDatabaseHas('sms_logs', [
             'customer_id' => $customer->id,
-            'type' => 'promotion',
+            'type' => 'marketing_abandoned_cart',
             'reference_type' => 'abandoned_cart',
         ]);
 

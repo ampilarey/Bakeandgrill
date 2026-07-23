@@ -94,7 +94,7 @@ class CustomerOtpTest extends TestCase
         // that the idempotency key was unique per request rather than per minute.
         $this->assertGreaterThanOrEqual(2, \DB::table('sms_logs')
             ->where('to', $phone)
-            ->where('type', 'otp')
+            ->whereIn('type', ['otp', 'auth_customer_otp'])
             ->count());
     }
 }

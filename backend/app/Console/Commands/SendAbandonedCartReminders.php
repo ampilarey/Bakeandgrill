@@ -61,7 +61,7 @@ class SendAbandonedCartReminders extends Command
                     $sms->send(new SmsMessage(
                         to: $to,
                         message: $message,
-                        type: 'promotion',
+                        type: 'marketing_abandoned_cart',
                         customerId: $customer?->id,
                         referenceType: 'abandoned_cart',
                         referenceId: (string) $cart->id,

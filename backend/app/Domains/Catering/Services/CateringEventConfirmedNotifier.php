@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Catering\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Mail\EventConfirmedMail;
 use App\Models\CateringRequest;
@@ -20,6 +21,7 @@ class CateringEventConfirmedNotifier
     public function __construct(
         private readonly SmsService $sms,
         private readonly CateringNotifyRecipients $recipients,
+        private readonly CustomerSmsMessageBuilder $messages,
     ) {}
 
     public function notify(CateringRequest $request, int $paidLaar, int $balanceLaar): void
@@ -34,17 +36,28 @@ class CateringEventConfirmedNotifier
 
         $when = $this->formatWhen($request);
         $venue = $this->formatVenue($request);
+        $vars = [
+            'reference' => $ref,
+            'paid' => $paidMvr,
+            'balance_bit' => $balanceBit,
+            'when' => $when,
+            'venue' => $venue,
+            'event_date' => $request->event_date?->format('Y-m-d') ?? '',
+            'contact_name' => (string) ($request->contact_name ?? ''),
+        ];
 
-        $customerMsg = "Event confirmed — ref {$ref}, paid MVR {$paidMvr}{$balanceBit}. {$when}{$venue}";
+        $customerFallback = "Event confirmed — ref {$ref}, paid MVR {$paidMvr}{$balanceBit}. {$when}{$venue}";
+        $customerMsg = $this->messages->build('catering_confirmed_customer', $vars, $customerFallback);
         $this->notifyCustomer($request, $customerMsg, $baseKey, $paidLaar, $balanceLaar);
 
-        $staffMsg = "Event confirmed {$ref}: paid MVR {$paidMvr}{$balanceBit}. {$when}";
+        $staffFallback = "Event confirmed {$ref}: paid MVR {$paidMvr}{$balanceBit}. {$when}";
+        $staffMsg = $this->messages->build('catering_confirmed_staff', $vars, $staffFallback);
         foreach ($this->recipients->forLifecycle($request) as $i => $target) {
             if (!empty($target['phone'])) {
                 $this->sms->send(new SmsMessage(
                     to: (string) $target['phone'],
                     message: $staffMsg,
-                    type: 'transactional',
+                    type: 'catering_confirmed_staff',
                     referenceType: 'catering_request',
                     referenceId: (string) $request->id,
                     idempotencyKey: $baseKey . ':staff_sms:' . $i,
@@ -77,7 +90,7 @@ class CateringEventConfirmedNotifier
             $this->sms->send(new SmsMessage(
                 to: (string) $request->phone,
                 message: $smsMsg,
-                type: 'transactional',
+                type: 'catering_confirmed_customer',
                 customerId: $request->customer_id,
                 referenceType: 'catering_request',
                 referenceId: (string) $request->id,

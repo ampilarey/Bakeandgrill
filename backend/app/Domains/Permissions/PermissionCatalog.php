@@ -33,6 +33,14 @@ final class PermissionCatalog
         'customers.deposit.transfer_credit' => ['customers.deposit.manage'],
         'sms_marketing.view' => ['integrations.sms'],
         'sms_marketing.manage' => ['integrations.sms'],
+        // SMS Control Center granular split — legacy holders keep full access
+        'sms.logs.view' => ['integrations.sms', 'sms_marketing.manage'],
+        'sms.templates.edit' => ['integrations.sms', 'sms_marketing.manage'],
+        'sms.settings.manage' => ['integrations.sms', 'sms_marketing.manage'],
+        'sms.contacts.manage' => ['integrations.sms', 'sms_marketing.manage'],
+        'sms.scheduled.manage' => ['integrations.sms', 'sms_marketing.manage'],
+        'sms.campaigns.send' => ['integrations.sms', 'sms_marketing.manage'],
+        'sms.transactional.manage' => ['integrations.sms', 'sms_marketing.manage'],
         'webhooks.manage' => ['integrations.webhooks'],
         'xero.manage' => ['integrations.xero'],
         'users.view' => ['staff.view'],
@@ -165,6 +173,13 @@ final class PermissionCatalog
             ['group' => 'Marketing', 'slug' => 'sms_marketing.view', 'name' => 'View SMS marketing'],
             ['group' => 'Marketing', 'slug' => 'sms_marketing.manage', 'name' => 'Manage SMS marketing'],
             ['group' => 'Marketing', 'slug' => 'integrations.sms', 'name' => 'SMS campaigns (legacy)'],
+            ['group' => 'SMS', 'slug' => 'sms.logs.view', 'name' => 'View SMS logs', 'description' => 'View SMS audit logs and stats'],
+            ['group' => 'SMS', 'slug' => 'sms.templates.edit', 'name' => 'Edit SMS templates', 'description' => 'Edit wording of any SMS template'],
+            ['group' => 'SMS', 'slug' => 'sms.settings.manage', 'name' => 'Manage SMS settings', 'description' => 'Toggle SMS types on/off and view Control Center'],
+            ['group' => 'SMS', 'slug' => 'sms.contacts.manage', 'name' => 'Manage SMS contacts', 'description' => 'Contacts and contact groups'],
+            ['group' => 'SMS', 'slug' => 'sms.scheduled.manage', 'name' => 'Manage scheduled SMS', 'description' => 'Scheduled messages'],
+            ['group' => 'SMS', 'slug' => 'sms.campaigns.send', 'name' => 'Send SMS campaigns', 'description' => 'Create and send bulk campaigns and promotions'],
+            ['group' => 'SMS', 'slug' => 'sms.transactional.manage', 'name' => 'Manage transactional SMS', 'description' => 'Allow/trigger transactional and staff SMS types'],
 
             // Admin / setup
             ['group' => 'Devices', 'slug' => 'devices.view', 'name' => 'View devices'],
