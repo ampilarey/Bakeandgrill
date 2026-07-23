@@ -2,7 +2,7 @@
 
 **Repository:** `ampilarey/Bakeandgrill`
 **Branch:** `claude/admin-layout-redesign-plan`
-**Status:** Plan only — no feature code written yet.
+**Status:** Implemented on this branch (shell/layout only).
 **Author's note:** Separates **VERIFIED findings** (files read) from **RECOMMENDATIONS**. Shell/layout
 only — **no routing, no backend, no page-logic changes.**
 
@@ -193,7 +193,7 @@ permissions unchanged throughout.
 ## Build log
 
 - Branch: `claude/admin-layout-redesign-plan`
-- Tip: `7e5fb1e7`
+- Tip: `7dd8247d`
 - `npm ci` (repo root) — ok
 - `cd apps/admin-dashboard && npm test -- --run` — **101/101 passed** (34 files)
 - `npm run build` / `./scripts/build-all.sh admin` — ok; dist synced to `backend/public/admin/`
