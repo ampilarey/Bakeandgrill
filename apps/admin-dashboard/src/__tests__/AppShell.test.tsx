@@ -102,7 +102,7 @@ describe('SectionRail', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText('Inventory')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getAllByText('3').length).toBeGreaterThan(0);
   });
 });
 

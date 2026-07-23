@@ -61,7 +61,7 @@ describe("PurchaseRequestsPage", () => {
         <PurchaseRequestsPage />
       </MemoryRouter>,
     );
-    expect(screen.getByText(/Purchase Requests/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Purchase Requests/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pending/i })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/PR-1/i)).toBeInTheDocument());
   });

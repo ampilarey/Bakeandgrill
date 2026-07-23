@@ -101,7 +101,7 @@ describe('CateringDetailPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('EV-20260720-ZZZZ')).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'EV-20260720-ZZZZ' })).toBeTruthy();
     });
 
     expect(screen.getByTestId('assignee-select')).toBeTruthy();

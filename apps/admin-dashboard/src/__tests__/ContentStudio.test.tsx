@@ -63,7 +63,7 @@ describe('ContentStudioPage (Website Content editor)', () => {
     await waitFor(() => {
       expect(screen.getByText('Phone number')).toBeTruthy();
     });
-    expect(screen.getByText('Website Content')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Website Content' })).toBeTruthy();
     expect(screen.queryByText(/Make different per app/i)).toBeNull();
     expect(screen.getByDisplayValue('+960 912 0011')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Copy from Order App/i })).toBeTruthy();

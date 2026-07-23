@@ -23,7 +23,7 @@ vi.mock("../api/kitchen-production", () => ({
 describe("KitchenProductionPage", () => {
   it("renders page title and tabs", async () => {
     render(<KitchenProductionPage />);
-    expect(screen.getByText(/Kitchen Handover/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Kitchen Handover/i })).toBeTruthy();
     expect(await screen.findByText(/pending receive/i)).toBeTruthy();
   });
 });

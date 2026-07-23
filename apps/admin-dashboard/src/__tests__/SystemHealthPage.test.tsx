@@ -31,7 +31,7 @@ describe('SystemHealthPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('System Health')).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'System Health' })).toBeTruthy();
       expect(screen.getByText('Failed jobs')).toBeTruthy();
       expect(screen.getByText('2')).toBeTruthy();
       expect(screen.getByText('Issues detected in the last 24 hours')).toBeTruthy();
