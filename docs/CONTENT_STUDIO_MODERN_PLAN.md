@@ -185,6 +185,10 @@ ship it with parity tests + a transition read-fallback. Preview/draft are admin-
   site name at render time) to avoid breaking string readers.
 - **Fake timers:** admin autosave vitest uses fake timers only inside the autosave case to avoid
   cross-file `waitFor` timeouts.
+- **Phase 6:** wording-only status banners — `OnlineOrderingGateService` untouched. Menu bar
+  composes via `composeOrderingStatusBanner` + `order_status_*` content keys; closed state prefers
+  gate `message` when non-empty. Badge uses `order_hours_*` with i18n fallback when content empty.
+  Seed migration inserts order_app/en rows only when missing (registry defaults already resolve).
 
 ## Build log
 
@@ -194,10 +198,11 @@ ship it with parity tests + a transition read-fallback. Preview/draft are admin-
 | 2 crop + focal + master + video | `2e4249db` | ~1531 pass | 84 | 89 |
 | 3 desktop/mobile live preview | `ec098470` | 1535 pass / 3 skip | 84 | 89 |
 | 4 WYSIWYG + autosave draft→publish | `daa3c90f` | 1538 pass / 3 skip | 88 | 89 |
-| 5 polish (alt, SEO, diff, media) | (this commit) | **1540 pass / 3 skip** | **91** | **90** |
+| 5 polish (alt, SEO, diff, media) | `9bcf3812` | **1540 pass / 3 skip** | **91** | **90** |
+| 6 editable order-app status banners | (this commit) | **1543 pass / 3 skip** | **91** | **98** |
 
-Final verify (Phase 5): `./vendor/bin/pint`, `php artisan test`, `npm test -- --run` + `npm run build`
-in admin + order; `./scripts/build-all.sh admin order` synced `backend/public/{admin,order}`.
+Final verify (Phase 6): `./vendor/bin/pint`, `php artisan test`, order + admin `npm test -- --run`
++ `npm run build`; `./scripts/build-all.sh admin order` synced `backend/public/{admin,order}`.
 
 Branch: `claude/content-studio-modern-plan` — no PR opened (per brief).
 

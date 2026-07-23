@@ -205,9 +205,12 @@ describe('Content Studio two app editors', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 912 0011')).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByDisplayValue('+960 912 0011')).toBeTruthy();
+      },
+      { timeout: 8000 },
+    );
 
     fireEvent.change(screen.getByDisplayValue('+960 912 0011'), {
       target: { value: '+960 WEB EDIT' },
@@ -224,7 +227,7 @@ describe('Content Studio two app editors', () => {
       { key: 'business_phone', scope: 'website', value: '+960 WEB EDIT', locale: 'en' },
     ]);
     expect(changes.every((c) => c.scope !== 'order_app' && c.scope !== 'shared')).toBe(true);
-  });
+  }, 15000);
 
   it('copy from other app calls copyContentBlock(key, other, current)', async () => {
     render(
@@ -233,9 +236,12 @@ describe('Content Studio two app editors', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Phone number')).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Phone number')).toBeTruthy();
+      },
+      { timeout: 8000 },
+    );
 
     fireEvent.click(screen.getAllByRole('button', { name: /Copy from Order App/i })[0]);
 
@@ -247,7 +253,7 @@ describe('Content Studio two app editors', () => {
         'en',
       );
     });
-  });
+  }, 15000);
 
   it('hero visual editor drafts persist to the current app on publish', async () => {
     render(

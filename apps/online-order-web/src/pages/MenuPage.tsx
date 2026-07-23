@@ -30,6 +30,7 @@ import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { pickActiveSectionId } from '../utils/scrollSpy';
+import { composeOrderingStatusBanner, ORDER_STATUS_DEFAULTS } from '../utils/orderingStatusBanner';
 
 function isItemOnSale(item: Item): boolean {
   if (item.special?.effective_price != null) return true;
@@ -118,6 +119,7 @@ export function MenuPage() {
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
   const [nextDeliveryWindow, setNextDeliveryWindow] = useState<string | null>(null);
+  const [gateMessage, setGateMessage] = useState<string>('');
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -184,6 +186,7 @@ export function MenuPage() {
         setNextOpenWindow(gate.next_open_window ?? null);
         setDeliveryAvailable(gate.delivery_available ?? true);
         setNextDeliveryWindow(gate.next_delivery_window ?? null);
+        setGateMessage(gate.message ?? '');
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -591,16 +594,22 @@ export function MenuPage() {
             <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'pickup-only') : 'closed'}`} style={{ margin: 0 }}>
               <span className="ordering-status-bar-dot" />
               <span className="ordering-status-bar-text">
-                {(() => {
-                  const closes = fmtOrderingTime(currentClose);
-                  const opens = fmtOrderingTime(nextOpenWindow);
-                  const deliveryFrom = fmtOrderingTime(nextDeliveryWindow);
-                  if (!isOpen) return `Online ordering is closed${opens ? ` · Opens ${opens}` : ''}`;
-                  if (!deliveryAvailable) {
-                    return `Online ordering is open · Pickup only${deliveryFrom ? ` · Delivery from ${deliveryFrom}` : ''}${closes ? ` · Closes ${closes}` : ''}`;
-                  }
-                  return `Online ordering is open${closes ? ` · Closes ${closes}` : ''}`;
-                })()}
+                {composeOrderingStatusBanner({
+                  isOpen: !!isOpen,
+                  deliveryAvailable,
+                  closesFormatted: fmtOrderingTime(currentClose),
+                  opensFormatted: fmtOrderingTime(nextOpenWindow),
+                  deliveryFromFormatted: fmtOrderingTime(nextDeliveryWindow),
+                  gateMessage: isOpen ? '' : gateMessage,
+                  copy: {
+                    open: text('order_status_open', ORDER_STATUS_DEFAULTS.open),
+                    closed: text('order_status_closed', ORDER_STATUS_DEFAULTS.closed),
+                    pickupOnly: text('order_status_pickup_only', ORDER_STATUS_DEFAULTS.pickup_only),
+                    closes: text('order_status_closes', ORDER_STATUS_DEFAULTS.closes),
+                    opens: text('order_status_opens', ORDER_STATUS_DEFAULTS.opens),
+                    deliveryFrom: text('order_status_delivery_from', ORDER_STATUS_DEFAULTS.delivery_from),
+                  },
+                })}
               </span>
             </div>
           )}
