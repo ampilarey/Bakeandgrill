@@ -80,6 +80,47 @@ export async function deletePromotion(id: number): Promise<void> {
   await req(`/admin/promotions/${id}`, { method: 'DELETE' });
 }
 
+export type OffersPerformanceReport = {
+  report: Array<{
+    id: number;
+    name: string;
+    code: string | null;
+    auto_apply?: boolean;
+    is_active?: boolean;
+    type?: string;
+    discount_value?: number;
+    redemptions_count: number;
+    total_discount_laar: number;
+    order_promotions_draft?: number;
+  }>;
+  specials: Array<{
+    id: number;
+    kind: string;
+    name: string;
+    is_active: boolean;
+    sold_count: number;
+    max_quantity?: number | null;
+    discount_pct?: number | null;
+    special_price?: number | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  }>;
+  offers_preview: Array<{
+    id: string;
+    kind: string;
+    title: string;
+    badge?: string | null;
+    effective_price?: number | null;
+    original_price?: number | null;
+    ends_at?: string | null;
+    link: string;
+  }>;
+};
+
+export async function fetchOffersPerformance(): Promise<OffersPerformanceReport> {
+  return req('/admin/reports/promotions');
+}
+
 // ── SMS ──────────────────────────────────────────────────────────────────────
 
 export type SmsLog = {

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  fetchPromotions, createPromotion, updatePromotion, deletePromotion,
-  type Promotion, type PromotionPayload,
+  fetchPromotions, createPromotion, updatePromotion, deletePromotion, fetchOffersPerformance,
+  type Promotion, type PromotionPayload, type OffersPerformanceReport,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
@@ -299,6 +299,8 @@ export function PromotionsPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [printCard, setPrintCard] = useState<PrintCardData | null>(null);
+  const [perf, setPerf] = useState<OffersPerformanceReport | null>(null);
+  const [showPerf, setShowPerf] = useState(false);
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const load = async () => {
@@ -310,6 +312,16 @@ export function PromotionsPage() {
       setError((e as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPerf = async () => {
+    try {
+      const res = await fetchOffersPerformance();
+      setPerf(res);
+      setShowPerf(true);
+    } catch (e) {
+      setError((e as Error).message);
     }
   };
 
@@ -364,6 +376,7 @@ export function PromotionsPage() {
         action={
           !creating && !editing ? (
             <div style={{ display: 'flex', gap: 8 }}>
+              <Btn variant="secondary" onClick={() => void loadPerf()}>Offers preview</Btn>
               <Btn variant="secondary" onClick={() => downloadCSV('promotions', promos.map((p) => ({ Name: p.name, Code: p.code, Type: p.type, 'Discount Value': p.discount_value, Scope: p.scope, 'Max Uses': p.max_uses ?? 'Unlimited', Redemptions: p.redemptions_count, Active: p.is_active ? 'Yes' : 'No', Expires: p.expires_at ?? 'No expiry' })))}>Export CSV</Btn>
               <Btn onClick={() => setCreating(true)}>+ New Promo</Btn>
             </div>
@@ -371,6 +384,85 @@ export function PromotionsPage() {
         }
       />
       {error && <ErrorMsg message={error} />}
+
+      {showPerf && perf && (
+        <Card style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0, color: '#1C1408' }}>Customer offers preview & performance</h3>
+            <Btn small variant="ghost" onClick={() => setShowPerf(false)}>Close</Btn>
+          </div>
+          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12 }}>
+            What customers see on the menu Offers rail right now ({perf.offers_preview.length} cards).
+          </p>
+          {perf.offers_preview.length === 0 ? (
+            <EmptyState message="No active offers right now." />
+          ) : (
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8, marginBottom: 18 }}>
+              {perf.offers_preview.map((o) => (
+                <div key={o.id} style={{ flexShrink: 0, width: 160, border: '1px solid #E8E0D8', borderRadius: 10, padding: 10, background: '#F8F6F3' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#D4813A', marginBottom: 4 }}>{o.kind.toUpperCase()}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#1C1408' }}>{o.title}</div>
+                  {o.badge && <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>{o.badge}</div>}
+                  {o.effective_price != null && (
+                    <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6, color: '#D4813A' }}>
+                      MVR {Number(o.effective_price).toFixed(2)}
+                      {o.original_price != null && Number(o.original_price) > Number(o.effective_price) && (
+                        <span style={{ marginLeft: 6, textDecoration: 'line-through', color: '#9C8E7E', fontWeight: 500 }}>
+                          {Number(o.original_price).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px', color: '#1C1408' }}>Promotion redemptions</h4>
+          <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  {['Name', 'Mode', 'Redemptions', 'Discount (MVR)'].map((h) => (
+                    <th key={h} style={TH}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {perf.report.map((r) => (
+                  <tr key={r.id}>
+                    <td style={TD}>{r.name}</td>
+                    <td style={TD}>{r.auto_apply ? 'Automatic' : (r.code ?? '—')}</td>
+                    <td style={TD}>{r.redemptions_count}</td>
+                    <td style={TD}>{(Number(r.total_discount_laar) / 100).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px', color: '#1C1408' }}>Daily specials</h4>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  {['Item', 'Sold', 'Active', 'Window'].map((h) => (
+                    <th key={h} style={TH}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {perf.specials.map((s) => (
+                  <tr key={s.id}>
+                    <td style={TD}>{s.name}</td>
+                    <td style={TD}>{s.sold_count}{s.max_quantity ? ` / ${s.max_quantity}` : ''}</td>
+                    <td style={TD}>{s.is_active ? 'Yes' : 'No'}</td>
+                    <td style={{ ...TD, fontSize: 12, color: '#9C8E7E' }}>{s.start_date ?? '—'} → {s.end_date ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {(creating || editing) && (
         <Card style={{ marginBottom: 24 }}>

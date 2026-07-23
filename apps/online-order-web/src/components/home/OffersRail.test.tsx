@@ -67,3 +67,13 @@ describe('OffersRail', () => {
     expect(wrapLink.getAttribute('href')).toBe('/menu?item=1');
   });
 });
+
+describe('offerUrgencyLabel', () => {
+  it('shows countdown within 24h', async () => {
+    const { offerUrgencyLabel } = await import('./OffersRail');
+    const now = Date.parse('2026-07-23T12:00:00.000Z');
+    expect(offerUrgencyLabel('2026-07-23T14:30:00.000Z', now)).toBe('Ends in 3h');
+    expect(offerUrgencyLabel('2026-07-23T12:20:00.000Z', now)).toBe('Ends in 20m');
+    expect(offerUrgencyLabel('2026-07-25T12:00:00.000Z', now)).toBeNull();
+  });
+});

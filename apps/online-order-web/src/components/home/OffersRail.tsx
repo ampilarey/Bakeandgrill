@@ -17,6 +17,20 @@ function resolveImage(url: string | null | undefined, apiOrigin: string): string
   return `${apiOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
+/** Urgency label from ends_at — only when ending within 24h. */
+export function offerUrgencyLabel(endsAt: string | null | undefined, nowMs = Date.now()): string | null {
+  if (!endsAt) return null;
+  const end = new Date(endsAt).getTime();
+  if (Number.isNaN(end)) return null;
+  const ms = end - nowMs;
+  if (ms <= 0) return 'Ending soon';
+  const hours = ms / (1000 * 60 * 60);
+  if (hours > 24) return null;
+  if (hours >= 1) return `Ends in ${Math.ceil(hours)}h`;
+  const mins = Math.max(1, Math.ceil(ms / (1000 * 60)));
+  return `Ends in ${mins}m`;
+}
+
 export function OffersRail({ offers, headline, subtext, apiOrigin }: Props) {
   const { text } = useSiteSettingsContext();
   const title = headline || text('offers_headline', 'Offers');
@@ -43,6 +57,7 @@ export function OffersRail({ offers, headline, subtext, apiOrigin }: Props) {
               ? Number(offer.original_price)
               : null;
           const to = offer.link.startsWith('/') ? offer.link : `/${offer.link}`;
+          const urgency = offerUrgencyLabel(offer.ends_at);
 
           return (
             <Link
@@ -74,6 +89,9 @@ export function OffersRail({ offers, headline, subtext, apiOrigin }: Props) {
                 <p style={{ margin: '0 0 3px', fontWeight: 700, fontSize: 12, color: 'var(--color-dark)', lineHeight: 1.3 }}>{offer.title}</p>
                 {offer.subtitle && (
                   <p style={{ margin: '0 0 3px', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{offer.subtitle}</p>
+                )}
+                {urgency && (
+                  <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#B45309' }}>{urgency}</p>
                 )}
                 {price != null && (
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>

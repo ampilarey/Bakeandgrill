@@ -506,10 +506,37 @@ class PromotionController extends Controller
                 'id' => $p->id,
                 'name' => $p->name,
                 'code' => $p->code,
+                'auto_apply' => (bool) $p->auto_apply,
+                'is_active' => (bool) $p->is_active,
+                'type' => $p->type,
+                'discount_value' => $p->discount_value,
                 'redemptions_count' => $p->redemptions_count,
                 'total_discount_laar' => $p->redemptions->first()?->total_discount_laar ?? 0,
+                'order_promotions_draft' => OrderPromotion::where('promotion_id', $p->id)->where('status', 'draft')->count(),
             ]);
 
-        return response()->json(['report' => $report]);
+        $specials = \App\Models\DailySpecial::query()
+            ->with('item:id,name')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'kind' => 'special',
+                'name' => $s->item?->name ?? ('Special #' . $s->id),
+                'is_active' => (bool) $s->is_active,
+                'sold_count' => (int) ($s->sold_count ?? 0),
+                'max_quantity' => $s->max_quantity,
+                'discount_pct' => $s->discount_pct,
+                'special_price' => $s->special_price,
+                'start_date' => $s->start_date?->toDateString(),
+                'end_date' => $s->end_date?->toDateString(),
+            ]);
+
+        return response()->json([
+            'report' => $report,
+            'specials' => $specials,
+            'offers_preview' => app(\App\Domains\Promotions\Services\OffersService::class)->activeOffers(),
+        ]);
     }
 }
