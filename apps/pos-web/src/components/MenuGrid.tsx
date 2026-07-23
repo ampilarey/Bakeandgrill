@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Item, Modifier, Variant } from "../types";
 import { effectiveItemPrice, originalItemPrice } from "../hooks/useCart";
+import { isPackagingEligible, type PosOrderType } from "../orderTypes";
 import { z } from "../theme";
 
 type Props = {
@@ -43,6 +44,9 @@ type Props = {
   /** Unix-ms timestamp of the last successful menu fetch, used for the
    *  "Updated 2m ago" status text next to the refresh button. */
   lastRefreshedAt?: number | null;
+
+  /** Current ticket order type — packaging picker only for takeaway/pickup/delivery. */
+  orderType: PosOrderType;
 };
 
 // Per-category colour swatches. Loyverse-style highly-saturated chips
@@ -326,8 +330,9 @@ export function MenuGrid({
   handleSelectItem, toggleModifier, addToCart, clearSelectedItem,
   barcode, setBarcode, onBarcodeSubmit, readOnly = false,
   onRefreshMenu, isRefreshingMenu = false, lastRefreshedAt = null,
+  orderType,
 }: Props) {
-  // Bug-024: the per-20s freshness tick lives inside <FreshnessLabel>
+  const packagingEligible = isPackagingEligible(orderType);  // Bug-024: the per-20s freshness tick lives inside <FreshnessLabel>
   // now, NOT here at the top of MenuGrid. Re-rendering the entire
   // menu (300+ items, modifier sheets, search memos) every 20s just
   // to advance a "2m ago" string was visible jank on iPad. The label
@@ -669,9 +674,11 @@ export function MenuGrid({
             {visibleItems.map((item) => {
               const hasMods = (item.modifiers?.length ?? 0) > 0;
               const hasVariants = item.has_variants;
-              const hasPackagingChoices = (item.packaging_options?.length ?? 0) > 1;
+              const hasPackagingChoices =
+                packagingEligible && (item.packaging_options?.length ?? 0) > 1;
               // For items without modifiers, variants, or packaging choices,
               // tap = direct add to cart. Otherwise open configure.
+              // Dine-in never counts packaging as a configure reason.
               const onClick = () => {
                 if (readOnly) return;
                 if (hasMods || hasVariants || hasPackagingChoices) handleSelectItem(item);
@@ -696,10 +703,11 @@ export function MenuGrid({
           item={selectedItem}
           selectedModifiers={selectedModifiers}
           toggleModifier={toggleModifier}
+          packagingEligible={packagingEligible}
           onAdd={(variant, packagingOptionId) => {
             addToCart(selectedItem, {
               variant: variant ?? undefined,
-              packagingOptionId,
+              packagingOptionId: packagingEligible ? packagingOptionId : null,
             });
             clearSelectedItem();
           }}
@@ -719,12 +727,15 @@ function ConfigurePanel({
   item,
   selectedModifiers,
   toggleModifier,
+  packagingEligible,
   onAdd,
   onClose,
 }: {
   item: Item;
   selectedModifiers: Modifier[];
   toggleModifier: (m: Modifier) => void;
+  /** False for dine-in — hide packaging picker and attach no option. */
+  packagingEligible: boolean;
   /** When the item has variants, the chosen variant is passed back so
    *  the cart can record the correct id/name/price. For items without
    *  variants we pass `null` and `addToCart` falls back to base_price. */
@@ -737,7 +748,7 @@ function ConfigurePanel({
     () => (item.packaging_options ?? []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     [item],
   );
-  const showPackagingPicker = packagingOptions.length > 1;
+  const showPackagingPicker = packagingEligible && packagingOptions.length > 1;
   const variants = useMemo(
     () => (item.has_variants ? (item.variants ?? []).filter((v) => v.is_active) : []),
     [item],
@@ -756,9 +767,7 @@ function ConfigurePanel({
     return def?.id ?? null;
   });
   const [chosenPackagingId, setChosenPackagingId] = useState<number | null>(() => {
-    if (!showPackagingPicker) {
-      return packagingOptions.find((o) => o.is_default)?.id ?? packagingOptions[0]?.id ?? null;
-    }
+    if (!packagingEligible) return null;
     return packagingOptions.find((o) => o.is_default)?.id ?? packagingOptions[0]?.id ?? null;
   });
 

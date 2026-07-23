@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isValidMvMobile, normalizeMvPhone, validateDeliveryDetails } from './orderTypes';
+import { isPackagingEligible, isValidMvMobile, normalizeMvPhone, validateDeliveryDetails } from './orderTypes';
 
 describe('isValidMvMobile', () => {
   it('accepts 3/6/7/9 local prefixes', () => {
@@ -34,5 +34,14 @@ describe('validateDeliveryDetails', () => {
 describe('normalizeMvPhone', () => {
   it('prefixes local 7-digit numbers', () => {
     expect(normalizeMvPhone('7654321')).toBe('+9607654321');
+  });
+});
+
+describe('isPackagingEligible', () => {
+  it('excludes dine-in only', () => {
+    expect(isPackagingEligible('Dine-in')).toBe(false);
+    expect(isPackagingEligible('Takeaway')).toBe(true);
+    expect(isPackagingEligible('Pickup')).toBe(true);
+    expect(isPackagingEligible('Delivery')).toBe(true);
   });
 });

@@ -484,6 +484,7 @@ export function PosShellLayout() {
               onRefreshMenu={refreshAll}
               isRefreshingMenu={isRefreshingAll || menu.isRefreshing}
               lastRefreshedAt={menu.lastRefreshedAt}
+              orderType={orderType}
             />
           </>
           )

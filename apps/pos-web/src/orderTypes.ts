@@ -1,6 +1,35 @@
 export const POS_ORDER_TYPES = ["Dine-in", "Takeaway", "Pickup", "Delivery"] as const;
 export type PosOrderType = (typeof POS_ORDER_TYPES)[number];
 
+/** Backend types that charge packaging — mirrors PackagingFeeCalculator::orderTypeEligible. */
+const PACKAGING_ELIGIBLE_BACKEND = new Set([
+  "takeaway",
+  "online_pickup",
+  "delivery",
+  "catering",
+]);
+
+/**
+ * True when packaging fees / option pickers apply for this order type.
+ * Accepts POS labels (Dine-in, …) or backend slugs (dine_in, online_pickup, …).
+ * Dine-in is never eligible; catering is (quote fidelity).
+ */
+export function isPackagingEligible(orderType: PosOrderType | string): boolean {
+  const backend =
+    orderType === "Dine-in"
+      ? "dine_in"
+      : orderType === "Takeaway"
+        ? "takeaway"
+        : orderType === "Pickup"
+          ? "online_pickup"
+          : orderType === "Delivery"
+            ? "delivery"
+            : orderType === "catering"
+              ? "catering"
+              : orderType;
+  return PACKAGING_ELIGIBLE_BACKEND.has(backend);
+}
+
 export type PosDeliveryDetails = {
   addressLine1: string;
   addressLine2: string;
