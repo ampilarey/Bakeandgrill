@@ -200,3 +200,73 @@ Final verify (Phase 5): `./vendor/bin/pint`, `php artisan test`, `npm test -- --
 in admin + order; `./scripts/build-all.sh admin order` synced `backend/public/{admin,order}`.
 
 Branch: `claude/content-studio-modern-plan` — no PR opened (per brief).
+
+---
+
+## Phase 6 — De-hardcode order-app ordering/hours status banners (timeline stays; wording becomes editable)
+
+**Context / clarification:** the ordering banner ALREADY appears based on the ordering-settings
+timeline — `/ordering/status` (`OnlineOrderingGateService::status()`) returns `open`,
+`current_close`, `next_open_window` computed from the master switch + schedule + override, and the
+app renders "Opens {time}" / "Closes {time}" from those. **The times and on/off are dynamic.** The
+ONLY hardcoded part is the surrounding wording. Phase 6 makes the wording admin-editable per app
+via Content Studio, using `{time}` placeholders the component fills from the schedule. **No change
+to the timeline logic.**
+
+### Verified findings
+| Surface | Path | Hardcoded today |
+|---|---|---|
+| Menu ordering status bar | `apps/online-order-web/src/pages/MenuPage.tsx:597-603` | raw strings: `Online ordering is closed`, `Online ordering is open`, `Pickup only`, `· Opens`, `· Closes`, `· Delivery from` |
+| Open/closed badge | `apps/online-order-web/src/components/OpeningStatusBadge.tsx:76-84` | i18n keys `status.open`, `status.closed`, `status.open_closes {time}`, `status.closed_opens {time}` (LanguageContext) — not admin-editable |
+| Badge consumers | `HomePage.tsx`, `ServiceBanner.tsx`, `OpeningStatusBadge.tsx` | — |
+| Timeline data (unchanged) | `backend/app/Services/OnlineOrderingGateService.php::status()` | returns `open`, `current_close`, `next_open_window`, `delivery_available`, `next_delivery_window` from Ordering Control settings — **keep as-is** |
+
+### New content keys (registry, `apps:['order_app']`, `public:true`, `{time}` placeholder where noted)
+- `order_status_open` — default `"Online ordering is open"`
+- `order_status_closed` — default `"Online ordering is closed"`  (fallback to gate `message` /
+  `online_ordering_closed_message` when the admin has set one)
+- `order_status_pickup_only` — default `"Pickup only"`
+- `order_status_closes` — default `"Closes {time}"`
+- `order_status_opens` — default `"Opens {time}"`
+- `order_status_delivery_from` — default `"Delivery from {time}"`
+- Badge (hours) equivalents so the badge is editable too, defaulting to today's i18n text:
+  `order_hours_open` (`"Online ordering open"`), `order_hours_closed` (`"Online ordering closed"`),
+  `order_hours_open_closes` (`"Online ordering open · Closes {time}"`),
+  `order_hours_closed_opens` (`"Online ordering closed · Opens {time}"`).
+
+(These live in the **Order App** editor as a "Status banners" group. Add matching website keys only
+if the Blade side needs the same — the Blade home/hours badges already read
+`home_open_badge_text`/`hours_*_status_text`, so leave those.)
+
+### Wiring (composition stays in code; wording + `{time}` come from settings)
+- `MenuPage.tsx` status bar: build the label from the new keys via `useSiteSettingsContext().text(...)`,
+  e.g. `${text('order_status_open')}${closes ? ' · ' + text('order_status_closes').replace('{time}', closeStr) : ''}`.
+  `closeStr`/`opensStr`/`deliveryFrom` still come from the gate's `current_close` / `next_open_window`
+  / `next_delivery_window` (unchanged). Hardcoded strings become the fallback defaults only.
+- `OpeningStatusBadge.tsx`: accept optional label overrides sourced from the new `order_hours_*`
+  content keys; fall back to the existing `t('status.*')` i18n when a key is empty (so EN/DV keep
+  working and nothing breaks). Replace `{time}` from `currentClose`/`nextOpenWindow` as today.
+- All values flow through the existing per-app content resolver, so they're editable in the
+  **Order App** Content Studio and independent from the website.
+
+### Constraints
+- **Do not change the ordering timeline logic** (`OnlineOrderingGateService`, gate fetch, the
+  open/close/opens/delivery time computation). Phase 6 is wording-only.
+- Keep `{time}` placeholders; the component substitutes the schedule-derived time.
+- Keep i18n fallback in the badge so EN/DV still render when a content key is empty.
+- New keys default to today's exact strings → zero visible change until an admin edits them.
+
+### Tests
+- Backend: registry includes the new `order_status_*`/`order_hours_*` keys; `/api/content?app=order_app`
+  emits them; parity — defaults equal today's strings.
+- Order app: `MenuPage` renders the banner from settings with `{time}` filled from the gate; empty
+  setting → hardcoded default; `OpeningStatusBadge` uses content override when present, i18n otherwise.
+- Regression: `/ordering/status` and existing ordering tests unchanged and green.
+
+### Acceptance
+1. Turning online ordering on/off and changing the schedule still drives the banner state and the
+   "Opens/Closes {time}" values (unchanged behaviour).
+2. The banner/badge **wording** is editable in the Order App Content Studio (with `{time}`),
+   independent of the website; empty → current defaults.
+3. The admin's Ordering Control closed message shows in the app's closed banner.
+4. EN/DV still work; no visible change until an admin edits the copy.

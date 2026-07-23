@@ -1,5 +1,6 @@
 import type { OnlineOrderingStatus } from '../api';
 import { useLanguage } from '../context/LanguageContext';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 
 type Props = {
   open: boolean;
@@ -61,27 +62,52 @@ function fmtWindow(iso: string | null | undefined, use12h: boolean): string {
 }
 
 /**
- * Pill badge — single source of truth is the online ordering gate API.
+ * Content override when non-empty; otherwise i18n (keeps EN/DV working).
+ */
+function contentOrI18n(
+  contentValue: string,
+  i18nValue: string,
+): string {
+  const trimmed = contentValue.trim();
+  return trimmed !== '' ? trimmed : i18nValue;
+}
+
+/**
+ * Pill badge — timeline from the online ordering gate API; wording from Content Studio
+ * (`order_hours_*`) with i18n fallback when empty.
  */
 export function OpeningStatusBadge({
   open, reason, currentClose, nextOpenWindow, timeDisplay = '24h', className = '', style,
 }: Omit<Props, 'closedDetail'> & { closedDetail?: string | null }) {
   const { t } = useLanguage();
+  const { text } = useSiteSettingsContext();
   const use12h = timeDisplay === '12h';
   let label: string;
 
   if (open) {
     const closeStr = currentClose ? fmtWindow(currentClose, use12h) : '';
-    label = closeStr
-      ? t('status.open_closes').replace('{time}', closeStr)
-      : t('status.open');
+    if (closeStr) {
+      const tpl = contentOrI18n(
+        text('order_hours_open_closes', ''),
+        t('status.open_closes'),
+      );
+      label = tpl.replace('{time}', closeStr);
+    } else {
+      label = contentOrI18n(text('order_hours_open', ''), t('status.open'));
+    }
   } else if (reason === 'schedule') {
     const nextStr = nextOpenWindow ? fmtWindow(nextOpenWindow, use12h) : '';
-    label = nextStr
-      ? t('status.closed_opens').replace('{time}', nextStr)
-      : t('status.closed');
+    if (nextStr) {
+      const tpl = contentOrI18n(
+        text('order_hours_closed_opens', ''),
+        t('status.closed_opens'),
+      );
+      label = tpl.replace('{time}', nextStr);
+    } else {
+      label = contentOrI18n(text('order_hours_closed', ''), t('status.closed'));
+    }
   } else {
-    label = t('status.closed');
+    label = contentOrI18n(text('order_hours_closed', ''), t('status.closed'));
   }
 
   return (
