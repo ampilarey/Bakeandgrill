@@ -18,6 +18,11 @@ import { useShift }         from "../hooks/useShift";
 import { hasPosPermission } from "../hooks/usePosPermissions";
 import { useIdleLock, resolveIdleLockMinutes } from "../hooks/useIdleLock";
 import { makeCartKey }       from "../hooks/useCart";
+import {
+  applyPackagingPickerSelections,
+  reconcileCartPackagingForOrderTypeToggle,
+  type PackagingPickerLine,
+} from "../hooks/packagingReconcile";
 import { useOnlineOrderWatcher } from "../hooks/useOnlineOrderWatcher";
 import { usePosAppUpdate } from "../hooks/usePosAppUpdate";
 
@@ -231,6 +236,8 @@ export function usePosApp() {
   const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<number | "manual">("manual");
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+  /** Forced packaging picker after cashier switches to an eligible order type. */
+  const [packagingPickerLines, setPackagingPickerLines] = useState<PackagingPickerLine[] | null>(null);
   // Owner-curated quick-note chip library (e.g. "No salt", "Extra
   // spicy"). Loaded once after login from the public site-settings
   // endpoint. Empty array hides the per-line Note button.
@@ -279,6 +286,24 @@ export function usePosApp() {
   const shiftOpen = !!shift.current;
   const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap, setSmsNotifications);
   const cart = useCart(orderType);
+
+  /**
+   * Cashier-facing order-type change. Reconciles packaging on cart lines
+   * (strip for dine-in; auto-apply / forced picker for eligible types).
+   * Resume/load/offline paths must keep using raw `setOrderType`.
+   */
+  const handleOrderTypeToggle = useCallback((next: PosOrderType) => {
+    setOrderType(next);
+    const result = reconcileCartPackagingForOrderTypeToggle(next, cart.cartItems, menu.items);
+    cart.setCartItems(result.items);
+    setPackagingPickerLines(result.needsPicker.length > 0 ? result.needsPicker : null);
+  }, [cart.cartItems, cart.setCartItems, menu.items]);
+
+  const handlePackagingReconcileConfirm = useCallback((selections: Record<string, number>) => {
+    const menuById = new Map(menu.items.map((i) => [i.id, i]));
+    cart.setCartItems((prev) => applyPackagingPickerSelections(prev, selections, menuById));
+    setPackagingPickerLines(null);
+  }, [cart.setCartItems, menu.items]);
 
   // When switching to Delivery (or attaching a customer mid-ticket),
   // copy name/phone into the delivery contact fields if still blank.
@@ -1182,7 +1207,8 @@ export function usePosApp() {
     setShowSaveTicket, showOpenShift, setShowOpenShift, showCloseShift, setShowCloseShift,
     openShiftBusy, openTicketsCount, openTicketsCritical, receiptsFocusOrderId, setReceiptsFocusOrderId,
     receiptBanner, setReceiptBanner, deviceBlockedMessage, onlineOrderWatcher,
-    orderType, setOrderType, deliveryDetails, setDeliveryDetails, customerAddresses,
+    orderType, setOrderType, handleOrderTypeToggle, packagingPickerLines, handlePackagingReconcileConfirm,
+    deliveryDetails, setDeliveryDetails, customerAddresses,
     selectedDeliveryAddressId, setSelectedDeliveryAddressId, tables, selectedTableId, setSelectedTableId, quickNotes,
     smsNotifications, notePickerKey, setNotePickerKey, shift, canUseNonOrderFeatures,
     canEnterPosShell, shiftOpen, menu, cart, applyPosDeliveryAddress, handleClearCart,

@@ -4,6 +4,7 @@ import { OrderCart } from '../components/OrderCart';
 import { OpsPanel } from '../components/OpsPanel';
 import { SendBillPanel } from '../components/SendBillPanel';
 import { NotePickerModal } from '../components/NotePickerModal';
+import { PackagingReconcileModal } from '../components/PackagingReconcileModal';
 import { OpenShiftModal } from '../components/OpenShiftModal';
 import { CloseShiftModal } from '../components/CloseShiftModal';
 import { SaveTicketModal } from '../components/SaveTicketModal';
@@ -85,7 +86,9 @@ export function PosShellLayout() {
     canOpsInventory, canOpsPreparedStock,
     canCashInOut, isReachable, offlineQueueCount, offlinePendingCount,
     offlinePendingTotals, showOfflineSyncPanel, setShowOfflineSyncPanel, deviceBlockedMessage,
-    receiptBanner, setReceiptBanner, orderType, setOrderType, deliveryDetails, setDeliveryDetails,
+    receiptBanner, setReceiptBanner, orderType, setOrderType, handleOrderTypeToggle,
+    packagingPickerLines, handlePackagingReconcileConfirm,
+    deliveryDetails, setDeliveryDetails,
     customerAddresses, selectedDeliveryAddressId, setSelectedDeliveryAddressId, applyPosDeliveryAddress, tables,
     selectedTableId, setSelectedTableId, quickNotes, smsNotifications, notePickerKey,
     setNotePickerKey, menu, cart, deliveryFeeEst, ops, filteredItems, refreshOpenTickets,
@@ -338,7 +341,7 @@ export function PosShellLayout() {
           <>
             <OrderCart
               orderType={orderType}
-              setOrderType={setOrderType}
+              setOrderType={handleOrderTypeToggle}
               deliveryDetails={deliveryDetails}
               setDeliveryDetails={setDeliveryDetails}
               customerAddresses={customerAddresses}
@@ -772,7 +775,7 @@ export function PosShellLayout() {
           selectedTableId={selectedTableId}
           setSelectedTableId={setSelectedTableId}
           orderType={orderType}
-          setOrderType={setOrderType}
+          setOrderType={handleOrderTypeToggle}
           onConfirm={handleSaveTicketSubmit}
           onCancel={() => setShowSaveTicket(false)}
         />
@@ -892,6 +895,13 @@ export function PosShellLayout() {
           />
         );
       })()}
+
+      {packagingPickerLines && packagingPickerLines.length > 0 && (
+        <PackagingReconcileModal
+          lines={packagingPickerLines}
+          onConfirm={handlePackagingReconcileConfirm}
+        />
+      )}
 
       <OnlineOrderToasts
         toasts={onlineOrderWatcher.toasts}
