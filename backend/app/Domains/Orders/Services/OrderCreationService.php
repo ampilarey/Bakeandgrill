@@ -33,6 +33,7 @@ class OrderCreationService
         private \App\Services\SpecialPricingService $specialPricing,
         private PackagingFeeCalculator $packagingFeeCalculator,
         private PromotionEvaluator $promotionEvaluator,
+        private \App\Services\EffectivePriceService $effectivePricing,
     ) {}
 
     public function createFromPayload(array $payload, ?object $user): Order
@@ -152,12 +153,12 @@ class OrderCreationService
             $order->subtotal = $computedSubtotalLaar / 100;
 
             // Auto-apply promotions (no code) before any coded promo path.
-            // Item-level line-price baking is Phase 2 (EffectivePriceService); until then
-            // item-targeted auto-promos land as OrderPromotion discounts.
+            // Item-level auto-promos are already baked into line prices via
+            // EffectivePriceService — skip them here to avoid double discount.
             $this->promotionEvaluator->applyAutomatic(
                 $order,
                 isset($payload['customer_id']) ? (int) $payload['customer_id'] : null,
-                itemLevelAlreadyInLinePrices: false,
+                itemLevelAlreadyInLinePrices: true,
             );
 
             // Convert any payload-level manual discount to laari and store it so
@@ -535,10 +536,10 @@ class OrderCreationService
             $catalogPrice = $variant ? (float) $variant->price : (float) $itemModel->base_price;
 
             // Always resolve price server-side — client unit_price is ignored (offline sync totals are validated separately).
-            $pricing = $this->specialPricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel, $variantId);
+            $pricing = $this->effectivePricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel, $variantId);
             $unitPrice = $pricing->unitPrice;
             $originalUnitPrice = $pricing->hasDiscount() ? $pricing->originalPrice : null;
-            $dailySpecialId = $pricing->dailySpecialId;
+            $dailySpecialId = $pricing->specialId;
 
             if ($dailySpecialId !== null && !$this->specialPricing->canAllocateSpecialQuantity($dailySpecialId, (int) ceil($quantity), $order->id)) {
                 $unitPrice = $catalogPrice;

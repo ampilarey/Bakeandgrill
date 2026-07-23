@@ -77,6 +77,22 @@ class Promotion extends Model
                 $promo->code = null;
             }
         });
+
+        static::saved(function (): void {
+            try {
+                app(\App\Domains\Promotions\Services\AutoPromotionPricing::class)->bustCache();
+            } catch (\Throwable) {
+                // Ignore during early boot / migrations.
+            }
+        });
+
+        static::deleted(function (): void {
+            try {
+                app(\App\Domains\Promotions\Services\AutoPromotionPricing::class)->bustCache();
+            } catch (\Throwable) {
+                // Ignore during early boot / migrations.
+            }
+        });
     }
 
     public function targets(): HasMany
