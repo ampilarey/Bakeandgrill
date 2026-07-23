@@ -2,7 +2,7 @@
 
 **Repository:** `ampilarey/Bakeandgrill`
 **Branch:** `claude/offers-auto-promotions-plan`
-**Status:** Plan only — no feature code written yet.
+**Status:** Implemented (Phases 1–4 on this branch).
 **Author's note:** Separates **VERIFIED findings** (files read) from **RECOMMENDATIONS**.
 
 ## 0. Goal
@@ -196,3 +196,23 @@ an admin creates an auto-promo.
 - Reuse `SpecialPricingService`, `PromotionEvaluator`, `PromotionTarget`, `OrderPromotion` — extend,
   don't fork. Keep the `special` API block shape (frontend compatibility).
 - Auto-promos default OFF; `discount_stacking_policy` defaults to best_wins; migrations additive.
+
+## Implementation notes
+
+- **SQLite `code` nullability:** MySQL/Postgres make `promotions.code` nullable; SQLite tests keep NOT NULL, so auto-apply rows use a unique `AUTO-*` sentinel in `Promotion::booted()` (never matched by customer code entry).
+- **Admin toggle shipped in Phase 1** (not deferred to Phase 4); Phase 4 adds preview + performance analytics + urgency countdown.
+- **Item vs order auto-promos:** After EffectivePriceService, `applyAutomatic(..., itemLevelAlreadyInLinePrices: true)` skips item/category-targeted autos so line prices and `promo_discount_laar` never double-count. Order-level autos (no inclusion targets) still write `OrderPromotion`.
+- **Stacking:** `discount_stacking_policy` SiteSetting defaults to `best_wins` (single largest auto-promo; special vs auto-promo picks lower unit price). `stack` is supported but off by default.
+- **Targets UI:** Admin auto-apply form accepts item/category target IDs (no item picker yet).
+- **Website:** Home prefers unified `$offers` feed; falls back to legacy `$todaysSpecials` strip if offers empty.
+- **Content keys:** `offers_headline` / `offers_subtext` registered in `config/content.php` and seeded into `site_settings`.
+
+## Build log
+
+| Phase | Commit | Verify |
+|---|---|---|
+| 1 auto-apply | `03f1cbfe` | backend promo tests green; admin build green |
+| 2 effective pricing | `6609b5b4` | backend suite green; DailySpecial + EffectivePrice green |
+| 3 offers feed/rail | `06e2db68` | OffersEndpoint + OffersRail/ProductCard tests; order/admin build green |
+| 4 preview/analytics/urgency | `dba91f32` | backend 1558 passed; order 94 tests; admin build green |
+| dist sync | `6badf7f3` | `./scripts/build-all.sh admin order` → `backend/public/{admin,order}` |
