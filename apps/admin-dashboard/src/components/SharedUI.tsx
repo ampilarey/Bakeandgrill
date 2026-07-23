@@ -149,21 +149,86 @@ export function TableStateBar({
   return null;
 }
 
+// ─── PageShell ────────────────────────────────────────────────────────────────
+export function PageShell({
+  children, className, style,
+}: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
+  return (
+    <div className={['page-shell', 'animate-fade-in', className].filter(Boolean).join(' ')} style={style}>
+      {children}
+    </div>
+  );
+}
+
 // ─── PageHeader ───────────────────────────────────────────────────────────────
 export function PageHeader({
-  title, subtitle, action, children,
-}: { title: string; subtitle?: string; action?: ReactNode; children?: ReactNode }) {
+  title, subtitle, action, children, section, breadcrumb,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: ReactNode;
+  children?: ReactNode;
+  /** Level-1 section label for "Section › Page" breadcrumb */
+  section?: string;
+  breadcrumb?: ReactNode;
+}) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-      flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem',
-    }}>
+    <div className="page-header">
       <div>
-        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1C1408', margin: 0 }}>{title}</h1>
-        {subtitle && <p style={{ fontSize: '0.875rem', color: '#9C8E7E', margin: '0.25rem 0 0' }}>{subtitle}</p>}
+        {(breadcrumb || section) && (
+          <div className="page-header-breadcrumb">
+            {breadcrumb ?? (
+              <>
+                <span>{section}</span>
+                <span className="page-header-breadcrumb-sep" aria-hidden>›</span>
+                <span>{title}</span>
+              </>
+            )}
+          </div>
+        )}
+        <h1 className="page-header-title">{title}</h1>
+        {subtitle && <p className="page-header-subtitle">{subtitle}</p>}
         {children}
       </div>
-      {action && <div style={{ flexShrink: 0 }}>{action}</div>}
+      {action && <div className="page-header-actions">{action}</div>}
+    </div>
+  );
+}
+
+// ─── ScrollX / ResponsiveTable / Toolbar ──────────────────────────────────────
+export function ScrollX({
+  children, className, style,
+}: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
+  return (
+    <div className={['scroll-x', className].filter(Boolean).join(' ')} style={style}>
+      {children}
+    </div>
+  );
+}
+
+export function ResponsiveTable({
+  children, className, style, minWidth = 640,
+}: {
+  children: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  minWidth?: number | string;
+}) {
+  return (
+    <div className={['responsive-table', 'table-scroll', className].filter(Boolean).join(' ')} style={style}>
+      <div style={{ minWidth }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function Toolbar({
+  children, className, style,
+}: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
+  return (
+    <div className={['toolbar', className].filter(Boolean).join(' ')} style={style}>
+      {children}
     </div>
   );
 }
