@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Globe, Shield, Bell } from 'lucide-react';
 import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import {
@@ -9,6 +8,7 @@ import {
   type SmsTemplate,
 } from '../api';
 import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
+import { PageHeader, PageShell } from '../components/SharedUI';
 
 /** Legacy ?tab= values from before hub cleanup — redirect to sidebar routes */
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
@@ -17,17 +17,18 @@ const LEGACY_TAB_REDIRECTS: Record<string, string> = {
   'ordering-charges': '/online-ordering?section=fees',
 };
 
-// ─── Sub-page cards ───────────────────────────────────────────────────────────
-const HUB_CARDS = [
-  { id: 'website',       icon: Globe,        label: 'Website Settings',      desc: 'Moved to Website / Order App Content editors' },
-  { id: 'permissions',   icon: Shield,       label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
-  // Devices intentionally NOT a Settings sub-page: the top-level
-  // /devices route owns the full device management UX (pre-provision,
-  // enable/disable, rename). Having both routes was the source of
-  // ADM-016: cashiers ended up on a stub list that lacked the actions
-  // they expected.
-  { id: 'notifications', icon: Bell,         label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
-];
+/** Settings sub-pages now live in the System section rail (no separate hub cards). */
+const SETTINGS_TABS = [
+  { id: 'website',       label: 'Website Settings',      desc: 'Moved to Website / Order App Content editors' },
+  { id: 'permissions',   label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
+  { id: 'notifications', label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
+] as const;
+
+type SettingsTabId = (typeof SETTINGS_TABS)[number]['id'];
+
+function isSettingsTab(v: string | null): v is SettingsTabId {
+  return !!v && SETTINGS_TABS.some((t) => t.id === v);
+}
 
 // ─── Notifications sub-page ──────────────────────────────────────────────────
 type NotifConfig = {
@@ -251,9 +252,6 @@ export function SettingsPage() {
   const tabParam = searchParams.get('tab');
   const userParam = searchParams.get('user');
   const initialUserId = userParam ? Number(userParam) : null;
-  const [active, setActive] = useState<string | null>(
-    tabParam && HUB_CARDS.some((c) => c.id === tabParam) ? tabParam : null,
-  );
 
   useEffect(() => {
     document.title = 'Settings — Bake & Grill Admin';
@@ -264,79 +262,33 @@ export function SettingsPage() {
       navigate(LEGACY_TAB_REDIRECTS[tabParam], { replace: true });
       return;
     }
-    if (tabParam && HUB_CARDS.some((c) => c.id === tabParam)) {
-      setActive(tabParam);
-    } else if (tabParam === 'integrations') {
-      setActive(null);
+    // Bare /settings or unknown tabs → Roles & Permissions (rail default)
+    if (!tabParam || tabParam === 'integrations' || !isSettingsTab(tabParam)) {
+      navigate('/settings?tab=permissions', { replace: true });
     }
   }, [tabParam, navigate]);
 
-  if (active) {
-    const card = HUB_CARDS.find((c) => c.id === active) ?? HUB_CARDS[0];
-    return (
-      <div className="animate-fade-in">
-        {/* Breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, fontSize: 14 }}>
-          <button
-            onClick={() => setActive(null)}
-            style={{ color: '#9C8E7E', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, padding: 0 }}
-            onMouseOver={(e) => (e.currentTarget.style.color = '#D4813A')}
-            onMouseOut={(e) => (e.currentTarget.style.color = '#9C8E7E')}
-          >
-            Settings
-          </button>
-          <span style={{ color: '#9C8E7E' }}>›</span>
-          <span style={{ fontWeight: 600, color: '#1C1408' }}>{card.label}</span>
-        </div>
+  const active: SettingsTabId = isSettingsTab(tabParam) ? tabParam : 'permissions';
+  const card = SETTINGS_TABS.find((c) => c.id === active) ?? SETTINGS_TABS[1];
 
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1C1408', margin: 0 }}>{card.label}</h1>
-          <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>{card.desc}</p>
-        </div>
-
-        {active === 'website'           && <WebsiteSettings />}
-        {active === 'permissions'       && <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />}
-        {active === 'notifications'     && <NotificationsSettings />}
-      </div>
-    );
+  // Avoid flash while redirecting legacy/bare URLs
+  if (!isSettingsTab(tabParam)) {
+    return null;
   }
 
   return (
-    <div className="animate-fade-in">
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1C1408', margin: 0 }}>Settings</h1>
-        <p style={{ fontSize: 14, color: '#9C8E7E', marginTop: 4 }}>Website content, customer notifications, and permissions</p>
-      </div>
+    <PageShell>
+      <PageHeader
+        section="System"
+        title={card.label}
+        subtitle={card.desc}
+      />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-        {HUB_CARDS.map(({ id, icon: Icon, label, desc }) => (
-          <button
-            key={id}
-            onClick={() => setActive(id)}
-            style={{
-              textAlign: 'left', padding: 20,
-              background: '#fff', border: '1.5px solid #E8E0D8',
-              borderRadius: 14, boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
-              cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s',
-              fontFamily: 'inherit',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(212,129,58,0.4)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(28,20,8,0.08)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = '#E8E0D8';
-              e.currentTarget.style.boxShadow = '0 1px 2px rgba(28,20,8,0.05)';
-            }}
-          >
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(212,129,58,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D4813A', marginBottom: 12 }}>
-              <Icon size={20} />
-            </div>
-            <p style={{ fontWeight: 700, color: '#1C1408', fontSize: 14, margin: '0 0 4px' }}>{label}</p>
-            <p style={{ fontSize: 12, color: '#9C8E7E', lineHeight: 1.5, margin: 0 }}>{desc}</p>
-          </button>
-        ))}
-      </div>
-    </div>
+      {active === 'website' && <WebsiteSettings />}
+      {active === 'permissions' && (
+        <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />
+      )}
+      {active === 'notifications' && <NotificationsSettings />}
+    </PageShell>
   );
 }
