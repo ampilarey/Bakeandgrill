@@ -59,7 +59,10 @@ Section 10 is testing; Section 11 is deploy/rollback.
 | See old media too | — | one-time backfill scan |
 
 **Owner decisions locked:** additive "Pick from Library" button (existing uploaders untouched);
-support **image + video + audio + PDF**; **backfill** all existing media.
+support **image + video + audio + PDF**; **backfill** all existing media; **admin-defined
+Collections** for categorising (Banners, Logos, Falcon, Drinks, …); **image editing tools** (convert
+format, resize, crop/re-crop, rotate, regenerate thumbnail, optimize) with an **"ask each time"** edit
+model (Replace everywhere + master backup, or Save as new copy).
 
 ---
 
@@ -95,6 +98,23 @@ Indexes: unique(`path`), index(`media_type`), index(`source`), index(`checksum`)
 
 ---
 
+## 3B. Collections (admin-defined categories)
+
+The `source` field is auto-filled origin; **Collections** are the admin's own categories (exactly the
+kind you named: Banners, Logos, Falcon, Drinks, …). An asset can belong to **many** collections.
+
+- Migration `create_media_collections_table`: `id`, `name` (unique), `slug`, `description` nullable,
+  `sort_order`, timestamps.
+- Migration `create_media_asset_collection_table` (pivot): `media_asset_id`, `media_collection_id`,
+  unique together.
+- `MediaCollection` model with `assets()` belongsToMany; `Media::collections()`.
+- Seed a starter set from the audit's known purposes: **Banners, Logos, Menu Items, Drinks,
+  Backgrounds, Documents** (admin can rename/add/delete any).
+- The library filters by collection; the picker can be opened pre-filtered to a collection (e.g. the
+  banner field's "Pick from Library" opens the **Banners** collection first).
+
+---
+
 ## 4. Auto-registration WITHOUT touching uploaders
 
 The existing upload screens must not change. Two zero-touch mechanisms keep the catalog current:
@@ -127,6 +147,45 @@ The existing upload screens must not change. Two zero-touch mechanisms keep the 
 
 ---
 
+## 5A. Image editing tools
+
+Editing applies to **images** (GD, already used by `MenuImageProcessor`). Video/audio/PDF support only
+metadata edits + poster/thumbnail regeneration — no in-browser media editing.
+
+Tools (all operate on the asset; the full-frame **master** is kept for lossless re-crop/undo):
+- **Convert format** — JPEG ⇄ PNG ⇄ WebP (WebP only when `ImageCapabilities::supportsWebp()`; else a
+  clear message, matching the existing uploader behaviour).
+- **Resize** — scale to a preset (e.g. 1200×900, 1400×600, 512, 256) or custom width/height (keep
+  aspect option).
+- **Crop / re-crop** — reuse the existing crop pipeline against the retained master
+  (`original_url`); same ratios the uploaders use, plus free crop.
+- **Rotate / flip** — 90° left/right, horizontal/vertical flip.
+- **Regenerate thumbnail / poster** — re-run `MenuImageProcessor::storeThumbnail` (image) or the video
+  poster step, on demand.
+- **Optimize** — re-encode at a chosen quality to shrink file size.
+
+### 5A.1 "Ask each time" save model (owner decision)
+On applying any edit the admin chooses:
+- **Replace everywhere** — write the edited file, then update every reference the
+  `MediaUsageResolver` (§7) reports so all places using it get the new version. Before overwriting,
+  copy the current file to a **master backup** (`…/masters/…` or a `media_asset_versions` row) so the
+  edit is **undoable**. If the format/extension changes, update the stored URL on each referencing
+  record too (that is why the usage resolver must cover every reference location).
+- **Save as new copy** — create a brand-new `media_assets` row from the edited output; the original
+  and everything using it are untouched. The admin re-points places via the picker if desired.
+
+> Keep at least one previous version (backup) per asset so "Replace everywhere" is reversible. A
+> lightweight `media_asset_versions` table (`media_asset_id`, `path`, `created_at`) is the clean way;
+> expose an **Undo/Restore previous** action in the detail drawer.
+
+### 5A.2 Editing API
+- `POST /admin/media/{id}/edit` — body `{ op, params, mode: 'replace'|'copy' }` where `op` ∈
+  `convert|resize|crop|rotate|thumbnail|optimize`. Returns the updated or newly-created asset. On
+  `replace`, also updates referencing records (return the count updated). Audit-logged.
+- `POST /admin/media/{id}/restore` — restore the previous version (replace mode only).
+
+---
+
 ## 6. API (new — `admin/media`)
 Gated by new permissions (see §9).
 - `GET  /admin/media` — list with filters: `type`, `source`, `q` (title/alt/tags), `tag`, paginated
@@ -138,6 +197,12 @@ Gated by new permissions (see §9).
   on delete, remove the file(s) via `MediaFileCleaner`.
 - `POST /admin/media/reconcile` — run the reconciler/sync (§4).
 - `GET  /admin/media/{id}/usage` — where the asset is used (§7).
+- `POST /admin/media/{id}/edit`, `POST /admin/media/{id}/restore` — editing (§5A.2).
+
+**Collections (§3B):**
+- `GET/POST /admin/media/collections`, `PATCH/DELETE /admin/media/collections/{id}` — manage categories.
+- `POST /admin/media/{id}/collections` `{ collection_ids: [] }` — set an asset's collections.
+- List (`GET /admin/media`) accepts a `collection` filter.
 
 All writes audit-logged via `AuditLogService`.
 
@@ -171,10 +236,18 @@ content/menu managers keep access. Resync migration seeds them; owner/manager/co
 ### 10.1 Media Library page (admin)
 `apps/admin-dashboard/src/pages/MediaLibraryPage.tsx` (+ route + nav under Content/Website). Features:
 - **Type tabs:** All / Images / Video / Audio / Documents (+ source filter + search + tag filter).
+- **Collections sidebar** (§3B): filter by admin-defined category (Banners, Logos, Falcon, Drinks…),
+  with add/rename/delete-collection controls (behind `media.manage`).
 - **Grid** of thumbnails (poster for video, icon for audio/PDF), infinite scroll / pagination.
-- **Upload dropzone** — multi-file, multi-type, progress; shows dedupe ("already in library").
+- **Upload dropzone** — multi-file, multi-type, progress; shows dedupe ("already in library");
+  optional "add to collection" on upload.
 - **Detail drawer:** large preview (img/`<video>`/`<audio>`/PDF embed), editable title/alt/tags,
-  **Copy URL**, **Used in** list, **Replace**, **Delete** (blocked with a list if in use).
+  **collection membership** (multi-select chips), **Copy URL**, **Used in** list, **Delete**
+  (blocked with a list if in use).
+  - **Edit tools** (images only, §5A): convert format, resize, crop/re-crop, rotate, regenerate
+    thumbnail, optimize — a simple editor panel/modal (reuse the existing crop UI where present). On
+    **Save**, prompt **Replace everywhere** vs **Save as new copy**; show how many places were updated
+    on replace, and offer **Restore previous** afterward.
 - Gate actions by `media.manage`; viewers with `media.view` get read-only + Copy URL + Pick.
 
 ### 10.2 Reusable picker (additive — existing uploaders untouched)
@@ -192,13 +265,15 @@ current upload control in the key spots:
 ---
 
 ## 11. Build order
-1. Migration `media_assets` + `Media` model + permissions + resync migration.
-2. `MediaLibraryService` (reconcile/register/store/dedupe) + `MediaUsageResolver`.
-3. `MediaLibraryController` + routes + audit.
+1. Migrations: `media_assets`, `media_collections` + pivot, `media_asset_versions`; `Media` /
+   `MediaCollection` models; permissions + resync migration.
+2. `MediaLibraryService` (reconcile/register/store/dedupe) + `MediaUsageResolver` + `MediaEditor`
+   (convert/resize/crop/rotate/thumbnail/optimize, replace-vs-copy, version backup/restore).
+3. `MediaLibraryController` + `MediaCollectionController` + routes + audit.
 4. Optional inline registration hooks in `MenuImageProcessor` + `ContentController::uploadVideo`.
-5. `media:backfill` command + scheduled reconcile.
-6. Admin: Media Library page + API client.
-7. Admin: `MediaPicker` + additive "Pick from Library" buttons in the listed spots.
+5. `media:backfill` command + scheduled reconcile; seed starter collections.
+6. Admin: Media Library page (collections sidebar + type tabs) + edit modal + API client.
+7. Admin: `MediaPicker` + additive "Pick from Library" buttons (collection-prefiltered) in the spots.
 
 **Invariants:**
 - **No existing upload screen changes behaviour** — only an extra button is added beside them.
@@ -218,6 +293,13 @@ current upload control in the key spots:
   (`media.view` vs `media.manage`).
 - `MediaUsageResolverTest`: an asset used as an item image / banner / content block is reported;
   an unused asset reports empty.
+- `MediaCollectionTest`: create/rename/delete collections; assign an asset to multiple collections;
+  list filters by collection.
+- `MediaEditTest`: convert (jpeg→webp when supported), resize, crop (from master), rotate,
+  regenerate thumbnail, optimize each produce the expected output; **replace** mode overwrites the
+  file, keeps a version backup, and updates every referencing record (assert the count + that a
+  format change rewrites the referencing URLs); **copy** mode creates a new asset and leaves the
+  original + references untouched; **restore** brings back the previous version.
 - Back-compat: existing upload endpoints (`ItemPhotoController`, `ContentController`,
   `ImageUploadController`) behave exactly as before (their tests still pass; add one asserting an
   upload also appears in `media_assets` when the inline hook is enabled).
