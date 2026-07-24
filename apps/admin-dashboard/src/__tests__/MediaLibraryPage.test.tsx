@@ -369,6 +369,29 @@ describe('MediaLibraryPage', () => {
     expect(await screen.findByTestId('use-as-saved')).toHaveTextContent('/storage/site/favicon_abc.png');
   });
 
+  it('export button downloads the asset file', async () => {
+    const blob = new Blob(['fake-image'], { type: 'image/jpeg' });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => blob,
+    } as Response);
+    const createObjectURL = vi.fn(() => 'blob:mock');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
+
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    fireEvent.click(await screen.findByTestId('export-download'));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+    });
+    expect(await screen.findByText(/file downloaded/i)).toBeTruthy();
+    fetchSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   it('mobile layout uses chip row and full-screen detail overlay', async () => {
     mockIsMobile.mockReturnValue(true);
     renderWithRouter(<MediaLibraryPage />);

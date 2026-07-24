@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Drag
 import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import {
-  Check, ChevronLeft, ChevronRight, Copy, Crop, FileText, Film, FlipHorizontal2, FlipVertical2, Folder,
+  Check, ChevronLeft, ChevronRight, Copy, Crop, Download, FileText, Film, FlipHorizontal2, FlipVertical2, Folder,
   Image, Images, Music, Pencil, Plus, RefreshCw, RotateCcw, RotateCw,
   Search, Sliders, Trash2, Upload, X,
 } from 'lucide-react';
@@ -25,6 +25,54 @@ function fmtBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mimeExtension(mime: string): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'image/svg+xml': 'svg',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
+    'audio/mpeg': 'mp3',
+    'application/pdf': 'pdf',
+  };
+  if (map[mime]) return map[mime];
+  const sub = mime.split('/')[1];
+  return (sub || 'bin').split('+')[0] || 'bin';
+}
+
+/** Filename for browser download / export. */
+export function mediaExportFilename(asset: Pick<MediaAsset, 'url' | 'title' | 'mime_type' | 'id'>): string {
+  const fromUrl = (asset.url.split('?')[0] || '').split('/').pop() || '';
+  if (fromUrl.includes('.')) return fromUrl;
+  const base = (asset.title || `media-${asset.id}`).replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '') || `media-${asset.id}`;
+  return `${base}.${mimeExtension(asset.mime_type || 'application/octet-stream')}`;
+}
+
+/** Fetch the asset and trigger a file download (export). */
+export async function exportMediaAsset(asset: Pick<MediaAsset, 'url' | 'title' | 'mime_type' | 'id' | 'original_url'>, preferOriginal = false): Promise<void> {
+  const raw = (preferOriginal && asset.original_url) ? asset.original_url : asset.url;
+  if (!raw) throw new Error('No file URL to export');
+  const filename = mediaExportFilename({ ...asset, url: raw });
+  const res = await fetch(raw, { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(`Export failed (${res.status})`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function mediaTypeIcon(type: MediaType, size = 32) {
@@ -720,6 +768,7 @@ export function MediaLibraryPage() {
   const [detailSaving, setDetailSaving] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Usage
   const [usageItems, setUsageItems] = useState<MediaUsageItem[]>([]);
@@ -855,6 +904,26 @@ export function MediaLibraryPage() {
       setTimeout(() => setCopiedUrl(false), 2000);
     } catch {
       // fallback: do nothing
+    }
+  };
+
+  const handleExport = async (preferOriginal = false) => {
+    if (!selected) return;
+    setExporting(true);
+    try {
+      await exportMediaAsset(selected, preferOriginal);
+      toast.success(preferOriginal ? 'Original downloaded' : 'File downloaded');
+    } catch (e) {
+      // Fallback: open in new tab if fetch blocked
+      try {
+        const url = preferOriginal && selected.original_url ? selected.original_url : selected.url;
+        window.open(url, '_blank', 'noopener,noreferrer');
+        toast.info('Opened file in a new tab');
+      } catch {
+        toast.error((e as Error).message || 'Export failed');
+      }
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -1375,15 +1444,53 @@ export function MediaLibraryPage() {
               <div>Used in {selected.usage_count} place{selected.usage_count === 1 ? '' : 's'}</div>
             </div>
 
-            {/* Copy URL */}
-            <button
-              type="button"
-              onClick={() => void copyUrl()}
-              style={{ width: '100%', height: 36, borderRadius: 8, border: '1px solid #E8E0D8', background: copiedUrl ? '#f0fdf4' : '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: copiedUrl ? '#15803d' : '#6B5D4F', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}
-            >
-              {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
-              {copiedUrl ? 'Copied!' : 'Copy URL'}
-            </button>
+            {/* Copy URL + Export */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => void copyUrl()}
+                style={{
+                  flex: 1, minWidth: 120, height: 44, minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8',
+                  background: copiedUrl ? '#f0fdf4' : '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 13, fontWeight: 600, color: copiedUrl ? '#15803d' : '#6B5D4F',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
+                {copiedUrl ? 'Copied!' : 'Copy URL'}
+              </button>
+              <button
+                type="button"
+                data-testid="export-download"
+                onClick={() => void handleExport(false)}
+                disabled={exporting || !selected.url}
+                style={{
+                  flex: 1, minWidth: 120, height: 44, minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8',
+                  background: '#FFF7ED', cursor: exporting ? 'wait' : 'pointer', fontFamily: 'inherit',
+                  fontSize: 13, fontWeight: 600, color: '#3D2B1F',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <Download size={14} />
+                {exporting ? 'Exporting…' : 'Export'}
+              </button>
+            </div>
+            {selected.original_url && selected.original_url !== selected.url && (
+              <button
+                type="button"
+                data-testid="export-original"
+                onClick={() => void handleExport(true)}
+                disabled={exporting}
+                style={{
+                  width: '100%', height: 40, minHeight: 40, marginTop: -6, marginBottom: 14, borderRadius: 8,
+                  border: '1px dashed #E8E0D8', background: '#fff', cursor: exporting ? 'wait' : 'pointer',
+                  fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: '#6B5D4F',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <Download size={13} /> Export original
+              </button>
+            )}
 
             {detailError && (
               <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', color: '#b91c1c', fontSize: 12, marginBottom: 10 }}>{detailError}</div>
