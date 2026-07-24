@@ -42,20 +42,47 @@ testing; Section 6 is deploy.
 
 ## 2. Menu redesign (order app)
 
-**Goal:** every card looks intentional and identical in shape; the image always fills its frame.
+**Goal:** a clean, uncluttered ZUS-style menu — compact 2-column cards, tap-to-detail, and no page
+chrome getting in the way. Grounded in the live screenshots (test.bakeandgrill.mv).
 
-- **Image fills the frame (`MenuImageSlider` / `ProductCard`):**
-  - Fixed aspect box (keep 4:3, or switch to 1:1 for a tighter 2-col mobile grid — pick one and apply
-    consistently), `object-fit: cover`, full width/height.
-  - **Branded fill placeholder** when an item has no photo: a soft brand-tint background filling the
-    whole box with a centered small logo/monogram + item initial — **not** a floating emoji. Same
-    dimensions as a real image so the grid stays even.
-  - Prefer the **full `image_url`** on cards (lazy-loaded, `loading="lazy"`, `decoding="async"`); use
-    the thumb only for the list view (§2, compact).
-- **Equal-height, tidy cards (`ProductCard`):**
-  - Clamp the **name to 2 lines** and **description to 1 line** (`-webkit-line-clamp`).
-  - Pin the **price/CTA row to the bottom** (`margin-top: auto`) so every card is the same height.
-  - Tighten padding; ensure the quick-add and favourite buttons are **≥44px** touch targets.
+### 2.0 Declutter the menu page (MenuPage.tsx)
+- **Remove the page heading** "Our Complete Menu" + subtitle "Browse and add items to your cart"
+  (the `<h1>` + subtitle block near the top). Go straight to the filters/menu.
+- **Remove the "Online ordering is open · Pickup only · Delivery from…" status banner**
+  (`.ordering-status-bar`, MenuPage ~line 595). Replace its role with:
+  - **Pickup/Delivery toggle:** if pickup is off, tapping **Pickup** shows a **toast/popup** ("Pickup is
+    currently unavailable") instead of switching; same for **Delivery** when delivery is off. (Reuse the
+    existing service-availability signals: `isServiceAvailable('online_pickup'/'online_delivery')`,
+    `deliveryAvailable`, `gateMessage`.)
+  - **Browsing + add-to-cart stay enabled even when online ordering is off** — customers can build a
+    cart. Only at the **cart/checkout** does it gate: when all online ordering is off, the cart's
+    **"Proceed" button is replaced by a disabled "Online ordering is off"** state (message from the
+    service entry), matching `ServiceBanner`/`CheckoutPage` copy. Do not block adding to cart.
+
+### 2.1 ZUS-style compact card (ProductCard.tsx)
+Replace the tall, crowded card with a compact one — **circular image + 3 lines** (name / short detail /
+price), **no inline quantity stepper or add button**. Tapping the card opens the **existing item
+detail** (variants, packaging, quantity, Add to cart).
+- **Circular media:** render the primary image inside a **circle** (fixed size, e.g. ~120–140px,
+  `border-radius:50%`, `object-fit:cover`) centered on a soft brand-tinted background — even when the
+  uploaded asset is rectangular or a video (crop to the circle; surrounding card area is a faded tint,
+  like the ZUS reference). **Auto-rotate** through multiple photos/videos (reuse `MenuImageSlider`'s
+  auto-slide; keep `posterOnly` for videos in the grid). Branded fill placeholder (logo/monogram in the
+  circle) when there's no media.
+- **Three info lines under the image, centered:** ① **name** (clamp 1–2 lines), ② **short description**
+  clamped to **1 line** (the "little detail"), ③ **price** (with strikethrough original when on sale).
+- **Keep (small, non-crowding):** the **favourite heart** (top corner), a **single** sale/spice
+  **badge** on the image, and **unavailable dimming** + "Unavailable" label. Move diet tags, prep time,
+  and the qty stepper/add button **into the detail view only**.
+- **Equal-height, airy cards:** consistent circle size + line clamps → even 2-column grid; generous
+  padding; price line pinned to the bottom.
+- Tapping anywhere on the card (not the heart) → `onSelectItem` opens the detail modal.
+
+> Net effect: the grid reads like the ZUS screenshot — a circular picture and three tidy lines — and the
+> "add to cart" action lives in the detail sheet where variants/packaging are chosen, so nothing is
+> cut off or crowded.
+
+### 2.2 Layout & navigation
 - **Category navigation — KEEP the existing ZUS-style left rail (do NOT switch to horizontal chips):**
   - The order app **already has** `components/menu/CategoryRail.tsx` (`.cat-rail`) — a sticky vertical
     left column with icon + label, active item highlighted (`is-active`), scroll-spy synced. This is
