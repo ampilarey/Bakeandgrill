@@ -56,9 +56,16 @@ testing; Section 6 is deploy.
   - Clamp the **name to 2 lines** and **description to 1 line** (`-webkit-line-clamp`).
   - Pin the **price/CTA row to the bottom** (`margin-top: auto`) so every card is the same height.
   - Tighten padding; ensure the quick-add and favourite buttons are **≥44px** touch targets.
-- **Navigation (`MenuPage` + `index.css`):**
-  - **Sticky horizontal category chips** under the header (scrollable), active category highlighted,
-    tapping scrolls to that section; keep section headers.
+- **Category navigation — KEEP the existing ZUS-style left rail (do NOT switch to horizontal chips):**
+  - The order app **already has** `components/menu/CategoryRail.tsx` (`.cat-rail`) — a sticky vertical
+    left column with icon + label, active item highlighted (`is-active`), scroll-spy synced. This is
+    exactly the ZUS Coffee layout the owner wants. **Preserve it.**
+  - **Bug to fix (mobile):** on mobile the CSS hides the labels (`index.css` ~2421-2422:
+    `.cat-rail { width: 64px } .cat-rail__item { font-size: 0 }`) — icon only. ZUS shows **icon +
+    short label**. Widen the mobile rail a little and show the category label under/next to each icon
+    (truncate long names) so it reads like the ZUS reference, keeping the active highlight and
+    scroll-spy. Keep the right-side 2-column item grid.
+  - Do NOT remove the rail or replace it with chips.
 - **Optional compact list view toggle:** a grid/list switch — list = left square thumbnail + name /
   price / one-line desc on the right (great for fast scanning; store the preference locally).
 - Keep existing badges (sale/spice/combo) inside image bounds; cap at two visible.
@@ -84,6 +91,32 @@ driven by `content('…')` keys so it's editable in Content Studio:
 - Mirror the order-app footer's warm one-liner (`content('footer_thanks', …)`).
 - Responsive: the footer grid already collapses to 1 column on mobile (`index.css:977`); ensure the new
   blocks stack cleanly and are centered on mobile.
+
+---
+
+## 3B. Main website mobile — bottom nav + de-duplicate WhatsApp/Viber
+
+Two concrete fixes on the **main website (Blade)** the owner called out from the live mobile view:
+
+### 3B.1 Redesign the fixed bottom nav (currently Home / Menu / Order / More)
+- `layout.blade.php` `<nav class="mobile-bottom-nav">` (~line 1227) is **Home · Menu · Order · More**.
+  "More" is a catch-all sheet and the set feels thin. Replace with a cleaner 5-tab bar modelled on the
+  ZUS reference and the order-app footer's tone.
+- **Recommended set (owner to confirm):** **Home · Menu · Order (center CTA) · Offers · Account**
+  - `Order` as a raised/filled center button (amber) — the primary action.
+  - `Offers` → the specials/promotions page; `Account` → order-app account (or login).
+  - Drop the generic "More"; move any leftover links into the footer.
+- Keep it icon + label, ≥44px targets, active state highlighted, safe-area padding at the bottom.
+
+### 3B.2 De-duplicate WhatsApp / Viber (currently shown 3×)
+On the home page these render **three times** as you scroll:
+1. `home.blade.php` ~1325 — chat block in the location/contact section (WhatsApp + Viber),
+2. `home.blade.php` ~1383 — a second chat block (Viber/WhatsApp),
+3. `layout.blade.php` footer ~1163 — WhatsApp + Viber.
+- **Fix:** keep **one** primary contact placement — the **footer social row** (§3, alongside
+  Instagram/Facebook/TikTok) — and **one** optional single floating WhatsApp button. Remove the
+  duplicate home-page chat blocks (or collapse the two home blocks into a single "Chat with us" row).
+  Result: WhatsApp/Viber appear once in-page + once in the footer, not three times.
 
 ---
 
