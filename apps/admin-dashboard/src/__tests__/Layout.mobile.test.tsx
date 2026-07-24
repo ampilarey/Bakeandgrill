@@ -40,6 +40,23 @@ describe('Layout mobile section sheet', () => {
     expect(screen.getByRole('dialog', { name: /Monitor pages/i })).toBeInTheDocument();
   });
 
+  it('keeps the sheet open when switching to a different section (does not auto-navigate)', () => {
+    render(
+      <MemoryRouter initialEntries={['/orders']}>
+        <AppShell user={owner} onLogout={() => {}}>
+          <div>Page</div>
+        </AppShell>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByLabelText('Manage'));
+    const sheet = screen.getByRole('dialog', { name: /Manage pages/i });
+    expect(sheet).toBeInTheDocument();
+    // Sheet lists multiple Manage pages — not only the first destination
+    expect(sheet.textContent).toMatch(/Menu Items/i);
+    expect(sheet.textContent).toMatch(/Inventory/i);
+  });
+
   it('closes the sheet after choosing a page tile', () => {
     render(
       <MemoryRouter initialEntries={['/orders']}>

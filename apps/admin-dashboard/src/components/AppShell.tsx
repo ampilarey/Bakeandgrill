@@ -17,7 +17,7 @@ import {
   resolveNavItemForPath,
   type NavGroup,
 } from './navConfig';
-import { SectionBar, rememberSectionPath, resolveSectionTarget } from './SectionBar';
+import { SectionBar, rememberSectionPath } from './SectionBar';
 import { SectionRail } from './SectionRail';
 import { MobileTabBar } from './MobileTabBar';
 import { MobileSectionSheet } from './MobileSectionSheet';
@@ -230,13 +230,8 @@ export function AppShell({ user, onLogout, children, onSearch }: AppShellProps) 
   const railW = collapsed ? 68 : 220;
 
   const openSectionSheet = (section: NavGroup) => {
-    // If already on this section and sheet closed, open sheet; if different section, navigate then sheet
-    if (section.id === activeSection?.id) {
-      setSheetSection(section);
-      return;
-    }
-    const target = resolveSectionTarget(section, user);
-    navigate(target);
+    // Always open the page list first. Navigating here would change pathname and
+    // the effect below would close the sheet before the user sees other pages.
     setSheetSection(section);
   };
 
@@ -302,7 +297,7 @@ export function AppShell({ user, onLogout, children, onSearch }: AppShellProps) 
 
         <MobileTabBar
           user={user}
-          sheetOpen={!!sheetSection}
+          sheetSectionId={sheetSection?.id ?? null}
           onSelectSection={openSectionSheet}
         />
 

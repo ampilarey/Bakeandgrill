@@ -5,19 +5,21 @@ import { useLocation } from 'react-router-dom';
 interface MobileTabBarProps {
   user: StaffUser;
   onSelectSection: (section: NavGroup) => void;
-  sheetOpen?: boolean;
+  /** When a section sheet is open, highlight that section instead of the route section. */
+  sheetSectionId?: string | null;
 }
 
-export function MobileTabBar({ user, onSelectSection, sheetOpen }: MobileTabBarProps) {
+export function MobileTabBar({ user, onSelectSection, sheetSectionId }: MobileTabBarProps) {
   const location = useLocation();
   const sections = getPermittedSections(user);
-  const activeId = getActiveSection(location.pathname)?.id;
+  const routeSectionId = getActiveSection(location.pathname)?.id;
+  const activeId = sheetSectionId ?? routeSectionId;
 
   return (
     <nav className="admin-shell-mobile-tabs" role="navigation" aria-label="Admin sections">
       {sections.map((section) => {
         const Icon = section.icon;
-        const selected = section.id === activeId || (sheetOpen && section.id === activeId);
+        const selected = section.id === activeId;
         return (
           <button
             key={section.id}
