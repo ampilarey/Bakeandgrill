@@ -89,6 +89,13 @@ final class MediaLibraryService
 
         [$width, $height] = $type === 'image' ? $this->imageSize($absolute) : [null, null];
 
+        $resolvedThumb = $thumbUrl;
+        if ($type === 'image') {
+            $resolvedThumb = $this->resolveImageThumbUrl($path, $thumbUrl);
+        } elseif (is_string($thumbUrl) && $thumbUrl !== '') {
+            $resolvedThumb = $this->toStorageUrl($thumbUrl);
+        }
+
         return Media::create([
             'disk' => 'public',
             'path' => $path,
@@ -97,8 +104,8 @@ final class MediaLibraryService
             'file_size' => (int) (@filesize($absolute) ?: 0),
             'width' => $width,
             'height' => $height,
-            'thumb_url' => $thumbUrl,
-            'original_url' => $originalUrl,
+            'thumb_url' => $resolvedThumb,
+            'original_url' => $originalUrl ? $this->toStorageUrl($originalUrl) : null,
             'title' => $title ?: pathinfo($path, PATHINFO_FILENAME),
             'source' => $source,
             'checksum' => $checksum,
@@ -109,7 +116,7 @@ final class MediaLibraryService
     /**
      * Walk known folders + item_photos and upsert catalog rows.
      *
-     * @return array{scanned: int, created: int, skipped: int}
+     * @return array{scanned: int, created: int, skipped: int, thumbs_fixed: int}
      */
     public function reconcile(): array
     {
@@ -161,7 +168,93 @@ final class MediaLibraryService
             }
         });
 
-        return compact('scanned', 'created', 'skipped');
+        $thumbsFixed = $this->backfillMissingThumbs();
+
+        return [
+            'scanned' => $scanned,
+            'created' => $created,
+            'skipped' => $skipped,
+            'thumbs_fixed' => $thumbsFixed,
+        ];
+    }
+
+    /**
+     * Fill thumb_url for image rows that are still null (idempotent).
+     */
+    public function backfillMissingThumbs(): int
+    {
+        $updated = 0;
+        Media::query()
+            ->where('media_type', 'image')
+            ->where(function ($q) {
+                $q->whereNull('thumb_url')->orWhere('thumb_url', '');
+            })
+            ->orderBy('id')
+            ->chunkById(100, function ($rows) use (&$updated) {
+                foreach ($rows as $row) {
+                    $path = (string) $row->path;
+                    if ($path === '') {
+                        continue;
+                    }
+                    $row->thumb_url = $this->resolveImageThumbUrl($path, null);
+                    $row->save();
+                    $updated++;
+                }
+            });
+
+        return $updated;
+    }
+
+    /**
+     * Prefer sibling thumbs/<basename> when present; else the image itself.
+     * Always returns a domain-relative /storage/... URL.
+     */
+    public function resolveImageThumbUrl(string $path, ?string $thumbUrl = null): string
+    {
+        if (is_string($thumbUrl) && trim($thumbUrl) !== '') {
+            return $this->toStorageUrl($thumbUrl) ?? ('/storage/' . ltrim($path, '/'));
+        }
+
+        $path = ltrim($path, '/');
+        $disk = Storage::disk('public');
+        $basename = basename($path);
+        $dir = dirname($path);
+        $candidates = [];
+        if ($dir !== '.' && $dir !== '') {
+            $candidates[] = $dir . '/thumbs/' . $basename;
+        }
+        $candidates[] = 'thumbs/' . $basename;
+
+        foreach ($candidates as $candidate) {
+            if ($disk->exists($candidate)) {
+                return '/storage/' . ltrim($candidate, '/');
+            }
+        }
+
+        return '/storage/' . $path;
+    }
+
+    /** Normalize absolute or relative media URLs to /storage/... */
+    public function toStorageUrl(?string $urlOrPath): ?string
+    {
+        if ($urlOrPath === null) {
+            return null;
+        }
+        $urlOrPath = trim($urlOrPath);
+        if ($urlOrPath === '') {
+            return null;
+        }
+        if (str_starts_with($urlOrPath, '/storage/')) {
+            return $urlOrPath;
+        }
+        if (preg_match('#https?://[^/]+(/storage/.+)$#', $urlOrPath, $m) === 1) {
+            return $m[1];
+        }
+        if (str_starts_with($urlOrPath, 'storage/')) {
+            return '/' . $urlOrPath;
+        }
+
+        return '/storage/' . ltrim($urlOrPath, '/');
     }
 
     /**

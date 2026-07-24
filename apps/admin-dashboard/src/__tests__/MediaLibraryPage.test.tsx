@@ -8,6 +8,7 @@ import * as api from '../api';
 
 const mockCan = vi.fn();
 const mockUser = { id: 1, name: 'Owner', role: 'owner', permissions: [] as string[] };
+const mockIsMobile = vi.fn(() => false);
 
 vi.mock('../hooks/usePermissions', () => ({
   useCurrentUserPermissions: () => ({
@@ -15,6 +16,10 @@ vi.mock('../hooks/usePermissions', () => ({
     user: mockUser,
     loading: false,
   }),
+}));
+
+vi.mock('../hooks/useIsMobile', () => ({
+  useIsMobile: () => mockIsMobile(),
 }));
 
 const makeAsset = (id: number, overrides: Partial<api.MediaAsset> = {}): api.MediaAsset => ({
@@ -59,6 +64,7 @@ const twoPageMeta: api.MediaPaginationMeta = {
 describe('MediaLibraryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsMobile.mockReturnValue(false);
     mockUser.role = 'owner';
     mockCan.mockImplementation((slug?: string) => {
       if (!slug) return true;
@@ -220,5 +226,36 @@ describe('MediaLibraryPage', () => {
     const drawerButtons = screen.getByTestId('detail-drawer').querySelectorAll('button');
     const drawerDeleteBtn = Array.from(drawerButtons).find((b) => b.getAttribute('style')?.includes('danger') || b.innerHTML.includes('Trash'));
     expect(drawerDeleteBtn || trashBtn).toBeTruthy();
+  });
+
+  it('renders img for image assets when thumb_url is null (url fallback)', async () => {
+    vi.mocked(api.getMedia).mockResolvedValueOnce({
+      data: [makeAsset(9, { thumb_url: null, url: '/storage/menu/plain.jpg' })],
+      meta: { current_page: 1, last_page: 1, per_page: 24, total: 1 },
+    });
+    renderWithRouter(<MediaLibraryPage />);
+    const card = await screen.findByTestId('asset-card-9');
+    const img = card.querySelector('img');
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute('src')).toBe('/storage/menu/plain.jpg');
+  });
+
+  it('detail drawer preview uses the full image url', async () => {
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    const preview = await screen.findByTestId('detail-preview-img');
+    expect(preview.getAttribute('src')).toBe('https://cdn.example.com/images/asset-1.jpg');
+  });
+
+  it('mobile layout uses chip row and full-screen detail overlay', async () => {
+    mockIsMobile.mockReturnValue(true);
+    renderWithRouter(<MediaLibraryPage />);
+    expect(await screen.findByTestId('collections-chip-row')).toBeTruthy();
+    expect(screen.getByTestId('collections-sidebar').getAttribute('data-layout')).toBe('chips');
+
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    const drawer = await screen.findByTestId('detail-drawer');
+    expect(drawer.getAttribute('data-mobile-overlay')).toBe('true');
+    expect(screen.getByTestId('detail-drawer-backdrop')).toBeTruthy();
   });
 });

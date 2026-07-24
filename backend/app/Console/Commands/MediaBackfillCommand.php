@@ -17,10 +17,11 @@ class MediaBackfillCommand extends Command
     {
         $result = $library->reconcile();
         $this->info(sprintf(
-            'Scanned %d files; created %d; skipped %d.',
+            'Scanned %d files; created %d; skipped %d; thumbs fixed %d.',
             $result['scanned'],
             $result['created'],
             $result['skipped'],
+            $result['thumbs_fixed'] ?? 0,
         ));
 
         return self::SUCCESS;

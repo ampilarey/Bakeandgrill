@@ -12,6 +12,7 @@ import {
   type MediaEditResult, type MediaPaginationMeta, type MediaType, type MediaUsageItem,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { Btn, EmptyState, Modal, PageHeader, PageShell, Spinner } from '../components/SharedUI';
 
@@ -23,17 +24,96 @@ function fmtBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function mediaTypeIcon(type: MediaType) {
+function mediaTypeIcon(type: MediaType, size = 32) {
   switch (type) {
-    case 'image': return <Image size={32} style={{ color: '#9C8E7E' }} />;
-    case 'video': return <Film size={32} style={{ color: '#9C8E7E' }} />;
-    case 'audio': return <Music size={32} style={{ color: '#9C8E7E' }} />;
-    default:      return <FileText size={32} style={{ color: '#9C8E7E' }} />;
+    case 'image': return <Image size={size} style={{ color: '#9C8E7E' }} />;
+    case 'video': return <Film size={size} style={{ color: '#9C8E7E' }} />;
+    case 'audio': return <Music size={size} style={{ color: '#9C8E7E' }} />;
+    default:      return <FileText size={size} style={{ color: '#9C8E7E' }} />;
   }
 }
 
-const tabStyle = (active: boolean): CSSProperties => ({
-  height: 36, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+function thumbSrc(asset: MediaAsset): string | null {
+  if (asset.media_type !== 'image') return null;
+  return asset.thumb_url || asset.url || null;
+}
+
+/** Grid / compact preview — images use thumb_url||url with icon fallback on error. */
+function AssetThumb({ asset }: { asset: MediaAsset }) {
+  const [broken, setBroken] = useState(false);
+  const src = thumbSrc(asset);
+  if (asset.media_type === 'image' && src && !broken) {
+    return (
+      <img
+        src={src}
+        alt={asset.alt_text || asset.title || ''}
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+  return mediaTypeIcon(asset.media_type);
+}
+
+/** Detail drawer large preview — full image URL; video/audio/pdf players. */
+function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
+  const [broken, setBroken] = useState(false);
+  if (asset.media_type === 'image' && asset.url && !broken) {
+    return (
+      <img
+        data-testid="detail-preview-img"
+        src={asset.url}
+        alt={asset.alt_text || asset.title || ''}
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+  if (asset.media_type === 'video' && asset.url) {
+    return (
+      <video
+        data-testid="detail-preview-video"
+        controls
+        src={asset.url}
+        poster={asset.thumb_url || undefined}
+        style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#111' }}
+      />
+    );
+  }
+  if (asset.media_type === 'audio' && asset.url) {
+    return (
+      <div style={{ width: '100%', padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        {mediaTypeIcon('audio', 40)}
+        <audio data-testid="detail-preview-audio" controls src={asset.url} style={{ width: '100%' }} />
+      </div>
+    );
+  }
+  if (asset.media_type === 'document' && asset.url) {
+    const isPdf = (asset.mime_type || '').includes('pdf') || asset.url.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      return (
+        <iframe
+          data-testid="detail-preview-pdf"
+          title={asset.title || 'PDF'}
+          src={asset.url}
+          style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+        />
+      );
+    }
+    return (
+      <div style={{ textAlign: 'center', padding: 16 }}>
+        {mediaTypeIcon('document', 40)}
+        <a href={asset.url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 10, color: '#D4813A', fontWeight: 600, fontSize: 13 }}>
+          Open
+        </a>
+      </div>
+    );
+  }
+  return mediaTypeIcon(asset.media_type);
+}
+
+const tabStyle = (active: boolean, mobile = false): CSSProperties => ({
+  height: mobile ? 44 : 36, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
   fontWeight: active ? 700 : 500, fontSize: 13,
   border: active ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
   background: active ? '#FFF7ED' : '#fff', color: '#1C1408', whiteSpace: 'nowrap',
@@ -88,11 +168,7 @@ function AssetCard({
       }}
     >
       <div style={{ width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', background: '#EDE8E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {asset.media_type === 'image' && asset.thumb_url ? (
-          <img src={asset.thumb_url} alt={asset.alt_text || asset.title || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          mediaTypeIcon(asset.media_type)
-        )}
+        <AssetThumb asset={asset} />
       </div>
       <div style={{ padding: '6px 8px' }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: '#3D2B1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -216,6 +292,7 @@ function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditPa
 
 export function MediaLibraryPage() {
   usePageTitle('Media Library');
+  const isMobile = useIsMobile();
   const { can } = useCurrentUserPermissions();
   const canManage = can('media.manage');
 
@@ -588,7 +665,7 @@ export function MediaLibraryPage() {
             <button
               key={value}
               type="button"
-              style={tabStyle(activeType === value)}
+              style={tabStyle(activeType === value, isMobile)}
               onClick={() => setActiveType(value)}
               aria-pressed={activeType === value}
             >
@@ -596,45 +673,65 @@ export function MediaLibraryPage() {
             </button>
           ))}
         </div>
-        <div style={{ marginLeft: 'auto', position: 'relative', minWidth: 220 }}>
-          <Search size={14} style={{ position: 'absolute', left: 10, top: 12, color: '#9C8E7E' }} />
+        <div style={{ marginLeft: isMobile ? 0 : 'auto', position: 'relative', minWidth: isMobile ? '100%' : 220, flex: isMobile ? '1 1 100%' : undefined }}>
+          <Search size={14} style={{ position: 'absolute', left: 10, top: isMobile ? 15 : 12, color: '#9C8E7E' }} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search media…"
-            style={{ width: '100%', height: 38, paddingLeft: 30, borderRadius: 10, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+            style={{ width: '100%', height: isMobile ? 44 : 38, paddingLeft: 30, borderRadius: 10, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
           />
         </div>
       </div>
 
       {/* Main layout: sidebar + content + drawer */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexDirection: isMobile ? 'column' : 'row' }}>
 
-        {/* Collections sidebar */}
+        {/* Collections sidebar / mobile chip row */}
         <aside
           data-testid="collections-sidebar"
-          style={{ width: 200, flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 12, position: 'sticky', top: 12 }}
+          data-layout={isMobile ? 'chips' : 'sidebar'}
+          style={isMobile ? {
+            width: '100%', flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 12,
+          } : {
+            width: 200, flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 12, position: 'sticky', top: 12,
+          }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, color: '#1C1408', marginBottom: 10 }}>
             <Folder size={15} /> Collections
           </div>
 
+          <div
+            data-testid={isMobile ? 'collections-chip-row' : undefined}
+            style={isMobile ? {
+              display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4,
+            } : undefined}
+          >
           <button
             type="button"
             onClick={() => setActiveCollection('')}
             style={{
-              display: 'block', width: '100%', textAlign: 'left', padding: '7px 9px',
-              border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+              display: isMobile ? 'inline-flex' : 'block',
+              width: isMobile ? 'auto' : '100%',
+              textAlign: 'left',
+              padding: isMobile ? '10px 14px' : '7px 9px',
+              minHeight: 44,
+              border: isMobile ? (activeCollection === '' ? '1.5px solid #D4813A' : '1px solid #E8E0D8') : 'none',
+              borderRadius: isMobile ? 9999 : 8,
+              cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 13, fontWeight: activeCollection === '' ? 700 : 400,
-              background: activeCollection === '' ? '#F5E6D3' : 'transparent',
-              color: activeCollection === '' ? '#1C1408' : '#6B5D4F', marginBottom: 2,
+              background: activeCollection === '' ? '#F5E6D3' : (isMobile ? '#F8F6F3' : 'transparent'),
+              color: activeCollection === '' ? '#1C1408' : '#6B5D4F',
+              marginBottom: isMobile ? 0 : 2,
+              flexShrink: 0,
+              alignItems: 'center',
             }}
           >
             All media
           </button>
 
           {collections.map((col) => (
-            <div key={col.id} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+            <div key={col.id} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: isMobile ? 0 : 2, flexShrink: 0 }}>
               {renamingId === col.id ? (
                 <form
                   onSubmit={(e) => { e.preventDefault(); void renameCollection(col.id); }}
@@ -644,10 +741,10 @@ export function MediaLibraryPage() {
                     autoFocus
                     value={renamingName}
                     onChange={(e) => setRenamingName(e.target.value)}
-                    style={{ flex: 1, minWidth: 0, height: 32, border: '1px solid #D4813A', borderRadius: 6, padding: '0 6px', fontSize: 12, fontFamily: 'inherit' }}
+                    style={{ flex: 1, minWidth: 0, height: 44, border: '1px solid #D4813A', borderRadius: 6, padding: '0 6px', fontSize: 12, fontFamily: 'inherit' }}
                   />
-                  <button type="submit" disabled={colSaving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D4813A', padding: '0 2px' }}><Check size={14} /></button>
-                  <button type="button" onClick={() => setRenamingId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: '0 2px' }}><X size={14} /></button>
+                  <button type="submit" disabled={colSaving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D4813A', padding: '0 2px', minWidth: 44, minHeight: 44 }}><Check size={14} /></button>
+                  <button type="button" onClick={() => setRenamingId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: '0 2px', minWidth: 44, minHeight: 44 }}><X size={14} /></button>
                 </form>
               ) : (
                 <>
@@ -655,10 +752,15 @@ export function MediaLibraryPage() {
                     type="button"
                     onClick={() => setActiveCollection(col.slug)}
                     style={{
-                      flex: 1, textAlign: 'left', padding: '7px 9px', border: 'none', borderRadius: 8,
+                      flex: isMobile ? undefined : 1,
+                      textAlign: 'left',
+                      padding: isMobile ? '10px 14px' : '7px 9px',
+                      minHeight: 44,
+                      border: isMobile ? (activeCollection === col.slug ? '1.5px solid #D4813A' : '1px solid #E8E0D8') : 'none',
+                      borderRadius: isMobile ? 9999 : 8,
                       cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
                       fontWeight: activeCollection === col.slug ? 700 : 400,
-                      background: activeCollection === col.slug ? '#F5E6D3' : 'transparent',
+                      background: activeCollection === col.slug ? '#F5E6D3' : (isMobile ? '#F8F6F3' : 'transparent'),
                       color: activeCollection === col.slug ? '#1C1408' : '#6B5D4F',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}
@@ -666,7 +768,7 @@ export function MediaLibraryPage() {
                   >
                     {col.name}
                   </button>
-                  {canManage && (
+                  {canManage && !isMobile && (
                     <>
                       <button type="button" onClick={() => { setRenamingId(col.id); setRenamingName(col.name); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: 2, flexShrink: 0 }} aria-label={`Rename ${col.name}`}><Pencil size={12} /></button>
                       <button type="button" onClick={() => void removeCollection(col.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2, flexShrink: 0 }} aria-label={`Delete ${col.name}`}><Trash2 size={12} /></button>
@@ -676,6 +778,7 @@ export function MediaLibraryPage() {
               )}
             </div>
           ))}
+          </div>
 
           {canManage && (
             <form onSubmit={(e) => { e.preventDefault(); void addCollection(); }} style={{ marginTop: 10, display: 'flex', gap: 6 }}>
@@ -704,9 +807,10 @@ export function MediaLibraryPage() {
               onClick={() => fileInputRef.current?.click()}
               style={{
                 border: `2px dashed ${dragOver ? '#D4813A' : '#C4B5A5'}`,
-                borderRadius: 12, padding: '20px 16px', textAlign: 'center', cursor: 'pointer',
+                borderRadius: 12, padding: isMobile ? '28px 16px' : '20px 16px', textAlign: 'center', cursor: 'pointer',
                 background: dragOver ? '#FFF7ED' : '#F8F6F3', marginBottom: 16,
                 transition: 'border-color 0.15s, background 0.15s',
+                minHeight: isMobile ? 88 : undefined,
               }}
             >
               <Upload size={22} style={{ color: '#9C8E7E', marginBottom: 6 }} />
@@ -769,7 +873,7 @@ export function MediaLibraryPage() {
           {!loading && assets.length > 0 && (
             <div
               data-testid="media-grid"
-              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}
+              style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 100 : 140}px, 1fr))`, gap: 10 }}
             >
               {assets.map((asset) => (
                 <AssetCard
@@ -800,24 +904,35 @@ export function MediaLibraryPage() {
 
         {/* Detail Drawer */}
         {selected && (
+          <>
+            {isMobile && (
+              <div
+                data-testid="detail-drawer-backdrop"
+                onClick={closeDetail}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(28, 20, 8, 0.45)', zIndex: 'var(--z-overlay)' as unknown as number }}
+              />
+            )}
           <aside
             data-testid="detail-drawer"
-            style={{ width: 300, flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16, position: 'sticky', top: 12 }}
+            data-mobile-overlay={isMobile ? 'true' : undefined}
+            style={isMobile ? {
+              position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number,
+              width: '100%', maxWidth: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+              background: '#fff', border: 'none', borderRadius: 0, padding: 16, paddingBottom: 96,
+            } : {
+              width: 300, flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16, position: 'sticky', top: 12,
+            }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Asset details</span>
-              <button type="button" onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: 4 }} aria-label="Close drawer">
+              <button type="button" onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: 4, minWidth: 44, minHeight: 44 }} aria-label="Close drawer">
                 <X size={18} />
               </button>
             </div>
 
             {/* Preview */}
-            <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 10, overflow: 'hidden', background: '#F0EBE2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-              {selected.media_type === 'image' && selected.thumb_url ? (
-                <img src={selected.thumb_url} alt={selected.alt_text || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                mediaTypeIcon(selected.media_type)
-              )}
+            <div style={{ width: '100%', aspectRatio: isMobile ? '16/10' : '4/3', borderRadius: 10, overflow: 'hidden', background: '#F0EBE2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, minHeight: isMobile ? 200 : undefined }}>
+              <AssetDetailPreview asset={selected} />
             </div>
 
             {/* Meta */}
@@ -979,16 +1094,17 @@ export function MediaLibraryPage() {
 
             {/* Save + Delete */}
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn onClick={() => void saveDetail()} disabled={detailSaving} style={{ flex: 1 }}>
+              <Btn onClick={() => void saveDetail()} disabled={detailSaving} style={{ flex: 1, minHeight: 44 }}>
                 {detailSaving ? 'Saving…' : 'Save'}
               </Btn>
               {canManage && (
-                <Btn variant="danger" onClick={() => { setDeleteTarget(selected); setDeleteError(''); setForceDelete(false); }}>
+                <Btn variant="danger" onClick={() => { setDeleteTarget(selected); setDeleteError(''); setForceDelete(false); }} style={{ minHeight: 44, minWidth: 44 }}>
                   <Trash2 size={14} />
                 </Btn>
               )}
             </div>
           </aside>
+          </>
         )}
       </div>
 

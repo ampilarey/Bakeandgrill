@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Media extends Model
 {
@@ -46,17 +45,13 @@ class Media extends Model
 
     public function getUrlAttribute(): string
     {
-        $disk = $this->disk ?: 'public';
         $path = (string) $this->path;
         if ($path === '') {
             return '';
         }
 
-        try {
-            return Storage::disk($disk)->url($path);
-        } catch (\Throwable) {
-            return '/storage/' . ltrim($path, '/');
-        }
+        // Domain-relative so admin previews work regardless of APP_URL.
+        return '/storage/' . ltrim($path, '/');
     }
 
     public function uploader(): BelongsTo

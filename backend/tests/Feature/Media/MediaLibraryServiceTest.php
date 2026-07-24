@@ -61,6 +61,48 @@ class MediaLibraryServiceTest extends TestCase
         $this->assertSame(1, Media::count());
     }
 
+    public function test_reconcile_sets_thumb_url_for_images(): void
+    {
+        Storage::disk('public')->put('menu/burger.jpg', $this->tinyJpeg());
+        Storage::disk('public')->put('menu/thumbs/burger.jpg', $this->tinyJpeg());
+
+        $this->library->reconcile();
+        $row = Media::where('path', 'menu/burger.jpg')->first();
+        $this->assertNotNull($row);
+        $this->assertNotNull($row->thumb_url);
+        $this->assertSame('/storage/menu/thumbs/burger.jpg', $row->thumb_url);
+        $this->assertSame('/storage/menu/burger.jpg', $row->url);
+    }
+
+    public function test_backfill_missing_thumbs_fills_null_image_rows(): void
+    {
+        Storage::disk('public')->put('menu/plain.jpg', $this->tinyJpeg());
+        $row = Media::create([
+            'disk' => 'public',
+            'path' => 'menu/plain.jpg',
+            'media_type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 10,
+            'thumb_url' => null,
+            'source' => 'other',
+        ]);
+        Media::create([
+            'disk' => 'public',
+            'path' => 'library/video/a.mp4',
+            'media_type' => 'video',
+            'mime_type' => 'video/mp4',
+            'file_size' => 10,
+            'thumb_url' => null,
+            'source' => 'library',
+        ]);
+
+        $fixed = $this->library->backfillMissingThumbs();
+        $this->assertSame(1, $fixed);
+        $row->refresh();
+        $this->assertSame('/storage/menu/plain.jpg', $row->thumb_url);
+        $this->assertNull(Media::where('media_type', 'video')->value('thumb_url'));
+    }
+
     public function test_media_type_inferred_by_mime(): void
     {
         $this->assertSame('image', $this->library->mediaTypeFromMime('image/jpeg'));
