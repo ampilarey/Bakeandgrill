@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Events\CustomerCreated;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Mail\CustomerOtpMail;
@@ -82,7 +83,12 @@ class CustomerAuthController extends Controller
         }
 
         $smsService = app(SmsService::class);
-        $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes. Do not share this code.";
+        $fallback = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes. Do not share this code.";
+        $smsMessage = app(CustomerSmsMessageBuilder::class)->build(
+            'auth_customer_otp',
+            ['code' => $otpCode, 'minutes' => '10', 'brand' => 'Bake & Grill'],
+            $fallback,
+        );
 
         // Idempotency key must be unique per OTP row, otherwise back-to-back
         // requests in the same minute share a key and SmsService::send() drops
@@ -92,7 +98,7 @@ class CustomerAuthController extends Controller
         $smsService->send(new SmsMessage(
             to: $phone,
             message: $smsMessage,
-            type: 'otp',
+            type: 'auth_customer_otp',
             referenceType: 'otp',
             referenceId: (string) $otpRow->id,
             idempotencyKey: 'otp:' . $purpose . ':' . $phone . ':' . $otpRow->id,

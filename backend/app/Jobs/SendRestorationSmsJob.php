@@ -62,7 +62,7 @@ class SendRestorationSmsJob implements ShouldQueue
             $smsLog = $smsService->send(new SmsMessage(
                 to: $sub->normalized_mobile,
                 message: $message,
-                type: 'transactional',
+                type: 'service_restoration',
                 referenceType: 'restoration_subscription',
                 referenceId: (string) $sub->id,
                 idempotencyKey: $idempotencyKey,

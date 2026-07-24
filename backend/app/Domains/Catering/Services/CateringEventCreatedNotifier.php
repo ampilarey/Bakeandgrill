@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Catering\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Mail\EventRequestReceivedMail;
 use App\Models\CateringRequest;
@@ -20,6 +21,7 @@ class CateringEventCreatedNotifier
     public function __construct(
         private readonly SmsService $sms,
         private readonly CateringNotifyRecipients $recipients,
+        private readonly CustomerSmsMessageBuilder $messages,
     ) {}
 
     public function notify(CateringRequest $request): void
@@ -43,12 +45,20 @@ class CateringEventCreatedNotifier
                 'reference' => $ref,
             ]);
         } else {
-            // Same pattern as online order SMS: short confirm + view-details link.
-            $message = "Event request {$ref} received. View details: {$viewUrl}";
+            $fallback = "Event request {$ref} received. View details: {$viewUrl}";
+            $message = $this->messages->build(
+                'catering_request_received',
+                [
+                    'reference' => $ref,
+                    'view_url' => $viewUrl,
+                    'contact_name' => (string) ($request->contact_name ?? ''),
+                ],
+                $fallback,
+            );
             $log = $this->sms->send(new SmsMessage(
                 to: $phone,
                 message: $message,
-                type: 'transactional',
+                type: 'catering_request_received',
                 customerId: $request->customer_id,
                 referenceType: 'catering_request',
                 referenceId: (string) $request->id,
@@ -91,14 +101,23 @@ class CateringEventCreatedNotifier
         }
 
         $adminUrl = $this->adminEventUrl((int) $request->id);
-        $staffMsg = "New event {$ref}. View: {$adminUrl}";
+        $fallback = "New event {$ref}. View: {$adminUrl}";
+        $staffMsg = $this->messages->build(
+            'catering_request_staff',
+            [
+                'reference' => $ref,
+                'view_url' => $adminUrl,
+                'contact_name' => (string) ($request->contact_name ?? ''),
+            ],
+            $fallback,
+        );
 
         foreach ($targets as $i => $target) {
             if (!empty($target['phone'])) {
                 $log = $this->sms->send(new SmsMessage(
                     to: (string) $target['phone'],
                     message: $staffMsg,
-                    type: 'transactional',
+                    type: 'catering_request_staff',
                     referenceType: 'catering_request',
                     referenceId: (string) $request->id,
                     idempotencyKey: $baseKey . ':staff_sms:' . $i,

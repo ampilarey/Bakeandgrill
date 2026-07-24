@@ -249,7 +249,7 @@ class SmsLoggingTest extends TestCase
         $this->assertGreaterThan($before, SmsLog::count());
 
         $log = SmsLog::latest()->first();
-        $this->assertEquals('otp', $log->type);
+        $this->assertEquals('auth_customer_otp', $log->type);
         $this->assertEquals('+9607654999', $log->to);
     }
 }

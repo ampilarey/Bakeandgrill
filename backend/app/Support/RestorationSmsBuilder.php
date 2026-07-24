@@ -4,23 +4,22 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Models\ServiceIncident;
 
 /**
  * Builds the restoration SMS body for a single restore notification
  * (plan §14 / Stage 6).
  *
- * Config keys (config/service_availability.php → `restoration_sms`):
- *   default_template:     'Bake & Grill: :label is back — order now :url. Reply STOP to opt out.'
- *   templates.<key>:      Optional per-service override
- *   link:                 Public link to open (defaults to https://bakeandgrill.mv/order/menu)
- *
- * Kept small so the copy stays owner-editable via config without touching
- * the job. If templates blow past GSM-7 the SmsService will detect Unicode
- * and count segments correctly.
+ * Prefers the `service_restoration` SmsTemplate when set; otherwise uses
+ * config/service_availability.php → `restoration_sms` (unchanged fallback).
  */
 class RestorationSmsBuilder
 {
+    public function __construct(
+        private readonly CustomerSmsMessageBuilder $messages,
+    ) {}
+
     public function build(string $serviceKey, ?ServiceIncident $incident = null): string
     {
         $config = config('service_availability.restoration_sms', []);
@@ -37,6 +36,17 @@ class RestorationSmsBuilder
             ':incident_id' => (string) ($incident?->id ?? ''),
         ];
 
-        return trim(strtr($template, $replacements));
+        $fallback = trim(strtr($template, $replacements));
+
+        return $this->messages->build(
+            'service_restoration',
+            [
+                'label' => $label,
+                'url' => $url,
+                'service_key' => $serviceKey,
+                'incident_id' => (string) ($incident?->id ?? ''),
+            ],
+            $fallback,
+        );
     }
 }

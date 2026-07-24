@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\Customer;
 use App\Models\Order;
@@ -65,8 +66,13 @@ class CustomerPortalController extends Controller
         ]);
 
         $smsService = app(SmsService::class);
-        $smsMessage = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes.";
-        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
+        $fallback = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes.";
+        $smsMessage = app(CustomerSmsMessageBuilder::class)->build(
+            'auth_customer_otp',
+            ['code' => $otpCode, 'minutes' => '10', 'brand' => 'Bake & Grill'],
+            $fallback,
+        );
+        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'auth_customer_otp'));
         $smsSent = in_array($log->status, ['sent', 'demo'], true);
 
         if (!app()->environment('production') && !$smsSent) {
@@ -109,8 +115,13 @@ class CustomerPortalController extends Controller
         ]);
 
         $smsService = app(SmsService::class);
-        $smsMessage = "Your Bake & Grill password reset code is {$otpCode}. Valid for 10 minutes.";
-        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'otp'));
+        $fallback = "Your Bake & Grill password reset code is {$otpCode}. Valid for 10 minutes.";
+        $smsMessage = app(CustomerSmsMessageBuilder::class)->build(
+            'auth_customer_otp',
+            ['code' => $otpCode, 'minutes' => '10', 'brand' => 'Bake & Grill'],
+            $fallback,
+        );
+        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'auth_customer_otp'));
         $smsSent = in_array($log->status, ['sent', 'demo'], true);
 
         if (!app()->environment('production') && !$smsSent) {

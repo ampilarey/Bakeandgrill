@@ -16,6 +16,7 @@ const DeliveryPage            = lazyWithRetry(() => import('./pages/DeliveryPage
 const PromotionsPage          = lazyWithRetry(() => import('./pages/PromotionsPage').then((m) => ({ default: m.PromotionsPage })));
 const LoyaltyPage             = lazyWithRetry(() => import('./pages/LoyaltyPage').then((m) => ({ default: m.LoyaltyPage })));
 const SmsPage                 = lazyWithRetry(() => import('./pages/SmsPage').then((m) => ({ default: m.SmsPage })));
+const SmsControlCenterPage    = lazyWithRetry(() => import('./pages/SmsControlCenterPage').then((m) => ({ default: m.SmsControlCenterPage })));
 const ReportsPage             = lazyWithRetry(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 const MenuPage                = lazyWithRetry(() => import('./pages/MenuPage').then((m) => ({ default: m.MenuPage })));
 const StaffPage               = lazyWithRetry(() => import('./pages/StaffPage').then((m) => ({ default: m.StaffPage })));
@@ -248,6 +249,11 @@ export default function App() {
                 <Route path="sms" element={
                   <PermissionGuard user={user} permission="integrations.sms">
                     <SmsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="sms/control-center" element={
+                  <PermissionGuard user={user} permissions={['sms.settings.manage', 'sms.logs.view', 'integrations.sms']}>
+                    <SmsControlCenterPage />
                   </PermissionGuard>
                 } />
                 <Route path="reports" element={

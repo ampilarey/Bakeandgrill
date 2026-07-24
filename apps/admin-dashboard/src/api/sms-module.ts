@@ -268,3 +268,49 @@ export async function fetchStaffNotificationLogs(params?: {
 export async function resendStaffNotification(id: number): Promise<{ message: string; log: StaffNotificationLog }> {
   return req(`/admin/sms/staff-logs/${id}/resend`, { method: 'POST' });
 }
+
+// ── SMS Control Center ────────────────────────────────────────────────────────
+
+export type SmsControlCenterType = {
+  key: string;
+  label: string;
+  category: 'auth' | 'transactional' | 'marketing' | 'staff' | 'system';
+  enabled: boolean;
+  always_on: boolean;
+  suppressible: boolean;
+  send_permission: string | null;
+  send_permission_label: string;
+  roles_with_permission: string[];
+  template: {
+    id: number;
+    slug: string;
+    body: string;
+    variables: { name: string; description?: string }[];
+  } | null;
+  last_30_days: { count: number; cost_mvr: number };
+};
+
+export type SmsControlCenterResponse = {
+  global_kill_switch: boolean;
+  demo_mode: boolean;
+  types: SmsControlCenterType[];
+};
+
+export async function getSmsControlCenter(): Promise<SmsControlCenterResponse> {
+  return req('/admin/sms/control-center');
+}
+
+export async function updateSmsType(key: string, enabled: boolean): Promise<{ key: string; enabled: boolean }> {
+  return req(`/admin/sms/types/${encodeURIComponent(key)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+export async function updateSmsGlobalKillSwitch(enabled: boolean): Promise<{ global_kill_switch: boolean }> {
+  return req('/admin/sms/global-kill-switch', {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled }),
+  });
+}
+

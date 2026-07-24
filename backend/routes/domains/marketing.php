@@ -20,13 +20,13 @@ if (routes_domain_section_is_or_unset('marketing', 'sms_promotions', 'sms_promot
 
     // SMS promotions — preview/list for marketing staff; send is manager-only
     Route::get('/sms/promotions', [SmsPromotionController::class, 'index'])
-        ->middleware('permission:integrations.sms');
+        ->middleware('permission:sms.campaigns.send');
     Route::get('/sms/promotions/{id}', [SmsPromotionController::class, 'show'])
-        ->middleware('permission:integrations.sms');
+        ->middleware('permission:sms.campaigns.send');
     Route::post('/sms/promotions/preview', [SmsPromotionController::class, 'preview'])
-        ->middleware(['permission:integrations.sms', 'throttle:10,5']);
+        ->middleware(['permission:sms.campaigns.send', 'throttle:10,5']);
     Route::post('/sms/promotions/send', [SmsPromotionController::class, 'send'])
-        ->middleware(['permission:integrations.sms', 'throttle:5,60']);
+        ->middleware(['permission:sms.campaigns.send', 'throttle:5,60']);
 }
 
 if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('marketing.public')) {
@@ -140,49 +140,64 @@ if (routes_domain_section_is('marketing', 'sms_admin') && !routes_domain_loaded(
     routes_domain_mark_loaded('marketing.sms_admin');
 
     // ─── SMS Campaigns + Logs (Admin) ────────────────────────────────────────────
-    Route::middleware(['auth:sanctum', 'staff.token', 'permission:integrations.sms'])->prefix('admin/sms')->group(function () {
+    Route::middleware(['auth:sanctum', 'staff.token'])->prefix('admin/sms')->group(function () {
+        // Control Center
+        Route::get('/control-center', [App\Http\Controllers\Api\SmsControlCenterController::class, 'index']);
+        Route::patch('/types/{key}', [App\Http\Controllers\Api\SmsControlCenterController::class, 'updateType'])
+            ->middleware('permission:sms.settings.manage');
+        Route::patch('/global-kill-switch', [App\Http\Controllers\Api\SmsControlCenterController::class, 'updateGlobalKillSwitch'])
+            ->middleware('permission:sms.settings.manage');
+
         // Full SMS audit log (OTP + promo + campaign + transactional)
-        Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
-        Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
+        Route::middleware('permission:sms.logs.view')->group(function () {
+            Route::get('/logs', [App\Http\Controllers\Api\SmsCampaignController::class, 'logs']);
+            Route::get('/logs/stats', [App\Http\Controllers\Api\SmsCampaignController::class, 'logStats']);
+            Route::get('/staff-logs', [App\Http\Controllers\Api\StaffNotificationLogController::class, 'index']);
+            Route::post('/staff-logs/{id}/resend', [App\Http\Controllers\Api\StaffNotificationLogController::class, 'resend']);
+        });
 
         // Bulk SMS campaigns
-        Route::get('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'index']);
-        Route::post('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'store']);
-        Route::post('/campaigns/preview', [App\Http\Controllers\Api\SmsCampaignController::class, 'preview']);
-        Route::get('/campaigns/{campaign}', [App\Http\Controllers\Api\SmsCampaignController::class, 'show']);
-        Route::post('/campaigns/{campaign}/send', [App\Http\Controllers\Api\SmsCampaignController::class, 'send']);
-        Route::post('/campaigns/{campaign}/cancel', [App\Http\Controllers\Api\SmsCampaignController::class, 'cancel']);
+        Route::middleware('permission:sms.campaigns.send')->group(function () {
+            Route::get('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'index']);
+            Route::post('/campaigns', [App\Http\Controllers\Api\SmsCampaignController::class, 'store']);
+            Route::post('/campaigns/preview', [App\Http\Controllers\Api\SmsCampaignController::class, 'preview']);
+            Route::get('/campaigns/{campaign}', [App\Http\Controllers\Api\SmsCampaignController::class, 'show']);
+            Route::post('/campaigns/{campaign}/send', [App\Http\Controllers\Api\SmsCampaignController::class, 'send']);
+            Route::post('/campaigns/{campaign}/cancel', [App\Http\Controllers\Api\SmsCampaignController::class, 'cancel']);
+        });
 
         // SMS Contacts & Groups
-        Route::get('/contacts', [App\Http\Controllers\Api\SmsContactController::class, 'index']);
-        Route::post('/contacts', [App\Http\Controllers\Api\SmsContactController::class, 'store']);
-        Route::patch('/contacts/{id}', [App\Http\Controllers\Api\SmsContactController::class, 'update']);
-        Route::delete('/contacts/{id}', [App\Http\Controllers\Api\SmsContactController::class, 'destroy']);
+        Route::middleware('permission:sms.contacts.manage')->group(function () {
+            Route::get('/contacts', [App\Http\Controllers\Api\SmsContactController::class, 'index']);
+            Route::post('/contacts', [App\Http\Controllers\Api\SmsContactController::class, 'store']);
+            Route::patch('/contacts/{id}', [App\Http\Controllers\Api\SmsContactController::class, 'update']);
+            Route::delete('/contacts/{id}', [App\Http\Controllers\Api\SmsContactController::class, 'destroy']);
 
-        Route::get('/contact-groups', [App\Http\Controllers\Api\SmsContactGroupController::class, 'index']);
-        Route::post('/contact-groups', [App\Http\Controllers\Api\SmsContactGroupController::class, 'store']);
-        Route::patch('/contact-groups/{id}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'update']);
-        Route::delete('/contact-groups/{id}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'destroy']);
-        Route::post('/contact-groups/{id}/members', [App\Http\Controllers\Api\SmsContactGroupController::class, 'addMember']);
-        Route::delete('/contact-groups/{id}/members/{contactId}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'removeMember']);
+            Route::get('/contact-groups', [App\Http\Controllers\Api\SmsContactGroupController::class, 'index']);
+            Route::post('/contact-groups', [App\Http\Controllers\Api\SmsContactGroupController::class, 'store']);
+            Route::patch('/contact-groups/{id}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'update']);
+            Route::delete('/contact-groups/{id}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'destroy']);
+            Route::post('/contact-groups/{id}/members', [App\Http\Controllers\Api\SmsContactGroupController::class, 'addMember']);
+            Route::delete('/contact-groups/{id}/members/{contactId}', [App\Http\Controllers\Api\SmsContactGroupController::class, 'removeMember']);
+        });
 
         // SMS Templates
-        Route::get('/templates', [App\Http\Controllers\Api\SmsTemplateController::class, 'index']);
-        Route::post('/templates', [App\Http\Controllers\Api\SmsTemplateController::class, 'store']);
-        Route::patch('/templates/{id}', [App\Http\Controllers\Api\SmsTemplateController::class, 'update']);
-        Route::delete('/templates/{id}', [App\Http\Controllers\Api\SmsTemplateController::class, 'destroy']);
-        Route::post('/templates/{id}/preview', [App\Http\Controllers\Api\SmsTemplateController::class, 'preview']);
+        Route::middleware('permission:sms.templates.edit')->group(function () {
+            Route::get('/templates', [App\Http\Controllers\Api\SmsTemplateController::class, 'index']);
+            Route::post('/templates', [App\Http\Controllers\Api\SmsTemplateController::class, 'store']);
+            Route::patch('/templates/{id}', [App\Http\Controllers\Api\SmsTemplateController::class, 'update']);
+            Route::delete('/templates/{id}', [App\Http\Controllers\Api\SmsTemplateController::class, 'destroy']);
+            Route::post('/templates/{id}/preview', [App\Http\Controllers\Api\SmsTemplateController::class, 'preview']);
+        });
 
         // Scheduled Messages
-        Route::get('/scheduled', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'index']);
-        Route::post('/scheduled', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'store']);
-        Route::patch('/scheduled/{id}', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'update']);
-        Route::delete('/scheduled/{id}', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'destroy']);
-        Route::post('/scheduled/{id}/pause', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'pause']);
-        Route::post('/scheduled/{id}/resume', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'resume']);
-
-        // Staff notification logs
-        Route::get('/staff-logs', [App\Http\Controllers\Api\StaffNotificationLogController::class, 'index']);
-        Route::post('/staff-logs/{id}/resend', [App\Http\Controllers\Api\StaffNotificationLogController::class, 'resend']);
+        Route::middleware('permission:sms.scheduled.manage')->group(function () {
+            Route::get('/scheduled', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'index']);
+            Route::post('/scheduled', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'store']);
+            Route::patch('/scheduled/{id}', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'update']);
+            Route::delete('/scheduled/{id}', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'destroy']);
+            Route::post('/scheduled/{id}/pause', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'pause']);
+            Route::post('/scheduled/{id}/resume', [App\Http\Controllers\Api\SmsScheduledMessageController::class, 'resume']);
+        });
     });
 }

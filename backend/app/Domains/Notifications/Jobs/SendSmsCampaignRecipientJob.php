@@ -59,7 +59,7 @@ class SendSmsCampaignRecipientJob implements ShouldQueue
             $log = $smsService->send(new SmsMessage(
                 to: $this->recipient->phone,
                 message: $body,
-                type: 'campaign',
+                type: 'marketing_campaign',
                 customerId: $this->recipient->customer_id,
                 campaignId: $campaign->id,
                 referenceType: SmsCampaign::class,

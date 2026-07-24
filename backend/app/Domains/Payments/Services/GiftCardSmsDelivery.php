@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Payments\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\GiftCard;
 use App\Models\SmsLog;
@@ -18,6 +19,7 @@ final class GiftCardSmsDelivery
 {
     public function __construct(
         private readonly SmsService $sms,
+        private readonly CustomerSmsMessageBuilder $messages,
     ) {}
 
     /**
@@ -55,8 +57,7 @@ final class GiftCardSmsDelivery
             $log = $this->sms->send(new SmsMessage(
                 to: $normalized,
                 message: $message,
-                // transactional — must deliver even if marketing opt-out is on
-                type: 'transactional',
+                type: 'giftcard_delivery',
                 customerId: $customerId ?? ($card->issued_to_customer_id !== null ? (int) $card->issued_to_customer_id : null),
                 referenceType: 'gift_card',
                 referenceId: (string) $card->id,
@@ -96,30 +97,57 @@ final class GiftCardSmsDelivery
         ?string $senderFromLine = null,
     ): string {
         $amount = number_format((float) $card->initial_balance, 2, '.', '');
+        $from = trim((string) $senderFromLine);
+        $url = is_string($viewUrl) ? trim($viewUrl) : '';
+        $note = trim((string) $personalNote);
+        $expires = $card->expires_at ? $card->expires_at->format('d M Y') : '';
+        $code = strtoupper(trim($plainCode));
+
+        $fallback = $this->legacyFallbackBody($amount, $from, $url, $code, $expires, $note);
+
+        return $this->messages->build(
+            'giftcard_delivery',
+            [
+                'sender' => $from,
+                'amount' => $amount,
+                'view_url' => $url,
+                'code' => $code,
+                'expires' => $expires,
+                'note' => $note,
+            ],
+            $fallback,
+        );
+    }
+
+    private function legacyFallbackBody(
+        string $amount,
+        string $from,
+        string $url,
+        string $code,
+        string $expires,
+        string $note,
+    ): string {
         $lines = [
             'Bake & Grill Gift Card',
         ];
 
-        $from = trim((string) $senderFromLine);
         if ($from !== '') {
             $lines[] = $from;
         }
 
         $lines[] = 'MVR ' . $amount;
 
-        $url = is_string($viewUrl) ? trim($viewUrl) : '';
         if ($url !== '') {
             $lines[] = 'View your card:';
             $lines[] = $url;
         }
 
-        $lines[] = 'Code: ' . strtoupper(trim($plainCode));
+        $lines[] = 'Code: ' . $code;
 
-        if ($card->expires_at) {
-            $lines[] = 'Expires: ' . $card->expires_at->format('d M Y');
+        if ($expires !== '') {
+            $lines[] = 'Expires: ' . $expires;
         }
 
-        $note = trim((string) $personalNote);
         if ($note !== '') {
             $lines[] = $note;
         }

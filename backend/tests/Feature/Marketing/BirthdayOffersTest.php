@@ -43,7 +43,7 @@ class BirthdayOffersTest extends TestCase
 
         $this->assertDatabaseHas('sms_logs', [
             'customer_id' => $customer->id,
-            'type' => 'promotion',
+            'type' => 'marketing_birthday',
             'idempotency_key' => "birthday-sms:{$customer->id}:{$today->format('Y')}",
         ]);
 

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Sms\Services\SmsTemplateRenderer;
 use App\Http\Controllers\Controller;
 use App\Models\SmsTemplate;
+use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,7 @@ class SmsTemplateController extends Controller
 {
     public function __construct(
         private readonly SmsTemplateRenderer $renderer,
+        private readonly AuditLogService $audit,
     ) {}
 
     public function index(): JsonResponse
@@ -53,7 +55,18 @@ class SmsTemplateController extends Controller
             'description' => 'nullable|string|max:500',
         ]);
 
+        $old = ['body' => $template->body, 'name' => $template->name];
         $template->update($data);
+
+        $this->audit->log(
+            'sms.template.updated',
+            'SmsTemplate',
+            $template->id,
+            $old,
+            ['body' => $template->body, 'name' => $template->name, 'slug' => $template->slug],
+            [],
+            $request,
+        );
 
         return response()->json(['template' => $this->format($template)]);
     }

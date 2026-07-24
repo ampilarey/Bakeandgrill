@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -200,10 +201,17 @@ class StaffAuthController extends Controller
             Cache::put($cacheKey, Hash::make($otp), now()->addMinutes(10));
             Cache::forget($this->passwordResetOtpAttemptKey($identityKey));
 
+            $fallback = "Your Bake & Grill admin password reset code is: {$otp}. Valid for 10 minutes.";
+            $message = app(CustomerSmsMessageBuilder::class)->build(
+                'auth_staff_password_reset',
+                ['code' => $otp, 'minutes' => '10', 'brand' => 'Bake & Grill'],
+                $fallback,
+            );
+
             app(SmsService::class)->send(new SmsMessage(
                 to: $smsPhone,
-                message: "Your Bake & Grill admin password reset code is: {$otp}. Valid for 10 minutes.",
-                type: 'staff_password_reset',
+                message: $message,
+                type: 'auth_staff_password_reset',
             ));
 
             RateLimiter::hit($rateKey, 300);
