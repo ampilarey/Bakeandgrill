@@ -120,12 +120,29 @@ export function MenuPage() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const stickyChromeRef = useRef<HTMLDivElement>(null);
 
   const cartRef = useRef(cart);
   const isProgrammaticScroll = useRef(false);
   const programmaticScrollTimerRef = useRef<number | null>(null);
   const sectionVisibilityRef = useRef<Map<number, { id: number; ratio: number; top: number }>>(new Map());
   const pendingCategoryScrollRef = useRef<number | null>(null);
+
+  // Keep --menu-header-height in sync with sticky chrome (filters open/closed, status, etc.)
+  useEffect(() => {
+    const el = stickyChromeRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const apply = () => {
+      document.documentElement.style.setProperty('--menu-header-height', `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+    };
+  }, [filtersOpen, isOpen, waitMinutes]);
 
   // Back to top visibility — throttled with requestAnimationFrame
   useEffect(() => {
@@ -530,6 +547,8 @@ export function MenuPage() {
       )}
       {/* ── Sticky menu controls ─────────────────────────────────── */}
       <div
+        ref={stickyChromeRef}
+        className="menu-sticky-chrome"
         style={{
           position: 'sticky',
           top: 0,
@@ -576,19 +595,30 @@ export function MenuPage() {
           </button>
         </div>
 
-        <FilterChipsRow
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          saleFilter={saleFilter}
-          onSaleFilterChange={setSaleFilter}
-          dietaryFilter={dietaryFilter}
-          onDietaryFilterChange={setDietaryFilter}
-          dietaryOptions={[...availableDietaryFilters]}
-          discountCount={discountCount}
-          specialCount={specialCount}
-          filtersActive={filtersActive}
-          onClear={handleClearFilters}
-        />
+        <button
+          type="button"
+          className="menu-filters-toggle"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen((o) => !o)}
+        >
+          {filtersOpen ? 'Hide filters' : (filtersActive ? 'Filters · on' : 'Filters')}
+        </button>
+
+        <div className="menu-filters-panel" data-collapsed={filtersOpen ? 'false' : 'true'}>
+          <FilterChipsRow
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            saleFilter={saleFilter}
+            onSaleFilterChange={setSaleFilter}
+            dietaryFilter={dietaryFilter}
+            onDietaryFilterChange={setDietaryFilter}
+            dietaryOptions={[...availableDietaryFilters]}
+            discountCount={discountCount}
+            specialCount={specialCount}
+            filtersActive={filtersActive}
+            onClear={handleClearFilters}
+          />
+        </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem' }}>
           {isOpen !== null && (
@@ -690,7 +720,7 @@ export function MenuPage() {
           {loading && (
             <div className="menu-grid" style={{ padding: '0 0 1.25rem' }}>
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="skeleton" style={{ borderRadius: '16px', height: '300px' }} />
+                <div key={i} className="skeleton menu-card-skeleton" style={{ borderRadius: '16px', height: 140 }} />
               ))}
             </div>
           )}

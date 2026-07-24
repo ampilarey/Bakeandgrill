@@ -42,7 +42,10 @@
 }
 .page-hero p { font-size: 1.05rem; color: var(--muted); }
 
-@media (max-width: 600px) { .page-hero h1 { font-size: 2rem; } }
+@media (max-width: 600px) {
+    .page-hero { padding: 2.5rem 1rem; }
+    .page-hero h1 { font-size: 2rem; }
+}
 
 /* ─── Contact Grid ───────────────────────────────────────────────── */
 .contact-section {
@@ -100,16 +103,16 @@
 .contact-link-row:hover { background: var(--amber-hover); }
 
 .contact-link-wa {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    padding: 0.5rem 1rem;
+    display: inline-flex; align-items: center; gap: 0.4rem; justify-content: center;
+    padding: 0.5rem 1rem; min-height: 44px; width: 100%;
     background: #25D366; color: white;
     border-radius: 8px; font-weight: 700; font-size: 0.85rem;
     margin-top: 0.75rem; transition: all 0.15s;
 }
 .contact-link-wa:hover { background: #1bba58; }
 .contact-link-viber {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    padding: 0.5rem 1rem;
+    display: inline-flex; align-items: center; gap: 0.4rem; justify-content: center;
+    padding: 0.5rem 1rem; min-height: 44px; width: 100%;
     background: #7360F2; color: white;
     border-radius: 8px; font-weight: 700; font-size: 0.85rem;
     margin-top: 0.5rem; transition: all 0.15s;

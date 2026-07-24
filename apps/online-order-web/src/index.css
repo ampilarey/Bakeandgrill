@@ -1879,6 +1879,55 @@ textarea.field-input {
   min-width: 0;
 }
 
+/* Phone list cards: horizontal thumb + body (less scroll than tall 1-col tiles). */
+@media (max-width: 479px) {
+  .menu-grid .menu-card-article {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .menu-grid .menu-card-media {
+    width: 112px;
+    max-width: 38%;
+    flex-shrink: 0;
+  }
+
+  .menu-grid .menu-card-media .menu-card-slider,
+  .menu-grid .menu-card-media > div {
+    aspect-ratio: 1 / 1 !important;
+    height: 100%;
+    min-height: 112px;
+  }
+
+  .menu-grid .menu-card-body {
+    padding: 0.65rem 0.75rem 0.75rem !important;
+    gap: 0.35rem !important;
+  }
+
+  .menu-grid .menu-card-desc,
+  .menu-grid .menu-card-tags {
+    display: none !important;
+  }
+
+  .menu-grid .menu-card-name {
+    font-size: 0.9rem !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .menu-grid .menu-card-fav {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    top: 0.25rem !important;
+    right: 0.25rem !important;
+    font-size: 14px !important;
+  }
+}
+
 @media (min-width: 480px) {
   .menu-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -2369,6 +2418,63 @@ textarea.field-input {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* Mobile: summary sits above pay bar; desktop uses sticky aside. */
+.checkout-summary--mobile {
+  display: flex;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.checkout-summary--desktop {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .checkout-summary--mobile {
+    display: none;
+  }
+
+  .checkout-summary--desktop {
+    display: flex;
+  }
+}
+
+.menu-filters-toggle {
+  display: none;
+  margin-top: 0.65rem;
+  min-height: var(--touch-target);
+  padding: 0 0.9rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  cursor: pointer;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+@media (max-width: 479px) {
+  .menu-filters-toggle {
+    display: inline-flex;
+  }
+
+  .menu-filters-panel[data-collapsed='true'] {
+    display: none;
+  }
+
+  .menu-sticky-chrome {
+    padding-top: 0.55rem !important;
+    padding-bottom: 0.55rem !important;
+  }
+
+  .menu-sticky-chrome .ordering-status-bar-text {
+    font-size: 0.72rem;
+  }
 }
 
 .empty-state,

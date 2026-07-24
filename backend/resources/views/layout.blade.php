@@ -54,7 +54,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>@yield('title', $metaTitle)</title>
     <meta name="description" content="@yield('description', $metaDesc)">
     <meta name="keywords" content="{{ e($metaKeywords) }}">
@@ -913,21 +913,51 @@
         .order-status-bar-mob .osb-left-link { padding-left: 1rem; }
         .order-status-bar-mob .osb-cta-link  { padding-right: 1rem; }
 
+        html, body { overflow-x: clip; }
+
+        /* Compact prayer strip on phones — expand still available */
+        @media (max-width: 768px) {
+            .site-prayer-wrap--mobile .prayer-banner-panel[hidden] { display: none !important; }
+            .site-prayer-wrap--mobile .prayer-banner-summary {
+                padding: 0.45rem 0.75rem;
+            }
+            .site-prayer-wrap--mobile .prayer-banner-island {
+                font-size: 0.75rem;
+                padding: 0.3rem 0.55rem;
+            }
+            .site-prayer-wrap--mobile .prayer-banner-next {
+                font-size: 0.72rem;
+            }
+            .footer-chat-btns a,
+            .footer-chat-btns button {
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
         /* ─── Responsive ─────────────────────────────────────────── */
         @media (max-width: 768px) {
-            html { scroll-padding-top: 130px; }
+            html { scroll-padding-top: 110px; }
             .site-header   { display: none; }
             .mobile-header { display: block; }
             .mobile-bottom-nav { display: block; }
             .order-status-bar-mob { display: flex; }
             .site-footer   { padding-bottom: calc(2rem + 72px); margin-top: 3rem; }
-            .footer-grid   { grid-template-columns: 1fr 1fr; gap: 2rem; }
+            .footer-grid   { grid-template-columns: 1fr; gap: 1.5rem; }
             .footer-brand  { grid-column: 1 / -1; }
             .footer-brand p { max-width: 100%; }
             .footer-bottom { flex-direction: column; text-align: center; }
+            .mob-hdr-btns a[href*="login"],
+            .mob-order-btn {
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+            }
         }
         @media (max-width: 480px) {
-            .footer-grid { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr; gap: 1.25rem; }
             .mob-logo span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
         @media (max-width: 390px) {

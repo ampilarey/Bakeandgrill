@@ -1002,6 +1002,13 @@ export function CheckoutPage() {
 
               {sectionHelp}
 
+              {/* Mobile: totals above pay bar (§18). Desktop uses sticky aside. */}
+              <div className="checkout-summary checkout-summary--mobile">
+                {sectionCartSummary}
+                {sectionOrderSummary}
+                {sectionReferral}
+              </div>
+
               <StickyCtaBar
                 above={stickyAbove}
                 label={placeLabel}
@@ -1019,8 +1026,8 @@ export function CheckoutPage() {
           )}
         </div>
 
-        {/* Summary aside: cart + order totals + referral share */}
-        <aside className="checkout-summary">
+        {/* Desktop summary aside */}
+        <aside className="checkout-summary checkout-summary--desktop">
           {sectionCartSummary}
           {sectionOrderSummary}
           {sectionReferral}

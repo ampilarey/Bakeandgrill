@@ -117,8 +117,8 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
       }}
     >
       {/* ── Image (auto-slides when Image + Photos exist) ── */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <MenuImageSlider slides={slides} alt={mediaAlt} posterOnly />
+      <div className="menu-card-media" style={{ position: 'relative', flexShrink: 0 }}>
+        <MenuImageSlider slides={slides} alt={mediaAlt} posterOnly className="menu-card-slider" />
 
         {/* Unavailable overlay */}
         {isUnavailable && (
@@ -127,16 +127,18 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
           </div>
         )}
 
-        {/* Favourite button */}
+        {/* Favourite button — 44px hit target */}
         {onToggleFavourite && (
           <button
             type="button"
+            className="menu-card-fav"
             onClick={(e) => { e.stopPropagation(); onToggleFavourite(item.id); }}
             style={{
-              position: 'absolute', top: '0.625rem', right: '0.625rem',
-              background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%',
-              width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', fontSize: 15, boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+              position: 'absolute', top: '0.35rem', right: '0.35rem',
+              background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '50%',
+              width: 44, height: 44, minWidth: 44, minHeight: 44,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
               zIndex: 3,
             }}
             aria-label={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
@@ -158,11 +160,11 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
       </div>
 
       {/* ── Content ─────────────────────────────────────────── */}
-      <div style={{ padding: '0.875rem 1rem 1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div className="menu-card-body" style={{ padding: '0.875rem 1rem 1rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 0 }}>
 
         {/* Category label if available */}
         {item.dietary_tags && item.dietary_tags.length > 0 && (
-          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+          <div className="menu-card-tags" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
             {item.dietary_tags.slice(0, 2).map((tag) => (
               <span key={tag} style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-surface-alt)', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)', textTransform: 'capitalize', letterSpacing: '0.02em' }}>
                 {tag}
@@ -172,7 +174,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
         )}
 
         {/* Name */}
-        <h3 style={{
+        <h3 className="menu-card-name" style={{
           fontSize: '0.9375rem',
           fontWeight: 700,
           color: 'var(--color-text)',
@@ -184,17 +186,20 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
 
         {/* Description teaser — first 2 lines only; full text in detail sheet */}
         {descPreview.text && (
-          <p style={{
-            fontSize: '0.78rem',
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.45,
-            margin: 0,
-            whiteSpace: 'pre-line',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}>
+          <p
+            className="menu-card-desc"
+            style={{
+              fontSize: '0.78rem',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.45,
+              margin: 0,
+              whiteSpace: 'pre-line',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
             {descPreview.text}
           </p>
         )}
@@ -271,11 +276,11 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
                 borderRadius: 'var(--radius-lg)', overflow: 'hidden', flexShrink: 0,
               }}>
                 <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.max(1, q - 1)); }}
-                  style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   aria-label="Decrease quantity">−</button>
                 <span style={{ minWidth: '1.625rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{quantity}</span>
                 <button type="button" onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.min(MAX_QTY, q + 1)); }}
-                  style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   aria-label="Increase quantity">+</button>
               </div>
               <button
@@ -283,7 +288,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
                 onClick={(e) => { e.stopPropagation(); onSelectItem(item, quantity); setQuantity(1); }}
                 className="card-add-btn"
                 style={{
-                  flex: 1, padding: '0.5rem', height: '32px',
+                  flex: 1, padding: '0.5rem', height: 44, minHeight: 44,
                   background: 'var(--color-primary)', color: 'white',
                   border: 'none', borderRadius: 'var(--radius-lg)',
                   fontSize: '0.85rem', fontWeight: 700,
@@ -307,7 +312,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.max(1, q - 1)); }}
-                  style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   aria-label="Decrease quantity"
                 >
                   −
@@ -318,7 +323,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.min(MAX_QTY, q + 1)); }}
-                  style={{ width: '32px', height: '32px', background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, background: 'var(--color-surface-alt)', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   aria-label="Increase quantity"
                 >
                   +
@@ -336,7 +341,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
                   border: 'none', borderRadius: 'var(--radius-lg)',
                   fontSize: '0.85rem', fontWeight: 700,
                   cursor: 'pointer',
-                  fontFamily: 'inherit', height: '32px',
+                  fontFamily: 'inherit', height: 44, minHeight: 44,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
                 aria-label={`Add ${quantity} ${item.name} to cart`}
@@ -355,6 +360,7 @@ export function ProductCard({ item, onSelectItem, onAddToCart, isFavourite = fal
               style={{
                 width: '100%', marginTop: '0.4rem',
                 padding: '0.35rem',
+                minHeight: 44,
                 background: 'transparent',
                 color: 'var(--color-primary)',
                 border: '1.5px solid var(--color-border)',

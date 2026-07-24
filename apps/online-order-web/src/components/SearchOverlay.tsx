@@ -182,7 +182,7 @@ export function SearchOverlay({
             {popular.length > 0 && (
               <section style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', fontWeight: 800 }}>{t('menu.popular')}</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}>
+                <div className="menu-grid">
                   {popular.map((item) => (
                     <ProductCard
                       key={item.id}
@@ -268,7 +268,7 @@ export function SearchOverlay({
         )}
 
         {q && results.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}>
+          <div className="menu-grid">
             {results.map((item) => (
               <ProductCard
                 key={item.id}
