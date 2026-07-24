@@ -59,6 +59,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/staff', permission: 'staff.view' },
   { to: '/content/website', permission: 'website.manage' },
   { to: '/content/order-app', permission: 'website.manage' },
+  { to: '/media', permission: 'media.view' },
   { to: '/settings?tab=permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/settings?tab=notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/devices', permission: 'devices.view' },
