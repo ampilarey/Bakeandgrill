@@ -102,8 +102,8 @@ Two concrete fixes on the **main website (Blade)** the owner called out from the
 - `layout.blade.php` `<nav class="mobile-bottom-nav">` (~line 1227) is **Home · Menu · Order · More**.
   "More" is a catch-all sheet and the set feels thin. Replace with a cleaner 5-tab bar modelled on the
   ZUS reference and the order-app footer's tone.
-- **Recommended set (owner to confirm):** **Home · Menu · Order (center CTA) · Offers · Account**
-  - `Order` as a raised/filled center button (amber) — the primary action.
+- **Confirmed set:** **Home · Menu · Order (center CTA) · Offers · Account**
+  - `Order` as a raised/filled amber center button — the primary action.
   - `Offers` → the specials/promotions page; `Account` → order-app account (or login).
   - Drop the generic "More"; move any leftover links into the footer.
 - Keep it icon + label, ≥44px targets, active state highlighted, safe-area padding at the bottom.
