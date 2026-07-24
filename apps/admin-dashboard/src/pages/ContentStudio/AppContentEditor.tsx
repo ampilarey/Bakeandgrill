@@ -39,7 +39,8 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { CopyBlockFromOtherApp, CopySectionFromOtherApp } from './CopyFromOtherApp';
 import { LivePreviewFrame } from './LivePreviewFrame';
-import { MediaLibrary } from './MediaLibrary';
+import { MediaPicker } from '../../components/MediaPicker';
+import type { MediaAsset } from '../../api/media';
 
 function seoDescriptionKey(titleKey: string): string | null {
   if (titleKey === 'meta_title') return 'meta_description';
@@ -730,19 +731,21 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
         </div>
       </div>
 
-      <MediaLibrary
+      <MediaPicker
         open={mediaOpen}
         onClose={() => setMediaOpen(false)}
-        onPick={(url) => {
+        mediaType="image"
+        title="Pick from Media Library"
+        onPick={(asset: MediaAsset) => {
           const ctx = uploadCtx.current;
           if (ctx) {
-            ctx.onDone(url);
+            ctx.onDone(asset.url);
             uploadCtx.current = null;
             success('Image selected from library');
             return;
           }
           success('Copied media URL — paste into an image field');
-          void navigator.clipboard?.writeText(url);
+          void navigator.clipboard?.writeText(asset.url);
         }}
       />
 

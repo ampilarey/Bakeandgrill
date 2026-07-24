@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
-import { Crop, Upload } from 'lucide-react';
+import { Crop, Images, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/Layout';
+import { MediaPicker } from '../../components/MediaPicker';
+import type { MediaAsset } from '../../api/media';
 import {
   CATEGORY_BANNER_ASPECT,
   CATEGORY_BANNER_HEIGHT,
@@ -79,7 +81,10 @@ export function ImageUploadField({
   const [cropName, setCropName] = useState('menu-image.jpg');
   const [pendingMaster, setPendingMaster] = useState<File | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const pickerCollection = variant === 'banner' ? 'banners' : 'menu-items';
 
   const closeCropper = () => {
     setCropSrc((prev) => {
@@ -189,6 +194,20 @@ export function ImageUploadField({
             Edit / re-crop
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          style={{
+            flexShrink: 0, padding: '8px 14px', background: '#F0F4FF',
+            border: '1px solid #C7D4F0', borderRadius: 8, cursor: 'pointer',
+            fontSize: 13, fontWeight: 600, color: '#1D4ED8', whiteSpace: 'nowrap',
+            display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
+          }}
+          data-testid="pick-from-library-btn"
+        >
+          <Images size={14} />
+          Pick from Library
+        </button>
         <input
           ref={inputRef}
           type="file"
@@ -228,6 +247,17 @@ export function ImageUploadField({
           onConfirm={uploadCropped}
         />
       )}
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        mediaType="image"
+        collection={pickerCollection}
+        title={variant === 'banner' ? 'Pick banner image' : 'Pick item image'}
+        onPick={(asset: MediaAsset) => {
+          onChange({ url: asset.url, original_url: asset.original_url || '', thumb_url: asset.thumb_url || '' });
+          setPreviewKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 }
