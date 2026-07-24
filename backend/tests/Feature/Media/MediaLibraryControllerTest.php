@@ -56,9 +56,48 @@ class MediaLibraryControllerTest extends TestCase
         Media::create($this->assetAttrs('library/a.jpg', 'image'));
         Media::create($this->assetAttrs('library/b.pdf', 'document', 'application/pdf'));
 
-        $this->getJson('/api/admin/media?type=image')
+        $res = $this->getJson('/api/admin/media?type=image')
             ->assertOk()
             ->assertJsonPath('meta.total', 1);
+
+        $this->assertNotEmpty($res->json('data.0.updated_at'));
+    }
+
+    public function test_use_as_sets_site_setting_and_favicon_uses_derivative(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+
+        $img = imagecreatetruecolor(240, 180);
+        $white = imagecolorallocate($img, 255, 255, 255);
+        imagefilledrectangle($img, 0, 0, 239, 179, $white);
+        ob_start();
+        imagejpeg($img, null, 90);
+        $bytes = (string) ob_get_clean();
+        imagedestroy($img);
+
+        Storage::disk('public')->put('library/brand.jpg', $bytes);
+        $media = Media::create(array_merge($this->assetAttrs('library/brand.jpg', 'image'), [
+            'width' => 240,
+            'height' => 180,
+            'file_size' => strlen($bytes),
+        ]));
+
+        $logoRes = $this->postJson("/api/admin/media/{$media->id}/use-as", ['key' => 'logo'])
+            ->assertOk()
+            ->assertJsonPath('key', 'logo');
+        $this->assertSame('/storage/library/brand.jpg', $logoRes->json('url'));
+        $this->assertSame('/storage/library/brand.jpg', \App\Models\SiteSetting::get('logo'));
+
+        $favRes = $this->postJson("/api/admin/media/{$media->id}/use-as", ['key' => 'favicon'])
+            ->assertOk()
+            ->assertJsonPath('key', 'favicon');
+        $favUrl = (string) $favRes->json('url');
+        $this->assertStringContainsString('/storage/site/favicon_', $favUrl);
+        $this->assertStringEndsWith('.png', $favUrl);
+        $this->assertSame($favUrl, \App\Models\SiteSetting::get('favicon'));
+
+        $relative = ltrim(str_replace('/storage/', '', $favUrl), '/');
+        $this->assertTrue(Storage::disk('public')->exists($relative));
     }
 
     public function test_upload_image_creates_row(): void

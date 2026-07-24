@@ -139,6 +139,8 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
             ->middleware('permission:media.manage');
         Route::post('/{media}/restore', [App\Http\Controllers\Api\MediaLibraryController::class, 'restore'])
             ->middleware('permission:media.manage');
+        Route::post('/{media}/use-as', [App\Http\Controllers\Api\MediaLibraryController::class, 'useAs'])
+            ->middleware('permission:media.manage');
         Route::post('/{media}/collections', [App\Http\Controllers\Api\MediaLibraryController::class, 'syncCollections'])
             ->middleware('permission:media.manage');
     });

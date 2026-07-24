@@ -156,3 +156,13 @@ export async function assignMediaCollections(
     body: JSON.stringify({ collection_ids }),
   });
 }
+
+export async function useMediaAsBrand(
+  id: number,
+  key: 'favicon' | 'logo' | 'logo_dark' | 'og_image',
+): Promise<{ key: string; url: string }> {
+  return req(`/admin/media/${id}/use-as`, {
+    method: 'POST',
+    body: JSON.stringify({ key }),
+  });
+}

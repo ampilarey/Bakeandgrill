@@ -68,9 +68,7 @@ class MediaLibraryController extends Controller
         $items = collect($page->items())->map(function (Media $m) {
             $usage = $this->usage->for($m);
 
-            return array_merge($m->toArray(), [
-                'usage_count' => count($usage),
-            ]);
+            return $this->presentAsset($m, count($usage));
         });
 
         return response()->json([
@@ -134,7 +132,7 @@ class MediaLibraryController extends Controller
 
         $this->audit->log('media.updated', 'Media', (int) $media->id, $old, $media->only(['title', 'alt_text', 'tags']), [], $request);
 
-        return response()->json(['data' => $media->fresh(['collections'])]);
+        return response()->json(['data' => $this->presentAsset($media->fresh(['collections']))]);
     }
 
     public function destroy(Request $request, Media $media): JsonResponse
@@ -196,12 +194,21 @@ class MediaLibraryController extends Controller
             $request,
         );
 
+        $asset = $result['asset'];
+        if ($asset instanceof Media) {
+            $result['asset'] = $this->presentAsset($asset);
+        }
+
         return response()->json($result);
     }
 
     public function restore(Request $request, Media $media): JsonResponse
     {
         $result = $this->editor->restore($media, $request);
+        $asset = $result['asset'] ?? null;
+        if ($asset instanceof Media) {
+            $result['asset'] = $this->presentAsset($asset);
+        }
 
         return response()->json($result);
     }
@@ -224,5 +231,62 @@ class MediaLibraryController extends Controller
         );
 
         return response()->json(['data' => $media->fresh(['collections'])]);
+    }
+
+    /**
+     * Point a brand SiteSetting (logo / favicon / og) at this library image.
+     */
+    public function useAs(Request $request, Media $media): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user || (!$user->hasPermission('media.manage') && !$user->hasPermission('website.manage'))) {
+            abort(403, 'Forbidden.');
+        }
+
+        $validated = $request->validate([
+            'key' => 'required|string|in:favicon,logo,logo_dark,og_image',
+        ]);
+        if ($media->media_type !== 'image') {
+            return response()->json(['message' => 'Only images can be used as brand assets.'], 422);
+        }
+
+        $key = $validated['key'];
+        $url = $key === 'favicon'
+            ? $this->editor->makeSquarePngDerivative($media, 180)
+            : (string) $media->url;
+
+        if (!str_starts_with($url, '/storage/')) {
+            $url = '/storage/' . ltrim($url, '/');
+        }
+
+        $old = \App\Models\SiteSetting::get($key);
+        \App\Models\SiteSetting::set($key, $url);
+        \App\Models\SiteSetting::bust();
+
+        $this->audit->log(
+            'media.use_as',
+            'Media',
+            (int) $media->id,
+            ['key' => $key, 'url' => $old],
+            ['key' => $key, 'url' => $url],
+            ['media_path' => $media->path],
+            $request,
+        );
+
+        return response()->json(['key' => $key, 'url' => $url]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentAsset(Media $media, ?int $usageCount = null): array
+    {
+        $data = $media->toArray();
+        $data['updated_at'] = $media->updated_at?->toIso8601String();
+        if ($usageCount !== null) {
+            $data['usage_count'] = $usageCount;
+        }
+
+        return $data;
     }
 }

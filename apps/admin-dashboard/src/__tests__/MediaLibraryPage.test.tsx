@@ -6,6 +6,24 @@ import * as api from '../api';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
+vi.mock('react-easy-crop', async () => {
+  const React = await import('react');
+  return {
+    default: function MockCropper({
+      onCropComplete,
+    }: {
+      onCropComplete?: (area: unknown, pixels: { x: number; y: number; width: number; height: number }) => void;
+    }) {
+      React.useEffect(() => {
+        onCropComplete?.({}, { x: 10, y: 20, width: 100, height: 80 });
+        // intentionally once on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+      return React.createElement('div', { 'data-testid': 'mock-cropper' });
+    },
+  };
+});
+
 const mockCan = vi.fn();
 const mockUser = { id: 1, name: 'Owner', role: 'owner', permissions: [] as string[] };
 const mockIsMobile = vi.fn(() => false);
@@ -232,33 +250,46 @@ describe('MediaLibraryPage', () => {
 
   it('renders img for image assets when thumb_url is null (url fallback)', async () => {
     vi.mocked(api.getMedia).mockResolvedValueOnce({
-      data: [makeAsset(9, { thumb_url: null, url: '/storage/menu/plain.jpg', checksum: 'abc' })],
+      data: [makeAsset(9, {
+        thumb_url: null,
+        url: '/storage/menu/plain.jpg',
+        checksum: 'abc',
+        updated_at: '2026-07-01T12:00:00Z',
+      })],
       meta: { current_page: 1, last_page: 1, per_page: 24, total: 1 },
     });
     renderWithRouter(<MediaLibraryPage />);
     const card = await screen.findByTestId('asset-card-9');
     const img = card.querySelector('img');
     expect(img).toBeTruthy();
-    expect(img?.getAttribute('src')).toBe('/storage/menu/plain.jpg?v=abc');
+    expect(img?.getAttribute('src')).toBe('/storage/menu/plain.jpg?v=2026-07-01T12%3A00%3A00Z');
   });
 
   it('detail drawer preview uses the full image url with cache buster', async () => {
     renderWithRouter(<MediaLibraryPage />);
     fireEvent.click(await screen.findByTestId('asset-card-1'));
     const preview = await screen.findByTestId('detail-preview-img');
-    expect(preview.getAttribute('src')).toBe('https://cdn.example.com/images/asset-1.jpg?v=checksum-1');
+    expect(preview.getAttribute('src')).toBe(
+      'https://cdn.example.com/images/asset-1.jpg?v=2026-01-01T00%3A00%3A00Z',
+    );
   });
 
-  it('after replace edit, preview src updates when checksum changes', async () => {
+  it('after replace edit, preview src updates when updated_at changes', async () => {
     const editSpy = vi.spyOn(api, 'editMedia').mockResolvedValue({
-      asset: makeAsset(1, { checksum: 'after-edit', title: 'Asset 1 resized' }),
+      asset: makeAsset(1, {
+        checksum: 'after-edit',
+        updated_at: '2026-07-23T18:00:00Z',
+        title: 'Asset 1 resized',
+      }),
       updated_references: 0,
       mode: 'replace',
     });
 
     renderWithRouter(<MediaLibraryPage />);
     fireEvent.click(await screen.findByTestId('asset-card-1'));
-    expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain('v=checksum-1');
+    expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain(
+      'v=2026-01-01T00%3A00%3A00Z',
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /resize/i }));
     fireEvent.click(await screen.findByRole('button', { name: /^apply$/i }));
@@ -267,7 +298,56 @@ describe('MediaLibraryPage', () => {
     await waitFor(() => {
       expect(editSpy).toHaveBeenCalled();
     });
-    expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain('v=after-edit');
+    expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain(
+      'v=2026-07-23T18%3A00%3A00Z',
+    );
+  });
+
+  it('crop confirm sends croppedAreaPixels as crop params', async () => {
+    const editSpy = vi.spyOn(api, 'editMedia').mockResolvedValue({
+      asset: makeAsset(1, { updated_at: '2026-07-23T19:00:00Z' }),
+      updated_references: 0,
+      mode: 'replace',
+    });
+
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    fireEvent.click(screen.getByRole('button', { name: /^crop$/i }));
+
+    expect(await screen.findByTestId('media-crop-panel')).toBeTruthy();
+    // Mocked Cropper fires onCropComplete on mount with fixed pixels
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^apply$/i })).not.toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^apply$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /replace everywhere/i }));
+
+    await waitFor(() => {
+      expect(editSpy).toHaveBeenCalledWith(
+        1,
+        'crop',
+        expect.objectContaining({ x: 10, y: 20, width: 100, height: 80 }),
+        'replace',
+      );
+    });
+  });
+
+  it('Use as favicon calls the use-as endpoint', async () => {
+    const useAsSpy = vi.spyOn(api, 'useMediaAsBrand').mockResolvedValue({
+      key: 'favicon',
+      url: '/storage/site/favicon_abc.png',
+    });
+
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await screen.findByTestId('use-as-panel');
+    fireEvent.click(screen.getByTestId('use-as-favicon'));
+
+    await waitFor(() => {
+      expect(useAsSpy).toHaveBeenCalledWith(1, 'favicon');
+    });
+    expect(await screen.findByText(/set as favicon/i)).toBeTruthy();
   });
 
   it('mobile layout uses chip row and full-screen detail overlay', async () => {

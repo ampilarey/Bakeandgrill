@@ -205,6 +205,58 @@ final class MediaEditor
     }
 
     /**
+     * Center-crop to a square PNG (e.g. favicon) and store under site/.
+     *
+     * @return string Domain-relative /storage/... URL
+     */
+    public function makeSquarePngDerivative(Media $asset, int $size = 180): string
+    {
+        $sourcePath = $this->resolveSourcePath($asset, true);
+        $absolute = Storage::disk('public')->path($sourcePath);
+        if (!is_file($absolute)) {
+            abort(422, 'Source image file is missing.');
+        }
+        $image = $this->loadGd($absolute);
+        if ($image === false) {
+            abort(422, 'Could not load image for favicon.');
+        }
+
+        $srcW = imagesx($image);
+        $srcH = imagesy($image);
+        $side = min($srcW, $srcH);
+        $sx = (int) max(0, ($srcW - $side) / 2);
+        $sy = (int) max(0, ($srcH - $side) / 2);
+        $size = max(16, min(512, $size));
+
+        $dst = imagecreatetruecolor($size, $size);
+        if ($dst === false) {
+            imagedestroy($image);
+            abort(422, 'Could not allocate favicon canvas.');
+        }
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+        if ($transparent !== false) {
+            imagefilledrectangle($dst, 0, 0, $size, $size, $transparent);
+        }
+        imagecopyresampled($dst, $image, 0, 0, $sx, $sy, $size, $size, $side, $side);
+        imagedestroy($image);
+
+        ob_start();
+        imagepng($dst, null, 6);
+        $binary = (string) ob_get_clean();
+        imagedestroy($dst);
+        if ($binary === '') {
+            abort(422, 'Could not encode favicon PNG.');
+        }
+
+        $relative = 'site/favicon_' . Str::random(8) . '.png';
+        Storage::disk('public')->put($relative, $binary);
+
+        return '/storage/' . $relative;
+    }
+
+    /**
      * @param  array<string, mixed>  $params
      * @return array{contents: string, ext: string, mime: string, width: int, height: int}
      */
@@ -268,7 +320,9 @@ final class MediaEditor
     {
         $srcW = imagesx($image);
         $srcH = imagesy($image);
-        $keepAspect = (bool) ($params['keep_aspect'] ?? true);
+        $keepAspect = array_key_exists('maintain_aspect', $params)
+            ? (bool) $params['maintain_aspect']
+            : (bool) ($params['keep_aspect'] ?? true);
         $preset = (string) ($params['preset'] ?? '');
 
         [$tw, $th] = match ($preset) {

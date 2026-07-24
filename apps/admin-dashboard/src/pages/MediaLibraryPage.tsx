@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
+import Cropper, { type Area } from 'react-easy-crop';
+import 'react-easy-crop/react-easy-crop.css';
 import {
   Check, ChevronLeft, ChevronRight, Copy, Crop, FileText, Film, Folder,
   Image, Images, Music, Pencil, Plus, RefreshCw, RotateCw,
@@ -7,7 +9,7 @@ import {
 import {
   assignMediaCollections, createMediaCollection, deleteMedia, deleteMediaCollection,
   editMedia, getMedia, getMediaCollections, getMediaUsage, reconcileMedia,
-  restoreMedia, updateMedia, updateMediaCollection, uploadMedia,
+  restoreMedia, updateMedia, updateMediaCollection, uploadMedia, useMediaAsBrand,
   type MediaAsset, type MediaCollection, type MediaEditOp,
   type MediaEditResult, type MediaPaginationMeta, type MediaType, type MediaUsageItem,
 } from '../api';
@@ -15,6 +17,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { Btn, EmptyState, Modal, PageHeader, PageShell, Spinner } from '../components/SharedUI';
+import { useToast } from '../components/ui';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,11 +44,11 @@ function thumbSrc(asset: MediaAsset): string | null {
 
 /**
  * Append a version token so replace-mode edits (same path) reload in the browser.
- * Prefer checksum; fall back to updated_at / file_size.
+ * Prefer updated_at (always bumps on save), then checksum / id.
  */
 export function mediaPreviewSrc(url: string, asset: Pick<MediaAsset, 'checksum' | 'updated_at' | 'file_size' | 'id'>): string {
   if (!url) return url;
-  const token = asset.checksum || asset.updated_at || String(asset.file_size ?? '') || String(asset.id);
+  const token = asset.updated_at || asset.checksum || String(asset.id);
   if (!token) return url;
   const sep = url.includes('?') ? '&' : '?';
   return `${url}${sep}v=${encodeURIComponent(token)}`;
@@ -211,10 +214,105 @@ function AssetCard({
 
 type EditParams = Record<string, unknown>;
 
-function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditParams; onChange: (p: EditParams) => void }) {
+const CROP_ASPECTS: Array<{ label: string; value: number | undefined }> = [
+  { label: 'Free', value: undefined },
+  { label: '1:1', value: 1 },
+  { label: '4:3', value: 4 / 3 },
+  { label: '16:9', value: 16 / 9 },
+];
+
+const RESIZE_PRESETS = [1200, 800, 512, 256];
+
+function CropEditPanel({
+  params, onChange, asset,
+}: {
+  params: EditParams;
+  onChange: (p: EditParams) => void;
+  asset?: MediaAsset | null;
+}) {
+  const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 };
+  const [cropPos, setCropPos] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [aspect, setAspect] = useState<number | undefined>(undefined);
+  const imageSrc = asset?.url ? mediaPreviewSrc(asset.url, asset) : '';
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+
+  const onCropComplete = useCallback((_area: Area, pixels: Area) => {
+    onChange({
+      ...paramsRef.current,
+      x: Math.round(pixels.x),
+      y: Math.round(pixels.y),
+      width: Math.round(pixels.width),
+      height: Math.round(pixels.height),
+    });
+  }, [onChange]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="media-crop-panel">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {CROP_ASPECTS.map(({ label, value }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setAspect(value)}
+            style={{
+              height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+              border: aspect === value ? '2px solid #D4813A' : '1px solid #E8E0D8',
+              background: aspect === value ? '#FFF7ED' : '#fff',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div style={{ position: 'relative', width: '100%', height: 260, background: '#1C1408', borderRadius: 10, overflow: 'hidden' }}>
+        {imageSrc ? (
+          <Cropper
+            image={imageSrc}
+            crop={cropPos}
+            zoom={zoom}
+            aspect={aspect}
+            onCropChange={setCropPos}
+            onZoomChange={setZoom}
+            onCropComplete={onCropComplete}
+            objectFit="contain"
+            showGrid
+          />
+        ) : (
+          <div style={{ color: '#fff', padding: 16 }}>No image</div>
+        )}
+      </div>
+      <label style={labelStyle}>Zoom
+        <input
+          type="range"
+          min={1}
+          max={3}
+          step={0.05}
+          value={zoom}
+          onChange={(e) => setZoom(Number(e.target.value))}
+          style={{ width: '100%', marginTop: 6, minHeight: 44 }}
+        />
+      </label>
+      <div style={{ fontSize: 11, color: '#9C8E7E' }}>
+        Selection: {Number(params.width) || '—'} × {Number(params.height) || '—'}
+        {(params.x != null || params.y != null) ? ` @ ${Number(params.x) || 0},${Number(params.y) || 0}` : ''}
+      </div>
+    </div>
+  );
+}
+
+function EditOpPanel({
+  op, params, onChange, asset,
+}: {
+  op: MediaEditOp;
+  params: EditParams;
+  onChange: (p: EditParams) => void;
+  asset?: MediaAsset | null;
+}) {
   const set = (k: string, v: unknown) => onChange({ ...params, [k]: v });
   const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 };
-  const inputStyle: CSSProperties = { width: '100%', height: 38, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 };
+  const inputStyle: CSSProperties = { width: '100%', height: 44, minHeight: 44, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' };
 
   switch (op) {
     case 'convert':
@@ -232,42 +330,58 @@ function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditPa
           </label>
         </div>
       );
-    case 'resize':
+    case 'resize': {
+      const w = params.width as number | undefined;
+      const h = params.height as number | undefined;
+      const srcW = asset?.width ?? null;
+      const srcH = asset?.height ?? null;
+      const maintain = (params.maintain_aspect as boolean) ?? true;
+      let hint = 'Set width and/or height';
+      if (w && h) hint = `New size: ${w} × ${h} px`;
+      else if (w && maintain && srcW && srcH) hint = `New size: ${w} × ${Math.round((w * srcH) / srcW)} px`;
+      else if (h && maintain && srcW && srcH) hint = `New size: ${Math.round((h * srcW) / srcH)} × ${h} px`;
+      else if (w) hint = `Width ${w}px (height auto)`;
+      else if (h) hint = `Height ${h}px (width auto)`;
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {RESIZE_PRESETS.map((px) => (
+              <button
+                key={px}
+                type="button"
+                onClick={() => onChange({ ...params, width: px, height: maintain && srcW && srcH ? Math.round((px * srcH) / srcW) : params.height, maintain_aspect: maintain, keep_aspect: maintain })}
+                style={{
+                  height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+                  border: w === px ? '2px solid #D4813A' : '1px solid #E8E0D8',
+                  background: w === px ? '#FFF7ED' : '#fff',
+                }}
+              >
+                {px}px
+              </button>
+            ))}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <label style={labelStyle}>Width (px)
-              <input type="number" min={1} value={(params.width as number) ?? ''} onChange={(e) => set('width', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto" style={{ ...inputStyle, marginTop: 4 }} />
+              <input type="number" min={1} value={w ?? ''} onChange={(e) => set('width', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto" style={{ ...inputStyle, marginTop: 4 }} />
             </label>
             <label style={labelStyle}>Height (px)
-              <input type="number" min={1} value={(params.height as number) ?? ''} onChange={(e) => set('height', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto" style={{ ...inputStyle, marginTop: 4 }} />
+              <input type="number" min={1} value={h ?? ''} onChange={(e) => set('height', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto" style={{ ...inputStyle, marginTop: 4 }} />
             </label>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-            <input type="checkbox" checked={(params.maintain_aspect as boolean) ?? true} onChange={(e) => set('maintain_aspect', e.target.checked)} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
+            <input
+              type="checkbox"
+              checked={maintain}
+              onChange={(e) => onChange({ ...params, maintain_aspect: e.target.checked, keep_aspect: e.target.checked })}
+            />
             Maintain aspect ratio
           </label>
+          <div style={{ fontSize: 12, color: '#6B5D4F' }}>{hint}{srcW && srcH ? ` · Original ${srcW}×${srcH}` : ''}</div>
         </div>
       );
+    }
     case 'crop':
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <label style={labelStyle}>X offset
-              <input type="number" min={0} value={(params.x as number) ?? 0} onChange={(e) => set('x', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-            <label style={labelStyle}>Y offset
-              <input type="number" min={0} value={(params.y as number) ?? 0} onChange={(e) => set('y', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-            <label style={labelStyle}>Width
-              <input type="number" min={1} value={(params.width as number) ?? ''} onChange={(e) => set('width', e.target.value ? Number(e.target.value) : undefined)} placeholder="required" style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-            <label style={labelStyle}>Height
-              <input type="number" min={1} value={(params.height as number) ?? ''} onChange={(e) => set('height', e.target.value ? Number(e.target.value) : undefined)} placeholder="required" style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-          </div>
-        </div>
-      );
+      return <CropEditPanel params={params} onChange={onChange} asset={asset} />;
     case 'rotate':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -278,12 +392,12 @@ function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditPa
                   key={d}
                   type="button"
                   onClick={() => set('degrees', d)}
-                  style={{ height: 36, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid #D4813A' : '1px solid #E8E0D8', background: (params.degrees as number) === d ? '#FFF7ED' : '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                  style={{ height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid #D4813A' : '1px solid #E8E0D8', background: (params.degrees as number) === d ? '#FFF7ED' : '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
                 >
                   {d}°
                 </button>
               ))}
-              <input type="number" min={1} max={359} value={![90, 180, 270].includes(params.degrees as number) ? (params.degrees as number) ?? '' : ''} onChange={(e) => set('degrees', e.target.value ? Number(e.target.value) : 90)} placeholder="Custom" style={{ flex: 1, minWidth: 60, height: 36, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 }} />
+              <input type="number" min={1} max={359} value={![90, 180, 270].includes(params.degrees as number) ? (params.degrees as number) ?? '' : ''} onChange={(e) => set('degrees', e.target.value ? Number(e.target.value) : 90)} placeholder="Custom" style={{ flex: 1, minWidth: 60, height: 44, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 }} />
             </div>
           </label>
         </div>
@@ -317,6 +431,7 @@ export function MediaLibraryPage() {
   const isMobile = useIsMobile();
   const { can } = useCurrentUserPermissions();
   const canManage = can('media.manage');
+  const toast = useToast();
 
   // List state
   const [assets, setAssets] = useState<MediaAsset[]>([]);
@@ -359,6 +474,7 @@ export function MediaLibraryPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const [canRestore, setCanRestore] = useState(false);
+  const [useAsSaving, setUseAsSaving] = useState(false);
 
   // Upload
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -513,6 +629,25 @@ export function MediaLibraryPage() {
       setEditError((e as Error).message || 'Restore failed');
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleUseAs = async (key: 'favicon' | 'logo' | 'logo_dark' | 'og_image') => {
+    if (!selected) return;
+    setUseAsSaving(true);
+    try {
+      await useMediaAsBrand(selected.id, key);
+      const labels: Record<typeof key, string> = {
+        favicon: 'favicon',
+        logo: 'logo',
+        logo_dark: 'logo (dark)',
+        og_image: 'OG image',
+      };
+      toast.success(`Set as ${labels[key]}`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to set brand image');
+    } finally {
+      setUseAsSaving(false);
     }
   };
 
@@ -1055,6 +1190,36 @@ export function MediaLibraryPage() {
               )}
             </div>
 
+            {/* Use as brand (images only) */}
+            {selected.media_type === 'image' && canManage && (
+              <div style={{ marginBottom: 14 }} data-testid="use-as-panel">
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>Use as…</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {([
+                    { key: 'favicon' as const, label: 'Favicon' },
+                    { key: 'logo' as const, label: 'Logo' },
+                    { key: 'logo_dark' as const, label: 'Logo (dark)' },
+                    { key: 'og_image' as const, label: 'OG image' },
+                  ]).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      data-testid={`use-as-${key}`}
+                      disabled={useAsSaving}
+                      onClick={() => void handleUseAs(key)}
+                      style={{
+                        height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8,
+                        border: '1px solid #E8E0D8', background: '#fff', cursor: useAsSaving ? 'wait' : 'pointer',
+                        fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#3D2B1F',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Edit tools (images only) */}
             {selected.media_type === 'image' && canManage && (
               <div style={{ marginBottom: 14 }}>
@@ -1066,9 +1231,9 @@ export function MediaLibraryPage() {
                       type="button"
                       onClick={() => { setEditOp(editOp === op ? null : op); setEditParams({}); setEditError(''); }}
                       style={{
-                        height: 32, padding: '0 10px', borderRadius: 8, border: editOp === op ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+                        height: 44, minHeight: 44, padding: '0 12px', borderRadius: 8, border: editOp === op ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
                         background: editOp === op ? '#FFF7ED' : '#F8F6F3', cursor: 'pointer',
-                        fontFamily: 'inherit', fontSize: 11, fontWeight: 600, color: editOp === op ? '#3D2B1F' : '#6B5D4F',
+                        fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: editOp === op ? '#3D2B1F' : '#6B5D4F',
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                       }}
                     >
@@ -1079,17 +1244,20 @@ export function MediaLibraryPage() {
 
                 {editOp && (
                   <div style={{ background: '#F8F6F3', borderRadius: 10, padding: 12, border: '1px solid #E8E0D8' }}>
-                    <EditOpPanel op={editOp} params={editParams} onChange={setEditParams} />
+                    <EditOpPanel op={editOp} params={editParams} onChange={setEditParams} asset={selected} />
                     {editError && <p style={{ color: '#b91c1c', fontSize: 12, margin: '8px 0 0' }}>{editError}</p>}
                     <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
                       <Btn
                         onClick={() => setShowSaveModeModal(true)}
-                        disabled={editSaving}
-                        style={{ flex: 1 }}
+                        disabled={
+                          editSaving
+                          || (editOp === 'crop' && !(Number(editParams.width) > 0 && Number(editParams.height) > 0))
+                        }
+                        style={{ flex: 1, minHeight: 44 }}
                       >
                         {editSaving ? 'Applying…' : 'Apply'}
                       </Btn>
-                      <Btn variant="ghost" onClick={() => { setEditOp(null); setEditParams({}); }}>Cancel</Btn>
+                      <Btn variant="ghost" onClick={() => { setEditOp(null); setEditParams({}); }} style={{ minHeight: 44 }}>Cancel</Btn>
                     </div>
                   </div>
                 )}
