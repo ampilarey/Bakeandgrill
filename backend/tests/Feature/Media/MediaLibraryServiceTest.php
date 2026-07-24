@@ -1,0 +1,95 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Media;
+
+use App\Domains\Media\Services\MediaLibraryService;
+use App\Domains\Permissions\PermissionCatalogSync;
+use App\Models\Media;
+use App\Models\Role;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
+use Tests\TestCase;
+
+class MediaLibraryServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private MediaLibraryService $library;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('public');
+        Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'description' => '', 'is_active' => true]);
+        PermissionCatalogSync::sync();
+        $this->library = app(MediaLibraryService::class);
+    }
+
+    public function test_reconcile_catalogs_files_idempotently(): void
+    {
+        Storage::disk('public')->put('menu/burger.jpg', $this->tinyJpeg());
+        Storage::disk('public')->put('thumbs/burger.jpg', $this->tinyJpeg()); // derived — skip as primary
+
+        $first = $this->library->reconcile();
+        $this->assertGreaterThanOrEqual(1, $first['created']);
+        $this->assertSame(1, Media::where('path', 'menu/burger.jpg')->count());
+        $this->assertSame(0, Media::where('path', 'thumbs/burger.jpg')->count());
+
+        $second = $this->library->reconcile();
+        $this->assertSame(0, $second['created']);
+        $this->assertSame(1, Media::count());
+    }
+
+    public function test_checksum_dedupe_returns_existing(): void
+    {
+        $bytes = $this->tinyJpeg();
+        Storage::disk('public')->put('library/images/orig.jpg', $bytes);
+        $first = $this->library->registerPath('library/images/orig.jpg', 'library');
+        $this->assertNotNull($first);
+        $this->assertNotNull($first->checksum);
+
+        Storage::disk('public')->put('library/images/copy.jpg', $bytes);
+        $second = $this->library->registerPath('library/images/copy.jpg', 'library');
+        $this->assertNotNull($second);
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame(1, Media::count());
+    }
+
+    public function test_media_type_inferred_by_mime(): void
+    {
+        $this->assertSame('image', $this->library->mediaTypeFromMime('image/jpeg'));
+        $this->assertSame('video', $this->library->mediaTypeFromMime('video/mp4'));
+        $this->assertSame('audio', $this->library->mediaTypeFromMime('audio/mpeg'));
+        $this->assertSame('document', $this->library->mediaTypeFromMime('application/pdf'));
+        $this->assertNull($this->library->mediaTypeFromMime('text/plain'));
+    }
+
+    public function test_derived_files_not_primary(): void
+    {
+        $this->assertTrue($this->library->isDerivedPath('menu/thumbs/x.jpg'));
+        $this->assertTrue($this->library->isDerivedPath('thumbs/x.jpg'));
+        $this->assertTrue($this->library->isDerivedPath('menu-masters/x.jpg'));
+        $this->assertFalse($this->library->isDerivedPath('menu/x.jpg'));
+    }
+
+    private function tinyJpeg(): string
+    {
+        $img = imagecreatetruecolor(10, 10);
+        ob_start();
+        imagejpeg($img, null, 80);
+        imagedestroy($img);
+
+        return (string) ob_get_clean();
+    }
+
+    private function jpegUpload(string $name): UploadedFile
+    {
+        return UploadedFile::fake()->image($name, 200, 150);
+    }
+}

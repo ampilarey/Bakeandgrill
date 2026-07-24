@@ -718,6 +718,21 @@ class ContentController extends Controller
         $posterUrl = '/storage/' . ltrim($posterRel, '/');
         $thumbUrl = '/storage/' . ltrim($thumbRel, '/');
 
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('media_assets')) {
+                app(\App\Domains\Media\Services\MediaLibraryService::class)->registerPath(
+                    $videoRel,
+                    'content',
+                    $request->user(),
+                    null,
+                    $thumbUrl,
+                    null,
+                );
+            }
+        } catch (\Throwable) {
+            // best-effort catalog
+        }
+
         $this->audit->log(
             action: 'content.video_uploaded',
             modelType: SiteSetting::class,

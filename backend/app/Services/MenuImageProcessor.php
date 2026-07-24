@@ -104,6 +104,8 @@ class MenuImageProcessor
             throw new RuntimeException('Could not save uploaded media file.');
         }
 
+        $this->registerInLibrary($relative);
+
         return $relative;
     }
 
@@ -218,6 +220,8 @@ class MenuImageProcessor
         if (file_put_contents($absolute, $binary) === false) {
             throw new RuntimeException('Could not save processed menu image.');
         }
+
+        $this->registerInLibrary($relative);
 
         return $relative;
     }
@@ -337,5 +341,21 @@ class MenuImageProcessor
             'webp' => function_exists('imagecreatefromwebp') ? (@imagecreatefromwebp($path) ?: null) : null,
             default => null,
         };
+    }
+
+    /**
+     * Optional inline catalog hook — never throws into uploaders.
+     */
+    private function registerInLibrary(string $relativePath): void
+    {
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('media_assets')) {
+                return;
+            }
+            app(\App\Domains\Media\Services\MediaLibraryService::class)
+                ->registerPath($relativePath, 'other');
+        } catch (\Throwable) {
+            // Catalog is best-effort; uploaders must keep working.
+        }
     }
 }

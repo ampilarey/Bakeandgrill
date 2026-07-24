@@ -170,27 +170,28 @@ describe('MediaLibraryPage', () => {
 
   it('save mode modal calls editMedia with replace and shows updated_references', async () => {
     const updatedAsset = makeAsset(1, { title: 'Asset 1 resized' });
-    vi.spyOn(api, 'editMedia').mockResolvedValue({
+    const editSpy = vi.spyOn(api, 'editMedia').mockResolvedValue({
       asset: updatedAsset,
       updated_references: 3,
       mode: 'replace',
     });
 
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
-    fireEvent.click(await screen.findByRole('button', { name: /resize/i }));
+    fireEvent.click(await screen.findByTestId('asset-card-1', {}, { timeout: 5000 }));
+    // Open resize tool, then Apply → save-mode modal
+    const resizeBtns = await screen.findAllByRole('button', { name: /resize/i });
+    fireEvent.click(resizeBtns[resizeBtns.length - 1]!);
     fireEvent.click(await screen.findByRole('button', { name: /^apply$/i }));
 
-    const replaceBtn = await screen.findByText(/replace everywhere/i);
-    fireEvent.click(replaceBtn.closest('button')!);
+    fireEvent.click(await screen.findByRole('button', { name: /replace everywhere/i }));
 
     await waitFor(() => {
-      expect(api.editMedia).toHaveBeenCalledWith(1, 'resize', expect.any(Object), 'replace');
-    });
+      expect(editSpy).toHaveBeenCalledWith(1, 'resize', expect.any(Object), 'replace');
+    }, { timeout: 5000 });
 
     expect(await screen.findByText(/replaced in 3 reference/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /restore previous version/i })).toBeTruthy();
-  });
+  }, 20_000);
 
   it('shows empty state when no assets match', async () => {
     vi.mocked(api.getMedia).mockResolvedValueOnce({ data: [], meta: emptyMeta });

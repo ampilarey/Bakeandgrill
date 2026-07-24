@@ -111,6 +111,38 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
     // ─── Image Upload (Admin) ──────────────────────────────────────────────────
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->post('/admin/upload-image', [App\Http\Controllers\Api\ImageUploadController::class, 'store']);
 
+    // ─── Central Media Library ────────────────────────────────────────────────
+    Route::middleware(['auth:sanctum', 'staff.token'])->prefix('admin/media')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\MediaLibraryController::class, 'index'])
+            ->middleware('permission:media.view');
+        Route::post('/', [App\Http\Controllers\Api\MediaLibraryController::class, 'store'])
+            ->middleware('permission:media.manage');
+        Route::post('/reconcile', [App\Http\Controllers\Api\MediaLibraryController::class, 'reconcile'])
+            ->middleware('permission:media.manage');
+
+        Route::get('/collections', [App\Http\Controllers\Api\MediaCollectionController::class, 'index'])
+            ->middleware('permission:media.view');
+        Route::post('/collections', [App\Http\Controllers\Api\MediaCollectionController::class, 'store'])
+            ->middleware('permission:media.manage');
+        Route::patch('/collections/{collection}', [App\Http\Controllers\Api\MediaCollectionController::class, 'update'])
+            ->middleware('permission:media.manage');
+        Route::delete('/collections/{collection}', [App\Http\Controllers\Api\MediaCollectionController::class, 'destroy'])
+            ->middleware('permission:media.manage');
+
+        Route::patch('/{media}', [App\Http\Controllers\Api\MediaLibraryController::class, 'update'])
+            ->middleware('permission:media.manage');
+        Route::delete('/{media}', [App\Http\Controllers\Api\MediaLibraryController::class, 'destroy'])
+            ->middleware('permission:media.manage');
+        Route::get('/{media}/usage', [App\Http\Controllers\Api\MediaLibraryController::class, 'usage'])
+            ->middleware('permission:media.view');
+        Route::post('/{media}/edit', [App\Http\Controllers\Api\MediaLibraryController::class, 'edit'])
+            ->middleware('permission:media.manage');
+        Route::post('/{media}/restore', [App\Http\Controllers\Api\MediaLibraryController::class, 'restore'])
+            ->middleware('permission:media.manage');
+        Route::post('/{media}/collections', [App\Http\Controllers\Api\MediaLibraryController::class, 'syncCollections'])
+            ->middleware('permission:media.manage');
+    });
+
     // ─── Staff Management — per-action permissions ──────────────────────────────
     Route::prefix('admin/staff')->middleware(['auth:sanctum', 'staff.token'])->group(function () {
         Route::get('/', [App\Http\Controllers\Api\StaffController::class, 'index'])->middleware('permission:staff.view');

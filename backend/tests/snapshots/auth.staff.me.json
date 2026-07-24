@@ -72,6 +72,8 @@
             "loyalty.manage",
             "loyalty.redeem",
             "loyalty.view",
+            "media.manage",
+            "media.view",
             "menu.manage",
             "menu.prepared_stock",
             "menu.view",

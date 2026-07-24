@@ -41,6 +41,8 @@ final class PermissionCatalog
         'sms.scheduled.manage' => ['integrations.sms', 'sms_marketing.manage'],
         'sms.campaigns.send' => ['integrations.sms', 'sms_marketing.manage'],
         'sms.transactional.manage' => ['integrations.sms', 'sms_marketing.manage'],
+        'media.view' => ['website.manage', 'menu.manage'],
+        'media.manage' => ['website.manage'],
         'webhooks.manage' => ['integrations.webhooks'],
         'xero.manage' => ['integrations.xero'],
         'users.view' => ['staff.view'],
@@ -218,6 +220,8 @@ final class PermissionCatalog
             ['group' => 'Menu', 'slug' => 'menu.view', 'name' => 'View menu'],
             ['group' => 'Menu', 'slug' => 'menu.manage', 'name' => 'Manage menu'],
             ['group' => 'Menu', 'slug' => 'menu.prepared_stock', 'name' => 'Adjust prepared menu stock at POS', 'description' => 'Add or remove ready-made menu item counts from the POS Operations panel'],
+            ['group' => 'Media', 'slug' => 'media.view', 'name' => 'View media library', 'description' => 'Browse the Media Library and pick assets'],
+            ['group' => 'Media', 'slug' => 'media.manage', 'name' => 'Manage media library', 'description' => 'Upload, edit, delete, and reconcile media'],
 
             // Finance & other admin (retained)
             ['group' => 'Finance', 'slug' => 'finance.view', 'name' => 'View finances'],

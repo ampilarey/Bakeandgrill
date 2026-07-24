@@ -203,6 +203,12 @@ Schedule::command('media:prune-unreferenced --days=7')
     ->onFailure($alertOnFailure('media:prune-unreferenced'))
     ->after($trackSuccess('media:prune-unreferenced'));
 
+Schedule::command('media:backfill')
+    ->dailyAt('04:45')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('media:backfill'))
+    ->after($trackSuccess('media:backfill'));
+
 Schedule::command('insights:compute-item-pairs')
     ->dailyAt('04:00')
     ->withoutOverlapping()
