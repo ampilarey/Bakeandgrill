@@ -65,6 +65,7 @@ const ServiceAvailabilityPage = lazyWithRetry(() => import('./pages/ServiceAvail
 const DeliverySettingsPage    = lazyWithRetry(() => import('./pages/DeliverySettingsPage'));
 const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
+const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -492,6 +493,11 @@ export default function App() {
                 <Route path="system-health" element={
                   <PermissionGuard user={user} permission="website.manage">
                     <SystemHealthPage />
+                  </PermissionGuard>
+                } />
+                <Route path="media" element={
+                  <PermissionGuard user={user} permission="media.view">
+                    <MediaLibraryPage />
                   </PermissionGuard>
                 } />
                 <Route path="*" element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />
