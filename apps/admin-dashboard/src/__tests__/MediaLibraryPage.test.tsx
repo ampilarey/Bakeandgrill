@@ -308,12 +308,16 @@ describe('MediaLibraryPage', () => {
     expect(after).toContain(encodeURIComponent('2026-07-23T18:00:00Z'));
   });
 
-  it('rotate tool shows a live preview', async () => {
+  it('rotate tool shows a live preview with controls', async () => {
     renderWithRouter(<MediaLibraryPage />);
     fireEvent.click(await screen.findByTestId('asset-card-1'));
     fireEvent.click(screen.getByRole('button', { name: /^rotate$/i }));
-    expect(await screen.findByTestId('edit-live-preview')).toBeTruthy();
-    expect(screen.getByText(/rotated 90/i)).toBeTruthy();
+    expect(await screen.findByTestId('media-rotate-panel')).toBeTruthy();
+    expect(screen.getByTestId('edit-live-preview')).toBeTruthy();
+    expect(screen.getByTestId('rotate-angle-slider')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /flip horizontal/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /rotate right 90/i }));
+    expect(screen.getByText(/preview: 180/i)).toBeTruthy();
   });
 
   it('crop confirm sends croppedAreaPixels as crop params', async () => {

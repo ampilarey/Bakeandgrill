@@ -383,18 +383,42 @@ final class MediaEditor
     {
         $flip = (string) ($params['flip'] ?? '');
         $degrees = (int) ($params['degrees'] ?? 0);
+        $degrees = $degrees % 360;
+        if ($degrees < 0) {
+            $degrees += 360;
+        }
+
+        $didSomething = false;
 
         if ($flip === 'horizontal') {
             imageflip($image, IMG_FLIP_HORIZONTAL);
+            $didSomething = true;
         } elseif ($flip === 'vertical') {
             imageflip($image, IMG_FLIP_VERTICAL);
-        } elseif (in_array($degrees, [90, 180, 270, -90], true)) {
-            $rotated = imagerotate($image, -$degrees, 0);
+            $didSomething = true;
+        } elseif ($flip === 'both') {
+            imageflip($image, IMG_FLIP_BOTH);
+            $didSomething = true;
+        }
+
+        if ($degrees !== 0) {
+            // imagerotate() is counter-clockwise for positive angles; UI uses clockwise.
+            $bg = imagecolorallocate($image, 0, 0, 0);
+            if ($bg === false) {
+                $bg = 0;
+            }
+            $rotated = imagerotate($image, -$degrees, $bg);
             imagedestroy($image);
+            if ($rotated === false) {
+                abort(422, 'Could not rotate image.');
+            }
             $image = $rotated;
-        } else {
+            $didSomething = true;
+        }
+
+        if (!$didSomething) {
             imagedestroy($image);
-            abort(422, 'Provide flip=horizontal|vertical or degrees=90|180|270.');
+            abort(422, 'Provide flip=horizontal|vertical|both and/or degrees (1–359).');
         }
 
         return $this->encode($image, 'jpeg', 82);

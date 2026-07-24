@@ -84,6 +84,21 @@ class MediaEditTest extends TestCase
         $this->assertGreaterThan(0, MediaAssetVersion::where('media_asset_id', $this->asset->id)->count());
     }
 
+    public function test_rotate_free_angle_and_flip(): void
+    {
+        $this->postJson("/api/admin/media/{$this->asset->id}/edit", [
+            'op' => 'rotate',
+            'params' => ['degrees' => 45, 'flip' => 'horizontal'],
+            'mode' => 'copy',
+        ])->assertOk()->assertJsonPath('mode', 'copy');
+
+        $this->postJson("/api/admin/media/{$this->asset->id}/edit", [
+            'op' => 'rotate',
+            'params' => ['flip' => 'vertical'],
+            'mode' => 'copy',
+        ])->assertOk();
+    }
+
     public function test_convert_webp_when_supported(): void
     {
         if (!ImageCapabilities::supportsWebp()) {

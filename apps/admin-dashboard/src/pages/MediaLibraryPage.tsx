@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Drag
 import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import {
-  Check, ChevronLeft, ChevronRight, Copy, Crop, FileText, Film, Folder,
-  Image, Images, Music, Pencil, Plus, RefreshCw, RotateCw,
+  Check, ChevronLeft, ChevronRight, Copy, Crop, FileText, Film, FlipHorizontal2, FlipVertical2, Folder,
+  Image, Images, Music, Pencil, Plus, RefreshCw, RotateCcw, RotateCw,
   Search, Sliders, Trash2, Upload, X,
 } from 'lucide-react';
 import {
@@ -248,9 +248,8 @@ function EditTransformPreview({
   op: MediaEditOp;
   params: EditParams;
 }) {
-  if (op === 'crop' || !asset.url) return null;
+  if (op === 'crop' || op === 'rotate' || !asset.url) return null;
   const src = mediaPreviewSrc(asset.url, asset);
-  const degrees = op === 'rotate' ? (Number(params.degrees) || 90) : 0;
 
   let boxH = 180;
   let imgStyle: CSSProperties = {
@@ -259,10 +258,6 @@ function EditTransformPreview({
     objectFit: 'contain',
     transition: 'transform 0.2s ease',
   };
-
-  if (op === 'rotate') {
-    imgStyle = { ...imgStyle, transform: `rotate(${degrees}deg)` };
-  }
 
   if (op === 'resize' || op === 'thumbnail') {
     const srcW = asset.width || 400;
@@ -295,12 +290,11 @@ function EditTransformPreview({
   }
 
   const caption =
-    op === 'rotate' ? `Rotated ${degrees}° (preview)`
-      : op === 'resize' ? 'Resize preview'
-        : op === 'thumbnail' ? 'Thumbnail frame preview'
-          : op === 'convert' ? `Convert → ${String(params.format || 'jpeg').toUpperCase()}`
-            : op === 'optimize' ? `Optimize · quality ${Number(params.quality) || 80}`
-              : 'Preview';
+    op === 'resize' ? 'Resize preview'
+      : op === 'thumbnail' ? 'Thumbnail frame preview'
+        : op === 'convert' ? `Convert → ${String(params.format || 'jpeg').toUpperCase()}`
+          : op === 'optimize' ? `Optimize · quality ${Number(params.quality) || 80}`
+            : 'Preview';
 
   return (
     <div data-testid="edit-live-preview" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -320,6 +314,180 @@ function EditTransformPreview({
         }}
       >
         <img key={src} src={src} alt="" style={imgStyle} />
+      </div>
+    </div>
+  );
+}
+
+function normalizeDegrees(d: number): number {
+  let n = Math.round(d) % 360;
+  if (n < 0) n += 360;
+  return n;
+}
+
+function RotateEditPanel({
+  params, onChange, asset,
+}: {
+  params: EditParams;
+  onChange: (p: EditParams) => void;
+  asset?: MediaAsset | null;
+}) {
+  const degrees = normalizeDegrees(Number(params.degrees) || 0);
+  const flip = String(params.flip || '') as '' | 'horizontal' | 'vertical' | 'both';
+  const src = asset?.url ? mediaPreviewSrc(asset.url, asset) : '';
+  const srcW = asset?.width || 400;
+  const srcH = asset?.height || 300;
+
+  const setDegrees = (d: number) => onChange({ ...params, degrees: normalizeDegrees(d), flip: flip || undefined });
+  const bump = (delta: number) => setDegrees(degrees + delta);
+  const toggleFlip = (axis: 'horizontal' | 'vertical') => {
+    let next: '' | 'horizontal' | 'vertical' | 'both' = flip;
+    if (axis === 'horizontal') {
+      if (flip === 'horizontal') next = '';
+      else if (flip === 'vertical') next = 'both';
+      else if (flip === 'both') next = 'vertical';
+      else next = 'horizontal';
+    } else {
+      if (flip === 'vertical') next = '';
+      else if (flip === 'horizontal') next = 'both';
+      else if (flip === 'both') next = 'horizontal';
+      else next = 'vertical';
+    }
+    onChange({ ...params, degrees, flip: next || undefined });
+  };
+
+  const transforms: string[] = [];
+  if (flip === 'horizontal' || flip === 'both') transforms.push('scaleX(-1)');
+  if (flip === 'vertical' || flip === 'both') transforms.push('scaleY(-1)');
+  if (degrees) transforms.push(`rotate(${degrees}deg)`);
+
+  // After 90/270, dimensions swap; free angles expand the bounding box.
+  const rad = (degrees * Math.PI) / 180;
+  const boundW = Math.abs(srcW * Math.cos(rad)) + Math.abs(srcH * Math.sin(rad));
+  const boundH = Math.abs(srcW * Math.sin(rad)) + Math.abs(srcH * Math.cos(rad));
+  const outW = Math.round(boundW) || srcW;
+  const outH = Math.round(boundH) || srcH;
+
+  const chip = (active: boolean): CSSProperties => ({
+    height: 44, minHeight: 44, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
+    fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+    border: active ? '2px solid #D4813A' : '1px solid #E8E0D8',
+    background: active ? '#FFF7ED' : '#fff',
+    color: '#3D2B1F',
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="media-rotate-panel">
+      <div
+        data-testid="edit-live-preview"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 260,
+          width: '100%',
+          background: '#1C1408',
+          borderRadius: 10,
+          overflow: 'hidden',
+          padding: 16,
+          boxSizing: 'border-box',
+        }}
+      >
+        {src ? (
+          <img
+            key={src}
+            src={src}
+            alt=""
+            style={{
+              maxWidth: degrees % 180 === 90 ? 160 : 220,
+              maxHeight: 200,
+              objectFit: 'contain',
+              transform: transforms.join(' ') || undefined,
+              transition: 'transform 0.2s ease',
+            }}
+          />
+        ) : (
+          <div style={{ color: '#fff', fontSize: 13 }}>No image</div>
+        )}
+      </div>
+
+      <div style={{ fontSize: 12, color: '#6B5D4F' }}>
+        {degrees || flip
+          ? <>Preview: {degrees}°{flip ? ` · flip ${flip}` : ''} · ~{outW}×{outH} px</>
+          : 'Choose a rotation or flip'}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <button type="button" onClick={() => bump(-90)} style={chip(false)} aria-label="Rotate left 90 degrees">
+          <RotateCcw size={16} /> 90°
+        </button>
+        <button type="button" onClick={() => bump(90)} style={chip(false)} aria-label="Rotate right 90 degrees">
+          <RotateCw size={16} /> 90°
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleFlip('horizontal')}
+          style={chip(flip === 'horizontal' || flip === 'both')}
+          aria-label="Flip horizontal"
+        >
+          <FlipHorizontal2 size={16} /> Flip H
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleFlip('vertical')}
+          style={chip(flip === 'vertical' || flip === 'both')}
+          aria-label="Flip vertical"
+        >
+          <FlipVertical2 size={16} /> Flip V
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {[0, 90, 180, 270].map((d) => (
+          <button key={d} type="button" onClick={() => setDegrees(d)} style={chip(degrees === d && !flip)}>
+            {d}°
+          </button>
+        ))}
+      </div>
+
+      <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block' }}>
+        Angle ({degrees}°)
+        <input
+          type="range"
+          min={0}
+          max={359}
+          step={1}
+          value={degrees}
+          onChange={(e) => setDegrees(Number(e.target.value))}
+          style={{ width: '100%', marginTop: 6, minHeight: 44 }}
+          data-testid="rotate-angle-slider"
+        />
+      </label>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block' }}>
+          Exact degrees
+          <input
+            type="number"
+            min={0}
+            max={359}
+            value={degrees}
+            onChange={(e) => setDegrees(e.target.value === '' ? 0 : Number(e.target.value))}
+            style={{
+              display: 'block', width: '100%', marginTop: 4, height: 44, minHeight: 44,
+              border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px',
+              fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box',
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => onChange({ degrees: 0, flip: undefined })}
+          style={{ ...chip(false), height: 44 }}
+        >
+          Reset
+        </button>
       </div>
     </div>
   );
@@ -487,26 +655,7 @@ function EditOpPanel({
     case 'crop':
       return <CropEditPanel params={params} onChange={onChange} asset={asset} />;
     case 'rotate':
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {asset ? <EditTransformPreview asset={asset} op={op} params={{ ...params, degrees: params.degrees ?? 90 }} /> : null}
-          <label style={labelStyle}>Degrees
-            <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-              {[90, 180, 270].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => set('degrees', d)}
-                  style={{ height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid #D4813A' : '1px solid #E8E0D8', background: (params.degrees as number) === d ? '#FFF7ED' : '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
-                >
-                  {d}°
-                </button>
-              ))}
-              <input type="number" min={1} max={359} value={![90, 180, 270].includes(params.degrees as number) ? (params.degrees as number) ?? '' : ''} onChange={(e) => set('degrees', e.target.value ? Number(e.target.value) : 90)} placeholder="Custom" style={{ flex: 1, minWidth: 60, height: 44, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 }} />
-            </div>
-          </label>
-        </div>
-      );
+      return <RotateEditPanel params={params} onChange={onChange} asset={asset} />;
     case 'thumbnail':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1410,6 +1559,7 @@ export function MediaLibraryPage() {
                         disabled={
                           editSaving
                           || (editOp === 'crop' && !(Number(editParams.width) > 0 && Number(editParams.height) > 0))
+                          || (editOp === 'rotate' && !(Number(editParams.degrees) > 0 || Boolean(editParams.flip)))
                         }
                         style={{ flex: 1, minHeight: 44 }}
                       >
