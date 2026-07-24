@@ -34,6 +34,8 @@ class StoreOrderRequest extends FormRequest
             'notes' => 'nullable|string|max:1000',
             'customer_notes' => 'nullable|string|max:1000',
             'discount_amount' => 'nullable|numeric|min:0',
+            'discount_reason' => 'nullable|string|max:255',
+            'discount_reason_note' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|integer|exists:items,id',
             'items.*.variant_id' => 'nullable|integer|exists:variants,id',

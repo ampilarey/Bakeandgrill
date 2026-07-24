@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap, MapPin,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate, Smartphone, Shield, Bell, UserCog,
+  AlertTriangle, LayoutTemplate, Smartphone, Shield, Bell, UserCog, Percent,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -102,6 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/referrals',        icon: Share2,     label: 'Referrals',       permission: 'customers.manage',    description: 'Referral program' },
       { to: '/reviews',          icon: Star,       label: 'Reviews',         permission: 'customers.manage',    description: 'Moderate ratings' },
       { to: '/promotions', icon: Target,        label: 'Promotions',      permission: 'promotions.manage',  description: 'Discounts & offers' },
+      { to: '/discount-controls', icon: Percent, label: 'Discount Controls', permission: 'discounts.settings.manage', description: 'POS caps, reasons & SMS approval' },
       { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permission: 'sms_marketing.view', description: 'Campaigns, templates & sends' },
       { to: '/sms/control-center', icon: MessageSquare, label: 'SMS Control Center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms'], description: 'Toggles, wording & kill switch' },
     ],

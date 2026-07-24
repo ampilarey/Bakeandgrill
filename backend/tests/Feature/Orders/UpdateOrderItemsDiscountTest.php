@@ -137,6 +137,17 @@ class UpdateOrderItemsDiscountTest extends TestCase
             ]],
             'reprint_kitchen' => false,
             'discount_amount' => 9999,
+        ])->assertStatus(422);
+
+        // Exact subtotal still applies (hard ceiling = subtotal).
+        $this->patchJson("/api/orders/{$orderId}/items", [
+            'items' => [[
+                'item_id' => $this->item->id,
+                'name' => $this->item->name,
+                'quantity' => 1,
+            ]],
+            'reprint_kitchen' => false,
+            'discount_amount' => 100,
         ])->assertOk();
 
         $order = Order::findOrFail($orderId);

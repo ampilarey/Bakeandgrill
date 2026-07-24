@@ -64,6 +64,8 @@ class OrderItemController extends Controller
             'delivery_notes' => 'nullable|string|max:500',
             'delivery_location_link' => 'nullable|url|max:2048',
             'discount_amount' => 'nullable|numeric|min:0',
+            'discount_reason' => 'nullable|string|max:255',
+            'discount_reason_note' => 'nullable|string|max:255',
         ]);
 
         $reprintKitchen = (bool) ($validated['reprint_kitchen'] ?? true);
@@ -158,16 +160,26 @@ class OrderItemController extends Controller
                 $subtotalLaar = (int) round(
                     (float) $updated->items()->sum(\DB::raw('total_price')) * 100,
                 );
-                $discountLaar = max(0, min((int) round($discountAmount * 100), $subtotalLaar));
+                $requestedLaar = max(0, (int) round($discountAmount * 100));
+                $user = $request->user();
+                $actor = $user instanceof \App\Models\User ? $user : null;
 
-                if ($discountLaar > 0) {
-                    $user = $request->user();
-                    if (!$user instanceof \App\Models\User || !$user->hasPermission('promotions.discounts')) {
-                        abort(403, 'You do not have permission to apply manual discounts.');
-                    }
-                }
+                $decision = app(\App\Domains\Orders\Services\ManualDiscountPolicy::class)->authorizeAndClamp(
+                    $actor,
+                    $subtotalLaar,
+                    $requestedLaar,
+                    isset($validated['discount_reason']) ? (string) $validated['discount_reason'] : null,
+                    isset($validated['discount_reason_note']) ? (string) $validated['discount_reason_note'] : null,
+                    (int) $updated->id,
+                    null,
+                    viaApprovalConfirm: false,
+                    request: $request,
+                );
 
-                $meta['manual_discount_laar'] = $discountLaar;
+                $meta['manual_discount_laar'] = $decision->discountLaar;
+                $meta['manual_discount_reason'] = $decision->reason;
+                $meta['manual_discount_reason_note'] = $decision->reasonNote;
+                $meta['manual_discount_approved_by'] = $decision->approvedByUserId;
             }
 
             if ($meta !== []) {

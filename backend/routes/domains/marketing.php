@@ -108,6 +108,12 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
         Route::post('/admin/discount-cards/{id}/void', [App\Http\Controllers\Api\DiscountCardController::class, 'voidCard']);
     });
 
+    // POS Discount Controls (caps, reasons, SMS approval)
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:discounts.settings.manage'])->group(function () {
+        Route::get('/admin/discounts/controls', [App\Http\Controllers\Api\DiscountControlsController::class, 'show']);
+        Route::patch('/admin/discounts/controls', [App\Http\Controllers\Api\DiscountControlsController::class, 'update']);
+    });
+
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.analytics'])->group(function () {
         Route::get('/admin/marketing/item-pairs', [App\Http\Controllers\Api\ItemPairAdminController::class, 'index']);
     });

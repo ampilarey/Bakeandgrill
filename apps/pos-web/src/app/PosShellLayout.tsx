@@ -19,6 +19,7 @@ import { ExpensesPanel } from '../components/ExpensesPanel';
 import { PosPreferencesModal } from '../components/PosPreferencesModal';
 import { SideDrawer } from '../components/SideDrawer';
 import { ChargeOverlay } from '../components/ChargeOverlay';
+import { DiscountApprovalModal } from '../components/DiscountApprovalModal';
 import { OfflineSyncPanel } from '../components/OfflineSyncPanel';
 import type { OfflineOrderRecord } from '../offline/db';
 import { ReceiptActionsBanner } from '../components/ReceiptActionsBanner';
@@ -28,13 +29,14 @@ import { RequestItemModal } from '../components/RequestItemModal';
 import { MyPurchaseRequestsPanel } from '../components/MyPurchaseRequestsPanel';
 import { AssignedBuyingListPanel } from '../components/AssignedBuyingListPanel';
 import { POS_BUILD_INFO } from '../posBuildInfo';
-import { closeTable, mergeTables, openTable } from '../api';
+import { closeTable, mergeTables, openTable, validateManualDiscountInput } from '../api';
 import { palette } from '../theme';
 import { validateDeliveryDetails, type PosOrderType } from '../orderTypes';
 import type { CartItem } from '../types';
 import { usePosAppContext } from './PosAppProvider';
 import { paneTitle, Banner, NoticeBanner, shouldShowStatusBanner } from './posUiHelpers';
 import type { Pane } from './types';
+import { useMemo } from 'react';
 
 /** FIX 9: humanise "cached tax settings from …" age for the offline banner. */
 function formatSettingsAge(ms: number): string {
@@ -90,7 +92,7 @@ export function PosShellLayout() {
     packagingPickerLines, handlePackagingReconcileConfirm,
     deliveryDetails, setDeliveryDetails,
     customerAddresses, selectedDeliveryAddressId, setSelectedDeliveryAddressId, applyPosDeliveryAddress, tables,
-    selectedTableId, setSelectedTableId, quickNotes, smsNotifications, notePickerKey,
+    selectedTableId, setSelectedTableId, quickNotes, smsNotifications, discountControls, notePickerKey,
     setNotePickerKey, menu, cart, deliveryFeeEst, ops, filteredItems, refreshOpenTickets,
     order, chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshAll,
     refreshTables, isRefreshingAll, openTicketsCount, openTicketsCritical, kitchenHandoverSettings, handleClearCart,
@@ -104,6 +106,24 @@ export function PosShellLayout() {
     receiptsFocusOrderId, setReceiptsFocusOrderId, idleLockMinutes, setIdleLockMinutes,
     onlineOrderWatcher,
   } = app;
+
+  const discountFieldError = useMemo(() => {
+    const amount = Math.max(0, Number.parseFloat(cart.discountAmount) || 0);
+    if (amount <= 0) return "";
+    return validateManualDiscountInput({
+      amountMvr: amount,
+      subtotalMvr: cart.cartSubtotal,
+      controls: discountControls,
+      reason: cart.discountReason,
+      reasonNote: cart.discountReasonNote,
+    }) ?? "";
+  }, [
+    cart.discountAmount,
+    cart.cartSubtotal,
+    cart.discountReason,
+    cart.discountReasonNote,
+    discountControls,
+  ]);
 
   return (
     <div className="pos-shell" style={{
@@ -384,6 +404,12 @@ export function PosShellLayout() {
               payments={cart.payments}
               discountAmount={cart.discountAmount}
               setDiscountAmount={cart.setDiscountAmount}
+              discountReason={cart.discountReason}
+              setDiscountReason={cart.setDiscountReason}
+              discountReasonNote={cart.discountReasonNote}
+              setDiscountReasonNote={cart.setDiscountReasonNote}
+              discountControls={discountControls}
+              discountFieldError={discountFieldError}
               isSubmitting={order.isSubmitting}
               pendingPaymentForOrderId={order.pendingPaymentForOrderId}
               lastCreatedOrderId={order.lastCreatedOrderId}
@@ -443,6 +469,24 @@ export function PosShellLayout() {
                   const deliveryErr = validateDeliveryDetails(deliveryDetails, cart.attachedCustomer);
                   if (deliveryErr) {
                     order.flashError(deliveryErr);
+                    return;
+                  }
+                }
+                const discountAmt = Math.max(0, Number.parseFloat(cart.discountAmount) || 0);
+                if (discountAmt > 0) {
+                  const discountErr = validateManualDiscountInput({
+                    amountMvr: discountAmt,
+                    subtotalMvr: cart.cartSubtotal,
+                    controls: discountControls,
+                    reason: cart.discountReason,
+                    reasonNote: cart.discountReasonNote,
+                  });
+                  if (discountErr) {
+                    order.flashError(discountErr);
+                    return;
+                  }
+                  if (discountControls.approval_required && !isReachable) {
+                    order.flashError("Manager approval requires a connection. Remove the discount or reconnect.");
                     return;
                   }
                 }
@@ -765,6 +809,17 @@ export function PosShellLayout() {
               void refreshChargeCreditSummary();
             }
           }}
+        />
+      )}
+
+      {order.discountApproval && (
+        <DiscountApprovalModal
+          error={order.discountApproval.error}
+          busy={order.discountApproval.busy}
+          resending={order.discountApproval.resending}
+          onConfirm={(code) => order.confirmDiscountApprovalCode(code)}
+          onResend={() => order.resendDiscountApproval()}
+          onCancel={() => order.cancelDiscountApproval()}
         />
       )}
 

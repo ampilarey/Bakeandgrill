@@ -234,6 +234,21 @@ class SmsTemplateSeeder extends Seeder
                     ['name' => 'incident_id', 'description' => 'Incident id'],
                 ]),
             ],
+            [
+                'slug' => 'discount_approval_otp',
+                'name' => 'Discount Approval OTP',
+                'type' => 'system',
+                'body' => 'Bake & Grill: approval code {{code}} for a {{percent}}% ({{amount}}) discount on order {{order}}. Expires in {{minutes}} min. Do not share.',
+                'description' => 'One-time code sent to discount approvers for POS manual discounts.',
+                'is_system' => true,
+                'variables' => json_encode([
+                    ['name' => 'code', 'description' => '4-digit approval code'],
+                    ['name' => 'percent', 'description' => 'Discount percent of subtotal'],
+                    ['name' => 'amount', 'description' => 'Discount amount (formatted)'],
+                    ['name' => 'order', 'description' => 'Order number or id'],
+                    ['name' => 'minutes', 'description' => 'Code TTL in minutes'],
+                ]),
+            ],
         ];
 
         foreach ($templates as $template) {

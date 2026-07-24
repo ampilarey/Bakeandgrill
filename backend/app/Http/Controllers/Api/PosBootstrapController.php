@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Notifications\Support\SmsNotificationSettings;
+use App\Domains\Orders\Support\DiscountSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Shift;
 use App\Services\PosMenuBuilder;
@@ -39,6 +40,12 @@ class PosBootstrapController extends Controller
             ->latest('opened_at')
             ->first(['id', 'opened_at', 'closed_at', 'opening_cash', 'closing_cash', 'expected_cash', 'variance']);
 
+        $user = $request->user();
+        $roleSlug = $user?->role?->slug;
+        // UX-only — server ManualDiscountPolicy remains authoritative.
+        $sampleSubtotalLaar = 10000; // MVR 100 reference for percent→fixed preview
+        $capLaar = DiscountSettings::effectiveCapLaar($sampleSubtotalLaar, $roleSlug);
+
         return response()->json([
             'categories' => $menu['categories'],
             'items' => $menu['items'],
@@ -47,6 +54,17 @@ class PosBootstrapController extends Controller
                 'send_bill' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_BILL),
                 'send_pay_link' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_PAY_LINK),
                 'receipt_resend' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_RECEIPT_RESEND),
+            ],
+            'discount_controls' => [
+                'manual_enabled' => DiscountSettings::manualEnabled(),
+                'max_percent' => DiscountSettings::maxPercent(),
+                'max_fixed_mvr' => DiscountSettings::maxFixedMvr(),
+                'effective_cap_percent' => $sampleSubtotalLaar > 0
+                    ? (int) round($capLaar * 100 / $sampleSubtotalLaar)
+                    : 0,
+                'reason_required' => DiscountSettings::reasonRequired(),
+                'reasons' => DiscountSettings::reasons(),
+                'approval_required' => DiscountSettings::approvalRequired(),
             ],
         ]);
     }

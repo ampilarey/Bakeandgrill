@@ -54,6 +54,11 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     Route::patch('/orders/{id}/customer', [App\Http\Controllers\Api\Orders\OrderCustomerController::class, 'updateCustomer'])
         ->middleware(['permission:pos.ring_sales', 'throttle:30,1']);
 
+    Route::post('/orders/{order}/discount/request-approval', [App\Http\Controllers\Api\Orders\DiscountApprovalController::class, 'requestApproval'])
+        ->middleware(['permission:promotions.discounts', 'throttle:5,1']);
+    Route::post('/orders/{order}/discount/confirm', [App\Http\Controllers\Api\Orders\DiscountApprovalController::class, 'confirm'])
+        ->middleware(['permission:promotions.discounts', 'throttle:10,1']);
+
     // Receipts (staff)
     Route::get('/orders/{orderId}/receipt-link', [App\Http\Controllers\Api\ReceiptController::class, 'linkForOrder']);
     Route::post('/receipts/{orderId}/send', [App\Http\Controllers\Api\ReceiptController::class, 'send']);

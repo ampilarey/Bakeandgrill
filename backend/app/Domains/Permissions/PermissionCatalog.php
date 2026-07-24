@@ -147,8 +147,10 @@ final class PermissionCatalog
             ['group' => 'Promotions', 'slug' => 'promotions.view', 'name' => 'View promotions'],
             ['group' => 'Promotions', 'slug' => 'promotions.manage', 'name' => 'Manage promotions'],
             ['group' => 'Promotions', 'slug' => 'promotions.discounts', 'name' => 'Apply discounts'],
+            ['group' => 'Promotions', 'slug' => 'promotions.discount_override', 'name' => 'Approve POS discounts', 'description' => 'Receive SMS approval codes for manual POS discounts'],
             ['group' => 'Promotions', 'slug' => 'promotions.apply_promo_code', 'name' => 'Apply promo codes'],
             ['group' => 'Promotions', 'slug' => 'promotions.discount_cards', 'name' => 'Issue discount cards', 'description' => 'Owner-only: generate time-limited discount cards'],
+            ['group' => 'Promotions', 'slug' => 'discounts.settings.manage', 'name' => 'Manage discount controls', 'description' => 'Configure POS discount caps, reasons, and approval'],
 
             // Shifts & reports
             ['group' => 'Shifts', 'slug' => 'shifts.view_own_history', 'name' => 'View own shift history'],

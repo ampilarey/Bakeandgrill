@@ -3,6 +3,7 @@ import { ApiRequestError } from "@shared/api";
 import {
   applyGiftCardToOrder,
   applyPromoToOrder,
+  confirmDiscountApproval,
   createDeliveryOrder,
   createOrder,
   createOrderPayments,
@@ -13,8 +14,12 @@ import {
   lookupBarcode,
   releaseLoyaltyHold,
   removeGiftCardFromOrder,
+  requestDiscountApproval,
   resumeOrder,
   updateOrderItems,
+  validateManualDiscountInput,
+  DEFAULT_POS_DISCOUNT_CONTROLS,
+  type PosDiscountControls,
 } from "../api";
 import {
   countPendingOfflineOrders,
@@ -39,6 +44,15 @@ import {
 import { applyStagedRewards as applyStagedRewardsUtil } from "../utils/applyStagedRewards";
 
 type OrderType = PosOrderType;
+
+type DiscountApprovalUi = {
+  approvalId: number;
+  orderId: number;
+  discountAmount: number;
+  error: string;
+  busy: boolean;
+  resending: boolean;
+};
 
 const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup" | "delivery" => {
   if (type === "Dine-in") return "dine_in";
@@ -183,6 +197,9 @@ type Params = {
   cartPackagingFee?: number;
   payments: PaymentRow[];
   discountAmount: string;
+  discountReason?: string | null;
+  discountReasonNote?: string;
+  discountControls?: PosDiscountControls;
   customerId: number | null;
   /** Attached customer — used to prefill delivery contact when fields are blank. */
   customerName: string | null;
@@ -416,13 +433,143 @@ export function useOrderCreation(params: Params) {
   /** Guard so handleSyncQueue can't be entered twice concurrently. */
   const [isSyncingQueue, setIsSyncingQueue] = useState(false);
 
-  const buildPayload = (overrides: Partial<{ ticket_name: string; ticket_note: string }> = {}) => {
-    const discount = Math.max(0, Number.parseFloat(params.discountAmount) || 0);
+  const [discountApproval, setDiscountApproval] = useState<DiscountApprovalUi | null>(null);
+  const discountApprovalWaiterRef = useRef<{
+    resolve: (result: { total: number } | null) => void;
+  } | null>(null);
+
+  const controls = params.discountControls ?? DEFAULT_POS_DISCOUNT_CONTROLS;
+
+  const parsedDiscountAmount = () => Math.max(0, Number.parseFloat(params.discountAmount) || 0);
+
+  const needsDiscountApproval = (amount: number) =>
+    amount > 0 && controls.approval_required === true;
+
+  const preflightManualDiscount = (amount: number): string | null => {
+    if (amount <= 0) return null;
+    return validateManualDiscountInput({
+      amountMvr: amount,
+      subtotalMvr: params.cartSubtotal,
+      controls,
+      reason: params.discountReason,
+      reasonNote: params.discountReasonNote,
+    });
+  };
+
+  const requestApprovalPayload = (amount: number) => {
+    const reason = (params.discountReason ?? "").trim() || undefined;
+    const reasonNote = (params.discountReasonNote ?? "").trim() || undefined;
+    return {
+      discount_amount: amount,
+      ...(reason ? { discount_reason: reason } : {}),
+      ...(reasonNote ? { discount_reason_note: reasonNote } : {}),
+    };
+  };
+
+  /**
+   * Request an SMS OTP, open the modal, and wait for Confirm/Cancel.
+   * Returns `{ total }` from the confirm response, or null if cancelled / failed to request.
+   */
+  const runDiscountApprovalFlow = async (
+    orderId: number,
+    amount: number,
+  ): Promise<{ total: number } | null> => {
+    let approvalId: number;
+    try {
+      const res = await requestDiscountApproval(orderId, requestApprovalPayload(amount));
+      approvalId = res.approval_id;
+    } catch (err) {
+      const msg = (err as Error)?.message ?? "Could not request approval.";
+      flashError(msg);
+      return null;
+    }
+
+    setDiscountApproval({
+      approvalId,
+      orderId,
+      discountAmount: amount,
+      error: "",
+      busy: false,
+      resending: false,
+    });
+
+    return new Promise((resolve) => {
+      discountApprovalWaiterRef.current = { resolve };
+    });
+  };
+
+  const confirmDiscountApprovalCode = async (code: string): Promise<void> => {
+    const state = discountApproval;
+    if (!state) return;
+    setDiscountApproval((s) => (s ? { ...s, busy: true, error: "" } : s));
+    try {
+      const res = await confirmDiscountApproval(state.orderId, {
+        approval_id: state.approvalId,
+        code,
+        discount_amount: state.discountAmount,
+      });
+      const total = res.order.total != null ? Number(res.order.total) : params.cartTotal;
+      setDiscountApproval(null);
+      const waiter = discountApprovalWaiterRef.current;
+      discountApprovalWaiterRef.current = null;
+      waiter?.resolve({ total });
+    } catch (err) {
+      const msg = (err as Error)?.message ?? "Invalid code.";
+      setDiscountApproval((s) => (s ? { ...s, busy: false, error: msg } : s));
+    }
+  };
+
+  const resendDiscountApproval = async (): Promise<void> => {
+    const state = discountApproval;
+    if (!state) return;
+    setDiscountApproval((s) => (s ? { ...s, resending: true, error: "" } : s));
+    try {
+      const res = await requestDiscountApproval(
+        state.orderId,
+        requestApprovalPayload(state.discountAmount),
+      );
+      setDiscountApproval((s) =>
+        s
+          ? {
+            ...s,
+            approvalId: res.approval_id,
+            resending: false,
+            error: "",
+            busy: false,
+          }
+          : s,
+      );
+    } catch (err) {
+      const msg = (err as Error)?.message ?? "Could not resend code.";
+      setDiscountApproval((s) => (s ? { ...s, resending: false, error: msg } : s));
+    }
+  };
+
+  const cancelDiscountApproval = (): void => {
+    setDiscountApproval(null);
+    const waiter = discountApprovalWaiterRef.current;
+    discountApprovalWaiterRef.current = null;
+    waiter?.resolve(null);
+  };
+
+  const buildPayload = (overrides: Partial<{
+    ticket_name: string;
+    ticket_note: string;
+    /** When true, omit manual discount (approval flow creates order first). */
+    omitDiscount: boolean;
+  }> = {}) => {
+    const discount = overrides.omitDiscount
+      ? 0
+      : Math.max(0, Number.parseFloat(params.discountAmount) || 0);
+    const reason = (params.discountReason ?? "").trim() || undefined;
+    const reasonNote = (params.discountReasonNote ?? "").trim() || undefined;
     const base = {
       print: true,
       device_identifier: params.deviceId,
       ...(params.customerId ? { customer_id: params.customerId } : {}),
       discount_amount: discount,
+      ...(discount > 0 && reason ? { discount_reason: reason } : {}),
+      ...(discount > 0 && reasonNote ? { discount_reason_note: reasonNote } : {}),
       ...(overrides.ticket_name ? { ticket_name: overrides.ticket_name } : {}),
       ...(overrides.ticket_note ? { ticket_note: overrides.ticket_note } : {}),
       items: params.cartItems.map((item) => ({
@@ -802,6 +949,18 @@ export function useOrderCreation(params: Params) {
         : {}),
     }));
 
+    const discountAmt = parsedDiscountAmount();
+    const discountPreflightErr = preflightManualDiscount(discountAmt);
+    if (discountPreflightErr) {
+      flashError(discountPreflightErr);
+      return false;
+    }
+    const approvalNeeded = needsDiscountApproval(discountAmt);
+    if (approvalNeeded && !params.isReachable) {
+      flashError("Manager approval requires a connection. Remove the discount or reconnect.");
+      return false;
+    }
+
     // ─── Pending-payment retry ────────────────────────────────────
     // createOrder already succeeded; Confirm must NOT create another order.
     if (pendingPaymentForOrderId !== null) {
@@ -813,7 +972,19 @@ export function useOrderCreation(params: Params) {
         // Prefer current overlay tender rows (cashier may have corrected them).
         const retryRows = paymentSnapshot;
         const orderId = pendingPaymentForOrderId;
-        const settled = await settleOrder(orderId, totalDue > 0 ? totalDue : 0, retryRows);
+
+        // Discount may still need approval if the first create omitted it.
+        let settleTotal = totalDue > 0 ? totalDue : 0;
+        if (approvalNeeded) {
+          const approved = await runDiscountApprovalFlow(orderId, discountAmt);
+          if (!approved) {
+            flashError("Discount approval cancelled.");
+            return false;
+          }
+          settleTotal = approved.total;
+        }
+
+        const settled = await settleOrder(orderId, settleTotal, retryRows);
         if (settled) {
           const cid = params.customerId;
           const cphone = params.customerPhone;
@@ -855,14 +1026,28 @@ export function useOrderCreation(params: Params) {
         return false;
       }
       let baseTotal = resumedOrderTotal ?? params.cartTotal;
-      if (computeTicketDirty()) {
-        const savedTotal = await handleSaveActiveChanges();
+      if (computeTicketDirty() || approvalNeeded) {
+        // When approval is required, save without discount then OTP-apply.
+        const savedTotal = await handleSaveActiveChanges({
+          omitDiscountForApproval: approvalNeeded,
+        });
         if (savedTotal === false) return false;
         baseTotal = savedTotal ?? params.cartTotal;
       }
       setIsSubmitting(true);
       try {
-        const totalDue = await applyStagedRewards(resumedOrderId, baseTotal);
+        let totalDue = baseTotal;
+        if (approvalNeeded) {
+          const approved = await runDiscountApprovalFlow(resumedOrderId, discountAmt);
+          if (!approved) {
+            flashError("Discount approval cancelled.");
+            return false;
+          }
+          totalDue = approved.total;
+          setResumedOrderTotal(totalDue);
+          setResumedDiscountBaseline(normalizeDiscountAmount(params.discountAmount));
+        }
+        totalDue = await applyStagedRewards(resumedOrderId, totalDue);
         const settled = await settleOrder(resumedOrderId, totalDue, paymentSnapshot);
         if (settled) {
           const cid = params.customerId;
@@ -931,7 +1116,7 @@ export function useOrderCreation(params: Params) {
       chargeIdempotencyKeyRef.current = crypto.randomUUID();
     }
     const payload = {
-      ...buildPayload(),
+      ...buildPayload({ omitDiscount: approvalNeeded }),
       idempotency_key: chargeIdempotencyKeyRef.current,
     };
     const stagedRewards = {
@@ -943,6 +1128,10 @@ export function useOrderCreation(params: Params) {
     if (!params.isReachable) {
       if (params.orderType === "Delivery") {
         flashError("Delivery orders cannot be saved offline.");
+        return false;
+      }
+      if (approvalNeeded) {
+        flashError("Manager approval requires a connection. Remove the discount or reconnect.");
         return false;
       }
       return tryPersistOfflineV2(paymentSnapshot, stagedRewards);
@@ -957,6 +1146,22 @@ export function useOrderCreation(params: Params) {
       createdOrderId = response.order.id;
       setLastCreatedOrderId(response.order.id);
       let totalDue = response.order.total ?? params.cartTotal;
+
+      if (approvalNeeded) {
+        const approved = await runDiscountApprovalFlow(response.order.id, discountAmt);
+        if (!approved) {
+          flashError("Discount approval cancelled.");
+          setPendingPaymentForOrderId(response.order.id);
+          setPendingPaymentSnapshot({
+            orderId: response.order.id,
+            totalDue,
+            rows: paymentSnapshot,
+          });
+          return false;
+        }
+        totalDue = approved.total;
+      }
+
       totalDue = await applyStagedRewards(response.order.id, totalDue);
       const settled = await settleOrder(response.order.id, totalDue, paymentSnapshot);
       if (settled) {
@@ -1082,6 +1287,14 @@ export function useOrderCreation(params: Params) {
     if (!params.isOnline) throw new Error("Go online to save tickets.");
     if (params.cartItems.length === 0) throw new Error("Add items first.");
 
+    const discountAmt = parsedDiscountAmount();
+    const discountPreflightErr = preflightManualDiscount(discountAmt);
+    if (discountPreflightErr) throw new Error(discountPreflightErr);
+    const approvalNeeded = needsDiscountApproval(discountAmt);
+    if (approvalNeeded && !params.isReachable) {
+      throw new Error("Manager approval requires a connection. Remove the discount or reconnect.");
+    }
+
     if (params.orderType === "Delivery") {
       if (!params.isReachable) throw new Error("Delivery orders require an internet connection.");
       const deliveryErr = validateDeliveryDetails(
@@ -1101,8 +1314,15 @@ export function useOrderCreation(params: Params) {
 
     try {
       if (fireToKitchen) {
-        const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
+        const payload = {
+          ...buildPayload({ ticket_name: name, ticket_note: note, omitDiscount: approvalNeeded }),
+          print: false,
+        };
         const response = await submitCreatedOrder(payload);
+        if (approvalNeeded) {
+          const approved = await runDiscountApprovalFlow(response.order.id, discountAmt);
+          if (!approved) throw new Error("Discount approval cancelled.");
+        }
         await applyStagedRewards(response.order.id, response.order.total);
         await fireOrderToKitchen(response.order.id);
         params.clearCart();
@@ -1110,8 +1330,15 @@ export function useOrderCreation(params: Params) {
         return;
       }
 
-      const payload = { ...buildPayload({ ticket_name: name, ticket_note: note }), print: false };
+      const payload = {
+        ...buildPayload({ ticket_name: name, ticket_note: note, omitDiscount: approvalNeeded }),
+        print: false,
+      };
       const response = await submitCreatedOrder(payload);
+      if (approvalNeeded) {
+        const approved = await runDiscountApprovalFlow(response.order.id, discountAmt);
+        if (!approved) throw new Error("Discount approval cancelled.");
+      }
       await applyStagedRewards(response.order.id, response.order.total);
       await holdOrder(response.order.id, { ticket_name: name, ticket_note: note });
 
@@ -1335,13 +1562,29 @@ export function useOrderCreation(params: Params) {
    * active order. Returns the fresh server total on success, or false
    * on failure — callers must use the returned total (React state from
    * setResumedOrderTotal is not visible inside the same in-flight closure).
+   *
+   * When `omitDiscountForApproval` is true (charge path will OTP next),
+   * persist items with discount_amount 0 so create/patch never hits the
+   * "Manager approval code required" 422.
    */
-  const handleSaveActiveChanges = async (): Promise<number | false> => {
+  const handleSaveActiveChanges = async (
+    opts?: { omitDiscountForApproval?: boolean },
+  ): Promise<number | false> => {
     if (resumedOrderId === null) return false;
     if (params.cartItems.length === 0) {
       flashError("Add at least one item before saving changes.");
       return false;
     }
+    const discountNorm = normalizeDiscountAmount(params.discountAmount);
+    const discountAmount = discountNorm ? Number.parseFloat(discountNorm) : 0;
+    const discountPreflightErr = preflightManualDiscount(discountAmount);
+    if (discountPreflightErr) {
+      flashError(discountPreflightErr);
+      return false;
+    }
+    const approvalNeeded = needsDiscountApproval(discountAmount);
+    const omitDiscount = opts?.omitDiscountForApproval === true || approvalNeeded;
+
     setIsSubmitting(true);
     try {
       const items = params.cartItems.map((it) => ({
@@ -1380,14 +1623,17 @@ export function useOrderCreation(params: Params) {
           return false;
         }
       }
-      const discountNorm = normalizeDiscountAmount(params.discountAmount);
-      const discountAmount = discountNorm ? Number.parseFloat(discountNorm) : 0;
+      const reason = (params.discountReason ?? "").trim() || undefined;
+      const reasonNote = (params.discountReasonNote ?? "").trim() || undefined;
+      const sendDiscount = omitDiscount ? 0 : discountAmount;
       const res = await updateOrderItems(resumedOrderId, {
         items,
         reprint_kitchen: itemsChanged,
         type: nextType,
         restaurant_table_id: nextTableId,
-        discount_amount: discountAmount,
+        discount_amount: sendDiscount,
+        ...(sendDiscount > 0 && reason ? { discount_reason: reason } : {}),
+        ...(sendDiscount > 0 && reasonNote ? { discount_reason_note: reasonNote } : {}),
         ...(deliveryPayload
           ? {
             delivery_address_line1: deliveryPayload.addressLine1.trim(),
@@ -1400,7 +1646,21 @@ export function useOrderCreation(params: Params) {
           }
           : {}),
       });
-      const freshTotal = res.order.total != null ? Number(res.order.total) : null;
+      let freshTotal = res.order.total != null ? Number(res.order.total) : null;
+
+      // Standalone Save Changes with approval required — request OTP here.
+      // Charge path passes omitDiscountForApproval and runs OTP itself.
+      if (approvalNeeded && opts?.omitDiscountForApproval !== true) {
+        setIsSubmitting(false);
+        const approved = await runDiscountApprovalFlow(resumedOrderId, discountAmount);
+        if (!approved) {
+          flashError("Discount approval cancelled.");
+          return false;
+        }
+        freshTotal = approved.total;
+        setIsSubmitting(true);
+      }
+
       setResumedOrderTotal(freshTotal);
       setResumedItemsFingerprint(currentFp);
       setResumedOrderType(res.order.type ?? nextType);
@@ -1558,5 +1818,9 @@ export function useOrderCreation(params: Params) {
     handleRetryPayment,
     clearPendingPayment,
     notifyOrderCancelled,
+    discountApproval,
+    confirmDiscountApprovalCode,
+    resendDiscountApproval,
+    cancelDiscountApproval,
   };
 }

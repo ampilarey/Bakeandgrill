@@ -80,6 +80,9 @@
         "pickup_slot_at": null,
         "proof_of_delivery_path": null,
         "idempotency_key": null,
+        "manual_discount_reason": null,
+        "manual_discount_reason_note": null,
+        "manual_discount_approved_by": null,
         "payments": [
             {
                 "id": "__VOLATILE__",

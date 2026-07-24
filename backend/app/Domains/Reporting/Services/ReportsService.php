@@ -570,14 +570,20 @@ class ReportsService
     public function discountsByType(Carbon $from, Carbon $to): array
     {
         $orders = Order::query()
+            ->with('manualDiscountApprover:id,name')
             ->whereBetween('created_at', [$from, $to])
             ->whereIn('status', ReportMoneySql::SALE_STATUSES)
             ->get([
+                'id',
+                'order_number',
                 'subtotal',
                 'subtotal_laar',
                 'promo_discount_laar',
                 'loyalty_discount_laar',
                 'manual_discount_laar',
+                'manual_discount_reason',
+                'manual_discount_reason_note',
+                'manual_discount_approved_by',
                 'gift_card_discount_laar',
                 'referral_discount_laar',
             ]);
@@ -596,6 +602,7 @@ class ReportsService
         $sums = array_fill_keys(array_keys($types), 0);
         $ordersWithDiscount = array_fill_keys(array_keys($types), 0);
         $totalAppliedLaar = 0;
+        $manualDetails = [];
 
         foreach ($orders as $order) {
             $subLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
@@ -610,6 +617,22 @@ class ReportsService
                     $ordersWithDiscount[$label]++;
                 }
                 $sums[$label] += $share;
+            }
+
+            $manualShare = $allocated['manual'] ?? 0;
+            if ($manualShare > 0) {
+                $manualDetails[] = [
+                    'order_id' => (int) $order->id,
+                    'order_number' => $order->order_number,
+                    'amount_laar' => $manualShare,
+                    'amount' => round($manualShare / 100, 2),
+                    'reason' => $order->manual_discount_reason,
+                    'reason_note' => $order->manual_discount_reason_note,
+                    'approved_by' => $order->manualDiscountApprover?->name,
+                    'approved_by_user_id' => $order->manual_discount_approved_by
+                        ? (int) $order->manual_discount_approved_by
+                        : null,
+                ];
             }
         }
 
@@ -630,6 +653,7 @@ class ReportsService
             'total_applied_laar' => $totalAppliedLaar,
             'total_applied' => round($totalAppliedLaar / 100, 2),
             'rows' => $rows,
+            'manual_details' => $manualDetails,
         ];
     }
 

@@ -61,6 +61,7 @@ final class SmsTypeRegistry
             // Auth (always on — only global kill switch can block)
             self::def('auth_customer_otp', 'Customer login OTP', 'auth', true, false, 'auth_customer_otp', null, null, true),
             self::def('auth_staff_password_reset', 'Staff password reset OTP', 'auth', true, false, 'auth_staff_password_reset', null, null, true),
+            self::def('discount_approval_otp', 'Discount approval OTP', 'system', true, false, 'discount_approval_otp', null, 'promotions.discount_override', true),
 
             // Customer / POS transactional
             self::def('customer_payment_confirmed_pos', 'Payment confirmed (POS)', 'transactional', true, false, 'customer_payment_confirmed_pos', 'sms_customer_payment_confirmed_enabled', 'sms.transactional.manage'),
@@ -205,7 +206,9 @@ final class SmsTypeRegistry
             return $type === 'otp';
         }
 
-        return ($entry['category'] ?? '') === 'auth' || str_starts_with($entry['key'], 'auth_');
+        return ($entry['category'] ?? '') === 'auth'
+            || str_starts_with($entry['key'], 'auth_')
+            || $entry['key'] === 'discount_approval_otp';
     }
 
     /**

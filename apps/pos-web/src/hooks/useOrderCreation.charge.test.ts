@@ -28,6 +28,18 @@ vi.mock("../api", () => ({
   fireOrderToKitchen: vi.fn(),
   holdOrder: vi.fn(),
   lookupBarcode: vi.fn(),
+  requestDiscountApproval: vi.fn(),
+  confirmDiscountApproval: vi.fn(),
+  validateManualDiscountInput: () => null,
+  DEFAULT_POS_DISCOUNT_CONTROLS: {
+    manual_enabled: true,
+    max_percent: 100,
+    max_fixed_mvr: 0,
+    effective_cap_percent: 100,
+    reason_required: false,
+    reasons: [],
+    approval_required: false,
+  },
 }));
 
 vi.mock("../offline/db", () => ({

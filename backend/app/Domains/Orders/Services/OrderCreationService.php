@@ -34,6 +34,7 @@ class OrderCreationService
         private PackagingFeeCalculator $packagingFeeCalculator,
         private PromotionEvaluator $promotionEvaluator,
         private \App\Services\EffectivePriceService $effectivePricing,
+        private ManualDiscountPolicy $manualDiscountPolicy,
     ) {}
 
     public function createFromPayload(array $payload, ?object $user): Order
@@ -161,22 +162,30 @@ class OrderCreationService
                 itemLevelAlreadyInLinePrices: true,
             );
 
-            // Convert any payload-level manual discount to laari and store it so
-            // the calculator (single source of truth) can include it correctly.
-            // The calculator applies discounts BEFORE tax, matching the intended
-            // business rule (tax on discounted price, not gross price).
+            // Manual discount — centralized policy (caps / reason / approval gate).
             $discountAmount = (float) ($payload['discount_amount'] ?? 0);
             $subtotalLaar = $computedSubtotalLaar;
-            $discountLaar = max(0, min((int) round($discountAmount * 100), $subtotalLaar));
+            $requestedLaar = max(0, (int) round($discountAmount * 100));
+            $actor = $user instanceof \App\Models\User ? $user : null;
 
-            if ($discountLaar > 0) {
-                if (!$user instanceof \App\Models\User || !$user->hasPermission('promotions.discounts')) {
-                    abort(403, 'You do not have permission to apply manual discounts.');
-                }
-            }
+            $decision = $this->manualDiscountPolicy->authorizeAndClamp(
+                $actor,
+                $subtotalLaar,
+                $requestedLaar,
+                isset($payload['discount_reason']) ? (string) $payload['discount_reason'] : null,
+                isset($payload['discount_reason_note']) ? (string) $payload['discount_reason_note'] : null,
+                (int) $order->id,
+                null,
+                viaApprovalConfirm: false,
+                request: request(),
+            );
 
-            // Persist the discount field first so recalculateAndPersist can read it.
-            $order->update(['manual_discount_laar' => $discountLaar]);
+            $order->update([
+                'manual_discount_laar' => $decision->discountLaar,
+                'manual_discount_reason' => $decision->reason,
+                'manual_discount_reason_note' => $decision->reasonNote,
+                'manual_discount_approved_by' => $decision->approvedByUserId,
+            ]);
 
             // Use OrderTotalsCalculator as the single source of truth for every
             // totals field (subtotal_laar, tax_laar, total_laar, total, etc.).

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
-import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type KitchenHandoverSettings } from "../api";
+import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
 import { ticketStage } from "../utils/openTicketUtils";
 import { ticketAgeAnchor, ticketAgeLevel } from "../utils/ticketAging";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "../offline/db";
@@ -243,6 +243,7 @@ export function usePosApp() {
   // endpoint. Empty array hides the per-line Note button.
   const [quickNotes, setQuickNotes] = useState<string[]>([]);
   const [smsNotifications, setSmsNotifications] = useState<PosSmsNotifications>(DEFAULT_POS_SMS_NOTIFICATIONS);
+  const [discountControls, setDiscountControls] = useState<PosDiscountControls>(DEFAULT_POS_DISCOUNT_CONTROLS);
   // When non-null, the NotePickerModal is open for this cart line key.
   // Stored at the app level (vs in OrderCart) so the modal sits above
   // the cart's overflow:auto clip and survives cart state churn.
@@ -284,7 +285,7 @@ export function usePosApp() {
   const canUseNonOrderFeatures = canAccessOps || canViewShiftHistory;
   const canEnterPosShell = !!shift.current || canUseNonOrderFeatures;
   const shiftOpen = !!shift.current;
-  const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap, setSmsNotifications);
+  const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap, setSmsNotifications, setDiscountControls);
   const cart = useCart(orderType);
 
   /**
@@ -592,6 +593,9 @@ export function usePosApp() {
     cartTax:       cart.cartTax,
     payments:      cart.payments,
     discountAmount: cart.discountAmount,
+    discountReason: cart.discountReason,
+    discountReasonNote: cart.discountReasonNote,
+    discountControls,
     customerId:    cart.attachedCustomer?.id ?? null,
     customerName:  cart.attachedCustomer?.name ?? null,
     customerPhone: cart.attachedCustomer?.phone ?? null,
@@ -1210,7 +1214,7 @@ export function usePosApp() {
     orderType, setOrderType, handleOrderTypeToggle, packagingPickerLines, handlePackagingReconcileConfirm,
     deliveryDetails, setDeliveryDetails, customerAddresses,
     selectedDeliveryAddressId, setSelectedDeliveryAddressId, tables, selectedTableId, setSelectedTableId, quickNotes,
-    smsNotifications, notePickerKey, setNotePickerKey, shift, canUseNonOrderFeatures,
+    smsNotifications, discountControls, notePickerKey, setNotePickerKey, shift, canUseNonOrderFeatures,
     canEnterPosShell, shiftOpen, menu, cart, applyPosDeliveryAddress, handleClearCart,
     deliveryFeeEst, ops, refreshOfflineCounts, filteredItems, refreshOpenTickets, order,
     chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshTables,

@@ -8,6 +8,8 @@ export async function createOrder(payload: {
   restaurant_table_id?: number | null;
   customer_id?: number | null;
   discount_amount?: number;
+  discount_reason?: string;
+  discount_reason_note?: string;
   /** Per-charge UUID — server returns the existing order on retry. */
   idempotency_key?: string;
   ticket_name?: string;
@@ -33,6 +35,8 @@ export async function createDeliveryOrder(payload: {
   device_identifier?: string;
   customer_id?: number | null;
   discount_amount?: number;
+  discount_reason?: string;
+  discount_reason_note?: string;
   idempotency_key?: string;
   ticket_name?: string;
   ticket_note?: string;
@@ -387,6 +391,8 @@ export async function updateOrderItems(
     delivery_location_link?: string | null;
     /** Manual cashier discount in MVR — persisted as manual_discount_laar. */
     discount_amount?: number;
+    discount_reason?: string;
+    discount_reason_note?: string;
   },
 ): Promise<{
   order: {
@@ -402,6 +408,36 @@ export async function updateOrderItems(
 }> {
   return request(`/orders/${orderId}/items`, {
     method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Request an SMS OTP for a manual discount (when approval_required). */
+export async function requestDiscountApproval(
+  orderId: number,
+  payload: {
+    discount_amount: number;
+    discount_reason?: string;
+    discount_reason_note?: string;
+  },
+): Promise<{ approval_id: number }> {
+  return request(`/orders/${orderId}/discount/request-approval`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Confirm a discount approval OTP and apply the discount. */
+export async function confirmDiscountApproval(
+  orderId: number,
+  payload: {
+    approval_id: number;
+    code: string;
+    discount_amount?: number;
+  },
+): Promise<{ order: { id: number; total: number; subtotal?: number; tax_amount?: number } }> {
+  return request(`/orders/${orderId}/discount/confirm`, {
+    method: "POST",
     body: JSON.stringify(payload),
   });
 }

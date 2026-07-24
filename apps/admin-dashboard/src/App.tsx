@@ -17,6 +17,7 @@ const PromotionsPage          = lazyWithRetry(() => import('./pages/PromotionsPa
 const LoyaltyPage             = lazyWithRetry(() => import('./pages/LoyaltyPage').then((m) => ({ default: m.LoyaltyPage })));
 const SmsPage                 = lazyWithRetry(() => import('./pages/SmsPage').then((m) => ({ default: m.SmsPage })));
 const SmsControlCenterPage    = lazyWithRetry(() => import('./pages/SmsControlCenterPage').then((m) => ({ default: m.SmsControlCenterPage })));
+const DiscountControlsPage    = lazyWithRetry(() => import('./pages/DiscountControlsPage').then((m) => ({ default: m.DiscountControlsPage })));
 const ReportsPage             = lazyWithRetry(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 const MenuPage                = lazyWithRetry(() => import('./pages/MenuPage').then((m) => ({ default: m.MenuPage })));
 const StaffPage               = lazyWithRetry(() => import('./pages/StaffPage').then((m) => ({ default: m.StaffPage })));
@@ -254,6 +255,11 @@ export default function App() {
                 <Route path="sms/control-center" element={
                   <PermissionGuard user={user} permissions={['sms.settings.manage', 'sms.logs.view', 'integrations.sms']}>
                     <SmsControlCenterPage />
+                  </PermissionGuard>
+                } />
+                <Route path="discount-controls" element={
+                  <PermissionGuard user={user} permission="discounts.settings.manage">
+                    <DiscountControlsPage />
                   </PermissionGuard>
                 } />
                 <Route path="reports" element={

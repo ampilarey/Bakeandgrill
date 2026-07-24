@@ -39,12 +39,111 @@ function normalizePosSmsNotifications(raw: unknown): PosSmsNotifications {
   };
 }
 
+/** Effective discount policy for the logged-in actor (UX only; server enforces). */
+export type PosDiscountControls = {
+  manual_enabled: boolean;
+  max_percent: number;
+  max_fixed_mvr: number;
+  effective_cap_percent: number;
+  reason_required: boolean;
+  reasons: string[];
+  approval_required: boolean;
+};
+
+export const DEFAULT_POS_DISCOUNT_CONTROLS: PosDiscountControls = {
+  manual_enabled: true,
+  max_percent: 100,
+  max_fixed_mvr: 0,
+  effective_cap_percent: 100,
+  reason_required: false,
+  reasons: [],
+  approval_required: false,
+};
+
+export function normalizePosDiscountControls(raw: unknown): PosDiscountControls {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_POS_DISCOUNT_CONTROLS };
+  const o = raw as Record<string, unknown>;
+  const maxPercent = Number(o.max_percent);
+  const maxFixed = Number(o.max_fixed_mvr);
+  const effectiveCap = Number(o.effective_cap_percent);
+  const reasonsRaw = o.reasons;
+  const reasons = Array.isArray(reasonsRaw)
+    ? reasonsRaw.map((r) => String(r).trim()).filter((r) => r !== "")
+    : [];
+  return {
+    manual_enabled: o.manual_enabled !== false,
+    max_percent: Number.isFinite(maxPercent)
+      ? Math.max(0, Math.min(100, Math.round(maxPercent)))
+      : DEFAULT_POS_DISCOUNT_CONTROLS.max_percent,
+    max_fixed_mvr: Number.isFinite(maxFixed) && maxFixed > 0 ? maxFixed : 0,
+    effective_cap_percent: Number.isFinite(effectiveCap)
+      ? Math.max(0, Math.min(100, Math.round(effectiveCap)))
+      : DEFAULT_POS_DISCOUNT_CONTROLS.effective_cap_percent,
+    reason_required: o.reason_required === true,
+    reasons,
+    approval_required: o.approval_required === true,
+  };
+}
+
+/**
+ * Cap in MVR for a cart subtotal from bootstrap controls.
+ * Mirrors DiscountSettings::effectiveCapLaar (global % + optional fixed, never above subtotal).
+ */
+export function computeEffectiveDiscountCapMvr(
+  subtotalMvr: number,
+  controls: PosDiscountControls,
+): number {
+  const sub = Math.max(0, subtotalMvr);
+  if (sub <= 0) return 0;
+  const caps = [sub * controls.max_percent / 100];
+  if (controls.max_fixed_mvr > 0) caps.push(controls.max_fixed_mvr);
+  caps.push(sub);
+  return Math.max(0, Math.min(...caps));
+}
+
+/**
+ * Client-side preflight for a manual discount. Returns an error message
+ * or null when OK. Server remains authoritative.
+ */
+export function validateManualDiscountInput(opts: {
+  amountMvr: number;
+  subtotalMvr: number;
+  controls: PosDiscountControls;
+  reason: string | null | undefined;
+  reasonNote?: string | null;
+}): string | null {
+  const amount = Math.max(0, opts.amountMvr);
+  if (amount <= 0) return null;
+  if (!opts.controls.manual_enabled) {
+    return "Manual discounts are currently disabled.";
+  }
+  const cap = computeEffectiveDiscountCapMvr(opts.subtotalMvr, opts.controls);
+  // Allow 0.5 laari float noise.
+  if (amount > cap + 0.005) {
+    const capPct = opts.subtotalMvr > 0
+      ? Math.round((cap * 100 / opts.subtotalMvr) * 10) / 10
+      : 0;
+    return `Discount exceeds the maximum allowed (${capPct}%).`;
+  }
+  if (opts.controls.reason_required) {
+    const reason = (opts.reason ?? "").trim();
+    if (!reason || !opts.controls.reasons.includes(reason)) {
+      return "A discount reason is required.";
+    }
+    if (reason === "Other (note required)" && !(opts.reasonNote ?? "").trim()) {
+      return "A note is required for this discount reason.";
+    }
+  }
+  return null;
+}
+
 /** Login bootstrap — menu + current shift in one request. */
 export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
   categories: Category[];
   items: Item[];
   shift: PosBootstrapShift | null;
   smsNotifications: PosSmsNotifications;
+  discountControls: PosDiscountControls;
 }> {
   const params = new URLSearchParams();
   if (channel) params.set("channel", channel);
@@ -53,12 +152,14 @@ export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
     items: Item[];
     shift: PosBootstrapShift | null;
     sms_notifications?: PosSmsNotifications;
+    discount_controls?: unknown;
   }>(`/pos/bootstrap?${params.toString()}`);
   return {
     categories: data.categories ?? [],
     items: data.items ?? [],
     shift: data.shift ?? null,
     smsNotifications: normalizePosSmsNotifications(data.sms_notifications),
+    discountControls: normalizePosDiscountControls(data.discount_controls),
   };
 }
 

@@ -42,6 +42,9 @@ class Order extends Model
         'promo_discount_laar',
         'loyalty_discount_laar',
         'manual_discount_laar',
+        'manual_discount_reason',
+        'manual_discount_reason_note',
+        'manual_discount_approved_by',
         'gift_card_id',
         'gift_card_discount_laar',
         'referral_code',
@@ -212,5 +215,10 @@ class Order extends Model
     public function kitchenDoneBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'kitchen_done_by');
+    }
+
+    public function manualDiscountApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manual_discount_approved_by');
     }
 }

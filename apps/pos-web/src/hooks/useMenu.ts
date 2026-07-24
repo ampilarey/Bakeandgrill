@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchPosBootstrap, fetchPosMenu, type PosSmsNotifications } from "../api";
+import { fetchPosBootstrap, fetchPosMenu, type PosDiscountControls, type PosSmsNotifications } from "../api";
 import type { PosBootstrapShift, PosSalesChannel } from "../api";
 import type { PosOrderType } from "../orderTypes";
 import type { Category, Item } from "../types";
@@ -46,6 +46,7 @@ export function useMenu(
   isReachable = true,
   onBootstrapShift?: (shift: PosBootstrapShift | null) => void,
   onBootstrapSmsNotifications?: (settings: PosSmsNotifications) => void,
+  onBootstrapDiscountControls?: (controls: PosDiscountControls) => void,
 ) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -74,11 +75,13 @@ export function useMenu(
   const reachableRef = useRef(isReachable);
   const onBootstrapShiftRef = useRef(onBootstrapShift);
   const onBootstrapSmsNotificationsRef = useRef(onBootstrapSmsNotifications);
+  const onBootstrapDiscountControlsRef = useRef(onBootstrapDiscountControls);
   useEffect(() => { channelRef.current = channel; }, [channel]);
   useEffect(() => { loggedInRef.current = isLoggedIn; }, [isLoggedIn]);
   useEffect(() => { reachableRef.current = isReachable; }, [isReachable]);
   useEffect(() => { onBootstrapShiftRef.current = onBootstrapShift; }, [onBootstrapShift]);
   useEffect(() => { onBootstrapSmsNotificationsRef.current = onBootstrapSmsNotifications; }, [onBootstrapSmsNotifications]);
+  useEffect(() => { onBootstrapDiscountControlsRef.current = onBootstrapDiscountControls; }, [onBootstrapDiscountControls]);
 
   const applyCachedMenu = useCallback((cached: NonNullable<Awaited<ReturnType<typeof loadCachedMenu>>>) => {
     setCategories((cached.categories ?? []) as Category[]);
@@ -147,6 +150,7 @@ export function useMenu(
           bootstrapDoneRef.current = true;
           onBootstrapShiftRef.current?.(boot.shift ?? null);
           onBootstrapSmsNotificationsRef.current?.(boot.smsNotifications);
+          onBootstrapDiscountControlsRef.current?.(boot.discountControls);
           setSelectedCategoryId(null);
         } else {
           const menu = await fetchPosMenu(ch);

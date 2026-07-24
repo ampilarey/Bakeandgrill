@@ -6,6 +6,7 @@ import { makeCartKey } from "../hooks/useCart";
 import type { PosCustomer, PosCustomerAddress } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
+import { ManualDiscountField } from "./ManualDiscountField";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { palette } from "../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel, isCustomerAppOrder } from "../orderTypeLabels";
@@ -98,6 +99,21 @@ type Props = {
   payments: PaymentRow[];
   discountAmount: string;
   setDiscountAmount: (v: string) => void;
+  discountReason?: string | null;
+  setDiscountReason?: (v: string | null) => void;
+  discountReasonNote?: string;
+  setDiscountReasonNote?: (v: string) => void;
+  /** Bootstrap discount policy — drives visibility, caps, reasons. */
+  discountControls?: {
+    manual_enabled: boolean;
+    max_percent: number;
+    max_fixed_mvr: number;
+    reason_required: boolean;
+    reasons: string[];
+    approval_required: boolean;
+  };
+  /** Client-side cap / reason validation message under the discount field. */
+  discountFieldError?: string;
 
   appliedPromo: AppliedPromo | null;
   setAppliedPromo: (v: AppliedPromo | null) => void;
@@ -1009,31 +1025,30 @@ export function OrderCart(p: Props) {
           </div>
         )}
 
-        {/* Discount — single line. Bug-025: was inputMode="none" with
-            an invisible caret, so on iPad cashiers couldn't enter a
-            discount without a hardware keyboard (the "discount sheet
-            in the Charge flow" the old comment referred to never
-            materialised). Switched to inputMode="decimal" so iOS
-            pops its numpad on focus, matching every other numeric
-            field in the cart sidebar. */}
-        {p.canApplyDiscount !== false && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Discount</label>
-          <input
-            value={p.discountAmount}
-            onChange={(e) => p.setDiscountAmount(e.target.value)}
-            onFocus={(e) => e.currentTarget.select()}
-            placeholder="0.00"
-            inputMode="decimal"
-            autoComplete="off"
-            disabled={lockedReadOnly}
-            style={{
-              flex: 1, padding: '6px 10px', borderRadius: 6,
-              border: `1px solid ${C.border2}`, fontSize: 13, textAlign: 'right',
-              opacity: lockedReadOnly ? 0.5 : 1,
-            }}
-          />
-        </div>
+        {/* Discount — config-driven. Hidden when manual discounts are
+            disabled globally or the cashier lacks promotions.discounts.
+            Cap hint + reason chips come from POS bootstrap. */}
+        {p.canApplyDiscount !== false && p.discountControls?.manual_enabled !== false && (
+        <ManualDiscountField
+          discountAmount={p.discountAmount}
+          setDiscountAmount={p.setDiscountAmount}
+          discountReason={p.discountReason}
+          setDiscountReason={p.setDiscountReason}
+          discountReasonNote={p.discountReasonNote}
+          setDiscountReasonNote={p.setDiscountReasonNote}
+          discountControls={p.discountControls ?? {
+            manual_enabled: true,
+            max_percent: 100,
+            max_fixed_mvr: 0,
+            reason_required: false,
+            reasons: [],
+          }}
+          discountFieldError={p.discountFieldError}
+          disabled={lockedReadOnly}
+          mutedColor={C.muted}
+          borderColor={C.border2}
+          textColor={C.text}
+        />
         )}
 
         {/* Save ticket / Open tickets — Save is disabled in resumed

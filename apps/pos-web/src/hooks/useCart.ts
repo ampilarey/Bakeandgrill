@@ -133,6 +133,9 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
   const [discountAmount, setDiscountAmount] = useState("");
+  /** Preset reason label when discount_reason_required is on. */
+  const [discountReason, setDiscountReason] = useState<string | null>(null);
+  const [discountReasonNote, setDiscountReasonNote] = useState("");
   const [payments, setPayments] = useState<PaymentRow[]>([
     { id: crypto.randomUUID(), method: "cash", amount: "" },
   ]);
@@ -556,6 +559,8 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     setSelectedItem(null);
     setSelectedModifiers([]);
     setDiscountAmount("");
+    setDiscountReason(null);
+    setDiscountReasonNote("");
     setPayments([{ id: crypto.randomUUID(), method: "cash", amount: "" }]);
     setAttachedCustomer(null);
     // Reset every staged reward so the next ticket starts clean. Without
@@ -627,6 +632,10 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     selectedModifiers,
     discountAmount,
     setDiscountAmount,
+    discountReason,
+    setDiscountReason,
+    discountReasonNote,
+    setDiscountReasonNote,
     discountValue,
     payments,
     setPayments,
