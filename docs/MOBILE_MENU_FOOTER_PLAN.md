@@ -90,7 +90,11 @@ driven by `content('…')` keys so it's editable in Content Studio:
 ## 4. Mobile UX pass (both apps)
 
 - **Sticky bottom bars** (thumb-reachable, respect safe area):
-  - Order app: a persistent **cart bar** (item count + total + "View cart") when the cart is non-empty.
+  - Order app: a floating **logo cart FAB** (count badge + total, opens `CartSheet` on tap) **already
+    exists** — `components/shell/FloatingCartBar.tsx` + `CartSheet.tsx` + `useShellNav`. **Do NOT add a
+    new cart bar.** Only enhance the existing one: ensure it clears the safe-area inset (not cut off on
+    iPhones), meets the ≥44px tap target, and doesn't overlap the last menu card / footer. Leave its
+    logo-FAB → expand-sheet behaviour as-is.
   - Main website: a sticky **Order / Call / WhatsApp** bar (the `.mobile-bottom-nav` exists — polish it,
     ensure it doesn't overlap the footer, and add safe-area padding).
 - **Safe-area insets:** add `padding-bottom: env(safe-area-inset-bottom)` (and top where relevant) to
@@ -115,7 +119,8 @@ driven by `content('…')` keys so it's editable in Content Studio:
   - `MenuImageSlider`: with no slides renders the fill placeholder; with an image renders an `<img>`
     that fills (width/height 100%, object-fit cover) and is lazy-loaded.
   - Sticky category chips render and reflect the active category.
-  - Cart bar shows total when the cart is non-empty; hidden when empty.
+  - Existing `FloatingCartBar` still shows total when the cart is non-empty and is hidden when empty
+    (regression check only — behaviour unchanged, just safe-area/tap-size styling).
 - **Main website:** a lightweight Blade render/HTTP test asserting the footer contains the hours block,
   social links (when keys set), Order-Now button, and the dynamic year; and that empty social keys hide
   their icons.
