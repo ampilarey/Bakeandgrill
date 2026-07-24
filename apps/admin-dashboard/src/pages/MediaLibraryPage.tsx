@@ -586,6 +586,8 @@ export function MediaLibraryPage() {
   const [editError, setEditError] = useState('');
   const [canRestore, setCanRestore] = useState(false);
   const [useAsSaving, setUseAsSaving] = useState(false);
+  const [useAsKey, setUseAsKey] = useState<'favicon' | 'logo' | 'logo_dark' | 'og_image'>('favicon');
+  const [useAsSavedUrl, setUseAsSavedUrl] = useState<string | null>(null);
 
   // Upload
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -652,6 +654,8 @@ export function MediaLibraryPage() {
     setCanRestore(false);
     setUsageItems([]);
     setUsageOpen(false);
+    setUseAsKey('favicon');
+    setUseAsSavedUrl(null);
   };
 
   const closeDetail = () => {
@@ -752,20 +756,22 @@ export function MediaLibraryPage() {
     }
   };
 
-  const handleUseAs = async (key: 'favicon' | 'logo' | 'logo_dark' | 'og_image') => {
+  const handleUseAs = async (key: 'favicon' | 'logo' | 'logo_dark' | 'og_image' = useAsKey) => {
     if (!selected) return;
     setUseAsSaving(true);
+    setUseAsSavedUrl(null);
     try {
-      await useMediaAsBrand(selected.id, key);
+      const res = await useMediaAsBrand(selected.id, key);
       const labels: Record<typeof key, string> = {
         favicon: 'favicon',
         logo: 'logo',
         logo_dark: 'logo (dark)',
         og_image: 'OG image',
       };
-      toast.success(`Set as ${labels[key]}`);
+      setUseAsSavedUrl(res.url);
+      toast.success(`Saved as ${labels[key]}`);
     } catch (e) {
-      toast.error((e as Error).message || 'Failed to set brand image');
+      toast.error((e as Error).message || 'Failed to save brand image');
     } finally {
       setUseAsSaving(false);
     }
@@ -1310,33 +1316,49 @@ export function MediaLibraryPage() {
               )}
             </div>
 
-            {/* Use as brand (images only) */}
+            {/* Save as brand (images only) — writes site settings immediately */}
             {selected.media_type === 'image' && canManage && (
               <div style={{ marginBottom: 14 }} data-testid="use-as-panel">
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>Use as…</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {([
-                    { key: 'favicon' as const, label: 'Favicon' },
-                    { key: 'logo' as const, label: 'Logo' },
-                    { key: 'logo_dark' as const, label: 'Logo (dark)' },
-                    { key: 'og_image' as const, label: 'OG image' },
-                  ]).map(({ key, label }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      data-testid={`use-as-${key}`}
-                      disabled={useAsSaving}
-                      onClick={() => void handleUseAs(key)}
-                      style={{
-                        height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8,
-                        border: '1px solid #E8E0D8', background: '#fff', cursor: useAsSaving ? 'wait' : 'pointer',
-                        fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#3D2B1F',
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Save as site branding</div>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#9C8E7E', lineHeight: 1.4 }}>
+                  Saves to the live favicon / logo / OG image settings immediately (no separate Publish step).
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'stretch' }}>
+                  <select
+                    data-testid="use-as-key"
+                    value={useAsKey}
+                    onChange={(e) => setUseAsKey(e.target.value as typeof useAsKey)}
+                    style={{
+                      flex: 1, minWidth: 140, height: 44, minHeight: 44, borderRadius: 8,
+                      border: '1px solid #E8E0D8', padding: '0 10px', fontFamily: 'inherit', fontSize: 13,
+                      background: '#fff', color: '#3D2B1F',
+                    }}
+                  >
+                    <option value="favicon">Favicon</option>
+                    <option value="logo">Logo</option>
+                    <option value="logo_dark">Logo (dark)</option>
+                    <option value="og_image">OG image</option>
+                  </select>
+                  <Btn
+                    data-testid={`use-as-${useAsKey}`}
+                    onClick={() => void handleUseAs(useAsKey)}
+                    disabled={useAsSaving}
+                    style={{ minHeight: 44, flex: '0 0 auto' }}
+                  >
+                    {useAsSaving ? 'Saving…' : `Save as ${useAsKey === 'logo_dark' ? 'logo (dark)' : useAsKey === 'og_image' ? 'OG image' : useAsKey}`}
+                  </Btn>
                 </div>
+                {useAsSavedUrl && (
+                  <div
+                    data-testid="use-as-saved"
+                    style={{
+                      marginTop: 8, padding: '8px 10px', borderRadius: 8, background: '#f0fdf4',
+                      border: '1px solid #86efac', fontSize: 12, color: '#166534', wordBreak: 'break-all',
+                    }}
+                  >
+                    Saved to site: {useAsSavedUrl}
+                  </div>
+                )}
               </div>
             )}
 

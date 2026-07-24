@@ -235,6 +235,7 @@ class MediaLibraryController extends Controller
 
     /**
      * Point a brand SiteSetting (logo / favicon / og) at this library image.
+     * Writes shared + website + order_app so Content Studio app overrides cannot shadow it.
      */
     public function useAs(Request $request, Media $media): JsonResponse
     {
@@ -260,7 +261,11 @@ class MediaLibraryController extends Controller
         }
 
         $old = \App\Models\SiteSetting::get($key);
-        \App\Models\SiteSetting::set($key, $url);
+        $scopes = ['shared', 'website', 'order_app'];
+        foreach ($scopes as $scope) {
+            \App\Models\SiteSetting::set($key, $url, $scope, 'en');
+            $this->ensureBrandSettingMeta($key, $scope);
+        }
         \App\Models\SiteSetting::bust();
 
         $this->audit->log(
@@ -268,12 +273,57 @@ class MediaLibraryController extends Controller
             'Media',
             (int) $media->id,
             ['key' => $key, 'url' => $old],
-            ['key' => $key, 'url' => $url],
+            ['key' => $key, 'url' => $url, 'scopes' => $scopes],
             ['media_path' => $media->path],
             $request,
         );
 
-        return response()->json(['key' => $key, 'url' => $url]);
+        return response()->json([
+            'key' => $key,
+            'url' => $url,
+            'message' => 'Saved to site branding.',
+        ]);
+    }
+
+    private function ensureBrandSettingMeta(string $key, string $scope): void
+    {
+        $query = \App\Models\SiteSetting::query()->where('key', $key);
+        if (\App\Models\SiteSetting::hasScopeColumn()) {
+            $query->where('scope', $scope);
+        }
+        if (\App\Models\SiteSetting::hasLocaleColumn()) {
+            $query->where('locale', 'en');
+        }
+        $row = $query->first();
+        if ($row === null) {
+            return;
+        }
+        $dirty = false;
+        if (($row->group ?? '') === '' || $row->group === 'System') {
+            $row->group = 'Branding';
+            $dirty = true;
+        }
+        if (($row->type ?? '') === '' || $row->type === 'text') {
+            $row->type = 'image';
+            $dirty = true;
+        }
+        if (!$row->is_public) {
+            $row->is_public = true;
+            $dirty = true;
+        }
+        $labels = [
+            'favicon' => 'Favicon',
+            'logo' => 'Logo',
+            'logo_dark' => 'Logo (dark)',
+            'og_image' => 'OG image',
+        ];
+        if (($row->label ?? '') === '' || $row->label === $key) {
+            $row->label = $labels[$key] ?? $key;
+            $dirty = true;
+        }
+        if ($dirty) {
+            $row->save();
+        }
     }
 
     /**

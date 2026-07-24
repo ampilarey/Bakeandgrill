@@ -95,6 +95,11 @@ class MediaLibraryControllerTest extends TestCase
         $this->assertStringContainsString('/storage/site/favicon_', $favUrl);
         $this->assertStringEndsWith('.png', $favUrl);
         $this->assertSame($favUrl, \App\Models\SiteSetting::get('favicon'));
+        if (\App\Models\SiteSetting::hasScopeColumn()) {
+            $this->assertSame($favUrl, \App\Models\SiteSetting::getScoped('favicon', 'shared', 'en'));
+            $this->assertSame($favUrl, \App\Models\SiteSetting::getScoped('favicon', 'website', 'en'));
+            $this->assertSame($favUrl, \App\Models\SiteSetting::getScoped('favicon', 'order_app', 'en'));
+        }
 
         $relative = ltrim(str_replace('/storage/', '', $favUrl), '/');
         $this->assertTrue(Storage::disk('public')->exists($relative));

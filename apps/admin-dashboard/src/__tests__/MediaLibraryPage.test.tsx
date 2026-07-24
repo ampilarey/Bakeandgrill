@@ -346,7 +346,7 @@ describe('MediaLibraryPage', () => {
     });
   });
 
-  it('Use as favicon calls the use-as endpoint', async () => {
+  it('Save as favicon calls the use-as endpoint', async () => {
     const useAsSpy = vi.spyOn(api, 'useMediaAsBrand').mockResolvedValue({
       key: 'favicon',
       url: '/storage/site/favicon_abc.png',
@@ -355,12 +355,14 @@ describe('MediaLibraryPage', () => {
     renderWithRouter(<MediaLibraryPage />);
     fireEvent.click(await screen.findByTestId('asset-card-1'));
     await screen.findByTestId('use-as-panel');
+    expect(screen.getByTestId('use-as-key')).toBeTruthy();
     fireEvent.click(screen.getByTestId('use-as-favicon'));
 
     await waitFor(() => {
       expect(useAsSpy).toHaveBeenCalledWith(1, 'favicon');
     });
-    expect(await screen.findByText(/set as favicon/i)).toBeTruthy();
+    expect(await screen.findByText(/saved as favicon/i)).toBeTruthy();
+    expect(await screen.findByTestId('use-as-saved')).toHaveTextContent('/storage/site/favicon_abc.png');
   });
 
   it('mobile layout uses chip row and full-screen detail overlay', async () => {
