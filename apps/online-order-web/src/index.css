@@ -1867,12 +1867,11 @@ textarea.field-input {
   box-shadow: 0 2px 8px rgba(42, 30, 12, 0.08);
 }
 
-/* Product grid beside category rail — always 2 cols on phone (§15).
-   Content ~262px at 390px; minmax(130px) + gap needed 276px and fell to 1 col. */
+/* Product grid beside category rail — 1 col on phone for readable cards. */
 .menu-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
 }
 
 /* Allow tracks to shrink below intrinsic card width (qty+Add row). */
@@ -1882,6 +1881,7 @@ textarea.field-input {
 
 @media (min-width: 480px) {
   .menu-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
   }
 }
