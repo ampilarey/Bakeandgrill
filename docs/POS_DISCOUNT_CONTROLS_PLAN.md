@@ -72,12 +72,86 @@ Section 1 is a **verified audit** of today's behaviour (file/line references). S
 | Global on/off | none | `discount_manual_enabled` kill switch |
 | Who can discount | `promotions.discounts` (binary) | keep it; add `promotions.discount_override` for approvers; optional per-role caps |
 | Max amount | none (subtotal only) | global max % and/or fixed MVR; optional per-role tiers |
-| Above-cap flow | none | manager override via PIN step-up |
+| Approval flow | none | **SMS one-time-code approval** (see §3A) — every manual discount, code to admin-managed approvers |
 | Reason | none | required toggle + admin-editable preset list + optional note; new order columns |
 | Audit | none (discount-specific) | log every manual discount + every override |
 
 **Owner decisions locked:** include **all** of the above as **admin-configurable settings** (global
 switch, who, max, per-role, override, reasons). Reasons = **preset list + optional note**.
+
+> **UPDATE (supersedes the static-PIN override below):** the override mechanism is an **SMS one-time
+> code**, not a manager typing their own PIN at the terminal. See **Section 3A** — it is the primary
+> approval flow and replaces §3.4's static-PIN step. Owner decisions for it:
+> - **Fresh one-time code per request** (random 4-digit, ~10-min expiry, bound to that exact order +
+>   amount, attempt-limited).
+> - **Every manual discount requires approval** (not just above-cap) — gated by a master toggle that
+>   defaults **off** for a non-breaking deploy; admin turns it on.
+> - **Admin-managed approver list** — the specific people who receive codes.
+>
+> Where §3.2/§3.4/§5 mention a static override PIN, read them through Section 3A. The caps, reasons,
+> audit, and central-policy design all still apply.
+
+---
+
+## 3A. SMS one-time-code approval (primary override mechanism)
+
+### 3A.1 Flow
+1. Cashier enters a manual discount (+ reason if required) and taps apply/charge.
+2. POS calls **request-approval**. The server (via `ManualDiscountPolicy`) validates: global switch on,
+   actor has `promotions.discounts`, reason present if required, and the amount is within the effective
+   cap (percent/fixed/role). If any fail → 4xx, no code sent.
+3. Server creates a **pending approval record**, generates a random **4-digit code**, stores only its
+   **hash** with `expires_at` (~10 min), `attempts = 0`, and the exact `order_id + discount_laar`
+   it authorizes. It sends the code by SMS to **every approver on the admin list**, then returns an
+   `approval_id` (no code) to POS.
+4. POS shows an **"Enter approval code"** popup.
+5. Approver relays the code; cashier types it. POS calls **confirm** with `approval_id + code`.
+6. Server verifies: not expired, `attempts < max` (e.g. 5), hash matches, and the pending record's
+   amount/order still match the current request. On success → mark approved, set `approved_by` to the
+   approver whose list membership sent it (or the first approver; see 3A.4), apply the discount via the
+   normal `ManualDiscountPolicy` path, write the audit entry, return the updated order. On failure →
+   increment `attempts`; after max, invalidate the record (a fresh request is required).
+
+### 3A.2 Settings (add to §3.1)
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `discount_approval_required` | bool | `false` | Master toggle for the whole SMS-OTP flow. **Default off = deploy-neutral.** When on, **every** manual discount needs an approval code. |
+| `discount_approval_approvers` | JSON list | `[]` | Admin-managed approvers: `[{user_id?, phone, label}]`. Codes are SMS'd to each. |
+| `discount_approval_code_ttl_minutes` | int | `10` | Code lifetime. |
+| `discount_approval_max_attempts` | int | `5` | Wrong-code tries before the code is invalidated. |
+
+> The per-role caps + global max % / fixed from §3.1 remain the **hard ceiling**: an approval code can
+> authorize a discount only **up to** the cap. Codes never let anyone exceed the configured maximum —
+> approval controls *who signs off*, caps control *how big it can be*.
+
+### 3A.3 Storage (new table `discount_approvals`)
+`id, order_id (nullable, FK), requested_by (FK users), subtotal_laar, discount_laar, discount_percent,
+reason, reason_note, code_hash, expires_at, attempts, status (pending|approved|expired|failed),
+approved_by (nullable FK users), created_at`. Never store the plaintext code. Index `(status,
+expires_at)` for cleanup.
+
+### 3A.4 The approval SMS is a first-class SMS type
+Register a new type in the **SMS Control Center registry** (`SmsTypeRegistry`), so its wording is
+admin-editable and it flows through the audited `SmsService`:
+```
+'discount_approval_otp' → category 'system', always_on true (never suppressed by marketing opt-out),
+template slug 'discount_approval_otp', send via SmsService. Body redacted in sms_logs (like auth OTP).
+```
+Default template: `"Bake & Grill: approval code {code} for a {percent}% ({amount}) discount on order
+{order}. Expires in {minutes} min. Do not share."` Variables: `code, percent, amount, order, minutes`.
+- Because it is `always_on` it ignores per-type marketing toggles, **but** the SMS **global kill
+  switch** still blocks it — document that turning off all SMS also blocks discount approvals (and
+  therefore discounts, when `discount_approval_required` is on). That coupling is intended.
+- `approved_by`: if multiple approvers are texted the same code, attribute the approval to the first
+  approver on the list (all received the same code); record the full approver set in the audit meta.
+
+### 3A.5 Security requirements (must implement)
+- Code is **4 random digits**, compared by hash, **expires**, and is **attempt-limited** — a bare
+  4-digit code is brute-forceable without these.
+- Code is **bound to the exact `order_id + discount_laar`**: confirm re-checks the pending record's
+  amount against the current request so a code for a 5% discount can't approve a 50% one.
+- Rate-limit `request-approval` (throttle) to stop SMS-bombing approvers.
+- The confirm endpoint is the authoritative gate; POS is never trusted.
 
 ---
 
@@ -175,22 +249,38 @@ New controller `App\Http\Controllers\Api\DiscountControlsController`, routes und
 
 Plus a tiny **public-to-POS** read so the cart can enforce/prefill: extend the existing POS bootstrap
 (`PosBootstrapController`) to include the effective discount config for the logged-in actor
-(their cap %, fixed cap, whether reasons are required, the reason list, whether override is possible)
-— never trust it for enforcement, only for UX.
+(their cap %, fixed cap, whether reasons are required, the reason list, whether SMS approval is
+required) — never trust it for enforcement, only for UX.
+
+**Approval endpoints (§3A):**
+- `POST /orders/{order}/discount/request-approval` → `permission:promotions.discounts`,
+  `throttle:5,1`. Body `{ discount_amount, reason, reason_note }`. Runs the policy pre-checks, creates
+  the pending `discount_approvals` record, sends the OTP SMS to approvers, returns `{ approval_id }`
+  (never the code). If `discount_approval_required` is off, this step is skipped by POS entirely and
+  the discount applies through the normal path.
+- `POST /orders/{order}/discount/confirm` → `permission:promotions.discounts`, `throttle:10,1`.
+  Body `{ approval_id, code }`. Verifies + applies (§3A.1 step 6), returns the updated order or a 4xx
+  (`expired`, `too many attempts`, `invalid code`, `amount changed`).
 
 ---
 
 ## 5. POS UX (pos-web)
 - Keep the Discount field, but drive it from the bootstrap config:
   - Hidden entirely if `discount_manual_enabled` is false or actor lacks `promotions.discounts`.
-  - Show the actor's cap inline ("max 10%").
-  - On blur / at charge, if the amount exceeds the cap:
-    - If override allowed → open a small **Manager approval** modal (manager PIN) — reuse the PIN pad
-      pattern; send the PIN as `discount_override_pin`.
-    - Else → inline error "Exceeds max discount (X%)".
-  - If `discount_reason_required` → a **reason picker** (preset chips from the config + optional note
-    field) must be filled before the discount is accepted; send `discount_reason` / `_note`.
-- All of this is best-effort UX; the server is the gate. Show server 4xx messages verbatim.
+  - Show the actor's cap inline ("max 10%"); reject above-cap client-side with the server message.
+  - If `discount_reason_required` → a **reason picker** (preset chips + optional note) must be filled
+    first; send `discount_reason` / `_note`.
+- **When `discount_approval_required` is on** (every manual discount):
+  1. On apply/charge, POS calls `request-approval`. On success it opens an **"Enter approval code"**
+     modal (a 4-digit code entry — reuse the PIN-pad component) showing "Code sent to the manager."
+  2. Cashier types the code the approver received; POS calls `confirm`.
+  3. On success the discount lands and the order proceeds; on 4xx show the server message
+     ("expired", "invalid code", "too many attempts" → offer **Resend** which re-requests a new code).
+  - Provide a **Cancel** that abandons the pending approval (server record just expires).
+- **When approval is off**, the discount applies through the normal order create/update path (today's
+  single call) with the reason attached.
+- All client behaviour is best-effort UX; the server (`confirm` + `ManualDiscountPolicy`) is the gate.
+  Show server 4xx messages verbatim.
 
 ## 6. Admin UI — "Discount Controls"
 New page `apps/admin-dashboard/src/pages/DiscountControlsPage.tsx` (+ route + nav under Marketing or
@@ -238,9 +328,14 @@ overrides. (Read-only; no new report page required.)
 ## 9. Testing
 **Backend (PHPUnit, sqlite, RefreshDatabase):**
 - `ManualDiscountPolicyTest`: global switch off → 403; no permission → 403; within cap → OK; above
-  cap with override disabled → 422; above cap with valid manager PIN → OK + `approvedBy` set; above
-  cap with invalid/self PIN → 403; reason required + missing → 422; per-role cap beats global; never
+  cap → 422 (cap is a hard ceiling); reason required + missing → 422; per-role cap beats global; never
   exceeds subtotal; audit entry written each time.
+- `DiscountApprovalOtpTest` (§3A): request-approval creates a pending record + sends one
+  `discount_approval_otp` SMS per approver (assert via SmsLog); confirm with the right code applies the
+  discount + sets `approved_by` + audits; wrong code increments attempts and after max invalidates;
+  expired code → 4xx; a code issued for amount A cannot confirm a changed amount B; request-approval is
+  rate-limited; when `discount_approval_required` is off the flow is skipped and discounts apply
+  directly; the SMS global kill switch blocks the approval SMS (documented coupling).
 - `OrderCreationDiscountTest` / `OrderItemDiscountTest`: end-to-end create + edit go through the
   policy; reason columns persisted; totals correct after clamp.
 - `DiscountControlsControllerTest`: GET returns config; PATCH validates + persists + audits; gated by
