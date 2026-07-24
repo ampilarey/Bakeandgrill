@@ -78,4 +78,45 @@ class WebsiteFooterTest extends TestCase
         $this->assertStringContainsString('data-social="facebook"', $html);
         $this->assertStringNotContainsString('data-social="tiktok"', $html);
     }
+
+    public function test_mobile_bottom_nav_has_five_tabs_with_order_center_cta(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-mobile-bottom-nav', $html);
+        $this->assertStringContainsString('data-nav="home"', $html);
+        $this->assertStringContainsString('data-nav="menu"', $html);
+        $this->assertStringContainsString('data-nav="order"', $html);
+        $this->assertStringContainsString('data-nav="offers"', $html);
+        $this->assertStringContainsString('data-nav="account"', $html);
+        $this->assertStringContainsString('mob-nav-order', $html);
+        $this->assertStringContainsString('/#offers', $html);
+        $this->assertStringContainsString('/order/account', $html);
+        $this->assertStringNotContainsString('mobMoreBtn', $html);
+        $this->assertStringNotContainsString('mob-more-sheet', $html);
+        $this->assertStringNotContainsString('>More</', $html);
+    }
+
+    public function test_whatsapp_viber_appear_once_in_page_and_once_in_footer(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        preg_match_all('/data-home-chat/', $html, $homeChat);
+        $this->assertCount(1, $homeChat[0], 'Exactly one in-page Chat with us block');
+
+        preg_match_all('/class="[^"]*chat-btn-wa[^"]*"/', $html, $waInPage);
+        $this->assertCount(1, $waInPage[0], 'WhatsApp once in-page');
+
+        preg_match_all('/class="[^"]*chat-btn-viber[^"]*"/', $html, $viberInPage);
+        $this->assertCount(1, $viberInPage[0], 'Viber once in-page');
+
+        preg_match_all('/class="[^"]*footer-wa[^"]*"/', $html, $waFooter);
+        $this->assertCount(1, $waFooter[0], 'WhatsApp once in footer');
+
+        preg_match_all('/class="[^"]*footer-viber[^"]*"/', $html, $viberFooter);
+        $this->assertCount(1, $viberFooter[0], 'Viber once in footer');
+
+        $this->assertStringNotContainsString('Order via WhatsApp', $html);
+        $this->assertStringNotContainsString('Order via Viber', $html);
+    }
 }

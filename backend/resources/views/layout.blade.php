@@ -186,25 +186,9 @@
             background: rgba(26, 18, 8, 0.94);
         }
         [data-theme="dark"] .mob-nav-order { background: var(--amber); }
-        [data-theme="dark"] .mob-nav-preorder {
-            background: rgba(224, 146, 66, 0.2);
-            color: #f4c48a !important;
-            border: 1.5px solid rgba(224, 146, 66, 0.55);
-            box-sizing: border-box;
-        }
         [data-theme="dark"] .site-announcement--info    { background: rgba(96,165,250,0.1); color: #93c5fd; border-bottom-color: rgba(96,165,250,0.25); }
         [data-theme="dark"] .site-announcement--warning { background: rgba(250,204,21,0.1);  color: #fde047; border-bottom-color: rgba(250,204,21,0.25); }
         [data-theme="dark"] .site-announcement--promo   { background: rgba(74,222,128,0.1);  color: #86efac; border-bottom-color: rgba(74,222,128,0.25); }
-        [data-theme="dark"] .mob-nav-preorder:hover {
-            background: rgba(224, 146, 66, 0.32);
-            border-color: var(--amber);
-        }
-        [data-theme="dark"] .mob-more-sheet {
-            background: var(--surface);
-            border-color: var(--border);
-            box-shadow: 0 12px 32px rgba(0,0,0,0.45);
-        }
-        [data-theme="dark"] .mob-nav-more-btn.active { background: rgba(224, 146, 66, 0.18); }
 
         .dark-toggle {
             background: var(--surface);
@@ -468,18 +452,22 @@
         }
         .mob-nav-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.25rem;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.15rem;
+            align-items: end;
+            max-width: 520px;
+            margin: 0 auto;
         }
         .mob-nav-item {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.2rem;
-            padding: 0.45rem 0.25rem;
+            justify-content: center;
+            gap: 0.15rem;
+            padding: 0.35rem 0.2rem;
             border-radius: 10px;
             color: var(--muted);
-            font-size: 0.62rem;
+            font-size: 0.6rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.03em;
@@ -494,8 +482,6 @@
         }
         .mob-nav-item:hover,
         .mob-nav-item.active { color: var(--amber); }
-        .mob-nav-more-btn.active { color: var(--amber); background: var(--amber-light); }
-        /* Outline SVGs — same paths as order app (apps/online-order-web icons) */
         .mob-nav-icon-svg {
             width: 20px;
             height: 20px;
@@ -504,62 +490,23 @@
             color: inherit;
         }
         .mob-nav-icon { font-size: 1.3rem; line-height: 1; }
+        /* Raised amber center Order CTA */
         .mob-nav-order {
+            position: relative;
+            top: -10px;
             background: var(--amber);
             color: white !important;
-            border-radius: 12px;
+            border-radius: 16px;
+            min-height: 52px;
+            box-shadow: 0 6px 16px rgba(212, 129, 58, 0.4);
+            font-size: 0.62rem;
         }
-        .mob-nav-order:hover { background: var(--amber-hover); }
-        /* Pre-order — same orange family as Order, softer pill (outline + tint) */
-        .mob-nav-preorder {
-            background: var(--amber-light);
-            color: var(--amber) !important;
-            border: 1.5px solid rgba(212, 129, 58, 0.42);
-            border-radius: 12px;
-            box-sizing: border-box;
+        .mob-nav-order .mob-nav-icon-svg {
+            width: 22px;
+            height: 22px;
         }
-        .mob-nav-preorder:hover {
-            background: #fde5d4;
-            border-color: var(--amber);
-        }
-
-        /* Mobile "More" sheet — Pre-order, Hours, Contact */
-        .mob-more-backdrop {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 310;
-            background: rgba(15, 10, 5, 0.35);
-        }
-        .mob-more-backdrop.open { display: block; }
-        .mob-more-sheet {
-            display: none;
-            position: fixed;
-            left: 0.75rem;
-            right: 0.75rem;
-            bottom: calc(4.25rem + env(safe-area-inset-bottom));
-            z-index: 320;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            box-shadow: 0 12px 32px rgba(0,0,0,0.14);
-            padding: 0.375rem;
-        }
-        .mob-more-sheet.open { display: block; }
-        .mob-more-sheet a {
-            display: flex;
-            align-items: center;
-            gap: 0.625rem;
-            padding: 0.75rem 0.875rem;
-            border-radius: 10px;
-            font-size: 0.925rem;
-            font-weight: 600;
-            color: var(--text);
-            text-decoration: none;
-        }
-        .mob-more-sheet a:hover,
-        .mob-more-sheet a.active { background: var(--amber-light); color: var(--amber); }
-        .mob-more-sheet a svg { width: 20px; height: 20px; flex-shrink: 0; color: inherit; }
+        .mob-nav-order:hover,
+        .mob-nav-order.active { background: var(--amber-hover); color: white !important; }
 
         /* ─── Footer ────────────────────────────────────────────── */
         .site-footer {
@@ -1041,7 +988,7 @@
             .mobile-header { display: block; }
             .mobile-bottom-nav { display: block; }
             .order-status-bar-mob { display: flex; }
-            .site-footer   { padding-bottom: calc(2rem + 72px + env(safe-area-inset-bottom)); margin-top: 3rem; }
+            .site-footer   { padding-bottom: calc(2.5rem + 80px + env(safe-area-inset-bottom)); margin-top: 3rem; }
             .footer-grid   { grid-template-columns: 1fr 1fr; gap: 2rem; }
             .footer-brand  { grid-column: 1 / -1; text-align: center; }
             .footer-brand p,
@@ -1086,14 +1033,18 @@
             const path = location.pathname;
             document.querySelectorAll('.header-nav a, .mob-nav-item[href]').forEach(a => {
                 const h = a.getAttribute('href');
-                if (h === path || (h && h !== '/' && path.startsWith(h))) a.classList.add('active');
-            });
-            document.querySelectorAll('#mobMoreSheet a').forEach(a => {
-                const h = a.getAttribute('href');
-                if (h === path || (h && path.startsWith(h))) a.classList.add('active');
+                if (!h) return;
+                if (h === '/' && path === '/') { a.classList.add('active'); return; }
+                if (h === '/#offers' && (path === '/' || location.hash === '#offers')) {
+                    if (location.hash === '#offers') a.classList.add('active');
+                    return;
+                }
+                if (h !== '/' && !h.startsWith('/#') && (h === path || path.startsWith(h))) {
+                    a.classList.add('active');
+                }
             });
 
-            // ── "More" dropdown toggle ──────────────────────────────────
+            // ── Desktop "More" dropdown toggle ─────────────────────────
             const moreBtn   = document.getElementById('moreBtn');
             const morePanel = document.getElementById('morePanel');
             if (moreBtn && morePanel) {
@@ -1117,35 +1068,6 @@
                     }
                 });
             }
-
-            // ── Mobile bottom "More" sheet ─────────────────────────────
-            const mobMoreBtn      = document.getElementById('mobMoreBtn');
-            const mobMoreSheet    = document.getElementById('mobMoreSheet');
-            const mobMoreBackdrop = document.getElementById('mobMoreBackdrop');
-            const closeMobMore = () => {
-                mobMoreSheet?.classList.remove('open');
-                mobMoreBackdrop?.classList.remove('open');
-                mobMoreBtn?.classList.remove('open');
-                mobMoreBtn?.setAttribute('aria-expanded', 'false');
-            };
-            if (mobMoreBtn && mobMoreSheet && mobMoreBackdrop) {
-                mobMoreBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const open = !mobMoreSheet.classList.contains('open');
-                    mobMoreSheet.classList.toggle('open', open);
-                    mobMoreBackdrop.classList.toggle('open', open);
-                    mobMoreBtn.classList.toggle('open', open);
-                    mobMoreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-                });
-                mobMoreBackdrop.addEventListener('click', closeMobMore);
-                mobMoreSheet.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMobMore));
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') closeMobMore();
-                });
-            }
-            ['/order/events', '/hours', '/contact'].forEach((p) => {
-                if (path === p || path.startsWith(p + '/')) mobMoreBtn?.classList.add('active');
-            });
         });
     </script>
 </head>
@@ -1379,43 +1301,31 @@
     </div>
 </footer>
 
-{{-- ─── Mobile Bottom Navigation (SVG icons match order app) ─────── --}}
+{{-- ─── Mobile Bottom Navigation: Home · Menu · Order · Offers · Account ─── --}}
 <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
     <symbol id="mob-nav-home" viewBox="0 0 24 24"><path d="M3 9.75L12 3l9 6.75V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.75z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12h6v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="mob-nav-menu" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
     <symbol id="mob-nav-cart" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 10a4 4 0 01-8 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="mob-nav-preorder" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="mob-nav-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="12 6 12 12 16 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="mob-nav-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8 19.79 19.79 0 01.12 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="mob-nav-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></symbol>
-    <symbol id="mob-nav-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 17 21 12 16 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="mob-nav-offers" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="7" y1="7" x2="7.01" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="mob-nav-account" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
 </svg>
-<div id="mobMoreBackdrop" class="mob-more-backdrop" aria-hidden="true"></div>
-<div id="mobMoreSheet" class="mob-more-sheet" role="menu" aria-label="More links">
-    <a href="/order/events" role="menuitem">
-        <svg aria-hidden="true"><use href="#mob-nav-preorder"/></svg>Catering &amp; Events
-    </a>
-    <a href="/hours" role="menuitem">
-        <svg aria-hidden="true"><use href="#mob-nav-clock"/></svg>Hours
-    </a>
-    <a href="/contact" role="menuitem">
-        <svg aria-hidden="true"><use href="#mob-nav-phone"/></svg>Contact
-    </a>
-</div>
-<nav class="mobile-bottom-nav">
+<nav class="mobile-bottom-nav" aria-label="Mobile navigation" data-mobile-bottom-nav>
     <div class="mob-nav-grid">
-        <a href="/" class="mob-nav-item">
+        <a href="/" class="mob-nav-item" data-nav="home">
             <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-home"/></svg>Home
         </a>
-        <a href="/order/menu" class="mob-nav-item">
+        <a href="/order/menu" class="mob-nav-item" data-nav="menu">
             <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-menu"/></svg>Menu
         </a>
-        <a href="/order/" class="mob-nav-item mob-nav-order">
+        <a href="/order/menu" class="mob-nav-item mob-nav-order" data-nav="order" aria-label="Order now">
             <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-cart"/></svg>Order
         </a>
-        <button type="button" id="mobMoreBtn" class="mob-nav-item mob-nav-more-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="mobMoreSheet">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-more"/></svg>More
-        </button>
+        <a href="/#offers" class="mob-nav-item" data-nav="offers">
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-offers"/></svg>Offers
+        </a>
+        <a href="/order/account" class="mob-nav-item" data-nav="account">
+            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-account"/></svg>Account
+        </a>
     </div>
 </nav>
 

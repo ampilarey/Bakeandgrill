@@ -35,7 +35,7 @@ export function CategoryRail({
   const activeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    activeRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
   }, [activeCategoryId]);
 
   return (
@@ -110,14 +110,18 @@ export function CategoryRail({
             >
               {img ? (
                 <img
+                  className="cat-rail__thumb"
                   src={img}
                   alt=""
                   width={40}
                   height={40}
+                  loading="lazy"
+                  decoding="async"
                   style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }}
                 />
               ) : (
                 <span
+                  className="cat-rail__thumb"
                   aria-hidden="true"
                   style={{
                     width: 40,
@@ -135,20 +139,7 @@ export function CategoryRail({
                   {initial}
                 </span>
               )}
-              <span
-                className="cat-rail__label"
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  textAlign: 'center',
-                  lineHeight: 1.25,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  maxWidth: '100%',
-                }}
-              >
+              <span className="cat-rail__label">
                 {cat.name}
               </span>
               {(counts[cat.id] ?? 0) > 0 && (

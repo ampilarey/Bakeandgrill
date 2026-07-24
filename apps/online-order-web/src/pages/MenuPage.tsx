@@ -26,7 +26,6 @@ import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderModeToggle } from '../components/OrderModeToggle';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { CategoryRail } from '../components/menu/CategoryRail';
-import { CategoryChips } from '../components/menu/CategoryChips';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { OffersRail } from '../components/home/OffersRail';
@@ -606,17 +605,6 @@ export function MenuPage() {
           filtersActive={filtersActive}
           onClear={handleClearFilters}
         />
-
-        {!loading && !filtersActive && railCategories.length > 0 && (
-          <CategoryChips
-            categories={railCategories}
-            activeCategoryId={activeCategoryId}
-            onSelect={handleSelectCategory}
-            dimmed={loading || filtersActive}
-            showOffersPill={offers.length > 0}
-            onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          />
-        )}
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem' }}>
           <div className="menu-view-toggle" role="group" aria-label="Menu layout">
