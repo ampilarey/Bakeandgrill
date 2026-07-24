@@ -255,6 +255,7 @@ describe('MediaLibraryPage', () => {
         url: '/storage/menu/plain.jpg',
         checksum: 'abc',
         updated_at: '2026-07-01T12:00:00Z',
+        file_size: 50,
       })],
       meta: { current_page: 1, last_page: 1, per_page: 24, total: 1 },
     });
@@ -262,23 +263,27 @@ describe('MediaLibraryPage', () => {
     const card = await screen.findByTestId('asset-card-9');
     const img = card.querySelector('img');
     expect(img).toBeTruthy();
-    expect(img?.getAttribute('src')).toBe('/storage/menu/plain.jpg?v=2026-07-01T12%3A00%3A00Z');
+    expect(img?.getAttribute('src')).toContain('/storage/menu/plain.jpg?v=');
+    expect(img?.getAttribute('src')).toContain(encodeURIComponent('2026-07-01T12:00:00Z'));
+    expect(img?.getAttribute('src')).toContain('abc');
   });
 
   it('detail drawer preview uses the full image url with cache buster', async () => {
     renderWithRouter(<MediaLibraryPage />);
     fireEvent.click(await screen.findByTestId('asset-card-1'));
     const preview = await screen.findByTestId('detail-preview-img');
-    expect(preview.getAttribute('src')).toBe(
-      'https://cdn.example.com/images/asset-1.jpg?v=2026-01-01T00%3A00%3A00Z',
-    );
+    const src = preview.getAttribute('src') || '';
+    expect(src.startsWith('https://cdn.example.com/images/asset-1.jpg?v=')).toBe(true);
+    expect(src).toContain(encodeURIComponent('2026-01-01T00:00:00Z'));
+    expect(src).toContain('checksum-1');
   });
 
-  it('after replace edit, preview src updates when updated_at changes', async () => {
+  it('after replace edit, preview src updates when checksum/updated_at change', async () => {
     const editSpy = vi.spyOn(api, 'editMedia').mockResolvedValue({
       asset: makeAsset(1, {
         checksum: 'after-edit',
         updated_at: '2026-07-23T18:00:00Z',
+        file_size: 999,
         title: 'Asset 1 resized',
       }),
       updated_references: 0,
@@ -287,9 +292,8 @@ describe('MediaLibraryPage', () => {
 
     renderWithRouter(<MediaLibraryPage />);
     fireEvent.click(await screen.findByTestId('asset-card-1'));
-    expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain(
-      'v=2026-01-01T00%3A00%3A00Z',
-    );
+    const before = (await screen.findByTestId('detail-preview-img')).getAttribute('src') || '';
+    expect(before).toContain('checksum-1');
 
     fireEvent.click(screen.getByRole('button', { name: /resize/i }));
     fireEvent.click(await screen.findByRole('button', { name: /^apply$/i }));
@@ -298,9 +302,18 @@ describe('MediaLibraryPage', () => {
     await waitFor(() => {
       expect(editSpy).toHaveBeenCalled();
     });
-    expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain(
-      'v=2026-07-23T18%3A00%3A00Z',
-    );
+    const after = (await screen.findByTestId('detail-preview-img')).getAttribute('src') || '';
+    expect(after).not.toBe(before);
+    expect(after).toContain('after-edit');
+    expect(after).toContain(encodeURIComponent('2026-07-23T18:00:00Z'));
+  });
+
+  it('rotate tool shows a live preview', async () => {
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    fireEvent.click(screen.getByRole('button', { name: /^rotate$/i }));
+    expect(await screen.findByTestId('edit-live-preview')).toBeTruthy();
+    expect(screen.getByText(/rotated 90/i)).toBeTruthy();
   });
 
   it('crop confirm sends croppedAreaPixels as crop params', async () => {

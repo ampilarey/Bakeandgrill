@@ -44,14 +44,31 @@ function thumbSrc(asset: MediaAsset): string | null {
 
 /**
  * Append a version token so replace-mode edits (same path) reload in the browser.
- * Prefer updated_at (always bumps on save), then checksum / id.
+ * Combine updated_at + checksum + size + optional client cache_buster — updated_at alone
+ * can stay identical within the same second and then the browser keeps the old image.
  */
-export function mediaPreviewSrc(url: string, asset: Pick<MediaAsset, 'checksum' | 'updated_at' | 'file_size' | 'id'>): string {
+export function mediaPreviewSrc(
+  url: string,
+  asset: Pick<MediaAsset, 'checksum' | 'updated_at' | 'file_size' | 'id'> & {
+    cache_buster?: string | number | null;
+  },
+): string {
   if (!url) return url;
-  const token = asset.updated_at || asset.checksum || String(asset.id);
-  if (!token) return url;
+  const parts = [
+    asset.updated_at,
+    asset.checksum,
+    asset.file_size != null ? String(asset.file_size) : null,
+    asset.cache_buster != null && asset.cache_buster !== '' ? String(asset.cache_buster) : null,
+    String(asset.id),
+  ].filter((p): p is string => p != null && p !== '');
+  const token = parts.join('.') || String(asset.id);
   const sep = url.includes('?') ? '&' : '?';
   return `${url}${sep}v=${encodeURIComponent(token)}`;
+}
+
+/** Stamp a unique client rev so img src always changes after an in-place edit. */
+function withCacheBuster(asset: MediaAsset): MediaAsset {
+  return { ...asset, cache_buster: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` };
 }
 
 /** Grid / compact preview — images use thumb_url||url with icon fallback on error. */
@@ -223,6 +240,91 @@ const CROP_ASPECTS: Array<{ label: string; value: number | undefined }> = [
 
 const RESIZE_PRESETS = [1200, 800, 512, 256];
 
+/** Live CSS preview for rotate / resize / thumbnail (crop has its own interactive UI). */
+function EditTransformPreview({
+  asset, op, params,
+}: {
+  asset: MediaAsset;
+  op: MediaEditOp;
+  params: EditParams;
+}) {
+  if (op === 'crop' || !asset.url) return null;
+  const src = mediaPreviewSrc(asset.url, asset);
+  const degrees = op === 'rotate' ? (Number(params.degrees) || 90) : 0;
+
+  let boxH = 180;
+  let imgStyle: CSSProperties = {
+    maxWidth: '100%',
+    maxHeight: 180,
+    objectFit: 'contain',
+    transition: 'transform 0.2s ease',
+  };
+
+  if (op === 'rotate') {
+    imgStyle = { ...imgStyle, transform: `rotate(${degrees}deg)` };
+  }
+
+  if (op === 'resize' || op === 'thumbnail') {
+    const srcW = asset.width || 400;
+    const srcH = asset.height || 300;
+    const maintain = (params.maintain_aspect as boolean) ?? true;
+    let tw = Number(params.width) || 0;
+    let th = Number(params.height) || 0;
+    if (op === 'thumbnail') {
+      tw = Number(params.width) || 300;
+      th = Number(params.height) || 200;
+    } else if (tw && !th && maintain) {
+      th = Math.round((tw * srcH) / srcW);
+    } else if (th && !tw && maintain) {
+      tw = Math.round((th * srcW) / srcH);
+    } else if (!tw && !th) {
+      tw = srcW;
+      th = srcH;
+    }
+    const max = 200;
+    const scale = Math.min(1, max / Math.max(tw || 1, th || 1));
+    const dw = Math.max(24, Math.round((tw || srcW) * scale));
+    const dh = Math.max(24, Math.round((th || srcH) * scale));
+    boxH = dh + 24;
+    imgStyle = {
+      width: dw,
+      height: dh,
+      objectFit: 'cover',
+      transition: 'width 0.15s ease, height 0.15s ease',
+    };
+  }
+
+  const caption =
+    op === 'rotate' ? `Rotated ${degrees}° (preview)`
+      : op === 'resize' ? 'Resize preview'
+        : op === 'thumbnail' ? 'Thumbnail frame preview'
+          : op === 'convert' ? `Convert → ${String(params.format || 'jpeg').toUpperCase()}`
+            : op === 'optimize' ? `Optimize · quality ${Number(params.quality) || 80}`
+              : 'Preview';
+
+  return (
+    <div data-testid="edit-live-preview" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#9C8E7E' }}>{caption}</div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: Math.max(140, boxH),
+          width: '100%',
+          background: '#1C1408',
+          borderRadius: 10,
+          overflow: 'hidden',
+          padding: 12,
+          boxSizing: 'border-box',
+        }}
+      >
+        <img key={src} src={src} alt="" style={imgStyle} />
+      </div>
+    </div>
+  );
+}
+
 function CropEditPanel({
   params, onChange, asset,
 }: {
@@ -318,6 +420,7 @@ function EditOpPanel({
     case 'convert':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {asset ? <EditTransformPreview asset={asset} op={op} params={params} /> : null}
           <label style={labelStyle}>Output format
             <select value={(params.format as string) || 'jpeg'} onChange={(e) => set('format', e.target.value)} style={{ ...inputStyle, marginTop: 4 }}>
               <option value="jpeg">JPEG</option>
@@ -344,6 +447,7 @@ function EditOpPanel({
       else if (h) hint = `Height ${h}px (width auto)`;
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {asset ? <EditTransformPreview asset={asset} op={op} params={params} /> : null}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {RESIZE_PRESETS.map((px) => (
               <button
@@ -385,6 +489,7 @@ function EditOpPanel({
     case 'rotate':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {asset ? <EditTransformPreview asset={asset} op={op} params={{ ...params, degrees: params.degrees ?? 90 }} /> : null}
           <label style={labelStyle}>Degrees
             <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
               {[90, 180, 270].map((d) => (
@@ -404,20 +509,26 @@ function EditOpPanel({
       );
     case 'thumbnail':
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <label style={labelStyle}>Width (px)
-            <input type="number" min={1} value={(params.width as number) ?? 300} onChange={(e) => set('width', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-          </label>
-          <label style={labelStyle}>Height (px)
-            <input type="number" min={1} value={(params.height as number) ?? 200} onChange={(e) => set('height', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {asset ? <EditTransformPreview asset={asset} op={op} params={params} /> : null}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <label style={labelStyle}>Width (px)
+              <input type="number" min={1} value={(params.width as number) ?? 300} onChange={(e) => set('width', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+            </label>
+            <label style={labelStyle}>Height (px)
+              <input type="number" min={1} value={(params.height as number) ?? 200} onChange={(e) => set('height', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+            </label>
+          </div>
         </div>
       );
     case 'optimize':
       return (
-        <label style={labelStyle}>Quality (1–100)
-          <input type="number" min={1} max={100} value={(params.quality as number) ?? 80} onChange={(e) => set('quality', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {asset ? <EditTransformPreview asset={asset} op={op} params={params} /> : null}
+          <label style={labelStyle}>Quality (1–100)
+            <input type="number" min={1} max={100} value={(params.quality as number) ?? 80} onChange={(e) => set('quality', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+          </label>
+        </div>
       );
     default:
       return null;
@@ -603,10 +714,18 @@ export function MediaLibraryPage() {
     setShowSaveModeModal(false);
     try {
       const result = await editMedia(selected.id, editOp, editParams, mode);
-      setEditResult(result);
+      const stamped = withCacheBuster(result.asset);
+      setEditResult({ ...result, asset: stamped });
       setCanRestore(mode === 'replace');
-      setSelected(result.asset);
-      setAssets((prev) => prev.map((a) => (a.id === result.asset.id ? result.asset : a)));
+      setSelected(stamped);
+      setAssets((prev) => {
+        if (mode === 'copy') {
+          // New asset — put it at the front of the list
+          const withoutDup = prev.filter((a) => a.id !== stamped.id);
+          return [stamped, ...withoutDup];
+        }
+        return prev.map((a) => (a.id === stamped.id ? stamped : a));
+      });
       setEditOp(null);
     } catch (e) {
       setEditError((e as Error).message || 'Edit failed');
@@ -621,8 +740,9 @@ export function MediaLibraryPage() {
     setEditError('');
     try {
       const res = await restoreMedia(selected.id);
-      setSelected(res.asset);
-      setAssets((prev) => prev.map((a) => (a.id === res.asset.id ? res.asset : a)));
+      const stamped = withCacheBuster(res.asset);
+      setSelected(stamped);
+      setAssets((prev) => prev.map((a) => (a.id === stamped.id ? stamped : a)));
       setEditResult(null);
       setCanRestore(false);
     } catch (e) {
@@ -1229,7 +1349,23 @@ export function MediaLibraryPage() {
                     <button
                       key={op}
                       type="button"
-                      onClick={() => { setEditOp(editOp === op ? null : op); setEditParams({}); setEditError(''); }}
+                      onClick={() => {
+                        if (editOp === op) {
+                          setEditOp(null);
+                          setEditParams({});
+                        } else {
+                          setEditOp(op);
+                          setEditParams(
+                            op === 'rotate' ? { degrees: 90 }
+                              : op === 'optimize' ? { quality: 80 }
+                                : op === 'thumbnail' ? { width: 300, height: 200 }
+                                  : op === 'convert' ? { format: 'jpeg', quality: 85 }
+                                    : op === 'resize' ? { maintain_aspect: true, keep_aspect: true }
+                                      : {},
+                          );
+                        }
+                        setEditError('');
+                      }}
                       style={{
                         height: 44, minHeight: 44, padding: '0 12px', borderRadius: 8, border: editOp === op ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
                         background: editOp === op ? '#FFF7ED' : '#F8F6F3', cursor: 'pointer',

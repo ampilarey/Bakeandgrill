@@ -27,6 +27,8 @@ export interface MediaAsset {
   /** Used to cache-bust previews after in-place replace edits. */
   checksum?: string | null;
   updated_at?: string | null;
+  /** Client-only stamp set after edit/restore so img src always changes. */
+  cache_buster?: string | number | null;
 }
 
 export interface MediaPaginationMeta {
