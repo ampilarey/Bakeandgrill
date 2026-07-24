@@ -118,8 +118,10 @@ export async function uploadPurchaseRequestAttachment(
   type: "request_photo" | "receipt" | "delivery_note" | "other",
   itemId?: number,
 ): Promise<{ attachment: { id: number; url: string } }> {
+  const { prepareImageForUpload } = await import("../utils/prepareUpload");
+  const prepared = await prepareImageForUpload(file);
   const form = new FormData();
-  form.append("file", file);
+  form.append("file", prepared);
   form.append("type", type);
   if (itemId != null) form.append("purchase_request_item_id", String(itemId));
   return request(`/purchase-requests/${requestId}/attachments`, {

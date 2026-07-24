@@ -191,7 +191,7 @@ export function RequestItemModal({ onClose, onCreated, prefillName, prefillInven
 
         <label style={{ display: "block", marginBottom: space.m }}>
           <span style={{ fontSize: type.bodySm.fontSize, fontWeight: 600 }}>Photo (optional)</span>
-          <input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} style={{ marginTop: 4 }} />
+          <input type="file" accept="image/*,.heic,.heif" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} style={{ marginTop: 4 }} />
         </label>
 
         {err && <p style={{ color: "#ef4444", fontSize: type.bodySm.fontSize }}>{err}</p>}

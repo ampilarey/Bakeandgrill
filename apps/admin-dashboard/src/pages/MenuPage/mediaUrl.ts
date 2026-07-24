@@ -92,7 +92,9 @@ function canvasToJpegBlob(canvas: HTMLCanvasElement, quality: number): Promise<B
  * First upload: one decode → cropper preview + master File to store on the server.
  */
 export async function prepareUploadFromFile(file: File): Promise<{ cropSrc: string; masterFile: File }> {
-  const tempUrl = URL.createObjectURL(file);
+  const { prepareImageForUpload } = await import('../../utils/prepareUpload');
+  const prepared = await prepareImageForUpload(file);
+  const tempUrl = URL.createObjectURL(prepared);
   try {
     const img = await loadHtmlImage(tempUrl);
     const cropCanvas = drawScaled(img, MAX_CROP_SOURCE_EDGE);
@@ -101,7 +103,7 @@ export async function prepareUploadFromFile(file: File): Promise<{ cropSrc: stri
       canvasToJpegBlob(cropCanvas, PREP_JPEG_QUALITY),
       canvasToJpegBlob(masterCanvas, MASTER_JPEG_QUALITY),
     ]);
-    const base = (file.name || 'photo').replace(/\.[^.]+$/, '') || 'photo';
+    const base = (prepared.name || file.name || 'photo').replace(/\.[^.]+$/, '') || 'photo';
     return {
       cropSrc: URL.createObjectURL(cropBlob),
       masterFile: new File([masterBlob], `${base}-master.jpg`, { type: 'image/jpeg' }),

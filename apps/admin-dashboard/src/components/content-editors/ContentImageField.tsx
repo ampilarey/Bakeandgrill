@@ -92,7 +92,7 @@ export function ContentImageField({
         <Button variant="secondary" size="sm" icon={<Upload size={13} />} onClick={() => inputRef.current?.click()} disabled={busy}>
           {busy ? 'Uploading…' : 'Crop & upload'}
         </Button>
-        <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onFile} />
+        <input ref={inputRef} type="file" accept="image/*,.heic,.heif" style={{ display: 'none' }} onChange={onFile} />
       </div>
       {showAlt ? (
         <input

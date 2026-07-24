@@ -736,6 +736,7 @@ export function MediaLibraryPage() {
             ref={fileInputRef}
             type="file"
             multiple
+            accept="image/*,.heic,.heif,video/mp4,video/webm,video/quicktime,.mov,audio/*,application/pdf"
             style={{ display: 'none' }}
             onChange={(e) => { if (e.target.files) void doUpload(e.target.files); e.target.value = ''; }}
           />

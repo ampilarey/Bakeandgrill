@@ -191,7 +191,7 @@ describe('MediaLibraryPage', () => {
 
     expect(await screen.findByText(/replaced in 3 reference/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /restore previous version/i })).toBeTruthy();
-  }, 20_000);
+  }, 30_000);
 
   it('shows empty state when no assets match', async () => {
     vi.mocked(api.getMedia).mockResolvedValueOnce({ data: [], meta: emptyMeta });

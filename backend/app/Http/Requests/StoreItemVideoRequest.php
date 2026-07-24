@@ -46,7 +46,7 @@ class StoreItemVideoRequest extends FormRequest
         return [
             'poster.required' => 'A poster image is required for video clips.',
             'video.max' => "Video is too large. Maximum size is {$maxMb} MB.",
-            'video.mimetypes' => 'Video must be MP4 or WebM.',
+            'video.mimetypes' => 'Video must be MP4, WebM, or MOV.',
         ];
     }
 }

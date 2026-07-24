@@ -74,6 +74,12 @@ class SiteSettingsController extends Controller
             'cat_1_image',  'cat_2_image',  'cat_3_image',  'cat_4_image'];
         $allowedKeys = array_merge($directKeys, $jsonKeys);
 
+        if (\App\Support\MenuImageValidation::looksLikeHeic($request->file('file'))) {
+            return response()->json([
+                'message' => \App\Support\MenuImageValidation::heicRejectedMessage(),
+            ], 422);
+        }
+
         $request->validate([
             'file' => 'required|file|mimes:png,jpg,jpeg,webp,ico|max:5120',
             'key' => 'required|string|in:' . implode(',', $allowedKeys),

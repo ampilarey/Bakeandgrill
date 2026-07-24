@@ -72,7 +72,7 @@ export function HeroSlidesEditor({
       <input
         ref={fileRef}
         type="file"
-        accept="video/mp4,video/webm,image/*"
+        accept="video/mp4,video/webm,video/quicktime,.mov,image/*,.heic,.heif"
         style={{ display: 'none' }}
         onChange={(e) => {
           const file = e.target.files?.[0];

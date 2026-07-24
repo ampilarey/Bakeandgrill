@@ -612,6 +612,12 @@ class ContentController extends Controller
 
     public function upload(Request $request): JsonResponse
     {
+        if (\App\Support\MenuImageValidation::looksLikeHeic($request->file('file'))) {
+            return response()->json([
+                'message' => \App\Support\MenuImageValidation::heicRejectedMessage(),
+            ], 422);
+        }
+
         $data = $request->validate([
             'key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
             'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
@@ -691,7 +697,7 @@ class ContentController extends Controller
             'key' => ['required', 'string', Rule::in(['hero_slides'])],
             'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
-            'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm', 'max:51200'],
+            'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm,video/quicktime', 'max:51200'],
             'poster' => ['required', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
         ]);
 
@@ -704,8 +710,13 @@ class ContentController extends Controller
             $video = $request->file('video');
             $poster = $request->file('poster');
             $ext = strtolower((string) $video->getClientOriginalExtension()) ?: 'mp4';
-            if (!in_array($ext, ['mp4', 'webm'], true)) {
-                $ext = str_contains((string) $video->getMimeType(), 'webm') ? 'webm' : 'mp4';
+            if (!in_array($ext, ['mp4', 'webm', 'mov'], true)) {
+                $mime = (string) $video->getMimeType();
+                $ext = match (true) {
+                    str_contains($mime, 'webm') => 'webm',
+                    str_contains($mime, 'quicktime') => 'mov',
+                    default => 'mp4',
+                };
             }
             $videoRel = $this->processor->storeRaw($video, $dir, $ext);
             $posterRel = $this->processor->storeProcessed($poster, $dir . '/posters');

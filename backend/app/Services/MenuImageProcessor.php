@@ -228,6 +228,10 @@ class MenuImageProcessor
 
     private function loadUploaded(UploadedFile $file): \GdImage
     {
+        if (\App\Support\MenuImageValidation::looksLikeHeic($file)) {
+            throw new RuntimeException(\App\Support\MenuImageValidation::heicRejectedMessage());
+        }
+
         $path = $file->getRealPath();
         if ($path === false || !is_readable($path)) {
             throw new RuntimeException('Uploaded image is not readable.');
@@ -270,7 +274,78 @@ class MenuImageProcessor
             throw new RuntimeException('Unsupported or corrupt image. Use JPEG, PNG, or WebP.');
         }
 
-        return $image;
+        return $this->applyExifOrientation($image, $path);
+    }
+
+    /**
+     * Rotate/flip per EXIF Orientation so iPhone photos aren't sideways after GD re-encode.
+     */
+    private function applyExifOrientation(\GdImage $image, string $path): \GdImage
+    {
+        if (!function_exists('exif_read_data')) {
+            return $image;
+        }
+
+        $exif = @exif_read_data($path);
+        if ($exif === false || !isset($exif['Orientation'])) {
+            return $image;
+        }
+
+        $orientation = (int) $exif['Orientation'];
+        if ($orientation === 1) {
+            return $image;
+        }
+
+        $rotated = $image;
+        switch ($orientation) {
+            case 2:
+                imageflip($rotated, IMG_FLIP_HORIZONTAL);
+                break;
+            case 3:
+                $tmp = imagerotate($rotated, 180, 0);
+                if ($tmp !== false) {
+                    imagedestroy($rotated);
+                    $rotated = $tmp;
+                }
+                break;
+            case 4:
+                imageflip($rotated, IMG_FLIP_VERTICAL);
+                break;
+            case 5:
+                imageflip($rotated, IMG_FLIP_HORIZONTAL);
+                $tmp = imagerotate($rotated, 270, 0);
+                if ($tmp !== false) {
+                    imagedestroy($rotated);
+                    $rotated = $tmp;
+                }
+                break;
+            case 6:
+                // 90° CW → GD imagerotate is CCW, so 270
+                $tmp = imagerotate($rotated, 270, 0);
+                if ($tmp !== false) {
+                    imagedestroy($rotated);
+                    $rotated = $tmp;
+                }
+                break;
+            case 7:
+                imageflip($rotated, IMG_FLIP_HORIZONTAL);
+                $tmp = imagerotate($rotated, 90, 0);
+                if ($tmp !== false) {
+                    imagedestroy($rotated);
+                    $rotated = $tmp;
+                }
+                break;
+            case 8:
+                // 270° CW → 90 CCW
+                $tmp = imagerotate($rotated, 90, 0);
+                if ($tmp !== false) {
+                    imagedestroy($rotated);
+                    $rotated = $tmp;
+                }
+                break;
+        }
+
+        return $rotated;
     }
 
     /** @return array{0: int, 1: int} */

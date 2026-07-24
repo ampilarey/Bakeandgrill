@@ -2,7 +2,7 @@
 export const MENU_VIDEO_LIMITS = {
   maxBytes: 8192 * 1024,
   maxSeconds: 10,
-  accept: 'video/mp4,video/webm',
+  accept: 'video/mp4,video/webm,video/quicktime,.mov',
 } as const;
 
 /**
@@ -13,8 +13,11 @@ export async function prepareVideoClip(file: File): Promise<{ video: File; poste
     const mb = (MENU_VIDEO_LIMITS.maxBytes / (1024 * 1024)).toFixed(1);
     throw new Error(`Video is too large. Maximum size is ${mb} MB.`);
   }
-  if (!/^video\/(mp4|webm)$/i.test(file.type) && !/\.(mp4|webm)$/i.test(file.name)) {
-    throw new Error('Video must be MP4 or WebM.');
+  if (
+    !/^video\/(mp4|webm|quicktime)$/i.test(file.type) &&
+    !/\.(mp4|webm|mov)$/i.test(file.name)
+  ) {
+    throw new Error('Video must be MP4, WebM, or MOV.');
   }
 
   const objectUrl = URL.createObjectURL(file);

@@ -445,7 +445,7 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
         }
       />
 
-      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => void handleEmbedFile(e)} />
+      <input ref={fileInputRef} type="file" accept="image/*,.heic,.heif" style={{ display: 'none' }} onChange={(e) => void handleEmbedFile(e)} />
       <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => void doImport(e)} />
 
       <div className="content-studio-toolbar" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -676,7 +676,7 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
                     {val ? <img src={val} alt={block.label} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 10 }} /> : null}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.heic,.heif"
                       onChange={(e) => {
                         const f = e.target.files?.[0];
                         if (f) void onUpload(block, f);

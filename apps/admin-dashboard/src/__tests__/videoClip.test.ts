@@ -9,7 +9,7 @@ describe('prepareVideoClip', () => {
 
   it('rejects non-video mime types', async () => {
     const bad = new File([new Uint8Array(10)], 'x.txt', { type: 'text/plain' });
-    await expect(prepareVideoClip(bad)).rejects.toThrow(/MP4 or WebM/i);
+    await expect(prepareVideoClip(bad)).rejects.toThrow(/MP4, WebM, or MOV/i);
   });
 
   it('rejects long duration via mocked video element', async () => {

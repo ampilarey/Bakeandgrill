@@ -151,12 +151,15 @@ export async function uploadContentImage(
   original?: File,
   locale: ContentLocale = 'en',
 ): Promise<{ url: string; thumb_url?: string; original_url?: string | null }> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
+  const prepared = await prepareImageForUpload(file);
+  const preparedOriginal = original ? await prepareImageForUpload(original) : undefined;
   const form = new FormData();
   form.append('key', key);
   form.append('scope', scope);
   form.append('locale', locale);
-  form.append('file', file);
-  if (original) form.append('original', original);
+  form.append('file', prepared);
+  if (preparedOriginal) form.append('original', preparedOriginal);
   return req('/admin/content/upload', { method: 'POST', body: form });
 }
 
@@ -168,12 +171,14 @@ export async function uploadContentVideo(
   poster: File,
   locale: ContentLocale = 'en',
 ): Promise<{ url: string; poster_url: string; thumb_url?: string }> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
+  const preparedPoster = await prepareImageForUpload(poster);
   const form = new FormData();
   form.append('key', key);
   form.append('scope', scope);
   form.append('locale', locale);
   form.append('video', video);
-  form.append('poster', poster);
+  form.append('poster', preparedPoster);
   return req('/admin/content/upload-video', { method: 'POST', body: form });
 }
 

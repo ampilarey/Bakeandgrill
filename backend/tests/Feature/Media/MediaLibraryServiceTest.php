@@ -65,6 +65,7 @@ class MediaLibraryServiceTest extends TestCase
     {
         $this->assertSame('image', $this->library->mediaTypeFromMime('image/jpeg'));
         $this->assertSame('video', $this->library->mediaTypeFromMime('video/mp4'));
+        $this->assertSame('video', $this->library->mediaTypeFromMime('video/quicktime'));
         $this->assertSame('audio', $this->library->mediaTypeFromMime('audio/mpeg'));
         $this->assertSame('document', $this->library->mediaTypeFromMime('application/pdf'));
         $this->assertNull($this->library->mediaTypeFromMime('text/plain'));

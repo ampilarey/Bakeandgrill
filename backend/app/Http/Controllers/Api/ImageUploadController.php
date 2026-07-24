@@ -28,6 +28,12 @@ class ImageUploadController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        if (MenuImageValidation::looksLikeHeic($request->file('image'))) {
+            throw ValidationException::withMessages([
+                'image' => [MenuImageValidation::heicRejectedMessage()],
+            ]);
+        }
+
         try {
             $request->validate([
                 'image' => MenuImageValidation::fileRules(required: true),
@@ -35,6 +41,11 @@ class ImageUploadController extends Controller
                 'purpose' => ['sometimes', 'string', Rule::in(['menu', 'banner'])],
             ]);
         } catch (ValidationException $e) {
+            if (MenuImageValidation::looksLikeHeic($request->file('image'))) {
+                throw ValidationException::withMessages([
+                    'image' => [MenuImageValidation::heicRejectedMessage()],
+                ]);
+            }
             if ($this->looksLikeWebpRejection($request, $e)) {
                 throw ValidationException::withMessages([
                     'image' => [MenuImageValidation::webpUnsupportedMessage()],

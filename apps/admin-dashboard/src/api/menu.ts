@@ -265,9 +265,12 @@ export async function uploadMenuImage(
   width?: number;
   height?: number;
 }> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
+  const prepared = await prepareImageForUpload(file);
+  const preparedOriginal = original ? await prepareImageForUpload(original) : undefined;
   const formData = new FormData();
-  formData.append('image', file);
-  if (original) formData.append('original', original);
+  formData.append('image', prepared);
+  if (preparedOriginal) formData.append('original', preparedOriginal);
   if (purpose !== 'menu') formData.append('purpose', purpose);
   return req('/admin/upload-image', { method: 'POST', body: formData });
 }
@@ -297,9 +300,12 @@ export async function uploadItemPhoto(
   file: File,
   options?: { original?: File; original_url?: string | null; alt_text?: string | null },
 ): Promise<{ photo: ItemPhoto }> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
+  const prepared = await prepareImageForUpload(file);
+  const preparedOriginal = options?.original ? await prepareImageForUpload(options.original) : undefined;
   const form = new FormData();
-  form.append('photo', file);
-  if (options?.original) form.append('original', options.original);
+  form.append('photo', prepared);
+  if (preparedOriginal) form.append('original', preparedOriginal);
   if (options?.original_url) form.append('original_url', options.original_url);
   if (options?.alt_text) form.append('alt_text', options.alt_text);
   return req(`/items/${itemId}/photos`, { method: 'POST', body: form });
@@ -329,10 +335,12 @@ export async function uploadItemVideo(
   poster: File,
   options?: { alt_text?: string | null; is_primary?: boolean },
 ): Promise<{ photo: ItemPhoto }> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
+  const preparedPoster = await prepareImageForUpload(poster);
   const form = new FormData();
   form.append('media_type', 'video');
   form.append('video', video);
-  form.append('poster', poster);
+  form.append('poster', preparedPoster);
   if (options?.alt_text) form.append('alt_text', options.alt_text);
   if (options?.is_primary) form.append('is_primary', '1');
   return req(`/items/${itemId}/photos`, { method: 'POST', body: form });

@@ -73,8 +73,11 @@ export async function uploadMedia(
   files: File[],
   options?: { title?: string; alt_text?: string; collection_ids?: number[] },
 ): Promise<{ data: Array<{ asset: MediaAsset; deduped: boolean }> }> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
   const form = new FormData();
-  for (const f of files) form.append('files[]', f);
+  for (const f of files) {
+    form.append('files[]', await prepareImageForUpload(f));
+  }
   if (options?.title) form.append('title', options.title);
   if (options?.alt_text) form.append('alt_text', options.alt_text);
   for (const id of options?.collection_ids ?? []) form.append('collection_ids[]', String(id));

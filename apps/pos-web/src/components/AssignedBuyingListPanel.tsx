@@ -157,7 +157,7 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
                   <textarea placeholder="Buyer note" value={d.notes} onChange={(e) => setDraft(item, { notes: e.target.value })} rows={2} style={{ width: "100%", padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}`, boxSizing: "border-box", marginBottom: space.s }} />
                   <label style={{ fontSize: type.bodySm.fontSize, display: "block", marginBottom: space.s }}>
                     Receipt photo
-                    <input id={receiptId} type="file" accept="image/*" style={{ display: "block", marginTop: 4 }} />
+                    <input id={receiptId} type="file" accept="image/*,.heic,.heif" style={{ display: "block", marginTop: 4 }} />
                   </label>
                   <div style={{ display: "flex", gap: space.s, flexWrap: "wrap" }}>
                     <button type="button" disabled={busyId === item.id} onClick={() => {

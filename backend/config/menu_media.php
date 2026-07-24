@@ -32,8 +32,8 @@ return [
     'video' => [
         'max_kb' => 8192,
         'max_seconds' => 10,
-        'mimetypes' => ['video/mp4', 'video/webm'],
-        'extensions' => ['mp4', 'webm'],
+        'mimetypes' => ['video/mp4', 'video/webm', 'video/quicktime'],
+        'extensions' => ['mp4', 'webm', 'mov'],
         'directory' => 'item-photos',
     ],
 ];

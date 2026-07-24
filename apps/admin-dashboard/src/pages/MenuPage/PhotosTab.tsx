@@ -199,7 +199,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
       <input
         ref={fileRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/*,.heic,.heif"
         style={{ display: 'none' }}
         onChange={(e) => {
           const f = e.target.files?.[0];

@@ -37,6 +37,12 @@ class ItemPhotoController extends Controller
 
         $item = Item::findOrFail($itemId);
 
+        if (MenuImageValidation::looksLikeHeic($request->file('photo'))) {
+            throw ValidationException::withMessages([
+                'photo' => [MenuImageValidation::heicRejectedMessage()],
+            ]);
+        }
+
         try {
             $validated = $request->validate([
                 'photo' => MenuImageValidation::fileRules(required: true),
@@ -47,6 +53,11 @@ class ItemPhotoController extends Controller
                 'original_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             ]);
         } catch (ValidationException $e) {
+            if (MenuImageValidation::looksLikeHeic($request->file('photo'))) {
+                throw ValidationException::withMessages([
+                    'photo' => [MenuImageValidation::heicRejectedMessage()],
+                ]);
+            }
             if (!ImageCapabilities::supportsWebp()) {
                 $file = $request->file('photo');
                 if ($file && str_contains(strtolower((string) $file->getMimeType()), 'webp')) {
@@ -117,13 +128,18 @@ class ItemPhotoController extends Controller
         $poster = $request->file('poster');
         $allowedVideo = config('menu_media.video.mimetypes', ['video/mp4', 'video/webm']);
         if (!in_array((string) $video->getMimeType(), $allowedVideo, true)) {
-            return response()->json(['message' => 'Video must be MP4 or WebM.'], 422);
+            return response()->json(['message' => 'Video must be MP4, WebM, or MOV.'], 422);
         }
 
         try {
             $ext = strtolower((string) $video->getClientOriginalExtension()) ?: 'mp4';
-            if (!in_array($ext, config('menu_media.video.extensions', ['mp4', 'webm']), true)) {
-                $ext = str_contains((string) $video->getMimeType(), 'webm') ? 'webm' : 'mp4';
+            if (!in_array($ext, config('menu_media.video.extensions', ['mp4', 'webm', 'mov']), true)) {
+                $mime = (string) $video->getMimeType();
+                $ext = match (true) {
+                    str_contains($mime, 'webm') => 'webm',
+                    str_contains($mime, 'quicktime') => 'mov',
+                    default => 'mp4',
+                };
             }
             $videoRel = $this->processor->storeRaw(
                 $video,

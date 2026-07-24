@@ -214,7 +214,7 @@ final class MediaLibraryService
         if (str_starts_with($mime, 'image/')) {
             return 'image';
         }
-        if (in_array($mime, ['video/mp4', 'video/webm'], true)) {
+        if (in_array($mime, ['video/mp4', 'video/webm', 'video/quicktime'], true)) {
             return 'video';
         }
         if (in_array($mime, ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/wave'], true)) {
@@ -236,6 +236,9 @@ final class MediaLibraryService
     ): Media {
         $allowed = MenuImageValidation::allowedMimeTypes();
         if (!in_array((string) $file->getMimeType(), $allowed, true)) {
+            if (MenuImageValidation::looksLikeHeic($file)) {
+                abort(422, MenuImageValidation::heicRejectedMessage());
+            }
             if ($file->getMimeType() === 'image/webp' && !ImageCapabilities::supportsWebp()) {
                 abort(422, MenuImageValidation::webpUnsupportedMessage());
             }
@@ -277,27 +280,76 @@ final class MediaLibraryService
         if ($file->getSize() > 50 * 1024 * 1024) {
             abort(422, 'Video must be 50 MB or smaller.');
         }
-        $ext = strtolower($file->getClientOriginalExtension() ?: 'mp4');
-        if (!in_array($ext, ['mp4', 'webm'], true)) {
-            abort(422, 'Video must be mp4 or webm.');
+        $mime = strtolower((string) ($file->getMimeType() ?: ''));
+        $ext = strtolower($file->getClientOriginalExtension() ?: '');
+        $allowedMimes = ['video/mp4', 'video/webm', 'video/quicktime'];
+        $allowedExts = ['mp4', 'webm', 'mov'];
+
+        if (!in_array($ext, $allowedExts, true)) {
+            $ext = match (true) {
+                str_contains($mime, 'webm') => 'webm',
+                str_contains($mime, 'quicktime') => 'mov',
+                str_contains($mime, 'mp4') => 'mp4',
+                default => '',
+            };
         }
+
+        if (!in_array($mime, $allowedMimes, true) && !in_array($ext, $allowedExts, true)) {
+            abort(422, 'Video must be mp4, webm, or mov.');
+        }
+        if (!in_array($ext, $allowedExts, true)) {
+            abort(422, 'Video must be mp4, webm, or mov.');
+        }
+
         $dir = 'library/video';
         $path = $this->images->storeRaw($file, $dir, $ext);
         $absolute = Storage::disk('public')->path($path);
+        // Frame extract from .mov isn't available under GD — use a generic poster instead of failing.
+        $thumbUrl = $this->genericVideoPosterThumb() ?: null;
 
         return Media::create([
             'disk' => 'public',
             'path' => $path,
             'media_type' => 'video',
-            'mime_type' => (string) ($file->getMimeType() ?: 'video/' . $ext),
+            'mime_type' => (string) ($file->getMimeType() ?: ($ext === 'mov' ? 'video/quicktime' : 'video/' . $ext)),
             'file_size' => (int) (@filesize($absolute) ?: 0),
-            'thumb_url' => null,
+            'thumb_url' => $thumbUrl,
             'title' => $title ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
             'alt_text' => $altText,
             'source' => 'library',
             'checksum' => $checksum,
             'uploaded_by' => $uploader?->id,
         ]);
+    }
+
+    /**
+     * GD cannot extract frames from .mov — store a simple poster so uploads never fail.
+     */
+    private function genericVideoPosterThumb(): string
+    {
+        $img = imagecreatetruecolor(400, 300);
+        if ($img === false) {
+            return '';
+        }
+        $bg = imagecolorallocate($img, 45, 45, 48);
+        $fg = imagecolorallocate($img, 220, 220, 220);
+        if ($bg !== false) {
+            imagefilledrectangle($img, 0, 0, 400, 300, $bg);
+        }
+        if ($fg !== false) {
+            imagefilledpolygon($img, [160, 100, 160, 200, 260, 150], $fg);
+        }
+        ob_start();
+        imagejpeg($img, null, 80);
+        $binary = (string) ob_get_clean();
+        imagedestroy($img);
+        if ($binary === '') {
+            return '';
+        }
+        $relative = 'library/video/posters/' . \Illuminate\Support\Str::uuid()->toString() . '.jpg';
+        Storage::disk('public')->put($relative, $binary);
+
+        return '/storage/' . $relative;
     }
 
     private function storeBinary(
@@ -382,6 +434,7 @@ final class MediaLibraryService
             'webp' => 'image/webp',
             'mp4' => 'video/mp4',
             'webm' => 'video/webm',
+            'mov' => 'video/quicktime',
             'mp3' => 'audio/mpeg',
             'wav' => 'audio/wav',
             'pdf' => 'application/pdf',
