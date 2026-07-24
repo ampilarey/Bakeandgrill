@@ -9,6 +9,13 @@ vi.mock('../../context/LanguageContext', () => ({
   }),
 }));
 
+vi.mock('../../context/SiteSettingsContext', () => ({
+  useSiteSettingsContext: () => ({
+    settings: { logo: '/logo.png' },
+    text: (_k: string, d: string) => d,
+  }),
+}));
+
 vi.mock('../../utils/itemMedia', () => ({
   buildItemSlides: () => [],
 }));

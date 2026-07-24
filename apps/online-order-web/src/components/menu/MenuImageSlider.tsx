@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { MediaSlide } from '../../utils/itemMedia';
+import { BrandedMediaPlaceholder } from './BrandedMediaPlaceholder';
 
 type Props = {
   slides: MediaSlide[] | string[];
@@ -10,8 +11,12 @@ type Props = {
   className?: string;
   /** Show bottom dots when multiple slides */
   showDots?: boolean;
-  /** Emoji / placeholder when no slides */
+  /** @deprecated Emoji placeholder removed — branded fill is always used */
   placeholder?: string;
+  /** Optional logo for branded empty state */
+  logoSrc?: string | null;
+  /** Monogram when no logo (defaults from alt initial or BG) */
+  monogram?: string;
   /**
    * When true (menu cards), never mount <video> — render poster/image only.
    * Item sheet should leave this false so muted clips can autoplay.
@@ -38,7 +43,8 @@ export function MenuImageSlider({
   aspectRatio = '4 / 3',
   className,
   showDots = true,
-  placeholder = '🍽️',
+  logoSrc,
+  monogram,
   posterOnly = false,
 }: Props) {
   const slides = normalizeSlides(rawSlides, alt);
@@ -52,6 +58,8 @@ export function MenuImageSlider({
 
   const usable = slides.filter((_, i) => !failed[i]);
   const active = slides[index] && !failed[index] ? slides[index] : usable[0] ?? null;
+  const mark = monogram
+    || (alt.trim()[0]?.toUpperCase() ?? 'B') + (alt.trim().split(/\s+/)[1]?.[0]?.toUpperCase() ?? 'G');
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -161,7 +169,7 @@ export function MenuImageSlider({
         src={imgSrc}
         alt={isActive ? (slide.alt || alt) : ''}
         aria-hidden={isActive ? undefined : true}
-        loading={i === 0 ? 'eager' : 'lazy'}
+        loading="lazy"
         decoding="async"
         onError={() => setFailed((f) => ({ ...f, [i]: true }))}
         style={commonStyle}
@@ -172,13 +180,14 @@ export function MenuImageSlider({
   return (
     <div
       ref={rootRef}
-      className={className}
+      className={`menu-image-slider${className ? ` ${className}` : ''}`}
       style={{
         width: '100%',
+        height: '100%',
         aspectRatio,
         background: active
           ? 'var(--color-surface-alt)'
-          : 'linear-gradient(135deg, var(--color-primary-light), var(--color-surface-alt))',
+          : undefined,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -191,13 +200,13 @@ export function MenuImageSlider({
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      {slides.length > 0 ? (
+      {active ? (
         slides.map((slide, i) => renderSlide(slide, i))
       ) : (
-        <span style={{ fontSize: '2.5rem', opacity: 0.55 }} aria-hidden>{placeholder}</span>
+        <BrandedMediaPlaceholder logoSrc={logoSrc} monogram={mark.slice(0, 2)} />
       )}
 
-      {showDots && slides.length > 1 && (
+      {showDots && usable.length > 1 && (
         <div
           style={{
             position: 'absolute',

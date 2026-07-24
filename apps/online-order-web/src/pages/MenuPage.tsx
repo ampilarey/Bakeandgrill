@@ -26,11 +26,24 @@ import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderModeToggle } from '../components/OrderModeToggle';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { CategoryRail } from '../components/menu/CategoryRail';
+import { CategoryChips } from '../components/menu/CategoryChips';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { OffersRail } from '../components/home/OffersRail';
 import { pickActiveSectionId } from '../utils/scrollSpy';
 import { composeOrderingStatusBanner, ORDER_STATUS_DEFAULTS } from '../utils/orderingStatusBanner';
+
+const MENU_VIEW_KEY = 'bg-menu-view';
+type MenuViewMode = 'grid' | 'list';
+
+function readMenuView(): MenuViewMode {
+  try {
+    const v = localStorage.getItem(MENU_VIEW_KEY);
+    return v === 'list' ? 'list' : 'grid';
+  } catch {
+    return 'grid';
+  }
+}
 
 function isItemOnSale(item: Item): boolean {
   if (item.special?.effective_price != null) return true;
@@ -120,6 +133,14 @@ export function MenuPage() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [viewMode, setViewMode] = useState<MenuViewMode>(() => readMenuView());
+
+  const setMenuView = (mode: MenuViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(MENU_VIEW_KEY, mode);
+    } catch { /* ignore */ }
+  };
 
   const cartRef = useRef(cart);
   const isProgrammaticScroll = useRef(false);
@@ -348,11 +369,6 @@ export function MenuPage() {
     [parentCategories, catItemCounts],
   );
 
-  const activeCategory = useMemo(
-    () => railCategories.find((c) => c.id === activeCategoryId) ?? null,
-    [railCategories, activeCategoryId],
-  );
-
   const sectionedMenu = useMemo(() => {
     const childToParent = new Map<number, number>();
     for (const cat of categories) {
@@ -469,6 +485,7 @@ export function MenuPage() {
     <div key={item.id} className="menu-item-anim">
       <ProductCard
         item={item}
+        layout={viewMode}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
         onAddToCart={(it, qty, variant, packagingOptionId) => {
           addItem(it, qty, [], variant ?? null, packagingOptionId);
@@ -590,7 +607,36 @@ export function MenuPage() {
           onClear={handleClearFilters}
         />
 
+        {!loading && !filtersActive && railCategories.length > 0 && (
+          <CategoryChips
+            categories={railCategories}
+            activeCategoryId={activeCategoryId}
+            onSelect={handleSelectCategory}
+            dimmed={loading || filtersActive}
+            showOffersPill={offers.length > 0}
+            onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          />
+        )}
+
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+          <div className="menu-view-toggle" role="group" aria-label="Menu layout">
+            <button
+              type="button"
+              className={`menu-view-toggle__btn${viewMode === 'grid' ? ' is-active' : ''}`}
+              aria-pressed={viewMode === 'grid'}
+              onClick={() => setMenuView('grid')}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              className={`menu-view-toggle__btn${viewMode === 'list' ? ' is-active' : ''}`}
+              aria-pressed={viewMode === 'list'}
+              onClick={() => setMenuView('list')}
+            >
+              List
+            </button>
+          </div>
           {isOpen !== null && (
             <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'pickup-only') : 'closed'}`} style={{ margin: 0 }}>
               <span className="ordering-status-bar-dot" />
@@ -668,17 +714,8 @@ export function MenuPage() {
             flex: 1,
             minWidth: 0,
             paddingTop: '0.5rem',
-            ['--menu-active-cat-bar-height' as string]:
-              !loading && !filtersActive && activeCategory ? '36px' : '0px',
           }}
         >
-          {!loading && !filtersActive && activeCategory && (
-            <div className="menu-active-cat-bar" aria-live="polite">
-              <span className="menu-active-cat-bar__dot" aria-hidden="true" />
-              <span>{activeCategory.name}</span>
-            </div>
-          )}
-
           {/* Unified Offers rail (specials + auto-promos) */}
           <OffersRail
             offers={offers}
@@ -688,9 +725,9 @@ export function MenuPage() {
           />
 
           {loading && (
-            <div className="menu-grid" style={{ padding: '0 0 1.25rem' }}>
+            <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ padding: '0 0 1.25rem' }}>
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="skeleton" style={{ borderRadius: '16px', height: '300px' }} />
+                <div key={i} className="skeleton" style={{ borderRadius: '16px', height: viewMode === 'list' ? '88px' : '300px' }} />
               ))}
             </div>
           )}
@@ -718,7 +755,7 @@ export function MenuPage() {
           )}
 
           {!loading && filtersActive && filteredItems.length > 0 && (
-            <div className="menu-grid" style={{ paddingBottom: '1.25rem' }}>
+            <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
               {filteredItems.map(renderProductCard)}
             </div>
           )}
@@ -740,7 +777,7 @@ export function MenuPage() {
                     category={section.category}
                     active={activeCategoryId === section.category.id}
                   />
-                  <div className="menu-grid" style={{ paddingBottom: '1.25rem' }}>
+                  <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
                     {section.items.map(renderProductCard)}
                   </div>
                 </section>
@@ -778,7 +815,7 @@ export function MenuPage() {
                     </span>
                   </button>
                   {cateringOpen && (
-                    <div className="menu-grid" style={{ paddingBottom: '1.25rem' }}>
+                    <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
                       {sectionedMenu.catering.map(renderProductCard)}
                     </div>
                   )}
@@ -799,7 +836,7 @@ export function MenuPage() {
                       Other
                     </h2>
                   </header>
-                  <div className="menu-grid" style={{ paddingBottom: '1.25rem' }}>
+                  <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
                     {sectionedMenu.other.map(renderProductCard)}
                   </div>
                 </section>

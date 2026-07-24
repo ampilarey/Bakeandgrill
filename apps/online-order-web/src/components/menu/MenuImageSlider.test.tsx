@@ -12,7 +12,15 @@ const videoSlides: MediaSlide[] = [
   },
 ];
 
-describe('MenuImageSlider video', () => {
+const imageSlides: MediaSlide[] = [
+  {
+    type: 'image',
+    url: 'https://example.com/food.jpg',
+    alt: 'Food',
+  },
+];
+
+describe('MenuImageSlider', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -68,5 +76,27 @@ describe('MenuImageSlider video', () => {
     );
     expect(container.querySelector('video')).toBeNull();
     expect(container.querySelector('img')).toBeTruthy();
+  });
+
+  it('with no slides renders branded fill placeholder (not emoji)', () => {
+    const { container } = render(
+      <MenuImageSlider slides={[]} alt="Mas huni" logoSrc="/logo.png" />,
+    );
+    expect(container.querySelector('[data-testid="branded-placeholder"]')).toBeTruthy();
+    expect(container.textContent).not.toContain('🍽️');
+    expect(container.querySelector('.menu-media-placeholder__logo')).toBeTruthy();
+  });
+
+  it('with an image renders lazy cover img filling the box', () => {
+    const { container } = render(
+      <MenuImageSlider slides={imageSlides} alt="Food" />,
+    );
+    const img = container.querySelector('img') as HTMLImageElement;
+    expect(img).toBeTruthy();
+    expect(img.getAttribute('loading')).toBe('lazy');
+    expect(img.getAttribute('decoding')).toBe('async');
+    expect(img.style.width).toBe('100%');
+    expect(img.style.height).toBe('100%');
+    expect(img.style.objectFit).toBe('cover');
   });
 });

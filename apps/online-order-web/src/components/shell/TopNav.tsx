@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { PrayerBar } from '../PrayerBar';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -21,6 +22,24 @@ export function TopNav() {
   const { isAuthenticated, customerName } = useAuth();
   const location = useLocation();
   const { hasActiveOrder } = useActiveOrder();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    let raf: number | null = null;
+    const onScroll = () => {
+      if (raf != null) return;
+      raf = requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 12);
+        raf = null;
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf != null) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   if (hideNav) return null;
 
@@ -38,7 +57,7 @@ export function TopNav() {
   })();
 
   return (
-    <header className="top-nav">
+    <header className={`top-nav${scrolled ? ' is-scrolled' : ''}`}>
       <div className="top-nav__inner">
         <a
           href={MAIN_WEBSITE_HREF}

@@ -49,12 +49,25 @@
     $footerRightsSuffix      = content('footer_rights_suffix', 'All rights reserved.');
     $footerText              = trim(content('footer_text', ''));
     $footerBlurb             = $footerText !== '' ? $footerText : $siteTagline;
+    $footerHoursHeading      = content('footer_hours_heading', 'Opening Hours');
+    $footerPaymentsText      = content('footer_payments_text', 'BML · Cards · Cash · MVR');
+    $footerDeliveryText      = content('footer_delivery_text', 'Delivery across Malé & Hulhumalé');
+    $footerThanks            = content('footer_thanks', 'Thanks for choosing Bake & Grill — see you soon.');
+    $socialInstagram         = trim((string) content('social_instagram', ''));
+    $socialFacebook          = trim((string) content('social_facebook', ''));
+    $socialTiktok            = trim((string) content('social_tiktok', ''));
+    $openingHoursSvc         = app(\App\Services\OpeningHoursService::class);
+    $footerHours             = $openingHoursSvc->getHoursForDisplay();
+    $footerHoursToday        = now(config('opening_hours.timezone'))->dayOfWeek;
+    $footerDayNames          = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    $footerRamadanActive     = $openingHoursSvc->isRamadanHoursActive();
+    $footerRamadanNote       = content('footer_ramadan_note', 'Ramadan hours — open after Maghrib.');
 @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>@yield('title', $metaTitle)</title>
     <meta name="description" content="@yield('description', $metaDesc)">
     <meta name="keywords" content="{{ e($metaKeywords) }}">
@@ -230,6 +243,8 @@
             transition: box-shadow 0.2s;
         }
         .site-header.scrolled { box-shadow: 0 4px 24px rgba(28, 20, 8, 0.08); }
+        .site-header.scrolled .header-inner { height: 56px; }
+        .site-header.scrolled .site-logo img { width: 32px; height: 32px; }
 
         /* ─── Announcement Banner ─────────────────────────────────── */
         .site-announcement {
@@ -394,6 +409,20 @@
             -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border);
             padding: 0.75rem 1rem;
+            padding-top: max(0.75rem, env(safe-area-inset-top));
+            transition: padding 0.2s ease;
+        }
+        .mobile-header.scrolled {
+            padding: 0.4rem 1rem;
+            padding-top: max(0.4rem, env(safe-area-inset-top));
+            box-shadow: 0 2px 12px rgba(28, 20, 8, 0.06);
+        }
+        .mobile-header.scrolled .mob-logo img { width: 28px; height: 28px; }
+        .mobile-header.scrolled .mob-logo { font-size: 0.95rem; }
+        @media (prefers-reduced-motion: reduce) {
+            .mobile-header,
+            .site-header.scrolled .header-inner,
+            .site-header.scrolled .site-logo img { transition: none; }
         }
         .mob-hdr-row {
             display: flex;
@@ -413,6 +442,9 @@
         .mob-hdr-btns { display: flex; align-items: center; gap: 0.5rem; }
         .mob-order-btn {
             padding: 0.45rem 0.875rem;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
             background: var(--amber);
             color: white;
             border-radius: 8px;
@@ -540,8 +572,8 @@
             max-width: 1280px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            gap: 3rem;
+            grid-template-columns: 1.6fr 1fr 1.15fr 1fr 1fr;
+            gap: 2.25rem;
             padding-bottom: 3rem;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
@@ -569,22 +601,102 @@
             gap: 0.5rem;
             flex-wrap: wrap;
         }
-        .footer-wa, .footer-viber {
+        .footer-wa, .footer-viber, .footer-social-icon {
             display: inline-flex;
             align-items: center;
             gap: 0.4rem;
             padding: 0.55rem 1.125rem;
+            min-height: 44px;
             color: white;
             border-radius: 10px;
             font-weight: 700;
             font-size: 0.825rem;
             text-decoration: none;
             transition: all 0.15s;
+            box-sizing: border-box;
         }
         .footer-wa    { background: #25D366; }
         .footer-wa:hover { background: #1bba58; transform: translateY(-1px); }
         .footer-viber { background: #7360F2; }
         .footer-viber:hover { background: #5E4CD6; transform: translateY(-1px); }
+        .footer-social-icon {
+            width: 44px;
+            min-width: 44px;
+            padding: 0;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+        }
+        .footer-social-icon:hover { background: rgba(255,255,255,0.2); transform: translateY(-1px); }
+        .footer-social-icon svg { width: 18px; height: 18px; display: block; }
+        .footer-order-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            margin-top: 1rem;
+            min-height: 48px;
+            padding: 0.75rem 1.35rem;
+            background: var(--amber, #D4813A);
+            color: #fff !important;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            text-decoration: none !important;
+            box-shadow: 0 6px 18px rgba(212, 129, 58, 0.35);
+        }
+        .footer-order-cta:hover { background: var(--amber-hover, #c06f2a); color: #fff !important; }
+        .footer-thanks {
+            margin: 1rem 0 0;
+            color: rgba(255,255,255,0.55);
+            font-size: 0.875rem;
+            line-height: 1.55;
+            max-width: 280px;
+        }
+        .footer-hours-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .footer-hours-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            color: rgba(255,255,255,0.65);
+            font-size: 0.825rem;
+            min-height: 28px;
+            align-items: center;
+        }
+        .footer-hours-row.is-today {
+            color: #fff;
+            font-weight: 700;
+        }
+        .footer-hours-row.is-today .footer-hours-day::after {
+            content: ' · Today';
+            color: var(--amber, #D4813A);
+            font-weight: 700;
+            font-size: 0.72rem;
+        }
+        .footer-ramadan-note {
+            margin-top: 0.75rem;
+            padding: 0.55rem 0.7rem;
+            border-radius: 8px;
+            background: rgba(212, 129, 58, 0.18);
+            color: #fde5d4;
+            font-size: 0.78rem;
+            line-height: 1.4;
+        }
+        .footer-trust {
+            max-width: 1280px;
+            margin: 0 auto 1.25rem;
+            padding: 1rem 0 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1.5rem;
+            align-items: center;
+            color: rgba(255,255,255,0.45);
+            font-size: 0.8rem;
+        }
+        .footer-trust span { display: inline-flex; align-items: center; gap: 0.4rem; }
         .footer-col h4 {
             font-size: 0.7rem;
             font-weight: 700;
@@ -601,7 +713,12 @@
             margin-bottom: 0.625rem;
             text-decoration: none;
             transition: color 0.15s;
+            min-height: 44px;
+            line-height: 1.35;
+            padding: 0.35rem 0;
+            box-sizing: border-box;
         }
+        .footer-col p { min-height: 0; padding: 0; margin-bottom: 0.5rem; }
         .footer-col a:hover { color: white; }
         .footer-legal {
             margin-top: 0.875rem;
@@ -914,20 +1031,31 @@
         .order-status-bar-mob .osb-cta-link  { padding-right: 1rem; }
 
         /* ─── Responsive ─────────────────────────────────────────── */
+@import (min-width: 900px) and (max-width: 1100px) {
+            .footer-grid { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
+            .footer-col--hours { grid-column: 1 / -1; }
+        }
         @media (max-width: 768px) {
             html { scroll-padding-top: 130px; }
             .site-header   { display: none; }
             .mobile-header { display: block; }
             .mobile-bottom-nav { display: block; }
             .order-status-bar-mob { display: flex; }
-            .site-footer   { padding-bottom: calc(2rem + 72px); margin-top: 3rem; }
+            .site-footer   { padding-bottom: calc(2rem + 72px + env(safe-area-inset-bottom)); margin-top: 3rem; }
             .footer-grid   { grid-template-columns: 1fr 1fr; gap: 2rem; }
-            .footer-brand  { grid-column: 1 / -1; }
-            .footer-brand p { max-width: 100%; }
+            .footer-brand  { grid-column: 1 / -1; text-align: center; }
+            .footer-brand p,
+            .footer-thanks { max-width: 100%; margin-left: auto; margin-right: auto; }
+            .footer-chat-btns,
+            .footer-trust { justify-content: center; }
+            .footer-order-cta { width: 100%; max-width: 280px; }
+            .footer-col { text-align: center; }
+            .footer-hours-row { justify-content: center; gap: 1rem; }
             .footer-bottom { flex-direction: column; text-align: center; }
         }
         @media (max-width: 480px) {
             .footer-grid { grid-template-columns: 1fr; }
+            .footer-col { text-align: center; }
             .mob-logo span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
         @media (max-width: 390px) {
@@ -947,7 +1075,14 @@
     <script nonce="{{ csp_nonce() }}">
         document.addEventListener('DOMContentLoaded', () => {
             const hdr = document.querySelector('.site-header');
-            if (hdr) window.addEventListener('scroll', () => hdr.classList.toggle('scrolled', scrollY > 10), { passive: true });
+            const mobHdr = document.querySelector('.mobile-header');
+            if (hdr || mobHdr) {
+                window.addEventListener('scroll', () => {
+                    const on = scrollY > 10;
+                    if (hdr) hdr.classList.toggle('scrolled', on);
+                    if (mobHdr) mobHdr.classList.toggle('scrolled', on);
+                }, { passive: true });
+            }
             const path = location.pathname;
             document.querySelectorAll('.header-nav a, .mob-nav-item[href]').forEach(a => {
                 const h = a.getAttribute('href');
@@ -1155,11 +1290,27 @@
     <div class="footer-grid">
         <div class="footer-brand">
             <a href="/" class="footer-brand-logo">
-                <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
+                <img src="{{ $logoUrl }}" alt="{{ $siteName }}" loading="lazy" decoding="async">
                 {{ $siteName }}
             </a>
             <p>{{ $footerBlurb }}</p>
+            <p class="footer-thanks">{{ $footerThanks }}</p>
             <div class="footer-chat-btns">
+                @if($socialInstagram !== '')
+                    <a href="{{ $socialInstagram }}" target="_blank" rel="noopener" class="footer-social-icon" aria-label="Instagram" data-social="instagram">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 01-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 017.8 2m-.2 2A3.6 3.6 0 004 7.6v8.8A3.6 3.6 0 007.6 20h8.8a3.6 3.6 0 003.6-3.6V7.6A3.6 3.6 0 0016.4 4H7.6m9.65 1.5a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5M12 7a5 5 0 110 10 5 5 0 010-10m0 2a3 3 0 100 6 3 3 0 000-6z"/></svg>
+                    </a>
+                @endif
+                @if($socialFacebook !== '')
+                    <a href="{{ $socialFacebook }}" target="_blank" rel="noopener" class="footer-social-icon" aria-label="Facebook" data-social="facebook">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 10-11.5 9.9v-7H8v-3h2.5V9.5c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.5V12H17l-.4 3h-2.7v7A10 10 0 0022 12z"/></svg>
+                    </a>
+                @endif
+                @if($socialTiktok !== '')
+                    <a href="{{ $socialTiktok }}" target="_blank" rel="noopener" class="footer-social-icon" aria-label="TikTok" data-social="tiktok">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 8.5a7.4 7.4 0 01-4.3-1.4v7.1a5.9 5.9 0 11-5.9-5.9c.3 0 .6 0 .9.1v2.9a3 3 0 100 5.9 3 3 0 003-3.1V2h2.9a4.5 4.5 0 003.4 3.5V8.5z"/></svg>
+                    </a>
+                @endif
                 <a href="{{ $waLink }}" target="_blank" rel="noopener" class="footer-wa">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                     WhatsApp
@@ -1169,6 +1320,7 @@
                     Viber
                 </a>
             </div>
+            <a href="/order/menu" class="footer-order-cta">{{ $navOrderCta }}</a>
         </div>
         <div class="footer-col">
             <h4>{{ $footerQuickLinksHeading }}</h4>
@@ -1177,6 +1329,28 @@
             <a href="/order/events">Catering &amp; Events</a>
             <a href="/hours">Opening Hours</a>
             <a href="/contact">Contact Us</a>
+        </div>
+        <div class="footer-col footer-col--hours" data-footer-hours>
+            <h4>{{ $footerHoursHeading }}</h4>
+            <div class="footer-hours-list">
+                @foreach($footerDayNames as $index => $day)
+                    @php $dayHours = $footerHours[$index] ?? null; @endphp
+                    <div class="footer-hours-row {{ $index === $footerHoursToday ? 'is-today' : '' }}">
+                        <span class="footer-hours-day">{{ \Illuminate\Support\Str::substr($day, 0, 3) }}</span>
+                        <span>
+                            @if($dayHours && !($dayHours['closed'] ?? false))
+                                {{ $dayHours['open'] }} – {{ $dayHours['close'] }}
+                            @else
+                                Closed
+                            @endif
+                        </span>
+                    </div>
+                @endforeach
+            </div>
+            @if($footerRamadanActive && trim((string) $footerRamadanNote) !== '')
+                <p class="footer-ramadan-note">{{ $footerRamadanNote }}</p>
+            @endif
+            <a href="/hours" style="margin-top:0.75rem">Full hours →</a>
         </div>
         <div class="footer-col">
             <h4>{{ $footerLocationHeading }}</h4>
@@ -1194,6 +1368,10 @@
                 <a href="/refund">Refund Policy</a>
             </div>
         </div>
+    </div>
+    <div class="footer-trust" data-footer-trust>
+        <span>{{ $footerPaymentsText }}</span>
+        <span>{{ $footerDeliveryText }}</span>
     </div>
     <div class="footer-bottom">
         <span>© {{ date('Y') }} {{ $siteName }}. {{ $footerRightsSuffix }}</span>

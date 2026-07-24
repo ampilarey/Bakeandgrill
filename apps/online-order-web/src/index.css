@@ -1320,9 +1320,9 @@ textarea.field-input {
 }
 
 .app-shell--with-cart .app-shell__main {
-  /* Logo FAB overlays bottom — keep modest clearance, not a full bar */
+  /* Logo FAB clearance — keep last menu card above FAB + safe area */
   padding-bottom: calc(
-    var(--bottom-nav-height) + var(--safe-bottom) + 1.5rem
+    var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 0.75rem
   );
 }
 
@@ -1358,6 +1358,24 @@ textarea.field-input {
   border-bottom: 1px solid var(--color-border);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  transition: box-shadow var(--duration-standard) var(--ease-out);
+}
+
+.top-nav.is-scrolled .top-nav__inner {
+  min-height: 48px;
+  padding-block: 0.25rem;
+}
+
+.top-nav.is-scrolled .top-nav__logo {
+  width: 32px;
+  height: 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-nav.is-scrolled .top-nav__inner,
+  .top-nav.is-scrolled .top-nav__logo {
+    transition: none;
+  }
 }
 
 .top-nav__inner {
@@ -1818,6 +1836,8 @@ textarea.field-input {
   cursor: pointer;
   font-family: inherit;
   -webkit-tap-highlight-color: transparent;
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
 }
 
 .float-cart-fab__logo-wrap {
@@ -1873,11 +1893,156 @@ textarea.field-input {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
+  align-items: stretch;
 }
 
 /* Allow tracks to shrink below intrinsic card width (qty+Add row). */
 .menu-grid > * {
   min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-grid > * > .menu-card-article {
+  flex: 1;
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.menu-list > * {
+  min-width: 0;
+}
+
+.menu-card-media {
+  width: 100%;
+}
+
+.menu-card-media--list {
+  width: 88px;
+  align-self: stretch;
+}
+
+.menu-card-media--list .menu-image-slider {
+  height: 100%;
+  min-height: 88px;
+  aspect-ratio: 1 / 1 !important;
+}
+
+.menu-media-placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-primary) 18%, var(--color-surface-alt)) 0%,
+    var(--color-primary-light, #FFF7ED) 55%,
+    var(--color-surface-alt) 100%
+  );
+}
+
+.menu-media-placeholder__logo {
+  width: 42%;
+  max-width: 56px;
+  height: auto;
+  object-fit: contain;
+  opacity: 0.88;
+  filter: drop-shadow(0 1px 2px rgba(42, 30, 12, 0.12));
+}
+
+.menu-media-placeholder__mono {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+  opacity: 0.75;
+}
+
+.menu-cat-chips {
+  margin-top: 0.65rem;
+  margin-inline: calc(var(--page-gutter) * -0.15);
+}
+
+.menu-cat-chips.is-dimmed {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.menu-cat-chips__scroller {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.15rem 0.1rem 0.25rem;
+}
+
+.menu-cat-chips__scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.menu-cat-chip {
+  flex: 0 0 auto;
+  min-height: var(--touch-target);
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu-cat-chip.is-active,
+.menu-cat-chip[data-active='true'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.menu-cat-chip--offers {
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: var(--color-primary-light);
+}
+
+.menu-view-toggle {
+  display: inline-flex;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.menu-view-toggle__btn {
+  min-height: var(--touch-target);
+  min-width: 52px;
+  padding: 0 0.75rem;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.menu-view-toggle__btn.is-active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 @media (min-width: 480px) {
@@ -1910,6 +2075,12 @@ textarea.field-input {
   overscroll-behavior: contain;
   padding: 0.5rem 0;
   border-right: 1px solid var(--color-border);
+}
+
+@media (max-width: 767px) {
+  .cat-rail {
+    display: none;
+  }
 }
 
 /* ── ZUS-style category promo (menu sections) ───────────────── */
