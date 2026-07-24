@@ -38,6 +38,8 @@ const makeAsset = (id: number, overrides: Partial<api.MediaAsset> = {}): api.Med
   collections: [],
   usage_count: 0,
   original_url: null,
+  checksum: `checksum-${id}`,
+  updated_at: '2026-01-01T00:00:00Z',
   ...overrides,
 });
 
@@ -230,21 +232,42 @@ describe('MediaLibraryPage', () => {
 
   it('renders img for image assets when thumb_url is null (url fallback)', async () => {
     vi.mocked(api.getMedia).mockResolvedValueOnce({
-      data: [makeAsset(9, { thumb_url: null, url: '/storage/menu/plain.jpg' })],
+      data: [makeAsset(9, { thumb_url: null, url: '/storage/menu/plain.jpg', checksum: 'abc' })],
       meta: { current_page: 1, last_page: 1, per_page: 24, total: 1 },
     });
     renderWithRouter(<MediaLibraryPage />);
     const card = await screen.findByTestId('asset-card-9');
     const img = card.querySelector('img');
     expect(img).toBeTruthy();
-    expect(img?.getAttribute('src')).toBe('/storage/menu/plain.jpg');
+    expect(img?.getAttribute('src')).toBe('/storage/menu/plain.jpg?v=abc');
   });
 
-  it('detail drawer preview uses the full image url', async () => {
+  it('detail drawer preview uses the full image url with cache buster', async () => {
     renderWithRouter(<MediaLibraryPage />);
     fireEvent.click(await screen.findByTestId('asset-card-1'));
     const preview = await screen.findByTestId('detail-preview-img');
-    expect(preview.getAttribute('src')).toBe('https://cdn.example.com/images/asset-1.jpg');
+    expect(preview.getAttribute('src')).toBe('https://cdn.example.com/images/asset-1.jpg?v=checksum-1');
+  });
+
+  it('after replace edit, preview src updates when checksum changes', async () => {
+    const editSpy = vi.spyOn(api, 'editMedia').mockResolvedValue({
+      asset: makeAsset(1, { checksum: 'after-edit', title: 'Asset 1 resized' }),
+      updated_references: 0,
+      mode: 'replace',
+    });
+
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain('v=checksum-1');
+
+    fireEvent.click(screen.getByRole('button', { name: /resize/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^apply$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /replace everywhere/i }));
+
+    await waitFor(() => {
+      expect(editSpy).toHaveBeenCalled();
+    });
+    expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain('v=after-edit');
   });
 
   it('mobile layout uses chip row and full-screen detail overlay', async () => {

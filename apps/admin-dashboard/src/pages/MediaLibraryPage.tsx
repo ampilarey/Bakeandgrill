@@ -35,16 +35,31 @@ function mediaTypeIcon(type: MediaType, size = 32) {
 
 function thumbSrc(asset: MediaAsset): string | null {
   if (asset.media_type !== 'image') return null;
-  return asset.thumb_url || asset.url || null;
+  const raw = asset.thumb_url || asset.url || null;
+  return raw ? mediaPreviewSrc(raw, asset) : null;
+}
+
+/**
+ * Append a version token so replace-mode edits (same path) reload in the browser.
+ * Prefer checksum; fall back to updated_at / file_size.
+ */
+export function mediaPreviewSrc(url: string, asset: Pick<MediaAsset, 'checksum' | 'updated_at' | 'file_size' | 'id'>): string {
+  if (!url) return url;
+  const token = asset.checksum || asset.updated_at || String(asset.file_size ?? '') || String(asset.id);
+  if (!token) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}v=${encodeURIComponent(token)}`;
 }
 
 /** Grid / compact preview — images use thumb_url||url with icon fallback on error. */
 function AssetThumb({ asset }: { asset: MediaAsset }) {
   const [broken, setBroken] = useState(false);
   const src = thumbSrc(asset);
+  useEffect(() => { setBroken(false); }, [src]);
   if (asset.media_type === 'image' && src && !broken) {
     return (
       <img
+        key={src}
         src={src}
         alt={asset.alt_text || asset.title || ''}
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -58,11 +73,16 @@ function AssetThumb({ asset }: { asset: MediaAsset }) {
 /** Detail drawer large preview — full image URL; video/audio/pdf players. */
 function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
   const [broken, setBroken] = useState(false);
-  if (asset.media_type === 'image' && asset.url && !broken) {
+  const fullSrc = asset.url ? mediaPreviewSrc(asset.url, asset) : '';
+  const thumbPoster = asset.thumb_url ? mediaPreviewSrc(asset.thumb_url, asset) : undefined;
+  useEffect(() => { setBroken(false); }, [fullSrc]);
+
+  if (asset.media_type === 'image' && fullSrc && !broken) {
     return (
       <img
+        key={fullSrc}
         data-testid="detail-preview-img"
-        src={asset.url}
+        src={fullSrc}
         alt={asset.alt_text || asset.title || ''}
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         onError={() => setBroken(true)}
@@ -72,10 +92,11 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
   if (asset.media_type === 'video' && asset.url) {
     return (
       <video
+        key={fullSrc}
         data-testid="detail-preview-video"
         controls
-        src={asset.url}
-        poster={asset.thumb_url || undefined}
+        src={fullSrc}
+        poster={thumbPoster}
         style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#111' }}
       />
     );
@@ -84,7 +105,7 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
     return (
       <div style={{ width: '100%', padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
         {mediaTypeIcon('audio', 40)}
-        <audio data-testid="detail-preview-audio" controls src={asset.url} style={{ width: '100%' }} />
+        <audio key={fullSrc} data-testid="detail-preview-audio" controls src={fullSrc} style={{ width: '100%' }} />
       </div>
     );
   }
@@ -93,9 +114,10 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
     if (isPdf) {
       return (
         <iframe
+          key={fullSrc}
           data-testid="detail-preview-pdf"
           title={asset.title || 'PDF'}
-          src={asset.url}
+          src={fullSrc}
           style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
         />
       );

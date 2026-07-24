@@ -24,6 +24,9 @@ export interface MediaAsset {
   collections: MediaCollection[];
   usage_count: number;
   original_url: string | null;
+  /** Used to cache-bust previews after in-place replace edits. */
+  checksum?: string | null;
+  updated_at?: string | null;
 }
 
 export interface MediaPaginationMeta {
