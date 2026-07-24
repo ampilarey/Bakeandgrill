@@ -1926,6 +1926,10 @@ textarea.field-input {
     right: 0.25rem !important;
     font-size: 14px !important;
   }
+
+  .menu-grid .menu-card-skeleton {
+    height: 120px !important;
+  }
 }
 
 @media (min-width: 480px) {
