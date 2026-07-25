@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   fetchPromotions, createPromotion, updatePromotion, deletePromotion, fetchOffersPerformance,
-  type Promotion, type PromotionPayload, type OffersPerformanceReport,
+  type Promotion, type PromotionPayload, type PromotionType, type PromotionTier,
+  type OffersPerformanceReport,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
@@ -13,10 +14,23 @@ import { CustomerSearch } from '../components/CustomerSearch';
 import { downloadCSV } from '../utils/csvExport';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
 
+const STRATEGY_TYPES: PromotionType[] = ['tiered', 'quantity_break', 'buy_x_get_y', 'free_delivery'];
+
+const TYPE_OPTIONS = [
+  { value: 'fixed', label: 'Fixed Amount (MVR)' },
+  { value: 'percentage', label: 'Percentage (%)' },
+  { value: 'tiered', label: 'Tiered (spend & save)' },
+  { value: 'quantity_break', label: 'Quantity break' },
+  { value: 'buy_x_get_y', label: 'BOGO / Buy X Get Y' },
+  { value: 'free_delivery', label: 'Free delivery' },
+];
+
 const EMPTY: PromotionPayload = {
   name: '', code: '', type: 'fixed', discount_value: 0,
   scope: 'order', min_order_laar: null, max_uses: null,
   stackable: false, is_active: true, auto_apply: false,
+  first_order_only: false, waive_delivery: false, budget_laar: null,
+  metadata: {},
   starts_at: null, expires_at: null,
   days_of_week: null, starts_time: null, ends_time: null,
   restricted_customer_id: null, targets: [],
@@ -45,6 +59,12 @@ function PromotionForm({
     setForm((f) => ({ ...f, [k]: v }));
 
   const autoApply = !!form.auto_apply;
+  const isStrategy = STRATEGY_TYPES.includes(form.type);
+  const meta = form.metadata ?? {};
+  const tiers: PromotionTier[] = Array.isArray(meta.tiers) ? meta.tiers : [];
+
+  const setMeta = (patch: Partial<NonNullable<PromotionPayload['metadata']>>) =>
+    setForm((f) => ({ ...f, metadata: { ...(f.metadata ?? {}), ...patch } }));
 
   // discount_value: for 'fixed' type, displayed in MVR (we multiply by 100 to store as laari)
   // for 'percentage', stored as-is (e.g. 20 = 20%)
@@ -71,6 +91,54 @@ function PromotionForm({
     set('min_order_laar', n);
   };
 
+  const budgetDisplay = form.budget_laar != null
+    ? String((form.budget_laar / 100).toFixed(2))
+    : '';
+
+  const handleBudgetChange = (v: string) => {
+    if (!v) { set('budget_laar', null); return; }
+    const n = Math.round(parseFloat(v) * 100);
+    if (!Number.isFinite(n) || n < 1) return;
+    set('budget_laar', n);
+  };
+
+  const handleTypeChange = (v: string) => {
+    const type = v as PromotionType;
+    setForm((f) => {
+      const next: PromotionPayload = { ...f, type };
+      if (type === 'free_delivery') {
+        next.waive_delivery = true;
+        next.discount_value = 0;
+      }
+      if (type === 'tiered' && !f.metadata?.tiers?.length) {
+        next.metadata = { tiers: [{ min_laar: 30000, kind: 'fixed', value: 3000 }] };
+      }
+      if (type === 'quantity_break') {
+        next.metadata = { min_qty: 3, kind: 'percentage', value: 10, ...(f.metadata ?? {}) };
+      }
+      if (type === 'buy_x_get_y') {
+        next.metadata = {
+          buy_qty: 2, get_qty: 1, get_discount_pct: 100, cheapest: true,
+          ...(f.metadata ?? {}),
+        };
+      }
+      return next;
+    });
+  };
+
+  const updateTier = (idx: number, patch: Partial<PromotionTier>) => {
+    const next = tiers.map((t, i) => (i === idx ? { ...t, ...patch } : t));
+    setMeta({ tiers: next });
+  };
+
+  const addTier = () => {
+    setMeta({ tiers: [...tiers, { min_laar: 50000, kind: 'fixed', value: 5000 }] });
+  };
+
+  const removeTier = (idx: number) => {
+    setMeta({ tiers: tiers.filter((_, i) => i !== idx) });
+  };
+
   const toggleDay = (day: number) => {
     const current = form.days_of_week ?? [];
     const next = current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort();
@@ -93,11 +161,20 @@ function PromotionForm({
   const handleSave = async () => {
     if (!form.name.trim()) { setError('Name is required.'); return; }
     if (!autoApply && !form.code?.trim()) { setError('Name and code are required.'); return; }
-    if (form.discount_value <= 0) { setError('Discount value must be greater than 0.'); return; }
+    if (!isStrategy && form.discount_value <= 0) { setError('Discount value must be greater than 0.'); return; }
     if (form.type === 'percentage' && form.discount_value > 100) { setError('Percentage discount cannot exceed 100%.'); return; }
     if (form.type === 'fixed' && form.discount_value > 500000) {
       setError('Fixed discount cannot exceed MVR 5000.');
       return;
+    }
+    if (form.type === 'tiered' && tiers.length === 0) {
+      setError('Add at least one spend tier.'); return;
+    }
+    if (form.type === 'quantity_break' && !(meta.min_qty && meta.min_qty >= 1)) {
+      setError('Quantity break needs a minimum quantity.'); return;
+    }
+    if (form.type === 'buy_x_get_y' && (!(meta.buy_qty && meta.buy_qty >= 1) || !(meta.get_qty && meta.get_qty >= 1))) {
+      setError('BOGO needs buy and get quantities.'); return;
     }
     if (form.min_order_laar != null && form.min_order_laar < 0) { setError('Minimum order amount cannot be negative.'); return; }
     if (form.starts_at && form.expires_at && form.starts_at >= form.expires_at) {
@@ -108,6 +185,8 @@ function PromotionForm({
     try {
       const payload: PromotionPayload = {
         ...form,
+        discount_value: isStrategy ? (form.discount_value || 0) : form.discount_value,
+        waive_delivery: form.type === 'free_delivery' ? true : !!form.waive_delivery,
         code: autoApply ? (form.code?.trim() || null) : form.code,
         restricted_customer_id: autoApply ? null : form.restricted_customer_id,
         targets: autoApply ? (form.targets ?? []) : form.targets,
@@ -154,22 +233,31 @@ function PromotionForm({
         <Field label="Discount Type">
           <Select
             value={form.type}
-            onChange={(v) => set('type', v as 'fixed' | 'percentage')}
-            options={[{ value: 'fixed', label: 'Fixed Amount (MVR)' }, { value: 'percentage', label: 'Percentage (%)' }]}
+            onChange={handleTypeChange}
+            options={TYPE_OPTIONS}
           />
         </Field>
-        <Field label={`Discount Value (${form.type === 'percentage' ? '%' : 'MVR'})`}>
-          <Input
-            value={discountDisplay}
-            onChange={handleDiscountChange}
-            type="number"
-          />
-        </Field>
+        {!isStrategy && (
+          <Field label={`Discount Value (${form.type === 'percentage' ? '%' : 'MVR'})`}>
+            <Input
+              value={discountDisplay}
+              onChange={handleDiscountChange}
+              type="number"
+            />
+          </Field>
+        )}
         <Field label="Min Order Amount (MVR)">
           <Input
             value={minOrderDisplay}
             onChange={handleMinOrderChange}
             type="number" placeholder="No minimum"
+          />
+        </Field>
+        <Field label="Campaign budget (MVR, optional)">
+          <Input
+            value={budgetDisplay}
+            onChange={handleBudgetChange}
+            type="number" placeholder="No budget cap"
           />
         </Field>
         <Field label="Max Uses">
@@ -190,6 +278,110 @@ function PromotionForm({
           <Input value={form.expires_at ?? ''} onChange={(v) => set('expires_at', v || null)} type="datetime-local" />
         </Field>
       </div>
+
+      {form.type === 'tiered' && (
+        <Field label="Spend tiers (highest satisfied tier wins)">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {tiers.map((tier, idx) => (
+              <div key={idx} className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+                <Input
+                  label="Min spend (MVR)"
+                  type="number"
+                  value={String((tier.min_laar / 100).toFixed(2))}
+                  onChange={(v) => {
+                    const n = Math.round(parseFloat(v) * 100);
+                    if (!Number.isFinite(n)) return;
+                    updateTier(idx, { min_laar: n });
+                  }}
+                />
+                <Select
+                  value={tier.kind}
+                  onChange={(v) => updateTier(idx, { kind: v as 'fixed' | 'percentage' })}
+                  options={[{ value: 'fixed', label: 'Fixed (laari)' }, { value: 'percentage', label: 'Percentage' }]}
+                />
+                <Input
+                  label={tier.kind === 'percentage' ? 'Value %' : 'Value (laari)'}
+                  type="number"
+                  value={String(tier.value)}
+                  onChange={(v) => {
+                    const n = parseInt(v, 10);
+                    if (!Number.isFinite(n) || n < 0) return;
+                    updateTier(idx, { value: n });
+                  }}
+                />
+                <Btn small variant="ghost" onClick={() => removeTier(idx)}>Remove</Btn>
+              </div>
+            ))}
+            <Btn small variant="secondary" onClick={addTier}>+ Add tier</Btn>
+          </div>
+        </Field>
+      )}
+
+      {form.type === 'quantity_break' && (
+        <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <Field label="Min quantity">
+            <Input
+              type="number"
+              value={String(meta.min_qty ?? 3)}
+              onChange={(v) => setMeta({ min_qty: Math.max(1, parseInt(v, 10) || 1) })}
+            />
+          </Field>
+          <Field label="Kind">
+            <Select
+              value={meta.kind ?? 'percentage'}
+              onChange={(v) => setMeta({ kind: v as 'fixed' | 'percentage' })}
+              options={[{ value: 'percentage', label: 'Percentage' }, { value: 'fixed', label: 'Fixed (laari)' }]}
+            />
+          </Field>
+          <Field label="Value">
+            <Input
+              type="number"
+              value={String(meta.value ?? 10)}
+              onChange={(v) => setMeta({ value: Math.max(0, parseInt(v, 10) || 0) })}
+            />
+          </Field>
+        </div>
+      )}
+
+      {form.type === 'buy_x_get_y' && (
+        <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+          <Field label="Buy qty">
+            <Input
+              type="number"
+              value={String(meta.buy_qty ?? 2)}
+              onChange={(v) => setMeta({ buy_qty: Math.max(1, parseInt(v, 10) || 1) })}
+            />
+          </Field>
+          <Field label="Get qty">
+            <Input
+              type="number"
+              value={String(meta.get_qty ?? 1)}
+              onChange={(v) => setMeta({ get_qty: Math.max(1, parseInt(v, 10) || 1) })}
+            />
+          </Field>
+          <Field label="Get discount %">
+            <Input
+              type="number"
+              value={String(meta.get_discount_pct ?? 100)}
+              onChange={(v) => setMeta({ get_discount_pct: Math.max(0, Math.min(100, parseInt(v, 10) || 0)) })}
+            />
+          </Field>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer', paddingTop: 22 }}>
+            <input
+              type="checkbox"
+              checked={meta.cheapest !== false}
+              onChange={(e) => setMeta({ cheapest: e.target.checked })}
+            />
+            Discount cheapest units
+          </label>
+        </div>
+      )}
+
+      {form.type === 'free_delivery' && (
+        <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>
+          Waives the delivery fee on delivery orders. Use min order + schedule window as needed.
+        </p>
+      )}
 
       {autoApply && (
         <>
@@ -258,7 +450,7 @@ function PromotionForm({
           </div>
         </Field>
       )}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
           <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
           Active
@@ -267,6 +459,16 @@ function PromotionForm({
           <input type="checkbox" checked={form.stackable} onChange={(e) => set('stackable', e.target.checked)} />
           Stackable
         </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!form.first_order_only} onChange={(e) => set('first_order_only', e.target.checked)} />
+          First order only
+        </label>
+        {form.type !== 'free_delivery' && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!form.waive_delivery} onChange={(e) => set('waive_delivery', e.target.checked)} />
+            Also waive delivery
+          </label>
+        )}
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
         <Btn variant="ghost" onClick={onCancel}>Cancel</Btn>
@@ -288,7 +490,47 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function formatDiscount(p: Promotion): string {
   if (p.type === 'percentage') return `${p.discount_value}%`;
   if (p.type === 'fixed') return `MVR ${(parseFloat(String(p.discount_value ?? 0)) / 100).toFixed(2)}`;
+  if (p.type === 'tiered') return 'Tiered';
+  if (p.type === 'quantity_break') return `Qty ${p.metadata?.min_qty ?? '—'}+`;
+  if (p.type === 'buy_x_get_y') {
+    return `Buy ${p.metadata?.buy_qty ?? 2} Get ${p.metadata?.get_qty ?? 1}`;
+  }
+  if (p.type === 'free_delivery') return 'Free delivery';
   return p.type;
+}
+
+function formatBudget(p: Promotion): string {
+  if (p.budget_laar == null) return '—';
+  const spent = (p.spent_laar ?? 0) / 100;
+  const budget = p.budget_laar / 100;
+  return `${spent.toFixed(0)} / ${budget.toFixed(0)}`;
+}
+
+function toFormPayload(p: Promotion): PromotionPayload {
+  const type = (TYPE_OPTIONS.some((o) => o.value === p.type) ? p.type : 'fixed') as PromotionType;
+  return {
+    name: p.name,
+    code: p.code ?? '',
+    type,
+    discount_value: p.discount_value,
+    scope: p.scope,
+    min_order_laar: p.min_order_laar,
+    max_uses: p.max_uses,
+    stackable: p.stackable,
+    is_active: p.is_active,
+    auto_apply: !!p.auto_apply,
+    first_order_only: !!p.first_order_only,
+    waive_delivery: !!p.waive_delivery || type === 'free_delivery',
+    budget_laar: p.budget_laar ?? null,
+    metadata: p.metadata ?? {},
+    starts_at: p.starts_at,
+    expires_at: p.expires_at,
+    days_of_week: p.days_of_week ?? null,
+    starts_time: p.starts_time ?? null,
+    ends_time: p.ends_time ?? null,
+    restricted_customer_id: p.restricted_customer_id ?? null,
+    targets: p.targets ?? [],
+  };
 }
 
 export function PromotionsPage() {
@@ -471,20 +713,7 @@ export function PromotionsPage() {
             {creating ? 'Create New Promotion' : `Edit: ${editing?.name}`}
           </h3>
           <PromotionForm
-            initial={editing ? {
-              name: editing.name, code: editing.code ?? '',
-              type: (editing.type === 'percentage' ? 'percentage' : 'fixed') as 'fixed' | 'percentage',
-              discount_value: editing.discount_value, scope: editing.scope,
-              min_order_laar: editing.min_order_laar, max_uses: editing.max_uses,
-              stackable: editing.stackable, is_active: editing.is_active,
-              auto_apply: !!editing.auto_apply,
-              starts_at: editing.starts_at, expires_at: editing.expires_at,
-              days_of_week: editing.days_of_week ?? null,
-              starts_time: editing.starts_time ?? null,
-              ends_time: editing.ends_time ?? null,
-              restricted_customer_id: editing.restricted_customer_id ?? null,
-              targets: editing.targets ?? [],
-            } : EMPTY}
+            initial={editing ? toFormPayload(editing) : EMPTY}
             onSave={creating ? handleCreate : handleUpdate}
             onCancel={() => { setCreating(false); setEditing(null); }}
           />
@@ -500,7 +729,7 @@ export function PromotionsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
-                {['Name', 'Code', 'Discount', 'Uses', 'Valid', 'Status', ''].map((h) => (
+                {['Name', 'Code', 'Discount', 'Budget', 'Uses', 'Valid', 'Status', ''].map((h) => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
@@ -513,6 +742,11 @@ export function PromotionsPage() {
                     {p.auto_apply && (
                       <div style={{ fontSize: 11, color: '#059669', fontWeight: 400, marginTop: 2 }}>
                         Automatic — no code
+                      </div>
+                    )}
+                    {p.first_order_only && (
+                      <div style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 400, marginTop: 2 }}>
+                        First order only
                       </div>
                     )}
                     {p.restricted_customer_id && (
@@ -534,6 +768,9 @@ export function PromotionsPage() {
                   </td>
                   <td style={{ ...TD, color: '#D4813A', fontWeight: 700 }}>
                     {formatDiscount(p)}
+                  </td>
+                  <td style={{ ...TD, color: '#6B5D4F', fontSize: 12 }}>
+                    {formatBudget(p)}
                   </td>
                   <td style={{ ...TD, color: '#6B5D4F' }}>
                     {p.redemptions_count}{p.max_uses ? ` / ${p.max_uses}` : ''}

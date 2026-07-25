@@ -484,7 +484,9 @@ export function CheckoutPage() {
             <span style={{ fontSize: 'var(--text-base)' }}>
               {(promoApplied.pending && promoApplied.discountLaar === 0)
                 ? <><span>⏳</span> <strong>{promoApplied.code}</strong> — {t('checkout.promo_pending')}</>
-                : <><span>✅</span> <strong>{promoApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(promoApplied.discountLaar)))}</>
+                : promoApplied.discountLaar === 0
+                  ? <><span>✅</span> <strong>{promoApplied.code}</strong> — Free delivery</>
+                  : <><span>✅</span> <strong>{promoApplied.code}</strong> — {t('checkout.promo_off').replace('{amount}', String(laarToMvr(promoApplied.discountLaar)))}</>
               }
             </span>
             <button style={S.removeBtn} onClick={() => void handleRemovePromo()}>{t('checkout.remove')}</button>
@@ -688,6 +690,9 @@ export function CheckoutPage() {
       {promoApplied && promoDelta > 0 && (
         <SummaryRow label={`${t('checkout.promo_code')} (${promoApplied.code})`} value={`− MVR ${laarToMvr(promoDelta)}`} highlight />
       )}
+      {promoApplied && promoDelta === 0 && !promoApplied.pending && (
+        <SummaryRow label={`${t('checkout.promo_code')} (${promoApplied.code})`} value="Free delivery" highlight />
+      )}
       {useLoyalty && loyaltyDelta > 0 && (
         <SummaryRow label={t('checkout.loyalty_discount')} value={`− MVR ${laarToMvr(loyaltyDelta)}`} highlight />
       )}
@@ -711,7 +716,11 @@ export function CheckoutPage() {
         <SummaryRow label={t('checkout.gst')} value={`MVR ${laarToMvr(taxLaar)}`} />
       )}
       {orderType === 'delivery' && (
-        <SummaryRow label={t('checkout.delivery_fee')} value={`MVR ${laarToMvr(deliveryFeeLaar)}`} />
+        <SummaryRow
+          label={deliveryFeeLaar === 0 ? 'Free delivery' : t('checkout.delivery_fee')}
+          value={deliveryFeeLaar === 0 ? 'MVR 0.00' : `MVR ${laarToMvr(deliveryFeeLaar)}`}
+          highlight={deliveryFeeLaar === 0}
+        />
       )}
       <div style={S.totalRow}>
         <span>{t('checkout.total')}</span>

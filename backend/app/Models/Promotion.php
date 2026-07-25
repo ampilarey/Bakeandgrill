@@ -13,6 +13,17 @@ class Promotion extends Model
 {
     use SoftDeletes;
 
+    /** @var list<string> */
+    public const TYPES = [
+        'percentage',
+        'fixed',
+        'free_item',
+        'tiered',
+        'quantity_break',
+        'buy_x_get_y',
+        'free_delivery',
+    ];
+
     protected $fillable = [
         'name',
         'code',
@@ -20,6 +31,8 @@ class Promotion extends Model
         'discount_value',
         'is_active',
         'auto_apply',
+        'first_order_only',
+        'waive_delivery',
         'starts_at',
         'expires_at',
         'days_of_week',
@@ -32,11 +45,15 @@ class Promotion extends Model
         'scope',
         'metadata',
         'restricted_customer_id',
+        'budget_laar',
+        'spent_laar',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'auto_apply' => 'boolean',
+        'first_order_only' => 'boolean',
+        'waive_delivery' => 'boolean',
         'stackable' => 'boolean',
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
@@ -47,6 +64,8 @@ class Promotion extends Model
         'max_uses' => 'integer',
         'max_uses_per_customer' => 'integer',
         'redemptions_count' => 'integer',
+        'budget_laar' => 'integer',
+        'spent_laar' => 'integer',
     ];
 
     /**

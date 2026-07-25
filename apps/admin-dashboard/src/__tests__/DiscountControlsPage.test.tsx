@@ -26,6 +26,8 @@ const controlsFixture: api.DiscountControls = {
   discount_approval_approvers: [{ phone: '7900000', label: 'Owner', user_id: 1 }],
   discount_approval_code_ttl_minutes: 10,
   discount_approval_max_attempts: 5,
+  discount_margin_floor_enabled: false,
+  discount_margin_floor_pct: 0,
   roles_with_discounts: ['Owner', 'Manager'],
   roles_with_override: ['Owner'],
 };

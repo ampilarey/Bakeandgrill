@@ -53,6 +53,10 @@ class ReleasePromoRedemptionOnRefundListener
 
                     if ($promo) {
                         $this->promotions->decrementRedemptionsCount($promo->id);
+                        $this->promotions->decrementSpentLaar(
+                            $promo->id,
+                            (int) ($redemption->discount_laar ?? 0),
+                        );
                     }
 
                     Log::info('Promo redemption released on full refund', [

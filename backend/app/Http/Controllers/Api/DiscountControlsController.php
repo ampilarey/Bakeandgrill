@@ -41,6 +41,8 @@ class DiscountControlsController extends Controller
             'discount_approval_approvers.*.user_id' => 'nullable|integer|exists:users,id',
             'discount_approval_code_ttl_minutes' => 'sometimes|integer|min:1|max:60',
             'discount_approval_max_attempts' => 'sometimes|integer|min:1|max:20',
+            'discount_margin_floor_enabled' => 'sometimes|boolean',
+            'discount_margin_floor_pct' => 'sometimes|integer|min:0|max:100',
         ]);
 
         $old = $this->payload();
@@ -93,6 +95,18 @@ class DiscountControlsController extends Controller
         }
         if (array_key_exists('discount_approval_max_attempts', $validated)) {
             SiteSetting::set(DiscountSettings::MAX_ATTEMPTS, (string) $validated['discount_approval_max_attempts']);
+        }
+        if (array_key_exists('discount_margin_floor_enabled', $validated)) {
+            SiteSetting::set(
+                DiscountSettings::MARGIN_FLOOR_ENABLED,
+                $validated['discount_margin_floor_enabled'] ? 'true' : 'false',
+            );
+        }
+        if (array_key_exists('discount_margin_floor_pct', $validated)) {
+            SiteSetting::set(
+                DiscountSettings::MARGIN_FLOOR_PCT,
+                (string) max(0, min(100, (int) $validated['discount_margin_floor_pct'])),
+            );
         }
 
         SiteSetting::bust();
@@ -152,6 +166,8 @@ class DiscountControlsController extends Controller
             'discount_approval_approvers' => DiscountSettings::approvers(),
             'discount_approval_code_ttl_minutes' => DiscountSettings::codeTtlMinutes(),
             'discount_approval_max_attempts' => DiscountSettings::maxAttempts(),
+            'discount_margin_floor_enabled' => DiscountSettings::marginFloorEnabled(),
+            'discount_margin_floor_pct' => DiscountSettings::marginFloorPct(),
             'roles_with_discounts' => $rolesWithDiscount,
             'roles_with_override' => $rolesWithOverride,
         ];

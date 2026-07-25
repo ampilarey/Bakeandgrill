@@ -118,6 +118,8 @@ function applyControls(
     setReasons: (v: string[]) => void;
     setApprovalRequired: (v: boolean) => void;
     setApproverRows: (v: ApproverRow[]) => void;
+    setMarginFloorEnabled: (v: boolean) => void;
+    setMarginFloorPct: (v: number) => void;
     setTtl: (v: number) => void;
     setMaxAttempts: (v: number) => void;
     setRolesWithDiscounts: (v: string[]) => void;
@@ -136,6 +138,8 @@ function applyControls(
   setters.setApproverRows(approversToRows(data.discount_approval_approvers ?? []));
   setters.setTtl(data.discount_approval_code_ttl_minutes);
   setters.setMaxAttempts(data.discount_approval_max_attempts);
+  setters.setMarginFloorEnabled(!!data.discount_margin_floor_enabled);
+  setters.setMarginFloorPct(data.discount_margin_floor_pct ?? 0);
   setters.setRolesWithDiscounts(data.roles_with_discounts ?? []);
   setters.setRolesWithOverride(data.roles_with_override ?? []);
 }
@@ -161,6 +165,8 @@ export function DiscountControlsPage() {
   const [approverRows, setApproverRows] = useState<ApproverRow[]>([]);
   const [ttl, setTtl] = useState(10);
   const [maxAttempts, setMaxAttempts] = useState(5);
+  const [marginFloorEnabled, setMarginFloorEnabled] = useState(false);
+  const [marginFloorPct, setMarginFloorPct] = useState(0);
   const [rolesWithDiscounts, setRolesWithDiscounts] = useState<string[]>([]);
   const [rolesWithOverride, setRolesWithOverride] = useState<string[]>([]);
 
@@ -173,6 +179,8 @@ export function DiscountControlsPage() {
     setReasons,
     setApprovalRequired,
     setApproverRows,
+    setMarginFloorEnabled,
+    setMarginFloorPct,
     setTtl,
     setMaxAttempts,
     setRolesWithDiscounts,
@@ -225,6 +233,8 @@ export function DiscountControlsPage() {
         discount_approval_approvers: rowsToApprovers(approverRows),
         discount_approval_code_ttl_minutes: Math.max(1, Math.min(60, Math.round(ttl))),
         discount_approval_max_attempts: Math.max(1, Math.min(20, Math.round(maxAttempts))),
+        discount_margin_floor_enabled: marginFloorEnabled,
+        discount_margin_floor_pct: Math.max(0, Math.min(100, Math.round(marginFloorPct))),
       });
       applyControls(data, setters);
       setSavedMsg('Saved.');
@@ -290,6 +300,30 @@ export function DiscountControlsPage() {
               onChange={setEnabled}
               label={enabled ? 'Manual discounts enabled' : 'Manual discounts disabled'}
             />
+          </section>
+
+          {/* Margin floor */}
+          <section style={sectionStyle} aria-labelledby="dc-margin">
+            <h2 id="dc-margin" style={sectionTitleStyle}>Promo margin floor</h2>
+            <p style={sectionHintStyle}>
+              When on, item/category promo discounts cannot push unit price below cost × (1 + floor %).
+              Off by default so existing promos stay behaviour-neutral.
+            </p>
+            <Toggle
+              checked={marginFloorEnabled}
+              onChange={setMarginFloorEnabled}
+              label={marginFloorEnabled ? 'Margin floor enabled' : 'Margin floor disabled'}
+            />
+            <div style={{ marginTop: 12, maxWidth: 240 }}>
+              <Input
+                label="Floor % above cost"
+                type="number"
+                min={0}
+                max={100}
+                value={String(marginFloorPct)}
+                onChange={(v) => setMarginFloorPct(Math.max(0, Math.min(100, Number(v) || 0)))}
+              />
+            </div>
           </section>
 
           {/* Max caps */}

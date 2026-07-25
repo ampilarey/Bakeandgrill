@@ -41,4 +41,25 @@ class EloquentPromotionRepository implements PromotionRepositoryInterface
             ->where('redemptions_count', '>', 0)
             ->decrement('redemptions_count');
     }
+
+    public function incrementSpentLaar(int $promotionId, int $amountLaar): void
+    {
+        if ($amountLaar <= 0) {
+            return;
+        }
+        DB::table('promotions')
+            ->where('id', $promotionId)
+            ->increment('spent_laar', $amountLaar);
+    }
+
+    public function decrementSpentLaar(int $promotionId, int $amountLaar): void
+    {
+        if ($amountLaar <= 0) {
+            return;
+        }
+        $current = (int) DB::table('promotions')->where('id', $promotionId)->value('spent_laar');
+        DB::table('promotions')
+            ->where('id', $promotionId)
+            ->update(['spent_laar' => max(0, $current - $amountLaar)]);
+    }
 }

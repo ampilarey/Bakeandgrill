@@ -378,10 +378,25 @@ class PromotionController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => ($autoApply ? 'nullable' : 'required') . '|string|max:50|unique:promotions,code',
-            'type' => 'required|in:percentage,fixed,free_item',
-            'discount_value' => 'required|integer|min:0',
+            'type' => 'required|in:percentage,fixed,free_item,tiered,quantity_break,buy_x_get_y,free_delivery',
+            'discount_value' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
             'auto_apply' => 'boolean',
+            'first_order_only' => 'boolean',
+            'waive_delivery' => 'boolean',
+            'budget_laar' => 'nullable|integer|min:1',
+            'metadata' => 'nullable|array',
+            'metadata.tiers' => 'nullable|array',
+            'metadata.tiers.*.min_laar' => 'required_with:metadata.tiers|integer|min:0',
+            'metadata.tiers.*.kind' => 'required_with:metadata.tiers|in:fixed,percentage',
+            'metadata.tiers.*.value' => 'required_with:metadata.tiers|integer|min:0',
+            'metadata.min_qty' => 'nullable|integer|min:1',
+            'metadata.kind' => 'nullable|in:fixed,percentage',
+            'metadata.value' => 'nullable|integer|min:0',
+            'metadata.buy_qty' => 'nullable|integer|min:1',
+            'metadata.get_qty' => 'nullable|integer|min:1',
+            'metadata.get_discount_pct' => 'nullable|integer|min:0|max:100',
+            'metadata.cheapest' => 'nullable|boolean',
             'starts_at' => 'nullable|date',
             'expires_at' => 'nullable|date|after:starts_at',
             'days_of_week' => 'nullable|array',
@@ -399,6 +414,11 @@ class PromotionController extends Controller
             'targets.*.target_id' => 'required_with:targets|integer|min:1',
             'targets.*.is_exclusion' => 'boolean',
         ]);
+
+        $validated['discount_value'] = (int) ($validated['discount_value'] ?? 0);
+        if (($validated['type'] ?? '') === 'free_delivery') {
+            $validated['waive_delivery'] = true;
+        }
 
         if ($autoApply) {
             $validated['auto_apply'] = true;
@@ -442,8 +462,25 @@ class PromotionController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
+            'type' => 'sometimes|in:percentage,fixed,free_item,tiered,quantity_break,buy_x_get_y,free_delivery',
+            'discount_value' => 'sometimes|integer|min:0',
             'is_active' => 'sometimes|boolean',
             'auto_apply' => 'sometimes|boolean',
+            'first_order_only' => 'sometimes|boolean',
+            'waive_delivery' => 'sometimes|boolean',
+            'budget_laar' => 'nullable|integer|min:1',
+            'metadata' => 'nullable|array',
+            'metadata.tiers' => 'nullable|array',
+            'metadata.tiers.*.min_laar' => 'required_with:metadata.tiers|integer|min:0',
+            'metadata.tiers.*.kind' => 'required_with:metadata.tiers|in:fixed,percentage',
+            'metadata.tiers.*.value' => 'required_with:metadata.tiers|integer|min:0',
+            'metadata.min_qty' => 'nullable|integer|min:1',
+            'metadata.kind' => 'nullable|in:fixed,percentage',
+            'metadata.value' => 'nullable|integer|min:0',
+            'metadata.buy_qty' => 'nullable|integer|min:1',
+            'metadata.get_qty' => 'nullable|integer|min:1',
+            'metadata.get_discount_pct' => 'nullable|integer|min:0|max:100',
+            'metadata.cheapest' => 'nullable|boolean',
             'expires_at' => 'nullable|date',
             'days_of_week' => 'nullable|array',
             'days_of_week.*' => 'integer|min:0|max:6',
@@ -452,12 +489,18 @@ class PromotionController extends Controller
             'max_uses' => 'nullable|integer|min:1',
             'max_uses_per_customer' => 'nullable|integer|min:1',
             'min_order_laar' => 'nullable|integer|min:0',
+            'stackable' => 'sometimes|boolean',
+            'scope' => 'sometimes|in:order,item',
             'restricted_customer_id' => 'nullable|integer|exists:customers,id',
             'targets' => 'nullable|array',
             'targets.*.target_type' => 'required_with:targets|in:item,category',
             'targets.*.target_id' => 'required_with:targets|integer|min:1',
             'targets.*.is_exclusion' => 'boolean',
         ]);
+
+        if (($validated['type'] ?? $promotion->type) === 'free_delivery') {
+            $validated['waive_delivery'] = true;
+        }
 
         if (array_key_exists('auto_apply', $validated) && $validated['auto_apply']) {
             $validated['restricted_customer_id'] = null;

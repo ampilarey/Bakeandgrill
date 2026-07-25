@@ -48,6 +48,7 @@
             "prep_time_minutes": null,
             "avg_rating": null,
             "review_count": 0,
+            "sales_30d": 0,
             "photos": [],
             "availability": {
                 "available": true,

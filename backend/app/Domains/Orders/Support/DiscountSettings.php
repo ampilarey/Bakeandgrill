@@ -32,6 +32,10 @@ final class DiscountSettings
 
     public const MAX_ATTEMPTS = 'discount_approval_max_attempts';
 
+    public const MARGIN_FLOOR_ENABLED = 'discount_margin_floor_enabled';
+
+    public const MARGIN_FLOOR_PCT = 'discount_margin_floor_pct';
+
     public static function manualEnabled(): bool
     {
         return SmsTypeRegistry::settingIsTruthy(
@@ -141,6 +145,20 @@ final class DiscountSettings
     public static function maxAttempts(): int
     {
         return max(1, min(20, (int) SiteSetting::get(self::MAX_ATTEMPTS, '5')));
+    }
+
+    public static function marginFloorEnabled(): bool
+    {
+        return SmsTypeRegistry::settingIsTruthy(
+            SiteSetting::get(self::MARGIN_FLOOR_ENABLED, 'false'),
+            false,
+        );
+    }
+
+    /** Minimum margin % above cost after item/category discounts (0 = never below cost). */
+    public static function marginFloorPct(): int
+    {
+        return max(0, min(100, (int) SiteSetting::get(self::MARGIN_FLOOR_PCT, '0')));
     }
 
     /**

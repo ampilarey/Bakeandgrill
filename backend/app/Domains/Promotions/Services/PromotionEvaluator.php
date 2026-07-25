@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Promotions\Services;
 
+use App\Domains\Orders\Support\DiscountSettings;
 use App\Domains\Promotions\Repositories\PromotionRedemptionRepositoryInterface;
 use App\Domains\Promotions\Repositories\PromotionRepositoryInterface;
 use App\Models\Item;
@@ -13,6 +14,7 @@ use App\Models\OrderPromotion;
 use App\Models\Promotion;
 use App\Models\SiteSetting;
 use App\Support\LaariConverter;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Evaluates whether a promo code is valid for an order and calculates the discount.
@@ -143,10 +145,27 @@ class PromotionEvaluator
             return $eligible;
         }
 
-        // best_wins (default): single largest discount among auto-promos.
-        usort($eligible, fn (array $a, array $b) => $b['discount_laar'] <=> $a['discount_laar']);
+        // best_wins: largest merchandise discount; delivery waivers stay orthogonal.
+        $waivers = array_values(array_filter(
+            $eligible,
+            fn (array $row) => $this->isDeliveryWaiver($row['promotion']),
+        ));
+        $merchandise = array_values(array_filter(
+            $eligible,
+            fn (array $row) => !$this->isDeliveryWaiver($row['promotion']),
+        ));
 
-        return [$eligible[0]];
+        $selected = [];
+        if ($merchandise !== []) {
+            usort($merchandise, fn (array $a, array $b) => $b['discount_laar'] <=> $a['discount_laar']);
+            $selected[] = $merchandise[0];
+        }
+
+        foreach ($waivers as $waiver) {
+            $selected[] = $waiver;
+        }
+
+        return $selected;
     }
 
     /**
@@ -204,9 +223,20 @@ class PromotionEvaluator
             }
         }
 
+        $firstOrderCheck = $this->firstOrderGate($promotion, $customerId, $excludeOrderId);
+        if ($firstOrderCheck !== null) {
+            return $this->reject($firstOrderCheck);
+        }
+
         $discountLaar = $this->calculateDiscount($promotion, $order, $subtotalLaar);
-        if ($discountLaar <= 0) {
+        $isDeliveryWaive = $this->isDeliveryWaiver($promotion);
+        if ($discountLaar <= 0 && !$isDeliveryWaive) {
             return $this->reject('Promo code does not apply to any items in your order.');
+        }
+
+        $budgetCheck = $this->budgetGate($promotion, $discountLaar);
+        if ($budgetCheck !== null) {
+            return $this->reject($budgetCheck);
         }
 
         return [
@@ -301,10 +331,21 @@ class PromotionEvaluator
             }
         }
 
-        $discountLaar = $this->calculateDiscount($promotion, $order, $subtotalLaar);
+        $firstOrderCheck = $this->firstOrderGate($promotion, $customerId, $excludeOrderId);
+        if ($firstOrderCheck !== null) {
+            return $this->reject($firstOrderCheck);
+        }
 
-        if ($discountLaar <= 0) {
+        $discountLaar = $this->calculateDiscount($promotion, $order, $subtotalLaar);
+        $isDeliveryWaive = $this->isDeliveryWaiver($promotion);
+
+        if ($discountLaar <= 0 && !$isDeliveryWaive) {
             return $this->reject('Promo code does not apply to any items in your order.');
+        }
+
+        $budgetCheck = $this->budgetGate($promotion, $discountLaar);
+        if ($budgetCheck !== null) {
+            return $this->reject($budgetCheck);
         }
 
         return [
@@ -362,12 +403,266 @@ class PromotionEvaluator
     {
         $applicableAmount = $this->applicableSubtotal($promo, $order);
 
-        return match ($promo->type) {
+        $raw = match ($promo->type) {
             'percentage' => (int) floor($applicableAmount * $promo->discount_value / 100),
-            'fixed' => min($promo->discount_value, $applicableAmount),
+            'fixed' => min((int) $promo->discount_value, $applicableAmount),
             'free_item' => $this->freeItemDiscount($promo, $order),
+            'tiered' => $this->tieredDiscount($promo, $applicableAmount > 0 ? $applicableAmount : $subtotalLaar),
+            'quantity_break' => $this->quantityBreakDiscount($promo, $order),
+            'buy_x_get_y' => $this->buyXGetYDiscount($promo, $order),
+            'free_delivery' => 0,
             default => 0,
         };
+
+        $raw = max(0, min($raw, $applicableAmount > 0 ? $applicableAmount : $subtotalLaar));
+
+        return $this->applyMarginFloor($promo, $order, $raw);
+    }
+
+    public function isDeliveryWaiver(Promotion $promo): bool
+    {
+        return $promo->type === 'free_delivery' || (bool) $promo->waive_delivery;
+    }
+
+    /** @return string|null rejection message */
+    private function budgetGate(Promotion $promotion, int $discountLaar): ?string
+    {
+        if ($promotion->budget_laar === null) {
+            return null;
+        }
+        $budget = (int) $promotion->budget_laar;
+        $spent = (int) ($promotion->spent_laar ?? 0);
+        if ($spent + $discountLaar > $budget) {
+            return 'This offer has reached its limit.';
+        }
+
+        return null;
+    }
+
+    /** @return string|null rejection message */
+    private function firstOrderGate(Promotion $promotion, ?int $customerId, ?int $excludeOrderId = null): ?string
+    {
+        if (!$promotion->first_order_only) {
+            return null;
+        }
+        // Guests (no linked customer) count as first-order eligible.
+        if ($customerId === null) {
+            return null;
+        }
+
+        $query = Order::query()
+            ->where('customer_id', $customerId)
+            ->where(function ($q): void {
+                $q->whereIn('payment_status', ['paid', 'partial'])
+                    ->orWhereIn('status', ['completed', 'delivered', 'ready', 'preparing', 'confirmed', 'paid', 'in_progress']);
+            })
+            ->whereNotIn('status', ['cancelled', 'refunded']);
+
+        if ($excludeOrderId !== null) {
+            $query->where('id', '!=', $excludeOrderId);
+        }
+
+        if ($query->exists()) {
+            return 'This offer is only available on your first order.';
+        }
+
+        return null;
+    }
+
+    private function tieredDiscount(Promotion $promo, int $subtotalLaar): int
+    {
+        $tiers = $promo->metadata['tiers'] ?? null;
+        if (!is_array($tiers) || $tiers === []) {
+            return 0;
+        }
+
+        $best = null;
+        $bestMin = -1;
+        foreach ($tiers as $tier) {
+            if (!is_array($tier)) {
+                continue;
+            }
+            $min = (int) ($tier['min_laar'] ?? 0);
+            if ($subtotalLaar < $min || $min < $bestMin) {
+                continue;
+            }
+            $bestMin = $min;
+            $best = $tier;
+        }
+        if ($best === null) {
+            return 0;
+        }
+
+        return $this->kindValueDiscount(
+            (string) ($best['kind'] ?? 'fixed'),
+            (int) ($best['value'] ?? 0),
+            $subtotalLaar,
+        );
+    }
+
+    private function quantityBreakDiscount(Promotion $promo, Order $order): int
+    {
+        $meta = is_array($promo->metadata) ? $promo->metadata : [];
+        $minQty = max(1, (int) ($meta['min_qty'] ?? 0));
+        if ($minQty <= 0) {
+            return 0;
+        }
+
+        $lines = $this->qualifyingLines($promo, $order);
+        $qty = (int) $lines->sum(fn (OrderItem $i) => (int) $i->quantity);
+        if ($qty < $minQty) {
+            return 0;
+        }
+
+        $amount = (int) $lines->sum(fn (OrderItem $i) => LaariConverter::toLaar($i->total_price));
+
+        return $this->kindValueDiscount(
+            (string) ($meta['kind'] ?? 'percentage'),
+            (int) ($meta['value'] ?? 0),
+            $amount,
+        );
+    }
+
+    private function buyXGetYDiscount(Promotion $promo, Order $order): int
+    {
+        $meta = is_array($promo->metadata) ? $promo->metadata : [];
+        $buyQty = max(1, (int) ($meta['buy_qty'] ?? 0));
+        $getQty = max(1, (int) ($meta['get_qty'] ?? 0));
+        $getPct = max(0, min(100, (int) ($meta['get_discount_pct'] ?? 100)));
+        $cheapest = array_key_exists('cheapest', $meta) ? (bool) $meta['cheapest'] : true;
+        $setSize = $buyQty + $getQty;
+        if ($buyQty <= 0 || $getQty <= 0) {
+            return 0;
+        }
+
+        // Expand qualifying lines into unit prices (laari).
+        $units = [];
+        foreach ($this->qualifyingLines($promo, $order) as $line) {
+            $unitLaar = LaariConverter::toLaar($line->unit_price);
+            $q = max(0, (int) $line->quantity);
+            for ($i = 0; $i < $q; $i++) {
+                $units[] = $unitLaar;
+            }
+        }
+        if ($units === []) {
+            return 0;
+        }
+
+        $sets = intdiv(count($units), $setSize);
+        if ($sets <= 0) {
+            return 0;
+        }
+
+        if ($cheapest) {
+            sort($units); // ascending — discount the cheapest get units
+        } else {
+            rsort($units);
+        }
+
+        $discountUnits = array_slice($units, 0, $sets * $getQty);
+        $discount = 0;
+        foreach ($discountUnits as $unit) {
+            $discount += (int) floor($unit * $getPct / 100);
+        }
+
+        return min($discount, (int) array_sum($units));
+    }
+
+    private function kindValueDiscount(string $kind, int $value, int $amountLaar): int
+    {
+        if ($amountLaar <= 0 || $value <= 0) {
+            return 0;
+        }
+
+        return match ($kind) {
+            'percentage' => (int) floor($amountLaar * min(100, $value) / 100),
+            'fixed' => min($value, $amountLaar),
+            default => 0,
+        };
+    }
+
+    /** @return \Illuminate\Support\Collection<int, OrderItem> */
+    private function qualifyingLines(Promotion $promo, Order $order)
+    {
+        $order->loadMissing('items.item');
+        $promo->loadMissing('targets');
+
+        $inclusions = $promo->targets->where('is_exclusion', false);
+        $exclusions = $promo->targets->where('is_exclusion', true);
+        $excludedItemIds = $exclusions->where('target_type', 'item')->pluck('target_id')->all();
+        $excludedCategoryIds = $exclusions->where('target_type', 'category')->pluck('target_id')->all();
+        $includedItemIds = $inclusions->where('target_type', 'item')->pluck('target_id')->all();
+        $includedCategoryIds = $inclusions->where('target_type', 'category')->pluck('target_id')->all();
+
+        return $order->items->filter(function (OrderItem $orderItem) use (
+            $excludedItemIds,
+            $excludedCategoryIds,
+            $includedItemIds,
+            $includedCategoryIds,
+            $inclusions,
+        ) {
+            $itemId = $orderItem->item_id;
+            $categoryId = $orderItem->item?->category_id ?? null;
+            if (in_array($itemId, $excludedItemIds, true) || in_array($categoryId, $excludedCategoryIds, true)) {
+                return false;
+            }
+            if ($inclusions->isNotEmpty()) {
+                return in_array($itemId, $includedItemIds, true)
+                    || in_array($categoryId, $includedCategoryIds, true);
+            }
+
+            return true;
+        })->values();
+    }
+
+    /**
+     * Clamp item/category discounts so unit price stays ≥ cost × (1 + floor%).
+     * Evaluates against the already-discounted line total (special baked into unit_price).
+     */
+    private function applyMarginFloor(Promotion $promo, Order $order, int $discountLaar): int
+    {
+        if ($discountLaar <= 0) {
+            return 0;
+        }
+
+        if (!DiscountSettings::marginFloorEnabled()) {
+            return $discountLaar;
+        }
+
+        // Floor applies to item/category-scoped discounts (not bare order-level promos).
+        if ($promo->scope === 'order' && !$this->isItemLevelPromo($promo)) {
+            return $discountLaar;
+        }
+
+        $floorPct = DiscountSettings::marginFloorPct();
+        $lines = $this->qualifyingLines($promo, $order);
+        if ($lines->isEmpty()) {
+            return $discountLaar;
+        }
+
+        $maxDiscountable = 0;
+        foreach ($lines as $line) {
+            $qty = max(1, (int) $line->quantity);
+            $unitLaar = LaariConverter::toLaar($line->unit_price); // already-discounted (special)
+            $costMvr = (float) ($line->item?->cost ?? 0);
+            $floorUnitLaar = (int) ceil($costMvr * (1 + $floorPct / 100) * 100);
+            $minLineLaar = $floorUnitLaar * $qty;
+            $lineTotal = LaariConverter::toLaar($line->total_price);
+            $maxDiscountable += max(0, $lineTotal - $minLineLaar);
+        }
+
+        if ($discountLaar <= $maxDiscountable) {
+            return $discountLaar;
+        }
+
+        Log::info('Promo discount clamped by margin floor', [
+            'promotion_id' => $promo->id,
+            'requested_laar' => $discountLaar,
+            'clamped_laar' => $maxDiscountable,
+            'floor_pct' => $floorPct,
+        ]);
+
+        return max(0, $maxDiscountable);
     }
 
     /**

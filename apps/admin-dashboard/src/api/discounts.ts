@@ -22,6 +22,8 @@ export type DiscountControls = {
   discount_approval_approvers: DiscountApprover[];
   discount_approval_code_ttl_minutes: number;
   discount_approval_max_attempts: number;
+  discount_margin_floor_enabled: boolean;
+  discount_margin_floor_pct: number;
   roles_with_discounts: string[];
   roles_with_override: string[];
 };
@@ -37,6 +39,8 @@ export type DiscountControlsUpdate = Partial<{
   discount_approval_approvers: DiscountApprover[];
   discount_approval_code_ttl_minutes: number;
   discount_approval_max_attempts: number;
+  discount_margin_floor_enabled: boolean;
+  discount_margin_floor_pct: number;
 }>;
 
 export async function getDiscountControls(): Promise<DiscountControls> {

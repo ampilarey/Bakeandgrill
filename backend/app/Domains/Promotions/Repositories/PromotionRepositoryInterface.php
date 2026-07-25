@@ -18,4 +18,8 @@ interface PromotionRepositoryInterface
     public function incrementRedemptionsCount(int $promotionId): void;
 
     public function decrementRedemptionsCount(int $promotionId): void;
+
+    public function incrementSpentLaar(int $promotionId, int $amountLaar): void;
+
+    public function decrementSpentLaar(int $promotionId, int $amountLaar): void;
 }

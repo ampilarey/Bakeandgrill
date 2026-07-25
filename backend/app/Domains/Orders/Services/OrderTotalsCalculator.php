@@ -14,6 +14,7 @@ use App\Domains\Orders\DTOs\TotalsBreakdown;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Shared\ValueObjects\Money;
 use App\Models\Order;
+use App\Models\OrderPromotion;
 
 /**
  * Calculates order totals deterministically using per-item tax rates.
@@ -242,6 +243,19 @@ class OrderTotalsCalculator
         $island = trim((string) ($order->delivery_island ?? ''));
         if (!$feesLocked && ($order->type ?? '') === 'delivery' && $island !== '') {
             $deliveryFeeLaar = app(DeliveryFeeCalculator::class)->calculateLaar($island, $discountedLaar);
+
+            // Promo-driven free delivery (type free_delivery / waive_delivery flag).
+            $waiveDelivery = OrderPromotion::query()
+                ->where('order_id', $order->id)
+                ->whereIn('status', ['draft', 'consumed'])
+                ->whereHas('promotion', function ($q): void {
+                    $q->where('type', 'free_delivery')
+                        ->orWhere('waive_delivery', true);
+                })
+                ->exists();
+            if ($waiveDelivery) {
+                $deliveryFeeLaar = 0;
+            }
         }
 
         $tipLaar = (int) round((float) ($order->tip_amount ?? 0) * 100);

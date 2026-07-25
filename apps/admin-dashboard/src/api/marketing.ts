@@ -9,6 +9,32 @@ export type PromotionTarget = {
   is_exclusion?: boolean;
 };
 
+export type PromotionType =
+  | 'fixed'
+  | 'percentage'
+  | 'free_item'
+  | 'tiered'
+  | 'quantity_break'
+  | 'buy_x_get_y'
+  | 'free_delivery';
+
+export type PromotionTier = {
+  min_laar: number;
+  kind: 'fixed' | 'percentage';
+  value: number;
+};
+
+export type PromotionMetadata = {
+  tiers?: PromotionTier[];
+  min_qty?: number;
+  kind?: 'fixed' | 'percentage';
+  value?: number;
+  buy_qty?: number;
+  get_qty?: number;
+  get_discount_pct?: number;
+  cheapest?: boolean;
+};
+
 export type Promotion = {
   id: number;
   name: string;
@@ -19,9 +45,14 @@ export type Promotion = {
   min_order_laar?: number | null;
   max_uses?: number | null;
   redemptions_count: number;
+  budget_laar?: number | null;
+  spent_laar?: number;
   stackable: boolean;
   is_active: boolean;
   auto_apply?: boolean;
+  first_order_only?: boolean;
+  waive_delivery?: boolean;
+  metadata?: PromotionMetadata | null;
   starts_at?: string | null;
   expires_at?: string | null;
   days_of_week?: number[] | null;
@@ -36,7 +67,7 @@ export type Promotion = {
 export type PromotionPayload = {
   name: string;
   code?: string | null;
-  type: 'fixed' | 'percentage';
+  type: PromotionType;
   discount_value: number;
   scope?: string;
   min_order_laar?: number | null;
@@ -44,6 +75,10 @@ export type PromotionPayload = {
   stackable?: boolean;
   is_active?: boolean;
   auto_apply?: boolean;
+  first_order_only?: boolean;
+  waive_delivery?: boolean;
+  budget_laar?: number | null;
+  metadata?: PromotionMetadata | null;
   starts_at?: string | null;
   expires_at?: string | null;
   days_of_week?: number[] | null;

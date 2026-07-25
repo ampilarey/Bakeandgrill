@@ -79,6 +79,10 @@ class ConsumePromoRedemptionsListener
                         }
 
                         $this->promotions->incrementRedemptionsCount($orderPromo->promotion_id);
+                        $this->promotions->incrementSpentLaar(
+                            $orderPromo->promotion_id,
+                            (int) $orderPromo->discount_laar,
+                        );
 
                         Log::info('Promo redeemed', [
                             'promotion_id' => $orderPromo->promotion_id,
