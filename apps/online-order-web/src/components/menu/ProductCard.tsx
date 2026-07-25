@@ -164,7 +164,6 @@ export function ProductCard({
           <button
             type="button"
             className="menu-card-fav-btn"
-            style={{ minWidth: 44, minHeight: 44 }}
             onClick={(e) => { e.stopPropagation(); onToggleFavourite(item.id); }}
             aria-label={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
           >

@@ -17,6 +17,10 @@ type Props = {
   counts?: Record<number, number>;
   showOffersPill?: boolean;
   onOffersClick?: () => void;
+  showCateringPill?: boolean;
+  cateringActive?: boolean;
+  cateringCount?: number;
+  onCateringClick?: () => void;
 };
 
 /**
@@ -30,6 +34,10 @@ export function CategoryRail({
   counts = {},
   showOffersPill = false,
   onOffersClick,
+  showCateringPill = false,
+  cateringActive = false,
+  cateringCount = 0,
+  onCateringClick,
 }: Props) {
   const { t } = useLanguage();
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -74,6 +82,55 @@ export function CategoryRail({
             }}
           >
             Offers
+          </button>
+        )}
+        {showCateringPill && onCateringClick && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cateringActive}
+            className={`cat-rail__item${cateringActive ? ' is-active' : ''}`}
+            data-testid="cat-rail-catering"
+            onClick={onCateringClick}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 4,
+              padding: '0.5rem 0.35rem',
+              border: 'none',
+              background: cateringActive ? 'var(--color-primary-light)' : 'transparent',
+              borderLeft: cateringActive ? '3px solid var(--color-primary)' : '3px solid transparent',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              color: cateringActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              width: '100%',
+              fontWeight: 700,
+              fontSize: 11,
+            }}
+          >
+            <span
+              className="cat-rail__thumb"
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: 'hsl(32 55% 88%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: '0.9rem',
+                color: 'var(--color-dark)',
+              }}
+            >
+              C
+            </span>
+            <span className="cat-rail__label">Catering</span>
+            {cateringCount > 0 && (
+              <span style={{ fontSize: 10, opacity: 0.7 }}>{cateringCount}</span>
+            )}
           </button>
         )}
         {categories.map((cat) => {

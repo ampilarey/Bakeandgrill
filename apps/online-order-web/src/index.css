@@ -2043,16 +2043,31 @@ textarea.field-input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Keep ≥44px tap target; draw a smaller visual circle via ::before */
   min-width: 44px;
   min-height: 44px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: none;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-  box-shadow: 0 2px 8px rgba(28, 20, 8, 0.12);
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
   line-height: 1;
+}
+
+.menu-card-article--zus .menu-card-fav-btn::before {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  box-shadow: 0 1px 5px rgba(28, 20, 8, 0.1);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .menu-card-article--list .menu-card-fav-btn {

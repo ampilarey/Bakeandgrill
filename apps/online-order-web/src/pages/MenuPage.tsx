@@ -323,10 +323,12 @@ export function MenuPage() {
   const discountCount = useMemo(() => items.filter(isPercentDiscountItem).length, [items]);
   const specialCount = useMemo(() => items.filter(isFixedSpecialItem).length, [items]);
 
-  // Item counts per category (parent counts include their subcategories)
+  // Item counts per category (parent counts include their subcategories).
+  // Catering-flagged items live in the Catering section, not category tallies.
   const catItemCounts = useMemo(() => {
     const direct: Record<number, number> = {};
     for (const item of items) {
+      if (item.is_catering) continue;
       if (item.category_id !== null) direct[item.category_id] = (direct[item.category_id] ?? 0) + 1;
     }
     const total: Record<number, number> = {};
@@ -361,14 +363,14 @@ export function MenuPage() {
           .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
 
         const directItems = sortMenuItems(
-          items.filter((item) => item.category_id === category.id),
+          items.filter((item) => item.category_id === category.id && !item.is_catering),
           sortBy,
         );
         const subcategories = childCats
           .map((sub) => ({
             category: sub,
             items: sortMenuItems(
-              items.filter((item) => item.category_id === sub.id),
+              items.filter((item) => item.category_id === sub.id && !item.is_catering),
               sortBy,
             ),
           }))
@@ -383,13 +385,18 @@ export function MenuPage() {
       })
       .filter((section) => section.directItems.length > 0 || section.subcategories.length > 0);
 
-    const other = sortMenuItems(items.filter((item) => !usedItemIds.has(item.id)), sortBy);
     const catering = sortMenuItems(items.filter((item) => !!item.is_catering), sortBy);
+    for (const item of catering) usedItemIds.add(item.id);
+    const other = sortMenuItems(items.filter((item) => !usedItemIds.has(item.id)), sortBy);
     return { sections, other, catering };
   }, [categories, parentCategories, items, sortBy]);
 
-  const hasSectionedItems = sectionedMenu.sections.length > 0 || sectionedMenu.other.length > 0;
-  const [cateringOpen, setCateringOpen] = useState(false);
+  const hasSectionedItems =
+    sectionedMenu.sections.length > 0
+    || sectionedMenu.other.length > 0
+    || sectionedMenu.catering.length > 0;
+  const [cateringOpen, setCateringOpen] = useState(true);
+  const [cateringRailActive, setCateringRailActive] = useState(false);
 
   // Keep --menu-sticky-offset in sync with the real sticky controls height
   // (pickup/search/filters/grid). Fixed 112px was undershooting/overshooting.
@@ -429,7 +436,37 @@ export function MenuPage() {
     window.scrollTo({ top, behavior: reduced ? 'auto' : behavior });
   };
 
+  const scrollToCateringSection = (behavior: ScrollBehavior = 'smooth') => {
+    const section = document.getElementById('menu-section-catering');
+    if (!section) return;
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const stickyH = menuStickyRef.current?.getBoundingClientRect().height ?? stickyOffset;
+    const top = categoryScrollTop(
+      section.getBoundingClientRect().top,
+      window.scrollY,
+      stickyH,
+      4,
+    );
+    window.scrollTo({ top, behavior: reduced ? 'auto' : behavior });
+  };
+
+  const handleSelectCatering = () => {
+    setCateringOpen(true);
+    setCateringRailActive(true);
+    setActiveCategoryId(null);
+    isProgrammaticScroll.current = true;
+    scrollToCateringSection();
+    if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
+    programmaticScrollTimerRef.current = window.setTimeout(() => {
+      isProgrammaticScroll.current = false;
+      programmaticScrollTimerRef.current = null;
+    }, 800);
+  };
+
   const handleSelectCategory = (categoryId: number) => {
+    setCateringRailActive(false);
     setActiveCategoryId(categoryId);
     isProgrammaticScroll.current = true;
     scrollToCategorySection(categoryId);
@@ -470,7 +507,10 @@ export function MenuPage() {
 
       if (isProgrammaticScroll.current) return;
       const next = pickActiveSectionId(Array.from(sectionVisibilityRef.current.values()), activeCategoryId);
-      if (next !== activeCategoryId) setActiveCategoryId(next);
+      if (next !== activeCategoryId) {
+        setCateringRailActive(false);
+        setActiveCategoryId(next);
+      }
     }, {
       rootMargin: `-${Math.max(stickyOffset, 1)}px 0px -55% 0px`,
       threshold: [0, 0.01, 0.25, 0.5, 0.75, 1],
@@ -697,6 +737,10 @@ export function MenuPage() {
           counts={catItemCounts}
           showOffersPill={offers.length > 0}
           onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          showCateringPill={sectionedMenu.catering.length > 0}
+          cateringActive={cateringRailActive}
+          cateringCount={sectionedMenu.catering.length}
+          onCateringClick={handleSelectCatering}
         />
 
         {/* ── Main menu column ───────────────────────────────────── */}
@@ -753,12 +797,55 @@ export function MenuPage() {
 
           {!loading && !filtersActive && hasSectionedItems && (
             <div>
+              {sectionedMenu.catering.length > 0 && (
+                <section
+                  id="menu-section-catering"
+                  className="menu-section menu-section--first"
+                  style={{
+                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setCateringOpen((o) => !o)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 12, padding: '0.85rem 0', background: 'transparent', border: 'none',
+                      borderBottom: cateringOpen ? 'none' : '1px solid var(--color-border, #E8E0D8)',
+                      cursor: 'pointer', textAlign: 'left', minHeight: 44,
+                    }}
+                  >
+                    <div>
+                      <h2 className="section-accent" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-dark)' }}>
+                        Event & catering menu
+                      </h2>
+                      <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-muted, #6B5D4F)' }}>
+                        {sectionedMenu.catering.length} item{sectionedMenu.catering.length === 1 ? '' : 's'} · order for today like any other menu item
+                      </p>
+                    </div>
+                    <span style={{ fontSize: 18, color: 'var(--color-muted, #6B5D4F)', flexShrink: 0 }} aria-hidden>
+                      {cateringOpen ? '▾' : '▸'}
+                    </span>
+                  </button>
+                  {cateringOpen && (
+                    <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
+                      {sectionedMenu.catering.map(renderProductCard)}
+                    </div>
+                  )}
+                </section>
+              )}
+
               {sectionedMenu.sections.map((section, sectionIndex) => (
                 <section
                   key={section.category.id}
                   id={`menu-section-${section.category.id}`}
                   data-category-id={section.category.id}
-                  className={sectionIndex === 0 ? 'menu-section menu-section--first' : 'menu-section'}
+                  className={
+                    sectionIndex === 0 && sectionedMenu.catering.length === 0
+                      ? 'menu-section menu-section--first'
+                      : 'menu-section'
+                  }
                   style={{
                     scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
                   }}
@@ -794,45 +881,6 @@ export function MenuPage() {
                   ))}
                 </section>
               ))}
-
-              {sectionedMenu.catering.length > 0 && (
-                <section
-                  id="menu-section-catering"
-                  style={{
-                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setCateringOpen((o) => !o)}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 12, padding: '1rem 0', background: 'transparent', border: 'none',
-                      borderTop: '1px solid var(--color-border, #E8E0D8)',
-                      borderBottom: cateringOpen ? 'none' : '1px solid var(--color-border, #E8E0D8)',
-                      cursor: 'pointer', textAlign: 'left', minHeight: 44,
-                    }}
-                  >
-                    <div>
-                      <h2 className="section-accent" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-dark)' }}>
-                        Event & catering menu
-                      </h2>
-                      <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-muted, #6B5D4F)' }}>
-                        {sectionedMenu.catering.length} item{sectionedMenu.catering.length === 1 ? '' : 's'} · order for today like any other menu item
-                      </p>
-                    </div>
-                    <span style={{ fontSize: 18, color: 'var(--color-muted, #6B5D4F)', flexShrink: 0 }} aria-hidden>
-                      {cateringOpen ? '▾' : '▸'}
-                    </span>
-                  </button>
-                  {cateringOpen && (
-                    <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
-                      {sectionedMenu.catering.map(renderProductCard)}
-                    </div>
-                  )}
-                </section>
-              )}
 
               {sectionedMenu.other.length > 0 && (
                 <section
