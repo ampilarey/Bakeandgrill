@@ -38,4 +38,22 @@ describe('CategoryRail', () => {
       expect(el.textContent?.trim().length).toBeGreaterThan(0);
     });
   });
+
+  it('places Catering after regular categories on the left rail', () => {
+    const { container } = render(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={1}
+        onSelect={() => {}}
+        showCateringPill
+        cateringCount={2}
+        onCateringClick={() => {}}
+      />,
+    );
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    const labels = tabs.map((el) => el.textContent?.replace(/\d+$/, '').trim());
+    expect(labels[labels.length - 1]).toMatch(/Catering/i);
+    expect(container.querySelector('[data-testid="cat-rail-catering"]')).toBeTruthy();
+  });
 });
+

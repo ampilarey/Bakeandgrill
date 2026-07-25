@@ -821,55 +821,12 @@ export function MenuPage() {
 
           {!loading && !filtersActive && hasSectionedItems && (
             <div>
-              {sectionedMenu.catering.length > 0 && (
-                <section
-                  id="menu-section-catering"
-                  className="menu-section menu-section--first"
-                  style={{
-                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setCateringOpen((o) => !o)}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 12, padding: '0.85rem 0', background: 'transparent', border: 'none',
-                      borderBottom: cateringOpen ? 'none' : '1px solid var(--color-border, #E8E0D8)',
-                      cursor: 'pointer', textAlign: 'left', minHeight: 44,
-                    }}
-                  >
-                    <div>
-                      <h2 className="section-accent" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-dark)' }}>
-                        Event & catering menu
-                      </h2>
-                      <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-muted, #6B5D4F)' }}>
-                        {sectionedMenu.catering.length} item{sectionedMenu.catering.length === 1 ? '' : 's'} · order for today like any other menu item
-                      </p>
-                    </div>
-                    <span style={{ fontSize: 18, color: 'var(--color-muted, #6B5D4F)', flexShrink: 0 }} aria-hidden>
-                      {cateringOpen ? '▾' : '▸'}
-                    </span>
-                  </button>
-                  {cateringOpen && (
-                    <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
-                      {sectionedMenu.catering.map(renderProductCard)}
-                    </div>
-                  )}
-                </section>
-              )}
-
               {sectionedMenu.sections.map((section, sectionIndex) => (
                 <section
                   key={section.category.id}
                   id={`menu-section-${section.category.id}`}
                   data-category-id={section.category.id}
-                  className={
-                    sectionIndex === 0 && sectionedMenu.catering.length === 0
-                      ? 'menu-section menu-section--first'
-                      : 'menu-section'
-                  }
+                  className={sectionIndex === 0 ? 'menu-section menu-section--first' : 'menu-section'}
                   style={{
                     scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
                   }}
@@ -921,6 +878,46 @@ export function MenuPage() {
                   <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
                     {sectionedMenu.other.map(renderProductCard)}
                   </div>
+                </section>
+              )}
+
+              {sectionedMenu.catering.length > 0 && (
+                <section
+                  id="menu-section-catering"
+                  className="menu-section"
+                  style={{
+                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setCateringOpen((o) => !o)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 12, padding: '0.85rem 0', background: 'transparent', border: 'none',
+                      borderTop: '1px solid var(--color-border, #E8E0D8)',
+                      borderBottom: cateringOpen ? 'none' : '1px solid var(--color-border, #E8E0D8)',
+                      cursor: 'pointer', textAlign: 'left', minHeight: 44,
+                    }}
+                  >
+                    <div>
+                      <h2 className="section-accent" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-dark)' }}>
+                        Event & catering menu
+                      </h2>
+                      <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-muted, #6B5D4F)' }}>
+                        {sectionedMenu.catering.length} item{sectionedMenu.catering.length === 1 ? '' : 's'} · order for today like any other menu item
+                      </p>
+                    </div>
+                    <span style={{ fontSize: 18, color: 'var(--color-muted, #6B5D4F)', flexShrink: 0 }} aria-hidden>
+                      {cateringOpen ? '▾' : '▸'}
+                    </span>
+                  </button>
+                  {cateringOpen && (
+                    <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
+                      {sectionedMenu.catering.map(renderProductCard)}
+                    </div>
+                  )}
                 </section>
               )}
             </div>
