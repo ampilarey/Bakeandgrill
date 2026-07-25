@@ -2235,9 +2235,13 @@ textarea.field-input {
   border-right: 1px solid var(--color-border);
 }
 
-/* First category sits flush under the sticky controls (no extra top gap) */
+/* First category: small breathing room under sticky controls (not flush, not a large gap) */
+.menu-section--first {
+  padding-top: 0.5rem;
+}
+
 .menu-section--first .menu-section-header {
-  padding-top: 0 !important;
+  padding-top: 0.35rem !important;
 }
 
 /* Mobile: keep ZUS-style rail — icon + short label (never hide labels) */
