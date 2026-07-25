@@ -8,10 +8,13 @@ PowerPoint/free-form/timeline editors. Every added capability must have a clear 
 benefit. Non-transactional, additive, resilient for all-day unattended playback.
 
 **Phasing (so Cursor builds in the right order):**
-- **Phase 1 (core board):** data model, playlists, screens & groups, smart menu slides + custom slides,
-  layout templates, transitions/effects, theming, dynamic variables, day-part + **scheduled campaigns**,
-  **weighted slides**, **emergency override**, **prayer break**, burn-in protection, preview, QR slides,
-  the public signage page, and the pro **template** studio.
+- **Phase 1 (core board):** data model (element-tree slides), playlists, screens & groups, smart menu +
+  custom slides, layout templates, transitions + per-element animation presets, theming, dynamic
+  variables, day-part + **scheduled campaigns**, **weighted slides**, **emergency override**,
+  **prayer break**, burn-in protection, preview, QR slides, and the public signage page.
+- **Phase 1b (designer):** the **freeform slide designer** (drag/resize/layer/style/animate/data-bind,
+  templates + save, undo/redo, 16:9/9:16 preview). Can land right after the engine renders element trees;
+  a simple form-based fallback editor works until it's ready, so Phase 1 isn't blocked on it.
 - **Phase 2 (device ops):** lightweight **device pairing**, **heartbeat/health**, **remote commands**,
   diagnostics. Poll-based, no push infra. Ship Phase 1 first; Phase 2 slots in without redesign.
 
@@ -38,8 +41,15 @@ multi-branch is a data concern, not a rewrite.
 date/day/window) → **prayer break** (if within window) → **emergency override** (global, wins over all).
 The resolver returns the final effective playlist + theme + orientation + refresh interval.
 
-> Slides JSON per playlist: `[{ id, type, template, transition, transition_ms, effects[], seconds,
-> weight, refs… , overrides{} }]`. `weight` drives weighted rotation (see §3.3).
+> **Slide = element tree JSON** (this is what makes the freeform designer clean):
+> `{ id, name, seconds, weight, transition, transition_ms, background{type,value,opacity},
+>   template_origin?, elements: [ { id, type, x, y, w, h, rotation, z, style{}, animation{},
+>   binding{} } ] }`. Elements are absolutely positioned on a normalized canvas (0–100 %), so one
+> layout scales to any resolution/orientation. `weight` drives weighted rotation (§3.3). Element
+> `type` ∈ text, image, video, shape/box, qr, clock, logo, **menu_list**, **item_card**,
+> **price_row**, variable. `binding` connects data-driven elements (e.g. `menu_list` bound to a
+> category, `item_card` to an item, `price_row` to a variant) so **live menu data still auto-updates
+> inside a hand-designed layout**. `animation` = a preset (see §3.5).
 
 ---
 
@@ -47,10 +57,12 @@ The resolver returns the final effective playlist + theme + orientation + refres
 
 - Standalone routes **`/order/tv/{screen}`** (screen slug/id; bare `/order/tv` = a "default" screen)
   **outside `AppShell`** — fullscreen, non-interactive, cursor hidden, best-effort **Wake Lock**.
-- **Slide engine:** cycles the resolved playlist; per-slide **duration + layout template + transition**
-  (fade/slide/zoom/dissolve/flip/push/cube/wipe + speed) + **effects** (Ken Burns pan/zoom, text/price
-  entrance, animated % OFF badge). GPU-friendly CSS transforms. Video slides autoplay muted/looped for
-  their length. Renders at the screen's **orientation** (16:9 / 9:16) and scales to the panel.
+- **Slide engine:** cycles the resolved playlist. Each slide is an **element tree** rendered on a
+  normalized (0–100 %) canvas, so a design scales to any resolution/orientation. Per-slide **transition**
+  (fade/slide/zoom/dissolve/flip/push/cube/wipe + speed); per-**element** background + **animation preset**
+  (entrance/emphasis, incl. Ken Burns on images, price count-up, % OFF pulse). Data-bound elements
+  (`menu_list`/`item_card`/`price_row`) pull live menu data each cycle. GPU-friendly CSS transforms.
+  Video elements autoplay muted/looped. Renders at the screen's **orientation** (16:9 / 9:16).
 - **Silent auto-update:** every `refresh_seconds` (per screen/group, default 120s) re-fetch the resolved
   config + live menu/offers; if the **playlist version** changed, swap in on the next slide boundary (no
   hard reload, no flicker). Switch on day-part/campaign/prayer/emergency changes automatically.
@@ -74,10 +86,18 @@ Auto-generated from live data, refreshed each cycle: `offers`, `todays_special`,
 (a per-item flag or a curated list), `combos` (combo items), `category_highlight`, `featured_product`.
 The admin adds a *slide of that type* to a playlist; content fills itself from the menu.
 
-### 3.2 Layout templates (reusable, template-based — NOT a canvas)
+### 3.2 Layout templates (editable starting points for the designer)
 `hero`, `menu_grid` (price-board of a category), `promotion`, `qr`, `notice`, `video` (full-screen),
-`split` (image + text/price), `full_screen`. Each template takes structured fields + media + theme.
-Reused across screens. This is the "professional look" without a freeform designer.
+`split` (image + text/price), `full_screen`, plus a **blank** canvas. A template is just a **pre-built
+element tree** — the admin can start from one and then **freely move/resize/restyle/add/remove any
+element** in the designer (§7). Templates give speed; the freeform canvas gives full control. Save any
+edited slide back as a **reusable custom template**.
+
+### 3.5 Per-element animation presets (not a keyframe timeline)
+Each element can have an **entrance** (fade, slide-in, zoom-in, rise, pop) and optional **emphasis**
+(pulse, shine, count-up for prices, subtle float) preset, with **duration + delay + easing**. Applied
+via GPU-friendly CSS. This covers signage motion needs without a timeline editor. (A full keyframe
+timeline is intentionally deferred — see the appendix.)
 
 ### 3.3 Weighted playlists (priority, no duplicate entries)
 Each slide has a `weight` (or `every_minutes`/`every_nth`). The engine builds the rotation so a
@@ -154,12 +174,20 @@ Only if/when you run several TVs. No push infra, no complex auth — the TV is j
 Reuses the admin design system. Sections:
 - **Screens & Groups:** create groups + screens, assign screens to groups, set orientation/resolution/
   refresh/fallback, and per-screen overrides. Show which playlist each screen resolves to *now*.
-- **Playlists (pro template studio):** ordered slides with a **templates gallery** + layout picker;
-  **WYSIWYG live preview** on a canvas at true TV aspect (16:9 **and** 9:16); Media Library picker for
-  images/videos; per-slide **duration / transition / effect / weight** controls; add / **duplicate** /
-  drag-reorder / delete. **Theming:** brand colors, font pairing, background (solid/gradient/image/video),
-  overlay opacity, corner logo, rounded/sharp — global + per-slide override. (Template-based, **not** a
-  freeform canvas.)
+- **Playlists + Freeform Slide Designer (full WYSIWYG canvas):** ordered slides; open any slide in a
+  **drag-and-drop canvas** at true TV aspect (16:9 **and** 9:16) with a **safe-zone** guide.
+  - **Elements:** add/position/resize/rotate/layer (z-order) — text, image, video, shape/box, QR, clock,
+    logo, and **data-bound** menu elements (`menu_list`, `item_card`, `price_row`) + dynamic variables.
+  - **Editing UX:** drag + snapping/alignment guides, multi-select + group, **undo/redo**, duplicate,
+    copy/paste, keyboard nudge, lock/hide element, align/distribute.
+  - **Styling panel:** font (family/size/weight/spacing/line-height), color, alignment, fill/gradient,
+    border/radius/shadow, opacity, padding; per-**element animation** preset (§3.5).
+  - **Slide-level:** background (solid/gradient/image/looping video), transition + speed, duration,
+    weight; **theme** (brand colors/fonts) applied globally with per-element override.
+  - **Templates gallery** to start fast; **save as custom template**; Media Library picker for media.
+  - **Live preview** exactly as the TV renders; preview at desktop / landscape / portrait / 1080p / 4K.
+  This is a real design tool scoped to signage — full freedom of layout, but data-bound so the menu stays
+  live. (Not a keyframe/timeline tool — motion is per-element presets.)
 - **Campaigns:** schedule date-ranged/seasonal playlists with priority + day/window (Ramadan/Eid/Fri/…).
 - **Emergency:** one-click emergency mode selector (with auto-resume) — prominent, owner-gated.
 - **Prayer:** toggle prayer-break, choose prayers + duration (reads PrayerTimes).
@@ -224,6 +252,9 @@ migration/rewrite.
   by last-seen; pairing approve assigns a screen.
 - **Admin:** studio renders templates + preview at both orientations; saves slide template/transition/
   effect/weight/theme; campaign scheduling; emergency toggle; permission-gating + audit.
+- **Designer (Phase 1b):** add/move/resize/restyle an element persists to the slide's element tree;
+  undo/redo; a data-bound `menu_list` element renders live items; save-as-template round-trips; the
+  designed slide renders identically on the signage page.
 
 ## 12. Deploy / rollback
 Additive, non-transactional. `php artisan migrate --force` (new signage tables). Ship **default** group/
@@ -233,7 +264,18 @@ revert; signage tables are self-contained (nothing else references them).
 
 ---
 
-## Appendix — explicitly OUT of scope (keep it a signage platform)
-No PowerPoint/Canva editor, no free-form page designer, no complex animation/timeline editor, no full
-MDM (OTA firmware, screenshots, alerting). Templates + theming deliver the professional look;
-poll-based devices deliver the ops wins — without turning a café tool into an enterprise platform.
+## Appendix — scope decisions (Rev 2.1)
+**Included (owner decision — build the real tools):** a full **freeform slide designer** (drag/resize/
+layer/style any element, backgrounds, data-bound menu elements, per-element animation presets, templates
++ save-as-template, undo/redo, snapping, 16:9/9:16 preview) — §7. This is a genuine design tool scoped to
+signage; it stays maintainable because a slide is a bounded **element-tree JSON** the page renders, not
+an open-ended app.
+
+**Still deferred (low ROI for a café, add later only if wanted):**
+- **Keyframe/timeline animation software** — replaced by per-element animation presets (§3.5), which
+  cover signage needs. A timeline can be layered on the same element model later if you ever need it.
+- **Full MDM** (OTA firmware pushes, remote screenshots, alerting) — the poll-based device layer (§6)
+  already gives remote refresh/restart/skip/pause + health without an enterprise agent.
+
+Nothing else is excluded — if a specific capability proves needed, it fits the element-tree + resolver
+architecture without a redesign.
