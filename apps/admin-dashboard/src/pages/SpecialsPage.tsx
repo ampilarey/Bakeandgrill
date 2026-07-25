@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Pagination, EmptyState, useConfirmDialog,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
 } from '../components/SharedUI';
 import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
-import type { MenuItemSelection } from '../components/ItemSearch';
-import { SpecialsEditor } from './SpecialsEditor';
+import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
+import { useToast } from '../components/ui';
 import { ApiRequestError } from '@shared/api';
 import { today } from '../utils/dateHelpers';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -260,9 +260,15 @@ const BLANK: SpecialForm = {
   days_of_week: [], max_quantity: '', description: '', is_active: true,
 };
 
+function apiErrorMessage(e: unknown): string {
+  if (e instanceof Error && e.message.trim()) return e.message;
+  return 'Request failed';
+}
+
 export default function SpecialsPage() {
   usePageTitle('Daily Specials');
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
+  const toast = useToast();
 
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, active_today_count: 0 });
@@ -283,6 +289,22 @@ export default function SpecialsPage() {
   const formRef = useRef(form);
   formRef.current = form;
   const autoLoadedKeyRef = useRef<string | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const modalBodyScrollTop = () => {
+    const body = document.querySelector<HTMLElement>('.modal-body');
+    if (body && typeof body.scrollTo === 'function') {
+      body.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (body) {
+      body.scrollTop = 0;
+    }
+    if (errorRef.current && typeof errorRef.current.scrollIntoView === 'function') {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+  const showFormError = (msg: string) => {
+    setFormError(msg);
+    requestAnimationFrame(() => modalBodyScrollTop());
+  };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -360,9 +382,18 @@ export default function SpecialsPage() {
     autoLoadedKeyRef.current = null;
     try {
       const { special } = await getSpecial(s.id);
-      const item = await resolveItemForSpecial(special, []);
-      setEditItem(item ?? null);
-      setItemSelection(item ? { id: item.id, label: item.name, item } : null);
+      const resolved = await resolveItemForSpecial(special, []);
+      const item: MenuItem = resolved ?? {
+        id: special.item_id,
+        name: special.item_name ?? 'Item',
+        base_price: special.original_price ?? 0,
+        has_variants: (special.variant_overrides?.length ?? 0) > 0,
+        variants: [],
+        is_available: true,
+        is_active: true,
+      };
+      setEditItem(item);
+      setItemSelection({ id: item.id, label: item.name, item });
       setEditing(special);
       setForm(formFromSpecial(special, item));
       setModalOpen(true);
@@ -457,38 +488,38 @@ export default function SpecialsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.item_id) { setFormError('Select a menu item.'); return; }
-    if (!form.start_date || !form.end_date) { setFormError('Start and end dates are required.'); return; }
+    if (!form.item_id) { showFormError('Select a menu item.'); return; }
+    if (!form.start_date || !form.end_date) { showFormError('Start and end dates are required.'); return; }
     const hasPctInput = form.discount_pct.trim() !== '';
     const hasPriceInput = form.special_price.trim() !== '';
     const variantRows = Object.entries(form.variant_overrides)
       .map(([variantId, row]) => ({ variant_id: Number(variantId), ...row }))
       .filter(row => row.discount_pct.trim() !== '' || row.special_price.trim() !== '');
     if (!hasPctInput && !hasPriceInput && variantRows.length === 0) {
-      setFormError('Enter an item-level discount, or set pricing on at least one variant.'); return;
+      showFormError('Enter an item-level discount, or set pricing on at least one variant.'); return;
     }
     for (const row of variantRows) {
       const pct = row.discount_pct ? parseInt(row.discount_pct, 10) : undefined;
       if (pct !== undefined && (isNaN(pct) || pct < 1 || pct > 100)) {
-        setFormError('Variant discount % must be between 1 and 100.'); return;
+        showFormError('Variant discount % must be between 1 and 100.'); return;
       }
       const price = row.special_price ? parseFloat(row.special_price) : undefined;
       if (price !== undefined && (isNaN(price) || price < 0)) {
-        setFormError('Variant special price must be a valid positive number.'); return;
+        showFormError('Variant special price must be a valid positive number.'); return;
       }
     }
-    if (form.end_date < form.start_date) { setFormError('End date must be on or after start date.'); return; }
+    if (form.end_date < form.start_date) { showFormError('End date must be on or after start date.'); return; }
     const discountPct = form.discount_pct ? parseInt(form.discount_pct, 10) : undefined;
     if (discountPct !== undefined && (isNaN(discountPct) || discountPct < 1 || discountPct > 100)) {
-      setFormError('Discount % must be between 1 and 100.'); return;
+      showFormError('Discount % must be between 1 and 100.'); return;
     }
     const specialPrice = form.special_price ? parseFloat(form.special_price) : undefined;
     if (specialPrice !== undefined && (isNaN(specialPrice) || specialPrice < 0)) {
-      setFormError('Special price must be a valid positive number.'); return;
+      showFormError('Special price must be a valid positive number.'); return;
     }
     const maxQty = form.max_quantity ? parseInt(form.max_quantity, 10) : undefined;
     if (maxQty !== undefined && (isNaN(maxQty) || maxQty < 1)) {
-      setFormError('Max quantity must be a positive whole number.'); return;
+      showFormError('Max quantity must be a positive whole number.'); return;
     }
     setSaving(true); setFormError('');
     const payload = buildSpecialPayload(form, selectedItem ?? undefined);
@@ -500,22 +531,24 @@ export default function SpecialsPage() {
       } else {
         await createSpecial(payload);
       }
+      toast.success(editing ? 'Discount updated.' : 'Discount created.');
       setModalOpen(false); void load();
     } catch (e) {
       const conflictId = conflictIdFromError(e);
       if (conflictId && !editing) {
         try {
           await saveToExistingSpecial(conflictId, form, editItem ? [editItem] : []);
+          toast.success('Discount updated.');
           setModalOpen(false); void load();
           return;
         } catch (retryError) {
-          setFormError((retryError as Error).message);
+          showFormError(apiErrorMessage(retryError));
           setConflictSpecialId(conflictId);
           return;
         }
       }
       if (conflictId) setConflictSpecialId(conflictId);
-      setFormError((e as Error).message);
+      showFormError(apiErrorMessage(e));
     }
     finally { setSaving(false); }
   };
@@ -553,6 +586,14 @@ export default function SpecialsPage() {
   ];
 
   const emptyMessage = listFilter === 'all' ? 'No discounts yet. Add one to get started.' : 'No discounts match this filter.';
+  const dateFieldStyle: CSSProperties = {
+    width: '100%', minHeight: 44, height: 44, padding: '0 12px', boxSizing: 'border-box',
+    border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14, fontFamily: 'inherit',
+    background: '#fff', color: '#1C1408',
+  };
+  const fieldLabel: CSSProperties = {
+    display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4,
+  };
 
   const renderSpecialPrice = (s: DailySpecial) => {
     if (hasVariantOverrides(s) && s.variant_overrides) {
@@ -711,29 +752,194 @@ export default function SpecialsPage() {
       <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
 
       {modalOpen && (
-        <SpecialsEditor
+        <Modal
           title={editing ? 'Edit Daily Special' : 'Add Daily Special'}
-          editing={Boolean(editing)}
-          startOnDetails={Boolean(editing)}
-          form={form}
-          setForm={setForm}
-          itemSelection={itemSelection}
-          selectedItem={selectedItem}
-          hasVariants={hasVariants}
-          catalogPrice={catalogPrice}
-          saving={saving}
-          formError={formError}
-          autoLoadedHint={autoLoadedHint}
-          conflictSpecialId={conflictSpecialId}
-          onSelectItem={selectMenuItem}
-          onSetSpecialPrice={setItemSpecialPrice}
-          onSetDiscountPct={setItemDiscountPct}
-          onSetVariantField={setVariantField}
-          onToggleDay={toggleDay}
-          onOpenConflict={() => void openEditFromConflict()}
           onClose={() => setModalOpen(false)}
-          onSave={() => void handleSave()}
-        />
+          maxWidth={hasVariants ? 640 : 520}
+          footer={(
+            <div className="specials-modal-footer">
+              {formError && (
+                <p className="specials-footer-error" role="alert" data-testid="specials-footer-error">
+                  {formError}
+                </p>
+              )}
+              <ModalActions>
+                <Btn variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Btn>
+                <Btn onClick={() => void handleSave()} disabled={saving}>
+                  {saving ? 'Saving…' : editing ? 'Update' : 'Create'}
+                </Btn>
+              </ModalActions>
+            </div>
+          )}
+        >
+          {autoLoadedHint && editing && (
+            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#ECFDF5', border: '1px solid rgba(34,197,94,0.35)' }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#166534', lineHeight: 1.45 }}>
+                Loaded the existing discount for this item. Add or change variant rows below, then click Update.
+              </p>
+            </div>
+          )}
+          {conflictSpecialId && !editing && !formError && (
+            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF3E8', border: '1px solid rgba(212,129,58,0.35)' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
+                This item already has a discount for these dates. Set pricing for each variant below, then add it to the existing discount.
+              </p>
+              <Btn small onClick={() => void openEditFromConflict()}>
+                Add variant to existing discount
+              </Btn>
+            </div>
+          )}
+          {formError && (
+            <div ref={errorRef} data-testid="specials-form-error" style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF2F2', border: '1px solid rgba(239,68,68,0.35)' }}>
+              <p style={{ color: '#B91C1C', margin: 0 }} role="alert">{formError}</p>
+              {conflictSpecialId && (
+                <Btn small variant="secondary" onClick={() => void openEditFromConflict()} style={{ marginTop: 8 }}>
+                  Add variant to existing discount
+                </Btn>
+              )}
+            </div>
+          )}
+          <div className="specials-modal-form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <label>
+              <span style={fieldLabel}>Menu Item *</span>
+              <ItemSearch
+                kind="menu"
+                value={itemSelection}
+                onChange={selectMenuItem}
+                browseByCategory
+                resultsPlacement="inline"
+                placeholder="Search by name…"
+              />
+            </label>
+            {!hasVariants ? (
+              <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label>
+                  <span style={fieldLabel}>Special Price (MVR)</span>
+                  <Input type="number" min="0" step="0.01" placeholder="e.g. 39.00" value={form.special_price} onChange={setItemSpecialPrice} />
+                </label>
+                <label>
+                  <span style={fieldLabel}>Discount %</span>
+                  <Input type="number" min="1" max="100" placeholder="e.g. 20" value={form.discount_pct} onChange={setItemDiscountPct} />
+                </label>
+              </div>
+            ) : (
+              <>
+                <label>
+                  <span style={fieldLabel}>Default discount % (all variants)</span>
+                  <Input type="number" min="1" max="100" placeholder="Optional — applies to variants without their own %" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
+                </label>
+                <div className="specials-variant-block" style={{ border: '1px solid #E8E0D8', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 12px', background: '#FAF7F4', borderBottom: '1px solid #E8E0D8' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Per-variant pricing</span>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+                      Set a discount on one or more variants. Leave a row blank if that size should stay full price.
+                    </p>
+                  </div>
+                  <table className="specials-variant-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Variant', 'Catalog', 'Discount %', 'Special price'].map(h => (
+                          <th key={h} style={{ ...TH, fontSize: 11, padding: '8px 10px' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedItem?.variants ?? []).filter((v): v is MenuVariant & { id: number } => v.id != null).map(v => {
+                        const row = form.variant_overrides[v.id] ?? { discount_pct: '', special_price: '' };
+                        return (
+                          <tr key={v.id}>
+                            <td data-label="Variant" style={{ ...TD, fontWeight: 600, fontSize: 12 }}>{v.name}</td>
+                            <td data-label="Catalog" style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
+                            <td data-label="Discount %" style={{ ...TD, padding: '6px 8px' }}>
+                              <Input type="number" min="1" max="100" placeholder="%" value={row.discount_pct} onChange={val => setVariantField(v.id, 'discount_pct', val, Number(v.price))} />
+                            </td>
+                            <td data-label="Special price" style={{ ...TD, padding: '6px 8px' }}>
+                              <Input type="number" min="0" step="0.01" placeholder="MVR" value={row.special_price} onChange={val => setVariantField(v.id, 'special_price', val, Number(v.price))} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
+              {hasVariants
+                ? 'One discount per item per date range. Variant rows save on the same discount.'
+                : catalogPrice > 0
+                  ? `Special price and discount % stay in sync (catalog price MVR ${catalogPrice.toFixed(2)}).`
+                  : 'Select a menu item to link special price and discount %.'}
+            </p>
+            <label>
+              <span style={fieldLabel}>Badge Label</span>
+              <Input placeholder="e.g. Chef's Special" value={form.badge_label} onChange={v => setForm(f => ({ ...f, badge_label: v }))} />
+            </label>
+            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <label>
+                <span style={fieldLabel}>Start Date *</span>
+                <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={dateFieldStyle} />
+              </label>
+              <label>
+                <span style={fieldLabel}>End Date *</span>
+                <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={dateFieldStyle} />
+              </label>
+            </div>
+            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <label>
+                <span style={fieldLabel}>Start Time</span>
+                <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={dateFieldStyle} />
+              </label>
+              <label>
+                <span style={fieldLabel}>End Time</span>
+                <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} style={dateFieldStyle} />
+              </label>
+            </div>
+            <div>
+              <span style={{ ...fieldLabel, marginBottom: 8 }}>
+                Active Days <span style={{ color: '#9C8E7E', fontWeight: 400 }}>(empty = all days)</span>
+              </span>
+              <div className="specials-day-row">
+                {DAY_NAMES.map((name, i) => {
+                  const active = form.days_of_week.includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => toggleDay(i)}
+                      className={`specials-day-chip${active ? ' is-active' : ''}`}
+                      aria-pressed={active}
+                    >
+                      {name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <label>
+                <span style={fieldLabel}>Max Quantity</span>
+                <Input type="number" min="1" placeholder="Unlimited" value={form.max_quantity} onChange={v => setForm(f => ({ ...f, max_quantity: v }))} />
+              </label>
+              <div className="specials-active-toggle">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minHeight: 44 }}>
+                  <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} style={{ width: 16, height: 16 }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#6B5D4F' }}>Active</span>
+                </label>
+              </div>
+            </div>
+            <label>
+              <span style={fieldLabel}>Description</span>
+              <textarea
+                placeholder="Optional…"
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={2}
+                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+              />
+            </label>
+          </div>
+        </Modal>
       )}
     </PageShell>
   );

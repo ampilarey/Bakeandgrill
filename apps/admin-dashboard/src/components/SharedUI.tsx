@@ -1,7 +1,10 @@
 /**
  * Shared UI primitives used by admin page components.
  */
-import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
+import {
+  Children, isValidElement, useEffect, useId, useRef, useState,
+  type ButtonHTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes,
+} from 'react';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 export function Spinner({ size = 24 }: { size?: number }) {
@@ -333,17 +336,43 @@ export function Select({ options, value, onChange, label, style, ...rest }: Sele
   );
 }
 
+// ─── ModalActions ─────────────────────────────────────────────────────────────
+export function ModalActions({ children }: { children: ReactNode }) {
+  return (
+    <div className="modal-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+      {children}
+    </div>
+  );
+}
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
 const FOCUSABLE_SEL = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
+function isModalActionsElement(node: ReactNode): node is ReactElement<{ children?: ReactNode }> {
+  return isValidElement(node) && node.type === ModalActions;
+}
+
 export function Modal({
-  title, onClose, children, maxWidth = 440,
-}: { title: string; onClose: () => void; children: ReactNode; maxWidth?: number }) {
+  title, onClose, children, footer, maxWidth = 440,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  /** Optional sticky footer. If omitted, a trailing ModalActions child is lifted into the footer. */
+  footer?: ReactNode;
+  maxWidth?: number;
+}) {
   const uid = useId();
   const titleId = `modal-title-${uid}`;
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+
+  const childArr = Children.toArray(children);
+  const last = childArr[childArr.length - 1];
+  const lastIsActions = footer == null && isModalActionsElement(last);
+  const bodyChildren = lastIsActions ? childArr.slice(0, -1) : children;
+  const footerNode = footer ?? (lastIsActions ? last : null);
 
   useEffect(() => {
     const panel = panelRef.current;
@@ -362,9 +391,9 @@ export function Modal({
       if (e.key !== 'Tab') return;
       const focusable = els();
       if (!focusable.length) { e.preventDefault(); return; }
-      const first = focusable[0]; const last = focusable[focusable.length - 1];
-      if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
-      else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+      const first = focusable[0]; const lastEl = focusable[focusable.length - 1];
+      if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); lastEl.focus(); } }
+      else { if (document.activeElement === lastEl) { e.preventDefault(); first.focus(); } }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
@@ -372,24 +401,24 @@ export function Modal({
 
   return (
     <div
+      className="modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
       style={{
-        position: 'fixed', inset: 0, zIndex: 50,
+        position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number,
         background: 'rgba(28,20,8,0.45)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 20,
       }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div ref={panelRef} className="modal-container" style={{
-        background: '#fff', borderRadius: 16, padding: 28,
-        width: '100%', maxWidth,
-        boxShadow: '0 20px 60px rgba(28,20,8,0.18)',
-        maxHeight: '90vh', overflowY: 'auto',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div
+        ref={panelRef}
+        className="modal-container"
+        style={{ width: '100%', maxWidth }}
+      >
+        <div className="modal-header">
           <h3 id={titleId} style={{ fontWeight: 800, fontSize: 17, color: '#1C1408', margin: 0 }}>{title}</h3>
           <button
             onClick={onClose}
@@ -402,17 +431,15 @@ export function Modal({
             }}
           >✕</button>
         </div>
-        {children}
+        <div className="modal-body" data-testid="modal-body">
+          {bodyChildren}
+        </div>
+        {footerNode != null && (
+          <div className="modal-footer" data-testid="modal-footer">
+            {footerNode}
+          </div>
+        )}
       </div>
-    </div>
-  );
-}
-
-// ─── ModalActions ─────────────────────────────────────────────────────────────
-export function ModalActions({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid #E8E0D8' }}>
-      {children}
     </div>
   );
 }
