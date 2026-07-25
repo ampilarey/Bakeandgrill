@@ -458,7 +458,8 @@ class DailySpecialController extends Controller
             'item_name' => $item?->name,
             'item_image' => $item?->image_url,
             'badge_label' => $badgeLabel,
-            'special_price' => $s->special_price,
+            // Cast decimals explicitly — Eloquent `decimal:2` attributes are strings in JSON.
+            'special_price' => $s->special_price !== null ? (float) $s->special_price : null,
             'discount_pct' => $s->discount_pct,
             'effective_price' => $effective,
             'original_price' => $basePrice,

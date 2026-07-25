@@ -33,6 +33,18 @@ type SpecialForm = {
 
 type ListFilter = 'all' | 'active' | 'discount' | 'special' | 'inactive';
 
+/** Laravel `decimal:2` casts often arrive as strings — never call `.toFixed` on raw API values. */
+function money(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatMvr(value: unknown): string {
+  const n = money(value);
+  return n == null ? '—' : `MVR ${n.toFixed(2)}`;
+}
+
 function isPctDiscount(s: DailySpecial): boolean {
   return s.discount_pct != null && s.discount_pct > 0;
 }
@@ -43,11 +55,14 @@ function hasVariantOverrides(s: DailySpecial): boolean {
 
 function variantPriceLabel(vo: DailySpecialVariantOverride): string {
   if (vo.discount_pct) {
-    const effective = vo.effective_price != null ? ` → MVR ${vo.effective_price.toFixed(2)}` : '';
-    return `${vo.discount_pct}% off${effective}`;
+    const effective = money(vo.effective_price);
+    const effectiveLabel = effective != null ? ` → ${formatMvr(effective)}` : '';
+    return `${vo.discount_pct}% off${effectiveLabel}`;
   }
-  if (vo.special_price != null) return `MVR ${vo.special_price.toFixed(2)}`;
-  if (vo.effective_price != null) return `MVR ${vo.effective_price.toFixed(2)}`;
+  const special = money(vo.special_price);
+  if (special != null) return formatMvr(special);
+  const effective = money(vo.effective_price);
+  if (effective != null) return formatMvr(effective);
   return '—';
 }
 
@@ -88,11 +103,16 @@ function VariantOverrideLines({ overrides, mode }: { overrides: DailySpecialVari
           ) : (
             <>
               <span style={{ fontWeight: 700, color: '#D4813A' }}>{variantPriceLabel(vo)}</span>
-              {vo.catalog_price != null && vo.effective_price != null && vo.effective_price < vo.catalog_price && (
-                <span style={{ color: '#9C8E7E', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
-                  MVR {vo.catalog_price.toFixed(2)}
-                </span>
-              )}
+              {(() => {
+                const catalog = money(vo.catalog_price);
+                const effective = money(vo.effective_price);
+                if (catalog == null || effective == null || effective >= catalog) return null;
+                return (
+                  <span style={{ color: '#9C8E7E', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
+                    {formatMvr(catalog)}
+                  </span>
+                );
+              })()}
             </>
           )}
         </div>
@@ -599,13 +619,15 @@ export default function SpecialsPage() {
     if (hasVariantOverrides(s) && s.variant_overrides) {
       return <VariantOverrideLines overrides={s.variant_overrides} mode="prices" />;
     }
-    if (s.effective_price != null) {
+    const effective = money(s.effective_price);
+    if (effective != null) {
+      const original = money(s.original_price);
       return (
         <>
-          <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {s.effective_price.toFixed(2)}</span>
-          {s.original_price != null && s.effective_price < s.original_price && (
+          <span style={{ fontWeight: 700, color: '#D4813A' }}>{formatMvr(effective)}</span>
+          {original != null && effective < original && (
             <span style={{ color: '#9C8E7E', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
-              MVR {s.original_price.toFixed(2)}
+              {formatMvr(original)}
             </span>
           )}
         </>

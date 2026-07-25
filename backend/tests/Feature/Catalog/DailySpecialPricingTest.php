@@ -583,11 +583,37 @@ class DailySpecialPricingTest extends TestCase
             'discount_pct' => 50,
         ]);
 
-        $this->getJson('/api/admin/specials', $this->staffHeaders($owner))
+        $response = $this->getJson('/api/admin/specials', $this->staffHeaders($owner))
             ->assertOk()
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.item_id', $item->id)
             ->assertJsonPath('data.0.variant_overrides.0.discount_pct', 50);
+
+        // Admin UI calls .toFixed on these — JSON must use numbers, not decimal strings.
+        $row = $response->json('data.0');
+        $this->assertIsNumeric($row['effective_price']);
+        $this->assertIsNumeric($row['original_price']);
+        $this->assertIsNumeric($row['variant_overrides'][0]['catalog_price']);
+        $this->assertIsNumeric($row['variant_overrides'][0]['effective_price']);
+    }
+
+    public function test_admin_index_casts_special_price_to_float(): void
+    {
+        $owner = $this->makeOwner();
+        $item = $this->makeItem(false, 0, ['base_price' => 20.00]);
+        $this->createSpecial([
+            'item_id' => $item->id,
+            'special_price' => 12.50,
+            'discount_pct' => null,
+        ]);
+
+        $row = $this->getJson('/api/admin/specials', $this->staffHeaders($owner))
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertIsFloat($row['special_price'] + 0.0);
+        $this->assertSame('double', gettype($row['special_price']));
+        $this->assertEqualsWithDelta(12.50, $row['special_price'], 0.001);
     }
 
     public function test_admin_index_works_without_variant_table(): void
