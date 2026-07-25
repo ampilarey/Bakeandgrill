@@ -54,6 +54,45 @@
   z-index: 100;
 }
 
+.signage-pairing {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 4, 0.72);
+  z-index: 80;
+  pointer-events: none;
+}
+
+.signage-pairing-card {
+  text-align: center;
+  padding: 4vmin 6vmin;
+  border: 1px solid rgba(255, 248, 240, 0.25);
+  background: rgba(20, 14, 8, 0.88);
+}
+
+.signage-pairing-label {
+  font-size: 2.4vmin;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-bottom: 1.5vmin;
+}
+
+.signage-pairing-code {
+  font-size: 10vmin;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  font-variant-numeric: tabular-nums;
+}
+
+.signage-pairing-hint {
+  margin-top: 2vmin;
+  font-size: 2vmin;
+  opacity: 0.75;
+}
+
 /* Transitions */
 .signage-tx-fade { animation: signage-fade-in ease both; }
 .signage-tx-slide { animation: signage-slide-in ease both; }

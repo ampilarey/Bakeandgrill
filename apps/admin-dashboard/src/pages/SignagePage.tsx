@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Copy, ExternalLink, Monitor, Pencil, Save } from 'lucide-react';
+import { Copy, ExternalLink, Pencil, Save } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
+  approveSignageDevice,
   buildSignageTemplate,
+  commandSignageDevice,
   createSignageCampaign,
+  fetchSignageDevices,
   getSignageOverview,
   setSignageEmergency,
   setSignagePrayer,
   updateSignageGroup,
   updateSignagePlaylist,
   type SignageCampaign,
+  type SignageDevice,
   type SignageGroup,
   type SignageOverview,
   type SignageScreen,
@@ -136,6 +140,11 @@ export function SignagePage() {
   });
   const [campaignSaving, setCampaignSaving] = useState(false);
 
+  const [devices, setDevices] = useState<SignageDevice[]>([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+  const [deviceBusy, setDeviceBusy] = useState<number | null>(null);
+  const [approveScreen, setApproveScreen] = useState<Record<number, string>>({});
+
   const applyOverview = useCallback((data: SignageOverview) => {
     setOverview(data);
     setEmergencyMode(data.emergency || 'none');
@@ -169,11 +178,32 @@ export function SignagePage() {
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const loadDevices = useCallback(async () => {
+    setDevicesLoading(true);
+    try {
+      const res = await fetchSignageDevices();
+      setDevices(res.data ?? []);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load devices');
+    } finally {
+      setDevicesLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (tab !== 'devices') return;
+    void loadDevices();
+    const t = window.setInterval(() => void loadDevices(), 30_000);
+    return () => window.clearInterval(t);
+  }, [tab, loadDevices]);
+
   const playlists = overview?.playlists ?? [];
   const groups = overview?.groups ?? [];
   const screens = overview?.screens ?? [];
   const campaigns = overview?.campaigns ?? [];
   const templates = overview?.templates ?? [];
+  const pendingDevices = devices.filter((d) => !d.approved);
+  const approvedDevices = devices.filter((d) => d.approved);
 
   const playlistOptions = useMemo(
     () => playlists.map((p) => ({ value: String(p.id), label: p.name })),
@@ -696,16 +726,141 @@ export function SignagePage() {
           )}
 
           {tab === 'devices' && (
-            <Card>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 16px', textAlign: 'center' }}>
-                <Monitor size={40} style={{ color: '#C4B5A5' }} />
-                <h3 style={{ margin: 0, fontSize: 17, color: '#1C1408' }}>Device management — Phase 2</h3>
-                <p style={{ margin: 0, maxWidth: 420, fontSize: 14, color: '#6B5D4F' }}>
-                  Pairing, heartbeat monitoring, and remote refresh for Fire TV / Android sticks will ship in a later release.
-                  For now, open each screen URL on the TV browser and bookmark it.
-                </p>
-              </div>
-            </Card>
+            <div data-testid="signage-devices-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Card>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <h3 style={cardTitle}>Pending pairings</h3>
+                  <Btn variant="secondary" onClick={() => void loadDevices()} disabled={devicesLoading} style={{ minHeight: 44 }}>
+                    {devicesLoading ? 'Refreshing…' : 'Refresh'}
+                  </Btn>
+                </div>
+                {pendingDevices.length === 0 ? (
+                  <EmptyState message="No pending TVs. Open /order/tv on a new display to get a 6-character pairing code." />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {pendingDevices.map((d) => (
+                      <div
+                        key={d.id}
+                        data-testid={`signage-pending-${d.id}`}
+                        style={{ display: 'grid', gridTemplateColumns: '1fr 200px auto', gap: 12, alignItems: 'end', padding: 12, border: '1px solid #E8E0D8', borderRadius: 12 }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.12em' }}>{d.pairing_code || '······'}</div>
+                          <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 4 }}>
+                            {d.online ? 'Online now' : 'Seen'} · {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'never'}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#9A8B7A', marginTop: 2, wordBreak: 'break-all' }}>{d.device_id}</div>
+                        </div>
+                        <div>
+                          <Select
+                            label="Assign screen"
+                            value={approveScreen[d.id] ?? String(screens[0]?.id ?? '')}
+                            onChange={(val) => setApproveScreen((prev) => ({ ...prev, [d.id]: val }))}
+                            options={screens.map((s) => ({ value: String(s.id), label: `${s.name} (${s.slug})` }))}
+                            style={fieldStyle}
+                          />
+                        </div>
+                        <Btn
+                          onClick={() => void (async () => {
+                            setDeviceBusy(d.id);
+                            try {
+                              const screenId = Number(approveScreen[d.id] || screens[0]?.id);
+                              await approveSignageDevice(d.id, { screen_id: screenId || null });
+                              toast.success('TV approved.');
+                              await loadDevices();
+                            } catch (e) {
+                              toast.error(e instanceof Error ? e.message : 'Approve failed');
+                            } finally {
+                              setDeviceBusy(null);
+                            }
+                          })()}
+                          disabled={deviceBusy === d.id}
+                          style={{ minHeight: 44 }}
+                        >
+                          {deviceBusy === d.id ? 'Approving…' : 'Approve'}
+                        </Btn>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              <Card>
+                <h3 style={cardTitle}>Health</h3>
+                {approvedDevices.length === 0 ? (
+                  <EmptyState message="No approved devices. Approve a pairing code to monitor heartbeat health and send remote commands." />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {approvedDevices.map((d) => {
+                      const meta = d.meta || {};
+                      return (
+                        <div
+                          key={d.id}
+                          data-testid={`signage-device-${d.id}`}
+                          style={{ border: '1px solid #E8E0D8', borderRadius: 12, padding: 14 }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                            <div>
+                              <div style={{ fontWeight: 700, color: '#1C1408' }}>
+                                {d.screen?.name || 'Unassigned screen'}
+                                <span
+                                  style={{
+                                    marginLeft: 8,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    color: d.online ? '#166534' : '#9A3412',
+                                    background: d.online ? '#DCFCE7' : '#FFEDD5',
+                                    padding: '2px 8px',
+                                    borderRadius: 999,
+                                  }}
+                                >
+                                  {d.online ? 'Online' : 'Offline'}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 4 }}>
+                                Playlist {String(meta.playlist_version || '—')} · Slide {String(meta.current_slide || '—')} · Build {String(meta.build_version || '—')}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#6B5D4F' }}>
+                                {String(meta.resolution || '—')} · Last sync {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'never'} · Cache {String(meta.cache_status || '—')}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                              {(['refresh', 'skip', 'pause', 'resume', 'black_screen', 'maintenance', 'restart'] as const).map((cmd) => (
+                                <Btn
+                                  key={cmd}
+                                  variant="secondary"
+                                  disabled={deviceBusy === d.id}
+                                  onClick={() => void (async () => {
+                                    setDeviceBusy(d.id);
+                                    try {
+                                      await commandSignageDevice(d.id, cmd);
+                                      toast.success(`Queued ${cmd}`);
+                                      await loadDevices();
+                                    } catch (e) {
+                                      toast.error(e instanceof Error ? e.message : 'Command failed');
+                                    } finally {
+                                      setDeviceBusy(null);
+                                    }
+                                  })()}
+                                  style={{ minHeight: 44, textTransform: 'capitalize' }}
+                                >
+                                  {cmd.replace('_', ' ')}
+                                </Btn>
+                              ))}
+                            </div>
+                          </div>
+                          {d.queued_command?.type && (
+                            <div style={{ marginTop: 8, fontSize: 12, color: '#9A3412' }}>
+                              Queued: {d.queued_command.type}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
           )}
         </>
       )}

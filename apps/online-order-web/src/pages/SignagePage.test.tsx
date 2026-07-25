@@ -44,9 +44,21 @@ const config = {
 };
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => config,
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/signage/heartbeat')) {
+      return {
+        ok: true,
+        json: async () => ({
+          device: { approved: true, pairing_code: null, screen_slug: 'default' },
+          command: null,
+        }),
+      };
+    }
+    return {
+      ok: true,
+      json: async () => config,
+    };
   }));
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
@@ -135,5 +147,61 @@ describe('SignagePage', () => {
 
     expect(await screen.findByTestId('signage-offline')).toBeTruthy();
     expect(screen.getByText(/Hello Bake & Grill/)).toBeTruthy();
+  });
+
+  it('shows pairing code until device is approved', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: false, pairing_code: 'AB12CD', screen_slug: null },
+            command: null,
+          }),
+        };
+      }
+      return { ok: true, json: async () => config };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('signage-pairing-code')).toHaveTextContent('AB12CD');
+  });
+
+  it('dispatches remote commands received from heartbeat', async () => {
+    let heartbeats = 0;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        heartbeats += 1;
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: heartbeats === 1 ? { type: 'pause' } : null,
+          }),
+        };
+      }
+      return { ok: true, json: async () => config };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('signage-page').getAttribute('data-command')).toBe('pause');
+    });
   });
 });

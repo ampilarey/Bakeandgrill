@@ -146,3 +146,35 @@ export async function saveSignageCustomTemplate(key: string, label: string, slid
     body: JSON.stringify({ key, label, slide }),
   });
 }
+
+export type SignageDevice = {
+  id: number;
+  device_id: string;
+  pairing_code: string | null;
+  approved: boolean;
+  screen_id: number | null;
+  screen: { id: number; name: string; slug: string } | null;
+  last_seen_at: string | null;
+  online: boolean;
+  meta: Record<string, unknown>;
+  queued_command: { type?: string; payload?: unknown; queued_at?: string } | null;
+  store_id?: number | null;
+};
+
+export async function fetchSignageDevices() {
+  return req<{ data: SignageDevice[] }>('/admin/signage/devices');
+}
+
+export async function approveSignageDevice(id: number, body: { screen_id?: number | null; group_id?: number | null } = {}) {
+  return req<{ data: SignageDevice }>(`/admin/signage/devices/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function commandSignageDevice(id: number, command: string, payload: Record<string, unknown> = {}) {
+  return req<{ data: SignageDevice }>(`/admin/signage/devices/${id}/command`, {
+    method: 'POST',
+    body: JSON.stringify({ command, payload }),
+  });
+}

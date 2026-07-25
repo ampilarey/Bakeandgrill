@@ -2,7 +2,7 @@
  * Fullscreen TV signage board — standalone, non-interactive.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { API_ORIGIN, fetchCategories, fetchItems, fetchOffers } from '../api';
 import type { Item } from '../api';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
@@ -13,6 +13,22 @@ import type { MenuItemLite, SignageConfig, SignageSlide } from '../signage/types
 import '../signage/signage.css';
 
 const CACHE_KEY = 'bg_signage_cache_v1';
+const DEVICE_ID_KEY = 'bg_signage_device_id';
+const BUILD_VERSION = '2.1';
+
+function getOrCreateDeviceId(): string {
+  try {
+    const existing = localStorage.getItem(DEVICE_ID_KEY);
+    if (existing) return existing;
+    const id = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+      ? crypto.randomUUID()
+      : `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(DEVICE_ID_KEY, id);
+    return id;
+  } catch {
+    return `dev-ephemeral-${Date.now()}`;
+  }
+}
 
 type CacheBlob = {
   config: SignageConfig;
@@ -61,6 +77,7 @@ async function fetchConfig(screen: string): Promise<SignageConfig> {
 export function SignagePage() {
   const { screen: screenParam } = useParams();
   const screen = screenParam || 'default';
+  const navigate = useNavigate();
   const { settings } = useSiteSettingsContext();
   const logoUrl = settings.logo || '/logo.png';
 
@@ -74,11 +91,16 @@ export function SignagePage() {
   const [command, setCommand] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [black, setBlack] = useState(false);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [deviceApproved, setDeviceApproved] = useState(false);
 
   const versionRef = useRef<string>('');
   const advanceTimer = useRef<number | null>(null);
   const refreshTimer = useRef<number | null>(null);
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
+  const deviceIdRef = useRef(getOrCreateDeviceId());
+  const slideIdRef = useRef<string | null>(null);
+  const offlineRef = useRef(false);
 
   // Live clock variables
   const liveVars = useMemo(() => {
@@ -122,6 +144,7 @@ export function SignagePage() {
 
         writeCache(screen, { config: cfg, items: lite, savedAt: Date.now() });
         setOffline(false);
+        offlineRef.current = false;
         setItems(lite);
 
         if (!isRefresh || !versionRef.current) {
@@ -138,6 +161,7 @@ export function SignagePage() {
         const cached = readCache(screen);
         if (cached) {
           setOffline(true);
+          offlineRef.current = true;
           setConfig(cached.config);
           setItems(cached.items);
           versionRef.current = cached.config.playlist_version;
@@ -202,11 +226,16 @@ export function SignagePage() {
     };
   }, [currentSlide, index, paused, black, pendingConfig]);
 
+  // Keep current slide id for heartbeat payload
+  useEffect(() => {
+    slideIdRef.current = currentSlide?.id ?? null;
+  }, [currentSlide?.id]);
+
   // Phase 2 remote commands via custom event (heartbeat wires this)
   useEffect(() => {
     const onCmd = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { command?: string } | undefined;
-      const cmd = detail?.command;
+      const detail = (e as CustomEvent).detail as { command?: string; type?: string } | undefined;
+      const cmd = detail?.command || detail?.type;
       if (!cmd) return;
       setCommand(cmd);
       if (cmd === 'pause') setPaused(true);
@@ -223,14 +252,74 @@ export function SignagePage() {
     return () => window.removeEventListener('signage:command', onCmd);
   }, []);
 
+  // Heartbeat + pairing (~60s)
+  useEffect(() => {
+    let cancelled = false;
+    const beat = async () => {
+      try {
+        const res = await fetch(`${API_ORIGIN}/api/signage/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          credentials: 'omit',
+          body: JSON.stringify({
+            device_id: deviceIdRef.current,
+            screen,
+            current_slide: slideIdRef.current,
+            playlist_version: versionRef.current || null,
+            browser: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 240) : null,
+            resolution: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+            cache_status: offlineRef.current ? 'offline' : 'ok',
+            failed_assets: 0,
+            build_version: BUILD_VERSION,
+          }),
+        });
+        if (!res.ok || cancelled) return;
+        const json = await res.json() as {
+          device?: {
+            approved?: boolean;
+            pairing_code?: string | null;
+            screen_slug?: string | null;
+          };
+          command?: { type?: string; command?: string; payload?: unknown } | null;
+        };
+        const approved = Boolean(json.device?.approved);
+        setDeviceApproved(approved);
+        setPairingCode(approved ? null : (json.device?.pairing_code ?? null));
+
+        const assigned = json.device?.screen_slug;
+        if (approved && assigned && assigned !== screen && !screenParam) {
+          navigate(`/tv/${encodeURIComponent(assigned)}`, { replace: true });
+        }
+
+        const cmd = json.command?.type || json.command?.command;
+        if (cmd) {
+          window.dispatchEvent(new CustomEvent('signage:command', {
+            detail: { command: cmd, type: cmd, payload: json.command?.payload },
+          }));
+        }
+      } catch {
+        /* offline — retry next interval */
+      }
+    };
+
+    void beat();
+    const t = window.setInterval(() => void beat(), 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [screen, screenParam, navigate]);
+
   const transition = currentSlide?.transition || 'fade';
   const orientation = config?.orientation === 'portrait' ? 'portrait' : 'landscape';
+  const showPairing = !deviceApproved && Boolean(pairingCode);
 
   return (
     <div
       className={`signage-page signage-orient-${orientation}`}
       data-testid="signage-page"
       data-command={command ?? ''}
+      data-approved={deviceApproved ? '1' : '0'}
     >
       {black && (
         <div className="signage-blackout" data-testid="signage-blackout">
@@ -257,6 +346,15 @@ export function SignagePage() {
       {!currentSlide && !black && (
         <div className="signage-empty" data-testid="signage-loading">
           {interpolate('{{branch_name}}', { branch_name: settings.site_name || 'Bake & Grill' })}
+        </div>
+      )}
+      {showPairing && (
+        <div className="signage-pairing" data-testid="signage-pairing">
+          <div className="signage-pairing-card">
+            <div className="signage-pairing-label">Pair this TV</div>
+            <div className="signage-pairing-code" data-testid="signage-pairing-code">{pairingCode}</div>
+            <div className="signage-pairing-hint">Enter this code in Admin → TV Signage → Devices</div>
+          </div>
         </div>
       )}
       {offline && (

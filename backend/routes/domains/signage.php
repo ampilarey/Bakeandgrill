@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\Signage\PublicSignageController;
 use App\Http\Controllers\Api\Signage\SignageAdminController;
+use App\Http\Controllers\Api\Signage\SignageDeviceController;
 use Illuminate\Support\Facades\Route;
 
-// Public TV board config
+// Public TV board config + device heartbeat
 Route::middleware('throttle:120,1')->group(function () {
     Route::get('/signage/{screen?}', [PublicSignageController::class, 'show'])
         ->where('screen', '[A-Za-z0-9_-]+');
+    Route::post('/signage/heartbeat', [SignageDeviceController::class, 'heartbeat']);
 });
 
 Route::middleware(['auth:sanctum', 'staff.token', 'permission:signage.manage'])
@@ -37,4 +39,8 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:signage.manage'])
         Route::put('/prayer', [SignageAdminController::class, 'updatePrayer']);
         Route::post('/templates', [SignageAdminController::class, 'saveCustomTemplate']);
         Route::post('/templates/build', [SignageAdminController::class, 'buildTemplate']);
+
+        Route::get('/devices', [SignageDeviceController::class, 'index']);
+        Route::post('/devices/{device}/approve', [SignageDeviceController::class, 'approve']);
+        Route::post('/devices/{device}/command', [SignageDeviceController::class, 'command']);
     });
