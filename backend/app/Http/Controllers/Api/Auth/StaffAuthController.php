@@ -9,6 +9,7 @@ use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\StaffAuthRateLimit;
 use App\Services\StaffUserLookup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,14 +40,13 @@ class StaffAuthController extends Controller
         $identityKey = StaffUserLookup::canonicalIdentityKey($request->username);
         $forAdmin = $request->input('intent') === 'admin';
 
-        $rateKey = 'staff-pin:' . $identityKey . ':' . $request->ip();
-        // FIX 13 — a second per-identity counter (independent of IP) so
-        // that credential-stuffing from a rotating IP pool still trips
-        // an account-level lockout at 15 attempts / 15min.
-        $acctKey = 'staff-pin-acct:' . $identityKey;
+        $rateKey = StaffAuthRateLimit::pinIp($identityKey, (string) $request->ip());
+        // Per-identity counter (independent of IP) so credential-stuffing
+        // from a rotating IP pool still trips an account lockout.
+        $acctKey = StaffAuthRateLimit::pinAccount($identityKey);
         if (
-            RateLimiter::tooManyAttempts($rateKey, 5)
-            || RateLimiter::tooManyAttempts($acctKey, 15)
+            RateLimiter::tooManyAttempts($rateKey, 8)
+            || RateLimiter::tooManyAttempts($acctKey, 20)
         ) {
             $seconds = max(
                 RateLimiter::availableIn($rateKey),
@@ -60,24 +60,24 @@ class StaffAuthController extends Controller
         $user = $this->findActiveStaffByUsername($request->username);
 
         if (!$user) {
-            RateLimiter::hit($rateKey, 900);
-            RateLimiter::hit($acctKey, 900);
+            RateLimiter::hit($rateKey, 600);
+            RateLimiter::hit($acctKey, 600);
             throw ValidationException::withMessages([
                 'pin' => ['Invalid mobile/email or PIN.'],
             ]);
         }
 
         if ($user->pin_hash === null) {
-            RateLimiter::hit($rateKey, 900);
-            RateLimiter::hit($acctKey, 900);
+            RateLimiter::hit($rateKey, 600);
+            RateLimiter::hit($acctKey, 600);
             throw ValidationException::withMessages([
                 'pin' => ['No PIN is set on this account. Use Owner / admin sign-in with your admin password, or set a PIN in Admin → Staff.'],
             ]);
         }
 
         if (!Hash::check($pin, $user->pin_hash)) {
-            RateLimiter::hit($rateKey, 900);
-            RateLimiter::hit($acctKey, 900);
+            RateLimiter::hit($rateKey, 600);
+            RateLimiter::hit($acctKey, 600);
             throw ValidationException::withMessages([
                 'pin' => ['Invalid mobile/email or PIN.'],
             ]);
@@ -105,9 +105,9 @@ class StaffAuthController extends Controller
         ]);
 
         $identityKey = StaffUserLookup::canonicalIdentityKey($request->username);
-        $rateKey = 'staff-pos-pwd:' . $identityKey . ':' . $request->ip();
+        $rateKey = StaffAuthRateLimit::posPasswordIp($identityKey, (string) $request->ip());
 
-        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+        if (RateLimiter::tooManyAttempts($rateKey, 8)) {
             $seconds = RateLimiter::availableIn($rateKey);
             throw ValidationException::withMessages([
                 'password' => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
@@ -117,7 +117,7 @@ class StaffAuthController extends Controller
         $user = $this->findActiveStaffByUsername($request->username);
 
         if (!$user || !$this->verifyStaffPassword($user, $request->password)) {
-            RateLimiter::hit($rateKey, 900);
+            RateLimiter::hit($rateKey, 600);
             throw ValidationException::withMessages([
                 'password' => ['Invalid mobile/email or password.'],
             ]);
@@ -140,9 +140,9 @@ class StaffAuthController extends Controller
 
         $login = trim($request->phone);
         $identityKey = StaffUserLookup::canonicalIdentityKey($login);
-        $rateKey = 'staff-phone-login:' . $identityKey . ':' . $request->ip();
+        $rateKey = StaffAuthRateLimit::phoneLoginIp($identityKey, (string) $request->ip());
 
-        if (RateLimiter::tooManyAttempts($rateKey, 5)) {
+        if (RateLimiter::tooManyAttempts($rateKey, 8)) {
             $seconds = RateLimiter::availableIn($rateKey);
             throw ValidationException::withMessages([
                 'phone' => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
@@ -152,21 +152,21 @@ class StaffAuthController extends Controller
         $user = $this->findActiveStaffByUsername($login);
 
         if (!$user) {
-            RateLimiter::hit($rateKey, 900);
+            RateLimiter::hit($rateKey, 600);
             throw ValidationException::withMessages([
                 'phone' => ['Invalid mobile/email or password.'],
             ]);
         }
 
         if (!$this->staffHasAdminPassword($user)) {
-            RateLimiter::hit($rateKey, 900);
+            RateLimiter::hit($rateKey, 600);
             throw ValidationException::withMessages([
                 'phone' => ['No admin password is set. Use PIN sign-in, Forgot password, or ask another owner to set one in Staff.'],
             ]);
         }
 
         if (!$this->verifyStaffPassword($user, $request->password)) {
-            RateLimiter::hit($rateKey, 900);
+            RateLimiter::hit($rateKey, 600);
             throw ValidationException::withMessages([
                 'phone' => ['Invalid mobile/email or password.'],
             ]);
@@ -186,7 +186,7 @@ class StaffAuthController extends Controller
 
         $login = trim($request->phone);
         $identityKey = StaffUserLookup::canonicalIdentityKey($login);
-        $rateKey = 'staff-pwd-reset-req:' . $identityKey;
+        $rateKey = StaffAuthRateLimit::passwordResetRequest($identityKey);
 
         if (RateLimiter::tooManyAttempts($rateKey, 3)) {
             return response()->json(['message' => 'Too many OTP requests. Please wait a few minutes.'], 429);
@@ -364,12 +364,12 @@ class StaffAuthController extends Controller
 
     private function passwordResetOtpCacheKey(string $identityKey): string
     {
-        return 'staff-pwd-reset:' . $identityKey;
+        return StaffAuthRateLimit::passwordResetOtp($identityKey);
     }
 
     private function passwordResetOtpAttemptKey(string $identityKey): string
     {
-        return 'staff-pwd-reset-attempts:' . $identityKey;
+        return StaffAuthRateLimit::passwordResetOtpAttempts($identityKey);
     }
 
     private function findActiveStaffByUsername(string $raw): ?User

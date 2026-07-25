@@ -6,6 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Services\StaffAuthRateLimit;
 use App\Services\StaffUserLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -36,6 +37,8 @@ class StaffPasswordResetOtpTest extends TestCase
             'role_id' => $role->id,
             'is_active' => true,
         ]);
+
+        Cache::flush();
     }
 
     #[Test]
@@ -45,7 +48,7 @@ class StaffPasswordResetOtpTest extends TestCase
 
         $otp = '123456';
         $identityKey = StaffUserLookup::canonicalIdentityKey('+9607771234');
-        Cache::put('staff-pwd-reset:' . $identityKey, Hash::make($otp), now()->addMinutes(10));
+        Cache::put(StaffAuthRateLimit::passwordResetOtp($identityKey), Hash::make($otp), now()->addMinutes(10));
 
         for ($i = 0; $i < 5; $i++) {
             $this->postJson('/api/auth/staff/password/reset-verify', [
@@ -70,8 +73,8 @@ class StaffPasswordResetOtpTest extends TestCase
     {
         $otp = '654321';
         $identityKey = StaffUserLookup::canonicalIdentityKey('7771234');
-        $attemptKey = 'staff-pwd-reset-attempts:' . $identityKey;
-        Cache::put('staff-pwd-reset:' . $identityKey, Hash::make($otp), now()->addMinutes(10));
+        $attemptKey = StaffAuthRateLimit::passwordResetOtpAttempts($identityKey);
+        Cache::put(StaffAuthRateLimit::passwordResetOtp($identityKey), Hash::make($otp), now()->addMinutes(10));
         Cache::put($attemptKey, 3, now()->addMinutes(10));
 
         $this->postJson('/api/auth/staff/password/reset-verify', [

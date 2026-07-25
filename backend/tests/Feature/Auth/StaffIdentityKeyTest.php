@@ -6,6 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Services\StaffAuthRateLimit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -38,7 +39,8 @@ class StaffIdentityKeyTest extends TestCase
             'is_active' => true,
         ]);
 
-        RateLimiter::clear('staff-pin:phone:7771234:127.0.0.1');
+        RateLimiter::clear(StaffAuthRateLimit::pinIp('phone:7771234', '127.0.0.1'));
+        RateLimiter::clear(StaffAuthRateLimit::pinAccount('phone:7771234'));
     }
 
     #[Test]
@@ -54,7 +56,7 @@ class StaffIdentityKeyTest extends TestCase
             'phone' => '+960 777-1234',
         ])->assertOk();
 
-        $cacheKey = 'staff-pwd-reset:phone:7771234';
+        $cacheKey = StaffAuthRateLimit::passwordResetOtp('phone:7771234');
         $this->assertNotNull(Cache::get($cacheKey));
 
         $otp = '112233';
