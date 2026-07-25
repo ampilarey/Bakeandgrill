@@ -7,14 +7,24 @@ import {
 import {
   assignMediaCollections, createMediaCollection, deleteMedia, deleteMediaCollection,
   editMedia, getMedia, getMediaCollections, getMediaUsage, reconcileMedia,
-  restoreMedia, updateMedia, updateMediaCollection, uploadMedia,
+  restoreMedia, updateMedia, updateMediaCollection, uploadMedia, useMediaAs,
   type MediaAsset, type MediaCollection, type MediaEditOp,
   type MediaEditResult, type MediaPaginationMeta, type MediaType, type MediaUsageItem,
+  type MediaUseAsKey,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { useToast } from '../components/ui';
 import { Btn, EmptyState, Modal, PageHeader, PageShell, Spinner } from '../components/SharedUI';
+
+const USE_AS_OPTIONS: { key: MediaUseAsKey; label: string }[] = [
+  { key: 'default_item_image', label: 'Default item image' },
+  { key: 'logo', label: 'Logo' },
+  { key: 'logo_dark', label: 'Logo (dark)' },
+  { key: 'favicon', label: 'Favicon' },
+  { key: 'og_image', label: 'OG image' },
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -316,7 +326,11 @@ export function MediaLibraryPage() {
   usePageTitle('Media Library');
   const isMobile = useIsMobile();
   const { can } = useCurrentUserPermissions();
+  const toast = useToast();
   const canManage = can('media.manage');
+  const canUseAs = can('media.manage') || can('website.manage');
+  const [useAsKey, setUseAsKey] = useState<MediaUseAsKey>('default_item_image');
+  const [useAsSaving, setUseAsSaving] = useState(false);
 
   // List state
   const [assets, setAssets] = useState<MediaAsset[]>([]);
@@ -974,6 +988,48 @@ export function MediaLibraryPage() {
               {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
               {copiedUrl ? 'Copied!' : 'Copy URL'}
             </button>
+
+            {selected.media_type === 'image' && canUseAs && (
+              <div data-testid="media-use-as" style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 6 }}>Use as</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select
+                    value={useAsKey}
+                    onChange={(e) => setUseAsKey(e.target.value as MediaUseAsKey)}
+                    style={{
+                      flex: 1, height: 38, borderRadius: 8, border: '1px solid #E8E0D8',
+                      padding: '0 10px', fontFamily: 'inherit', fontSize: 13, background: '#fff',
+                    }}
+                  >
+                    {USE_AS_OPTIONS.map((opt) => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <Btn
+                    type="button"
+                    disabled={useAsSaving}
+                    data-testid="media-use-as-apply"
+                    onClick={() => {
+                      void (async () => {
+                        setUseAsSaving(true);
+                        setDetailError('');
+                        try {
+                          const res = await useMediaAs(selected.id, useAsKey);
+                          toast.success(res.message || 'Setting updated.');
+                        } catch (e) {
+                          setDetailError(e instanceof Error ? e.message : 'Failed to set.');
+                        } finally {
+                          setUseAsSaving(false);
+                        }
+                      })();
+                    }}
+                    style={{ minHeight: 38, height: 38 }}
+                  >
+                    {useAsSaving ? '…' : 'Set'}
+                  </Btn>
+                </div>
+              </div>
+            )}
 
             {detailError && (
               <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', color: '#b91c1c', fontSize: 12, marginBottom: 10 }}>{detailError}</div>

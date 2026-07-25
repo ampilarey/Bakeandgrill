@@ -1041,6 +1041,17 @@ return [
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],
+        'default_item_image' => [
+            'label' => 'Default item photo',
+            'group' => 'Branding',
+            'type' => 'image',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'validate' => 'nullable|string|max:2048',
+            'default' => '',
+        ],
         'maps_embed_url' => [
             'label' => 'Maps Embed Url',
             'group' => 'Pages',

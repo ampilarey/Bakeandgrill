@@ -17,6 +17,7 @@ export function OffersRail({ offers, headline, subtext, apiOrigin }: Props) {
   const title = headline || text('offers_headline', 'Offers');
   const subtitle = subtext ?? text('offers_subtext', '');
   const logoSrc = s?.logo || '/logo.png';
+  const defaultImageUrl = s?.default_item_image || null;
 
   if (offers.length === 0) return null;
 
@@ -37,6 +38,7 @@ export function OffersRail({ offers, headline, subtext, apiOrigin }: Props) {
             offer={offer}
             apiOrigin={apiOrigin}
             logoSrc={logoSrc}
+            defaultImageUrl={defaultImageUrl}
             testId="offers-rail-card"
           />
         ))}

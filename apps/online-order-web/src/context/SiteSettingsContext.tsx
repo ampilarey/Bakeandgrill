@@ -15,6 +15,8 @@ export interface SiteSettings {
   site_name?: string;
   site_tagline?: string;
   logo?: string;
+  /** Fills circular cards when a menu item has no photo of its own. */
+  default_item_image?: string;
   favicon?: string;
   business_phone?: string;
   business_email?: string;

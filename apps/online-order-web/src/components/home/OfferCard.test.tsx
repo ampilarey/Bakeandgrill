@@ -31,7 +31,7 @@ const offer: Offer = {
 };
 
 describe('OfferCard', () => {
-  it('shows branded circle placeholder when offer has no image', () => {
+  it('shows branded circle placeholder when offer has no image and no default', () => {
     render(
       <MemoryRouter>
         <OfferCard offer={offer} apiOrigin="https://example.test" logoSrc="/logo.png" />
@@ -44,6 +44,23 @@ describe('OfferCard', () => {
     expect(screen.getByTestId('offer-card-media-frame').style.aspectRatio.replace(/\s/g, '')).toMatch(/1\/1|1/);
     expect(screen.getByTestId('offer-card-price-row').textContent).toMatch(/9\.00\/-/);
     expect(screen.getByTestId('offer-card-price-row').textContent).not.toMatch(/MVR/i);
+  });
+
+  it('uses default item image (cover slide) when offer has no image', () => {
+    render(
+      <MemoryRouter>
+        <OfferCard
+          offer={offer}
+          apiOrigin="https://example.test"
+          logoSrc="/logo.png"
+          defaultImageUrl="/storage/site/default_item.jpg"
+        />
+      </MemoryRouter>,
+    );
+
+    const slider = screen.getByTestId('menu-image-slider');
+    expect(slider.getAttribute('data-has-media')).toBe('1');
+    expect(slider.getAttribute('data-logo')).toBe('/logo.png');
   });
 
   it('uniqueOffersById drops duplicate ids', () => {

@@ -7,6 +7,7 @@ import { fetchCartRecommendations, getItemReviews, getItemPhotos } from '../api'
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { Variant } from '@shared/types';
 import { useCart } from '../context/CartContext';
+import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { buildItemSlides } from '../utils/itemMedia';
 import { formatCardPrice, formatSavingsLabel } from '../utils/money';
 import { MenuImageSlider } from './menu/MenuImageSlider';
@@ -42,6 +43,7 @@ export function ItemSheet({
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
   const { addItem } = useCart();
+  const { settings: siteSettings } = useSiteSettingsContext();
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
   const packagingOptions = (item.packaging_options ?? [])
     .slice()
@@ -86,9 +88,9 @@ export function ItemSheet({
   const slides = useMemo(
     () => buildItemSlides(
       { image_url: item.image_url, thumb_url: item.thumb_url, name: item.name, photos },
-      { source: 'gallery' },
+      { source: 'gallery', defaultImageUrl: siteSettings.default_item_image || null },
     ),
-    [item.image_url, item.thumb_url, item.name, photos],
+    [item.image_url, item.thumb_url, item.name, photos, siteSettings.default_item_image],
   );
 
   useEffect(() => {

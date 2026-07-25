@@ -69,7 +69,7 @@ class SiteSettingsController extends Controller
      */
     public function upload(Request $request): JsonResponse
     {
-        $directKeys = ['logo', 'logo_dark', 'favicon', 'og_image'];
+        $directKeys = ['logo', 'logo_dark', 'favicon', 'og_image', 'default_item_image'];
         $jsonKeys = ['hero_1_image', 'hero_2_image', 'hero_3_image',
             'cat_1_image',  'cat_2_image',  'cat_3_image',  'cat_4_image'];
         $allowedKeys = array_merge($directKeys, $jsonKeys);

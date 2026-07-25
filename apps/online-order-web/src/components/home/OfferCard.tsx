@@ -26,8 +26,9 @@ export function offerUrgencyLabel(endsAt: string | null | undefined, nowMs = Dat
   return `Ends in ${mins}m`;
 }
 
-function offerSlides(offer: Offer, apiOrigin: string): MediaSlide[] {
-  const imgSrc = resolveImage(offer.image_url, apiOrigin);
+function offerSlides(offer: Offer, apiOrigin: string, defaultImageUrl?: string | null): MediaSlide[] {
+  const imgSrc = resolveImage(offer.image_url, apiOrigin)
+    || resolveImage(defaultImageUrl, apiOrigin);
   if (!imgSrc) return [];
   return [{ type: 'image', url: imgSrc, alt: offer.title }];
 }
@@ -46,6 +47,8 @@ type Props = {
   offer: Offer;
   apiOrigin: string;
   logoSrc: string;
+  /** Site default item photo when the offer has no image_url. */
+  defaultImageUrl?: string | null;
   /** data-testid prefix for media frame / price row (default: offer-card) */
   testId?: string;
 };
@@ -54,9 +57,13 @@ export function OfferCard({
   offer,
   apiOrigin,
   logoSrc,
+  defaultImageUrl = null,
   testId = 'offer-card',
 }: Props) {
-  const slides = useMemo(() => offerSlides(offer, apiOrigin), [offer, apiOrigin]);
+  const slides = useMemo(
+    () => offerSlides(offer, apiOrigin, defaultImageUrl),
+    [offer, apiOrigin, defaultImageUrl],
+  );
   const price = offer.effective_price != null ? Number(offer.effective_price) : null;
   const wasPrice =
     price != null && offer.original_price != null && Number(offer.original_price) > price

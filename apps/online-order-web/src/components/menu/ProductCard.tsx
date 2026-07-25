@@ -57,8 +57,9 @@ export function ProductCard({
       preferThumb: false,
       source: 'gallery',
       fallbackAlt: mediaAlt,
+      defaultImageUrl: s.default_item_image || null,
     }),
-    [item.image_url, item.thumb_url, item.photos, mediaAlt],
+    [item.image_url, item.thumb_url, item.photos, mediaAlt, s.default_item_image],
   );
 
   const displayName = useMemo(() => {

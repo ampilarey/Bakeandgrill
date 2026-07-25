@@ -22,6 +22,11 @@ vi.mock('../hooks/useIsMobile', () => ({
   useIsMobile: () => mockIsMobile(),
 }));
 
+const toastSuccess = vi.fn();
+vi.mock('../components/ui', () => ({
+  useToast: () => ({ success: toastSuccess, error: vi.fn() }),
+}));
+
 const makeAsset = (id: number, overrides: Partial<api.MediaAsset> = {}): api.MediaAsset => ({
   id,
   url: `https://cdn.example.com/images/asset-${id}.jpg`,
@@ -66,11 +71,12 @@ const twoPageMeta: api.MediaPaginationMeta = {
 describe('MediaLibraryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    toastSuccess.mockClear();
     mockIsMobile.mockReturnValue(false);
     mockUser.role = 'owner';
     mockCan.mockImplementation((slug?: string) => {
       if (!slug) return true;
-      return ['media.view', 'media.manage'].includes(slug);
+      return ['media.view', 'media.manage', 'website.manage'].includes(slug);
     });
 
     vi.spyOn(api, 'getMediaCollections').mockResolvedValue({
@@ -280,5 +286,24 @@ describe('MediaLibraryPage', () => {
     const drawer = await screen.findByTestId('detail-drawer');
     expect(drawer.getAttribute('data-mobile-overlay')).toBe('true');
     expect(screen.getByTestId('detail-drawer-backdrop')).toBeTruthy();
+  });
+
+  it('Use as → Default item image calls the endpoint and toasts success', async () => {
+    const useAsSpy = vi.spyOn(api, 'useMediaAs').mockResolvedValue({
+      message: 'Set as default item image.',
+      key: 'default_item_image',
+      url: 'https://cdn.example.com/images/asset-1.jpg',
+    });
+
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    expect(await screen.findByTestId('media-use-as')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('media-use-as-apply'));
+
+    await waitFor(() => {
+      expect(useAsSpy).toHaveBeenCalledWith(1, 'default_item_image');
+    });
+    expect(toastSuccess).toHaveBeenCalledWith('Set as default item image.');
   });
 });

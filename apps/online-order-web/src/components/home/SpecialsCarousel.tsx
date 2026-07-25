@@ -19,6 +19,7 @@ export function SpecialsCarousel({ offers, apiOrigin }: Props) {
   const title = text('offers_headline', text('home_specials_title', 'Offers & Specials'));
   const eyebrow = text('home_specials_eyebrow', text('offers_subtext', ''));
   const logoSrc = s?.logo || '/logo.png';
+  const defaultImageUrl = s?.default_item_image || null;
   const unique = uniqueOffersById(offers);
 
   if (unique.length === 0) return null;
@@ -90,6 +91,7 @@ export function SpecialsCarousel({ offers, apiOrigin }: Props) {
               offer={offer}
               apiOrigin={apiOrigin}
               logoSrc={logoSrc}
+              defaultImageUrl={defaultImageUrl}
               testId="specials-carousel-card"
             />
           ))}

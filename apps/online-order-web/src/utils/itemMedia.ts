@@ -43,6 +43,11 @@ export type BuildItemSlidesOptions = {
   source?: 'gallery' | 'all';
   /** When source is gallery and photos are empty, emit no slides (no main-image fallback). */
   strict?: boolean;
+  /**
+   * Site default item photo — used when the item has no gallery/main image.
+   * Rendered as a normal cover slide (fills the circle). Logo/monogram is last resort only.
+   */
+  defaultImageUrl?: string | null;
 };
 
 /**
@@ -95,6 +100,12 @@ export function buildItemSlides(
     pushMain();
   } else if (photos.length === 0) {
     if (!strict) pushMain();
+    if (out.length === 0 && !strict) {
+      const fallback = resolveMediaUrl(options?.defaultImageUrl);
+      if (fallback) {
+        push({ type: 'image', url: fallback, alt: fallbackAlt });
+      }
+    }
     return out;
   }
 
@@ -121,6 +132,13 @@ export function buildItemSlides(
       thumbUrl: resolveMediaUrl(photo.thumb_url),
       alt: photo.alt_text || fallbackAlt,
     });
+  }
+
+  if (out.length === 0 && !strict) {
+    const fallback = resolveMediaUrl(options?.defaultImageUrl);
+    if (fallback) {
+      push({ type: 'image', url: fallback, alt: fallbackAlt });
+    }
   }
 
   return out;

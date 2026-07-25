@@ -122,4 +122,37 @@ describe('buildItemSlides', () => {
     }, { preferThumb: true, source: 'gallery' });
     expect(urls[0]).toContain('/p.jpg');
   });
+
+  it('uses defaultImageUrl when item has no gallery or main image', () => {
+    const slides = buildItemSlides({
+      name: 'Plain Bun',
+      image_url: null,
+      photos: [],
+    }, { source: 'gallery', defaultImageUrl: '/storage/site/default_item.jpg' });
+
+    expect(slides).toHaveLength(1);
+    expect(slides[0].url).toContain('/storage/site/default_item.jpg');
+    expect(slides[0].type).toBe('image');
+  });
+
+  it('prefers item image over defaultImageUrl', () => {
+    const slides = buildItemSlides({
+      name: 'Photo Burger',
+      image_url: '/storage/menu/burger.jpg',
+      photos: [],
+    }, { source: 'gallery', defaultImageUrl: '/storage/site/default_item.jpg' });
+
+    expect(slides).toHaveLength(1);
+    expect(slides[0].url).toContain('/menu/burger.jpg');
+  });
+
+  it('returns empty slides when no item image and no defaultImageUrl', () => {
+    const slides = buildItemSlides({
+      name: 'Plain Bun',
+      image_url: null,
+      photos: [],
+    }, { source: 'gallery' });
+
+    expect(slides).toEqual([]);
+  });
 });

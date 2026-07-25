@@ -9,11 +9,13 @@ use App\Domains\Media\Services\MediaLibraryService;
 use App\Domains\Media\Services\MediaUsageResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Media;
+use App\Models\SiteSetting;
 use App\Services\AuditLogService;
 use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class MediaLibraryController extends Controller
 {
@@ -224,5 +226,92 @@ class MediaLibraryController extends Controller
         );
 
         return response()->json(['data' => $media->fresh(['collections'])]);
+    }
+
+    /**
+     * Assign a media asset URL to a brand / default-item SiteSetting key.
+     * POST /admin/media/{media}/use-as  { key }
+     */
+    public function useAs(Request $request, Media $media): JsonResponse
+    {
+        $user = $request->user();
+        if (
+            !$user
+            || (
+                !$user->hasPermission('media.manage')
+                && !$user->hasPermission('website.manage')
+            )
+        ) {
+            abort(403, 'Missing media.manage or website.manage permission.');
+        }
+
+        if ($media->media_type !== 'image') {
+            return response()->json(['message' => 'Only image assets can be used as brand/default photos.'], 422);
+        }
+
+        $allowed = ['default_item_image', 'favicon', 'logo', 'logo_dark', 'og_image'];
+        $validated = $request->validate([
+            'key' => ['required', 'string', Rule::in($allowed)],
+        ]);
+        $key = $validated['key'];
+        $url = $media->url;
+        if (!$url) {
+            return response()->json(['message' => 'Media asset has no public URL.'], 422);
+        }
+
+        $old = SiteSetting::get($key);
+        $meta = match ($key) {
+            'default_item_image' => [
+                'type' => 'image',
+                'group' => 'Branding',
+                'label' => 'Default item photo',
+                'description' => 'Shown for menu items that don\'t have their own photo.',
+            ],
+            'logo' => ['type' => 'image', 'group' => 'Branding', 'label' => 'Logo (Light)', 'description' => ''],
+            'logo_dark' => ['type' => 'image', 'group' => 'Branding', 'label' => 'Logo (Dark)', 'description' => ''],
+            'favicon' => ['type' => 'image', 'group' => 'Branding', 'label' => 'Favicon', 'description' => ''],
+            'og_image' => ['type' => 'image', 'group' => 'SEO', 'label' => 'OG Image', 'description' => ''],
+            default => ['type' => 'image', 'group' => 'Branding', 'label' => $key, 'description' => ''],
+        };
+
+        SiteSetting::set($key, $url);
+        $row = SiteSetting::query()->where('key', $key);
+        if (SiteSetting::hasScopeColumn()) {
+            $row->where('scope', 'shared');
+        }
+        if (SiteSetting::hasLocaleColumn()) {
+            $row->where('locale', 'en');
+        }
+        $row->update([
+            'type' => $meta['type'],
+            'group' => $meta['group'],
+            'label' => $meta['label'],
+            'description' => $meta['description'],
+            'is_public' => true,
+        ]);
+        SiteSetting::bust();
+
+        $this->audit->log(
+            'media.use_as',
+            'Media',
+            (int) $media->id,
+            ['key' => $key, 'value' => $old],
+            ['key' => $key, 'value' => $url],
+            [],
+            $request,
+        );
+
+        return response()->json([
+            'message' => match ($key) {
+                'default_item_image' => 'Set as default item image.',
+                'logo' => 'Set as logo.',
+                'logo_dark' => 'Set as dark logo.',
+                'favicon' => 'Set as favicon.',
+                'og_image' => 'Set as OG image.',
+                default => 'Setting updated.',
+            },
+            'key' => $key,
+            'url' => $url,
+        ]);
     }
 }

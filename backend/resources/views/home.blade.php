@@ -1049,6 +1049,7 @@
     $homeOffers = isset($offers) ? $offers : collect();
     $offersHeadline = content('offers_headline', 'Offers');
     $offersSubtext = content('offers_subtext', 'Specials and promos running right now.');
+    $defaultItemImage = \App\Models\SiteSetting::get('default_item_image');
 @endphp
 @if($homeOffers->count() > 0)
 <section class="section" id="offers">
@@ -1064,6 +1065,8 @@
                 <div class="product-img product-img--circle">
                     @if(!empty($offer['image_url']))
                         <img src="{{ $offer['image_url'] }}" alt="{{ $offer['title'] ?? '' }}">
+                    @elseif(!empty($defaultItemImage))
+                        <img src="{{ $defaultItemImage }}" alt="{{ $offer['title'] ?? '' }}" data-default-item-image="1">
                     @else
                         @php $brandLogo = \App\Models\SiteSetting::get('logo'); @endphp
                         <div class="product-img-placeholder product-img-placeholder--brand" aria-hidden="true">
@@ -1122,6 +1125,8 @@
                 <div class="product-img product-img--circle">
                     @if(!empty($sp['item_image']))
                         <img src="{{ $sp['item_image'] }}" alt="{{ $sp['item_name'] ?? '' }}">
+                    @elseif(!empty($defaultItemImage))
+                        <img src="{{ $defaultItemImage }}" alt="{{ $sp['item_name'] ?? '' }}" data-default-item-image="1">
                     @else
                         @php $brandLogo = \App\Models\SiteSetting::get('logo'); @endphp
                         <div class="product-img-placeholder product-img-placeholder--brand" aria-hidden="true">
