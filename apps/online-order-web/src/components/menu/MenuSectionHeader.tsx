@@ -35,8 +35,8 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
       className={`menu-section-header${active ? ' is-active' : ''}`}
       data-category-id={category.id}
       style={{
-        padding: '0.55rem 0 0.45rem',
-        scrollMarginTop: 'calc(var(--menu-header-height) + var(--menu-active-cat-bar-height, 0px) + 8px)',
+        padding: '0.35rem 0 0.45rem',
+        scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
       }}
     >
       <div

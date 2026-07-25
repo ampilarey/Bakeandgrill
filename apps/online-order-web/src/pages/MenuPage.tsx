@@ -20,6 +20,7 @@ import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { OffersRail } from '../components/home/OffersRail';
 import { pickActiveSectionId } from '../utils/scrollSpy';
+import { categoryScrollTop } from '../utils/menuScroll';
 const MENU_VIEW_KEY = 'bg-menu-view';
 type MenuViewMode = 'grid' | 'list';
 
@@ -131,6 +132,8 @@ export function MenuPage() {
   const programmaticScrollTimerRef = useRef<number | null>(null);
   const sectionVisibilityRef = useRef<Map<number, { id: number; ratio: number; top: number }>>(new Map());
   const pendingCategoryScrollRef = useRef<number | null>(null);
+  const menuStickyRef = useRef<HTMLDivElement | null>(null);
+  const [stickyOffset, setStickyOffset] = useState(112);
 
   // Back to top visibility — throttled with requestAnimationFrame
   useEffect(() => {
@@ -388,12 +391,42 @@ export function MenuPage() {
   const hasSectionedItems = sectionedMenu.sections.length > 0 || sectionedMenu.other.length > 0;
   const [cateringOpen, setCateringOpen] = useState(false);
 
+  // Keep --menu-sticky-offset in sync with the real sticky controls height
+  // (pickup/search/filters/grid). Fixed 112px was undershooting/overshooting.
+  useEffect(() => {
+    const el = menuStickyRef.current;
+    if (!el) return;
+    const apply = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      if (!Number.isFinite(h) || h <= 0) return;
+      setStickyOffset(h);
+      document.documentElement.style.setProperty('--menu-sticky-offset', `${h}px`);
+    };
+    apply();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', apply);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', apply);
+      document.documentElement.style.removeProperty('--menu-sticky-offset');
+    };
+  }, [loading, deliveryFallback, waitMinutes, filtersActive]);
+
   const scrollToCategorySection = (categoryId: number, behavior: ScrollBehavior = 'smooth') => {
     const section = document.getElementById(`menu-section-${categoryId}`);
+    if (!section) return;
     const reduced =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    section?.scrollIntoView({ behavior: reduced ? 'auto' : behavior, block: 'start' });
+    const stickyH = menuStickyRef.current?.getBoundingClientRect().height ?? stickyOffset;
+    const top = categoryScrollTop(
+      section.getBoundingClientRect().top,
+      window.scrollY,
+      stickyH,
+      4,
+    );
+    window.scrollTo({ top, behavior: reduced ? 'auto' : behavior });
   };
 
   const handleSelectCategory = (categoryId: number) => {
@@ -439,13 +472,13 @@ export function MenuPage() {
       const next = pickActiveSectionId(Array.from(sectionVisibilityRef.current.values()), activeCategoryId);
       if (next !== activeCategoryId) setActiveCategoryId(next);
     }, {
-      rootMargin: '-120px 0px -55% 0px',
+      rootMargin: `-${Math.max(stickyOffset, 1)}px 0px -55% 0px`,
       threshold: [0, 0.01, 0.25, 0.5, 0.75, 1],
     });
 
     headers.forEach((header) => observer.observe(header));
     return () => observer.disconnect();
-  }, [activeCategoryId, filtersActive, loading, sectionedMenu.sections]);
+  }, [activeCategoryId, filtersActive, loading, sectionedMenu.sections, stickyOffset]);
 
   useEffect(() => {
     if (filtersActive || loading || pendingCategoryScrollRef.current == null) return;
@@ -526,6 +559,8 @@ export function MenuPage() {
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>
       {/* ── Sticky menu controls ─────────────────────────────────── */}
       <div
+        ref={menuStickyRef}
+        className="menu-sticky-controls"
         style={{
           position: 'sticky',
           top: 0,
@@ -669,7 +704,7 @@ export function MenuPage() {
           style={{
             flex: 1,
             minWidth: 0,
-            paddingTop: '0.5rem',
+            paddingTop: 0,
           }}
         >
           {/* Unified Offers rail (specials + auto-promos) */}
@@ -718,15 +753,14 @@ export function MenuPage() {
 
           {!loading && !filtersActive && hasSectionedItems && (
             <div>
-              {sectionedMenu.sections.map((section) => (
+              {sectionedMenu.sections.map((section, sectionIndex) => (
                 <section
                   key={section.category.id}
                   id={`menu-section-${section.category.id}`}
                   data-category-id={section.category.id}
+                  className={sectionIndex === 0 ? 'menu-section menu-section--first' : 'menu-section'}
                   style={{
-                    contentVisibility: 'auto' as any,
-                    containIntrinsicSize: '480px',
-                    scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
+                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
                   }}
                 >
                   <MenuSectionHeader
@@ -746,7 +780,7 @@ export function MenuPage() {
                       data-category-id={sub.category.id}
                       data-parent-category-id={section.category.id}
                       style={{
-                        scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
+                        scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
                         paddingBottom: '0.85rem',
                       }}
                     >
@@ -765,7 +799,7 @@ export function MenuPage() {
                 <section
                   id="menu-section-catering"
                   style={{
-                    scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
+                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
                     marginBottom: '0.5rem',
                   }}
                 >
@@ -804,9 +838,7 @@ export function MenuPage() {
                 <section
                   id="menu-section-other"
                   style={{
-                    contentVisibility: 'auto' as any,
-                    containIntrinsicSize: '360px',
-                    scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
+                    scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
                   }}
                 >
                   <header style={{ padding: '1.25rem 0 0.75rem' }}>

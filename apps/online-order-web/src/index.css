@@ -94,7 +94,8 @@
   --float-cart-height:    72px; /* logo FAB clearance (all breakpoints when cart has items) */
   --safe-bottom:          env(safe-area-inset-bottom, 0px);
   --cat-rail-width:       90px;
-  --menu-header-height:   112px;
+  --menu-header-height:   112px; /* fallback; JS sets --menu-sticky-offset from sticky bar */
+  --menu-sticky-offset:   var(--menu-header-height);
   --touch-target:         44px;
   --chip-height:          64px;
   --radius-3xl:           1.75rem;
@@ -2225,13 +2226,18 @@ textarea.field-input {
   width: var(--cat-rail-width);
   flex-shrink: 0;
   position: sticky;
-  top: var(--menu-header-height);
+  top: var(--menu-sticky-offset, var(--menu-header-height));
   align-self: flex-start;
-  max-height: calc(100dvh - var(--menu-header-height) - var(--bottom-nav-height));
+  max-height: calc(100dvh - var(--menu-sticky-offset, var(--menu-header-height)) - var(--bottom-nav-height));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0.5rem 0;
   border-right: 1px solid var(--color-border);
+}
+
+/* First category sits flush under the sticky controls (no extra top gap) */
+.menu-section--first .menu-section-header {
+  padding-top: 0 !important;
 }
 
 /* Mobile: keep ZUS-style rail — icon + short label (never hide labels) */
@@ -2275,7 +2281,7 @@ textarea.field-input {
 
 .menu-active-cat-bar {
   position: sticky;
-  top: var(--menu-header-height);
+  top: var(--menu-sticky-offset, var(--menu-header-height));
   z-index: 5;
   display: flex;
   align-items: center;
