@@ -75,5 +75,8 @@ class SpecialsDisplayConsistencyTest extends TestCase
             '.special-card .special-badge-stack',
             $html
         );
+        // Placeholder logo is capped so a tall brand mark cannot oval the circle.
+        $this->assertStringContainsString('max-height: 56%', $html);
+        $this->assertStringContainsString('product-img-placeholder__logo', $html);
     }
 }

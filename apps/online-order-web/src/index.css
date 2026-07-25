@@ -2062,10 +2062,20 @@ textarea.field-input {
   border-radius: 50%;
 }
 
-.menu-card-media-circle__frame img,
+.menu-card-media-circle__frame img:not(.menu-media-placeholder__logo),
 .menu-card-media-circle__frame video {
   border-radius: 50%;
   object-fit: cover;
+}
+
+/* Brand logo placeholder must stay contained — never cover-fill the circle. */
+.menu-card-media-circle__frame .menu-media-placeholder__logo {
+  width: auto;
+  height: auto;
+  max-width: 56%;
+  max-height: 56%;
+  object-fit: contain;
+  border-radius: 0;
 }
 
 .menu-card-image-badges--circle {
@@ -2218,15 +2228,19 @@ textarea.field-input {
 }
 
 .menu-media-placeholder__logo {
-  width: 42%;
-  max-width: 56px;
+  width: auto;
   height: auto;
+  max-width: 56%;
+  max-height: 56%;
   object-fit: contain;
   opacity: 0.88;
   filter: drop-shadow(0 1px 2px rgba(42, 30, 12, 0.12));
 }
 
 .menu-media-placeholder__mono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: 0.04em;

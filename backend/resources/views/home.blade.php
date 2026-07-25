@@ -472,30 +472,41 @@
     transform: translateY(-2px);
 }
 .special-card .product-img--circle {
+    width: 100%;
     height: auto;
     aspect-ratio: 1 / 1;
     border-radius: 50%;
-    overflow: hidden;
+    overflow: hidden; /* tall placeholder logo must not stretch the box into an oval */
     background: linear-gradient(145deg, rgba(212,129,58,0.18), #F7E4C8 55%, rgba(253,221,180,0.65));
 }
-.special-card .product-img--circle img {
+/* Real product photos only — do not apply cover-fill to the brand logo inside the placeholder. */
+.special-card .product-img--circle > img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
 }
 .special-card .product-img-placeholder--brand {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1rem;
     background: transparent;
 }
 .special-card .product-img-placeholder__logo {
-    width: 42%;
+    width: auto;
     height: auto;
-    max-width: 72px;
+    max-width: 56%;
+    max-height: 56%;
     object-fit: contain;
     border-radius: 0;
 }
 .special-card .product-img-placeholder__mono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1.5rem;
     font-weight: 800;
     letter-spacing: 0.04em;
