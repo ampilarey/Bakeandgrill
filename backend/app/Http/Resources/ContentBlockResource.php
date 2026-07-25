@@ -42,6 +42,8 @@ class ContentBlockResource extends JsonResource
         $hasOrder = $this->hasAnyOverride($key, 'order_app');
         $state = ($hasWebsite || $hasOrder) ? 'split' : 'shared';
 
+        $description = $block['description'] ?? null;
+
         return [
             'key' => $key,
             'label' => $block['label'] ?? $key,
@@ -53,6 +55,7 @@ class ContentBlockResource extends JsonResource
             'shareable' => (bool) ($block['shareable'] ?? false),
             'public' => (bool) ($block['public'] ?? false),
             'rich' => (bool) ($block['rich'] ?? false),
+            'description' => is_string($description) && $description !== '' ? $description : null,
             'default' => $block['default'] ?? null,
             'shared' => $shared,
             'website' => $website,

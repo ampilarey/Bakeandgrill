@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Download, History, LayoutTemplate, Save, Search, Upload as UploadIcon } from 'lucide-react';
 import {
   cancelContentSchedule,
@@ -89,10 +90,12 @@ export type AppContentEditorProps = {
 export function AppContentEditor({ app }: AppContentEditorProps) {
   usePageTitle(appTitle(app));
   const { success, error } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const groupFromUrl = (searchParams.get('group') || '').trim();
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [group, setGroup] = useState<string>('All');
+  const [group, setGroup] = useState<string>(() => groupFromUrl || 'All');
   const [q, setQ] = useState('');
   const [drafts, setDrafts] = useState<DraftMap>({});
   const [locale, setLocale] = useState<ContentLocale>('en');
@@ -146,6 +149,22 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
     return () => { loadGen.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when locale or app editor changes
   }, [locale, app]);
+
+  // Deep-link: /content/website?group=Branding (and keep URL in sync when chips change).
+  useEffect(() => {
+    const next = groupFromUrl || 'All';
+    setGroup((prev) => (prev === next ? prev : next));
+  }, [groupFromUrl]);
+
+  const selectGroup = (next: string) => {
+    setGroup(next);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (next === 'All') p.delete('group');
+      else p.set('group', next);
+      return p;
+    }, { replace: true });
+  };
 
   const appBlocks = useMemo(
     () => blocks.filter((b) => {
@@ -538,7 +557,7 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
                 key={g}
                 type="button"
                 aria-pressed={group === g}
-                onClick={() => setGroup(g)}
+                onClick={() => selectGroup(g)}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px',
                   border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
@@ -594,6 +613,11 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
                 <div className="content-studio-block-head" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                   <div style={{ minWidth: 0, flex: '1 1 160px' }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: '#1C1408' }}>{block.label}</div>
+                    {block.description ? (
+                      <div style={{ fontSize: 13, color: '#6B5D4F', marginTop: 4, lineHeight: 1.4 }}>
+                        {block.description}
+                      </div>
+                    ) : null}
                     <div className="content-studio-block-meta" style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2, wordBreak: 'break-word' }}>
                       {block.key} · {block.type}{block.editor ? ` · ${block.editor}` : ''} · {locale} · {previewLabel}
                     </div>
@@ -673,7 +697,18 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
                   </label>
                 ) : block.type === 'image' ? (
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {val ? <img src={val} alt={block.label} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 10 }} /> : null}
+                    {val ? (
+                      <img
+                        src={val}
+                        alt={block.label}
+                        style={{
+                          width: 72,
+                          height: 72,
+                          objectFit: 'cover',
+                          borderRadius: block.key === 'default_item_image' ? '50%' : 10,
+                        }}
+                      />
+                    ) : null}
                     <input
                       type="file"
                       accept="image/*,.heic,.heif"

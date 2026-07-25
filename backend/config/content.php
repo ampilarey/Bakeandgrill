@@ -1049,6 +1049,7 @@ return [
             'shareable' => true,
             'public' => true,
             'rich' => false,
+            'description' => 'Shown for menu items that don\'t have their own photo.',
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],

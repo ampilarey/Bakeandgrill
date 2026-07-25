@@ -132,14 +132,14 @@ export function WebsiteSettings() {
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Link
-            to="/content/website"
+            to="/content/website?group=Branding"
             style={{
               height: 44, padding: '0 16px', borderRadius: 10,
               background: '#D4813A', color: '#fff', fontWeight: 700, fontSize: 14,
               display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', fontFamily: 'inherit',
             }}
           >
-            <LayoutTemplate size={16} /> Website Content
+            <LayoutTemplate size={16} /> Branding (logo & default photo)
           </Link>
           <Link
             to="/content/order-app"

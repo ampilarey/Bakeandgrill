@@ -20,6 +20,8 @@ function isNavItemActive(pathname: string, search: string, to: string): boolean 
   if (!queryPart) {
     // Bare /settings should not highlight when another ?tab= item is active
     if (base === '/settings' && new URLSearchParams(search).has('tab')) return false;
+    // Bare /content/website should not highlight when Branding (?group=) is active
+    if (base === '/content/website' && new URLSearchParams(search).has('group')) return false;
     return true;
   }
   const want = new URLSearchParams(queryPart);

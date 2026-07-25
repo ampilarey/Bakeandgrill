@@ -26,6 +26,8 @@ export type ContentBlock = {
   shareable: boolean;
   public: boolean;
   rich?: boolean;
+  /** Optional helper shown under the label (from content registry). */
+  description?: string | null;
   default?: string | null;
   shared: string | null;
   website: string | null;
