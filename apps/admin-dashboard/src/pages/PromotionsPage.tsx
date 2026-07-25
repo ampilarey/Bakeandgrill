@@ -259,6 +259,9 @@ function PromotionForm({
             onChange={handleBudgetChange}
             type="number" placeholder="No budget cap"
           />
+          <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 3 }}>
+            Approximate under high concurrency.
+          </div>
         </Field>
         <Field label="Max Uses">
           <Input
@@ -297,14 +300,22 @@ function PromotionForm({
                 <Select
                   value={tier.kind}
                   onChange={(v) => updateTier(idx, { kind: v as 'fixed' | 'percentage' })}
-                  options={[{ value: 'fixed', label: 'Fixed (laari)' }, { value: 'percentage', label: 'Percentage' }]}
+                  options={[{ value: 'fixed', label: 'Fixed (MVR)' }, { value: 'percentage', label: 'Percentage' }]}
                 />
                 <Input
-                  label={tier.kind === 'percentage' ? 'Value %' : 'Value (laari)'}
+                  label={tier.kind === 'percentage' ? 'Value %' : 'Value (MVR)'}
                   type="number"
-                  value={String(tier.value)}
+                  value={tier.kind === 'percentage'
+                    ? String(tier.value)
+                    : String((tier.value / 100).toFixed(2))}
                   onChange={(v) => {
-                    const n = parseInt(v, 10);
+                    if (tier.kind === 'percentage') {
+                      const n = parseInt(v, 10);
+                      if (!Number.isFinite(n) || n < 0) return;
+                      updateTier(idx, { value: n });
+                      return;
+                    }
+                    const n = Math.round(parseFloat(v) * 100);
                     if (!Number.isFinite(n) || n < 0) return;
                     updateTier(idx, { value: n });
                   }}
@@ -330,14 +341,24 @@ function PromotionForm({
             <Select
               value={meta.kind ?? 'percentage'}
               onChange={(v) => setMeta({ kind: v as 'fixed' | 'percentage' })}
-              options={[{ value: 'percentage', label: 'Percentage' }, { value: 'fixed', label: 'Fixed (laari)' }]}
+              options={[{ value: 'percentage', label: 'Percentage' }, { value: 'fixed', label: 'Fixed (MVR)' }]}
             />
           </Field>
-          <Field label="Value">
+          <Field label={(meta.kind ?? 'percentage') === 'percentage' ? 'Value %' : 'Value (MVR)'}>
             <Input
               type="number"
-              value={String(meta.value ?? 10)}
-              onChange={(v) => setMeta({ value: Math.max(0, parseInt(v, 10) || 0) })}
+              value={(meta.kind ?? 'percentage') === 'percentage'
+                ? String(meta.value ?? 10)
+                : String(((meta.value ?? 0) / 100).toFixed(2))}
+              onChange={(v) => {
+                if ((meta.kind ?? 'percentage') === 'percentage') {
+                  setMeta({ value: Math.max(0, parseInt(v, 10) || 0) });
+                  return;
+                }
+                const n = Math.round(parseFloat(v) * 100);
+                if (!Number.isFinite(n) || n < 0) return;
+                setMeta({ value: n });
+              }}
             />
           </Field>
         </div>

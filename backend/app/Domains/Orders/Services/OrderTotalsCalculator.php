@@ -11,10 +11,14 @@ use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Orders\DTOs\DiscountsInput;
 use App\Domains\Orders\DTOs\ServiceChargeBreakdown;
 use App\Domains\Orders\DTOs\TotalsBreakdown;
+use App\Domains\Orders\Support\DiscountSettings;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Shared\ValueObjects\Money;
 use App\Models\Order;
 use App\Models\OrderPromotion;
+use App\Support\LaariConverter;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Calculates order totals deterministically using per-item tax rates.
@@ -82,7 +86,9 @@ class OrderTotalsCalculator
         $taxInclusive ??= $this->gstSettings->taxInclusive();
 
         $subtotal = $this->calculateSubtotalFromItems($order);
-        $allocated = EffectiveDiscount::allocateFromInput($subtotal->amountLaar, $discounts);
+        $parts = EffectiveDiscount::partsFromDiscountsInput($discounts);
+        $parts = $this->clampMerchandiseToMarginFloor($order, $parts);
+        $allocated = EffectiveDiscount::allocate($subtotal->amountLaar, $parts);
 
         $promoDisco = new Money($allocated['promo']);
         $loyaltyDisco = new Money($allocated['loyalty']);
@@ -298,6 +304,104 @@ class OrderTotalsCalculator
         ]));
 
         return $order->load(['items.modifiers']);
+    }
+
+    /**
+     * Final order-level margin floor: clamp promo+manual+loyalty+referral so the
+     * stacked merchandise discount cannot push lines with a known cost below
+     * cost × (1 + floor%). Gift-card tender is excluded (payment, not discount).
+     *
+     * @param  array{promo: int, loyalty: int, manual: int, gift_card: int, referral: int}  $parts
+     * @return array{promo: int, loyalty: int, manual: int, gift_card: int, referral: int}
+     */
+    private function clampMerchandiseToMarginFloor(Order $order, array $parts): array
+    {
+        // Avoid SiteSetting::hasScopeColumn() static cache poisoning when the
+        // unit suite runs without migrations (no site_settings table yet).
+        if (!Schema::hasTable('site_settings')) {
+            return $parts;
+        }
+
+        try {
+            $enabled = DiscountSettings::marginFloorEnabled();
+        } catch (\Throwable) {
+            return $parts;
+        }
+        if (!$enabled) {
+            return $parts;
+        }
+
+        $giftCard = (int) ($parts['gift_card'] ?? 0);
+        // Exclude gift_card from this map so proportional remainder stays on merchandise.
+        $merchandise = [
+            'promo' => (int) ($parts['promo'] ?? 0),
+            'loyalty' => (int) ($parts['loyalty'] ?? 0),
+            'manual' => (int) ($parts['manual'] ?? 0),
+            'referral' => (int) ($parts['referral'] ?? 0),
+        ];
+        $merchSum = array_sum($merchandise);
+        if ($merchSum <= 0) {
+            return $parts;
+        }
+
+        $maxDiscountable = $this->maxMerchandiseDiscountUnderMarginFloor($order);
+        if ($merchSum <= $maxDiscountable) {
+            return $parts;
+        }
+
+        $clampedMerch = EffectiveDiscount::allocate($maxDiscountable, $merchandise);
+        Log::info('Order merchandise discount clamped by margin floor', [
+            'order_id' => $order->id,
+            'requested_laar' => $merchSum,
+            'clamped_laar' => $maxDiscountable,
+            'floor_pct' => DiscountSettings::marginFloorPct(),
+        ]);
+
+        return [
+            'promo' => (int) ($clampedMerch['promo'] ?? 0),
+            'loyalty' => (int) ($clampedMerch['loyalty'] ?? 0),
+            'manual' => (int) ($clampedMerch['manual'] ?? 0),
+            'gift_card' => $giftCard,
+            'referral' => (int) ($clampedMerch['referral'] ?? 0),
+        ];
+    }
+
+    /**
+     * Max merchandise discount (laari) that keeps every known-cost line at or
+     * above cost×(1+floor%). Lines with cost ≤ 0 (unknown) impose no floor and
+     * contribute their full line total to the allowance.
+     */
+    private function maxMerchandiseDiscountUnderMarginFloor(Order $order): int
+    {
+        $order->loadMissing('items.item');
+        $floorPct = DiscountSettings::marginFloorPct();
+        $max = 0;
+
+        foreach ($order->items as $line) {
+            $qty = max(1, (int) ($line->quantity ?? 1));
+            $lineTotal = (float) ($line->total_price ?? 0);
+            if ($lineTotal <= 0) {
+                $lineTotal = (float) ($line->unit_price ?? 0) * $qty;
+            }
+            $lineTotalLaar = LaariConverter::toLaar($lineTotal);
+            if ($lineTotalLaar <= 0) {
+                continue;
+            }
+
+            $costMvr = (float) ($line->item?->cost ?? 0);
+            if ($costMvr <= 0) {
+                // Unknown cost — no floor on this line.
+                $max += $lineTotalLaar;
+
+                continue;
+            }
+
+            $floorUnitLaar = (int) ceil($costMvr * (1 + $floorPct / 100) * 100);
+            $minLineLaar = $floorUnitLaar * $qty;
+            $max += max(0, $lineTotalLaar - $minLineLaar);
+        }
+
+        return $max;
     }
 
     private function calculateSubtotalFromItems(Order $order): Money

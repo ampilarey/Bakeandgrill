@@ -78,4 +78,67 @@ describe('PromotionsPage strategy fields', () => {
       expect(screen.getByText('25 / 100')).toBeTruthy();
     });
   });
+
+  it('tier fixed value round-trips as MVR (30 → 3000 laari → 30.00)', async () => {
+    renderWithRouter(<PromotionsPage />);
+    await screen.findByRole('heading', { name: 'Promotions' });
+    fireEvent.click(screen.getByRole('button', { name: /\+ New Promo/i }));
+
+    const typeSelect = await screen.findByDisplayValue('Fixed Amount (MVR)');
+    fireEvent.change(typeSelect, { target: { value: 'tiered' } });
+
+    expect(screen.getByText('Fixed (MVR)')).toBeTruthy();
+    const valueInput = screen.getByDisplayValue('30.00') as HTMLInputElement;
+    fireEvent.change(valueInput, { target: { value: '30' } });
+    expect(valueInput.value).toBe('30.00');
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Ramadan Special'), { target: { value: 'Tier spend' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. RAMADAN20'), { target: { value: 'TIER30' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save Promo/i }));
+
+    await waitFor(() => {
+      expect(api.createPromotion).toHaveBeenCalled();
+    });
+    const payload = vi.mocked(api.createPromotion).mock.calls[0][0];
+    expect(payload.type).toBe('tiered');
+    expect(payload.metadata?.tiers?.[0]?.value).toBe(3000);
+    expect(payload.metadata?.tiers?.[0]?.kind).toBe('fixed');
+  });
+
+  it('quantity-break fixed value round-trips as MVR', async () => {
+    renderWithRouter(<PromotionsPage />);
+    await screen.findByRole('heading', { name: 'Promotions' });
+    fireEvent.click(screen.getByRole('button', { name: /\+ New Promo/i }));
+
+    const typeSelect = await screen.findByDisplayValue('Fixed Amount (MVR)');
+    fireEvent.change(typeSelect, { target: { value: 'quantity_break' } });
+
+    const kindSelect = screen.getByDisplayValue('Percentage') as HTMLSelectElement;
+    fireEvent.change(kindSelect, { target: { value: 'fixed' } });
+    expect(screen.getByText('Fixed (MVR)')).toBeTruthy();
+    expect(screen.getByText('Value (MVR)')).toBeTruthy();
+
+    const valueInput = screen.getByDisplayValue('0.10') as HTMLInputElement;
+    fireEvent.change(valueInput, { target: { value: '30' } });
+    expect(valueInput.value).toBe('30.00');
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Ramadan Special'), { target: { value: 'Qty break' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. RAMADAN20'), { target: { value: 'QTY30' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save Promo/i }));
+
+    await waitFor(() => {
+      expect(api.createPromotion).toHaveBeenCalled();
+    });
+    const payload = vi.mocked(api.createPromotion).mock.calls[0][0];
+    expect(payload.type).toBe('quantity_break');
+    expect(payload.metadata?.kind).toBe('fixed');
+    expect(payload.metadata?.value).toBe(3000);
+  });
+
+  it('shows budget concurrency helper text', async () => {
+    renderWithRouter(<PromotionsPage />);
+    await screen.findByRole('heading', { name: 'Promotions' });
+    fireEvent.click(screen.getByRole('button', { name: /\+ New Promo/i }));
+    expect(await screen.findByText(/Approximate under high concurrency/i)).toBeTruthy();
+  });
 });

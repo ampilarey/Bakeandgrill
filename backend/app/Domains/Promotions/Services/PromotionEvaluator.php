@@ -60,6 +60,15 @@ class PromotionEvaluator
     ): array {
         $order->loadMissing('items.item');
 
+        // Drop stale auto-promo drafts so a re-run after cart changes cannot
+        // leave an ineligible draft that still sums into promo_discount_laar.
+        // Coded-promo drafts and consumed/released rows are left alone.
+        OrderPromotion::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'draft')
+            ->whereHas('promotion', fn ($q) => $q->where('auto_apply', true))
+            ->delete();
+
         $candidates = Promotion::query()
             ->autoApply()
             ->active()
@@ -85,6 +94,11 @@ class PromotionEvaluator
         }
 
         if ($eligible === []) {
+            $totalPromoDiscount = (int) OrderPromotion::where('order_id', $order->id)
+                ->where('status', 'draft')
+                ->sum('discount_laar');
+            $order->update(['promo_discount_laar' => $totalPromoDiscount]);
+
             return [];
         }
 
@@ -430,6 +444,9 @@ class PromotionEvaluator
         if ($promotion->budget_laar === null) {
             return null;
         }
+        // Soft cap: spent_laar increments at redemption (order completion), while
+        // this check runs at apply time — concurrent pending carts can overshoot
+        // the budget slightly before any of them pay.
         $budget = (int) $promotion->budget_laar;
         $spent = (int) ($promotion->spent_laar ?? 0);
         if ($spent + $discountLaar > $budget) {
