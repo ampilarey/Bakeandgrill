@@ -1255,6 +1255,18 @@ textarea.field-input {
   transform: none;
 }
 
+/* ZUS cards float on the page — no container chrome / hover lift */
+.menu-card-article--zus,
+.menu-card-article--zus:hover,
+.menu-card-article--zus.menu-card-on-sale,
+.menu-card-article--zus.menu-card-on-sale:hover {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 /* Unavailable overlay on menu card image */
 .menu-card-unavail-overlay {
   position: absolute;
@@ -1939,21 +1951,17 @@ textarea.field-input {
   flex-direction: column;
   align-items: center;
   height: 100%;
-  padding: 0.85rem 0.65rem 0.95rem;
-  border-radius: var(--radius-xl, 14px);
-  border: 1px solid var(--color-border);
-  background:
-    radial-gradient(
-      120% 90% at 50% 0%,
-      color-mix(in srgb, var(--color-primary) 14%, var(--color-surface)) 0%,
-      var(--color-surface) 55%
-    );
+  padding: 0.55rem 0.35rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   cursor: pointer;
   text-align: center;
   outline: none;
 }
 
-.menu-card-article--zus:focus-visible {
+.menu-card-article--zus:focus-visible .menu-card-media-circle__frame {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
@@ -1967,7 +1975,7 @@ textarea.field-input {
   align-items: center;
   gap: 0.85rem;
   text-align: start;
-  padding: 0.65rem 0.85rem;
+  padding: 0.45rem 0.25rem;
 }
 
 .menu-card-media-circle {
@@ -1975,7 +1983,7 @@ textarea.field-input {
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.55rem;
 }
 
 .menu-card-media-circle--list {
@@ -1984,23 +1992,27 @@ textarea.field-input {
   flex-shrink: 0;
 }
 
+/* True circle: square box (aspect-ratio 1/1) + border-radius 50% */
 .menu-card-media-circle__frame {
-  width: clamp(120px, 34vw, 140px);
-  height: clamp(120px, 34vw, 140px);
+  --menu-circle-size: min(132px, 34vw);
+  width: var(--menu-circle-size);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
   border-radius: 50%;
   overflow: hidden;
   background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-alt));
-  box-shadow: 0 6px 18px rgba(28, 20, 8, 0.1);
   position: relative;
 }
 
 .menu-card-media-circle--list .menu-card-media-circle__frame {
-  width: 88px;
-  height: 88px;
+  --menu-circle-size: 88px;
 }
 
 .menu-card-media-circle__slider.menu-image-slider,
 .menu-card-media-circle__frame .menu-image-slider {
+  position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
   aspect-ratio: 1 / 1 !important;
@@ -2025,7 +2037,7 @@ textarea.field-input {
 .menu-card-article--zus .menu-card-fav-btn {
   position: absolute;
   top: -0.15rem;
-  right: max(0px, calc(50% - 70px - 0.35rem));
+  right: max(0px, calc(50% - (var(--menu-circle-size, 132px) / 2) - 0.35rem));
   z-index: 4;
   display: inline-flex;
   align-items: center;
@@ -2051,7 +2063,7 @@ textarea.field-input {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.15rem;
   width: 100%;
   flex: 1;
   min-width: 0;
@@ -2063,8 +2075,8 @@ textarea.field-input {
 
 .menu-card-article--zus .menu-card-name {
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 800;
+  font-size: 1rem; /* ~16px */
+  font-weight: 600;
   color: var(--color-text);
   line-height: 1.25;
   display: -webkit-box;
@@ -2076,8 +2088,8 @@ textarea.field-input {
 
 .menu-card-article--zus .menu-card-desc {
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.8125rem; /* ~13px */
+  font-weight: 400;
   color: var(--color-text-muted);
   line-height: 1.3;
   display: -webkit-box;
@@ -2089,48 +2101,46 @@ textarea.field-input {
 
 .menu-card-article--zus .menu-card-price-row {
   margin-top: auto;
-  padding-top: 0.35rem;
+  padding-top: 0.2rem;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
 .menu-card-article--list .menu-card-price-row {
   justify-content: flex-start;
 }
 
-.menu-card-price-note {
-  font-size: 0.7rem;
-  font-weight: 700;
+.menu-card-article--zus .menu-card-price,
+.menu-card-article--zus .menu-card-price-sale {
+  font-size: 0.9375rem; /* ~15px — not heavier than the name */
+  font-weight: 500;
   color: var(--color-text-muted);
-  text-transform: lowercase;
-}
-
-.menu-card-article--zus .menu-card-price {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
 
 .menu-card-article--zus .menu-card-price-sale {
-  font-size: 0.95rem;
+  color: #b45309;
 }
 
 .menu-card-article--zus .menu-card-price-was {
-  font-size: 0.72rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  opacity: 0.75;
 }
 
 .menu-card-article--zus .menu-card-unavail-overlay {
   border-radius: 50%;
-  inset: auto;
-  width: clamp(120px, 34vw, 140px);
-  height: clamp(120px, 34vw, 140px);
-  left: 50%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  left: 0;
   top: 0;
-  transform: translateX(-50%);
+  transform: none;
 }
 
 .menu-media-placeholder {
@@ -2288,16 +2298,16 @@ textarea.field-input {
   flex-shrink: 0;
 }
 
-/* Always fills the menu column. True 7:3 when height fits; on wide
-   desktop columns max-height wins and object-fit:cover keeps the crop. */
+/* Thin ZUS-style category strip — keep items above the fold */
 .menu-cat-promo {
   position: relative;
   width: 100%;
-  aspect-ratio: 7 / 3;
-  max-height: 160px;
-  border-radius: var(--radius-xl, 14px);
+  height: 56px;
+  max-height: 56px;
+  aspect-ratio: auto;
+  border-radius: var(--radius-lg, 12px);
   overflow: hidden;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.45rem;
   background: var(--color-surface-alt, #F3EEE7);
 }
 
@@ -2315,54 +2325,43 @@ textarea.field-input {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(28, 20, 8, 0.05) 0%, rgba(28, 20, 8, 0.55) 100%),
-    linear-gradient(90deg, rgba(28, 20, 8, 0.35) 0%, transparent 55%);
+    linear-gradient(90deg, rgba(28, 20, 8, 0.55) 0%, rgba(28, 20, 8, 0.2) 55%, transparent 100%);
   pointer-events: none;
 }
 
 .menu-cat-promo__copy {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 0.85rem 1rem;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.4rem 0.75rem;
   color: #fff;
   z-index: 1;
 }
 
 .menu-cat-promo__eyebrow {
-  margin: 0 0 0.15rem;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.85;
+  display: none;
 }
 
 .menu-cat-promo__title {
   margin: 0;
-  font-size: clamp(1.05rem, 3.6vw, 1.35rem);
-  font-weight: 800;
-  line-height: 1.15;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .menu-cat-promo__desc {
-  margin: 0.3rem 0 0;
-  font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1.35;
-  opacity: 0.92;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  max-width: 36rem;
+  display: none;
 }
 
 .menu-cat-title {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: var(--color-dark);
   display: flex;
@@ -2378,48 +2377,34 @@ textarea.field-input {
   flex-shrink: 0;
 }
 
+/* Subcategory header — smaller / lighter than parent section title */
+.menu-subcategory {
+  margin-top: 0.35rem;
+}
+
+.menu-subcat-title {
+  margin: 0 0 0.55rem;
+  padding: 0.15rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  text-transform: none;
+  border: none;
+}
+
 .menu-section-header.is-active .menu-cat-promo {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 45%, transparent);
 }
 
-@media (max-width: 479px) {
+@media (min-width: 768px) {
   .menu-cat-promo {
-    /* ~250–320px column beside rail → ~107–137px at 7:3 */
-    max-height: 140px;
-    border-radius: var(--radius-lg, 12px);
-  }
-
-  .menu-cat-promo__copy {
-    padding: 0.65rem 0.8rem;
+    height: 64px;
+    max-height: 64px;
   }
 
   .menu-cat-promo__title {
     font-size: 1.05rem;
-  }
-
-  .menu-cat-promo__desc {
-    -webkit-line-clamp: 1;
-  }
-}
-
-@media (min-width: 480px) and (max-width: 767px) {
-  .menu-cat-promo {
-    max-height: 180px;
-  }
-}
-
-@media (min-width: 768px) {
-  .menu-cat-promo {
-    /* Wide desktop column: cap height so banner doesn’t dominate */
-    max-height: 220px;
-  }
-
-  .menu-cat-promo__copy {
-    padding: 1rem 1.15rem;
-  }
-
-  .menu-cat-promo__title {
-    font-size: clamp(1.2rem, 1.5vw, 1.5rem);
   }
 }
 

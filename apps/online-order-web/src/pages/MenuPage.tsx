@@ -350,23 +350,35 @@ export function MenuPage() {
   );
 
   const sectionedMenu = useMemo(() => {
-    const childToParent = new Map<number, number>();
-    for (const cat of categories) {
-      if (cat.parent_id != null) childToParent.set(cat.id, cat.parent_id);
-    }
-
     const usedItemIds = new Set<number>();
     const sections = parentCategories
       .map((category) => {
-        const sectionItems = items.filter((item) => {
-          const categoryId = item.category_id;
-          if (categoryId == null) return false;
-          return categoryId === category.id || childToParent.get(categoryId) === category.id;
-        });
-        for (const item of sectionItems) usedItemIds.add(item.id);
-        return { category, items: sortMenuItems(sectionItems, sortBy) };
+        const childCats = categories
+          .filter((c) => c.parent_id === category.id)
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
+
+        const directItems = sortMenuItems(
+          items.filter((item) => item.category_id === category.id),
+          sortBy,
+        );
+        const subcategories = childCats
+          .map((sub) => ({
+            category: sub,
+            items: sortMenuItems(
+              items.filter((item) => item.category_id === sub.id),
+              sortBy,
+            ),
+          }))
+          .filter((block) => block.items.length > 0);
+
+        for (const item of directItems) usedItemIds.add(item.id);
+        for (const block of subcategories) {
+          for (const item of block.items) usedItemIds.add(item.id);
+        }
+
+        return { category, directItems, subcategories };
       })
-      .filter((section) => section.items.length > 0);
+      .filter((section) => section.directItems.length > 0 || section.subcategories.length > 0);
 
     const other = sortMenuItems(items.filter((item) => !usedItemIds.has(item.id)), sortBy);
     const catering = sortMenuItems(items.filter((item) => !!item.is_catering), sortBy);
@@ -404,13 +416,17 @@ export function MenuPage() {
   useEffect(() => {
     if (filtersActive || loading || sectionedMenu.sections.length === 0) return;
     if (typeof IntersectionObserver === 'undefined') return;
-    const headers = Array.from(document.querySelectorAll<HTMLElement>('.menu-section-header[data-category-id]'));
+    const headers = Array.from(document.querySelectorAll<HTMLElement>(
+      '.menu-section-header[data-category-id], .menu-subcategory[data-category-id]',
+    ));
     if (headers.length === 0) return;
 
     sectionVisibilityRef.current = new Map();
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
-        const id = Number((entry.target as HTMLElement).dataset.categoryId);
+        const el = entry.target as HTMLElement;
+        // Subcategory spy maps to parent rail id (parent_id ?? id)
+        const id = Number(el.dataset.parentCategoryId || el.dataset.categoryId);
         if (!Number.isFinite(id)) continue;
         sectionVisibilityRef.current.set(id, {
           id,
@@ -717,9 +733,31 @@ export function MenuPage() {
                     category={section.category}
                     active={activeCategoryId === section.category.id}
                   />
-                  <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1.25rem' }}>
-                    {section.items.map(renderProductCard)}
-                  </div>
+                  {section.directItems.length > 0 && (
+                    <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ paddingBottom: '1rem' }}>
+                      {section.directItems.map(renderProductCard)}
+                    </div>
+                  )}
+                  {section.subcategories.map((sub) => (
+                    <div
+                      key={sub.category.id}
+                      className="menu-subcategory"
+                      data-testid="menu-subcategory"
+                      data-category-id={sub.category.id}
+                      data-parent-category-id={section.category.id}
+                      style={{
+                        scrollMarginTop: 'calc(var(--menu-header-height) + 8px)',
+                        paddingBottom: '0.85rem',
+                      }}
+                    >
+                      <h3 className="menu-subcat-title" data-testid="menu-subcat-title">
+                        {sub.category.name}
+                      </h3>
+                      <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'}>
+                        {sub.items.map(renderProductCard)}
+                      </div>
+                    </div>
+                  ))}
                 </section>
               ))}
 

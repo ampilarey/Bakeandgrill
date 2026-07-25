@@ -35,7 +35,7 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
       className={`menu-section-header${active ? ' is-active' : ''}`}
       data-category-id={category.id}
       style={{
-        padding: '0.85rem 0 0.65rem',
+        padding: '0.55rem 0 0.45rem',
         scrollMarginTop: 'calc(var(--menu-header-height) + var(--menu-active-cat-bar-height, 0px) + 8px)',
       }}
     >
@@ -57,6 +57,7 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
         <div className="menu-cat-promo__copy">
           <p className="menu-cat-promo__eyebrow">Category</p>
           <p className="menu-cat-promo__title">{category.name}</p>
+          {/* Description kept in DOM for a11y/tests; CSS hides it on the thin strip */}
           {description ? (
             <p className="menu-cat-promo__desc">{description}</p>
           ) : null}

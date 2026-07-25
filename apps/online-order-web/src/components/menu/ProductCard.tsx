@@ -106,6 +106,8 @@ export function ProductCard({
 
   const priceNote = (item.price_note || '').trim();
   const logoSrc = s.logo || '/logo.png';
+  const formatCardPrice = (n: number) => `${n.toFixed(2)}/-`;
+  const fromPrefix = priceNote || (showFromPrice ? 'From' : '');
 
   const openItem = () => {
     if (!isUnavailable) onSelectItem(item, 1);
@@ -139,7 +141,10 @@ export function ProductCard({
       data-testid="product-card"
     >
       <div className={`menu-card-media-circle${isList ? ' menu-card-media-circle--list' : ''}`}>
-        <div className="menu-card-media-circle__frame">
+        <div
+          className="menu-card-media-circle__frame"
+          data-testid="menu-card-media-frame"
+        >
           <MenuImageSlider
             slides={slides}
             alt={mediaAlt}
@@ -174,17 +179,12 @@ export function ProductCard({
         {detailLine ? (
           <p className="menu-card-desc">{detailLine}</p>
         ) : null}
-        <div className="menu-card-price-row">
-          {priceNote ? (
-            <span className="menu-card-price-note">{priceNote}</span>
-          ) : showFromPrice ? (
-            <span className="menu-card-price-note">From</span>
-          ) : null}
+        <div className="menu-card-price-row" data-testid="menu-card-price-row">
           <span className={onSale ? 'menu-card-price-sale' : 'menu-card-price'}>
-            MVR {displayPrice.toFixed(2)}
+            {fromPrefix ? `${fromPrefix} ${formatCardPrice(displayPrice)}` : formatCardPrice(displayPrice)}
           </span>
           {hasSale && originalPrice != null && (
-            <span className="menu-card-price-was">MVR {originalPrice.toFixed(2)}</span>
+            <span className="menu-card-price-was">{formatCardPrice(originalPrice)}</span>
           )}
         </div>
       </div>

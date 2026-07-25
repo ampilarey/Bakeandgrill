@@ -20,7 +20,7 @@ const baseCat: Category = {
 };
 
 describe('MenuSectionHeader (ZUS-style)', () => {
-  it('renders promo banner image, overlay title, and accent title row', () => {
+  it('renders thin promo strip, overlay title, and accent title row', () => {
     const { container } = render(<MenuSectionHeader category={baseCat} active />);
 
     expect(container.querySelector('.menu-section-header')).toHaveClass('is-active');
@@ -29,6 +29,7 @@ describe('MenuSectionHeader (ZUS-style)', () => {
     expect(img?.src).toContain('/storage/categories/grill.jpg');
     expect(screen.getByText('Category')).toBeInTheDocument();
     expect(screen.getAllByText('Grill Favourites').length).toBeGreaterThanOrEqual(2);
+    // Description remains in DOM; thin-strip CSS hides it visually
     expect(screen.getByText('Charcoal hits and house sauces.')).toBeInTheDocument();
     expect(container.querySelector('.menu-cat-title__bar')).toBeTruthy();
   });

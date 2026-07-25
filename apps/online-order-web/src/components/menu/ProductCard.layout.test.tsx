@@ -28,15 +28,18 @@ vi.mock('./MenuImageSlider', () => ({
     logoSrc,
     posterOnly,
     className,
+    aspectRatio,
   }: {
     logoSrc?: string;
     posterOnly?: boolean;
     className?: string;
+    aspectRatio?: string;
   }) => (
     <div
       data-testid="slider"
       data-logo={logoSrc || ''}
       data-poster-only={posterOnly ? '1' : '0'}
+      data-aspect={aspectRatio || ''}
       className={className}
     />
   ),
@@ -59,7 +62,7 @@ describe('ProductCard ZUS compact layout', () => {
     langRef.current = 'en';
   });
 
-  it('renders circular media frame, 3 lines, no inline add, and opens detail on tap', async () => {
+  it('floats without card chrome; media frame is square 1/1; price uses /- without MVR', async () => {
     const user = userEvent.setup();
     const onSelectItem = vi.fn();
     const { container } = render(
@@ -71,25 +74,49 @@ describe('ProductCard ZUS compact layout', () => {
       />,
     );
 
-    expect(screen.getByTestId('slider')).toBeInTheDocument();
-    expect(screen.getByTestId('slider')).toHaveAttribute('data-poster-only', '1');
-    expect(container.querySelector('.menu-card-media-circle__frame')).toBeTruthy();
-    expect(container.textContent).not.toContain('🍽️');
+    const card = screen.getByTestId('product-card');
+    expect(card.className).toContain('menu-card-article--zus');
+    // Floating card: no inline chrome (surface comes from transparent CSS class)
+    expect(card.getAttribute('style') || '').not.toMatch(/background|border|box-shadow/i);
 
-    expect(container.querySelector('.menu-card-name')).toBeTruthy();
-    expect(container.querySelector('.menu-card-desc')).toBeTruthy();
-    expect(container.querySelector('.menu-card-price-row')).toBeTruthy();
+    const frame = screen.getByTestId('menu-card-media-frame');
+    expect(frame.className).toContain('menu-card-media-circle__frame');
+    // Square → circle: aspect-ratio 1/1 on slider; frame size is CSS aspect-ratio 1/1
+    expect(screen.getByTestId('slider')).toHaveAttribute('data-aspect', '1 / 1');
 
-    const fav = container.querySelector('.menu-card-fav-btn') as HTMLElement;
-    expect(fav).toBeTruthy();
-    expect(fav.style.minWidth).toBe('44px');
-    expect(fav.style.minHeight).toBe('44px');
+    expect(screen.getByTestId('menu-card-price-row').textContent).toMatch(/100\.00\/-/);
+    expect(container.textContent).not.toMatch(/MVR/);
 
     expect(container.querySelector('.card-add-btn')).toBeNull();
-    expect(container.querySelector('.card-customise-btn')).toBeNull();
-
-    await user.click(screen.getByTestId('product-card'));
+    await user.click(card);
     expect(onSelectItem).toHaveBeenCalledWith(baseItem, 1);
+  });
+
+  it('renders From N/- for variant items and struck was price as N/-', () => {
+    const { container } = render(
+      <ProductCard
+        item={{
+          ...baseItem,
+          has_variants: true,
+          variants: [
+            { id: 1, name: 'S', price: 13.2, is_active: true },
+            { id: 2, name: 'L', price: 18, is_active: true },
+          ],
+          special: {
+            id: 9,
+            badge_label: '15% OFF',
+            discount_pct: 15,
+            original_price: 13.2,
+            effective_price: 11.22,
+          },
+        }}
+        onSelectItem={() => {}}
+        onAddToCart={() => {}}
+      />,
+    );
+
+    expect(container.textContent).toMatch(/From\s+13\.20\/-/);
+    expect(container.textContent).not.toMatch(/MVR/);
   });
 
   it('uses card_name / short_description / price_note when set', () => {
@@ -108,8 +135,7 @@ describe('ProductCard ZUS compact layout', () => {
 
     expect(container.querySelector('.menu-card-name')?.textContent).toBe('Short Burger');
     expect(container.querySelector('.menu-card-desc')?.textContent).toBe('Smoky & juicy');
-    expect(container.querySelector('.menu-card-price-note')?.textContent).toMatch(/from/i);
-    expect(container.textContent).not.toContain(baseItem.name);
+    expect(screen.getByTestId('menu-card-price-row').textContent).toMatch(/from\s+100\.00\/-/i);
   });
 
   it('falls back to name + truncated description when card fields empty', () => {
