@@ -258,14 +258,6 @@ function buildSpecialPayload(form: SpecialForm, item: MenuItem | undefined): Dai
   };
 }
 
-/** List/card label: custom badge, else auto % OFF / default. */
-function displayBadgeLabel(s: DailySpecial): string {
-  const custom = s.badge_label?.trim();
-  if (custom) return custom;
-  if (s.discount_pct != null && s.discount_pct > 0) return `${s.discount_pct}% OFF`;
-  return 'Special Offer';
-}
-
 function conflictIdFromError(e: unknown): number | null {
   if (e instanceof ApiRequestError && e.body && typeof e.body === 'object' && 'errors' in e.body) {
     const id = (e.body as { errors?: Record<string, string[]> }).errors?.conflicting_special_id?.[0];
@@ -710,7 +702,11 @@ export default function SpecialsPage() {
                       {hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
                     </Badge>
                   </td>
-                  <td style={TD}><Badge color="orange">{displayBadgeLabel(s)}</Badge></td>
+                  <td style={TD}>
+                    {s.badge_label?.trim()
+                      ? <Badge color="orange">{s.badge_label.trim()}</Badge>
+                      : <span style={{ color: '#9C8E7E' }}>—</span>}
+                  </td>
                   <td style={{ ...TD, fontSize: 13 }}>{renderSpecialPrice(s)}</td>
                   <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{s.start_date} → {s.end_date}</td>
                   <td style={{ ...TD, fontSize: 12 }}>
@@ -745,7 +741,7 @@ export default function SpecialsPage() {
                     <Badge color={hasVariantOverrides(s) ? 'purple' : isPctDiscount(s) ? 'orange' : 'blue'}>
                       {hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
                     </Badge>
-                    <Badge color="orange">{displayBadgeLabel(s)}</Badge>
+                    {s.badge_label?.trim() && <Badge color="orange">{s.badge_label.trim()}</Badge>}
                     <Badge color={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge>
                   </div>
                 </div>
@@ -905,8 +901,11 @@ export default function SpecialsPage() {
                   : 'Select a menu item to link special price and discount %.'}
             </p>
             <label>
-              <span style={fieldLabel}>Badge Label</span>
+              <span style={fieldLabel}>Badge Label (optional)</span>
               <Input placeholder="e.g. Chef's Special" value={form.badge_label} onChange={v => setForm(f => ({ ...f, badge_label: v }))} />
+              <span style={{ display: 'block', marginTop: 4, fontSize: 11, color: '#9C8E7E' }}>
+                Leave blank for no custom badge. The Type column still shows the discount.
+              </span>
             </label>
             <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label>

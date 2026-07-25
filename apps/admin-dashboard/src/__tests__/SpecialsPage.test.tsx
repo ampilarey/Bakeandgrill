@@ -216,10 +216,10 @@ describe('SpecialsPage', () => {
       }));
     });
 
-    // List falls back to auto "% OFF" once the custom badge is cleared.
+    // List shows no custom badge once cleared (Type column still describes the discount).
     await waitFor(() => {
-      expect(screen.getAllByText('22% OFF').length).toBeGreaterThan(0);
       expect(screen.queryByText("Chef's Special")).toBeNull();
+      expect(screen.queryByText('22% OFF')).toBeNull();
     });
   });
 
