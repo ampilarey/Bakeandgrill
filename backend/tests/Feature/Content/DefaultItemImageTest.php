@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Content;
 
+use App\Domains\Content\DefaultItemImageSync;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
@@ -158,6 +159,26 @@ class DefaultItemImageTest extends TestCase
 
         $orderContent = $this->getJson('/api/content?app=order_app&locale=en')->assertOk()->json('content');
         $this->assertSame('/storage/site/web_only.jpg', $orderContent['default_item_image'] ?? null);
+    }
+
+    public function test_sync_copies_website_value_into_order_app_public_payload_and_busts_cache(): void
+    {
+        SiteSetting::set('default_item_image', '', 'shared');
+        SiteSetting::set('default_item_image', '', 'order_app');
+        SiteSetting::set('default_item_image', '/storage/site/stuck_web.jpg', 'website');
+        // Poison the forever cache the way production did before the cross-scope fix.
+        Cache::forever('content.resolved.order_app.en', [
+            'default_item_image' => '',
+            'logo' => '/logo.png',
+        ]);
+
+        DefaultItemImageSync::run();
+
+        $this->assertSame('/storage/site/stuck_web.jpg', SiteSetting::getScoped('default_item_image', 'order_app'));
+        $this->assertSame('/storage/site/stuck_web.jpg', SiteSetting::getScoped('default_item_image', 'shared'));
+
+        $orderContent = $this->getJson('/api/content?app=order_app&locale=en')->assertOk()->json('content');
+        $this->assertSame('/storage/site/stuck_web.jpg', $orderContent['default_item_image'] ?? null);
     }
 
     private function seedImageLessSpecial(): void
