@@ -66,6 +66,7 @@ const DeliverySettingsPage    = lazyWithRetry(() => import('./pages/DeliverySett
 const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
+const SignagePage             = lazyWithRetry(() => import('./pages/SignagePage').then((m) => ({ default: m.SignagePage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -498,6 +499,11 @@ export default function App() {
                 <Route path="media" element={
                   <PermissionGuard user={user} permission="media.view">
                     <MediaLibraryPage />
+                  </PermissionGuard>
+                } />
+                <Route path="signage" element={
+                  <PermissionGuard user={user} permission="signage.manage">
+                    <SignagePage />
                   </PermissionGuard>
                 } />
                 <Route path="*" element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />

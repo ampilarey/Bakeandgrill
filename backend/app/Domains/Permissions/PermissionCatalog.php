@@ -177,6 +177,7 @@ final class PermissionCatalog
             ['group' => 'Marketing', 'slug' => 'sms_marketing.view', 'name' => 'View SMS marketing'],
             ['group' => 'Marketing', 'slug' => 'sms_marketing.manage', 'name' => 'Manage SMS marketing'],
             ['group' => 'Marketing', 'slug' => 'integrations.sms', 'name' => 'SMS campaigns (legacy)'],
+            ['group' => 'Marketing', 'slug' => 'signage.manage', 'name' => 'Manage TV signage', 'description' => 'TV menu boards, playlists, screens, campaigns & emergency'],
             ['group' => 'SMS', 'slug' => 'sms.logs.view', 'name' => 'View SMS logs', 'description' => 'View SMS audit logs and stats'],
             ['group' => 'SMS', 'slug' => 'sms.templates.edit', 'name' => 'Edit SMS templates', 'description' => 'Edit wording of any SMS template'],
             ['group' => 'SMS', 'slug' => 'sms.settings.manage', 'name' => 'Manage SMS settings', 'description' => 'Toggle SMS types on/off and view Control Center'],

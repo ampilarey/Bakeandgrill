@@ -8,6 +8,8 @@ use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
 use App\Models\Media;
+use App\Models\SignageCampaign;
+use App\Models\SignagePlaylist;
 use App\Models\SiteSetting;
 use App\Support\MediaFileCleaner;
 use Illuminate\Support\Facades\Schema;
@@ -145,7 +147,54 @@ final class MediaUsageResolver
             }
         }
 
+        foreach ($this->signageUsages($candidates) as $row) {
+            $out[] = $row;
+        }
+
         return $this->uniqueRows($out);
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     * @return list<UsageRow>
+     */
+    private function signageUsages(array $candidates): array
+    {
+        $out = [];
+        if (Schema::hasTable('signage_playlists')) {
+            foreach (SignagePlaylist::query()->get(['id', 'name', 'slides', 'theme']) as $playlist) {
+                $blob = json_encode([$playlist->slides, $playlist->theme], JSON_UNESCAPED_UNICODE) ?: '';
+                foreach ($candidates as $url) {
+                    if ($url !== '' && str_contains($blob, $url)) {
+                        $out[] = [
+                            'type' => 'signage_playlist',
+                            'label' => 'Signage playlist: ' . ($playlist->name ?: '#' . $playlist->id),
+                            'id' => (int) $playlist->id,
+                            'field' => 'slides',
+                        ];
+                        break;
+                    }
+                }
+            }
+        }
+        if (Schema::hasTable('signage_campaigns')) {
+            foreach (SignageCampaign::query()->get(['id', 'name', 'slides']) as $campaign) {
+                $blob = json_encode($campaign->slides, JSON_UNESCAPED_UNICODE) ?: '';
+                foreach ($candidates as $url) {
+                    if ($url !== '' && str_contains($blob, $url)) {
+                        $out[] = [
+                            'type' => 'signage_campaign',
+                            'label' => 'Signage campaign: ' . ($campaign->name ?: '#' . $campaign->id),
+                            'id' => (int) $campaign->id,
+                            'field' => 'slides',
+                        ];
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $out;
     }
 
     /**

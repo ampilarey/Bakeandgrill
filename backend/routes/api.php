@@ -161,4 +161,6 @@ Route::get('/content/preview', [App\Http\Controllers\Api\ContentPreviewControlle
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
     ->middleware('throttle:60,1');
 
+require __DIR__ . '/domains/signage.php';
+
 Route::get('/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);

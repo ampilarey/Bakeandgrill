@@ -1,0 +1,286 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Signage\Services;
+
+/**
+ * Pre-built element-tree templates + default playlist + emergency slides.
+ */
+final class SignageTemplateFactory
+{
+    /** @return list<array<string, mixed>> */
+    public static function defaultPlaylistSlides(): array
+    {
+        return [
+            self::template('hero', [
+                'name' => 'Welcome',
+                'seconds' => 12,
+                'weight' => 2,
+                'fields' => [
+                    'title' => '{{branch_name}}',
+                    'subtitle' => 'Freshly baked · Grilled to order',
+                    'eyebrow' => 'Dine-in menu',
+                ],
+            ]),
+            self::template('menu_grid', [
+                'name' => 'Menu highlights',
+                'seconds' => 18,
+                'weight' => 3,
+                'fields' => ['title' => 'On the board'],
+            ]),
+            self::smartSlide('offers', ['name' => "Today's offers", 'seconds' => 14, 'weight' => 4]),
+            self::smartSlide('bestsellers', ['name' => 'Bestsellers', 'seconds' => 14, 'weight' => 3]),
+            self::smartSlide('new', ['name' => 'New on the menu', 'seconds' => 12, 'weight' => 2]),
+            self::template('qr', [
+                'name' => 'Scan for full menu',
+                'seconds' => 10,
+                'weight' => 1,
+                'fields' => [
+                    'title' => 'Scan for the full menu',
+                    'subtitle' => 'Wi‑Fi: {{wifi_name}} · {{wifi_password}}',
+                    'url' => '/order/view',
+                ],
+            ]),
+            self::template('notice', [
+                'name' => 'Next prayer',
+                'seconds' => 8,
+                'weight' => 1,
+                'fields' => [
+                    'title' => 'Next prayer',
+                    'body' => '{{next_prayer}} · {{current_time}}',
+                ],
+            ]),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $opts
+     * @return array<string, mixed>
+     */
+    public static function template(string $key, array $opts = []): array
+    {
+        $fields = is_array($opts['fields'] ?? null) ? $opts['fields'] : [];
+        $base = [
+            'id' => self::id($opts['id'] ?? null),
+            'name' => (string) ($opts['name'] ?? ucfirst(str_replace('_', ' ', $key))),
+            'seconds' => (int) ($opts['seconds'] ?? 12),
+            'weight' => (int) ($opts['weight'] ?? 1),
+            'transition' => (string) ($opts['transition'] ?? 'fade'),
+            'transition_ms' => (int) ($opts['transition_ms'] ?? 700),
+            'background' => $opts['background'] ?? ['type' => 'solid', 'value' => '#1C1408', 'opacity' => 1],
+            'template_origin' => $key,
+            'elements' => [],
+        ];
+
+        $base['elements'] = match ($key) {
+            'hero' => [
+                self::el('text', 6, 28, 88, 14, [
+                    'text' => (string) ($fields['eyebrow'] ?? 'Bake & Grill'),
+                    'style' => ['fontSize' => 3.2, 'fontWeight' => 700, 'color' => '#D4813A', 'letterSpacing' => 0.12, 'textTransform' => 'uppercase'],
+                    'animation' => ['entrance' => 'fade', 'duration' => 700, 'delay' => 100],
+                ]),
+                self::el('text', 6, 40, 88, 18, [
+                    'text' => (string) ($fields['title'] ?? '{{branch_name}}'),
+                    'style' => ['fontSize' => 8, 'fontWeight' => 800, 'color' => '#FFF8F0', 'fontFamily' => 'display'],
+                    'animation' => ['entrance' => 'rise', 'duration' => 800, 'delay' => 200],
+                ]),
+                self::el('text', 6, 60, 70, 10, [
+                    'text' => (string) ($fields['subtitle'] ?? 'Authentic Dhivehi cuisine'),
+                    'style' => ['fontSize' => 3.6, 'fontWeight' => 500, 'color' => '#C4B5A5'],
+                    'animation' => ['entrance' => 'fade', 'duration' => 700, 'delay' => 350],
+                ]),
+                self::el('logo', 78, 8, 16, 14, [
+                    'animation' => ['entrance' => 'fade', 'duration' => 600],
+                ]),
+                self::el('clock', 78, 84, 16, 8, [
+                    'style' => ['fontSize' => 2.8, 'color' => '#C4B5A5', 'textAlign' => 'right'],
+                ]),
+            ],
+            'menu_grid' => [
+                self::el('text', 4, 4, 60, 8, [
+                    'text' => (string) ($fields['title'] ?? 'Menu'),
+                    'style' => ['fontSize' => 4.5, 'fontWeight' => 800, 'color' => '#FFF8F0'],
+                ]),
+                self::el('menu_list', 4, 14, 92, 78, [
+                    'binding' => ['type' => 'category', 'category_id' => $fields['category_id'] ?? null, 'limit' => 12],
+                    'style' => ['fontSize' => 2.8, 'color' => '#FFF8F0', 'columns' => 2],
+                ]),
+                self::el('logo', 86, 3, 10, 10, []),
+            ],
+            'promotion' => [
+                self::el('shape', 0, 0, 100, 100, [
+                    'style' => ['fill' => 'linear-gradient(135deg,#D4813A,#8B4513)', 'opacity' => 1],
+                ]),
+                self::el('text', 8, 30, 84, 16, [
+                    'text' => (string) ($fields['title'] ?? '{{promotion_name}}'),
+                    'style' => ['fontSize' => 7, 'fontWeight' => 800, 'color' => '#fff', 'textAlign' => 'center'],
+                    'animation' => ['entrance' => 'zoom-in', 'emphasis' => 'pulse', 'duration' => 700],
+                ]),
+                self::el('text', 10, 52, 80, 12, [
+                    'text' => (string) ($fields['subtitle'] ?? ''),
+                    'style' => ['fontSize' => 3.5, 'color' => '#FFF8F0', 'textAlign' => 'center'],
+                ]),
+            ],
+            'qr' => [
+                self::el('text', 8, 18, 50, 12, [
+                    'text' => (string) ($fields['title'] ?? 'Scan for menu'),
+                    'style' => ['fontSize' => 5, 'fontWeight' => 800, 'color' => '#FFF8F0'],
+                ]),
+                self::el('text', 8, 34, 50, 10, [
+                    'text' => (string) ($fields['subtitle'] ?? ''),
+                    'style' => ['fontSize' => 2.8, 'color' => '#C4B5A5'],
+                ]),
+                self::el('qr', 62, 22, 30, 50, [
+                    'binding' => ['url' => (string) ($fields['url'] ?? '/order/view')],
+                    'style' => ['background' => '#fff', 'padding' => 2],
+                ]),
+            ],
+            'notice' => [
+                self::el('text', 8, 30, 84, 14, [
+                    'text' => (string) ($fields['title'] ?? 'Notice'),
+                    'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#D4813A', 'textAlign' => 'center'],
+                ]),
+                self::el('text', 10, 48, 80, 20, [
+                    'text' => (string) ($fields['body'] ?? ''),
+                    'style' => ['fontSize' => 3.8, 'color' => '#FFF8F0', 'textAlign' => 'center'],
+                ]),
+            ],
+            'video' => [
+                self::el('video', 0, 0, 100, 100, [
+                    'binding' => ['url' => (string) ($fields['url'] ?? '')],
+                    'style' => ['objectFit' => 'cover'],
+                ]),
+            ],
+            'split' => [
+                self::el('image', 0, 0, 50, 100, [
+                    'binding' => ['url' => (string) ($fields['image'] ?? '')],
+                    'animation' => ['emphasis' => 'ken-burns', 'duration' => 12000],
+                ]),
+                self::el('text', 54, 30, 42, 16, [
+                    'text' => (string) ($fields['title'] ?? ''),
+                    'style' => ['fontSize' => 5.5, 'fontWeight' => 800, 'color' => '#FFF8F0'],
+                ]),
+                self::el('text', 54, 50, 42, 20, [
+                    'text' => (string) ($fields['body'] ?? ''),
+                    'style' => ['fontSize' => 3, 'color' => '#C4B5A5'],
+                ]),
+            ],
+            'full_screen' => [
+                self::el('image', 0, 0, 100, 100, [
+                    'binding' => ['url' => (string) ($fields['image'] ?? '')],
+                    'animation' => ['emphasis' => 'ken-burns', 'duration' => 14000],
+                ]),
+                self::el('text', 6, 78, 88, 12, [
+                    'text' => (string) ($fields['title'] ?? ''),
+                    'style' => ['fontSize' => 5, 'fontWeight' => 800, 'color' => '#fff', 'textShadow' => '0 2px 12px rgba(0,0,0,.5)'],
+                ]),
+            ],
+            'blank' => [],
+            default => [],
+        };
+
+        return $base;
+    }
+
+    /**
+     * @param  array<string, mixed>  $opts
+     * @return array<string, mixed>
+     */
+    public static function smartSlide(string $smartType, array $opts = []): array
+    {
+        $slide = self::template('menu_grid', array_merge($opts, [
+            'fields' => ['title' => $opts['name'] ?? ucfirst($smartType)],
+        ]));
+        $slide['template_origin'] = 'smart:' . $smartType;
+        $slide['smart_type'] = $smartType;
+        // Replace menu_list binding with smart binding
+        foreach ($slide['elements'] as &$el) {
+            if (($el['type'] ?? '') === 'menu_list') {
+                $el['binding'] = ['type' => 'smart', 'smart_type' => $smartType, 'limit' => 10];
+            }
+        }
+        unset($el);
+
+        return $slide;
+    }
+
+    /** @return array<string, mixed> */
+    public static function emergencySlide(string $mode): array
+    {
+        $copy = match ($mode) {
+            'closed' => ['title' => 'We are closed', 'body' => 'Thank you for visiting. See you soon.'],
+            'prayer_break' => ['title' => 'Prayer break', 'body' => 'Service will resume shortly. {{next_prayer}}'],
+            'maintenance' => ['title' => 'Under maintenance', 'body' => 'We will be right back.'],
+            'fire_alarm' => ['title' => 'Please evacuate', 'body' => 'Follow staff instructions. Leave calmly.'],
+            'power_failure' => ['title' => 'Temporary power issue', 'body' => 'Service may be delayed. Thank you for your patience.'],
+            'kitchen_closed' => ['title' => 'Kitchen temporarily closed', 'body' => 'Please ask staff for details.'],
+            default => ['title' => 'Please stand by', 'body' => ''],
+        };
+
+        return self::template('notice', [
+            'name' => 'Emergency: ' . $mode,
+            'seconds' => 60,
+            'weight' => 1,
+            'transition' => 'fade',
+            'fields' => $copy,
+            'background' => ['type' => 'solid', 'value' => '#1C1408', 'opacity' => 1],
+        ]);
+    }
+
+    /**
+     * @return list<array{key: string, label: string}>
+     */
+    public static function templateCatalog(): array
+    {
+        return [
+            ['key' => 'hero', 'label' => 'Hero'],
+            ['key' => 'menu_grid', 'label' => 'Menu grid'],
+            ['key' => 'promotion', 'label' => 'Promotion'],
+            ['key' => 'qr', 'label' => 'QR'],
+            ['key' => 'notice', 'label' => 'Notice'],
+            ['key' => 'video', 'label' => 'Video'],
+            ['key' => 'split', 'label' => 'Split'],
+            ['key' => 'full_screen', 'label' => 'Full screen'],
+            ['key' => 'blank', 'label' => 'Blank'],
+            ['key' => 'smart:offers', 'label' => 'Smart · Offers'],
+            ['key' => 'smart:todays_special', 'label' => "Smart · Today's special"],
+            ['key' => 'smart:new', 'label' => 'Smart · New items'],
+            ['key' => 'smart:bestsellers', 'label' => 'Smart · Bestsellers'],
+            ['key' => 'smart:chef_recommendation', 'label' => 'Smart · Chef pick'],
+            ['key' => 'smart:combos', 'label' => 'Smart · Combos'],
+            ['key' => 'smart:category_highlight', 'label' => 'Smart · Category'],
+            ['key' => 'smart:featured_product', 'label' => 'Smart · Featured'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private static function el(string $type, float $x, float $y, float $w, float $h, array $extra = []): array
+    {
+        return array_merge([
+            'id' => self::id(),
+            'type' => $type,
+            'x' => $x,
+            'y' => $y,
+            'w' => $w,
+            'h' => $h,
+            'rotation' => 0,
+            'z' => 1,
+            'style' => [],
+            'animation' => [],
+            'binding' => [],
+        ], $extra);
+    }
+
+    private static function id(?string $force = null): string
+    {
+        if (is_string($force) && $force !== '') {
+            return $force;
+        }
+
+        return substr(bin2hex(random_bytes(8)), 0, 12);
+    }
+}

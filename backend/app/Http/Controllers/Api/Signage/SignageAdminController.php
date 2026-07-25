@@ -1,0 +1,365 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\Signage;
+
+use App\Domains\Signage\Services\SignageCache;
+use App\Domains\Signage\Services\SignageTemplateFactory;
+use App\Http\Controllers\Controller;
+use App\Models\SignageCampaign;
+use App\Models\SignageGroup;
+use App\Models\SignagePlaylist;
+use App\Models\SignageScreen;
+use App\Models\SiteSetting;
+use App\Services\AuditLogService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+
+final class SignageAdminController extends Controller
+{
+    public function __construct(private readonly AuditLogService $audit) {}
+
+    public function overview(): JsonResponse
+    {
+        return response()->json([
+            'playlists' => SignagePlaylist::query()->orderBy('name')->get(),
+            'groups' => SignageGroup::query()->with('playlist:id,name')->orderBy('name')->get(),
+            'screens' => SignageScreen::query()->with(['group:id,name', 'playlist:id,name'])->orderBy('name')->get(),
+            'campaigns' => SignageCampaign::query()->with('playlist:id,name')->orderByDesc('priority')->get(),
+            'emergency' => (string) SiteSetting::get('signage_emergency', 'none'),
+            'prayer' => $this->prayerConfig(),
+            'templates' => SignageTemplateFactory::templateCatalog(),
+            'custom_templates' => $this->customTemplates(),
+            'wifi' => [
+                'name' => (string) SiteSetting::get('signage_wifi_name', ''),
+                'password' => (string) SiteSetting::get('signage_wifi_password', ''),
+            ],
+        ]);
+    }
+
+    // ── Playlists ────────────────────────────────────────────────────────────
+
+    public function storePlaylist(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'slides' => 'nullable|array',
+            'theme' => 'nullable|array',
+            'is_active' => 'sometimes|boolean',
+            'store_id' => 'nullable|integer',
+        ]);
+        $row = SignagePlaylist::create([
+            'name' => $data['name'],
+            'slides' => $data['slides'] ?? [],
+            'theme' => $data['theme'] ?? [],
+            'is_active' => $data['is_active'] ?? true,
+            'store_id' => $data['store_id'] ?? null,
+        ]);
+        $this->touch($request, 'signage.playlist.created', $row->id, [], $row->toArray());
+
+        return response()->json(['data' => $row], 201);
+    }
+
+    public function updatePlaylist(Request $request, int $id): JsonResponse
+    {
+        $row = SignagePlaylist::query()->findOrFail($id);
+        $old = $row->toArray();
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:120',
+            'slides' => 'nullable|array',
+            'theme' => 'nullable|array',
+            'is_active' => 'sometimes|boolean',
+            'store_id' => 'nullable|integer',
+        ]);
+        $row->fill($data)->save();
+        $this->touch($request, 'signage.playlist.updated', $row->id, $old, $row->toArray());
+
+        return response()->json(['data' => $row->fresh()]);
+    }
+
+    public function destroyPlaylist(Request $request, int $id): JsonResponse
+    {
+        $row = SignagePlaylist::query()->findOrFail($id);
+        $old = $row->toArray();
+        $row->delete();
+        $this->touch($request, 'signage.playlist.deleted', $id, $old, []);
+
+        return response()->json(['ok' => true]);
+    }
+
+    // ── Groups ───────────────────────────────────────────────────────────────
+
+    public function storeGroup(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'playlist_id' => 'nullable|integer|exists:signage_playlists,id',
+            'theme' => 'nullable|array',
+            'orientation' => 'nullable|string|in:landscape,portrait',
+            'refresh_seconds' => 'nullable|integer|min:15|max:3600',
+            'store_id' => 'nullable|integer',
+        ]);
+        $row = SignageGroup::create($data);
+        $this->touch($request, 'signage.group.created', $row->id, [], $row->toArray());
+
+        return response()->json(['data' => $row], 201);
+    }
+
+    public function updateGroup(Request $request, int $id): JsonResponse
+    {
+        $row = SignageGroup::query()->findOrFail($id);
+        $old = $row->toArray();
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:120',
+            'playlist_id' => 'nullable|integer|exists:signage_playlists,id',
+            'theme' => 'nullable|array',
+            'orientation' => 'nullable|string|in:landscape,portrait',
+            'refresh_seconds' => 'nullable|integer|min:15|max:3600',
+            'store_id' => 'nullable|integer',
+        ]);
+        $row->fill($data)->save();
+        $this->touch($request, 'signage.group.updated', $row->id, $old, $row->toArray());
+
+        return response()->json(['data' => $row->fresh()]);
+    }
+
+    public function destroyGroup(Request $request, int $id): JsonResponse
+    {
+        $row = SignageGroup::query()->findOrFail($id);
+        $old = $row->toArray();
+        $row->delete();
+        $this->touch($request, 'signage.group.deleted', $id, $old, []);
+
+        return response()->json(['ok' => true]);
+    }
+
+    // ── Screens ──────────────────────────────────────────────────────────────
+
+    public function storeScreen(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'slug' => 'nullable|string|max:80|unique:signage_screens,slug',
+            'group_id' => 'nullable|integer|exists:signage_groups,id',
+            'playlist_id' => 'nullable|integer|exists:signage_playlists,id',
+            'orientation' => 'nullable|string|in:landscape,portrait',
+            'resolution' => 'nullable|string|max:32',
+            'refresh_seconds' => 'nullable|integer|min:15|max:3600',
+            'fallback' => 'nullable|array',
+            'overrides' => 'nullable|array',
+            'is_default' => 'sometimes|boolean',
+            'store_id' => 'nullable|integer',
+        ]);
+        $data['slug'] = $data['slug'] ?? Str::slug($data['name']);
+        if (! empty($data['is_default'])) {
+            SignageScreen::query()->where('is_default', true)->update(['is_default' => false]);
+        }
+        $row = SignageScreen::create($data);
+        $this->touch($request, 'signage.screen.created', $row->id, [], $row->toArray());
+
+        return response()->json(['data' => $row], 201);
+    }
+
+    public function updateScreen(Request $request, int $id): JsonResponse
+    {
+        $row = SignageScreen::query()->findOrFail($id);
+        $old = $row->toArray();
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:120',
+            'slug' => ['sometimes', 'string', 'max:80', Rule::unique('signage_screens', 'slug')->ignore($row->id)],
+            'group_id' => 'nullable|integer|exists:signage_groups,id',
+            'playlist_id' => 'nullable|integer|exists:signage_playlists,id',
+            'orientation' => 'nullable|string|in:landscape,portrait',
+            'resolution' => 'nullable|string|max:32',
+            'refresh_seconds' => 'nullable|integer|min:15|max:3600',
+            'fallback' => 'nullable|array',
+            'overrides' => 'nullable|array',
+            'is_default' => 'sometimes|boolean',
+            'store_id' => 'nullable|integer',
+        ]);
+        if (! empty($data['is_default'])) {
+            SignageScreen::query()->where('is_default', true)->where('id', '!=', $row->id)->update(['is_default' => false]);
+        }
+        $row->fill($data)->save();
+        $this->touch($request, 'signage.screen.updated', $row->id, $old, $row->toArray());
+
+        return response()->json(['data' => $row->fresh()]);
+    }
+
+    public function destroyScreen(Request $request, int $id): JsonResponse
+    {
+        $row = SignageScreen::query()->findOrFail($id);
+        $old = $row->toArray();
+        $row->delete();
+        $this->touch($request, 'signage.screen.deleted', $id, $old, []);
+
+        return response()->json(['ok' => true]);
+    }
+
+    // ── Campaigns ────────────────────────────────────────────────────────────
+
+    public function storeCampaign(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:120',
+            'playlist_id' => 'nullable|integer|exists:signage_playlists,id',
+            'slides' => 'nullable|array',
+            'date_start' => 'nullable|date',
+            'date_end' => 'nullable|date|after_or_equal:date_start',
+            'days' => 'nullable|array',
+            'windows' => 'nullable|array',
+            'priority' => 'nullable|integer|min:0|max:9999',
+            'is_active' => 'sometimes|boolean',
+            'store_id' => 'nullable|integer',
+        ]);
+        $row = SignageCampaign::create($data);
+        $this->touch($request, 'signage.campaign.created', $row->id, [], $row->toArray());
+
+        return response()->json(['data' => $row], 201);
+    }
+
+    public function updateCampaign(Request $request, int $id): JsonResponse
+    {
+        $row = SignageCampaign::query()->findOrFail($id);
+        $old = $row->toArray();
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:120',
+            'playlist_id' => 'nullable|integer|exists:signage_playlists,id',
+            'slides' => 'nullable|array',
+            'date_start' => 'nullable|date',
+            'date_end' => 'nullable|date',
+            'days' => 'nullable|array',
+            'windows' => 'nullable|array',
+            'priority' => 'nullable|integer|min:0|max:9999',
+            'is_active' => 'sometimes|boolean',
+            'store_id' => 'nullable|integer',
+        ]);
+        $row->fill($data)->save();
+        $this->touch($request, 'signage.campaign.updated', $row->id, $old, $row->toArray());
+
+        return response()->json(['data' => $row->fresh()]);
+    }
+
+    public function destroyCampaign(Request $request, int $id): JsonResponse
+    {
+        $row = SignageCampaign::query()->findOrFail($id);
+        $old = $row->toArray();
+        $row->delete();
+        $this->touch($request, 'signage.campaign.deleted', $id, $old, []);
+
+        return response()->json(['ok' => true]);
+    }
+
+    // ── Emergency / prayer / templates ───────────────────────────────────────
+
+    public function updateEmergency(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'mode' => 'required|string|in:none,closed,prayer_break,maintenance,fire_alarm,power_failure,kitchen_closed',
+        ]);
+        $old = (string) SiteSetting::get('signage_emergency', 'none');
+        SiteSetting::set('signage_emergency', $data['mode']);
+        SiteSetting::bust();
+        $this->touch($request, 'signage.emergency.updated', null, ['mode' => $old], $data);
+        SignageCache::bust();
+
+        return response()->json(['mode' => $data['mode']]);
+    }
+
+    public function updatePrayer(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'enabled' => 'required|boolean',
+            'prayers' => 'nullable|array',
+            'prayers.*' => 'string|in:fajr,dhuhr,asr,maghrib,isha',
+            'break_minutes' => 'nullable|integer|min:1|max:60',
+        ]);
+        $old = $this->prayerConfig();
+        $cfg = [
+            'enabled' => (bool) $data['enabled'],
+            'prayers' => $data['prayers'] ?? $old['prayers'],
+            'break_minutes' => (int) ($data['break_minutes'] ?? $old['break_minutes']),
+        ];
+        SiteSetting::set('signage_prayer', $cfg);
+        SiteSetting::bust();
+        $this->touch($request, 'signage.prayer.updated', null, $old, $cfg);
+        SignageCache::bust();
+
+        return response()->json(['prayer' => $cfg]);
+    }
+
+    public function saveCustomTemplate(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => 'required|string|max:80',
+            'label' => 'required|string|max:120',
+            'slide' => 'required|array',
+        ]);
+        $templates = $this->customTemplates();
+        $templates[$data['key']] = [
+            'key' => $data['key'],
+            'label' => $data['label'],
+            'slide' => $data['slide'],
+        ];
+        SiteSetting::set('signage_custom_templates', $templates);
+        SiteSetting::bust();
+        $this->touch($request, 'signage.template.saved', null, [], ['key' => $data['key']]);
+        SignageCache::bust();
+
+        return response()->json(['templates' => array_values($templates)]);
+    }
+
+    public function buildTemplate(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => 'required|string|max:80',
+            'opts' => 'nullable|array',
+        ]);
+        $key = $data['key'];
+        $opts = $data['opts'] ?? [];
+        if (str_starts_with($key, 'smart:')) {
+            $slide = SignageTemplateFactory::smartSlide(substr($key, 6), $opts);
+        } else {
+            $custom = $this->customTemplates()[$key] ?? null;
+            if ($custom) {
+                $slide = $custom['slide'];
+            } else {
+                $slide = SignageTemplateFactory::template($key, $opts);
+            }
+        }
+
+        return response()->json(['slide' => $slide]);
+    }
+
+    /** @return array{enabled: bool, prayers: list<string>, break_minutes: int} */
+    private function prayerConfig(): array
+    {
+        $raw = SiteSetting::get('signage_prayer', '{}');
+        $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+
+        return [
+            'enabled' => (bool) ($cfg['enabled'] ?? true),
+            'prayers' => array_values($cfg['prayers'] ?? ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']),
+            'break_minutes' => (int) ($cfg['break_minutes'] ?? 15),
+        ];
+    }
+
+    /** @return array<string, array<string, mixed>> */
+    private function customTemplates(): array
+    {
+        $raw = SiteSetting::get('signage_custom_templates', '{}');
+        $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+
+        return is_array($cfg) ? $cfg : [];
+    }
+
+    /** @param array<string, mixed> $old @param array<string, mixed> $new */
+    private function touch(Request $request, string $action, ?int $id, array $old, array $new): void
+    {
+        $this->audit->log($action, 'signage', $id, $old, $new, [], $request);
+        SignageCache::bust();
+    }
+}

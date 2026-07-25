@@ -147,6 +147,7 @@
             "settings.update",
             "shifts.view_all_history",
             "shifts.view_own_history",
+            "signage.manage",
             "sms.campaigns.send",
             "sms.contacts.manage",
             "sms.logs.view",

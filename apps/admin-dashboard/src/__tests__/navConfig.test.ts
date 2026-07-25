@@ -47,6 +47,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/discount-controls', permission: 'discounts.settings.manage' },
   { to: '/sms', permission: 'sms_marketing.view' },
   { to: '/sms/control-center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms'] },
+  { to: '/signage', permission: 'signage.manage' },
   { to: '/reports', permission: 'reports.view' },
   { to: '/analytics', permission: 'customers.analytics' },
   { to: '/forecasts', permission: 'reports.financial' },
