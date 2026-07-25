@@ -21,6 +21,11 @@ import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsR
 import { OffersRail } from '../components/home/OffersRail';
 import { pickActiveSectionId } from '../utils/scrollSpy';
 import { categoryScrollTop } from '../utils/menuScroll';
+import {
+  categoryLooksLikeCatering,
+  isMenuCateringItem,
+  mergeCateringSectionItems,
+} from '../utils/menuCatering';
 const MENU_VIEW_KEY = 'bg-menu-view';
 type MenuViewMode = 'grid' | 'list';
 
@@ -94,6 +99,8 @@ export function MenuPage() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  /** Dedicated catering-channel listing (may include items not on pickup/delivery). */
+  const [cateringListing, setCateringListing] = useState<Item[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [offersHeadline, setOffersHeadline] = useState<string | null>(null);
   const [offersSubtext, setOffersSubtext] = useState<string | null>(null);
@@ -167,12 +174,14 @@ export function MenuPage() {
     Promise.all([
       fetchCategories(),
       fetchItems(),
+      fetchItems('catering').catch(() => ({ data: [] as Item[], channelUsed: 'catering' as const, deliveryFallback: false })),
       fetchOnlineOrderingStatus(),
     ])
-      .then(([cats, its, gate]) => {
+      .then(([cats, its, cateringIts, gate]) => {
         const loadedItems = its.data ?? [];
         setCategories(cats.data ?? []);
         setItems(loadedItems);
+        setCateringListing(cateringIts.data ?? []);
         const allowedIds = new Set(loadedItems.map((item) => item.id));
         const removedCount = cartRef.current.filter((entry) => !allowedIds.has(entry.item.id)).length;
         if (removedCount > 0) {
@@ -324,11 +333,11 @@ export function MenuPage() {
   const specialCount = useMemo(() => items.filter(isFixedSpecialItem).length, [items]);
 
   // Item counts per category (parent counts include their subcategories).
-  // Catering-flagged items live in the Catering section, not category tallies.
+  // Catering-section items live under Catering, not category tallies.
   const catItemCounts = useMemo(() => {
     const direct: Record<number, number> = {};
     for (const item of items) {
-      if (item.is_catering) continue;
+      if (isMenuCateringItem(item, categories)) continue;
       if (item.category_id !== null) direct[item.category_id] = (direct[item.category_id] ?? 0) + 1;
     }
     const total: Record<number, number> = {};
@@ -363,14 +372,18 @@ export function MenuPage() {
           .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
 
         const directItems = sortMenuItems(
-          items.filter((item) => item.category_id === category.id && !item.is_catering),
+          items.filter(
+            (item) => item.category_id === category.id && !isMenuCateringItem(item, categories),
+          ),
           sortBy,
         );
         const subcategories = childCats
           .map((sub) => ({
             category: sub,
             items: sortMenuItems(
-              items.filter((item) => item.category_id === sub.id && !item.is_catering),
+              items.filter(
+                (item) => item.category_id === sub.id && !isMenuCateringItem(item, categories),
+              ),
               sortBy,
             ),
           }))
@@ -383,13 +396,24 @@ export function MenuPage() {
 
         return { category, directItems, subcategories };
       })
-      .filter((section) => section.directItems.length > 0 || section.subcategories.length > 0);
+      .filter((section) => {
+        // Hide a bare "Catering"/"Events" parent once its items move to the catering section.
+        if (categoryLooksLikeCatering(section.category.name)) return false;
+        return section.directItems.length > 0 || section.subcategories.length > 0;
+      });
 
-    const catering = sortMenuItems(items.filter((item) => !!item.is_catering), sortBy);
+    const catering = sortMenuItems(
+      mergeCateringSectionItems(
+        items,
+        cateringListing,
+        (item) => isMenuCateringItem(item, categories),
+      ),
+      sortBy,
+    );
     for (const item of catering) usedItemIds.add(item.id);
     const other = sortMenuItems(items.filter((item) => !usedItemIds.has(item.id)), sortBy);
     return { sections, other, catering };
-  }, [categories, parentCategories, items, sortBy]);
+  }, [categories, parentCategories, items, cateringListing, sortBy]);
 
   const hasSectionedItems =
     sectionedMenu.sections.length > 0
