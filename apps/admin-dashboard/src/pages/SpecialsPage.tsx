@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
@@ -260,7 +260,7 @@ const BLANK: SpecialForm = {
 };
 
 export default function SpecialsPage() {
-  usePageTitle('Item Discounts');
+  usePageTitle('Daily Specials');
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
 
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
@@ -551,18 +551,43 @@ export default function SpecialsPage() {
     { id: 'inactive', label: 'Inactive' },
   ];
 
+  const emptyMessage = listFilter === 'all' ? 'No discounts yet. Add one to get started.' : 'No discounts match this filter.';
+  const dateFieldStyle: CSSProperties = {
+    width: '100%', minHeight: 44, height: 44, padding: '0 12px', boxSizing: 'border-box',
+    border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14, fontFamily: 'inherit',
+    background: '#fff', color: '#1C1408',
+  };
+
+  const renderSpecialPrice = (s: DailySpecial) => {
+    if (hasVariantOverrides(s) && s.variant_overrides) {
+      return <VariantOverrideLines overrides={s.variant_overrides} mode="prices" />;
+    }
+    if (s.effective_price != null) {
+      return (
+        <>
+          <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {s.effective_price.toFixed(2)}</span>
+          {s.original_price != null && s.effective_price < s.original_price && (
+            <span style={{ color: '#9C8E7E', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
+              MVR {s.original_price.toFixed(2)}
+            </span>
+          )}
+        </>
+      );
+    }
+    return '—';
+  };
+
   return (
-    <PageShell>
-    <div>
+    <PageShell className="specials-page">
       <ConfirmDialog state={dlg} close={closeDlg} />
-      <PageHeader section="Manage" title="Item Discounts" action={<Btn onClick={openCreate}>+ Add Discount</Btn>} />
-      <p style={{ margin: '-8px 0 20px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.55, maxWidth: 720 }}>
+      <PageHeader section="Manage" title="Daily Specials" action={<Btn onClick={openCreate}>+ Add Discount</Btn>} />
+      <p className="specials-intro" style={{ margin: '-8px 0 20px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.55, maxWidth: 720 }}>
         Schedule a <strong>discount %</strong> or fixed sale price on specific menu items for any date range.
         Active discounts show on the order app menu (badge + sale price), POS, and optionally in Today&apos;s Specials on the homepage.
       </p>
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
+      <div className="page-stat-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: '16px 20px' }}>
           <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 4px', fontWeight: 600 }}>TOTAL SPECIALS</p>
           <p style={{ fontSize: 22, fontWeight: 800, color: '#1C1408', margin: 0 }}>{meta.total}</p>
@@ -573,249 +598,289 @@ export default function SpecialsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+      <div className="tab-scroll-row specials-filters" style={{ marginBottom: 16 }}>
         {filterPills.map((pill) => (
           <button
             key={pill.id}
             type="button"
             onClick={() => { setListFilter(pill.id); setPage(1); }}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 999,
-              border: listFilter === pill.id ? '2px solid #D4813A' : '1px solid #E8E0D8',
-              background: listFilter === pill.id ? '#FEF3E8' : '#fff',
-              color: listFilter === pill.id ? '#9A3412' : '#6B5D4F',
-              fontSize: 13,
-              fontWeight: listFilter === pill.id ? 700 : 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
+            className={`specials-filter-pill${listFilter === pill.id ? ' is-active' : ''}`}
           >
             {pill.label}
           </button>
         ))}
       </div>
 
-      <TableCard>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['Item', 'Type', 'Badge', 'Price', 'Dates', 'Days', 'Status', 'Sold', 'Actions'].map(h => (
-                <th key={h} style={TH}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
-            ) : specials.length === 0 ? (
-              <tr><td colSpan={9}><EmptyState message={listFilter === 'all' ? 'No discounts yet. Add one to get started.' : 'No discounts match this filter.'} /></td></tr>
-            ) : specials.map(s => (
-              <tr key={s.id}>
-                <td style={{ ...TD, fontWeight: 600 }}>
-                  {s.item_image && <img src={s.item_image} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', marginRight: 8, verticalAlign: 'middle' }} />}
-                  {s.item_name}
-                  {hasVariantOverrides(s) && s.variant_overrides && (
-                    <VariantOverrideLines overrides={s.variant_overrides} mode="names" />
-                  )}
-                </td>
-                <td style={TD}>
-                  <Badge color={hasVariantOverrides(s) ? 'purple' : isPctDiscount(s) ? 'orange' : 'blue'}>
-                    {hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
-                  </Badge>
-                </td>
-                <td style={TD}><Badge color="orange">{s.badge_label}</Badge></td>
-                <td style={{ ...TD, fontSize: 13 }}>
-                  {hasVariantOverrides(s) && s.variant_overrides ? (
-                    <VariantOverrideLines overrides={s.variant_overrides} mode="prices" />
-                  ) : s.effective_price != null ? (
-                    <>
-                      <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {s.effective_price.toFixed(2)}</span>
-                      {s.original_price != null && s.effective_price < s.original_price && (
-                        <span style={{ color: '#9C8E7E', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>MVR {s.original_price.toFixed(2)}</span>
-                      )}
-                    </>
-                  ) : '—'}
-                </td>
-                <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{s.start_date} → {s.end_date}</td>
-                <td style={{ ...TD, fontSize: 12 }}>
-                  {s.days_of_week?.length ? s.days_of_week.map(d => DAY_NAMES[d]).join(', ') : <span style={{ color: '#9C8E7E' }}>All days</span>}
-                </td>
-                <td style={TD}><Badge color={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge></td>
-                <td style={TD}>{s.sold_count}</td>
-                <td style={TD}>
-                  <Btn small variant="secondary" onClick={() => void openEdit(s)} style={{ marginRight: 6 }}><Pencil size={12} /></Btn>
-                  <Btn small variant="danger" onClick={() => handleDelete(s.id)}><Trash2 size={12} /></Btn>
-                </td>
+      <div className="specials-desktop-table">
+        <TableCard>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Item', 'Type', 'Badge', 'Price', 'Dates', 'Days', 'Status', 'Sold', 'Actions'].map(h => (
+                  <th key={h} style={TH}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableCard>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+              ) : specials.length === 0 ? (
+                <tr><td colSpan={9}><EmptyState message={emptyMessage} /></td></tr>
+              ) : specials.map(s => (
+                <tr key={s.id}>
+                  <td style={{ ...TD, fontWeight: 600 }}>
+                    {s.item_image && <img src={s.item_image} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', marginRight: 8, verticalAlign: 'middle' }} />}
+                    {s.item_name}
+                    {hasVariantOverrides(s) && s.variant_overrides && (
+                      <VariantOverrideLines overrides={s.variant_overrides} mode="names" />
+                    )}
+                  </td>
+                  <td style={TD}>
+                    <Badge color={hasVariantOverrides(s) ? 'purple' : isPctDiscount(s) ? 'orange' : 'blue'}>
+                      {hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
+                    </Badge>
+                  </td>
+                  <td style={TD}><Badge color="orange">{s.badge_label}</Badge></td>
+                  <td style={{ ...TD, fontSize: 13 }}>{renderSpecialPrice(s)}</td>
+                  <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{s.start_date} → {s.end_date}</td>
+                  <td style={{ ...TD, fontSize: 12 }}>
+                    {s.days_of_week?.length ? s.days_of_week.map(d => DAY_NAMES[d]).join(', ') : <span style={{ color: '#9C8E7E' }}>All days</span>}
+                  </td>
+                  <td style={TD}><Badge color={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge></td>
+                  <td style={TD}>{s.sold_count}</td>
+                  <td style={TD}>
+                    <Btn small variant="secondary" onClick={() => void openEdit(s)} style={{ marginRight: 6 }}><Pencil size={12} /></Btn>
+                    <Btn small variant="danger" onClick={() => handleDelete(s.id)}><Trash2 size={12} /></Btn>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableCard>
+      </div>
+
+      <div className="specials-mobile-list" aria-live="polite">
+        {loading ? (
+          <div className="specials-mobile-card specials-mobile-card--muted">Loading…</div>
+        ) : specials.length === 0 ? (
+          <EmptyState message={emptyMessage} />
+        ) : specials.map(s => (
+          <article key={s.id} className="specials-mobile-card">
+            <div className="specials-mobile-card-top">
+              <div className="specials-mobile-card-item">
+                {s.item_image && <img src={s.item_image} alt="" className="specials-mobile-thumb" />}
+                <div>
+                  <h3 className="specials-mobile-title">{s.item_name}</h3>
+                  <div className="specials-mobile-badges">
+                    <Badge color={hasVariantOverrides(s) ? 'purple' : isPctDiscount(s) ? 'orange' : 'blue'}>
+                      {hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
+                    </Badge>
+                    {s.badge_label && <Badge color="orange">{s.badge_label}</Badge>}
+                    <Badge color={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="specials-mobile-card-actions">
+                <Btn small variant="secondary" onClick={() => void openEdit(s)} aria-label="Edit special"><Pencil size={14} /></Btn>
+                <Btn small variant="danger" onClick={() => handleDelete(s.id)} aria-label="Delete special"><Trash2 size={14} /></Btn>
+              </div>
+            </div>
+            <div className="specials-mobile-meta">
+              <div>
+                <span className="specials-mobile-meta-label">Price</span>
+                <div className="specials-mobile-meta-value">{renderSpecialPrice(s)}</div>
+              </div>
+              <div>
+                <span className="specials-mobile-meta-label">Dates</span>
+                <div className="specials-mobile-meta-value">{s.start_date} → {s.end_date}</div>
+              </div>
+              <div>
+                <span className="specials-mobile-meta-label">Days</span>
+                <div className="specials-mobile-meta-value">
+                  {s.days_of_week?.length ? s.days_of_week.map(d => DAY_NAMES[d]).join(', ') : 'All days'}
+                </div>
+              </div>
+              <div>
+                <span className="specials-mobile-meta-label">Sold</span>
+                <div className="specials-mobile-meta-value">{s.sold_count}</div>
+              </div>
+            </div>
+            {hasVariantOverrides(s) && s.variant_overrides && (
+              <VariantOverrideLines overrides={s.variant_overrides} mode="names" />
+            )}
+          </article>
+        ))}
+      </div>
 
       <Pagination page={page} totalPages={meta.last_page} onChange={setPage} />
 
       {modalOpen && (
-        <Modal title={editing ? 'Edit Item Discount' : 'Add Item Discount'} onClose={() => setModalOpen(false)} maxWidth={hasVariants ? 640 : 520}>
-          {autoLoadedHint && editing && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#ECFDF5', border: '1px solid rgba(34,197,94,0.35)' }}>
-              <p style={{ margin: 0, fontSize: 13, color: '#166534', lineHeight: 1.45 }}>
-                Loaded the existing discount for this item. Add or change variant rows below, then click Update.
-              </p>
-            </div>
-          )}
-          {conflictSpecialId && !editing && !formError && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF3E8', border: '1px solid rgba(212,129,58,0.35)' }}>
-              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
-                This item already has a discount for these dates. Set pricing for each variant in the table below, then add it to the existing discount — you do not need a separate discount per variant.
-              </p>
-              <Btn small onClick={() => void openEditFromConflict()}>
-                Add variant to existing discount
-              </Btn>
-            </div>
-          )}
-          {formError && (
-            <div style={{ marginBottom: 12 }}>
-              <p style={{ color: '#ef4444', margin: 0 }}>{formError}</p>
-              {conflictSpecialId && (
-                <Btn small variant="secondary" onClick={() => void openEditFromConflict()} style={{ marginTop: 8 }}>
+        <Modal title={editing ? 'Edit Daily Special' : 'Add Daily Special'} onClose={() => setModalOpen(false)} maxWidth={hasVariants ? 640 : 520}>
+          <div className="specials-modal-body">
+            {autoLoadedHint && editing && (
+              <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#ECFDF5', border: '1px solid rgba(34,197,94,0.35)' }}>
+                <p style={{ margin: 0, fontSize: 13, color: '#166534', lineHeight: 1.45 }}>
+                  Loaded the existing discount for this item. Add or change variant rows below, then click Update.
+                </p>
+              </div>
+            )}
+            {conflictSpecialId && !editing && !formError && (
+              <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF3E8', border: '1px solid rgba(212,129,58,0.35)' }}>
+                <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9A3412', lineHeight: 1.45 }}>
+                  This item already has a discount for these dates. Set pricing for each variant in the table below, then add it to the existing discount — you do not need a separate discount per variant.
+                </p>
+                <Btn small onClick={() => void openEditFromConflict()}>
                   Add variant to existing discount
                 </Btn>
-              )}
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Menu Item *</span>
-              <ItemSearch kind="menu" value={itemSelection} onChange={selectMenuItem} />
-            </label>
-            {!hasVariants ? (
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Special Price (MVR)</span>
-                <Input type="number" min="0" step="0.01" placeholder="e.g. 39.00" value={form.special_price} onChange={setItemSpecialPrice} />
-              </label>
-              <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Discount %</span>
-                <Input type="number" min="1" max="100" placeholder="e.g. 20" value={form.discount_pct} onChange={setItemDiscountPct} />
-              </label>
-            </div>
-            ) : (
-            <>
-              <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Default discount % (all variants)</span>
-                <Input type="number" min="1" max="100" placeholder="Optional — applies to variants without their own %" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
-              </label>
-              <div style={{ border: '1px solid #E8E0D8', borderRadius: 10, overflow: 'hidden' }}>
-                <div style={{ padding: '10px 12px', background: '#FAF7F4', borderBottom: '1px solid #E8E0D8' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Per-variant pricing</span>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>
-                    Set a discount on one or more variants. Leave a row blank if that size should stay full price.
-                  </p>
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      {['Variant', 'Catalog', 'Discount %', 'Special price'].map(h => (
-                        <th key={h} style={{ ...TH, fontSize: 11, padding: '8px 10px' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(selectedItem?.variants ?? []).filter((v): v is MenuVariant & { id: number } => v.id != null).map(v => {
-                      const row = form.variant_overrides[v.id] ?? { discount_pct: '', special_price: '' };
-                      return (
-                        <tr key={v.id}>
-                          <td style={{ ...TD, fontWeight: 600, fontSize: 12 }}>{v.name}</td>
-                          <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
-                          <td style={{ ...TD, padding: '6px 8px' }}>
-                            <Input type="number" min="1" max="100" placeholder="%" value={row.discount_pct} onChange={val => setVariantField(v.id, 'discount_pct', val, Number(v.price))} />
-                          </td>
-                          <td style={{ ...TD, padding: '6px 8px' }}>
-                            <Input type="number" min="0" step="0.01" placeholder="MVR" value={row.special_price} onChange={val => setVariantField(v.id, 'special_price', val, Number(v.price))} />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
               </div>
-            </>
             )}
-            <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
-              {hasVariants
-                ? 'One discount per item per date range. Add each variant separately in the table — they all save on the same discount.'
-                : catalogPrice > 0
-                  ? `Special price and discount % stay in sync (catalog price MVR ${catalogPrice.toFixed(2)}).`
-                  : 'Select a menu item to link special price and discount %.'}
-            </p>
-            <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Badge Label</span>
-              <Input placeholder="e.g. Chef's Special" value={form.badge_label} onChange={v => setForm(f => ({ ...f, badge_label: v }))} />
-            </label>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Start Date *</span>
-                <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
-              </label>
-              <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>End Date *</span>
-                <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
-              </label>
-            </div>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Start Time</span>
-                <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
-              </label>
-              <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>End Time</span>
-                <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
-              </label>
-            </div>
-            <div>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
-                Active Days <span style={{ color: '#9C8E7E', fontWeight: 400 }}>(empty = all days)</span>
-              </span>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {DAY_NAMES.map((name, i) => {
-                  const active = form.days_of_week.includes(i);
-                  return (
-                    <button key={i} type="button" onClick={() => toggleDay(i)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${active ? '#D4813A' : '#E8E0D8'}`, background: active ? 'rgba(212,129,58,0.12)' : '#fff', color: active ? '#D4813A' : '#6B5D4F', fontFamily: 'inherit' }}>{name}</button>
-                  );
-                })}
+            {formError && (
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ color: '#ef4444', margin: 0 }}>{formError}</p>
+                {conflictSpecialId && (
+                  <Btn small variant="secondary" onClick={() => void openEditFromConflict()} style={{ marginTop: 8 }}>
+                    Add variant to existing discount
+                  </Btn>
+                )}
               </div>
-            </div>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            )}
+            <div className="specials-modal-form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Max Quantity</span>
-                <Input type="number" min="1" placeholder="Unlimited" value={form.max_quantity} onChange={v => setForm(f => ({ ...f, max_quantity: v }))} />
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Menu Item *</span>
+                <ItemSearch kind="menu" value={itemSelection} onChange={selectMenuItem} />
               </label>
-              <div style={{ display: 'flex', alignItems: 'center', paddingTop: 20 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} style={{ width: 16, height: 16 }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#6B5D4F' }}>Active</span>
+              {!hasVariants ? (
+              <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Special Price (MVR)</span>
+                  <Input type="number" min="0" step="0.01" placeholder="e.g. 39.00" value={form.special_price} onChange={setItemSpecialPrice} />
+                </label>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Discount %</span>
+                  <Input type="number" min="1" max="100" placeholder="e.g. 20" value={form.discount_pct} onChange={setItemDiscountPct} />
                 </label>
               </div>
+              ) : (
+              <>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Default discount % (all variants)</span>
+                  <Input type="number" min="1" max="100" placeholder="Optional — applies to variants without their own %" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
+                </label>
+                <div className="specials-variant-block" style={{ border: '1px solid #E8E0D8', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 12px', background: '#FAF7F4', borderBottom: '1px solid #E8E0D8' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Per-variant pricing</span>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+                      Set a discount on one or more variants. Leave a row blank if that size should stay full price.
+                    </p>
+                  </div>
+                  <table className="specials-variant-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Variant', 'Catalog', 'Discount %', 'Special price'].map(h => (
+                          <th key={h} style={{ ...TH, fontSize: 11, padding: '8px 10px' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedItem?.variants ?? []).filter((v): v is MenuVariant & { id: number } => v.id != null).map(v => {
+                        const row = form.variant_overrides[v.id] ?? { discount_pct: '', special_price: '' };
+                        return (
+                          <tr key={v.id}>
+                            <td data-label="Variant" style={{ ...TD, fontWeight: 600, fontSize: 12 }}>{v.name}</td>
+                            <td data-label="Catalog" style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
+                            <td data-label="Discount %" style={{ ...TD, padding: '6px 8px' }}>
+                              <Input type="number" min="1" max="100" placeholder="%" value={row.discount_pct} onChange={val => setVariantField(v.id, 'discount_pct', val, Number(v.price))} />
+                            </td>
+                            <td data-label="Special price" style={{ ...TD, padding: '6px 8px' }}>
+                              <Input type="number" min="0" step="0.01" placeholder="MVR" value={row.special_price} onChange={val => setVariantField(v.id, 'special_price', val, Number(v.price))} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+              )}
+              <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
+                {hasVariants
+                  ? 'One discount per item per date range. Add each variant separately in the table — they all save on the same discount.'
+                  : catalogPrice > 0
+                    ? `Special price and discount % stay in sync (catalog price MVR ${catalogPrice.toFixed(2)}).`
+                    : 'Select a menu item to link special price and discount %.'}
+              </p>
+              <label>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Badge Label</span>
+                <Input placeholder="e.g. Chef's Special" value={form.badge_label} onChange={v => setForm(f => ({ ...f, badge_label: v }))} />
+              </label>
+              <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Start Date *</span>
+                  <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={dateFieldStyle} />
+                </label>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>End Date *</span>
+                  <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={dateFieldStyle} />
+                </label>
+              </div>
+              <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Start Time</span>
+                  <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={dateFieldStyle} />
+                </label>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>End Time</span>
+                  <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} style={dateFieldStyle} />
+                </label>
+              </div>
+              <div>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
+                  Active Days <span style={{ color: '#9C8E7E', fontWeight: 400 }}>(empty = all days)</span>
+                </span>
+                <div className="specials-day-row">
+                  {DAY_NAMES.map((name, i) => {
+                    const active = form.days_of_week.includes(i);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => toggleDay(i)}
+                        className={`specials-day-chip${active ? ' is-active' : ''}`}
+                        aria-pressed={active}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Max Quantity</span>
+                  <Input type="number" min="1" placeholder="Unlimited" value={form.max_quantity} onChange={v => setForm(f => ({ ...f, max_quantity: v }))} />
+                </label>
+                <div className="specials-active-toggle">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', minHeight: 44 }}>
+                    <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} style={{ width: 18, height: 18 }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#6B5D4F' }}>Active</span>
+                  </label>
+                </div>
+              </div>
+              <label>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Description</span>
+                <textarea placeholder="Optional…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
+                  style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+              </label>
             </div>
-            <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Description</span>
-              <textarea placeholder="Optional…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
-            </label>
           </div>
-          <ModalActions>
-            <Btn variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Btn>
-            <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : editing ? 'Update' : 'Create'}</Btn>
-          </ModalActions>
+          <div className="specials-modal-actions">
+            <ModalActions>
+              <Btn variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Btn>
+              <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : editing ? 'Update' : 'Create'}</Btn>
+            </ModalActions>
+          </div>
         </Modal>
       )}
-    </div>
-
     </PageShell>
   );
 }
