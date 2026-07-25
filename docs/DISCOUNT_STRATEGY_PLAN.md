@@ -134,3 +134,44 @@ Backend: `cd backend && php artisan test`. Admin frontend from repo root (`npm c
 
 > Out of scope (backlog): bundle builder ("any 3 for X"), campaign calendar view, per-category
 > stacking rules, and the per-customer/per-item promotions (explicitly excluded).
+
+---
+
+## 5. Post-build audit fixes (from code review)
+
+Verified: backend calc correct + fully tested; existing types unchanged. Fixes to apply:
+
+### 5.1 🔴 MVR vs laari input inconsistency (admin) — will misconfigure discounts 100×
+`apps/admin-dashboard/src/pages/PromotionsPage.tsx`: the **tier `value`** (~L306-310) and
+**quantity-break `value`** (~L339-341) fixed-amount inputs are entered in **raw laari**
+(`parseInt`, `String(value)`, label "(laari)"), while every other money field (`discount_value`,
+`min_order_laar`, `budget_laar`, tier `min_laar`) converts **MVR→laari**. An owner typing `30` for a
+"save MVR 30" tier stores 30 laari = MVR 0.30.
+- **Fix:** make both fixed-value inputs MVR — display `(value/100).toFixed(2)`, store
+  `Math.round(parseFloat(v)*100)`, relabel **"Value (MVR)"**. Relabel the kind option **"Fixed
+  (laari)" → "Fixed (MVR)"** in both editors. Percentage kind stays a plain integer %.
+
+### 5.2 🟠 Global "never below cost" guarantee
+The per-promo margin floor doesn't cover manual/loyalty/referral discounts or the `stack` policy's
+multiple item-promos. Add a **final order-level margin clamp** in `OrderTotalsCalculator` after all
+merchandise discounts are summed (promo + manual + loyalty + referral; **gift-card is tender, exclude
+it**): compute `maxDiscountable = Σ(lineTotal − cost×(1+floor%)×qty)` over lines with a known cost, and
+clamp the total merchandise discount to it when `discount_margin_floor_enabled`. Log when clamped.
+
+### 5.3 🟡 Budget cap is a soft cap (document only)
+`spent_laar` increments at redemption (order completion), but the budget is checked at apply time, so
+concurrent pending orders can overshoot slightly. Add a code comment in `budgetGate` and admin helper
+text ("Budget is approximate under high concurrency.").
+
+### 5.4 Defensive: clear stale auto-promo drafts on re-apply
+`applyAutomatic` `firstOrCreate`s drafts and sums all drafts; if ever re-run after a cart change, a
+now-ineligible auto-promo's draft would persist and over-count. At the start of `applyAutomatic`,
+delete existing **draft** `OrderPromotion` rows for the order whose promotion is **`auto_apply`** (leave
+coded-promo drafts), then recreate the eligible set. Harmless today (called once at creation), safe for
+future re-use.
+
+### 5.5 Tests
+- Admin: tier/quantity fixed value round-trips as MVR (type 30 → stores 3000 → redisplays 30.00).
+- `OrderLevelMarginFloorTest`: promo + manual discount together cannot push a line below
+  cost×(1+floor%); total clamped; gift-card tender excluded from the clamp.
+- Regression: with margin floor off, totals unchanged.
