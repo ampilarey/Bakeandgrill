@@ -129,7 +129,7 @@ export function useMenuPage() {
   const handleDeleteCat = (id: number) => {
     askConfirm({
       title: 'Delete Category',
-      message: 'Delete this category? It must have no items assigned.',
+      message: 'Delete this category? It must have no live items assigned (soft-deleted items are OK).',
       confirmLabel: 'Delete',
       danger: true,
       onConfirm: async () => {

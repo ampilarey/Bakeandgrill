@@ -200,12 +200,17 @@ class CategoryController extends Controller
     {
         $category = Category::findOrFail($id);
 
-        // Check if category has any items (including soft-deleted ones)
-        if ($category->items()->withTrashed()->count() > 0) {
+        // Only live items block delete — soft-deleted leftovers are invisible in
+        // admin and get category_id nulled by the FK (nullOnDelete) on destroy.
+        if ($category->items()->count() > 0) {
             return response()->json([
                 'message' => 'Cannot delete category with items. Please move or delete items first.',
             ], 422);
         }
+
+        // Detach any soft-deleted items still pointing here (belt-and-suspenders
+        // before the category row is removed).
+        $category->items()->onlyTrashed()->update(['category_id' => null]);
 
         $category->delete();
 
