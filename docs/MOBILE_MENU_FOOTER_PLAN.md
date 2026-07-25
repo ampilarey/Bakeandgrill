@@ -82,6 +82,22 @@ detail** (variants, packaging, quantity, Add to cart).
 > "add to cart" action lives in the detail sheet where variants/packaging are chosen, so nothing is
 > cut off or crowded.
 
+### 2.1a ZUS fidelity fixes (from first-pass review vs the ZUS screenshot)
+The first build was close but off in these specific ways — fix them:
+- **No visible card container.** Remove the card `<article>`'s background/border/box-shadow/rounded box
+  — items must **float directly on the page background** like ZUS (no white box around each item).
+- **True circle, not an oval.** The media wrapper must be **square** — set both width and height equal
+  (`aspect-ratio: 1 / 1`, fixed size) so `border-radius: 50%` renders a perfect circle. The current
+  oval is caused by a taller-than-wide box.
+- **Price format `12.20/-`, not `MVR 12.20`.** Drop the `MVR` prefix on the card; render the number
+  with a trailing `/-` (e.g. `1.00/-`, `From 13.20/-`, struck original `13.20/-`). Update
+  `ProductCard.tsx:226-241` (from-price, price, and "was" price). Keep MVR elsewhere (detail/cart) as-is.
+- **Typography to match ZUS:** name **semibold ~16px**, dark; price **regular/medium ~15px**, slightly
+  muted (NOT heavy bold); short-detail line **~12–13px muted**. Match ZUS's calm hierarchy — the price
+  should not shout louder than the name.
+- **Reduce the category hero banner height.** The `CATEGORY … / subtitle` hero card is too tall;
+  shrink it to a **thin strip** (ZUS-style short banner) so more items are visible above the fold.
+
 ### 2.2 Layout & navigation
 - **Category navigation — KEEP the existing ZUS-style left rail (do NOT switch to horizontal chips):**
   - The order app **already has** `components/menu/CategoryRail.tsx` (`.cat-rail`) — a sticky vertical
