@@ -33,6 +33,15 @@ final class ContentRegistry
     }
 
     /**
+     * Brand assets that must resolve the same on website + order app.
+     * Content Studio may write an app scope; readers fall back across scopes.
+     */
+    public static function isSyncedAcrossApps(string $key): bool
+    {
+        return $key === 'default_item_image';
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public static function block(string $key): ?array

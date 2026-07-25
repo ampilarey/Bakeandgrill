@@ -52,6 +52,10 @@ class SiteSettingsController extends Controller
                 continue;
             }
             SiteSetting::set($key, $value);
+            if ($key === 'default_item_image' && SiteSetting::hasScopeColumn()) {
+                SiteSetting::set($key, $value, 'website');
+                SiteSetting::set($key, $value, 'order_app');
+            }
         }
 
         SiteSetting::bust();
@@ -95,6 +99,11 @@ class SiteSettingsController extends Controller
         // For brand assets, auto-save directly to the setting
         if (in_array($key, $directKeys, true)) {
             SiteSetting::set($key, $url);
+            // Default item photo is consumed by website + order app — keep scopes aligned.
+            if ($key === 'default_item_image' && SiteSetting::hasScopeColumn()) {
+                SiteSetting::set($key, $url, 'website');
+                SiteSetting::set($key, $url, 'order_app');
+            }
             SiteSetting::bust();
         }
 

@@ -274,21 +274,26 @@ class MediaLibraryController extends Controller
             default => ['type' => 'image', 'group' => 'Branding', 'label' => $key, 'description' => ''],
         };
 
-        SiteSetting::set($key, $url);
-        $row = SiteSetting::query()->where('key', $key);
-        if (SiteSetting::hasScopeColumn()) {
-            $row->where('scope', 'shared');
+        $scopes = ($key === 'default_item_image' && SiteSetting::hasScopeColumn())
+            ? ['shared', 'website', 'order_app']
+            : ['shared'];
+        foreach ($scopes as $scope) {
+            SiteSetting::set($key, $url, $scope, 'en');
+            $row = SiteSetting::query()->where('key', $key);
+            if (SiteSetting::hasScopeColumn()) {
+                $row->where('scope', $scope);
+            }
+            if (SiteSetting::hasLocaleColumn()) {
+                $row->where('locale', 'en');
+            }
+            $row->update([
+                'type' => $meta['type'],
+                'group' => $meta['group'],
+                'label' => $meta['label'],
+                'description' => $meta['description'],
+                'is_public' => true,
+            ]);
         }
-        if (SiteSetting::hasLocaleColumn()) {
-            $row->where('locale', 'en');
-        }
-        $row->update([
-            'type' => $meta['type'],
-            'group' => $meta['group'],
-            'label' => $meta['label'],
-            'description' => $meta['description'],
-            'is_public' => true,
-        ]);
         SiteSetting::bust();
 
         $this->audit->log(

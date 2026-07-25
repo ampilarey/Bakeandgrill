@@ -120,7 +120,7 @@ class DefaultItemImageTest extends TestCase
         $this->assertStringContainsString('/storage/site/default_item.jpg', $html);
     }
 
-    public function test_content_studio_website_publish_updates_home_and_shared(): void
+    public function test_content_studio_website_publish_updates_home_and_order_app(): void
     {
         Sanctum::actingAs($this->owner, ['staff']);
         $url = '/storage/site/website_default.jpg';
@@ -135,14 +135,29 @@ class DefaultItemImageTest extends TestCase
         $this->assertSame($url, SiteSetting::getScoped('default_item_image', 'website'));
         $this->assertSame($url, SiteSetting::get('default_item_image'));
         $this->assertSame($url, SiteSetting::getScoped('default_item_image', 'shared'));
+        $this->assertSame($url, SiteSetting::getScoped('default_item_image', 'order_app'));
 
         $public = $this->getJson('/api/site-settings/public')->assertOk()->json('settings');
         $this->assertSame($url, $public['default_item_image'] ?? null);
+
+        $orderContent = $this->getJson('/api/content?app=order_app&locale=en')->assertOk()->json('content');
+        $this->assertSame($url, $orderContent['default_item_image'] ?? null);
 
         $this->seedImageLessSpecial();
         $html = $this->get('/')->assertOk()->getContent();
         $this->assertStringContainsString('data-default-item-image="1"', $html);
         $this->assertStringContainsString($url, $html);
+    }
+
+    public function test_order_app_resolves_website_only_default_item_image(): void
+    {
+        // Simulate a pre-fix Content Studio save that only wrote website scope.
+        SiteSetting::set('default_item_image', '', 'shared');
+        SiteSetting::set('default_item_image', '/storage/site/web_only.jpg', 'website');
+        SiteSetting::bust();
+
+        $orderContent = $this->getJson('/api/content?app=order_app&locale=en')->assertOk()->json('content');
+        $this->assertSame('/storage/site/web_only.jpg', $orderContent['default_item_image'] ?? null);
     }
 
     private function seedImageLessSpecial(): void

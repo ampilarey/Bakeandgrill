@@ -61,7 +61,7 @@ final class ContentResolver
             return $default ?? ContentRegistry::default($key);
         }
 
-        foreach ($this->lookupChain() as [$scope, $locale]) {
+        foreach ($this->lookupChain($key) as [$scope, $locale]) {
             $val = SiteSetting::getScoped($key, $scope, $locale);
             if ($val !== null && $val !== '') {
                 return $val;
@@ -79,8 +79,38 @@ final class ContentResolver
     /**
      * @return list<array{0: string, 1: string}>
      */
-    private function lookupChain(): array
+    private function lookupChain(string $key = ''): array
     {
+        if (ContentRegistry::isSyncedAcrossApps($key)) {
+            $scopes = ['website', 'order_app', 'shared'];
+            // Prefer the current app, then the other app, then shared.
+            usort($scopes, function (string $a, string $b): int {
+                if ($a === $this->app) {
+                    return -1;
+                }
+                if ($b === $this->app) {
+                    return 1;
+                }
+                if ($a === 'shared') {
+                    return 1;
+                }
+                if ($b === 'shared') {
+                    return -1;
+                }
+
+                return 0;
+            });
+            $chain = [];
+            foreach ($scopes as $scope) {
+                $chain[] = [$scope, $this->locale];
+                if ($this->locale !== 'en') {
+                    $chain[] = [$scope, 'en'];
+                }
+            }
+
+            return $chain;
+        }
+
         $chain = [
             [$this->app, $this->locale],
             ['shared', $this->locale],
