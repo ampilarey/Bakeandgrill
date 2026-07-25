@@ -8,6 +8,7 @@ import type { Item, Variant } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { buildItemSlides } from '../../utils/itemMedia';
+import { formatCardPrice } from '../../utils/money';
 import { MenuImageSlider } from './MenuImageSlider';
 
 export type ProductCardProps = {
@@ -106,7 +107,6 @@ export function ProductCard({
 
   const priceNote = (item.price_note || '').trim();
   const logoSrc = s.logo || '/logo.png';
-  const formatCardPrice = (n: number) => `${n.toFixed(2)}/-`;
   const fromPrefix = priceNote || (showFromPrice ? 'From' : '');
 
   const openItem = () => {
