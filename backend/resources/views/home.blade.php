@@ -452,6 +452,7 @@
     -webkit-overflow-scrolling: touch;
 }
 .special-card {
+    position: relative;
     flex: 0 0 160px;
     scroll-snap-align: start;
     background: transparent;
@@ -504,20 +505,22 @@
     padding: 0.75rem 0.25rem 0.5rem;
     text-align: center;
 }
-.special-badge-stack {
+/* Badge sits on the card (sibling of the circle) so overflow:hidden on the image cannot clip it. */
+.special-card .special-badge-stack {
     position: absolute;
-    top: 0.625rem;
-    left: 0.625rem;
+    top: 0.4rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    width: max-content;
+    max-width: 90%;
+    pointer-events: none;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.25rem;
-    z-index: 2;
 }
 .special-badge {
-    position: absolute;
-    top: 0.625rem;
-    left: 0.625rem;
     background: var(--amber);
     color: white;
     font-size: 0.65rem;
@@ -526,8 +529,9 @@
     border-radius: 999px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    white-space: nowrap;
 }
-.special-badge-stack .special-badge {
+.special-card .special-badge-stack .special-badge {
     position: static;
 }
 .price-was {
@@ -1059,12 +1063,12 @@
                             @endif
                         </div>
                     @endif
-                    @if(!empty($offer['badge']))
-                    <div class="special-badge-stack">
-                        <span class="special-badge">{{ $offer['badge'] }}</span>
-                    </div>
-                    @endif
                 </div>
+                @if(!empty($offer['badge']))
+                <div class="special-badge-stack">
+                    <span class="special-badge">{{ $offer['badge'] }}</span>
+                </div>
+                @endif
                 <div class="product-body">
                     <div class="product-name" style="font-size: 0.95rem; margin-bottom: 0.5rem;">
                         {{ $offer['title'] ?? '' }}
@@ -1117,25 +1121,25 @@
                             @endif
                         </div>
                     @endif
-                    @php
-                        $badgeLabel = $sp['badge_label'] ?? null;
-                        $discountPct = isset($sp['discount_pct']) ? (int) $sp['discount_pct'] : null;
-                        $showPctUnderBadge = $badgeLabel && $discountPct && $discountPct > 0
-                            && !str_contains($badgeLabel, (string) $discountPct . '%');
-                    @endphp
-                    @if($badgeLabel || ($discountPct && $discountPct > 0))
-                    <div class="special-badge-stack">
-                        @if($badgeLabel)
-                            <span class="special-badge">{{ $badgeLabel }}</span>
-                        @endif
-                        @if($showPctUnderBadge)
-                            <span class="special-badge">{{ $discountPct }}% OFF</span>
-                        @elseif(!$badgeLabel && $discountPct && $discountPct > 0)
-                            <span class="special-badge">{{ $discountPct }}% OFF</span>
-                        @endif
-                    </div>
+                </div>
+                @php
+                    $badgeLabel = $sp['badge_label'] ?? null;
+                    $discountPct = isset($sp['discount_pct']) ? (int) $sp['discount_pct'] : null;
+                    $showPctUnderBadge = $badgeLabel && $discountPct && $discountPct > 0
+                        && !str_contains($badgeLabel, (string) $discountPct . '%');
+                @endphp
+                @if($badgeLabel || ($discountPct && $discountPct > 0))
+                <div class="special-badge-stack">
+                    @if($badgeLabel)
+                        <span class="special-badge">{{ $badgeLabel }}</span>
+                    @endif
+                    @if($showPctUnderBadge)
+                        <span class="special-badge">{{ $discountPct }}% OFF</span>
+                    @elseif(!$badgeLabel && $discountPct && $discountPct > 0)
+                        <span class="special-badge">{{ $discountPct }}% OFF</span>
                     @endif
                 </div>
+                @endif
                 <div class="product-body">
                     <div class="product-name" style="font-size: 0.95rem; margin-bottom: 0.5rem;">
                         {{ $sp['item_name'] ?? '' }}

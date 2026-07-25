@@ -64,5 +64,16 @@ class SpecialsDisplayConsistencyTest extends TestCase
         $this->assertNotSame('', $offersChunk);
         $this->assertStringContainsString('product-img-placeholder--brand', $offersChunk);
         $this->assertStringNotContainsString('🍽️', $offersChunk);
+
+        // Badge is a sibling of the circular image (not nested inside overflow:hidden).
+        $this->assertMatchesRegularExpression(
+            '/product-img--circle">\s*(?:<img[\s\S]*?<\/div>|<div class="product-img-placeholder[\s\S]*?<\/div>\s*)<\/div>\s*<div class="special-badge-stack"/',
+            $offersChunk
+        );
+        $this->assertStringContainsString('20% OFF', $offersChunk);
+        $this->assertStringContainsString(
+            '.special-card .special-badge-stack',
+            $html
+        );
     }
 }
