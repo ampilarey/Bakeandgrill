@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Copy, ExternalLink, Monitor, Save } from 'lucide-react';
+import { Copy, ExternalLink, Monitor, Pencil, Save } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   buildSignageTemplate,
@@ -17,6 +17,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
 import { Btn, Card, EmptyState, Input, PageHeader, PageShell, Select, Spinner } from '../components/SharedUI';
+import { SignageDesigner, type DesignerSlide } from './signage/SignageDesigner';
 
 type Tab = 'screens' | 'playlists' | 'campaigns' | 'emergency' | 'prayer' | 'devices';
 
@@ -105,6 +106,7 @@ export function SignagePage() {
   const toast = useToast();
 
   const [tab, setTab] = useState<Tab>('screens');
+  const [designIndex, setDesignIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<SignageOverview | null>(null);
 
@@ -438,6 +440,19 @@ export function SignagePage() {
 
           {tab === 'playlists' && (
             <div>
+              {designIndex != null && slides[designIndex] && (
+                <Card style={{ marginBottom: 16 }} data-testid="signage-designer-host">
+                  <SignageDesigner
+                    slide={slides[designIndex] as DesignerSlide}
+                    onClose={() => setDesignIndex(null)}
+                    onChange={(next) => {
+                      setSlides((prev) => prev.map((s, i) => (i === designIndex ? { ...s, ...next } : s)));
+                      setDesignIndex(null);
+                    }}
+                  />
+                </Card>
+              )}
+
               <Card style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
                   <div style={{ flex: '1 1 220px' }}>
@@ -483,6 +498,9 @@ export function SignagePage() {
                         <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>ID: {slide.id}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
+                        <Btn variant="secondary" onClick={() => setDesignIndex(index)} style={{ minHeight: 44 }} data-testid={`signage-design-${index}`}>
+                          <Pencil size={14} /> Design
+                        </Btn>
                         <Btn variant="secondary" onClick={() => moveSlide(index, -1)} disabled={index === 0} style={{ minHeight: 44 }}>↑</Btn>
                         <Btn variant="secondary" onClick={() => moveSlide(index, 1)} disabled={index === slides.length - 1} style={{ minHeight: 44 }}>↓</Btn>
                       </div>
