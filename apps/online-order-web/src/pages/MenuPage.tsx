@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, fetchOffers, getMyFavourites, toggleFavourite, getWaitTimeEstimate, API_ORIGIN } from '../api';
 import type { Category, Item, Modifier, Offer } from '../api';
 import type { Variant } from '@shared/types';
@@ -95,6 +95,7 @@ export function MenuPage() {
   const { isAuthenticated } = useAuth();
   const { openCartSheet } = useShellNav();
   const { isAvailable: isServiceAvailable } = useServiceStatusContext();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -477,11 +478,19 @@ export function MenuPage() {
   };
 
   const handleSelectCatering = () => {
+    // Left-rail Events shortcut: jump to the on-menu catering block, or open the event wizard.
+    if (sectionedMenu.catering.length === 0) {
+      void navigate('/events');
+      return;
+    }
     setCateringOpen(true);
     setCateringRailActive(true);
     setActiveCategoryId(null);
     isProgrammaticScroll.current = true;
-    scrollToCateringSection();
+    // Wait a tick so the section is expanded before measuring scroll.
+    requestAnimationFrame(() => {
+      scrollToCateringSection();
+    });
     if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
     programmaticScrollTimerRef.current = window.setTimeout(() => {
       isProgrammaticScroll.current = false;
@@ -761,7 +770,7 @@ export function MenuPage() {
           counts={catItemCounts}
           showOffersPill={offers.length > 0}
           onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          showCateringPill={sectionedMenu.catering.length > 0}
+          showCateringPill
           cateringActive={cateringRailActive}
           cateringCount={sectionedMenu.catering.length}
           onCateringClick={handleSelectCatering}

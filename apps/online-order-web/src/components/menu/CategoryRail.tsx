@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { PartyPopper } from 'lucide-react';
 import { API_ORIGIN } from '../../api';
 import type { Category } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
@@ -44,7 +45,7 @@ export function CategoryRail({
 
   useEffect(() => {
     activeRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
-  }, [activeCategoryId]);
+  }, [activeCategoryId, cateringActive]);
 
   return (
     <nav
@@ -156,14 +157,15 @@ export function CategoryRail({
             </button>
           );
         })}
-        {/* Event & catering — last on the left rail (de-emphasized vs regular menu) */}
+        {/* Events / catering shortcut — always last on the left rail */}
         {showCateringPill && onCateringClick && (
           <button
             type="button"
             role="tab"
             aria-selected={cateringActive}
-            className={`cat-rail__item cat-rail__item--catering${cateringActive ? ' is-active' : ''}`}
-            data-testid="cat-rail-catering"
+            ref={cateringActive ? activeRef : undefined}
+            className={`cat-rail__item cat-rail__item--events${cateringActive ? ' is-active' : ''}`}
+            data-testid="cat-rail-events"
             onClick={onCateringClick}
             style={{
               display: 'flex',
@@ -171,10 +173,11 @@ export function CategoryRail({
               alignItems: 'center',
               gap: 4,
               padding: '0.5rem 0.35rem',
-              marginTop: 4,
+              marginTop: 6,
               border: 'none',
               background: cateringActive ? 'var(--color-primary-light)' : 'transparent',
               borderLeft: cateringActive ? '3px solid var(--color-primary)' : '3px solid transparent',
+              borderTop: '1px solid var(--color-border, #E8E0D8)',
               cursor: 'pointer',
               fontFamily: 'inherit',
               color: cateringActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
@@ -194,14 +197,12 @@ export function CategoryRail({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '0.9rem',
                 color: 'var(--color-dark)',
               }}
             >
-              C
+              <PartyPopper size={18} strokeWidth={2.25} />
             </span>
-            <span className="cat-rail__label">Catering</span>
+            <span className="cat-rail__label">Events</span>
             {cateringCount > 0 && (
               <span style={{ fontSize: 10, opacity: 0.7 }}>{cateringCount}</span>
             )}

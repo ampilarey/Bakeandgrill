@@ -39,7 +39,7 @@ describe('CategoryRail', () => {
     });
   });
 
-  it('places Catering after regular categories on the left rail', () => {
+  it('places Events shortcut after regular categories on the left rail', () => {
     const { container } = render(
       <CategoryRail
         categories={cats}
@@ -52,8 +52,9 @@ describe('CategoryRail', () => {
     );
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
     const labels = tabs.map((el) => el.textContent?.replace(/\d+$/, '').trim());
-    expect(labels[labels.length - 1]).toMatch(/Catering/i);
-    expect(container.querySelector('[data-testid="cat-rail-catering"]')).toBeTruthy();
+    expect(labels[labels.length - 1]).toMatch(/Events/i);
+    expect(container.querySelector('[data-testid="cat-rail-events"]')).toBeTruthy();
   });
 });
+
 
