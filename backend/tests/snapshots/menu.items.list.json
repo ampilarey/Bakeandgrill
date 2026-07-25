@@ -23,6 +23,7 @@
             "snoozed_until": null,
             "is_active": true,
             "sort_order": 0,
+            "created_at": "__VOLATILE__",
             "category_id": "__VOLATILE__",
             "menu_group_id": 1,
             "category": {

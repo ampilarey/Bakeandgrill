@@ -1053,6 +1053,18 @@ return [
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],
+        'menu_new_days' => [
+            'label' => 'New items window (days)',
+            'group' => 'Branding',
+            'type' => 'text',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'description' => 'Items created within this many days appear under “New items” on the dine-in menu.',
+            'validate' => 'nullable|integer|min:1|max:365',
+            'default' => '30',
+        ],
         'maps_embed_url' => [
             'label' => 'Maps Embed Url',
             'group' => 'Pages',

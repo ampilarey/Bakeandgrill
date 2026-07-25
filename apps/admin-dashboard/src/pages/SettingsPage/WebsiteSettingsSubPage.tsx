@@ -1,30 +1,41 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Image as ImageIcon, LayoutTemplate, Smartphone, Trash2, Upload } from 'lucide-react';
+import { Copy, ExternalLink, Image as ImageIcon, LayoutTemplate, Printer, QrCode, Smartphone, Trash2, Upload } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { getSiteSettings, updateSiteSettings, uploadSiteLogo } from '../../api';
 import { useToast } from '../../components/ui';
 import { Btn } from '../../components/SharedUI';
 
 /**
  * Legacy Website Settings content editors moved to Content Studio.
- * Branding still hosts the Default item photo uploader here.
+ * Branding still hosts the Default item photo uploader, dine-in menu QR, and new-items window.
  */
 export function WebsiteSettings() {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState<string>('');
+  const [menuNewDays, setMenuNewDays] = useState('30');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [savingDays, setSavingDays] = useState(false);
+
+  const dineInUrl = useMemo(() => {
+    if (typeof window === 'undefined') return '/order/view';
+    return `${window.location.origin}/order/view`;
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await getSiteSettings();
       const branding = res.settings?.Branding ?? res.settings?.branding ?? [];
-      const row = branding.find((r) => r.key === 'default_item_image');
-      setUrl((row?.value ?? '').trim());
+      const imageRow = branding.find((r) => r.key === 'default_item_image');
+      const daysRow = branding.find((r) => r.key === 'menu_new_days');
+      setUrl((imageRow?.value ?? '').trim());
+      setMenuNewDays((daysRow?.value ?? '30').trim() || '30');
     } catch {
       setUrl('');
+      setMenuNewDays('30');
     } finally {
       setLoading(false);
     }
@@ -59,8 +70,136 @@ export function WebsiteSettings() {
     }
   };
 
+  const onSaveMenuNewDays = async () => {
+    const n = Number.parseInt(menuNewDays, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 365) {
+      toast.error('Enter a number between 1 and 365.');
+      return;
+    }
+    setSavingDays(true);
+    try {
+      await updateSiteSettings({ menu_new_days: String(n) });
+      setMenuNewDays(String(n));
+      toast.success('New items window saved.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSavingDays(false);
+    }
+  };
+
+  const onCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(dineInUrl);
+      toast.success('Dine-in menu link copied.');
+    } catch {
+      toast.error('Could not copy link');
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 560 }}>
+      <div
+        data-testid="dinein-menu-card"
+        style={{
+          padding: 24, borderRadius: 14, background: '#fff',
+          border: '1px solid #E8E0D8', display: 'flex', flexDirection: 'column', gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#1C1408', fontWeight: 700, fontSize: 16 }}>
+          <QrCode size={18} /> Dine-in menu
+        </div>
+        <p style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+          View-only digital menu for QR codes and print — no login or ordering.
+        </p>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div
+            data-testid="dinein-menu-qr"
+            style={{
+              padding: 10, borderRadius: 12, background: '#fff',
+              border: '1px solid #E8E0D8', lineHeight: 0,
+            }}
+          >
+            <QRCodeSVG value={dineInUrl} size={128} level="M" includeMargin={false} />
+          </div>
+          <div style={{ flex: 1, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <code
+              data-testid="dinein-menu-url"
+              style={{
+                display: 'block', padding: '10px 12px', borderRadius: 10,
+                background: '#F8F6F3', border: '1px solid #E8E0D8',
+                fontSize: 12, wordBreak: 'break-all', color: '#1C1408',
+              }}
+            >
+              {dineInUrl}
+            </code>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Btn type="button" onClick={() => void onCopyLink()} style={{ minHeight: 44 }}>
+                <Copy size={14} /> Copy link
+              </Btn>
+              <Btn
+                type="button"
+                variant="secondary"
+                onClick={() => window.open(dineInUrl, '_blank', 'noopener,noreferrer')}
+                style={{ minHeight: 44 }}
+              >
+                <ExternalLink size={14} /> Open
+              </Btn>
+              <Btn
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  const w = window.open(dineInUrl, '_blank', 'noopener,noreferrer');
+                  // Print runs on the opened tab after load when possible
+                  if (w) {
+                    w.addEventListener('load', () => {
+                      try { w.print(); } catch { /* ignore */ }
+                    });
+                  }
+                }}
+                style={{ minHeight: 44 }}
+              >
+                <Printer size={14} /> Print
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        padding: 24, borderRadius: 14, background: '#fff',
+        border: '1px solid #E8E0D8', display: 'flex', flexDirection: 'column', gap: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#1C1408', fontWeight: 700, fontSize: 16 }}>
+          New items window
+        </div>
+        <p style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+          Items created within this many days appear under “New items” on the dine-in menu.
+        </p>
+        {loading ? (
+          <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>Loading…</p>
+        ) : (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              data-testid="menu-new-days-input"
+              value={menuNewDays}
+              onChange={(e) => setMenuNewDays(e.target.value)}
+              style={{
+                width: 96, minHeight: 44, padding: '0 12px', borderRadius: 10,
+                border: '1px solid #E8E0D8', fontFamily: 'inherit', fontSize: 14,
+              }}
+            />
+            <span style={{ fontSize: 13, color: '#6B5D4F' }}>days</span>
+            <Btn type="button" disabled={savingDays} onClick={() => void onSaveMenuNewDays()} style={{ minHeight: 44 }}>
+              Save
+            </Btn>
+          </div>
+        )}
+      </div>
+
       <div style={{
         padding: 24, borderRadius: 14, background: '#fff',
         border: '1px solid #E8E0D8', display: 'flex', flexDirection: 'column', gap: 12,

@@ -114,6 +114,8 @@ export type MenuItem = {
   review_count?: number;
   /** Non-cancelled order lines in the last 30 days (public menu). */
   sales_30d?: number;
+  /** ISO datetime — used by the dine-in view “New items” section. */
+  created_at?: string | null;
 };
 
 export type ComboItemEntry = {

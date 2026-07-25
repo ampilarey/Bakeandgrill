@@ -156,6 +156,7 @@ class ItemController extends Controller
                 'snoozed_until' => $item->snoozed_until?->toIso8601String(),
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
+                'created_at' => $item->created_at?->toIso8601String(),
                 'category_id' => $item->category_id,
                 'menu_group_id' => $item->menu_group_id,
                 'category' => $item->category ? [
@@ -460,6 +461,7 @@ class ItemController extends Controller
             'tax_rate' => $item->tax_rate,
             'tax_code' => $item->tax_code ?? 'standard_8',
             'is_available' => $item->is_available,
+            'created_at' => $item->created_at?->toIso8601String(),
             'category' => $item->category ? [
                 'id' => $item->category->id,
                 'name' => $item->category->name,

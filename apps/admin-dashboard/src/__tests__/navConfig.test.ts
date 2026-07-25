@@ -59,6 +59,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/staff', permission: 'staff.view' },
   { to: '/content/website', permission: 'website.manage' },
   { to: '/content/order-app', permission: 'website.manage' },
+  { to: '/content/website?group=Branding', permission: 'website.manage' },
   { to: '/media', permission: 'media.view' },
   { to: '/settings?tab=permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/settings?tab=notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
@@ -105,7 +106,7 @@ describe('navConfig', () => {
   it('every item belongs to exactly one section and has a route path', () => {
     const seen = new Map<string, string>();
     for (const g of getNavGroups()) {
-      expect(g.items.length).toBeLessThanOrEqual(12);
+      expect(g.items.length).toBeLessThanOrEqual(13);
       for (const item of g.items) {
         expect(item.to.startsWith('/') || item.to.startsWith('#')).toBe(true);
         const key = item.to;

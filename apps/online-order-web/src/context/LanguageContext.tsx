@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 /** English UI copy. Keys retained so a future language can be re-added without reshaping call sites. */
 type Translations = Record<string, string>;
@@ -896,29 +896,47 @@ const TRANSLATIONS: Translations = {
 
 type LanguageContextType = {
   t: (key: string) => string;
-  /** UI language. Currently English-only; kept for card DV field selection / future i18n. */
+  /** UI / card language — EN chrome copy; DV selects name_dv / short_description_dv on cards. */
   lang: 'en' | 'dv';
+  setLang: (lang: 'en' | 'dv') => void;
 };
 
 const LanguageContext = createContext<LanguageContextType>({
   t: (k) => k,
   lang: 'en',
+  setLang: () => {},
 });
 
 const LANG_STORAGE_KEY = "bakegrill_lang";
 
+function readStoredLang(): 'en' | 'dv' {
+  try {
+    const v = localStorage.getItem(LANG_STORAGE_KEY);
+    return v === 'dv' ? 'dv' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<'en' | 'dv'>(() => readStoredLang());
+
+  const setLang = (next: 'en' | 'dv') => {
+    setLangState(next);
+    try { localStorage.setItem(LANG_STORAGE_KEY, next); } catch { /* private mode / quota */ }
+    document.documentElement.lang = next === 'dv' ? 'dv' : 'en';
+    document.documentElement.dir = next === 'dv' ? 'rtl' : 'ltr';
+  };
+
   useEffect(() => {
-    // Clear legacy language preference (pre–English-only UI).
-    try { localStorage.removeItem(LANG_STORAGE_KEY); } catch { /* private mode / quota */ }
-    document.documentElement.lang = "en";
-    document.documentElement.dir = "ltr";
-  }, []);
+    document.documentElement.lang = lang === 'dv' ? 'dv' : 'en';
+    document.documentElement.dir = lang === 'dv' ? 'rtl' : 'ltr';
+  }, [lang]);
 
   const t = translate;
 
   return (
-    <LanguageContext.Provider value={{ t, lang: 'en' }}>
+    <LanguageContext.Provider value={{ t, lang, setLang }}>
       {children}
     </LanguageContext.Provider>
   );

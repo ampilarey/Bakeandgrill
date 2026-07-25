@@ -147,6 +147,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   site_name:        'Bake & Grill',
   site_tagline:     'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.',
   logo:             '/logo.png',
+  menu_new_days:    '30',
   business_phone:   '+960 912 0011',
   business_email:   'admin@bakeandgrill.mv',
   business_address: 'Kalaafaanu Hingun, Malé, Maldives',

@@ -51,6 +51,8 @@ type Props = {
   defaultImageUrl?: string | null;
   /** data-testid prefix for media frame / price row (default: offer-card) */
   testId?: string;
+  /** Dine-in view — no link into the ordering flow. */
+  viewOnly?: boolean;
 };
 
 export function OfferCard({
@@ -59,6 +61,7 @@ export function OfferCard({
   logoSrc,
   defaultImageUrl = null,
   testId = 'offer-card',
+  viewOnly = false,
 }: Props) {
   const slides = useMemo(
     () => offerSlides(offer, apiOrigin, defaultImageUrl),
@@ -75,12 +78,9 @@ export function OfferCard({
   const badgeLabel = offer.badge
     || (offer.kind === 'special' ? 'Special Offer' : null);
 
-  return (
-    <Link
-      to={to}
-      className={`offers-rail-card menu-card-article menu-card-article--zus${onSale ? ' menu-card-on-sale' : ''}`}
-      data-testid={testId}
-    >
+  const className = `offers-rail-card menu-card-article menu-card-article--zus${onSale ? ' menu-card-on-sale' : ''}`;
+  const body = (
+    <>
       <div className="menu-card-media-circle">
         <div
           className="menu-card-media-circle__frame"
@@ -125,6 +125,20 @@ export function OfferCard({
           <p className="offers-rail-card__promo-badge">{offer.badge}</p>
         ) : null}
       </div>
+    </>
+  );
+
+  if (viewOnly) {
+    return (
+      <article className={className} data-testid={testId}>
+        {body}
+      </article>
+    );
+  }
+
+  return (
+    <Link to={to} className={className} data-testid={testId}>
+      {body}
     </Link>
   );
 }

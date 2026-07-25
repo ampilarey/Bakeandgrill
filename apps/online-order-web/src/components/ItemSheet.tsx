@@ -25,6 +25,8 @@ export type ItemSheetProps = {
   initialVariantId?: number | null;
   initialPackagingOptionId?: number | null;
   onUpdateEntry?: (variant?: Variant | null, packagingOptionId?: number | null) => void;
+  /** Dine-in / browse-only — hide cart actions, show variants & packaging as text. */
+  viewOnly?: boolean;
 };
 
 export function ItemSheet({
@@ -39,6 +41,7 @@ export function ItemSheet({
   initialVariantId = null,
   initialPackagingOptionId = null,
   onUpdateEntry,
+  viewOnly = false,
 }: ItemSheetProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
@@ -48,7 +51,7 @@ export function ItemSheet({
   const packagingOptions = (item.packaging_options ?? [])
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  const showPackagingPicker = packagingOptions.length > 1;
+  const showPackagingPicker = !viewOnly && packagingOptions.length > 1;
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(() => {
     if (!item.has_variants || activeVariants.length === 0) return null;
     if (initialVariantId != null) {
@@ -105,11 +108,13 @@ export function ItemSheet({
     getItemPhotos(item.id)
       .then((res) => { if (!cancelled) setPhotos(res.photos ?? []); })
       .catch(() => {});
-    fetchCartRecommendations([item.id], 3)
-      .then(({ items: recs }) => { if (!cancelled) setPairings(recs ?? []); })
-      .catch(() => {});
+    if (!viewOnly) {
+      fetchCartRecommendations([item.id], 3)
+        .then(({ items: recs }) => { if (!cancelled) setPairings(recs ?? []); })
+        .catch(() => {});
+    }
     return () => { cancelled = true; };
-  }, [item.id, item.photos]);
+  }, [item.id, item.photos, viewOnly]);
 
   useEffect(() => {
     if (!item.has_variants || activeVariants.length === 0) {
@@ -378,31 +383,83 @@ export function ItemSheet({
               </div>
             )}
 
-            {(item.has_variants && activeVariants.length > 0) || showPackagingPicker || (item.modifiers && item.modifiers.length > 0) ? (
+            {(item.has_variants && activeVariants.length > 0)
+              || showPackagingPicker
+              || (viewOnly && packagingOptions.length > 0)
+              || (item.modifiers && item.modifiers.length > 0) ? (
               <div style={{ height: 1, background: 'var(--color-border)', margin: '0.25rem 0 1.1rem' }} />
             ) : null}
 
             {item.has_variants && activeVariants.length > 0 && (
-              <div style={{ marginBottom: '1.15rem' }}>
+              <div style={{ marginBottom: '1.15rem' }} data-testid="item-sheet-variants">
                 <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.65rem' }}>
-                  Choose option <span style={{ color: '#ef4444' }}>*</span>
+                  {viewOnly ? 'Options' : <>Choose option <span style={{ color: '#ef4444' }}>*</span></>}
                 </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {activeVariants.map((v) => {
-                    const isSelected = selectedVariant?.id === v.id;
-                    return (
-                      <button key={v.id} type="button" onClick={() => setSelectedVariant(v)} style={chip(isSelected)} aria-pressed={isSelected}>
-                        {v.name}
-                        <span style={{ marginLeft: '0.35rem', fontSize: '0.8rem', fontWeight: 600, opacity: 0.9 }}>
+                {viewOnly ? (
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                    {activeVariants.map((v) => (
+                      <li
+                        key={v.id}
+                        style={{
+                          display: 'flex', justifyContent: 'space-between', gap: '0.75rem',
+                          padding: '0.65rem 0.85rem', borderRadius: 12,
+                          border: '1px solid var(--color-border)', background: 'var(--color-surface-alt)',
+                          fontSize: '0.9rem', color: 'var(--color-dark)',
+                        }}
+                      >
+                        <span>{v.name}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
                           {formatCardPrice(Number(v.effective_price ?? v.price))}
                         </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {!selectedVariant && (
-                  <p style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '0.4rem' }}>Please select an option to continue.</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {activeVariants.map((v) => {
+                        const isSelected = selectedVariant?.id === v.id;
+                        return (
+                          <button key={v.id} type="button" onClick={() => setSelectedVariant(v)} style={chip(isSelected)} aria-pressed={isSelected}>
+                            {v.name}
+                            <span style={{ marginLeft: '0.35rem', fontSize: '0.8rem', fontWeight: 600, opacity: 0.9 }}>
+                              {formatCardPrice(Number(v.effective_price ?? v.price))}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {!selectedVariant && (
+                      <p style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '0.4rem' }}>Please select an option to continue.</p>
+                    )}
+                  </>
                 )}
+              </div>
+            )}
+
+            {viewOnly && packagingOptions.length > 0 && (
+              <div style={{ marginBottom: '1.15rem' }} data-testid="item-sheet-packaging">
+                <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.65rem' }}>
+                  Packaging
+                </p>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                  {packagingOptions.map((opt) => (
+                    <li
+                      key={opt.id}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', gap: '0.75rem',
+                        padding: '0.65rem 0.85rem', borderRadius: 12,
+                        border: '1px solid var(--color-border)', background: 'var(--color-surface-alt)',
+                        fontSize: '0.9rem', color: 'var(--color-dark)',
+                      }}
+                    >
+                      <span>{opt.name}{opt.is_default ? ' (default)' : ''}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                        {Number(opt.fee) > 0 ? `+${formatCardPrice(Number(opt.fee))}` : 'No fee'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -428,44 +485,65 @@ export function ItemSheet({
             )}
 
             {item.modifiers && item.modifiers.length > 0 && (
-              <div style={{ marginBottom: '0.5rem' }}>
+              <div style={{ marginBottom: '0.5rem' }} data-testid="item-sheet-addons">
                 <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.65rem' }}>
                   Add-ons
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {item.modifiers.map((modifier) => {
-                    const checked = selectedModifiers.some((m) => m.id === modifier.id);
-                    return (
-                      <label
+                {viewOnly ? (
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                    {item.modifiers.map((modifier) => (
+                      <li
                         key={modifier.id}
                         style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '0.75rem 1rem',
-                          border: `1.5px solid ${checked ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                          borderRadius: 12, cursor: 'pointer',
-                          background: checked ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                          display: 'flex', justifyContent: 'space-between', gap: '0.75rem',
+                          padding: '0.65rem 0.85rem', borderRadius: 12,
+                          border: '1px solid var(--color-border)', background: 'var(--color-surface-alt)',
+                          fontSize: '0.9rem', color: 'var(--color-dark)',
                         }}
                       >
-                        <span style={{ fontSize: '0.9rem', color: 'var(--color-dark)' }}>
-                          {modifier.name}
-                          <span style={{ color: 'var(--color-primary)', marginLeft: '0.5rem', fontWeight: 700 }}>
-                            +MVR {Number(modifier.price).toFixed(2)}
-                          </span>
+                        <span>{modifier.name}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
+                          +{formatCardPrice(Number(modifier.price))}
                         </span>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => onToggleModifier(modifier)}
-                          style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {item.modifiers.map((modifier) => {
+                      const checked = selectedModifiers.some((m) => m.id === modifier.id);
+                      return (
+                        <label
+                          key={modifier.id}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '0.75rem 1rem',
+                            border: `1.5px solid ${checked ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            borderRadius: 12, cursor: 'pointer',
+                            background: checked ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                          }}
+                        >
+                          <span style={{ fontSize: '0.9rem', color: 'var(--color-dark)' }}>
+                            {modifier.name}
+                            <span style={{ color: 'var(--color-primary)', marginLeft: '0.5rem', fontWeight: 700 }}>
+                              +MVR {Number(modifier.price).toFixed(2)}
+                            </span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => onToggleModifier(modifier)}
+                            style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            {pairings.length > 0 && (
+            {!viewOnly && pairings.length > 0 && (
               <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
                 <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 0.75rem' }}>
                   Goes well with
@@ -517,48 +595,53 @@ export function ItemSheet({
           </div>
         </div>
 
-        {/* Sticky add bar */}
-        <div style={{
-          flexShrink: 0, padding: '0.85rem 1.15rem calc(0.85rem + env(safe-area-inset-bottom, 0px))',
-          borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)',
-        }}>
-          <button
-            ref={addRef}
-            onClick={handleConfirm}
-            disabled={!canAdd}
-            className="modal-add-btn"
+        {/* Sticky add bar — hidden on dine-in view-only */}
+        {!viewOnly && (
+          <div
+            data-testid="item-sheet-add-bar"
             style={{
-              width: '100%', padding: '0.95rem',
-              background: canAdd ? 'var(--color-primary)' : 'var(--color-surface-alt)',
-              color: canAdd ? '#fff' : 'var(--color-text-muted)',
-              border: 'none', borderRadius: 14, fontSize: '1rem', fontWeight: 800,
-              cursor: canAdd ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+              flexShrink: 0, padding: '0.85rem 1.15rem calc(0.85rem + env(safe-area-inset-bottom, 0px))',
+              borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)',
             }}
           >
-            {canAdd
-              ? (isEdit
-                ? `Update — MVR ${(totalPrice * qty).toFixed(2)}`
-                : `Add${qty > 1 ? ` ${qty}×` : ''} to cart — MVR ${(totalPrice * qty).toFixed(2)}`)
-              : 'Select an option first'}
-          </button>
-          {item.is_catering && !isEdit && (
-            <a
-              href={`/order/events?add=${item.id}`}
-              data-testid="item-sheet-event-link"
+            <button
+              ref={addRef}
+              onClick={handleConfirm}
+              disabled={!canAdd}
+              className="modal-add-btn"
               style={{
-                display: 'block',
-                marginTop: 10,
-                textAlign: 'center',
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--color-primary)',
-                textDecoration: 'none',
+                width: '100%', padding: '0.95rem',
+                background: canAdd ? 'var(--color-primary)' : 'var(--color-surface-alt)',
+                color: canAdd ? '#fff' : 'var(--color-text-muted)',
+                border: 'none', borderRadius: 14, fontSize: '1rem', fontWeight: 800,
+                cursor: canAdd ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
               }}
             >
-              Planning an event? Order this for a future date →
-            </a>
-          )}
-        </div>
+              {canAdd
+                ? (isEdit
+                  ? `Update — MVR ${(totalPrice * qty).toFixed(2)}`
+                  : `Add${qty > 1 ? ` ${qty}×` : ''} to cart — MVR ${(totalPrice * qty).toFixed(2)}`)
+                : 'Select an option first'}
+            </button>
+            {item.is_catering && !isEdit && (
+              <a
+                href={`/order/events?add=${item.id}`}
+                data-testid="item-sheet-event-link"
+                style={{
+                  display: 'block',
+                  marginTop: 10,
+                  textAlign: 'center',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--color-primary)',
+                  textDecoration: 'none',
+                }}
+              >
+                Planning an event? Order this for a future date →
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
