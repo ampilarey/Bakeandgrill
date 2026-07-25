@@ -24,8 +24,12 @@ menu, and supports **day-parting** (different playlists by time of day). No inte
   AppShell**. Page `apps/online-order-web/src/pages/SignagePage.tsx`.
 - **Fullscreen, landscape, non-interactive**: large type, high contrast, brand-styled, no nav/cart/login;
   hide cursor; `requestFullscreen` optionally; keep-awake best-effort (Wake Lock API where available).
-- **Slide engine:** cycles the resolved playlist; each slide has a **duration**; smooth cross-fade/slide
-  transitions; video slides play for their length (or the set duration); auto-advance; loops forever.
+- **Slide engine:** cycles the resolved playlist; each slide has a **duration**, a **layout template**, a
+  **transition** (fade/slide/zoom/dissolve/flip/push/cube/wipe, with speed), and optional **effects**
+  (Ken Burns pan/zoom on photos, text/price entrance animations, animated % OFF badges). Global theme +
+  per-slide overrides. Video slides play for their length (or the set duration); auto-advance; loops
+  forever. Render at the playlist's **orientation** (16:9 or 9:16). Use GPU-friendly CSS transforms;
+  respect `prefers-reduced-motion` only if a "reduce motion" toggle is set (TVs usually want motion).
 - **Auto-update (silent):** re-fetch menu/offers every N minutes and re-read the active playlist so
   price/special/new changes and admin edits appear **without touching the TV**; switch playlist when the
   **day-part** changes. Keep the last good data on network blips (offline-tolerant).
@@ -46,27 +50,52 @@ Auto slides pull live data at render; custom slides come from the config.
 ### 2.3 Signage config + day-parting (backend)
 - Store as SiteSetting JSON **`signage_config`** (mirror `hero_slides`), shape:
   ```
-  { "default_slide_seconds": 8, "transition": "fade",
+  { "default_slide_seconds": 8, "transition": "fade", "transition_speed_ms": 700,
+    "theme": { "colors": {...}, "font": "...", "background": {...}, "overlay_opacity": 0.35,
+               "logo": true, "radius": "rounded" },
     "playlists": [
-      { "id": "dinner", "name": "Dinner",
+      { "id": "dinner", "name": "Dinner", "orientation": "16:9",
         "windows": [ {"start":"16:00","end":"23:59","days":[0,1,2,3,4,5,6]} ],
-        "slides": [ {"type":"offers","seconds":10}, {"type":"featured_item","item_id":42,"seconds":8},
-                    {"type":"custom_video","media_id":123,"seconds":15}, … ] } ,
-      { "id":"default", "name":"All day", "windows":[], "slides":[…] } ]
+        "slides": [
+          {"type":"offers","template":"promo_hero","transition":"zoom","effect":"kenburns","seconds":10},
+          {"type":"featured_item","item_id":42,"template":"fullbleed_item","effect":"badge_pulse","seconds":8},
+          {"type":"custom_video","media_id":123,"template":"fullscreen_video","seconds":15}, … ] },
+      { "id":"default", "name":"All day", "windows":[], "orientation":"16:9", "slides":[…] } ]
   }
   ```
+  Each slide carries `template`, `transition` (+speed), `effect(s)`, `seconds`, and theme overrides.
 - **Resolution:** pick the first playlist whose window matches `now()`; else the `default` playlist. A
   public endpoint `GET /signage` returns the **resolved** playlist for the current time + the top-N
   bestsellers + `menu_new_days` (the page fetches menu/offers from the existing public endpoints).
 - Admin endpoints (permission `website.manage` / a new `signage.manage`): `GET/PUT /admin/signage` to
   read/save the config; audit-logged.
 
-### 2.4 Admin "TV Menu / Signage" page
-- New admin page: manage **playlists** (add/rename/reorder), **day-part windows** (time + days),
-  and each playlist's **ordered slides** (add auto-section slides or custom slides, set per-slide
-  seconds, drag-reorder). Reuse `HeroSlidesEditor`/Media Library picker for custom image/video slides.
-- **Live preview** (a scaled iframe of `/order/tv`), the **TV URL + QR code** + "Open on this screen"
-  and copy-link, and a "which playlist is active now" indicator. Gate by permission.
+### 2.4 Admin "TV Menu / Signage" — **PRO TEMPLATE STUDIO**
+A polished, ScreenCloud/Yodeck-class editor (template-based, not a freeform canvas):
+- **Layout templates per slide** (pick a professional layout, fill in content — never a blank slide):
+  full-bleed item (big photo/video + name/price/discount), split image + price panel, **price-board
+  grid** (classic menu board of a category), promo hero (headline + subtext + bg), full-screen video,
+  New/Best-seller spotlight, and custom image/video. A **templates gallery** to start from.
+- **WYSIWYG live preview** on a canvas at true TV aspect — **16:9 landscape** and **9:16 portrait**
+  (orientation per playlist/screen). Inline text editing, Media Library picker for images/videos,
+  per-slide **duration / transition / effect** controls. Add / **duplicate** / **drag-reorder** /
+  delete slides.
+- **Theming / branding** (global + per-slide override): brand colors, font pairing, background
+  (solid / gradient / image / looping video), overlay opacity for legibility, corner logo, rounded vs
+  sharp. So every slide is on-brand and cohesive.
+- **Transitions (per-slide + global default + speed):** core (fade, slide, zoom, dissolve) **and**
+  extra (flip, push, cube, wipe).
+- **Motion / visual effects:** **Ken Burns** (slow pan/zoom) on photo slides; animated **entrance** for
+  text/price (fade-up, price count-up); animated **discount badges** (pulse/shine on "% OFF"); subtle
+  gradient/parallax overlays.
+- **Day-part scheduler UI**: clean time-window editor (start/end + days) assigning playlists to parts of
+  the day, with a "which playlist is active now" indicator.
+- **Preview playlist** full-screen test button, the **TV URL + QR code**, "Open on this screen", and
+  copy-link. Gate by permission. Reuse `HeroSlidesEditor`/Media Library for slide media.
+
+> Effort note: this is a **template studio** (choose a layout + fill content + pick transition/effect/
+> theme) — professional-looking with far less build risk than a freeform drag-anything canvas, and much
+> harder to make an ugly slide.
 
 ### 2.5 Best-sellers exposure
 - Add a public top-sellers source (endpoint or field) using the existing bestseller signal / a sales
