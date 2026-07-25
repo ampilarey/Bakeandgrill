@@ -113,13 +113,47 @@ class DefaultItemImageTest extends TestCase
         $row = SiteSetting::query()->where('key', 'default_item_image')->first();
         $row?->update(['is_public' => true, 'type' => 'image', 'group' => 'Branding']);
 
-        $category = Category::create(['name' => 'Grill', 'slug' => 'grill-di', 'is_active' => true]);
+        $this->seedImageLessSpecial();
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringContainsString('data-default-item-image="1"', $html);
+        $this->assertStringContainsString('/storage/site/default_item.jpg', $html);
+    }
+
+    public function test_content_studio_website_publish_updates_home_and_shared(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+        $url = '/storage/site/website_default.jpg';
+
+        $this->putJson('/api/admin/content', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'default_item_image', 'scope' => 'website', 'value' => $url],
+            ],
+        ])->assertOk();
+
+        $this->assertSame($url, SiteSetting::getScoped('default_item_image', 'website'));
+        $this->assertSame($url, SiteSetting::get('default_item_image'));
+        $this->assertSame($url, SiteSetting::getScoped('default_item_image', 'shared'));
+
+        $public = $this->getJson('/api/site-settings/public')->assertOk()->json('settings');
+        $this->assertSame($url, $public['default_item_image'] ?? null);
+
+        $this->seedImageLessSpecial();
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringContainsString('data-default-item-image="1"', $html);
+        $this->assertStringContainsString($url, $html);
+    }
+
+    private function seedImageLessSpecial(): void
+    {
+        $category = Category::create(['name' => 'Grill', 'slug' => 'grill-di-'.uniqid(), 'is_active' => true]);
         $item = Item::create([
             'category_id' => $category->id,
             'name' => 'No Photo Burger',
             'base_price' => 50,
-            'sku' => 'DI-B001',
-            'barcode' => 'DI-B001',
+            'sku' => 'DI-B'.uniqid(),
+            'barcode' => 'DI-B'.uniqid(),
             'is_active' => true,
             'is_available' => true,
             'image_url' => null,
@@ -134,9 +168,5 @@ class DefaultItemImageTest extends TestCase
         ]);
         app(OffersService::class)->bustCache();
         app(SpecialPricingService::class)->bustCache();
-
-        $html = $this->get('/')->assertOk()->getContent();
-        $this->assertStringContainsString('data-default-item-image="1"', $html);
-        $this->assertStringContainsString('/storage/site/default_item.jpg', $html);
     }
 }

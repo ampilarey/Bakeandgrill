@@ -1049,7 +1049,7 @@
     $homeOffers = isset($offers) ? $offers : collect();
     $offersHeadline = content('offers_headline', 'Offers');
     $offersSubtext = content('offers_subtext', 'Specials and promos running right now.');
-    $defaultItemImage = \App\Models\SiteSetting::get('default_item_image');
+    $defaultItemImage = content('default_item_image');
 @endphp
 @if($homeOffers->count() > 0)
 <section class="section" id="offers">

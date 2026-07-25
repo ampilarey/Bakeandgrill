@@ -51,6 +51,13 @@ final class ContentWriter
 
         SiteSetting::set($key, $value, $scope, $locale);
 
+        // Brand fallback photo is used by both website Blade and the order app.
+        // Content Studio editors publish to app scopes — mirror to shared so
+        // SiteSetting::get / order_app public settings stay in sync.
+        if ($scope !== 'shared' && $key === 'default_item_image') {
+            SiteSetting::set($key, $value, 'shared', $locale);
+        }
+
         // Promote / clear any autosaved draft for this key.
         ContentRevision::query()
             ->where('key', $key)
