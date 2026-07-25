@@ -218,6 +218,13 @@ class DailySpecialController extends Controller
 
         $validated = $request->validate($rules);
 
+        // Empty strings from the admin UI mean "clear" — store null.
+        foreach (['badge_label', 'description'] as $nullableText) {
+            if (array_key_exists($nullableText, $validated) && $validated[$nullableText] === '') {
+                $validated[$nullableText] = null;
+            }
+        }
+
         if (!$creating) {
             $existing = DailySpecial::find($request->route('id'));
             $startDate = $validated['start_date'] ?? $existing?->start_date?->toDateString();
@@ -441,15 +448,10 @@ class DailySpecialController extends Controller
             })->values()->all()
             : [];
 
+        // Admin gets the stored value (null when cleared). Storefront APIs synthesize display badges.
         $badgeLabel = $s->badge_label;
         if ($badgeLabel === 'Special') {
             $badgeLabel = SpecialPricingService::DEFAULT_BADGE_LABEL;
-        } elseif (!$badgeLabel) {
-            if ($s->discount_pct) {
-                $badgeLabel = "{$s->discount_pct}% OFF";
-            } else {
-                $badgeLabel = SpecialPricingService::DEFAULT_BADGE_LABEL;
-            }
         }
 
         return [
@@ -457,7 +459,7 @@ class DailySpecialController extends Controller
             'item_id' => $s->item_id,
             'item_name' => $item?->name,
             'item_image' => $item?->image_url,
-            'badge_label' => $badgeLabel,
+            'badge_label' => $badgeLabel ?: null,
             // Cast decimals explicitly — Eloquent `decimal:2` attributes are strings in JSON.
             'special_price' => $s->special_price !== null ? (float) $s->special_price : null,
             'discount_pct' => $s->discount_pct,

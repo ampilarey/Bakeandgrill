@@ -183,6 +183,46 @@ describe('SpecialsPage', () => {
     expect(await screen.findByText('Discount updated.')).toBeTruthy();
   });
 
+  it('sends null badge_label when the custom badge is cleared on edit', async () => {
+    const cleared = { ...specialRow, badge_label: null };
+
+    vi.mocked(getSpecial).mockResolvedValue({
+      special: { ...specialRow, variant_overrides: [] },
+    } as never);
+    vi.mocked(updateSpecial).mockResolvedValue({ special: cleared } as never);
+    vi.mocked(fetchSpecials)
+      .mockResolvedValueOnce({
+        data: [specialRow],
+        meta: { current_page: 1, last_page: 1, total: 1, active_today_count: 1 },
+      } as never)
+      .mockResolvedValueOnce({
+        data: [cleared],
+        meta: { current_page: 1, last_page: 1, total: 1, active_today_count: 1 },
+      } as never);
+
+    renderPage();
+    await screen.findAllByText('Chicken Grill');
+    fireEvent.click(screen.getAllByLabelText('Edit special')[0]);
+    expect(await screen.findByRole('heading', { name: /Edit Daily Special/i })).toBeTruthy();
+
+    const badgeInput = screen.getByPlaceholderText("e.g. Chef's Special") as HTMLInputElement;
+    expect(badgeInput.value).toBe("Chef's Special");
+    fireEvent.change(badgeInput, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Update$/i }));
+
+    await waitFor(() => {
+      expect(updateSpecial).toHaveBeenCalledWith(7, expect.objectContaining({
+        badge_label: null,
+      }));
+    });
+
+    // List falls back to auto "% OFF" once the custom badge is cleared.
+    await waitFor(() => {
+      expect(screen.getAllByText('22% OFF').length).toBeGreaterThan(0);
+      expect(screen.queryByText("Chef's Special")).toBeNull();
+    });
+  });
+
   it('surfaces API error messages verbatim and does not close the modal', async () => {
     vi.mocked(getSpecial).mockResolvedValue({ special: { ...specialRow, variant_overrides: [] } } as never);
     vi.mocked(updateSpecial).mockRejectedValue(new Error('End date must be on or after start date.'));

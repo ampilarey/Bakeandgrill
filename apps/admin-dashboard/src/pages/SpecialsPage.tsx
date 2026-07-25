@@ -209,15 +209,17 @@ function mergeSpecialForms(base: SpecialForm, pending: SpecialForm): SpecialForm
 
   return {
     ...base,
-    badge_label: pending.badge_label.trim() || base.badge_label,
-    description: pending.description.trim() || base.description,
+    // Prefer pending as-is so clearing badge/description/max qty actually clears.
+    badge_label: pending.badge_label.trim(),
+    description: pending.description.trim(),
     variant_overrides,
     discount_pct: pending.discount_pct.trim() || base.discount_pct,
+    special_price: pending.special_price.trim() || base.special_price,
     start_date: base.start_date,
     end_date: base.end_date,
     start_time: base.start_time || pending.start_time,
     end_time: base.end_time || pending.end_time,
-    max_quantity: pending.max_quantity.trim() || base.max_quantity,
+    max_quantity: pending.max_quantity.trim(),
     is_active: base.is_active,
   };
 }
@@ -234,7 +236,8 @@ function buildSpecialPayload(form: SpecialForm, item: MenuItem | undefined): Dai
 
   return {
     item_id: Number(form.item_id),
-    badge_label: form.badge_label || undefined,
+    // Always send null (not omit) so PATCH clears a previously saved badge/description.
+    badge_label: form.badge_label.trim() || null,
     special_price: hasVariants ? undefined : (hasPctInput ? undefined : specialPrice),
     discount_pct: discountPct,
     variant_overrides: variantRows.map(row => ({
@@ -249,10 +252,18 @@ function buildSpecialPayload(form: SpecialForm, item: MenuItem | undefined): Dai
     start_time: form.start_time || undefined,
     end_time: form.end_time || undefined,
     days_of_week: form.days_of_week.length > 0 ? form.days_of_week : undefined,
-    max_quantity: maxQty,
-    description: form.description || undefined,
+    max_quantity: maxQty ?? null,
+    description: form.description.trim() || null,
     is_active: form.is_active,
   };
+}
+
+/** List/card label: custom badge, else auto % OFF / default. */
+function displayBadgeLabel(s: DailySpecial): string {
+  const custom = s.badge_label?.trim();
+  if (custom) return custom;
+  if (s.discount_pct != null && s.discount_pct > 0) return `${s.discount_pct}% OFF`;
+  return 'Special Offer';
 }
 
 function conflictIdFromError(e: unknown): number | null {
@@ -699,7 +710,7 @@ export default function SpecialsPage() {
                       {hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
                     </Badge>
                   </td>
-                  <td style={TD}><Badge color="orange">{s.badge_label}</Badge></td>
+                  <td style={TD}><Badge color="orange">{displayBadgeLabel(s)}</Badge></td>
                   <td style={{ ...TD, fontSize: 13 }}>{renderSpecialPrice(s)}</td>
                   <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{s.start_date} → {s.end_date}</td>
                   <td style={{ ...TD, fontSize: 12 }}>
@@ -734,7 +745,7 @@ export default function SpecialsPage() {
                     <Badge color={hasVariantOverrides(s) ? 'purple' : isPctDiscount(s) ? 'orange' : 'blue'}>
                       {hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price'}
                     </Badge>
-                    {s.badge_label && <Badge color="orange">{s.badge_label}</Badge>}
+                    <Badge color="orange">{displayBadgeLabel(s)}</Badge>
                     <Badge color={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge>
                   </div>
                 </div>

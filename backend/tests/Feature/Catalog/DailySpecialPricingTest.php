@@ -631,4 +631,39 @@ class DailySpecialPricingTest extends TestCase
         $this->getJson('/api/specials')
             ->assertOk();
     }
+
+    public function test_admin_can_clear_custom_badge_label(): void
+    {
+        $owner = $this->makeOwner();
+        $item = $this->makeItem(false, 0, ['base_price' => 50.00]);
+        $special = $this->createSpecial([
+            'item_id' => $item->id,
+            'discount_pct' => 20,
+            'badge_label' => "Chef's Special",
+        ]);
+
+        $this->patchJson("/api/admin/specials/{$special->id}", [
+            'badge_label' => null,
+            'discount_pct' => 20,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->addDays(7)->toDateString(),
+            'is_active' => true,
+        ], $this->staffHeaders($owner))
+            ->assertOk()
+            ->assertJsonPath('special.badge_label', null);
+
+        $this->assertDatabaseHas('daily_specials', [
+            'id' => $special->id,
+            'badge_label' => null,
+        ]);
+
+        // Empty string from the admin UI also clears.
+        $special->update(['badge_label' => 'Lunch Deal']);
+        $this->patchJson("/api/admin/specials/{$special->id}", [
+            'badge_label' => '',
+            'discount_pct' => 20,
+        ], $this->staffHeaders($owner))
+            ->assertOk()
+            ->assertJsonPath('special.badge_label', null);
+    }
 }

@@ -376,7 +376,7 @@ export interface DailySpecial {
   item_id: number;
   item_name: string | null;
   item_image: string | null;
-  badge_label: string;
+  badge_label: string | null;
   special_price: number | null;
   discount_pct: number | null;
   effective_price: number | null;
