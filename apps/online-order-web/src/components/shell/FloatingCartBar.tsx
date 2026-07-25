@@ -23,11 +23,15 @@ export function FloatingCartBar() {
   const [orderingOpen, setOrderingOpen] = useState(true);
   const [closedMessage, setClosedMessage] = useState<string | null>(null);
   const checkoutAvailable = isAvailable('online_checkout');
+  const orderingServiceAvailable = isAvailable('online_ordering');
   const checkoutState = get('online_checkout');
-  const effectiveOpen = orderingOpen && checkoutAvailable;
-  const effectiveMessage = !checkoutAvailable
-    ? checkoutState?.public_message ?? 'Online checkout is temporarily unavailable.'
-    : closedMessage;
+  const orderingState = get('online_ordering');
+  const effectiveOpen = orderingOpen && checkoutAvailable && orderingServiceAvailable;
+  const effectiveMessage = !orderingServiceAvailable
+    ? (orderingState?.public_message?.trim() || t('cart.closed_cta'))
+    : !checkoutAvailable
+      ? (checkoutState?.public_message ?? 'Online checkout is temporarily unavailable.')
+      : (closedMessage || (!orderingOpen ? t('cart.closed_cta') : null));
 
   const count = cart.reduce((sum, e) => sum + e.quantity, 0);
   const logoSrc = s.logo || '/logo.png';

@@ -129,7 +129,9 @@ const TRANSLATIONS: Translations = {
   "menu.delivery_fallback_banner": "Delivery is unavailable for these items — you're viewing the pickup menu.",
   "cart.subtotal": "Subtotal",
   "cart.subtotal_excl": "(excl. tax & fees)",
-  "cart.closed_cta": "Closed — not taking orders right now",
+  "cart.closed_cta": "Online ordering is off",
+  "menu.pickup_unavailable": "Pickup is currently unavailable",
+  "menu.delivery_unavailable": "Delivery is currently unavailable",
   "cart.add_items_cta": "Add items to continue",
   "cart.free_delivery_add": "Add MVR {amount} for free delivery",
   "cart.free_delivery_met": "Over the free-delivery threshold — final fee confirmed at checkout",
@@ -894,10 +896,13 @@ const TRANSLATIONS: Translations = {
 
 type LanguageContextType = {
   t: (key: string) => string;
+  /** UI language. Currently English-only; kept for card DV field selection / future i18n. */
+  lang: 'en' | 'dv';
 };
 
 const LanguageContext = createContext<LanguageContextType>({
   t: (k) => k,
+  lang: 'en',
 });
 
 const LANG_STORAGE_KEY = "bakegrill_lang";
@@ -913,7 +918,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const t = translate;
 
   return (
-    <LanguageContext.Provider value={{ t }}>
+    <LanguageContext.Provider value={{ t, lang: 'en' }}>
       {children}
     </LanguageContext.Provider>
   );

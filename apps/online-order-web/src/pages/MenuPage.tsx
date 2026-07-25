@@ -2,16 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, fetchOffers, getMyFavourites, toggleFavourite, getWaitTimeEstimate, API_ORIGIN } from '../api';
 import type { Category, Item, Modifier, Offer } from '../api';
-
-function fmtOrderingTime(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const isToday = d.toDateString() === new Date().toDateString();
-  const h = d.getHours(), m = d.getMinutes();
-  const time = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-  return isToday ? `today at ${time}` : `${d.toLocaleDateString('en-US', { weekday: 'short' })} at ${time}`;
-}
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
@@ -30,8 +20,6 @@ import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
 import { OffersRail } from '../components/home/OffersRail';
 import { pickActiveSectionId } from '../utils/scrollSpy';
-import { composeOrderingStatusBanner, ORDER_STATUS_DEFAULTS } from '../utils/orderingStatusBanner';
-
 const MENU_VIEW_KEY = 'bg-menu-view';
 type MenuViewMode = 'grid' | 'list';
 
@@ -124,10 +112,7 @@ export function MenuPage() {
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
-  const [currentClose, setCurrentClose] = useState<string | null>(null);
-  const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
-  const [nextDeliveryWindow, setNextDeliveryWindow] = useState<string | null>(null);
   const [gateMessage, setGateMessage] = useState<string>('');
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -167,7 +152,6 @@ export function MenuPage() {
   const [deliveryFallback, setDeliveryFallback] = useState(false);
   const { text } = useSiteSettingsContext();
   const menuTitle = text('menu_page_title', 'Menu');
-  const menuSubtitle = text('menu_page_subtitle', '');
 
   usePageTitle(menuTitle);
 
@@ -199,10 +183,7 @@ export function MenuPage() {
         }
         // Gate API is the single source of truth for ordering status
         setIsOpen(gate.open);
-        setCurrentClose(gate.current_close ?? null);
-        setNextOpenWindow(gate.next_open_window ?? null);
         setDeliveryAvailable(gate.delivery_available ?? true);
-        setNextDeliveryWindow(gate.next_delivery_window ?? null);
         setGateMessage(gate.message ?? '');
       })
       .catch((e) => setError((e as Error).message))
@@ -522,28 +503,11 @@ export function MenuPage() {
     );
   }
 
+  const pickupBlocked = !isServiceAvailable('online_pickup');
+  const deliveryBlocked = (isOpen === true && !deliveryAvailable) || !isServiceAvailable('online_delivery');
+
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>
-      {(menuTitle || menuSubtitle) && (
-        <div style={{ padding: '1rem 0 0.25rem' }}>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: '1.35rem',
-              fontWeight: 800,
-              color: 'var(--color-dark)',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {menuTitle}
-          </h1>
-          {menuSubtitle && (
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-              {menuSubtitle}
-            </p>
-          )}
-        </div>
-      )}
       {/* ── Sticky menu controls ─────────────────────────────────── */}
       <div
         style={{
@@ -560,8 +524,19 @@ export function MenuPage() {
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 200px', minWidth: 0 }}>
             <OrderModeToggle
-              deliveryBlocked={(isOpen === true && !deliveryAvailable) || !isServiceAvailable('online_delivery')}
-              pickupBlocked={!isServiceAvailable('online_pickup')}
+              deliveryBlocked={deliveryBlocked}
+              pickupBlocked={pickupBlocked}
+              onBlockedTap={(mode) => {
+                if (mode === 'pickup') {
+                  showToast(t('menu.pickup_unavailable') || 'Pickup is currently unavailable');
+                } else {
+                  showToast(
+                    gateMessage
+                      || t('menu.delivery_unavailable')
+                      || 'Delivery is currently unavailable',
+                  );
+                }
+              }}
             />
           </div>
           <button
@@ -625,29 +600,6 @@ export function MenuPage() {
               List
             </button>
           </div>
-          {isOpen !== null && (
-            <div className={`ordering-status-bar ${isOpen ? (deliveryAvailable ? 'open' : 'pickup-only') : 'closed'}`} style={{ margin: 0 }}>
-              <span className="ordering-status-bar-dot" />
-              <span className="ordering-status-bar-text">
-                {composeOrderingStatusBanner({
-                  isOpen: !!isOpen,
-                  deliveryAvailable,
-                  closesFormatted: fmtOrderingTime(currentClose),
-                  opensFormatted: fmtOrderingTime(nextOpenWindow),
-                  deliveryFromFormatted: fmtOrderingTime(nextDeliveryWindow),
-                  gateMessage: isOpen ? '' : gateMessage,
-                  copy: {
-                    open: text('order_status_open', ORDER_STATUS_DEFAULTS.open),
-                    closed: text('order_status_closed', ORDER_STATUS_DEFAULTS.closed),
-                    pickupOnly: text('order_status_pickup_only', ORDER_STATUS_DEFAULTS.pickup_only),
-                    closes: text('order_status_closes', ORDER_STATUS_DEFAULTS.closes),
-                    opens: text('order_status_opens', ORDER_STATUS_DEFAULTS.opens),
-                    deliveryFrom: text('order_status_delivery_from', ORDER_STATUS_DEFAULTS.delivery_from),
-                  },
-                })}
-              </span>
-            </div>
-          )}
           {waitMinutes !== null && (
             <div
               role="status"

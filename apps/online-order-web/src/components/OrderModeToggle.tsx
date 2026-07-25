@@ -5,20 +5,32 @@ type Props = {
   deliveryBlocked?: boolean;
   pickupBlocked?: boolean;
   onModeChange?: (mode: OrderMode) => void;
+  /** Called when user taps a blocked mode (toast). Buttons stay enabled for feedback. */
+  onBlockedTap?: (mode: 'pickup' | 'delivery') => void;
 };
 
 /**
  * Pickup / Delivery segmented control — reads/writes OrderModeContext.
- * `deliveryBlocked` / `pickupBlocked` disable the corresponding side when
- * the matching service_availability key is not available (Stage 5).
+ * Blocked modes stay tappable so we can show a toast (do not hard-disable).
  */
-export function OrderModeToggle({ deliveryBlocked = false, pickupBlocked = false, onModeChange }: Props) {
+export function OrderModeToggle({
+  deliveryBlocked = false,
+  pickupBlocked = false,
+  onModeChange,
+  onBlockedTap,
+}: Props) {
   const { t } = useLanguage();
   const { mode, setMode } = useOrderMode();
 
   const select = (next: OrderMode) => {
-    if (next === 'delivery' && deliveryBlocked) return;
-    if (next === 'pickup' && pickupBlocked) return;
+    if (next === 'delivery' && deliveryBlocked) {
+      onBlockedTap?.('delivery');
+      return;
+    }
+    if (next === 'pickup' && pickupBlocked) {
+      onBlockedTap?.('pickup');
+      return;
+    }
     if (next === mode) return;
     setMode(next);
     onModeChange?.(next);
@@ -42,13 +54,14 @@ export function OrderModeToggle({ deliveryBlocked = false, pickupBlocked = false
         { id: 'delivery' as const, label: t('mode.delivery') },
       ]).map(({ id, label }) => {
         const active = mode === id;
-        const disabled = (id === 'delivery' && deliveryBlocked) || (id === 'pickup' && pickupBlocked);
+        const blocked = (id === 'delivery' && deliveryBlocked) || (id === 'pickup' && pickupBlocked);
         return (
           <button
             key={id}
             type="button"
-            disabled={disabled}
             aria-pressed={active}
+            aria-disabled={blocked || undefined}
+            data-blocked={blocked ? 'true' : undefined}
             onClick={() => select(id)}
             style={{
               minHeight: 44,
@@ -58,8 +71,8 @@ export function OrderModeToggle({ deliveryBlocked = false, pickupBlocked = false
               fontFamily: 'inherit',
               fontWeight: 700,
               fontSize: '0.8125rem',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              opacity: disabled ? 0.45 : 1,
+              cursor: 'pointer',
+              opacity: blocked && !active ? 0.55 : 1,
               background: active ? 'var(--color-primary)' : 'transparent',
               color: active ? '#fff' : 'var(--color-text-muted)',
               transition: 'background var(--duration-micro) var(--ease-out), color var(--duration-micro) var(--ease-out)',

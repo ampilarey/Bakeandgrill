@@ -1,0 +1,89 @@
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, it, vi } from 'vitest';
+import { CartDrawer } from './CartDrawer';
+import type { Item } from '../api';
+
+const sampleItem: Item = {
+  id: 1,
+  name: 'Burger',
+  description: null,
+  base_price: 40,
+  category_id: 1,
+  is_available: true,
+  has_variants: false,
+  variants: [],
+};
+
+vi.mock('../context/LanguageContext', () => ({
+  useLanguage: () => ({
+    t: (key: string) => {
+      const map: Record<string, string> = {
+        'cart.title': 'Your Cart',
+        'cart.empty': 'empty',
+        'cart.checkout': 'Proceed to Checkout',
+        'cart.closed_cta': 'Online ordering is off',
+        'cart.add_items_cta': 'Add items to continue',
+        'cart.subtotal': 'Subtotal',
+        'cart.subtotal_excl': '',
+      };
+      return map[key] ?? key;
+    },
+    lang: 'en',
+  }),
+}));
+
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ isAuthenticated: false }),
+}));
+
+vi.mock('../context/SiteSettingsContext', () => ({
+  useSiteSettings: () => ({ delivery_free_threshold: '200' }),
+  useSiteSettingsContext: () => ({
+    settings: { delivery_free_threshold: '200' },
+    text: (_k: string, d: string) => d,
+  }),
+}));
+
+vi.mock('../context/CartContext', () => ({
+  useCart: () => ({
+    cart: [{
+      item: sampleItem,
+      quantity: 1,
+      modifiers: [],
+      variantId: null,
+      variantName: null,
+      variantPrice: null,
+    }],
+    cartTotal: 40,
+    updateQuantity: vi.fn(),
+    addItem: vi.fn(),
+    updateEntry: vi.fn(),
+  }),
+}));
+
+vi.mock('../api', async () => {
+  const actual = await vi.importActual<typeof import('../api')>('../api');
+  return {
+    ...actual,
+    fetchItems: vi.fn().mockResolvedValue([]),
+    fetchCartRecommendations: vi.fn().mockResolvedValue([]),
+    getLoyaltyAccount: vi.fn().mockResolvedValue(null),
+    getMyFavourites: vi.fn().mockResolvedValue([]),
+    getWaitTimeEstimate: vi.fn().mockResolvedValue(null),
+  };
+});
+
+describe('CartDrawer closed CTA', () => {
+  it('disables Proceed as Online ordering is off while cart still has items', () => {
+    render(
+      <MemoryRouter>
+        <CartDrawer isOpen={false} closedMessage="Online ordering is temporarily unavailable." />
+      </MemoryRouter>,
+    );
+
+    const btn = screen.getByRole('button', { name: /Online ordering is off/i });
+    expect(btn).toBeDisabled();
+    expect(screen.getByText('Burger')).toBeInTheDocument();
+  });
+});

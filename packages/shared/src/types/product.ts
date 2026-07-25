@@ -44,8 +44,16 @@ export type MenuItem = {
   id: number;
   name: string;
   name_dv?: string | null;
+  /** Short name for the mobile menu card (falls back to name). */
+  card_name?: string | null;
+  card_name_dv?: string | null;
   description?: string | null;
+  /** One-line detail on the mobile menu card (falls back to truncated description). */
+  short_description?: string | null;
+  short_description_dv?: string | null;
   base_price: number;
+  /** Caption beside the price, e.g. "from" / "per box". */
+  price_note?: string | null;
   /** Fallback per-unit packaging fee in MVR when the item has no options. */
   packaging_fee?: number;
   packaging_fee_mode?: "per_unit" | "per_line";

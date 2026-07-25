@@ -10,10 +10,10 @@
             "sort_order": 1,
             "is_active": true,
             "image_url": null,
-            "image_original_url": null,
-            "thumb_url": null,
             "created_at": "__VOLATILE__",
             "updated_at": "__VOLATILE__",
+            "image_original_url": null,
+            "thumb_url": null,
             "items": [
                 {
                     "id": "__VOLATILE__",
@@ -54,7 +54,12 @@
                     "snoozed_until": null,
                     "packaging_fee_mode": "per_unit",
                     "image_original_url": null,
-                    "thumb_url": null
+                    "thumb_url": null,
+                    "card_name": null,
+                    "card_name_dv": null,
+                    "short_description": null,
+                    "short_description_dv": null,
+                    "price_note": null
                 }
             ]
         }

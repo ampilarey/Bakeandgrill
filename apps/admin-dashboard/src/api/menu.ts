@@ -47,7 +47,12 @@ export type MenuItem = {
   id: number;
   name: string;
   name_dv?: string | null;
+  card_name?: string | null;
+  card_name_dv?: string | null;
   description?: string | null;
+  short_description?: string | null;
+  short_description_dv?: string | null;
+  price_note?: string | null;
   sku?: string | null;
   image_url?: string | null;
   /** High-res master for admin re-crop (not used on POS/website). */
@@ -105,7 +110,12 @@ export type MenuItem = {
 export type MenuItemPayload = {
   name: string;
   name_dv?: string | null;
+  card_name?: string | null;
+  card_name_dv?: string | null;
   description?: string | null;
+  short_description?: string | null;
+  short_description_dv?: string | null;
+  price_note?: string | null;
   sku?: string | null;
   image_url?: string | null;
   image_original_url?: string | null;

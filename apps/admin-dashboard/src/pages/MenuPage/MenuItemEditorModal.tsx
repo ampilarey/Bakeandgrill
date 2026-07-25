@@ -11,6 +11,98 @@ import { PhotosTab } from './PhotosTab';
 import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
 import { cardDescriptionPreview } from '@shared/utils';
 
+function MenuCardLivePreview({ form }: { form: ItemForm }) {
+  const previewName = (form.card_name.trim() || form.name.trim() || 'Item name');
+  const previewDetail = (
+    form.short_description.trim()
+    || cardDescriptionPreview(form.description).text
+    || 'Little detail line'
+  );
+  const price = Number.parseFloat(form.base_price);
+  const priceLabel = Number.isFinite(price) ? `MVR ${price.toFixed(2)}` : 'MVR —';
+  const note = form.price_note.trim();
+  const img = form.thumb_url.trim() || form.image_url.trim();
+
+  return (
+    <div
+      data-testid="menu-card-live-preview"
+      style={{
+        width: 148,
+        padding: '12px 10px 14px',
+        borderRadius: 14,
+        border: '1px solid #E8E0D8',
+        background: 'radial-gradient(120% 90% at 50% 0%, #F8E8D4 0%, #fff 55%)',
+        textAlign: 'center',
+        position: 'sticky',
+        top: 8,
+      }}
+    >
+      <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.04em' }}>
+        LIVE CARD
+      </p>
+      <div
+        style={{
+          width: 112,
+          height: 112,
+          margin: '0 auto 10px',
+          borderRadius: '50%',
+          overflow: 'hidden',
+          background: 'linear-gradient(145deg, #F3E6D4, #FFF7ED)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {img ? (
+          <img
+            src={img}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <span style={{ fontWeight: 800, color: '#D4813A', fontSize: 22 }}>
+            {(previewName[0] || 'B').toUpperCase()}
+          </span>
+        )}
+      </div>
+      <p
+        data-testid="menu-card-preview-name"
+        style={{
+          margin: '0 0 4px',
+          fontSize: 13,
+          fontWeight: 800,
+          color: '#3D2B1F',
+          lineHeight: 1.25,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {previewName}
+      </p>
+      <p
+        data-testid="menu-card-preview-detail"
+        style={{
+          margin: '0 0 6px',
+          fontSize: 11,
+          color: '#9C8E7E',
+          lineHeight: 1.3,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {previewDetail}
+      </p>
+      <p data-testid="menu-card-preview-price" style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#3D2B1F' }}>
+        {note ? <span style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', marginRight: 4 }}>{note}</span> : null}
+        {priceLabel}
+      </p>
+    </div>
+  );
+}
+
 const DIETARY_PRESETS = ['vegetarian', 'vegan', 'halal', 'gluten-free', 'spicy'] as const;
 const ALLERGEN_PRESETS = ['nuts', 'dairy', 'gluten', 'eggs', 'soy', 'shellfish', 'fish', 'sesame'] as const;
 
@@ -272,45 +364,99 @@ export function MenuItemEditorModal({
                 <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
               </Field>
             </div>
+
+            <div
+              data-testid="menu-card-display-section"
+              style={{ padding: '14px 16px', background: '#F7FBFF', borderRadius: 12, border: '1px solid #D7E6F5' }}
+            >
+              <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Menu card display</p>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
+                Controls the compact mobile menu card (circular image + name / little detail / price).
+                Leave blank to fall back to the full name and truncated description.
+              </p>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) 148px',
+                  gap: 16,
+                  alignItems: 'start',
+                }}
+                className="form-grid-2"
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <Field label="Card name (English)">
+                      <Input
+                        value={form.card_name}
+                        onChange={(v) => set('card_name', v.slice(0, 120))}
+                        placeholder={form.name || 'Falls back to name'}
+                      />
+                    </Field>
+                    <Field label="Card name (Dhivehi)">
+                      <Input
+                        value={form.card_name_dv}
+                        onChange={(v) => set('card_name_dv', v.slice(0, 120))}
+                        placeholder={form.name_dv || 'Falls back to name (DV)'}
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Short description (English)">
+                    <FormTextarea
+                      value={form.short_description}
+                      onChange={(v) => set('short_description', v.slice(0, 140))}
+                      placeholder="Little detail line on the mobile menu card"
+                      rows={2}
+                    />
+                  </Field>
+                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '-4px 0 0' }}>
+                    {form.short_description.length}/140 · little detail line on the mobile menu card
+                  </p>
+                  <Field label="Short description (Dhivehi)">
+                    <FormTextarea
+                      value={form.short_description_dv}
+                      onChange={(v) => set('short_description_dv', v.slice(0, 140))}
+                      placeholder="Optional Dhivehi detail line"
+                      rows={2}
+                    />
+                  </Field>
+                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '-4px 0 0' }}>
+                    {form.short_description_dv.length}/140
+                  </p>
+                  <Field label="Price note">
+                    <Input
+                      value={form.price_note}
+                      onChange={(v) => set('price_note', v.slice(0, 40))}
+                      placeholder='e.g. "from" / "per box"'
+                    />
+                  </Field>
+                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '-4px 0 0' }}>
+                    {form.price_note.length}/40 · shown beside the price on the card
+                  </p>
+                </div>
+                <MenuCardLivePreview form={form} />
+              </div>
+            </div>
+
             <div style={{ padding: '14px 16px', background: '#FFFAF5', borderRadius: 12, border: '1px solid #F0E0D0' }}>
               <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Customer-facing details</p>
               <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
-                Shown on the online menu card and the item detail sheet when customers tap an item.
+                Full description shown on the item detail sheet when customers tap an item.
               </p>
               <Field label="Description">
                 <FormTextarea
                   value={form.description}
                   onChange={(v) => set('description', v)}
-                  placeholder={"Line 1 — short hook for the menu card\nLine 2 — optional second teaser line\n\nMore detail here — customers see all of this when they tap the item."}
+                  placeholder={"Full item description — customers see this when they open the item."}
                   rows={6}
                 />
               </Field>
               {(() => {
-                const preview = cardDescriptionPreview(form.description);
                 const lines = form.description.replace(/\r\n/g, '\n').split('\n').filter((l) => l.trim()).length;
                 return (
-                  <>
-                    <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 8px' }}>
-                      {form.description.trim().length} characters · {lines} line{lines === 1 ? '' : 's'} ·
-                      menu card shows the first 2 lines; full text (with line breaks) opens on tap
-                    </p>
-                    {preview.text && (
-                      <div style={{
-                        marginBottom: 12, padding: '10px 12px', borderRadius: 10,
-                        background: '#fff', border: '1px dashed #E8E0D8',
-                      }}>
-                        <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.04em' }}>
-                          MENU CARD PREVIEW{preview.truncated ? ' (truncated)' : ''}
-                        </p>
-                        <p style={{
-                          margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.45,
-                          whiteSpace: 'pre-line',
-                        }}>
-                          {preview.text}
-                        </p>
-                      </div>
-                    )}
-                  </>
+                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 12px' }}>
+                    {form.description.trim().length} characters · {lines} line{lines === 1 ? '' : 's'} ·
+                    used as the card detail fallback when short description is empty
+                  </p>
                 );
               })()}
               <Field label="Dietary tags">
