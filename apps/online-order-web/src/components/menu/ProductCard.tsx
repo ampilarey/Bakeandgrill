@@ -21,7 +21,7 @@ export type ProductCardProps = {
   ) => void;
   isFavourite?: boolean;
   onToggleFavourite?: (itemId: number) => void;
-  /** grid = circular ZUS card; list = compact row with circular thumb */
+  /** grid = circular ZUS card; list = same circle size with text beside it */
   layout?: 'grid' | 'list';
 };
 

@@ -795,7 +795,7 @@ export function MenuPage() {
           {loading && (
             <div className={viewMode === 'list' ? 'menu-list' : 'menu-grid'} style={{ padding: '0 0 1.25rem' }}>
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="skeleton" style={{ borderRadius: '16px', height: viewMode === 'list' ? '88px' : '300px' }} />
+                <div key={i} className="skeleton" style={{ borderRadius: '16px', height: viewMode === 'list' ? '140px' : '300px' }} />
               ))}
             </div>
           )}
