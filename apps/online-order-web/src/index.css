@@ -2266,11 +2266,6 @@ textarea.field-input {
     width: 36px !important;
     height: 36px !important;
   }
-
-  .menu-cat-promo {
-    height: var(--cat-rail-item-height);
-    max-height: var(--cat-rail-item-height);
-  }
 }
 
 /* ── ZUS-style category promo (menu sections) ───────────────── */
@@ -2403,6 +2398,18 @@ textarea.field-input {
 
 .menu-section-header.is-active .menu-cat-promo {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+/* Must come AFTER the base .menu-cat-promo rule or mobile height is overridden */
+@media (max-width: 767px) {
+  .menu-cat-promo {
+    height: var(--cat-rail-item-height, 76px);
+    max-height: var(--cat-rail-item-height, 76px);
+  }
+
+  .menu-cat-promo__title {
+    font-size: 1rem;
+  }
 }
 
 @media (min-width: 768px) {
