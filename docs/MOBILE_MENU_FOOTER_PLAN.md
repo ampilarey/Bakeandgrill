@@ -98,6 +98,15 @@ The first build was close but off in these specific ways — fix them:
 - **Reduce the category hero banner height.** The `CATEGORY … / subtitle` hero card is too tall;
   shrink it to a **thin strip** (ZUS-style short banner) so more items are visible above the fold.
 
+### 2.1b Subcategories (confirmed: sub-headers under the parent)
+- The **left rail lists top-level (parent) categories only** (current behaviour — keep it); a parent's
+  count includes its subcategories.
+- Within a parent's block, render each **subcategory as a smaller, lighter sub-section header** above
+  its items (visually subordinate to the main category header — e.g. no accent bar, muted, smaller
+  size). Items with no subcategory sit directly under the parent header.
+- Keep scroll-spy attributing subcategory sections to their **parent** in the rail (already done via
+  `match.parent_id ?? match.id`). No subcategory chips, no rail nesting.
+
 ### 2.2 Layout & navigation
 - **Category navigation — KEEP the existing ZUS-style left rail (do NOT switch to horizontal chips):**
   - The order app **already has** `components/menu/CategoryRail.tsx` (`.cat-rail`) — a sticky vertical
