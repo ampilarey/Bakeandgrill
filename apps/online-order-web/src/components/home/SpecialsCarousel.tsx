@@ -1,34 +1,33 @@
+/**
+ * Home "Offers & Specials" horizontal strip — same circular OfferCard as the menu rail.
+ * Fed by the unified /api/offers feed (not a second specials-only list).
+ */
 import { Link } from 'react-router-dom';
-import type { DailySpecial } from '../../api/menu';
+import type { Offer } from '../../api/menu';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
-import { MenuThumb } from '../menu/MenuThumb';
-
-function showPctUnder(badge: string | null | undefined, pct: number | null | undefined): boolean {
-  if (!badge || !pct || pct <= 0) return false;
-  return !badge.includes(`${pct}%`);
-}
+import { OfferCard, uniqueOffersById } from './OfferCard';
 
 type Props = {
-  specials: DailySpecial[];
+  offers: Offer[];
   apiOrigin: string;
 };
 
-/**
- * Today's specials horizontal scroll strip.
- * Returns null when specials list is empty.
- */
-export function SpecialsCarousel({ specials, apiOrigin }: Props) {
+export function SpecialsCarousel({ offers, apiOrigin }: Props) {
   const { t } = useLanguage();
-  const { text } = useSiteSettingsContext();
-  const specialsTitle = text('home_specials_title', t('home.specials_title'));
-  const specialsEyebrow = text('home_specials_eyebrow', '');
+  const { text, settings: s } = useSiteSettingsContext();
+  const title = text('offers_headline', text('home_specials_title', 'Offers & Specials'));
+  const eyebrow = text('home_specials_eyebrow', text('offers_subtext', ''));
+  const logoSrc = s?.logo || '/logo.png';
+  const unique = uniqueOffersById(offers);
 
-  if (specials.length === 0) return null;
+  if (unique.length === 0) return null;
 
   return (
     <section
-      aria-label={specialsTitle}
+      aria-label={title}
+      data-testid="home-offers-carousel"
+      className="offers-rail"
       style={{
         borderTop: '1px solid var(--color-border)',
         padding: '1.25rem var(--page-gutter)',
@@ -46,7 +45,7 @@ export function SpecialsCarousel({ specials, apiOrigin }: Props) {
           }}
         >
           <div>
-            {specialsEyebrow && (
+            {eyebrow ? (
               <p
                 style={{
                   margin: '0 0 0.2rem',
@@ -57,9 +56,9 @@ export function SpecialsCarousel({ specials, apiOrigin }: Props) {
                   color: 'var(--color-primary)',
                 }}
               >
-                {specialsEyebrow}
+                {eyebrow}
               </p>
-            )}
+            ) : null}
             <h2
               style={{
                 fontSize: '1.25rem',
@@ -68,11 +67,11 @@ export function SpecialsCarousel({ specials, apiOrigin }: Props) {
                 margin: 0,
               }}
             >
-              {specialsTitle}
+              {title}
             </h2>
           </div>
           <Link
-            to="/menu"
+            to="/menu#offers"
             style={{
               fontSize: '0.875rem',
               fontWeight: 700,
@@ -84,141 +83,16 @@ export function SpecialsCarousel({ specials, apiOrigin }: Props) {
           </Link>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: '0.875rem',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            paddingBottom: 4,
-          }}
-        >
-          {specials.map((sp) => {
-            const cardKey = sp.variant_id ? `${sp.id}-${sp.variant_id}` : String(sp.id);
-            const imgSrc = sp.item_image
-              ? sp.item_image.startsWith('http')
-                ? sp.item_image
-                : `${apiOrigin}${sp.item_image.startsWith('/') ? '' : '/'}${sp.item_image}`
-              : null;
-            const price = Number(sp.effective_price ?? 0);
-            const wasPrice =
-              sp.original_price != null && Number(sp.original_price) > price
-                ? Number(sp.original_price)
-                : null;
-            const badge =
-              sp.badge_label ?? (sp.discount_pct ? `${sp.discount_pct}% OFF` : 'Special');
-            const showPct = showPctUnder(sp.badge_label, sp.discount_pct);
-
-            return (
-              <Link
-                key={cardKey}
-                to={`/menu?item=${sp.item_id}`}
-                style={{
-                  flexShrink: 0,
-                  width: 160,
-                  borderRadius: 'var(--radius-2xl)',
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  overflow: 'hidden',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                <div style={{ height: 100, position: 'relative', overflow: 'hidden' }}>
-                  <MenuThumb src={imgSrc} alt={sp.item_name ?? ''} height={100} />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 6,
-                      left: 6,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      gap: 3,
-                      zIndex: 2,
-                    }}
-                  >
-                    {badge && (
-                      <div
-                        style={{
-                          background: 'var(--color-primary)',
-                          color: '#fff',
-                          fontSize: 9,
-                          fontWeight: 700,
-                          padding: '2px 7px',
-                          borderRadius: 99,
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {badge}
-                      </div>
-                    )}
-                    {showPct && (
-                      <div
-                        style={{
-                          background: 'var(--color-primary)',
-                          color: '#fff',
-                          fontSize: 9,
-                          fontWeight: 700,
-                          padding: '2px 7px',
-                          borderRadius: 99,
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {sp.discount_pct}% OFF
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ padding: '0.6rem 0.7rem', flex: 1 }}>
-                  <p
-                    style={{
-                      margin: '0 0 3px',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      color: 'var(--color-dark)',
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {sp.item_name}
-                  </p>
-                  {sp.variant_name && (
-                    <p
-                      style={{
-                        margin: '0 0 3px',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: 'var(--color-text-muted)',
-                      }}
-                    >
-                      {sp.variant_name}
-                    </p>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                    <span
-                      style={{ fontWeight: 800, fontSize: 13, color: 'var(--color-primary)' }}
-                    >
-                      MVR {price.toFixed(2)}
-                    </span>
-                    {wasPrice && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          color: 'var(--color-text-muted)',
-                          textDecoration: 'line-through',
-                        }}
-                      >
-                        MVR {wasPrice.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
+        <div className="offers-rail__track" data-testid="home-offers-track">
+          {unique.map((offer) => (
+            <OfferCard
+              key={offer.id}
+              offer={offer}
+              apiOrigin={apiOrigin}
+              logoSrc={logoSrc}
+              testId="specials-carousel-card"
+            />
+          ))}
         </div>
       </div>
     </section>

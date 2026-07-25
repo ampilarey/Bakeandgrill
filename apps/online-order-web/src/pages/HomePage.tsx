@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   fetchItems,
   fetchOnlineOrderingStatus,
-  fetchActiveSpecials,
+  fetchOffers,
   fetchCustomerOrders,
   getReorderPayload,
   fetchFeaturedReviews,
   API_ORIGIN,
   type FeaturedReview,
 } from '../api';
-import type { Item, DailySpecial, Order } from '../api';
+import type { Item, Offer, Order } from '../api';
 import { getLoyaltyAccount } from '../api/promotions';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
@@ -37,7 +37,7 @@ export function HomePage() {
   const { addItem, clearCart } = useCart();
 
   // ── Data state ─────────────────────────────────────────────────────────────
-  const [specials, setSpecials] = useState<DailySpecial[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [reviews, setReviews] = useState<FeaturedReview[]>([]);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [hoursMsg, setHoursMsg] = useState<string | null>(null);
@@ -100,9 +100,15 @@ export function HomePage() {
       })
       .catch(() => setIsOpen(false));
 
-    fetchActiveSpecials()
-      .then(({ specials: sp }) => {
-        setSpecials((sp ?? []).slice(0, 6));
+    fetchOffers()
+      .then(({ offers: rows }) => {
+        const seen = new Set<string>();
+        const unique = (rows ?? []).filter((o) => {
+          if (seen.has(o.id)) return false;
+          seen.add(o.id);
+          return true;
+        });
+        setOffers(unique.slice(0, 12));
       })
       .catch(() => {});
 
@@ -199,7 +205,7 @@ export function HomePage() {
     loading: chipsLoading,
     isAuthenticated,
     loyaltyPoints,
-    specialsCount: specials.length,
+    specialsCount: offers.length,
   };
 
   const hero = (
@@ -255,8 +261,8 @@ export function HomePage() {
         title={text('home_categories_title', '')}
       />
 
-      {/* ── 6. Today's specials ───────────────────────────────────────────── */}
-      <SpecialsCarousel specials={specials} apiOrigin={API_ORIGIN} />
+      {/* ── 6. Offers & Specials (unified feed; PromoCarousel above is CMS hero) ─ */}
+      <SpecialsCarousel offers={offers} apiOrigin={API_ORIGIN} />
 
       {/* ── 7. Reorder strip ──────────────────────────────────────────────── */}
       <ReorderStrip

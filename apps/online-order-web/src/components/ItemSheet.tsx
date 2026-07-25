@@ -8,6 +8,7 @@ import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { Variant } from '@shared/types';
 import { useCart } from '../context/CartContext';
 import { buildItemSlides } from '../utils/itemMedia';
+import { formatCardPrice, formatSavingsLabel } from '../utils/money';
 import { MenuImageSlider } from './menu/MenuImageSlider';
 
 export type ItemSheetProps = {
@@ -68,6 +69,12 @@ export function ItemSheet({
       : null)
     : (item.special?.original_price != null ? Number(item.special.original_price) : null);
   const totalPrice = catalogPrice + modifierTotal;
+  const unitSavingsLabel =
+    originalCatalog != null && originalCatalog > catalogPrice
+      ? formatSavingsLabel(originalCatalog, catalogPrice)
+      : (item.special?.discount_pct
+        ? `${item.special.discount_pct}% OFF`
+        : null);
   const canAdd = (!item.has_variants || selectedVariant !== null)
     && (!showPackagingPicker || selectedPackagingId != null);
 
@@ -252,20 +259,39 @@ export function ItemSheet({
                 {item.name_dv}
               </p>
             )}
-            <p style={{ fontSize: '1.15rem', color: 'var(--color-primary)', fontWeight: 800, margin: '0 0 0.75rem' }}>
-              {item.has_variants && !selectedVariant && activeVariants.length > 0
-                ? `From MVR ${Math.min(...activeVariants.map((v) => Number(v.effective_price ?? v.price))).toFixed(2)}`
-                : (
-                  <>
-                    MVR {totalPrice.toFixed(2)}
-                    {originalCatalog != null && originalCatalog > catalogPrice && (
-                      <span style={{ marginLeft: '0.4rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', textDecoration: 'line-through', fontWeight: 500 }}>
-                        MVR {originalCatalog.toFixed(2)}
-                      </span>
-                    )}
-                  </>
-                )}
-            </p>
+            <div
+              data-testid="item-sheet-price"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '0.45rem',
+                margin: '0 0 0.75rem',
+              }}
+            >
+              <p style={{ fontSize: '1.15rem', color: 'var(--color-primary)', fontWeight: 800, margin: 0 }}>
+                {item.has_variants && !selectedVariant && activeVariants.length > 0
+                  ? `From ${formatCardPrice(Math.min(...activeVariants.map((v) => Number(v.effective_price ?? v.price))))}`
+                  : (
+                    <>
+                      <span className="menu-card-price-sale">{formatCardPrice(totalPrice)}</span>
+                      {originalCatalog != null && originalCatalog > catalogPrice && (
+                        <span
+                          className="menu-card-price-was"
+                          style={{ marginLeft: '0.4rem', fontSize: '0.85rem', fontWeight: 500 }}
+                        >
+                          {formatCardPrice(originalCatalog)}
+                        </span>
+                      )}
+                    </>
+                  )}
+              </p>
+              {unitSavingsLabel && !(item.has_variants && !selectedVariant) ? (
+                <span className="badge badge-sale" data-testid="item-sheet-savings">
+                  {unitSavingsLabel}
+                </span>
+              ) : null}
+            </div>
 
             {(metaBits.length > 0 || avgRating !== null) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '0.85rem', alignItems: 'center' }}>
@@ -366,7 +392,7 @@ export function ItemSheet({
                       <button key={v.id} type="button" onClick={() => setSelectedVariant(v)} style={chip(isSelected)} aria-pressed={isSelected}>
                         {v.name}
                         <span style={{ marginLeft: '0.35rem', fontSize: '0.8rem', fontWeight: 600, opacity: 0.9 }}>
-                          MVR {Number(v.effective_price ?? v.price).toFixed(2)}
+                          {formatCardPrice(Number(v.effective_price ?? v.price))}
                         </span>
                       </button>
                     );

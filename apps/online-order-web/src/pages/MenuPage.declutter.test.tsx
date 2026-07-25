@@ -130,7 +130,7 @@ describe('MenuPage declutter + pickup toast', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('product-card-stub')).toBeInTheDocument();
+      expect(screen.getAllByTestId('product-card-stub').length).toBeGreaterThan(0);
     });
 
     expect(screen.queryByText(/Our Complete Menu/i)).toBeNull();

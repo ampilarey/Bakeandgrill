@@ -442,29 +442,67 @@
 .badge-mto        { background: rgba(45,122,79,0.9); color: white; }
 .badge-new        { background: rgba(79,70,229,0.88); color: #E0E7FF; }
 
-/* Today's Specials */
+/* Offers / Today's Specials — circular ZUS cards (match order app) */
 .specials-scroll {
     display: flex;
     gap: 1rem;
     overflow-x: auto;
     padding-bottom: 0.5rem;
     scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
 }
 .special-card {
-    flex: 0 0 220px;
+    flex: 0 0 160px;
     scroll-snap-align: start;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    overflow: hidden;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
     text-decoration: none;
     color: inherit;
-    transition: all 0.25s;
+    transition: transform 0.25s;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
 }
 .special-card:hover {
-    border-color: rgba(212,129,58,0.35);
-    box-shadow: 0 10px 32px rgba(28,20,8,0.08);
-    transform: translateY(-3px);
+    border-color: transparent;
+    box-shadow: none;
+    transform: translateY(-2px);
+}
+.special-card .product-img--circle {
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(212,129,58,0.18), #F7E4C8 55%, rgba(253,221,180,0.65));
+}
+.special-card .product-img--circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+.special-card .product-img-placeholder--brand {
+    font-size: 1rem;
+    background: transparent;
+}
+.special-card .product-img-placeholder__logo {
+    width: 42%;
+    height: auto;
+    max-width: 72px;
+    object-fit: contain;
+    border-radius: 0;
+}
+.special-card .product-img-placeholder__mono {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--amber);
+}
+.special-card .product-body {
+    padding: 0.75rem 0.25rem 0.5rem;
+    text-align: center;
 }
 .special-badge-stack {
     position: absolute;
@@ -1008,11 +1046,18 @@
         <div class="specials-scroll">
             @foreach($homeOffers as $offer)
             <a href="{{ url('/order' . ($offer['link'] ?? '/menu')) }}" class="special-card">
-                <div class="product-img" style="height: 140px;">
+                <div class="product-img product-img--circle">
                     @if(!empty($offer['image_url']))
                         <img src="{{ $offer['image_url'] }}" alt="{{ $offer['title'] ?? '' }}">
                     @else
-                        <div class="product-img-placeholder">🍽️</div>
+                        @php $brandLogo = \App\Models\SiteSetting::get('logo'); @endphp
+                        <div class="product-img-placeholder product-img-placeholder--brand" aria-hidden="true">
+                            @if($brandLogo)
+                                <img src="{{ $brandLogo }}" alt="" class="product-img-placeholder__logo">
+                            @else
+                                <span class="product-img-placeholder__mono">BG</span>
+                            @endif
+                        </div>
                     @endif
                     @if(!empty($offer['badge']))
                     <div class="special-badge-stack">
@@ -1020,7 +1065,7 @@
                     </div>
                     @endif
                 </div>
-                <div class="product-body" style="padding: 1rem 1.125rem 1.25rem;">
+                <div class="product-body">
                     <div class="product-name" style="font-size: 0.95rem; margin-bottom: 0.5rem;">
                         {{ $offer['title'] ?? '' }}
                         @if(!empty($offer['subtitle']))
@@ -1028,11 +1073,13 @@
                         @endif
                     </div>
                     @if(isset($offer['effective_price']) && $offer['effective_price'] !== null)
-                    <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem;">
-                        <span class="price-sale">MVR {{ number_format((float) $offer['effective_price'], 2) }}</span>
-                        @if(isset($offer['original_price']) && (float) $offer['original_price'] > (float) $offer['effective_price'])
-                            <span class="price-was">MVR {{ number_format((float) $offer['original_price'], 2) }}</span>
-                        @endif
+                    <div style="display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 0.25rem;">
+                        @include('partials.card-price', [
+                            'sale' => $offer['effective_price'],
+                            'was' => (isset($offer['original_price']) && (float) $offer['original_price'] > (float) $offer['effective_price'])
+                                ? $offer['original_price']
+                                : null,
+                        ])
                     </div>
                     @endif
                     <span class="cat-link" style="display: inline-flex; margin-top: 0.75rem; font-size: 0.8rem;">Order now →</span>
@@ -1057,11 +1104,18 @@
         <div class="specials-scroll">
             @foreach($todaysSpecials as $sp)
             <a href="/order/menu" class="special-card">
-                <div class="product-img" style="height: 140px;">
+                <div class="product-img product-img--circle">
                     @if(!empty($sp['item_image']))
                         <img src="{{ $sp['item_image'] }}" alt="{{ $sp['item_name'] ?? '' }}">
                     @else
-                        <div class="product-img-placeholder">🍽️</div>
+                        @php $brandLogo = \App\Models\SiteSetting::get('logo'); @endphp
+                        <div class="product-img-placeholder product-img-placeholder--brand" aria-hidden="true">
+                            @if($brandLogo)
+                                <img src="{{ $brandLogo }}" alt="" class="product-img-placeholder__logo">
+                            @else
+                                <span class="product-img-placeholder__mono">BG</span>
+                            @endif
+                        </div>
                     @endif
                     @php
                         $badgeLabel = $sp['badge_label'] ?? null;
@@ -1082,18 +1136,20 @@
                     </div>
                     @endif
                 </div>
-                <div class="product-body" style="padding: 1rem 1.125rem 1.25rem;">
+                <div class="product-body">
                     <div class="product-name" style="font-size: 0.95rem; margin-bottom: 0.5rem;">
                         {{ $sp['item_name'] ?? '' }}
                         @if(!empty($sp['variant_name']))
                             <span style="display: block; font-size: 0.82rem; font-weight: 600; color: #6B5D4F; margin-top: 0.15rem;">{{ $sp['variant_name'] }}</span>
                         @endif
                     </div>
-                    <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem;">
-                        <span class="price-sale">MVR {{ number_format((float) $sp['effective_price'], 2) }}</span>
-                        @if(isset($sp['original_price']) && (float) $sp['original_price'] > (float) $sp['effective_price'])
-                            <span class="price-was">MVR {{ number_format((float) $sp['original_price'], 2) }}</span>
-                        @endif
+                    <div style="display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: 0.25rem;">
+                        @include('partials.card-price', [
+                            'sale' => $sp['effective_price'],
+                            'was' => (isset($sp['original_price']) && (float) $sp['original_price'] > (float) $sp['effective_price'])
+                                ? $sp['original_price']
+                                : null,
+                        ])
                     </div>
                     <span class="cat-link" style="display: inline-flex; margin-top: 0.75rem; font-size: 0.8rem;">Order now →</span>
                 </div>

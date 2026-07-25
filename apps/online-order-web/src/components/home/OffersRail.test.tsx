@@ -86,14 +86,11 @@ describe('OffersRail', () => {
       </MemoryRouter>,
     );
 
-    const frames = screen.getAllByTestId('offers-rail-media-frame');
+    const frames = screen.getAllByTestId('offers-rail-card-media-frame');
     expect(frames.length).toBe(3);
     for (const frame of frames) {
       expect(frame.className).toContain('menu-card-media-circle__frame');
-      const style = getComputedStyle(frame);
-      // Class-driven aspect-ratio 1/1 (jsdom may not resolve CSS vars; assert class contract).
-      expect(frame.className).toMatch(/menu-card-media-circle__frame/);
-      void style;
+      expect(frame.style.aspectRatio.replace(/\s/g, '')).toMatch(/1\/1|1/);
     }
 
     const cards = screen.getAllByTestId('offers-rail-card');
@@ -115,7 +112,7 @@ describe('OffersRail', () => {
       </MemoryRouter>,
     );
 
-    const priceRows = screen.getAllByTestId('offers-rail-price-row');
+    const priceRows = screen.getAllByTestId('offers-rail-card-price-row');
     expect(priceRows[0].textContent).toMatch(/80\.00\/-/);
     expect(priceRows[0].textContent).toMatch(/100\.00\/-/);
     expect(priceRows[0].textContent).not.toMatch(/MVR/i);

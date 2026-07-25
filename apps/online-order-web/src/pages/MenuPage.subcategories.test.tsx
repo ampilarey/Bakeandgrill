@@ -135,7 +135,7 @@ describe('MenuPage subcategory sub-headers', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('House Salad')).toBeInTheDocument();
+      expect(screen.getAllByText('House Salad').length).toBeGreaterThan(0);
     });
 
     const subBlocks = screen.getAllByTestId('menu-subcategory');

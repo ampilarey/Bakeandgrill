@@ -8,6 +8,19 @@ export function formatCardPrice(n: number): string {
   return `${Number(n).toFixed(2)}/-`;
 }
 
+/**
+ * Savings chip for discounted unit prices — prefer "X% OFF", else "Save N/-".
+ * Presentation only; callers pass already-computed original vs sale.
+ */
+export function formatSavingsLabel(original: number, sale: number): string | null {
+  if (!(original > sale) || !(original > 0) || !Number.isFinite(original) || !Number.isFinite(sale)) {
+    return null;
+  }
+  const pct = Math.round((1 - sale / original) * 100);
+  if (pct >= 1) return `${pct}% OFF`;
+  return `Save ${formatCardPrice(original - sale)}`;
+}
+
 /** Convert a price value (number or string) to a display string in MVR, e.g. 12.5 → "12.50" */
 export function toMVR(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;

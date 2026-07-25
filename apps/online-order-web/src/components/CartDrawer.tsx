@@ -8,6 +8,7 @@ import { useCart, type CartEntry } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { estimateEarnPointsForSubtotalMvr } from '../utils/loyalty';
+import { formatCardPrice, formatSavingsLabel } from '../utils/money';
 import { ItemSheet } from './ItemSheet';
 
 const DEFAULT_FREE_DELIVERY_MVR = 200;
@@ -258,14 +259,35 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
                   </p>
                 )}
                 <div style={{ marginTop: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                    {entry.originalPrice != null && entry.originalPrice > (entry.variantPrice ?? Number(entry.item.base_price)) && (
-                      <span style={{ color: 'var(--color-text-muted)', textDecoration: 'line-through', marginRight: '0.35rem', fontWeight: 500 }}>
-                        MVR {(((entry.originalPrice) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
-                      </span>
-                    )}
-                    MVR {(((entry.variantPrice != null ? entry.variantPrice : parseFloat(String(entry.item.base_price))) + entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0)) * entry.quantity).toFixed(2)}
-                  </p>
+                  {(() => {
+                    const modSum = entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0);
+                    const unitSale = (entry.variantPrice != null ? entry.variantPrice : parseFloat(String(entry.item.base_price))) + modSum;
+                    const unitWas = entry.originalPrice != null
+                      ? entry.originalPrice + modSum
+                      : null;
+                    const lineSale = unitSale * entry.quantity;
+                    const lineWas = unitWas != null ? unitWas * entry.quantity : null;
+                    const onSale = unitWas != null && unitWas > unitSale;
+                    const savings = onSale ? formatSavingsLabel(unitWas!, unitSale) : null;
+                    return (
+                      <p
+                        data-testid="cart-line-price"
+                        style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}
+                      >
+                        {onSale && lineWas != null ? (
+                          <span className="menu-card-price-was" style={{ fontWeight: 500 }}>
+                            {formatCardPrice(lineWas)}
+                          </span>
+                        ) : null}
+                        <span className={onSale ? 'menu-card-price-sale' : undefined}>
+                          {formatCardPrice(lineSale)}
+                        </span>
+                        {savings ? (
+                          <span className="badge badge-sale" data-testid="cart-line-savings">{savings}</span>
+                        ) : null}
+                      </p>
+                    );
+                  })()}
                   <button
                     type="button"
                     onClick={() => startEditLine(index, entry)}
