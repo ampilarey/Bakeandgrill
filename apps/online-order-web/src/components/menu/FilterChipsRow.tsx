@@ -1,20 +1,16 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 
-export type SaleFilter = 'all' | 'discount' | 'special';
+export type SaleFilter = 'all' | 'discount' | 'special' | 'bestseller';
 
 type DietaryOpt = { id: string; label: string };
 
 type Props = {
   sortBy: string;
   onSortChange: (v: string) => void;
-  saleFilter: SaleFilter;
-  onSaleFilterChange: (v: SaleFilter) => void;
   dietaryFilter: string | null;
   onDietaryFilterChange: (v: string | null) => void;
   dietaryOptions: DietaryOpt[];
-  discountCount: number;
-  specialCount: number;
   filtersActive: boolean;
   onClear: () => void;
 };
@@ -37,12 +33,10 @@ function Chip({
   active,
   onClick,
   children,
-  danger,
 }: {
   active?: boolean;
   onClick: () => void;
   children: ReactNode;
-  danger?: boolean;
 }) {
   return (
     <button
@@ -52,13 +46,13 @@ function Chip({
       style={{
         ...chipBase,
         border: active
-          ? `2px solid ${danger ? '#dc2626' : 'var(--color-primary)'}`
+          ? '2px solid var(--color-primary)'
           : chipBase.border,
         background: active
-          ? (danger ? 'linear-gradient(135deg, #dc2626, #ea580c)' : 'var(--color-primary-light)')
+          ? 'var(--color-primary-light)'
           : chipBase.background,
         color: active
-          ? (danger ? '#fff' : 'var(--color-primary)')
+          ? 'var(--color-primary)'
           : chipBase.color,
       }}
     >
@@ -67,17 +61,13 @@ function Chip({
   );
 }
 
-/** Horizontal filter/sort chips under the menu sticky header. */
+/** Sort + dietary chips under the menu sticky header (deals live beside Grid/List). */
 export function FilterChipsRow({
   sortBy,
   onSortChange,
-  saleFilter,
-  onSaleFilterChange,
   dietaryFilter,
   onDietaryFilterChange,
   dietaryOptions,
-  discountCount,
-  specialCount,
   filtersActive,
   onClear,
 }: Props) {
@@ -98,22 +88,6 @@ export function FilterChipsRow({
       <Chip active={sortBy === 'name'} onClick={() => onSortChange('name')}>A–Z</Chip>
       <Chip active={sortBy === 'price-low'} onClick={() => onSortChange('price-low')}>{t('menu.sort_price_low')}</Chip>
       <Chip active={sortBy === 'price-high'} onClick={() => onSortChange('price-high')}>{t('menu.sort_price_high')}</Chip>
-
-      {(discountCount > 0 || specialCount > 0) && (
-        <>
-          <Chip active={saleFilter === 'all'} onClick={() => onSaleFilterChange('all')}>{t('menu.filter_all')}</Chip>
-          {discountCount > 0 && (
-            <Chip danger active={saleFilter === 'discount'} onClick={() => onSaleFilterChange('discount')}>
-              % Off ({discountCount})
-            </Chip>
-          )}
-          {specialCount > 0 && (
-            <Chip danger active={saleFilter === 'special'} onClick={() => onSaleFilterChange('special')}>
-              {t('menu.filter_specials')} ({specialCount})
-            </Chip>
-          )}
-        </>
-      )}
 
       {dietaryOptions.length > 0 && (
         <>

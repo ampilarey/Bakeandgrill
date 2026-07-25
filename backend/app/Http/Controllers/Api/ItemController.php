@@ -67,7 +67,14 @@ class ItemController extends Controller
 
         if (!$isAdmin) {
             $query->withCount(['reviews as review_count' => fn ($q) => $q->where('status', 'approved')])
-                ->withAvg(['reviews as avg_rating' => fn ($q) => $q->where('status', 'approved')], 'rating');
+                ->withAvg(['reviews as avg_rating' => fn ($q) => $q->where('status', 'approved')], 'rating')
+                // Last-30-day order lines for “most selling” menu filters (non-cancelled).
+                ->withCount(['orderItems as sales_30d' => function ($q) {
+                    $q->whereHas('order', function ($order) {
+                        $order->where('status', '!=', 'cancelled')
+                            ->where('created_at', '>=', now()->subDays(30));
+                    });
+                }]);
         }
 
         $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
@@ -274,6 +281,7 @@ class ItemController extends Controller
                     $data['prep_time_minutes'] = $item->prep_time_minutes ?? null;
                     $data['avg_rating'] = $item->avg_rating !== null ? round((float) $item->avg_rating, 1) : null;
                     $data['review_count'] = (int) ($item->review_count ?? 0);
+                    $data['sales_30d'] = (int) ($item->sales_30d ?? 0);
                     $data['photos'] = $item->relationLoaded('photos')
                         ? $item->photos->map(fn ($p) => [
                             'id' => $p->id,

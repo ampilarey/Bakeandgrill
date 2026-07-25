@@ -18,6 +18,7 @@ import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
+import { MenuQuickFilters } from '../components/menu/MenuQuickFilters';
 import { OffersRail } from '../components/home/OffersRail';
 import { pickActiveSectionId } from '../utils/scrollSpy';
 import { categoryScrollTop } from '../utils/menuScroll';
@@ -57,9 +58,20 @@ function slugifyCategoryName(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
+function salesCount(item: Item): number {
+  return Number(item.sales_30d ?? 0);
+}
+
+function isBestsellerItem(item: Item): boolean {
+  return salesCount(item) > 0;
+}
+
 function sortMenuItems(list: Item[], sortBy: string): Item[] {
   if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
   if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
+  if (sortBy === 'bestseller') {
+    return [...list].sort((a, b) => salesCount(b) - salesCount(a) || a.name.localeCompare(b.name));
+  }
   return [...list].sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -294,13 +306,16 @@ export function MenuPage() {
       list = list.filter(isPercentDiscountItem);
     } else if (saleFilter === 'special') {
       list = list.filter(isFixedSpecialItem);
+    } else if (saleFilter === 'bestseller') {
+      list = list.filter(isBestsellerItem);
     }
     if (dietaryFilter) {
       list = list.filter((i) =>
         (i.dietary_tags ?? []).some((t) => normalizeDietaryTag(t) === dietaryFilter),
       );
     }
-    return sortMenuItems(list, sortBy);
+    const effectiveSort = saleFilter === 'bestseller' ? 'bestseller' : sortBy;
+    return sortMenuItems(list, effectiveSort);
   }, [items, searchQuery, sortBy, saleFilter, dietaryFilter]);
 
   const filtersActive = Boolean(searchQuery.trim() || saleFilter !== 'all' || dietaryFilter != null);
@@ -332,6 +347,7 @@ export function MenuPage() {
 
   const discountCount = useMemo(() => items.filter(isPercentDiscountItem).length, [items]);
   const specialCount = useMemo(() => items.filter(isFixedSpecialItem).length, [items]);
+  const bestsellerCount = useMemo(() => items.filter(isBestsellerItem).length, [items]);
 
   // Item counts per category (parent counts include their subcategories).
   // Catering-section items live under Catering, not category tallies.
@@ -694,18 +710,14 @@ export function MenuPage() {
         <FilterChipsRow
           sortBy={sortBy}
           onSortChange={setSortBy}
-          saleFilter={saleFilter}
-          onSaleFilterChange={setSaleFilter}
           dietaryFilter={dietaryFilter}
           onDietaryFilterChange={setDietaryFilter}
           dietaryOptions={[...availableDietaryFilters]}
-          discountCount={discountCount}
-          specialCount={specialCount}
           filtersActive={filtersActive}
           onClear={handleClearFilters}
         />
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+        <div className="menu-view-row">
           <div className="menu-view-toggle" role="group" aria-label="Menu layout">
             <button
               type="button"
@@ -724,6 +736,13 @@ export function MenuPage() {
               List
             </button>
           </div>
+          <MenuQuickFilters
+            saleFilter={saleFilter}
+            onChange={setSaleFilter}
+            discountCount={discountCount}
+            specialCount={specialCount}
+            bestsellerCount={bestsellerCount}
+          />
           {waitMinutes !== null && (
             <div
               role="status"

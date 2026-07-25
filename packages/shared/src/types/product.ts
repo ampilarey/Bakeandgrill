@@ -112,6 +112,8 @@ export type MenuItem = {
   // Review aggregates (public API only)
   avg_rating?: number | null;
   review_count?: number;
+  /** Non-cancelled order lines in the last 30 days (public menu). */
+  sales_30d?: number;
 };
 
 export type ComboItemEntry = {

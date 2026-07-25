@@ -2190,8 +2190,20 @@ textarea.field-input {
   opacity: 0.75;
 }
 
+.menu-view-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin-top: 0.75rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+
 .menu-view-toggle {
   display: inline-flex;
+  flex-shrink: 0;
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -2214,6 +2226,39 @@ textarea.field-input {
 .menu-view-toggle__btn.is-active {
   background: var(--color-primary-light);
   color: var(--color-primary);
+}
+
+.menu-quick-filters {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.menu-quick-filter__chip {
+  min-height: var(--touch-target);
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menu-quick-filter__chip.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.menu-quick-filter__chip.is-danger.is-active {
+  border-color: #dc2626;
+  background: linear-gradient(135deg, #dc2626, #ea580c);
+  color: #fff;
 }
 
 @media (min-width: 480px) {
