@@ -747,7 +747,14 @@ export default function SpecialsPage() {
             <div className="specials-modal-form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <label>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Menu Item *</span>
-                <ItemSearch kind="menu" value={itemSelection} onChange={selectMenuItem} />
+                <ItemSearch
+                  kind="menu"
+                  value={itemSelection}
+                  onChange={selectMenuItem}
+                  browseByCategory
+                  resultsPlacement="inline"
+                  placeholder="Search by name…"
+                />
               </label>
               {!hasVariants ? (
               <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
