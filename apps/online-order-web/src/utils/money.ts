@@ -3,6 +3,11 @@ export function laarToMvr(laar: number): string {
   return Number.isFinite(laar) ? (laar / 100).toFixed(2) : '0.00';
 }
 
+/** Menu / offers card price: "12.50/-" (no MVR prefix). */
+export function formatCardPrice(n: number): string {
+  return `${Number(n).toFixed(2)}/-`;
+}
+
 /** Convert a price value (number or string) to a display string in MVR, e.g. 12.5 → "12.50" */
 export function toMVR(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;

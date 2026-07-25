@@ -1946,6 +1946,50 @@ textarea.field-input {
   aspect-ratio: 1 / 1 !important;
 }
 
+/* ── Offers rail — ZUS circular cards in a horizontal strip ─── */
+.offers-rail__track {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.offers-rail__track::-webkit-scrollbar {
+  display: none;
+}
+
+.offers-rail-card.menu-card-article--zus {
+  flex: 0 0 auto;
+  width: calc(var(--menu-circle-size, min(132px, 34vw)) + 1.1rem);
+  max-width: 168px;
+  text-decoration: none;
+  color: inherit;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.offers-rail-card .menu-card-media-circle__frame {
+  --menu-circle-size: min(132px, 34vw);
+}
+
+.offers-rail-card__urgency {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #b45309;
+  line-height: 1.25;
+}
+
+.offers-rail-card__promo-badge {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
 /* ── ZUS compact menu card (circular media + 3 lines) ───────── */
 .menu-card-article--zus {
   display: flex;
