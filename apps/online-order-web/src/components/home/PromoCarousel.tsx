@@ -57,7 +57,8 @@ type Props = {
 };
 
 /**
- * 16:9 promotional carousel.
+ * Homepage hero carousel — heights match main-site `.hero-banner`
+ * (mobile 420px; desktop min(78vh, 760px)).
  * - Autoplay every 5s; pauses on hover/touch-hold.
  * - Respects prefers-reduced-motion.
  * - Zero slides → static cream fallback card (never collapses).
@@ -120,17 +121,9 @@ export function PromoCarousel({
     });
   };
 
-  const outerStyle: React.CSSProperties = {
-    position: 'relative',
-    width: '100%',
-    aspectRatio: '16 / 9',
-    overflow: 'hidden',
-    background: 'var(--color-surface-alt)',
-  };
-
   if (loading) {
     return (
-      <div style={outerStyle} aria-label={t('home.promo_region')} aria-busy="true">
+      <div className="home-promo-hero" aria-label={t('home.promo_region')} aria-busy="true">
         <span
           className="skeleton-block"
           style={{ width: '100%', height: '100%', borderRadius: 0, display: 'block' }}
@@ -145,18 +138,7 @@ export function PromoCarousel({
   if (n === 0) {
     return (
       <div
-        style={{
-          ...outerStyle,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: '0.5rem',
-          borderTop: '1px solid var(--color-border)',
-          borderBottom: '1px solid var(--color-border)',
-          padding: '1.25rem',
-          textAlign: 'center',
-        }}
+        className="home-promo-hero home-promo-hero--empty"
         aria-label={t('home.promo_region')}
       >
         {statusSlot}
@@ -181,8 +163,9 @@ export function PromoCarousel({
 
   return (
     <div
+      className="home-promo-hero"
+      data-testid="home-promo-hero"
       aria-label={t('home.promo_region')}
-      style={outerStyle}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}
@@ -191,10 +174,9 @@ export function PromoCarousel({
       {statusSlot}
       {/* Sliding track */}
       <div
+        className="home-promo-hero__track"
         style={{
-          display: 'flex',
           width: `${n * 100}%`,
-          height: '100%',
           transform: `translateX(-${idx * (100 / n)}%)`,
           transition: prefersReduced ? 'none' : 'transform 0.45s cubic-bezier(0.16,1,0.3,1)',
         }}
@@ -212,46 +194,30 @@ export function PromoCarousel({
           return (
             <div
               key={i}
-              style={{
-                flex: `0 0 ${100 / n}%`,
-                position: 'relative',
-                overflow: 'hidden',
-              }}
+              className="home-promo-hero__slide"
+              style={{ flex: `0 0 ${100 / n}%` }}
             >
               {videoSrc ? (
                 <video
+                  className="home-promo-hero__media"
                   src={videoSrc}
                   poster={posterSrc || undefined}
                   autoPlay
                   muted
                   loop
                   playsInline
-                  style={{
-                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-                    objectPosition: `${focalX}% ${focalY}%`,
-                  }}
+                  style={{ objectPosition: `${focalX}% ${focalY}%` }}
                 />
               ) : imgSrc && !imgBroken ? (
                 <img
+                  className="home-promo-hero__media"
                   src={imgSrc}
                   alt={alt}
-                  style={{
-                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-                    objectPosition: `${focalX}% ${focalY}%`,
-                  }}
+                  style={{ objectPosition: `${focalX}% ${focalY}%` }}
                   onError={() => handleImgError(i)}
                 />
               ) : (
-                <div
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    background: 'var(--color-surface-alt)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+                <div className="home-promo-hero__fallback">
                   <img
                     src="/logo.png"
                     alt="Bake & Grill"
@@ -260,43 +226,13 @@ export function PromoCarousel({
                 </div>
               )}
 
-              {/* Overlay */}
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background:
-                    'linear-gradient(to top, rgba(28,20,8,0.72) 0%, rgba(28,20,8,0.12) 55%, transparent 100%)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-end',
-                  padding: 'clamp(0.75rem, 4%, 2rem)',
-                }}
-              >
+              <div className="home-promo-hero__overlay">
                 {slide.eyebrow && (
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.12em',
-                      color: 'rgba(255,255,255,0.75)',
-                      marginBottom: '0.25rem',
-                    }}
-                  >
-                    {slide.eyebrow}
-                  </span>
+                  <span className="home-promo-hero__eyebrow">{slide.eyebrow}</span>
                 )}
                 {slide.title && (
                   <h2
-                    style={{
-                      fontSize: 'clamp(1rem, 4vw, 2rem)',
-                      fontWeight: 800,
-                      color: '#fff',
-                      margin: '0 0 0.375rem',
-                      lineHeight: 1.2,
-                      letterSpacing: '-0.02em',
-                    }}
+                    className="home-promo-hero__title"
                     dangerouslySetInnerHTML={{
                       __html: DOMPurify.sanitize(slide.title, {
                         ALLOWED_TAGS: ['br', 'em', 'strong'],
@@ -306,12 +242,7 @@ export function PromoCarousel({
                 )}
                 {slide.subtitle && (
                   <p
-                    style={{
-                      fontSize: 'clamp(0.8rem, 2.5vw, 1rem)',
-                      color: 'rgba(255,255,255,0.8)',
-                      margin: '0 0 0.625rem',
-                      lineHeight: 1.4,
-                    }}
+                    className="home-promo-hero__sub"
                     dangerouslySetInnerHTML={{
                       __html: DOMPurify.sanitize(slide.subtitle, {
                         ALLOWED_TAGS: ['br', 'em', 'strong'],
@@ -321,14 +252,14 @@ export function PromoCarousel({
                 )}
                 {(slide.cta_text && slide.cta_url) ||
                 (slide.cta2_text && slide.cta2_url) ? (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div className="home-promo-hero__ctas">
                     {slide.cta_text && slide.cta_url && (
                       <CtaLink href={slide.cta_url} className="home-banner-cta-primary">
                         {slide.cta_text}
                       </CtaLink>
                     )}
                     {slide.cta2_text && slide.cta2_url && (
-                      <CtaLink href={slide.cta2_url} className="home-banner-cta-secondary">
+                      <CtaLink href={slide.cta2_url} className="home-promo-hero__cta-secondary">
                         {slide.cta2_text}
                       </CtaLink>
                     )}
@@ -340,21 +271,8 @@ export function PromoCarousel({
         })}
       </div>
 
-      {/* Dot navigation */}
       {n > 1 && (
-        <div
-          role="tablist"
-          aria-label="Slides"
-          style={{
-            position: 'absolute',
-            bottom: '0.625rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            gap: '0.375rem',
-            zIndex: 2,
-          }}
-        >
+        <div className="home-promo-hero__dots" role="tablist" aria-label="Slides">
           {slides.map((_, i) => (
             <button
               key={i}
@@ -362,17 +280,8 @@ export function PromoCarousel({
               role="tab"
               aria-label={`Slide ${i + 1}`}
               aria-selected={i === idx}
+              className={`home-promo-hero__dot${i === idx ? ' is-active' : ''}`}
               onClick={() => setIdx(i)}
-              style={{
-                width: i === idx ? 20 : 8,
-                height: 8,
-                borderRadius: 'var(--radius-full)',
-                background: i === idx ? '#fff' : 'rgba(255,255,255,0.45)',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                transition: 'width 0.2s ease, background 0.2s ease',
-              }}
             />
           ))}
         </div>

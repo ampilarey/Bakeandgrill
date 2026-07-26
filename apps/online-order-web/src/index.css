@@ -253,6 +253,206 @@
   .home-hero { min-height: 420px; padding-top: 2rem; padding-bottom: 2rem; }
 }
 
+/* ── Order-app promo hero — match main-site .hero-banner sizes (not 16:9) ── */
+.home-promo-hero {
+  position: relative;
+  width: 100%;
+  height: 420px;
+  overflow: hidden;
+  background: #1c1408;
+}
+.home-promo-hero--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 1.25rem;
+  text-align: center;
+  background: var(--color-surface-alt);
+}
+.home-promo-hero__track {
+  display: flex;
+  height: 100%;
+}
+.home-promo-hero__slide {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+}
+.home-promo-hero__media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0.55;
+}
+.home-promo-hero__fallback {
+  width: 100%;
+  height: 100%;
+  background: var(--color-surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.home-promo-hero__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 2rem 1.5rem 3rem;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(28, 20, 8, 0.3) 0%, rgba(28, 20, 8, 0.88) 100%);
+}
+.home-promo-hero__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #f0a96a;
+  margin-bottom: 0.75rem;
+}
+.home-promo-hero__title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.5rem;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
+}
+.home-promo-hero__title em {
+  font-style: normal;
+  color: #f0a96a;
+}
+.home-promo-hero__sub {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0 0 1.25rem;
+  line-height: 1.55;
+}
+.home-promo-hero__ctas {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.home-promo-hero__cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.85rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
+  color: white !important;
+  border-radius: 11px;
+  font-weight: 600;
+  font-size: 0.975rem;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+  font-family: inherit;
+  cursor: pointer;
+}
+.home-promo-hero__cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.home-promo-hero__dots {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+.home-promo-hero__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: width 0.3s, background 0.3s;
+}
+.home-promo-hero__dot.is-active {
+  width: 24px;
+  background: var(--color-primary, #d4813a);
+}
+
+/* Desktop: same height band as main website hero */
+@media (min-width: 769px) {
+  .home-promo-hero {
+    height: min(78vh, 760px);
+    min-height: 560px;
+  }
+  .home-promo-hero__media {
+    opacity: 0.62;
+  }
+  .home-promo-hero__overlay {
+    justify-content: center;
+    align-items: flex-start;
+    text-align: left;
+    padding: 4rem clamp(2.5rem, 8vw, 7rem);
+    background: linear-gradient(
+      105deg,
+      rgba(14, 10, 4, 0.92) 0%,
+      rgba(28, 20, 8, 0.72) 42%,
+      rgba(28, 20, 8, 0.28) 68%,
+      rgba(28, 20, 8, 0.06) 100%
+    );
+  }
+  .home-promo-hero__overlay > * {
+    max-width: 640px;
+  }
+  .home-promo-hero__eyebrow {
+    font-size: 0.78rem;
+    margin-bottom: 1.25rem;
+  }
+  .home-promo-hero__title {
+    font-size: clamp(2.75rem, 4.5vw, 4.25rem);
+    max-width: 720px;
+    margin-bottom: 1rem;
+  }
+  .home-promo-hero__sub {
+    font-size: 1.15rem;
+    max-width: 520px;
+    margin-bottom: 2rem;
+    color: rgba(255, 248, 240, 0.82);
+  }
+  .home-promo-hero__ctas {
+    justify-content: flex-start;
+    gap: 0.9rem;
+  }
+  .home-promo-hero__ctas .home-banner-cta-primary,
+  .home-promo-hero__cta-secondary {
+    min-height: 52px;
+    padding: 0.95rem 1.9rem;
+    font-size: 1.05rem;
+    border-radius: 12px;
+  }
+  .home-promo-hero__dots {
+    bottom: 2rem;
+    left: clamp(2.5rem, 8vw, 7rem);
+    transform: none;
+    gap: 8px;
+  }
+}
+@media (min-width: 1200px) {
+  .home-promo-hero {
+    height: min(82vh, 820px);
+  }
+}
+
 /* ── Home marketing typography & CTAs (mirrors home.blade.php .banner-*) ── */
 .home-banner-eyebrow {
   display: inline-flex;
