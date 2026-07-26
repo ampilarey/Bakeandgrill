@@ -1,43 +1,27 @@
 /**
  * Freeform slide designer — element-tree WYSIWYG (Phase 1b).
- * Canvas uses the same 0–100% coordinate model as /order/tv.
+ * Visual layer = shared @shared/signage SlideCanvas (same as /order/tv).
+ * Editing chrome (selection/drag/resize/guides) overlays on top.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPE } from 'react';
 import { AlignCenter, Copy, Eye, EyeOff, Lock, Redo2, Save, Trash2, Undo2, Unlock } from 'lucide-react';
+import {
+  SlideCanvas,
+  type MenuItemLite,
+  type SignageConfig,
+  type SignageElement,
+  type SignageSlide,
+  type SignageTheme,
+} from '@shared/signage';
+import '@shared/signage/signage.css';
 import { saveSignageCustomTemplate } from '../../api';
 import { Btn } from '../../components/SharedUI';
 import { useToast } from '../../components/ui';
 import { MediaPicker } from '../../components/MediaPicker';
 
-export type DesignerElement = {
-  id: string;
-  type: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  rotation?: number;
-  z?: number;
-  style?: Record<string, unknown>;
-  animation?: { entrance?: string; emphasis?: string; duration?: number; delay?: number; easing?: string };
-  binding?: Record<string, unknown>;
-  text?: string;
-  locked?: boolean;
-  hidden?: boolean;
-};
-
-export type DesignerSlide = {
-  id: string;
-  name?: string;
-  seconds?: number;
-  weight?: number;
-  transition?: string;
-  transition_ms?: number;
-  background?: { type?: string; value?: string; opacity?: number };
-  template_origin?: string;
-  elements?: DesignerElement[];
-  [key: string]: unknown;
-};
+/** Shared element type; locked/hidden are editor fields already on SignageElement. */
+export type DesignerElement = SignageElement;
+export type DesignerSlide = SignageSlide & { [key: string]: unknown };
 
 type Props = {
   slide: DesignerSlide;
@@ -54,12 +38,60 @@ const ENTRANCES = ['fade', 'slide-in', 'zoom-in', 'rise', 'pop'];
 const EMPHASES = ['', 'pulse', 'ken-burns', 'float', 'shine', 'count-up'];
 const TRANSITIONS = ['fade', 'slide', 'zoom', 'dissolve', 'flip', 'push', 'cube', 'wipe'];
 
+const PREVIEW_THEME: SignageTheme = {
+  primary: '#D4813A',
+  background: '#1C1408',
+  surface: '#2A2118',
+  text: '#FFF8F0',
+  muted: '#C4B5A5',
+  font_display: 'Georgia, serif',
+  font_body: 'system-ui, sans-serif',
+};
+
+const PREVIEW_ITEMS: MenuItemLite[] = [
+  { id: 1, name: 'Chicken Wrap', base_price: 45, sales_30d: 120, category_id: 1 },
+  { id: 2, name: 'Beef Burger', base_price: 55, sales_30d: 90, category_id: 1 },
+  { id: 3, name: 'Fish Combo', base_price: 65, sales_30d: 70, is_combo: true, category_id: 2 },
+];
+
 function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
 function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;
+}
+
+function previewConfig(slide: SignageSlide, orientation: string): SignageConfig {
+  return {
+    screen: null,
+    playlist_id: null,
+    playlist_version: 'designer-preview',
+    source: 'preview',
+    mode: 'normal',
+    orientation,
+    resolution: orientation === 'portrait' ? '1080x1920' : '1920x1080',
+    refresh_seconds: 120,
+    theme: PREVIEW_THEME,
+    slides: [slide],
+    rotation: [slide.id],
+    variables: {
+      branch_name: 'Bake & Grill',
+      current_time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+      today: new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' }),
+      next_prayer: '',
+      wifi_name: 'BG-Guest',
+      wifi_password: '',
+      promotion_name: '',
+    },
+    bestsellers: PREVIEW_ITEMS.map((i) => ({
+      id: i.id,
+      name: i.name,
+      base_price: i.base_price,
+      sales_30d: i.sales_30d,
+    })),
+    menu_new_days: 30,
+  };
 }
 
 export function SignageDesigner({ slide, onChange, onClose }: Props) {
@@ -79,6 +111,8 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
     () => [...(local.elements ?? [])].sort((a, b) => (a.z ?? 1) - (b.z ?? 1)),
     [local.elements],
   );
+
+  const config = useMemo(() => previewConfig(local, orient), [local, orient]);
 
   const pushHistory = useCallback((next: DesignerSlide) => {
     setHistory((h) => {
@@ -318,14 +352,26 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
               width: '100%',
               maxWidth: maxW,
               aspectRatio: aspect,
-              background: local.background?.value || '#1C1408',
               border: '1px solid #5C4A3A',
               boxShadow: '0 12px 40px rgba(0,0,0,.35)',
               overflow: 'hidden',
             }}
           >
-            {/* Safe zone */}
-            <div style={{ position: 'absolute', inset: '5%', border: '1px dashed rgba(212,129,58,.45)', pointerEvents: 'none', zIndex: 999 }} data-testid="signage-safe-zone" />
+            {/* Shared TV renderer — identical to /order/tv */}
+            <SlideCanvas
+              slide={local}
+              theme={PREVIEW_THEME}
+              variables={config.variables}
+              items={PREVIEW_ITEMS}
+              config={config}
+              logoUrl="/logo.png"
+              preview
+            />
+
+            {/* Safe zone guide */}
+            <div style={{ position: 'absolute', inset: '5%', border: '1px dashed rgba(212,129,58,.45)', pointerEvents: 'none', zIndex: 2000 }} data-testid="signage-safe-zone" />
+
+            {/* Interaction overlay — selection / drag / resize only */}
             {elements.map((el) => (
               <div
                 key={el.id}
@@ -337,26 +383,15 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                   top: `${el.y}%`,
                   width: `${el.w}%`,
                   height: `${el.h}%`,
-                  zIndex: el.z ?? 1,
+                  zIndex: 1000 + (el.z ?? 1),
                   transform: `rotate(${el.rotation ?? 0}deg)`,
-                  outline: selected.includes(el.id) ? '2px solid #D4813A' : '1px solid transparent',
+                  outline: selected.includes(el.id) ? '2px solid #D4813A' : el.hidden ? '1px dashed rgba(255,255,255,.35)' : '1px solid transparent',
                   cursor: el.locked ? 'not-allowed' : 'move',
-                  opacity: el.hidden ? 0.25 : 1,
-                  color: (el.style?.color as string) || '#FFF8F0',
-                  fontSize: el.style?.fontSize != null ? `${Number(el.style.fontSize) * 0.55}vmin` : '2vmin',
-                  fontWeight: (el.style?.fontWeight as number) || 600,
-                  background: el.type === 'shape' ? ((el.style?.fill as string) || '#D4813A') : el.type === 'image' || el.type === 'video' ? 'rgba(255,255,255,.08)' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
+                  background: el.hidden && !selected.includes(el.id) ? 'rgba(255,255,255,.04)' : 'transparent',
+                  boxSizing: 'border-box',
                   userSelect: 'none',
                 }}
               >
-                {el.type === 'text' || el.type === 'variable' ? (el.text || 'Text') : el.type}
-                {el.type === 'image' && el.binding?.url ? (
-                  <img src={String(el.binding.url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
-                ) : null}
                 {selected.includes(el.id) && !el.locked && (
                   <div
                     onPointerDown={(e) => {

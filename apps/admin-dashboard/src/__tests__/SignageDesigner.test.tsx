@@ -78,12 +78,22 @@ describe('SignageDesigner', () => {
     expect(el.text).toBe('Edited {{branch_name}}');
   });
 
-  it('adds a data-bound menu_list element', () => {
+  it('adds a data-bound menu_list element and renders via shared SlideCanvas', () => {
     render(
       <SignageDesigner slide={{ ...slide, elements: [] }} onChange={vi.fn()} onClose={vi.fn()} />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'menu_list' }));
     expect(screen.getAllByText('menu_list').length).toBeGreaterThan(0);
     expect(screen.getByTestId(/designer-el-/)).toBeTruthy();
+    expect(screen.getByTestId('signage-slide-canvas')).toBeTruthy();
+  });
+
+  it('shows live menu_list content from the shared renderer', () => {
+    render(
+      <SignageDesigner slide={slide} onChange={vi.fn()} onClose={vi.fn()} />,
+    );
+    expect(screen.getByTestId('signage-slide-canvas')).toBeTruthy();
+    expect(screen.getByText('Hello Bake & Grill')).toBeTruthy();
+    expect(screen.getByText('Chicken Wrap')).toBeTruthy();
   });
 });

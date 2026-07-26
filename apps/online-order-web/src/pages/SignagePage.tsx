@@ -5,12 +5,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_ORIGIN, fetchCategories, fetchItems, fetchOffers } from '../api';
 import type { Item } from '../api';
+import {
+  buildWeightedRotation,
+  interpolate,
+  SlideCanvas,
+  type MenuItemLite,
+  type SignageConfig,
+  type SignageSlide,
+} from '@shared/signage';
+import '@shared/signage/signage.css';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
-import { buildWeightedRotation } from '../signage/interpolate';
-import { interpolate } from '../signage/interpolate';
-import { SlideCanvas } from '../signage/SlideCanvas';
-import type { MenuItemLite, SignageConfig, SignageSlide } from '../signage/types';
-import '../signage/signage.css';
 
 const CACHE_KEY = 'bg_signage_cache_v1';
 const DEVICE_ID_KEY = 'bg_signage_device_id';
