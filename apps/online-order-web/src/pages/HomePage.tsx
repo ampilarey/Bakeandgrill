@@ -229,14 +229,15 @@ export function HomePage() {
         </>
       ) : (
         <>
-          {/* Phone: greeting → prayer → chips → hero (status on banner) */}
+          {/* Phone: greeting → hero (like main site) → prayer */}
           <GreetingHeader
             customerName={customerName}
             isAuthenticated={isAuthenticated}
           />
+          {hero}
           <div
             style={{
-              padding: '0.35rem var(--page-gutter) 0.75rem',
+              padding: '0.75rem var(--page-gutter) 0.75rem',
               maxWidth: 'var(--layout-max)',
               margin: '0 auto',
             }}
@@ -244,7 +245,6 @@ export function HomePage() {
             <PrayerBar />
           </div>
           <StatChipsRow {...chipsProps} hideLoyalty />
-          {hero}
         </>
       )}
 

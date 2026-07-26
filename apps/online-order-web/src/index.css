@@ -248,32 +248,11 @@
   }
 }
 
-/* Hero mobile: mirror Blade .hero-banner (inset rounded 4:5) */
-@media (max-width: 768px) {
-  .home-hero {
-    min-height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-  }
-  .home-promo-hero {
-    width: auto;
-    margin: 0.75rem var(--page-gutter, 1rem) 0;
-    border-radius: 1.25rem;
-    border: none;
-    height: min(68vh, calc((100vw - 2 * var(--page-gutter, 1rem)) * 1.25), 500px);
-    height: min(68dvh, calc((100vw - 2 * var(--page-gutter, 1rem)) * 1.25), 500px);
-    min-height: 340px;
-  }
-  .home-promo-hero--empty {
-    border: none;
-  }
-}
-
 /* ── Order-app promo hero — match main-site .hero-banner sizes ── */
 .home-promo-hero {
   position: relative;
   width: 100%;
-  /* Desktop height set in min-width:769px; mobile inset set above */
+  box-sizing: border-box;
   height: min(68vh, calc(100vw * 1.25), 500px);
   height: min(68dvh, calc(100vw * 1.25), 500px);
   min-height: 340px;
@@ -291,6 +270,34 @@
   padding: 1.25rem;
   text-align: center;
   background: var(--color-surface-alt);
+}
+
+/* Mobile inset — AFTER base so width/height are not overridden (was the bug) */
+@media (max-width: 768px) {
+  .home-hero {
+    min-height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+  .home-promo-hero {
+    width: auto;
+    margin: 0.75rem 1rem 0;
+    border-radius: 1.25rem;
+    border: none;
+    height: min(68vh, calc((100vw - 2rem) * 1.25), 500px);
+    height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
+    min-height: 340px;
+  }
+  .home-promo-hero--empty {
+    border: none;
+  }
+  .home-promo-hero__media {
+    opacity: 0.45;
+  }
+  .opening-status-badge-hero.opening-status-badge {
+    top: 0.85rem;
+    right: 0.85rem;
+  }
 }
 .home-promo-hero__track {
   display: flex;
