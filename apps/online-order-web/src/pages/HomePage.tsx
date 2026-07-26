@@ -205,7 +205,6 @@ export function HomePage() {
     loading: chipsLoading,
     isAuthenticated,
     loyaltyPoints,
-    specialsCount: offers.length,
   };
 
   const hero = (

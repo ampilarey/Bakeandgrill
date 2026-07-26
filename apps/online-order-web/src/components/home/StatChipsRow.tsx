@@ -8,7 +8,6 @@ type Props = {
   loyaltyPoints: number | null;
   /** @deprecated Active orders are shown on the Orders tab badge — ignored. */
   activeOrder?: { id: number; status: string } | null;
-  specialsCount: number;
   /** Phone shows points beside the account avatar — skip the chip. */
   hideLoyalty?: boolean;
 };
@@ -30,15 +29,13 @@ const chipBase: React.CSSProperties = {
 };
 
 /**
- * Home utility chips — points (signed-in) + specials only.
- * Guest "Sign in to earn points" and active-order chips removed;
- * active orders use the Orders tab count in the bottom nav.
+ * Home utility chips — loyalty points only (signed-in, desktop).
+ * Specials chip removed; offers still appear in SpecialsCarousel below.
  */
 export function StatChipsRow({
   loading,
   isAuthenticated,
   loyaltyPoints,
-  specialsCount,
   hideLoyalty = false,
 }: Props) {
   const { t } = useLanguage();
@@ -58,18 +55,7 @@ export function StatChipsRow({
       </Link>
     );
 
-  const specialsChip =
-    !loading && specialsCount > 0 ? (
-      <Link
-        to="/menu"
-        style={{ ...chipBase, color: 'var(--color-text)' }}
-      >
-        <span aria-hidden="true">🔥</span>
-        {`${specialsCount} ${t('home.chip_specials')}`}
-      </Link>
-    ) : null;
-
-  if (!loading && !loyaltyChip && !specialsChip) {
+  if (!loading && !loyaltyChip) {
     return null;
   }
 
@@ -77,7 +63,6 @@ export function StatChipsRow({
     <div className="home-stat-chips">
       <div className="home-stat-chips__row">
         {loyaltyChip}
-        {specialsChip}
       </div>
     </div>
   );

@@ -112,7 +112,6 @@ const TRANSLATIONS: Translations = {
   "home.chip_sign_in_points": "Sign in to earn points",
   "home.chip_order": "Track order",
   "home.chip_no_order": "No active order",
-  "home.chip_specials": "specials today",
   "home.specials_title": "Today's specials",
   "home.specials_subtitle": "Limited-time deals, today only",
   "home.see_all": "See all →",
