@@ -15,7 +15,6 @@ use App\Models\ContentSchedule;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
 use App\Services\MenuImageProcessor;
-use App\Support\ContentSanitizer;
 use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -170,9 +169,7 @@ class ContentController extends Controller
                 }
                 $value = (string) $value;
 
-                if (ContentRegistry::isRich($key) || ContentRegistry::type($key) === 'textarea') {
-                    $value = ContentSanitizer::clean($value);
-                }
+                $value = ContentWriter::prepareValue($key, $value);
 
                 $draft = ContentRevision::query()
                     ->where('key', $key)

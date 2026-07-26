@@ -28,9 +28,7 @@ final class ContentWriter
         string $auditAction = 'content.updated',
         array $extraMeta = [],
     ): void {
-        if (ContentRegistry::isRich($key) || ContentRegistry::type($key) === 'textarea') {
-            $value = ContentSanitizer::clean($value);
-        }
+        $value = self::prepareValue($key, $value);
 
         $old = SiteSetting::getScoped($key, $scope, $locale);
 
@@ -62,6 +60,12 @@ final class ContentWriter
             }
         }
 
+        // hero_slides is the sole source of truth — blank legacy slots so an
+        // empty array cannot resurrect old hero_slide_1/2/3 on the public site.
+        if ($key === 'hero_slides') {
+            $this->clearLegacyHeroSlides($scope, $locale);
+        }
+
         // Promote / clear any autosaved draft for this key.
         ContentRevision::query()
             ->where('key', $key)
@@ -79,5 +83,62 @@ final class ContentWriter
             meta: array_merge(['setting_key' => $key, 'scope' => $scope, 'locale' => $locale], $extraMeta),
             request: $request,
         );
+    }
+
+    /**
+     * Prepare a content value for draft or publish (shared sanitisation rules).
+     */
+    public static function prepareValue(string $key, string $value): string
+    {
+        // Never run HTML strip_tags over a JSON document — it corrupts escaped
+        // tags (e.g. <\/em>) and can blank nested fields. Sanitize string fields inside.
+        if (ContentRegistry::type($key) === 'json') {
+            return self::sanitizeJsonRichFields($key, $value);
+        }
+
+        if (ContentRegistry::isRich($key) || ContentRegistry::type($key) === 'textarea') {
+            return ContentSanitizer::clean($value);
+        }
+
+        return $value;
+    }
+
+    private static function sanitizeJsonRichFields(string $key, string $value): string
+    {
+        if ($value === '' || ! ContentRegistry::isRich($key)) {
+            return $value;
+        }
+
+        $decoded = json_decode($value, true);
+        if (! is_array($decoded)) {
+            return $value;
+        }
+
+        if ($key === 'hero_slides' && array_is_list($decoded)) {
+            foreach ($decoded as $i => $slide) {
+                if (! is_array($slide)) {
+                    continue;
+                }
+                foreach (['eyebrow', 'title', 'subtitle', 'cta_text', 'cta2_text', 'image_alt'] as $field) {
+                    if (isset($slide[$field]) && is_string($slide[$field])) {
+                        $decoded[$i][$field] = ContentSanitizer::clean($slide[$field]);
+                    }
+                }
+            }
+
+            return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: $value;
+        }
+
+        return $value;
+    }
+
+    private function clearLegacyHeroSlides(string $scope, string $locale): void
+    {
+        $scopes = array_values(array_unique([$scope, 'shared', 'website', 'order_app']));
+        foreach ($scopes as $clearScope) {
+            foreach (['hero_slide_1', 'hero_slide_2', 'hero_slide_3'] as $legacyKey) {
+                SiteSetting::set($legacyKey, '{}', $clearScope, $locale);
+            }
+        }
     }
 }

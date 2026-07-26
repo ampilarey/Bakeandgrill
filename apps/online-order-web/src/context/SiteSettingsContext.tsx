@@ -186,31 +186,37 @@ function parseTrustItems(raw: string | undefined | null): TrustItemRow[] {
   return parseJsonArray(raw, DEFAULT_TRUST_ITEMS);
 }
 
+function isRenderableHeroSlide(slide: unknown): slide is HeroSlideRow {
+  if (!slide || typeof slide !== 'object') return false;
+  const row = slide as HeroSlideRow;
+  const title = String(row.title ?? '').trim();
+  const image = String(row.image ?? '').trim();
+  const video = String((row as HeroSlideRow & { video?: string }).video ?? '').trim();
+  return title !== '' || image !== '' || video !== '';
+}
+
 function parseHeroSlides(rawMap: Record<string, string | undefined>): HeroSlideRow[] {
   const arrayRaw = rawMap.hero_slides;
-  if (arrayRaw) {
+  // A JSON array (including []) is authoritative — do not resurrect legacy keys.
+  if (arrayRaw !== undefined && arrayRaw !== null && String(arrayRaw).trim() !== '') {
     try {
       const parsed = JSON.parse(arrayRaw) as unknown;
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter(
-          (slide): slide is HeroSlideRow =>
-            !!slide && typeof slide === 'object' && !!(slide as HeroSlideRow).title
-            && String((slide as HeroSlideRow).title).trim() !== '',
-        );
+      if (Array.isArray(parsed)) {
+        return parsed.filter(isRenderableHeroSlide);
       }
     } catch {
       /* fall through to legacy */
     }
   }
 
-  // Legacy fallback: hero_slide_1/2/3 during transition.
+  // Legacy fallback: hero_slide_1/2/3 only when hero_slides is missing/invalid.
   const out: HeroSlideRow[] = [];
   for (let i = 1; i <= 3; i++) {
     const raw = rawMap[`hero_slide_${i}`];
     if (!raw) continue;
     try {
       const slide = JSON.parse(raw) as HeroSlideRow;
-      if (slide && typeof slide === 'object' && slide.title && String(slide.title).trim() !== '') {
+      if (isRenderableHeroSlide(slide)) {
         out.push(slide);
       }
     } catch {

@@ -17,20 +17,20 @@ final class HeroSlides
      */
     public static function resolve(callable $get): array
     {
-        $raw = $get('hero_slides', '[]');
-        $slides = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+        $raw = $get('hero_slides', null);
+        [$slides, $hasArray] = self::decodeSlideArray($raw);
 
-        if (is_array($slides) && count($slides) > 0) {
-            return array_values(array_filter($slides, static function ($slide) {
-                return is_array($slide) && !empty($slide['title']);
-            }));
+        // A JSON array (including []) is the source of truth — never fall back to
+        // legacy keys. Falling back made "delete all" resurrect old hero_slide_1/2/3.
+        if ($hasArray) {
+            return array_values(array_filter($slides, static fn ($slide) => self::isRenderableSlide($slide)));
         }
 
         $legacy = [];
         for ($i = 1; $i <= 3; $i++) {
-            $rawSlide = $get("hero_slide_{$i}", '{}');
-            $slide = is_string($rawSlide) ? (json_decode($rawSlide, true) ?: []) : (is_array($rawSlide) ? $rawSlide : []);
-            if (is_array($slide) && !empty($slide['title'])) {
+            $rawSlide = $get("hero_slide_{$i}", null);
+            $slide = self::decodeSlideObject($rawSlide);
+            if (self::isRenderableSlide($slide)) {
                 $legacy[] = $slide;
             }
         }
@@ -58,5 +58,61 @@ final class HeroSlides
         }
 
         return json_encode(array_values($slides), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+    }
+
+    /** @param mixed $slide */
+    public static function isRenderableSlide(mixed $slide): bool
+    {
+        if (! is_array($slide)) {
+            return false;
+        }
+
+        $title = trim((string) ($slide['title'] ?? ''));
+        $image = trim((string) ($slide['image'] ?? ''));
+        $video = trim((string) ($slide['video'] ?? ''));
+
+        return $title !== '' || $image !== '' || $video !== '';
+    }
+
+    /**
+     * @return array{0: list<array<string, mixed>>, 1: bool} [slides, hasArray]
+     */
+    private static function decodeSlideArray(mixed $raw): array
+    {
+        if (is_array($raw)) {
+            /** @var list<array<string, mixed>> $raw */
+            return [$raw, true];
+        }
+
+        if (! is_string($raw) || $raw === '') {
+            return [[], false];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+            return [[], false];
+        }
+
+        // List of slides (incl. empty). Associative objects are not the array format.
+        if ($decoded !== [] && ! array_is_list($decoded)) {
+            return [[], false];
+        }
+
+        /** @var list<array<string, mixed>> $decoded */
+        return [$decoded, true];
+    }
+
+    /** @return array<string, mixed> */
+    private static function decodeSlideObject(mixed $raw): array
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+        if (! is_string($raw) || $raw === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 }
