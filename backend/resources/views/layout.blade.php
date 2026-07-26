@@ -185,7 +185,7 @@
         [data-theme="dark"] .mobile-bottom-nav {
             background: rgba(26, 18, 8, 0.94);
         }
-        [data-theme="dark"] .mob-nav-order { background: var(--amber); }
+        [data-theme="dark"] .mob-nav-order { background: none; }
         [data-theme="dark"] .site-announcement--info    { background: rgba(96,165,250,0.1); color: #93c5fd; border-bottom-color: rgba(96,165,250,0.25); }
         [data-theme="dark"] .site-announcement--warning { background: rgba(250,204,21,0.1);  color: #fde047; border-bottom-color: rgba(250,204,21,0.25); }
         [data-theme="dark"] .site-announcement--promo   { background: rgba(74,222,128,0.1);  color: #86efac; border-bottom-color: rgba(74,222,128,0.25); }
