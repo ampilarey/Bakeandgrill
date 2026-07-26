@@ -1001,6 +1001,7 @@
 {{-- ══════════════════════════════════════════════════════════
      HERO CAROUSEL
 ══════════════════════════════════════════════════════════ --}}
+@if(content_section_enabled('section_hero_enabled'))
 <div class="hero-banner">
 
     {{-- Open/Closed status badge --}}
@@ -1142,6 +1143,7 @@
     }
 })();
 </script>
+@endif
 
 
 {{-- ══════════════════════════════════════════════════════════
@@ -1171,7 +1173,7 @@
     $offersSubtext = content('offers_subtext', 'Specials and promos running right now.');
     $defaultItemImage = content('default_item_image');
 @endphp
-@if($homeOffers->count() > 0)
+@if(content_section_enabled('section_specials_enabled') && $homeOffers->count() > 0)
 <section class="section" id="offers">
     <div class="section-inner">
         <div class="section-header">
@@ -1304,6 +1306,7 @@
 {{-- ══════════════════════════════════════════════════════════
      SIGNATURE CATEGORIES
 ══════════════════════════════════════════════════════════ --}}
+@if(content_section_enabled('section_categories_enabled'))
 <section class="section alt">
     <div class="section-inner">
         <div class="section-header">
@@ -1335,11 +1338,13 @@
         </div>
     </div>
 </section>
+@endif
 
 
 {{-- ══════════════════════════════════════════════════════════
      FEATURED ITEMS
 ══════════════════════════════════════════════════════════ --}}
+@if(content_section_enabled('section_featured_enabled'))
 <section class="section">
     <div class="section-inner">
         <div class="section-header">
@@ -1412,11 +1417,13 @@
         </div>
     </div>
 </section>
+@endif
 
 
 {{-- ══════════════════════════════════════════════════════════
      SOCIAL PROOF
 ══════════════════════════════════════════════════════════ --}}
+@if(content_section_enabled('section_proof_enabled'))
 <section class="proof-strip">
     <div class="proof-inner">
         <div class="proof-eyebrow">{{ $homeProofEyebrow }}</div>
@@ -1432,6 +1439,7 @@
         </div>
     </div>
 </section>
+@endif
 
 @if($featuredReviews->isNotEmpty())
 {{-- ══════════════════════════════════════════════════════════
@@ -1469,6 +1477,7 @@
 {{-- ══════════════════════════════════════════════════════════
      LOCATION & CONVENIENCE
 ══════════════════════════════════════════════════════════ --}}
+@if(content_section_enabled('section_location_enabled'))
 <section class="section alt">
     <div class="section-inner">
         <div class="section-header">
@@ -1583,6 +1592,7 @@
         </div>
     </div>
 </section>
+@endif
 
 
 {{-- ══════════════════════════════════════════════════════════
@@ -1608,6 +1618,7 @@
 {{-- ══════════════════════════════════════════════════════════
      FINAL CTA BAND
 ══════════════════════════════════════════════════════════ --}}
+@if(content_section_enabled('section_cta_enabled'))
 <section class="cta-band">
     <div class="cta-band-inner">
         <h2>{!! $ctaHeadline !!}</h2>
@@ -1618,5 +1629,6 @@
         </div>
     </div>
 </section>
+@endif
 
 @endsection

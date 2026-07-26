@@ -88,6 +88,13 @@ export interface SiteSettings {
   announcement_url?: string;
   announcement_style?: string;
   office_orders_enabled?: string;
+  section_hero_enabled?: string;
+  section_specials_enabled?: string;
+  section_featured_enabled?: string;
+  section_categories_enabled?: string;
+  section_proof_enabled?: string;
+  section_cta_enabled?: string;
+  section_reviews_enabled?: string;
   office_orders_headline?: string;
   office_orders_subtext?: string;
   office_orders_min_guests?: string;

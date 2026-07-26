@@ -69,6 +69,16 @@ export function HomePage() {
   const viberLink = s.business_viber || 'viber://chat?number=9609120011';
   const officeOrdersEnabled =
     s.office_orders_enabled !== '0' && s.office_orders_enabled !== 'false';
+  const sectionOn = (key: keyof typeof s, fallback = true) => {
+    const raw = s[key];
+    if (raw === undefined || raw === null || raw === '') return fallback;
+    const normalized = String(raw).trim().toLowerCase();
+    return !['false', '0', 'no', 'off'].includes(normalized);
+  };
+  const heroEnabled = sectionOn('section_hero_enabled');
+  const specialsEnabled = sectionOn('section_specials_enabled');
+  const categoriesEnabled = sectionOn('section_categories_enabled');
+  const reviewsEnabled = sectionOn('section_reviews_enabled');
   const officeHeadline =
     s.office_orders_headline || t('home.corp_headline_default');
   const officeSubtext =
@@ -207,7 +217,7 @@ export function HomePage() {
     loyaltyPoints,
   };
 
-  const hero = (
+  const hero = heroEnabled ? (
     <PromoCarousel
       slides={heroSlides}
       apiOrigin={API_ORIGIN}
@@ -217,7 +227,7 @@ export function HomePage() {
       fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
       statusSlot={statusBadge}
     />
-  );
+  ) : null;
 
   return (
     <div className="home-page">
@@ -248,14 +258,18 @@ export function HomePage() {
       <TrustStrip items={trustItems} />
 
       {/* ── 5c. Category shortcuts (CMS) ──────────────────────────────────── */}
-      <CategoryShortcuts
-        categories={homepageCategories}
-        eyebrow={text('home_categories_eyebrow', '')}
-        title={text('home_categories_title', '')}
-      />
+      {categoriesEnabled ? (
+        <CategoryShortcuts
+          categories={homepageCategories}
+          eyebrow={text('home_categories_eyebrow', '')}
+          title={text('home_categories_title', '')}
+        />
+      ) : null}
 
       {/* ── 6. Offers & Specials (unified feed; PromoCarousel above is CMS hero) ─ */}
-      <SpecialsCarousel offers={offers} apiOrigin={API_ORIGIN} />
+      {specialsEnabled ? (
+        <SpecialsCarousel offers={offers} apiOrigin={API_ORIGIN} />
+      ) : null}
 
       {/* ── 7. Reorder strip ──────────────────────────────────────────────── */}
       <ReorderStrip
@@ -265,7 +279,7 @@ export function HomePage() {
         onReorder={(order) => void handleReorder(order)}
       />
 
-      {reviews.length > 0 && (
+      {reviewsEnabled && reviews.length > 0 && (
         <section
           style={{
             padding: '1.25rem var(--page-gutter) 0.5rem',
