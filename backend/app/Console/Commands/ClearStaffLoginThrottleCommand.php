@@ -48,19 +48,25 @@ class ClearStaffLoginThrottleCommand extends Command
             return 0;
         }
 
-        $identityKey = StaffUserLookup::canonicalIdentityKey((string) $username);
-        $keys = [
-            StaffAuthRateLimit::pinAccount($identityKey),
-            StaffAuthRateLimit::passwordResetRequest($identityKey),
-            StaffAuthRateLimit::passwordResetOtp($identityKey),
-            StaffAuthRateLimit::passwordResetOtpAttempts($identityKey),
-            ...StaffAuthRateLimit::legacyKeysForIdentity($identityKey, is_string($ip) ? $ip : null),
-        ];
+        $identityKeys = array_values(array_filter([
+            StaffUserLookup::canonicalIdentityKey((string) $username),
+            // Pre-fix: emails like 7820288@gmail.com locked phone:7820288
+            StaffUserLookup::legacyMiskeyedPhoneIdentity((string) $username),
+        ]));
 
-        if (is_string($ip) && $ip !== '') {
-            $keys[] = StaffAuthRateLimit::pinIp($identityKey, $ip);
-            $keys[] = StaffAuthRateLimit::posPasswordIp($identityKey, $ip);
-            $keys[] = StaffAuthRateLimit::phoneLoginIp($identityKey, $ip);
+        $keys = [];
+        foreach ($identityKeys as $identityKey) {
+            $keys[] = StaffAuthRateLimit::pinAccount($identityKey);
+            $keys[] = StaffAuthRateLimit::passwordResetRequest($identityKey);
+            $keys[] = StaffAuthRateLimit::passwordResetOtp($identityKey);
+            $keys[] = StaffAuthRateLimit::passwordResetOtpAttempts($identityKey);
+            array_push($keys, ...StaffAuthRateLimit::legacyKeysForIdentity($identityKey, is_string($ip) ? $ip : null));
+
+            if (is_string($ip) && $ip !== '') {
+                $keys[] = StaffAuthRateLimit::pinIp($identityKey, $ip);
+                $keys[] = StaffAuthRateLimit::posPasswordIp($identityKey, $ip);
+                $keys[] = StaffAuthRateLimit::phoneLoginIp($identityKey, $ip);
+            }
         }
 
         foreach (array_unique($keys) as $key) {
@@ -70,9 +76,13 @@ class ClearStaffLoginThrottleCommand extends Command
         }
 
         // Sweep any IP-scoped leftovers for this identity (unknown client IPs).
-        $swept = $this->clearByRedisPattern('*' . $identityKey . '*');
+        $swept = 0;
+        foreach ($identityKeys as $identityKey) {
+            $swept += $this->clearByRedisPattern('*' . $identityKey . '*');
+        }
 
-        $this->info("Unlocked staff login for {$identityKey} (cleared " . count($keys) . " named keys, swept {$swept} Redis matches).");
+        $this->info('Unlocked staff login for ' . implode(', ', $identityKeys)
+            . ' (cleared ' . count($keys) . " named keys, swept {$swept} Redis matches).");
 
         return 0;
     }

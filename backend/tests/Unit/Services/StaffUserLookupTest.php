@@ -45,4 +45,35 @@ class StaffUserLookupTest extends TestCase
         );
         $this->assertSame('email:owner@test.local', StaffUserLookup::canonicalIdentityKey('Owner@Test.Local'));
     }
+
+    #[Test]
+    public function email_with_phone_like_local_part_is_not_keyed_as_phone(): void
+    {
+        $this->assertSame(
+            'email:7820288@gmail.com',
+            StaffUserLookup::canonicalIdentityKey('7820288@gmail.com'),
+        );
+        $this->assertNull(StaffUserLookup::localSevenDigits('7820288@gmail.com'));
+        $this->assertSame(
+            'phone:7820288',
+            StaffUserLookup::legacyMiskeyedPhoneIdentity('7820288@gmail.com'),
+        );
+    }
+
+    #[Test]
+    public function find_by_username_does_not_match_phone_via_email_digits(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'is_active' => true]);
+        User::create([
+            'name' => 'Phone Only',
+            'email' => 'phone-only@test.local',
+            'phone' => '7820288',
+            'password' => Hash::make('secret'),
+            'role_id' => $role->id,
+            'is_active' => true,
+        ]);
+
+        $this->assertNull(StaffUserLookup::findByUsername('7820288@gmail.com'));
+        $this->assertNotNull(StaffUserLookup::findByUsername('7820288'));
+    }
 }

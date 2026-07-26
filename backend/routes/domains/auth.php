@@ -22,12 +22,14 @@ use Illuminate\Support\Facades\Route;
 | Bearer-token login — CSRF except list is in bootstrap/app.php (api/auth/staff/*).
 */
 Route::prefix('auth/staff')->group(function () {
+    // Route throttle is IP-based and intentionally lenient (CGNAT / shared office).
+    // Per-identity enforcement lives in StaffAuthController + StaffAuthRateLimit.
     Route::post('/pin-login', [StaffAuthController::class, 'pinLogin'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:staff-login');
     Route::post('/pos-password-login', [StaffAuthController::class, 'posPasswordLogin'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:staff-login');
     Route::post('/login', [StaffAuthController::class, 'phoneLogin'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:staff-login');
     Route::post('/password/reset-request', [StaffAuthController::class, 'passwordResetRequest'])
         ->middleware('throttle:5,1');
     Route::post('/password/reset-verify', [StaffAuthController::class, 'passwordResetVerify'])

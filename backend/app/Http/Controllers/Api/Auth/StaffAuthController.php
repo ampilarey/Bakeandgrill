@@ -37,6 +37,7 @@ class StaffAuthController extends Controller
         ]);
 
         $pin = $request->pin;
+        $this->clearLegacyMiskeyedPhoneLocks($request->username, (string) $request->ip());
         $identityKey = StaffUserLookup::canonicalIdentityKey($request->username);
         $forAdmin = $request->input('intent') === 'admin';
 
@@ -104,6 +105,7 @@ class StaffAuthController extends Controller
             'device_identifier' => 'nullable|string',
         ]);
 
+        $this->clearLegacyMiskeyedPhoneLocks($request->username, (string) $request->ip());
         $identityKey = StaffUserLookup::canonicalIdentityKey($request->username);
         $rateKey = StaffAuthRateLimit::posPasswordIp($identityKey, (string) $request->ip());
 
@@ -139,6 +141,7 @@ class StaffAuthController extends Controller
         ]);
 
         $login = trim($request->phone);
+        $this->clearLegacyMiskeyedPhoneLocks($login, (string) $request->ip());
         $identityKey = StaffUserLookup::canonicalIdentityKey($login);
         $rateKey = StaffAuthRateLimit::phoneLoginIp($identityKey, (string) $request->ip());
 
@@ -375,6 +378,26 @@ class StaffAuthController extends Controller
     private function findActiveStaffByUsername(string $raw): ?User
     {
         return StaffUserLookup::findActiveByUsername($raw);
+    }
+
+    /**
+     * Older builds keyed rate limits for emails like 7820288@gmail.com as
+     * phone:7820288. Drop those locks so a real email login is not stuck.
+     */
+    private function clearLegacyMiskeyedPhoneLocks(string $raw, string $ip): void
+    {
+        $legacy = StaffUserLookup::legacyMiskeyedPhoneIdentity($raw);
+        if ($legacy === null) {
+            return;
+        }
+
+        RateLimiter::clear(StaffAuthRateLimit::pinIp($legacy, $ip));
+        RateLimiter::clear(StaffAuthRateLimit::pinAccount($legacy));
+        RateLimiter::clear(StaffAuthRateLimit::posPasswordIp($legacy, $ip));
+        RateLimiter::clear(StaffAuthRateLimit::phoneLoginIp($legacy, $ip));
+        foreach (StaffAuthRateLimit::legacyKeysForIdentity($legacy, $ip) as $key) {
+            RateLimiter::clear($key);
+        }
     }
 
     private function verifyStaffPassword(User $user, string $plain): bool

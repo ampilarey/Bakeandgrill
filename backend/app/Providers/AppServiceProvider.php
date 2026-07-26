@@ -19,7 +19,10 @@ use App\Observers\OrderObserver;
 use App\Observers\StaffScheduleObserver;
 use App\Support\BmlSignatureGuard;
 use App\Support\DocumentBrandView;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -44,6 +47,16 @@ class AppServiceProvider extends ServiceProvider
             Model::preventLazyLoading();
             Model::preventSilentlyDiscardingAttributes();
         }
+
+        // IP-based safety net only — real lockouts are per phone/email in StaffAuthController.
+        // Keep this lenient so shared office / CGNAT IPs do not show bare "Too Many Attempts."
+        RateLimiter::for('staff-login', function (Request $request) {
+            return Limit::perMinute(60)->by((string) $request->ip())->response(function () {
+                return response()->json([
+                    'message' => 'Too many sign-in requests from this network. Wait about a minute and try again.',
+                ], 429);
+            });
+        });
 
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
