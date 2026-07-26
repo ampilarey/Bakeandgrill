@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchItems,
@@ -31,6 +31,33 @@ import { CategoryShortcuts } from '../components/home/CategoryShortcuts';
 import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
 import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
+
+const HOME_SECTION_DEFAULT = ['specials', 'featured', 'categories', 'proof', 'cta', 'location'];
+
+function resolveHomeSectionOrder(raw: string | undefined | null): string[] {
+  let decoded: unknown = [];
+  try {
+    decoded = raw ? JSON.parse(raw) : [];
+  } catch {
+    decoded = [];
+  }
+
+  const allowed = new Set(HOME_SECTION_DEFAULT);
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  if (Array.isArray(decoded)) {
+    for (const id of decoded) {
+      if (typeof id !== 'string' || !allowed.has(id) || seen.has(id)) continue;
+      seen.add(id);
+      ordered.push(id);
+    }
+  }
+  for (const id of HOME_SECTION_DEFAULT) {
+    if (!seen.has(id)) ordered.push(id);
+  }
+
+  return ordered;
+}
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -229,6 +256,79 @@ export function HomePage() {
     />
   ) : null;
 
+  const reviewSection = reviewsEnabled && reviews.length > 0 ? (
+    <section
+      style={{
+        padding: '1.25rem var(--page-gutter) 0.5rem',
+        maxWidth: 'var(--layout-max)',
+        margin: '0 auto',
+      }}
+    >
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 0.75rem', color: 'var(--color-dark)' }}>
+        {text('order_home_reviews_title', text('home_proof_eyebrow', 'What guests say'))}
+      </h2>
+      <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: 8 }}>
+        {reviews.map((r) => (
+          <article
+            key={r.id}
+            style={{
+              minWidth: 240,
+              maxWidth: 280,
+              flex: '0 0 auto',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 14,
+              padding: '0.9rem 1rem',
+            }}
+          >
+            <p style={{ margin: '0 0 0.4rem', color: 'var(--color-primary)', fontWeight: 800, letterSpacing: 1 }}>
+              {'★'.repeat(r.rating)}{'☆'.repeat(Math.max(0, 5 - r.rating))}
+            </p>
+            <p style={{ margin: '0 0 0.5rem', fontSize: 13, lineHeight: 1.45, color: 'var(--color-dark)' }}>
+              “{r.comment}”
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+              — {r.author}{r.item?.name ? ` · ${r.item.name}` : ''}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
+  ) : null;
+
+  const orderedHomeSections: ReactNode[] = [];
+  let reviewsInserted = false;
+  const insertReviews = (anchor: string) => {
+    if (!reviewSection || reviewsInserted) return;
+    orderedHomeSections.push(<div key={`reviews-after-${anchor}`}>{reviewSection}</div>);
+    reviewsInserted = true;
+  };
+  const reviewAfterSpecials = specialsEnabled;
+  for (const sectionId of resolveHomeSectionOrder(s.home_section_order)) {
+    if (sectionId === 'specials') {
+      if (specialsEnabled) {
+        orderedHomeSections.push(<SpecialsCarousel key="specials" offers={offers} apiOrigin={API_ORIGIN} />);
+        if (reviewAfterSpecials) insertReviews('specials');
+      }
+      continue;
+    }
+    if (sectionId === 'categories') {
+      if (categoriesEnabled) {
+        orderedHomeSections.push(
+          <CategoryShortcuts
+            key="categories"
+            categories={homepageCategories}
+            eyebrow={text('home_categories_eyebrow', '')}
+            title={text('home_categories_title', '')}
+          />,
+        );
+        if (!reviewAfterSpecials) insertReviews('categories');
+      }
+      continue;
+    }
+  }
+  insertReviews('ordered-sections');
+
   return (
     <div className="home-page">
       {isDesktopShell ? (
@@ -257,19 +357,7 @@ export function HomePage() {
       {/* ── 5b. Trust strip (CMS) ─────────────────────────────────────────── */}
       <TrustStrip items={trustItems} />
 
-      {/* ── 5c. Category shortcuts (CMS) ──────────────────────────────────── */}
-      {categoriesEnabled ? (
-        <CategoryShortcuts
-          categories={homepageCategories}
-          eyebrow={text('home_categories_eyebrow', '')}
-          title={text('home_categories_title', '')}
-        />
-      ) : null}
-
-      {/* ── 6. Offers & Specials (unified feed; PromoCarousel above is CMS hero) ─ */}
-      {specialsEnabled ? (
-        <SpecialsCarousel offers={offers} apiOrigin={API_ORIGIN} />
-      ) : null}
+      {orderedHomeSections}
 
       {/* ── 7. Reorder strip ──────────────────────────────────────────────── */}
       <ReorderStrip
@@ -278,46 +366,6 @@ export function HomePage() {
         reorderingId={reorderingId}
         onReorder={(order) => void handleReorder(order)}
       />
-
-      {reviewsEnabled && reviews.length > 0 && (
-        <section
-          style={{
-            padding: '1.25rem var(--page-gutter) 0.5rem',
-            maxWidth: 'var(--layout-max)',
-            margin: '0 auto',
-          }}
-        >
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 0.75rem', color: 'var(--color-dark)' }}>
-            {text('order_home_reviews_title', text('home_proof_eyebrow', 'What guests say'))}
-          </h2>
-          <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: 8 }}>
-            {reviews.map((r) => (
-              <article
-                key={r.id}
-                style={{
-                  minWidth: 240,
-                  maxWidth: 280,
-                  flex: '0 0 auto',
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 14,
-                  padding: '0.9rem 1rem',
-                }}
-              >
-                <p style={{ margin: '0 0 0.4rem', color: 'var(--color-primary)', fontWeight: 800, letterSpacing: 1 }}>
-                  {'★'.repeat(r.rating)}{'☆'.repeat(Math.max(0, 5 - r.rating))}
-                </p>
-                <p style={{ margin: '0 0 0.5rem', fontSize: 13, lineHeight: 1.45, color: 'var(--color-dark)' }}>
-                  “{r.comment}”
-                </p>
-                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                  — {r.author}{r.item?.name ? ` · ${r.item.name}` : ''}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ── 8. Corporate / office catering block ─────────────────────────── */}
       {officeOrdersEnabled && (

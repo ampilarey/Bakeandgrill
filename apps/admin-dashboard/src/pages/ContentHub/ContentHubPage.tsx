@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, History, LayoutTemplate, Save, Search, Upload as UploadIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, History, LayoutTemplate, Save, Search, Upload as UploadIcon } from 'lucide-react';
 import {
   cancelContentSchedule,
   createContentPreviewToken,
@@ -80,6 +80,17 @@ const HUB_GROUP_ORDER = [
 
 const ALL_SCOPES: ContentScope[] = ['shared', 'website', 'order_app'];
 
+const HOME_SECTION_DEFAULT = ['specials', 'featured', 'categories', 'proof', 'cta', 'location'] as const;
+
+const HOME_SECTION_LABELS: Record<(typeof HOME_SECTION_DEFAULT)[number], string> = {
+  specials: 'Specials/Offers',
+  featured: 'Featured',
+  categories: 'Categories',
+  proof: 'Social proof',
+  cta: 'CTA band',
+  location: 'Location',
+};
+
 function seoDescriptionKey(titleKey: string): string | null {
   if (titleKey === 'meta_title') return 'meta_description';
   if (titleKey.endsWith('_meta_title')) return titleKey.replace(/_meta_title$/, '_meta_description');
@@ -143,6 +154,39 @@ function labelForScope(scope: ContentScope): string {
   if (scope === 'order_app') return 'Order app';
   if (scope === 'website') return 'Website';
   return 'Both';
+}
+
+function resolveHomeSectionOrder(raw: string | null | undefined): string[] {
+  let decoded: unknown = [];
+  try {
+    decoded = raw ? JSON.parse(raw) : [];
+  } catch {
+    decoded = [];
+  }
+
+  const allowed = new Set<string>(HOME_SECTION_DEFAULT);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  if (Array.isArray(decoded)) {
+    for (const id of decoded) {
+      if (typeof id !== 'string' || !allowed.has(id) || seen.has(id)) continue;
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  for (const id of HOME_SECTION_DEFAULT) {
+    if (!seen.has(id)) out.push(id);
+  }
+
+  return out;
+}
+
+function moveHomeSection(order: string[], from: number, direction: -1 | 1): string[] {
+  const to = from + direction;
+  if (to < 0 || to >= order.length) return order;
+  const next = [...order];
+  [next[from], next[to]] = [next[to], next[from]];
+  return next;
 }
 
 function baseValueForScope(block: ContentBlock, scope: ContentScope): string {
@@ -805,6 +849,121 @@ export function ContentHubPage() {
     );
   };
 
+  const renderSectionOrderScope = (block: ContentBlock, scope: ContentScope) => {
+    const order = resolveHomeSectionOrder(valueForScope(block, scope, drafts));
+    const persist = (next: string[]) => setDraft(scope, block.key, JSON.stringify(next));
+
+    return (
+      <div
+        key={`${scope}-${block.key}`}
+        style={{
+          border: '1px solid #F0EBE4',
+          borderRadius: 12,
+          padding: 12,
+          background: '#FFFDFC',
+          minWidth: 0,
+        }}
+      >
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#1C1408', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
+          {labelForScope(scope)}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {order.map((id, idx) => (
+            <div
+              key={id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                minHeight: 42,
+                padding: '0 10px',
+                borderRadius: 10,
+                border: '1px solid #E8E0D8',
+                background: '#fff',
+              }}
+            >
+              <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 999, background: '#F8F6F3', color: '#6B5D4F', fontSize: 11, fontWeight: 800 }}>
+                {idx + 1}
+              </span>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#1C1408' }}>
+                {HOME_SECTION_LABELS[id as keyof typeof HOME_SECTION_LABELS] ?? id}
+              </span>
+              <button
+                type="button"
+                aria-label={`Move ${id} up`}
+                disabled={idx === 0}
+                onClick={() => persist(moveHomeSection(order, idx, -1))}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 9,
+                  border: '1px solid #E8E0D8',
+                  background: '#fff',
+                  cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                  opacity: idx === 0 ? 0.45 : 1,
+                }}
+              >
+                <ArrowUp size={14} />
+              </button>
+              <button
+                type="button"
+                aria-label={`Move ${id} down`}
+                disabled={idx === order.length - 1}
+                onClick={() => persist(moveHomeSection(order, idx, 1))}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 9,
+                  border: '1px solid #E8E0D8',
+                  background: '#fff',
+                  cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer',
+                  opacity: idx === order.length - 1 ? 0.45 : 1,
+                }}
+              >
+                <ArrowDown size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSectionOrder = (block: ContentBlock) => {
+    const scopes = editorScopesForBlock(block);
+
+    return (
+      <div
+        key={block.key}
+        style={{
+          padding: 12,
+          borderRadius: 12,
+          border: '1px solid #E8E0D8',
+          background: '#fff',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#1C1408' }}>Home section order</div>
+            <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>
+              Arrange movable homepage sections. Hero and trust strip stay pinned above this order.
+            </div>
+          </div>
+          {renderContentModeControl(block)}
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: scopes.length > 1 ? 'repeat(2, minmax(0, 1fr))' : '1fr',
+            gap: 12,
+          }}
+        >
+          {scopes.map((scope) => renderSectionOrderScope(block, scope))}
+        </div>
+      </div>
+    );
+  };
+
   const renderBlock = (block: ContentBlock) => {
     if (isSeoDescriptionKey(block.key)) {
       const titleKey = block.key === 'meta_description'
@@ -1118,8 +1277,9 @@ export function ContentHubPage() {
 
             {!loading && visibleSectionNames.map((sectionName) => {
               const sectionBlocks = contentBlocks.filter((block) => block.group === sectionName && matchesQuery(block, q));
+              const sectionOrderBlock = sectionBlocks.find((block) => block.section_order || block.key === 'home_section_order');
               const sectionEnableBlocks = sectionBlocks.filter((block) => block.section_enable);
-              const regularBlocks = sectionBlocks.filter((block) => !block.section_enable);
+              const regularBlocks = sectionBlocks.filter((block) => !block.section_enable && block.key !== sectionOrderBlock?.key);
               return (
                 <section key={sectionName} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div
@@ -1141,6 +1301,7 @@ export function ContentHubPage() {
                         </div>
                       </div>
                     </div>
+                    {sectionOrderBlock ? renderSectionOrder(sectionOrderBlock) : null}
                     {sectionEnableBlocks.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {sectionEnableBlocks.map(renderSectionEnable)}
