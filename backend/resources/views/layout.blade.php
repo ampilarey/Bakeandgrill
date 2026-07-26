@@ -271,7 +271,7 @@
 
         .header-nav {
             display: flex;
-            gap: 0.125rem;
+            gap: 0.25rem;
             align-items: center;
             flex: 1;
             margin-left: 0.75rem;
@@ -290,6 +290,56 @@
         .header-nav a.active,
         .header-nav .more-btn:hover,
         .header-nav .more-btn.open { background: var(--amber-light); color: var(--amber); }
+
+        /* Desktop header nav items — clearer hierarchy (mobile header is separate) */
+        @media (min-width: 769px) {
+            .site-header .header-inner {
+                height: 72px;
+                padding: 0 clamp(1.5rem, 3vw, 2.5rem);
+            }
+            .site-logo {
+                font-size: 1.28rem;
+                gap: 0.7rem;
+            }
+            .site-logo img {
+                width: 42px;
+                height: 42px;
+                border-radius: 10px;
+            }
+            .header-nav {
+                gap: 0.35rem;
+                margin-left: 1.25rem;
+            }
+            .header-nav a,
+            .header-nav .more-btn {
+                padding: 0.55rem 1.05rem;
+                font-size: 0.95rem;
+                font-weight: 600;
+                color: var(--text);
+                border-radius: 10px;
+            }
+            .header-nav a.active {
+                background: var(--amber-light);
+                color: var(--amber);
+            }
+            .more-panel {
+                min-width: 180px;
+                padding: 0.45rem;
+                box-shadow: 0 12px 32px rgba(28, 20, 8, 0.12);
+            }
+            .more-panel a {
+                padding: 0.65rem 1rem;
+                font-size: 0.925rem;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+            }
+            .hdr-order {
+                min-height: 44px;
+                padding: 0.65rem 1.25rem;
+                font-size: 0.95rem;
+            }
+        }
 
         /* ─── More dropdown ─────────────────────────────────── */
         .more-wrap { position: relative; }
@@ -978,7 +1028,7 @@
         .order-status-bar-mob .osb-cta-link  { padding-right: 1rem; }
 
         /* ─── Responsive ─────────────────────────────────────────── */
-@import (min-width: 900px) and (max-width: 1100px) {
+        @media (min-width: 900px) and (max-width: 1100px) {
             .footer-grid { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
             .footer-col--hours { grid-column: 1 / -1; }
         }

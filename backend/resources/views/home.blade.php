@@ -244,6 +244,112 @@
     .banner-cta-primary, .banner-cta-secondary { width: 100%; justify-content: center; }
 }
 
+/* ── Desktop-only hero / banner polish (mobile unchanged) ───────── */
+@media (min-width: 769px) {
+    .hero-banner {
+        height: min(78vh, 760px);
+        min-height: 560px;
+    }
+    .banner-slide img,
+    .banner-slide .banner-video {
+        opacity: 0.62;
+    }
+    .banner-overlay {
+        padding: 4rem clamp(2.5rem, 8vw, 7rem);
+        background: linear-gradient(
+            105deg,
+            rgba(14, 10, 4, 0.92) 0%,
+            rgba(28, 20, 8, 0.72) 42%,
+            rgba(28, 20, 8, 0.28) 68%,
+            rgba(28, 20, 8, 0.06) 100%
+        );
+    }
+    .banner-overlay > * {
+        max-width: 640px;
+    }
+    .banner-eyebrow {
+        font-size: 0.78rem;
+        padding: 0.4rem 1rem;
+        margin-bottom: 1.35rem;
+        letter-spacing: 0.1em;
+        animation: banner-fade-up 0.7s ease both;
+    }
+    .banner-title {
+        font-size: clamp(3.25rem, 5.2vw, 4.75rem);
+        max-width: 720px;
+        margin-bottom: 1.1rem;
+        letter-spacing: -0.045em;
+        line-height: 1.02;
+        animation: banner-fade-up 0.75s ease 0.06s both;
+    }
+    .banner-sub {
+        font-size: 1.2rem;
+        max-width: 520px;
+        margin-bottom: 2.25rem;
+        color: rgba(255, 248, 240, 0.82);
+        line-height: 1.65;
+        animation: banner-fade-up 0.8s ease 0.12s both;
+    }
+    .banner-ctas {
+        gap: 0.9rem;
+        animation: banner-fade-up 0.85s ease 0.18s both;
+    }
+    .banner-cta-primary,
+    .banner-cta-secondary {
+        min-height: 52px;
+        padding: 0.95rem 1.9rem;
+        font-size: 1.05rem;
+        border-radius: 12px;
+    }
+    .banner-btn {
+        width: 52px;
+        height: 52px;
+        background: rgba(20, 14, 8, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+    }
+    .banner-btn.prev { left: clamp(1.25rem, 2.5vw, 2.5rem); }
+    .banner-btn.next { right: clamp(1.25rem, 2.5vw, 2.5rem); }
+    .banner-dots {
+        bottom: 2rem;
+        left: clamp(2.5rem, 8vw, 7rem);
+        transform: none;
+        gap: 8px;
+    }
+    .banner-dot {
+        width: 8px;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.35);
+    }
+    .banner-dot.active {
+        width: 28px;
+        background: var(--amber);
+    }
+    .hero-status {
+        top: 1.75rem;
+        right: clamp(1.5rem, 3vw, 2.5rem);
+        font-size: 0.78rem;
+        padding: 0.45rem 0.9rem;
+    }
+}
+@media (min-width: 1200px) {
+    .hero-banner {
+        height: min(82vh, 820px);
+    }
+    .banner-overlay > * {
+        max-width: 700px;
+    }
+}
+@keyframes banner-fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .banner-eyebrow,
+    .banner-title,
+    .banner-sub,
+    .banner-ctas { animation: none; }
+}
+
 /* ══════════════════════════════════════════════════════════
    TRUST MICRO-STRIP
 ══════════════════════════════════════════════════════════ */
