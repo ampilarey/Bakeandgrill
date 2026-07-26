@@ -35,6 +35,10 @@ export type ContentBlock = {
   resolved_website: string | null;
   resolved_order_app: string | null;
   state: 'shared' | 'split';
+  link_state?: 'same' | 'different';
+  brand_synced?: boolean;
+  section_enable?: boolean;
+  deprecated?: boolean;
 };
 
 export type ContentRevision = {
@@ -244,15 +248,4 @@ export async function createContentPreviewToken(
     method: 'POST',
     body: JSON.stringify({ app, locale, overrides }),
   });
-}
-
-export type ContentMediaItem = {
-  url: string;
-  thumb_url?: string | null;
-  name: string;
-  updated_at?: string | null;
-};
-
-export async function getContentMedia(): Promise<{ items: ContentMediaItem[] }> {
-  return req('/admin/content/media');
 }

@@ -10,7 +10,6 @@ vi.mock('../api/content', () => ({
   getContentSchedules: vi.fn(async () => ({ schedules: [] })),
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
-  getContentMedia: vi.fn(async () => ({ items: [] })),
   updateContent: vi.fn(async () => ({ blocks: [] })),
   shareContentBlock: vi.fn(),
   splitContentBlock: vi.fn(),

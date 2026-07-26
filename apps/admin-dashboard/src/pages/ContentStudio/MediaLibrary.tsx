@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ImageIcon } from 'lucide-react';
-import { getContentMedia, type ContentMediaItem } from '../../api/content';
+import { getMedia, type MediaAsset } from '../../api/media';
 
 type Props = {
   open: boolean;
@@ -10,7 +10,7 @@ type Props = {
 
 /** Browse previously uploaded content images under /storage/site. */
 export function MediaLibrary({ open, onClose, onPick }: Props) {
-  const [items, setItems] = useState<ContentMediaItem[]>([]);
+  const [items, setItems] = useState<MediaAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
@@ -18,8 +18,8 @@ export function MediaLibrary({ open, onClose, onPick }: Props) {
     if (!open) return;
     setLoading(true);
     setErr('');
-    void getContentMedia()
-      .then((res) => setItems(res.items || []))
+    void getMedia({ type: 'image', source: 'content', per_page: 100 })
+      .then((res) => setItems(res.data || []))
       .catch((e) => setErr(e instanceof Error ? e.message : 'Failed to load media'))
       .finally(() => setLoading(false));
   }, [open]);
@@ -92,7 +92,7 @@ export function MediaLibrary({ open, onClose, onPick }: Props) {
         >
           {items.map((item) => (
             <button
-              key={item.url}
+              key={item.id}
               type="button"
               onClick={() => {
                 onPick(item.url);
@@ -123,7 +123,7 @@ export function MediaLibrary({ open, onClose, onPick }: Props) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {item.name}
+                {item.title || item.url.split('/').pop() || `#${item.id}`}
               </div>
             </button>
           ))}
