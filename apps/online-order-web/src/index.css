@@ -388,6 +388,34 @@
   width: 24px;
   background: var(--color-primary, #d4813a);
 }
+.home-promo-hero__btn {
+  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+  line-height: 1;
+  padding: 0;
+}
+.home-promo-hero__btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.home-promo-hero__btn--prev { left: 1.5rem; }
+.home-promo-hero__btn--next { right: 1.5rem; }
 
 /* Desktop: same height band as main website hero */
 @media (min-width: 769px) {
@@ -440,11 +468,27 @@
     font-size: 1.05rem;
     border-radius: 12px;
   }
+  .home-promo-hero__btn {
+    display: flex;
+    width: 52px;
+    height: 52px;
+    background: rgba(20, 14, 8, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+  }
+  .home-promo-hero__btn--prev { left: clamp(1.25rem, 2.5vw, 2.5rem); }
+  .home-promo-hero__btn--next { right: clamp(1.25rem, 2.5vw, 2.5rem); }
   .home-promo-hero__dots {
     bottom: 2rem;
-    left: clamp(2.5rem, 8vw, 7rem);
-    transform: none;
+    left: 50%;
+    transform: translateX(-50%);
     gap: 8px;
+  }
+  .home-promo-hero__dot {
+    width: 8px;
+    height: 8px;
+  }
+  .home-promo-hero__dot.is-active {
+    width: 28px;
   }
 }
 @media (min-width: 1200px) {

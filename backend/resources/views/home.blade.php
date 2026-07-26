@@ -311,8 +311,8 @@
     .banner-btn.next { right: clamp(1.25rem, 2.5vw, 2.5rem); }
     .banner-dots {
         bottom: 2rem;
-        left: clamp(2.5rem, 8vw, 7rem);
-        transform: none;
+        left: 50%;
+        transform: translateX(-50%);
         gap: 8px;
     }
     .banner-dot {

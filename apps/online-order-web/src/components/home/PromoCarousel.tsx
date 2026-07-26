@@ -272,19 +272,37 @@ export function PromoCarousel({
       </div>
 
       {n > 1 && (
-        <div className="home-promo-hero__dots" role="tablist" aria-label="Slides">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              role="tab"
-              aria-label={`Slide ${i + 1}`}
-              aria-selected={i === idx}
-              className={`home-promo-hero__dot${i === idx ? ' is-active' : ''}`}
-              onClick={() => setIdx(i)}
-            />
-          ))}
-        </div>
+        <>
+          <button
+            type="button"
+            className="home-promo-hero__btn home-promo-hero__btn--prev"
+            aria-label="Previous slide"
+            onClick={() => move(-1)}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="home-promo-hero__btn home-promo-hero__btn--next"
+            aria-label="Next slide"
+            onClick={() => move(1)}
+          >
+            ›
+          </button>
+          <div className="home-promo-hero__dots" role="tablist" aria-label="Slides">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-label={`Slide ${i + 1}`}
+                aria-selected={i === idx}
+                className={`home-promo-hero__dot${i === idx ? ' is-active' : ''}`}
+                onClick={() => setIdx(i)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
