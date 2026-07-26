@@ -44,17 +44,43 @@ Three upload backends exist: `SiteSettingsController::upload` (stores `site/`, n
 ### 3.1 Principles
 
 1. **One nav entry, one page.** Replace *Website Content + Order App Content + Branding + Settings→Website (content bits)* with a single **Content & Branding** hub.
-2. **Plain-language visibility, no scope jargon.** Each block shows a **"Shows on: ● Website ● Order app ● Both"** control. Internally: **Both = `shared`**; a single app = that app's scope. Switching from Both → one app auto-splits (copy resolved value into the app scope); switching one app → Both collapses to `shared` and clears app overrides. Share/Split/Copy verbs disappear from the UI.
-3. **Branding always syncs everywhere.** `logo`, `logo_dark`, `favicon`, `og_image` behave like `default_item_image` already does — every write mirrors to all scopes. Branding blocks have **no** Website/Order-app toggle (they are always Both).
-4. **One write path.** Every content/branding mutation goes through `ContentWriter` → history + sanitise + audit + draft cleanup for all keys, always.
-5. **One uploader, one picker.** Every upload goes through the Media Library backend (catalog + dedupe + thumbnails). Every "browse/pick" uses `MediaPicker` → Media Library.
+2. **Website and order app stay independent — same content is opt-in.** Each block that targets both apps shows a **"Content: ◉ Same in both · ○ Different per app"** link/unlink control. **Same = `shared`** (edit once, both apps update); **Different** splits into independent `website` and `order_app` values edited side by side. Same→Different auto-splits (copy resolved value into each app scope); Different→Same collapses to `shared` and clears app overrides. The old Share/Split/Copy verbs disappear behind this one control.
+3. **Per-section on/off, per app.** Each major section (Hero, Specials, Featured, etc.) has an **Enable/Disable** toggle that can be set independently for the website and the order app. This reuses the exact same link/unlink mechanism from principle 2, applied to a boolean block (see §3.3). On/off is **section-level only** — individual text fields never get their own switch (hiding a lone field breaks layouts).
+4. **Branding always syncs everywhere.** `logo`, `logo_dark`, `favicon`, `og_image` behave like `default_item_image` already does — every write mirrors to all scopes. Branding blocks have **no** link/unlink control (they are always Same).
+5. **One write path.** Every content/branding mutation goes through `ContentWriter` → history + sanitise + audit + draft cleanup for all keys, always.
+6. **One uploader, one picker.** Every upload goes through the Media Library backend (catalog + dedupe + thumbnails). Every "browse/pick" uses `MediaPicker` → Media Library.
 
 ### 3.2 Section model
 
 The hub replaces the two-editor split with a single section navigator, driven by registry `group`, ordered:
 `Branding · Homepage · Menu · Footer · Legal · SEO · Order App · Status banners · Pre-Order · Contact · Pages · About · General · Announcements`.
 
-Each block card shows: label, description, the value editor (existing per-type editors reused verbatim), the **Shows on** control (hidden for Branding + always-shared keys), History, and Media (for image blocks). Live preview frame retained.
+Each block card shows: label, description, the value editor (existing per-type editors reused verbatim), the **Content: Same / Different per app** link/unlink control (hidden for Branding + always-shared keys), History, and Media (for image blocks). Live preview frame retained.
+
+### 3.3 Per-section enable/disable (per app)
+
+Each major section is gated by a **boolean block** `section_<name>_enabled` (default `'true'`). Because booleans use the same `shared`/`website`/`order_app` scopes as content, the **same link/unlink control gives per-app on/off for free**: "Same in both" → one switch for both apps; "Different per app" → an independent switch for website and order app.
+
+Sections to gate (add any `*_enabled` key that does not already exist; keep existing ones):
+
+| Section | Key | Apps | Already exists? |
+|---|---|---|---|
+| Announcement bar | `announcement_enabled` | both | ✅ keep |
+| Office orders card | `office_orders_enabled` | order_app | ✅ keep |
+| Hero | `section_hero_enabled` | both | new |
+| Specials / Offers rail | `section_specials_enabled` | both | new |
+| Featured items | `section_featured_enabled` | both | new |
+| Categories ("Made for Malé") | `section_categories_enabled` | both | new |
+| Social proof | `section_proof_enabled` | both | new |
+| CTA band | `section_cta_enabled` | both | new |
+| Location (website) | `section_location_enabled` | website | new |
+| Reviews (order app) | `section_reviews_enabled` | order_app | new |
+
+The hub renders these enable toggles **at the top of their section**, not as loose blocks. Readers gate rendering:
+- **Website (Blade):** wrap each section in `@if(content('section_hero_enabled', 'true') === 'true') … @endif` in `backend/resources/views/home.blade.php` (and the relevant partials).
+- **Order app (React):** the `/api/content?app=order_app` payload already returns these public keys; gate each section component on the flag.
+
+All new keys seed `'true'` so **nothing disappears on deploy**.
 
 ---
 
@@ -63,8 +89,9 @@ Each block card shows: label, description, the value editor (existing per-type e
 ### 4.1 Registry / sync
 
 - `ContentRegistry::isSyncedAcrossApps()` → return true for **all brand keys**: `default_item_image`, `logo`, `logo_dark`, `favicon`, `og_image`. (Add a `BRAND_SYNCED_KEYS` const; keep the method for back-compat.)
-- Add a helper `ContentRegistry::visibility(string $key): 'both'|'website'|'order_app'` derived from live rows, for the "Shows on" control state.
+- Add a helper `ContentRegistry::linkState(string $key): 'same'|'different'` derived from live rows (are there per-app override rows?), for the Same/Different link control.
 - Mark `hero_slide_1/2/3` with `'deprecated' => true` (already present) and **exclude deprecated keys from the hub** entirely (they are read-fallback only).
+- **Add the new `section_*_enabled` boolean keys** (see §3.3) to `config/content.php` with `type => boolean`, `default => 'true'`, `public => true`, `shareable => true`, and the correct `apps`. Group them under their section's group so they render at the top of that section in the hub. Seed rows via a migration so existing installs get them.
 
 ### 4.2 Single write path
 
@@ -101,8 +128,9 @@ This closes B1/B2 for data already in the wild. Idempotent; safe to re-run.
 - New `pages/ContentHub/ContentHubPage.tsx` built by generalising `ContentStudio/AppContentEditor.tsx`:
   - Drop the `app` prop as a hard split. Load **all** blocks once; render one section navigator (by `group`).
   - Per block, render existing type editors (`HeroSlidesEditor`, `CategoriesEditor`, `RichTextEditor`, image, boolean, textarea/json, text) unchanged.
-  - Add a **Shows on** segmented control (Website / Order app / Both) per non-brand block. On change, call the visibility endpoint (Both → `share`, single app → `split` + write). Reuse existing `share`/`split`/`copy` controllers under the hood — just hide the verbs behind one control.
-  - Branding + SEO image blocks: no toggle; single value; always synced.
+  - Add a **Content: Same in both / Different per app** link/unlink control per non-brand block that targets both apps. When "Different," show the website and order-app value editors side by side. On toggle, reuse existing `share`/`split`/`copy` controllers under the hood (Same → `share`, Different → `split`) — hide the verbs behind the one control.
+  - **Section enable toggles:** render each `section_*_enabled` boolean at the top of its section header (not as a loose block), using the same Same/Different control so it can be set per app. Label it "Show this section" with a website/order-app pair when Different.
+  - Branding + SEO image blocks: no link control; single value; always synced.
   - Keep autosave-draft, publish, schedule, history, export/import, live preview.
 - Media: use `MediaPicker` for every image/video block (already the pattern in `AppContentEditor`); remove the `MediaLibrary` modal import path.
 
@@ -127,9 +155,14 @@ Keep the full backend suite green (currently **1703 passed / 3 skipped**). Add/a
   - `ContentResolver` returns the same `logo` for `website` and `order_app` after a single hub write (regression for B2).
   - Backfill migration reconciles a pre-seeded divergent set (website=A, shared=B) to A everywhere.
   - Removing `PUT /api/site-settings` / `/site-settings/upload`: update or delete `SiteSettings*` tests; assert the routes are gone (or delegate correctly if kept).
+- **Section gating**
+  - `home.blade.php` hides a section when its `section_*_enabled` resolves to `'false'` for the website scope, and shows it (default) otherwise.
+  - Order app gates the matching section component on the flag; a `section_specials_enabled` = false on `order_app` scope hides the rail in the order app while the website (still true) keeps it — proves per-app independence.
+  - New `section_*_enabled` keys seed `'true'`; a fresh migrate leaves every section visible.
 - **Frontend** (`apps/admin-dashboard`)
-  - Hub renders sections, "Shows on" toggle flips a block between Both/Website/Order app and calls the right endpoint.
-  - Branding block has no toggle and a single value.
+  - Hub renders sections; the **Same / Different per app** control splits a block and shows two editors, and collapsing back re-shares.
+  - Section enable toggle renders at the section header and can be set differently per app.
+  - Branding block has no link control and a single value.
   - Nav shows one "Content & Branding" entry; `/content/website` redirects to `/content`.
   - `WebsiteSettingsSubPage` no longer renders the default-photo / new-items editors.
 
@@ -153,7 +186,8 @@ Existing Content Studio tests (`ContentStudio*.test.tsx`) get renamed/retargeted
 - [ ] No editor writes `site_settings` except through `ContentWriter`; every content/branding change produces a revision + audit row. (B3)
 - [ ] Every upload lands in the Media Library catalog with a thumbnail and dedupe. (B4)
 - [ ] `ContentStudio/MediaLibrary.tsx`, `getContentMedia`, `GET /admin/content/media`, `PUT/POST /api/site-settings*` write/upload endpoints are gone (or delegating). (B5)
-- [ ] A non-technical user can set a block to Website / Order app / Both without seeing the words *scope*, *share*, or *split*. (B6)
+- [ ] A non-technical user can give the website and order app **different** copy for the same block (unlink), or keep them identical (link), without seeing the words *scope*, *share*, or *split*. (B6, clarification #1)
+- [ ] Each major section can be **shown/hidden independently on the website and the order app**, and all sections default to visible after migrate. (clarification #2)
 - [ ] Backend suite green; admin + order app builds green; committed bundles match fresh builds.
 
 ---
