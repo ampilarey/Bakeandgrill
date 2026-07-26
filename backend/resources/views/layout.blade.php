@@ -185,7 +185,6 @@
         [data-theme="dark"] .mobile-bottom-nav {
             background: rgba(26, 18, 8, 0.94);
         }
-        [data-theme="dark"] .mob-nav-order { background: none; }
         [data-theme="dark"] .site-announcement--info    { background: rgba(96,165,250,0.1); color: #93c5fd; border-bottom-color: rgba(96,165,250,0.25); }
         [data-theme="dark"] .site-announcement--warning { background: rgba(250,204,21,0.1);  color: #fde047; border-bottom-color: rgba(250,204,21,0.25); }
         [data-theme="dark"] .site-announcement--promo   { background: rgba(74,222,128,0.1);  color: #86efac; border-bottom-color: rgba(74,222,128,0.25); }
@@ -529,63 +528,59 @@
             font-size: 0.8rem;
         }
 
-        /* ─── Mobile Bottom Nav (matches order-app .bottom-nav) ──── */
+        /* ─── Mobile Bottom Nav — 1:1 with order-app .bottom-nav ─── */
         .mobile-bottom-nav {
-            --mob-nav-height: 64px;
+            --bottom-nav-height: 64px;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --touch-target: 44px;
             display: none;
             position: fixed;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0;
+            right: 0;
             bottom: 0;
             width: 100%;
-            max-width: 640px;
-            height: calc(var(--mob-nav-height) + env(safe-area-inset-bottom, 0px));
-            padding: 0;
-            padding-bottom: env(safe-area-inset-bottom, 0px);
-            z-index: 300;
-            background: rgba(255, 253, 249, 0.97);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border-top: 1px solid var(--border);
-            box-shadow: none;
-            box-sizing: border-box;
-        }
-        .mob-nav-grid {
-            display: flex;
+            height: calc(var(--bottom-nav-height) + var(--safe-bottom));
+            padding-bottom: var(--safe-bottom);
             align-items: stretch;
             justify-content: space-around;
-            width: 100%;
-            height: var(--mob-nav-height);
-            max-width: none;
-            margin: 0;
-            gap: 0;
+            background: rgba(255, 253, 249, 0.97);
+            border-top: 1px solid var(--border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            z-index: 300;
+            box-sizing: border-box;
+        }
+        [data-theme="dark"] .mobile-bottom-nav {
+            background: rgba(26, 18, 8, 0.97);
         }
         .mob-nav-item {
-            position: relative;
             flex: 1;
+            min-height: var(--touch-target);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 2px;
-            padding: 0;
-            border-radius: 0;
-            color: var(--muted);
             font-size: 0.6875rem;
             font-weight: 600;
+            line-height: 1.2;
+            color: var(--muted);
+            text-decoration: none;
+            background: none;
+            border: none;
+            font-family: inherit;
+            cursor: pointer;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+            padding: 0;
+            margin: 0;
             text-transform: none;
             letter-spacing: normal;
-            text-decoration: none;
-            cursor: pointer;
-            transition: color 0.15s;
-            -webkit-tap-highlight-color: transparent;
-            min-height: 44px;
-            border: none;
-            background: none;
-            font-family: inherit;
         }
         .mob-nav-item:hover,
-        .mob-nav-item.active { color: var(--amber); }
+        .mob-nav-item.active {
+            color: var(--amber);
+        }
         .mob-nav-item.active::after {
             content: '';
             width: 4px;
@@ -595,33 +590,34 @@
             position: absolute;
             bottom: 6px;
         }
-        .mob-nav-icon-svg {
+        .mob-nav-icon {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 24px;
             height: 24px;
             flex-shrink: 0;
+        }
+        .mob-nav-icon svg {
+            width: 24px;
+            height: 24px;
             display: block;
             color: inherit;
         }
-        .mob-nav-icon { font-size: 1.3rem; line-height: 1; }
-        /* Order tab — same layout as siblings (no raised pill) */
-        .mob-nav-order {
-            position: static;
-            top: auto;
-            background: none;
-            color: inherit;
-            border-radius: 0;
-            min-height: 44px;
-            box-shadow: none;
-            font-size: inherit;
-        }
-        .mob-nav-order .mob-nav-icon-svg {
+        .mob-nav-brand-logo {
             width: 24px;
             height: 24px;
+            object-fit: contain;
+            border-radius: 6px;
+            display: block;
+            background: var(--surface);
         }
-        .mob-nav-order:hover,
-        .mob-nav-order.active {
-            background: none;
-            color: var(--amber);
+        .mob-nav-label {
+            display: block;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            line-height: 1.2;
         }
 
         /* ─── Footer ────────────────────────────────────────────── */
@@ -1097,7 +1093,7 @@
             .mobile-header { display: block; }
             .mobile-bottom-nav { display: flex; }
             .order-status-bar-mob { display: flex; }
-            .site-footer   { padding-bottom: calc(2.5rem + 64px + env(safe-area-inset-bottom, 0px)); margin-top: 3rem; }
+            .site-footer   { padding-bottom: calc(2.5rem + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px)); margin-top: 3rem; }
             .footer-grid   { grid-template-columns: 1fr 1fr; gap: 2rem; }
             .footer-brand  { grid-column: 1 / -1; text-align: center; }
             .footer-brand p,
@@ -1403,32 +1399,38 @@
     </div>
 </footer>
 
-{{-- ─── Mobile Bottom Navigation: Home · Menu · Order · Offers · Account ─── --}}
-<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
-    <symbol id="mob-nav-home" viewBox="0 0 24 24"><path d="M3 9.75L12 3l9 6.75V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.75z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 22V12h6v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="mob-nav-menu" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
-    <symbol id="mob-nav-cart" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 10a4 4 0 01-8 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="mob-nav-offers" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="7" y1="7" x2="7.01" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="mob-nav-account" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
-</svg>
+{{-- ─── Mobile Bottom Nav — same layout metrics as order-app BottomNav ─── --}}
 <nav class="mobile-bottom-nav" aria-label="Mobile navigation" data-mobile-bottom-nav>
-    <div class="mob-nav-grid">
-        <a href="/" class="mob-nav-item" data-nav="home">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-home"/></svg>Home
-        </a>
-        <a href="/order/menu" class="mob-nav-item" data-nav="menu">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-menu"/></svg>Menu
-        </a>
-        <a href="/order/menu" class="mob-nav-item mob-nav-order" data-nav="order" aria-label="Order now">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-cart"/></svg>Order
-        </a>
-        <a href="/#offers" class="mob-nav-item" data-nav="offers">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-offers"/></svg>Offers
-        </a>
-        <a href="/order/account" class="mob-nav-item" data-nav="account">
-            <svg class="mob-nav-icon-svg" aria-hidden="true"><use href="#mob-nav-account"/></svg>Account
-        </a>
-    </div>
+    <a href="/" class="mob-nav-item" data-nav="home">
+        <span class="mob-nav-icon" aria-hidden="true">
+            <img class="mob-nav-brand-logo" src="{{ $logoUrl }}" alt="" width="24" height="24" decoding="async">
+        </span>
+        <span class="mob-nav-label">Home</span>
+    </a>
+    <a href="/order/menu" class="mob-nav-item" data-nav="menu">
+        <span class="mob-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </span>
+        <span class="mob-nav-label">Menu</span>
+    </a>
+    <a href="/order/menu" class="mob-nav-item" data-nav="order">
+        <span class="mob-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        </span>
+        <span class="mob-nav-label">Order</span>
+    </a>
+    <a href="/#offers" class="mob-nav-item" data-nav="offers">
+        <span class="mob-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </span>
+        <span class="mob-nav-label">Offers</span>
+    </a>
+    <a href="/order/account" class="mob-nav-item" data-nav="account">
+        <span class="mob-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <span class="mob-nav-label">Account</span>
+    </a>
 </nav>
 
 {{-- Shared floating island dropdown (used by prayer banners) --}}
