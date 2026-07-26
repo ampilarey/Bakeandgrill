@@ -529,44 +529,55 @@
             font-size: 0.8rem;
         }
 
-        /* ─── Mobile Bottom Nav ─────────────────────────────────── */
+        /* ─── Mobile Bottom Nav (matches order-app .bottom-nav) ──── */
         .mobile-bottom-nav {
+            --mob-nav-height: 64px;
             display: none;
             position: fixed;
-            bottom: 0; left: 0; right: 0;
-            z-index: 300; /* matches --z-bottom-nav in React order app */
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 0;
+            width: 100%;
+            max-width: 640px;
+            height: calc(var(--mob-nav-height) + env(safe-area-inset-bottom, 0px));
+            padding: 0;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            z-index: 300;
             background: rgba(255, 253, 249, 0.97);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             border-top: 1px solid var(--border);
-            box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
-            padding: 0.5rem 0.5rem;
-            padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+            box-shadow: none;
+            box-sizing: border-box;
         }
         .mob-nav-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 0.15rem;
-            align-items: end;
-            max-width: 520px;
-            margin: 0 auto;
+            display: flex;
+            align-items: stretch;
+            justify-content: space-around;
+            width: 100%;
+            height: var(--mob-nav-height);
+            max-width: none;
+            margin: 0;
+            gap: 0;
         }
         .mob-nav-item {
+            position: relative;
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 0.15rem;
-            padding: 0.35rem 0.2rem;
-            border-radius: 10px;
+            gap: 2px;
+            padding: 0;
+            border-radius: 0;
             color: var(--muted);
-            font-size: 0.6rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing: normal;
             text-decoration: none;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: color 0.15s;
             -webkit-tap-highlight-color: transparent;
             min-height: 44px;
             border: none;
@@ -575,31 +586,43 @@
         }
         .mob-nav-item:hover,
         .mob-nav-item.active { color: var(--amber); }
+        .mob-nav-item.active::after {
+            content: '';
+            width: 4px;
+            height: 4px;
+            border-radius: 999px;
+            background: var(--amber);
+            position: absolute;
+            bottom: 6px;
+        }
         .mob-nav-icon-svg {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             flex-shrink: 0;
             display: block;
             color: inherit;
         }
         .mob-nav-icon { font-size: 1.3rem; line-height: 1; }
-        /* Raised amber center Order CTA */
+        /* Order tab — same layout as siblings (no raised pill) */
         .mob-nav-order {
-            position: relative;
-            top: -10px;
-            background: var(--amber);
-            color: white !important;
-            border-radius: 16px;
-            min-height: 52px;
-            box-shadow: 0 6px 16px rgba(212, 129, 58, 0.4);
-            font-size: 0.62rem;
+            position: static;
+            top: auto;
+            background: none;
+            color: inherit;
+            border-radius: 0;
+            min-height: 44px;
+            box-shadow: none;
+            font-size: inherit;
         }
         .mob-nav-order .mob-nav-icon-svg {
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
         }
         .mob-nav-order:hover,
-        .mob-nav-order.active { background: var(--amber-hover); color: white !important; }
+        .mob-nav-order.active {
+            background: none;
+            color: var(--amber);
+        }
 
         /* ─── Footer ────────────────────────────────────────────── */
         .site-footer {
@@ -1072,9 +1095,9 @@
             html { scroll-padding-top: 130px; }
             .site-header   { display: none; }
             .mobile-header { display: block; }
-            .mobile-bottom-nav { display: block; }
+            .mobile-bottom-nav { display: flex; }
             .order-status-bar-mob { display: flex; }
-            .site-footer   { padding-bottom: calc(2.5rem + 80px + env(safe-area-inset-bottom)); margin-top: 3rem; }
+            .site-footer   { padding-bottom: calc(2.5rem + 64px + env(safe-area-inset-bottom, 0px)); margin-top: 3rem; }
             .footer-grid   { grid-template-columns: 1fr 1fr; gap: 2rem; }
             .footer-brand  { grid-column: 1 / -1; text-align: center; }
             .footer-brand p,
