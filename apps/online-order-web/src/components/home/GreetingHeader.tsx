@@ -31,7 +31,7 @@ export function GreetingHeader({ customerName, isAuthenticated }: Props) {
   return (
     <section
       style={{
-        padding: '0.75rem var(--page-gutter) 0.35rem',
+        padding: '0.65rem var(--page-gutter) 0.2rem',
         maxWidth: 'var(--layout-max)',
         margin: '0 auto',
       }}

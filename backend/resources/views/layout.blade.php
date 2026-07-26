@@ -794,12 +794,9 @@
         /* ─── Prayer banner (matches order-app PrayerBar) ───────── */
         .site-prayer-wrap--mobile {
             display: none;
-            padding: 0.5rem 1rem 0.65rem;
-            background: rgba(255, 253, 249, 0.96);
-            border-bottom: 1px solid var(--border);
-        }
-        [data-theme="dark"] .site-prayer-wrap--mobile {
-            background: rgba(26, 18, 8, 0.96);
+            padding: 0.35rem 1rem 0.4rem;
+            background: transparent;
+            border: none;
         }
         @media (max-width: 768px) {
             .site-prayer-wrap--mobile { display: block; }

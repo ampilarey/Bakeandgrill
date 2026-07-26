@@ -234,13 +234,7 @@ export function HomePage() {
             customerName={customerName}
             isAuthenticated={isAuthenticated}
           />
-          <div
-            style={{
-              padding: '0.35rem var(--page-gutter) 0.75rem',
-              maxWidth: 'var(--layout-max)',
-              margin: '0 auto',
-            }}
-          >
+          <div className="home-prayer-wrap">
             <PrayerBar />
           </div>
           <StatChipsRow {...chipsProps} hideLoyalty />
