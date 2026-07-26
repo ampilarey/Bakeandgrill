@@ -1130,6 +1130,7 @@
             <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
             <span>{{ $siteName }}</span>
         </a>
+        {{-- Desktop nav: discovery links only. Home = logo, Order + Account live in actions (like mobile). --}}
         <nav class="header-nav" aria-label="Main navigation">
             <a href="/order/menu">Menu</a>
             <a href="/#offers">Offers</a>
@@ -1137,7 +1138,6 @@
                 <span class="nav-label-full">Catering &amp; Events</span>
                 <span class="nav-label-short">Events</span>
             </a>
-            <a href="/hours">Hours</a>
             <a href="/contact">Contact</a>
         </nav>
         <div class="header-actions">
