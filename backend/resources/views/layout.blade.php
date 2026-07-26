@@ -1276,8 +1276,6 @@
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
             @endauth
-            <button id="darkToggleMobile" class="dark-toggle" aria-label="Toggle dark mode" style="width:40px;height:40px;font-size:0.9rem;">🌙</button>
-            <a href="/order/" class="mob-order-btn">{{ str_replace(' →', '', $navOrderCta) }}</a>
         </div>
     </div>
 </div>
