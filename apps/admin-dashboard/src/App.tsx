@@ -38,9 +38,7 @@ const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
 const SettingsPage            = lazyWithRetry(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
-const ContentStudioRedirect   = lazyWithRetry(() => import('./pages/ContentStudio/ContentStudioPage'));
-const WebsiteContentPage      = lazyWithRetry(() => import('./pages/ContentStudio/ContentStudioPage').then((m) => ({ default: m.WebsiteContentPage })));
-const OrderAppContentPage     = lazyWithRetry(() => import('./pages/ContentStudio/ContentStudioPage').then((m) => ({ default: m.OrderAppContentPage })));
+const ContentHubPage          = lazyWithRetry(() => import('./pages/ContentHub/ContentHubPage'));
 const GiftCardsPage           = lazyWithRetry(() => import('./pages/GiftCardsPage'));
 const DiscountCardsPage       = lazyWithRetry(() => import('./pages/DiscountCardsPage'));
 const ReviewsPage             = lazyWithRetry(() => import('./pages/ReviewsPage'));
@@ -358,27 +356,15 @@ export default function App() {
                     <TestChecklistPage />
                   </PermissionGuard>
                 } />
-                {/* Content Studio — two separate app editors */}
+                {/* Content & Branding hub — legacy paths redirect */}
                 <Route path="content" element={
                   <PermissionGuard user={user} permission="website.manage">
-                    <Navigate to="/content/website" replace />
+                    <ContentHubPage />
                   </PermissionGuard>
                 } />
-                <Route path="content/website" element={
-                  <PermissionGuard user={user} permission="website.manage">
-                    <WebsiteContentPage />
-                  </PermissionGuard>
-                } />
-                <Route path="content/order-app" element={
-                  <PermissionGuard user={user} permission="website.manage">
-                    <OrderAppContentPage />
-                  </PermissionGuard>
-                } />
-                <Route path="content-studio" element={
-                  <PermissionGuard user={user} permission="website.manage">
-                    <ContentStudioRedirect />
-                  </PermissionGuard>
-                } />
+                <Route path="content/website" element={<Navigate to="/content" replace />} />
+                <Route path="content/order-app" element={<Navigate to="/content" replace />} />
+                <Route path="content-studio" element={<Navigate to="/content" replace />} />
                 {/* Settings hub */}
                 <Route path="settings/*" element={
                   <PermissionGuard user={user} permissions={['website.manage', 'settings.update', 'roles_permissions.manage']}>

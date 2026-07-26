@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap, MapPin,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate, Smartphone, Shield, Bell, UserCog, Percent, Images, Image, Tv,
+  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -133,9 +133,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Wrench,
     order: 5,
     items: [
-      { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website marketing copy & visuals' },
-      { to: '/content/order-app', icon: Smartphone, label: 'Order App Content', permission: 'website.manage', description: 'Order app marketing copy & visuals' },
-      { to: '/content/website?group=Branding', icon: Image, label: 'Branding', permission: 'website.manage', description: 'Logo, favicon & default item photo' },
+      { to: '/content', icon: LayoutTemplate, label: 'Content & Branding', permission: 'website.manage', description: 'Website + order app copy, branding & visuals' },
       { to: '/media', icon: Images, label: 'Media Library', permission: 'media.view', description: 'Uploaded images, video, audio & documents' },
       { to: '/settings?tab=permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Role defaults & per-user overrides' },
       { to: '/settings?tab=notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },

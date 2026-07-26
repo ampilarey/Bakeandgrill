@@ -1,15 +1,14 @@
 import { Navigate } from 'react-router-dom';
-import { AppContentEditor } from './AppContentEditor';
 
-/** Legacy `/content-studio` and `/content` → Website Content. */
+/** Legacy Content Studio routes → unified Content & Branding hub. */
 export default function ContentStudioPage() {
-  return <Navigate to="/content/website" replace />;
+  return <Navigate to="/content" replace />;
 }
 
 export function WebsiteContentPage() {
-  return <AppContentEditor app="website" />;
+  return <Navigate to="/content" replace />;
 }
 
 export function OrderAppContentPage() {
-  return <AppContentEditor app="order_app" />;
+  return <Navigate to="/content" replace />;
 }
