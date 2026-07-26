@@ -58,7 +58,7 @@ type Props = {
 
 /**
  * Homepage hero carousel — heights match main-site `.hero-banner`
- * (mobile 420px; desktop min(78vh, 760px)).
+ * (mobile soft portrait 4:5; desktop min(78vh, 760px)).
  * - Autoplay every 5s; pauses on hover/touch-hold.
  * - Respects prefers-reduced-motion.
  * - Zero slides → static cream fallback card (never collapses).

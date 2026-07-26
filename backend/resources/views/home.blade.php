@@ -34,7 +34,14 @@
     overflow: hidden;
     background: var(--inverse-section-bg);
 }
-@media (max-width: 768px) { .hero-banner { height: 420px; } }
+/* Mobile: soft portrait 4:5 (better than square or wide 16:9 for food + CTAs) */
+@media (max-width: 768px) {
+    .hero-banner {
+        height: min(72vh, calc(100vw * 1.25), 520px);
+        height: min(72dvh, calc(100vw * 1.25), 520px);
+        min-height: 360px;
+    }
+}
 
 .banner-track {
     display: flex;
@@ -77,11 +84,14 @@
     .banner-overlay {
         align-items: center;
         text-align: center;
-        padding: 2rem 1.5rem;
-        background: linear-gradient(180deg, rgba(28,20,8,0.3) 0%, rgba(28,20,8,0.88) 100%);
+        padding: 1.75rem 1.25rem 2.75rem;
+        background: linear-gradient(180deg, rgba(28,20,8,0.22) 0%, rgba(28,20,8,0.72) 55%, rgba(28,20,8,0.92) 100%);
         justify-content: flex-end;
-        padding-bottom: 3rem;
     }
+    .banner-eyebrow { margin-bottom: 0.85rem; }
+    .banner-title { margin-bottom: 0.65rem; }
+    .banner-sub { margin-bottom: 1.35rem; }
+    .banner-dots { bottom: 1rem; }
 }
 
 .banner-eyebrow {
