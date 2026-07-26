@@ -483,7 +483,7 @@
             background: rgba(255, 253, 249, 0.96);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
+            border-bottom: none; /* prayer sits directly under — no divider line */
             padding: 0.75rem 1rem;
             padding-top: max(0.75rem, env(safe-area-inset-top));
             transition: padding 0.2s ease;
