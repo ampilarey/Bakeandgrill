@@ -1154,7 +1154,6 @@
                 </form>
             @else
                 <a href="/customer/login" class="hdr-login">Login</a>
-                <a href="/order/account" class="hdr-account">Account</a>
             @endauth
             <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
             <a href="/order/menu" class="hdr-order">{{ $navOrderCta }}</a>
