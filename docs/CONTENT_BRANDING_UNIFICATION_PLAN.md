@@ -36,6 +36,7 @@ Three upload backends exist: `SiteSettingsController::upload` (stores `site/`, n
 - **🟠 B4 — Uploads scatter.** Assets uploaded via the legacy Settings endpoint get no thumbnail/master and never enter the Media Library catalog or dedupe.
 - **🟡 B5 — Dead duplicate media browser.** `apps/admin-dashboard/src/pages/ContentStudio/MediaLibrary.tsx` + `getContentMedia()` + `GET /admin/content/media` are superseded by `MediaPicker` → `MediaLibraryPage`. Nothing imports the component anymore; endpoint still walks storage.
 - **🟡 B6 — Confusing surface.** "Branding" looks like its own tool but is `/content/website?group=`. The `shared/website/order_app` scope model + Share/Split/Copy verbs + "resolved fallback" text is expert-level. Deprecated `hero_slide_1/2/3` still in the registry.
+- **🔴 B7 — Collapsing to "Same" can delete a live image file (data loss).** `ContentController::share()` calls `MediaFileCleaner::deleteIfOwnedAndUnreferenced($row->value)` when it removes per-app override rows. That helper's `isReferenced()` only inspects the `items`, `item_photos`, and `categories` tables — it **never consults `site_settings` or `media_assets`**. So when an image block that differs per app is collapsed back to "Same", the app-scope file can be deleted from disk even though another content key, the other scope, or the Media Library still references it. Today this hides behind a rarely-used "Share" button; **this plan promotes that exact code path to a toggle owners will click constantly**, so it must be guarded before shipping. Fix in §4.5.
 
 ---
 
@@ -46,7 +47,7 @@ Three upload backends exist: `SiteSettingsController::upload` (stores `site/`, n
 1. **One nav entry, one page.** Replace *Website Content + Order App Content + Branding + Settings→Website (content bits)* with a single **Content & Branding** hub.
 2. **Website and order app stay independent — same content is opt-in.** Each block that targets both apps shows a **"Content: ◉ Same in both · ○ Different per app"** link/unlink control. **Same = `shared`** (edit once, both apps update); **Different** splits into independent `website` and `order_app` values edited side by side. Same→Different auto-splits (copy resolved value into each app scope); Different→Same collapses to `shared` and clears app overrides. The old Share/Split/Copy verbs disappear behind this one control.
 3. **Per-section on/off, per app.** Each major section (Hero, Specials, Featured, etc.) has an **Enable/Disable** toggle that can be set independently for the website and the order app. This reuses the exact same link/unlink mechanism from principle 2, applied to a boolean block (see §3.3). On/off is **section-level only** — individual text fields never get their own switch (hiding a lone field breaks layouts).
-4. **Branding always syncs everywhere.** `logo`, `logo_dark`, `favicon`, `og_image` behave like `default_item_image` already does — every write mirrors to all scopes. Branding blocks have **no** link/unlink control (they are always Same).
+4. **Branding always syncs everywhere.** `logo`, `logo_dark`, `favicon`, `og_image`, **`primary_color`** behave like `default_item_image` already does — every write mirrors to all scopes. Branding blocks have **no** link/unlink control (they are always Same).
 5. **One write path.** Every content/branding mutation goes through `ContentWriter` → history + sanitise + audit + draft cleanup for all keys, always.
 6. **One uploader, one picker.** Every upload goes through the Media Library backend (catalog + dedupe + thumbnails). Every "browse/pick" uses `MediaPicker` → Media Library.
 
@@ -88,7 +89,7 @@ All new keys seed `'true'` so **nothing disappears on deploy**.
 
 ### 4.1 Registry / sync
 
-- `ContentRegistry::isSyncedAcrossApps()` → return true for **all brand keys**: `default_item_image`, `logo`, `logo_dark`, `favicon`, `og_image`. (Add a `BRAND_SYNCED_KEYS` const; keep the method for back-compat.)
+- `ContentRegistry::isSyncedAcrossApps()` → return true for **all brand keys**: `default_item_image`, `logo`, `logo_dark`, `favicon`, `og_image`, `primary_color`. (Add a `BRAND_SYNCED_KEYS` const; keep the method for back-compat.) **`primary_color` is included deliberately** — it sits in the Branding group, is `shareable`, and targets both apps, so leaving it out reproduces B1 for the brand colour.
 - Add a helper `ContentRegistry::linkState(string $key): 'same'|'different'` derived from live rows (are there per-app override rows?), for the Same/Different link control.
 - Mark `hero_slide_1/2/3` with `'deprecated' => true` (already present) and **exclude deprecated keys from the hub** entirely (they are read-fallback only).
 - **Add the new `section_*_enabled` boolean keys** (see §3.3) to `config/content.php` with `type => boolean`, `default => 'true'`, `public => true`, `shareable => true`, and the correct `apps`. Group them under their section's group so they render at the top of that section in the hub. Seed rows via a migration so existing installs get them.
@@ -119,6 +120,22 @@ for each key in [logo, logo_dark, favicon, og_image]:
 
 This closes B1/B2 for data already in the wild. Idempotent; safe to re-run.
 
+Include `primary_color` in the same backfill loop (non-image, but same divergence risk).
+
+### 4.5 Guard against file deletion on collapse-to-Same (fixes B7 — **must ship with Phase 1**)
+
+The Same/Different control makes `ContentController::share()` a high-traffic path, and today it can delete a file that is still in use. Two changes, both required:
+
+1. **Teach `MediaFileCleaner::isReferenced()` about content + catalog rows.** Add checks for:
+   - `site_settings` — any row (any scope/locale) whose `value` equals the URL, excluding the rows being removed;
+   - `media_assets` — any catalog row whose `url` / `thumb_url` / `original_url` equals the URL.
+
+   Guard both with `Schema::hasTable()` so the helper stays safe on partially-migrated installs, mirroring the existing `categories` check.
+
+2. **Do not delete files from `share()` at all.** Collapsing per-app overrides is a *content* operation; the underlying asset belongs to the Media Library and must outlive it. Drop the `deleteIfOwnedAndUnreferenced` call in `ContentController::share()` and let Media Library deletion/reconcile own file lifecycle. (Change 1 still lands — it protects every other caller, including `ContentController::upload`'s replace path.)
+
+**Regression test:** an image block set to "Different per app" (website = A.jpg, order app = B.jpg) collapsed back to "Same" must leave **both files on disk** and keep any Media Library catalog row intact.
+
 ---
 
 ## 5. Frontend changes (`apps/admin-dashboard`)
@@ -138,7 +155,7 @@ This closes B1/B2 for data already in the wild. Idempotent; safe to re-run.
 
 - `components/navConfig.ts` **System** group: replace the three entries (`/content/website`, `/content/order-app`, `/content/website?group=Branding`) with **one**: `{ to: '/content', label: 'Content & Branding', icon: LayoutTemplate, permission: 'website.manage', description: 'Website + order app copy, branding & visuals' }`. Keep `/media` (Media Library) as a sibling.
 - `App.tsx`: route `/content` → `ContentHubPage`. Keep `/content/website`, `/content/order-app`, `/content-studio` as **redirects to `/content`** (deep links + muscle memory). Support `?group=` and `?section=` deep-links (Settings and other callers use `?group=Branding`).
-- `SettingsPage` (`WebsiteSettingsSubPage.tsx`): remove the **Default item photo** and **New items window** editors (now in the hub's Branding + Menu sections). Keep the **Dine-in menu QR / link / print** card (that is genuinely a Settings utility, not content) or move it to the hub's Menu section — implementer's choice; do not leave it editable in two places. Remove `getSiteSettings`/`updateSiteSettings`/`uploadSiteLogo` usage from this file.
+- `SettingsPage` (`WebsiteSettingsSubPage.tsx`): remove the **Default item photo** and **New items window** editors — both live in the hub's **Branding** section (the registry already assigns `default_item_image` *and* `menu_new_days` to `group => 'Branding'`; do not move `menu_new_days` to a Menu group). Keep the **Dine-in menu QR / link / print** card (a Settings utility, not content). Remove `getSiteSettings`/`updateSiteSettings`/`uploadSiteLogo` usage from this file, and repoint its remaining "Content editors" links from `/content/website?group=Branding` + `/content/order-app` to the single `/content?group=Branding`.
 
 ### 5.3 Delete
 
@@ -148,10 +165,11 @@ This closes B1/B2 for data already in the wild. Idempotent; safe to re-run.
 
 ## 6. Tests
 
-Keep the full backend suite green (currently **1703 passed / 3 skipped**). Add/adjust:
+**Baseline:** record the suite result on `main` **before** starting and keep it green. (Do **not** target 1703 passed / 3 skipped — that figure was measured on the `claude/tv-signage` branch, which is ahead of `main`; this work branches off `main` and will have its own baseline.) Add/adjust:
 
 - **Backend**
-  - `useAs` writes all three scopes for `logo`/`favicon`/`logo_dark`/`og_image` and creates a revision + audit row (extend `MediaUsageResolverTest` area or a new `BrandingSyncTest`).
+  - `useAs` writes all three scopes for `logo`/`favicon`/`logo_dark`/`og_image`/`primary_color` and creates a revision + audit row (extend `MediaUsageResolverTest` area or a new `BrandingSyncTest`).
+  - **B7 regression:** an image block differing per app, collapsed back to "Same", leaves both files on disk and the `media_assets` row intact; `MediaFileCleaner::isReferenced()` returns true for a URL referenced only by a `site_settings` or `media_assets` row.
   - `ContentResolver` returns the same `logo` for `website` and `order_app` after a single hub write (regression for B2).
   - Backfill migration reconciles a pre-seeded divergent set (website=A, shared=B) to A everywhere.
   - Removing `PUT /api/site-settings` / `/site-settings/upload`: update or delete `SiteSettings*` tests; assert the routes are gone (or delegate correctly if kept).
@@ -172,7 +190,7 @@ Existing Content Studio tests (`ContentStudio*.test.tsx`) get renamed/retargeted
 
 ## 7. Rollout (Phase 1 — the unified hub; section reordering is Phase 2, see §9)
 
-1. Backend: sync rule + `useAs` all-scope + backfill migration + retire legacy write/upload + remove dead media endpoint. Ship behind no flag (data-correct on deploy).
+1. Backend: sync rule + `useAs` all-scope + **B7 deletion guard (§4.5, ship together — the hub makes that path high-traffic)** + backfill migration + retire legacy write/upload + remove dead media endpoint. Ship behind no flag (data-correct on deploy).
 2. Frontend: hub page + nav collapse + redirects + Settings cleanup + dead-code delete.
 3. Build sync: rebuild `apps/admin-dashboard`, copy `dist` → `backend/public/admin`, verify committed bundle hash matches a fresh build. No order-app SW bump needed unless the order app changed.
 4. `php artisan migrate` runs the backfill; `php artisan view:clear` for Blade.
@@ -188,7 +206,8 @@ Existing Content Studio tests (`ContentStudio*.test.tsx`) get renamed/retargeted
 - [ ] `ContentStudio/MediaLibrary.tsx`, `getContentMedia`, `GET /admin/content/media`, `PUT/POST /api/site-settings*` write/upload endpoints are gone (or delegating). (B5)
 - [ ] A non-technical user can give the website and order app **different** copy for the same block (unlink), or keep them identical (link), without seeing the words *scope*, *share*, or *split*. (B6, clarification #1)
 - [ ] Each major section can be **shown/hidden independently on the website and the order app**, and all sections default to visible after migrate. (clarification #2)
-- [ ] Backend suite green; admin + order app builds green; committed bundles match fresh builds.
+- [ ] Switching an image block between "Same" and "Different per app" **never deletes a file** that any `site_settings` row or Media Library asset still references. (B7)
+- [ ] Backend suite green against the **`main` baseline recorded at start**; admin + order app builds green; committed bundles match fresh builds.
 
 ---
 
