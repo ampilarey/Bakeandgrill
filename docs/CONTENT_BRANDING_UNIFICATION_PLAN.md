@@ -170,7 +170,7 @@ Existing Content Studio tests (`ContentStudio*.test.tsx`) get renamed/retargeted
 
 ---
 
-## 7. Rollout (single phase, since owner chose the full hub)
+## 7. Rollout (Phase 1 — the unified hub; section reordering is Phase 2, see §9)
 
 1. Backend: sync rule + `useAs` all-scope + backfill migration + retire legacy write/upload + remove dead media endpoint. Ship behind no flag (data-correct on deploy).
 2. Frontend: hub page + nav collapse + redirects + Settings cleanup + dead-code delete.
@@ -192,7 +192,30 @@ Existing Content Studio tests (`ContentStudio*.test.tsx`) get renamed/retargeted
 
 ---
 
-## 9. Explicitly out of scope
+## 9. Phase 2 — drag-to-reorder sections (deferred, separate build)
+
+Not in the Phase 1 hub build; gets its own plan + Cursor prompt after Phase 1 lands. Recorded here so intent is preserved.
+
+**Goal:** let the owner reorder the movable home sections ("this section comes after that one," "move this to the top") from the hub, **independently for website and order app**, without breaking layout.
+
+**Model:**
+- Store a section order as content: `home_section_order` = JSON array of section ids, e.g. `["specials","featured","categories","proof","cta","location"]`. It is `shareable` + targets both apps, so the same **Same / Different per app** link control gives the website and order app **independent orders** (per the owner's choice).
+- **Pinned, non-movable:** top bar / nav, announcement bar, **Hero (always first)**, footer. Only the middle content sections are draggable.
+- Reuses the §3.3 enable flags — a disabled section is skipped in the order.
+
+**Layout-safety refactor (the real work):**
+- Refactor `backend/resources/views/home.blade.php` so the movable sections become **self-contained partials** (each owns its vertical padding) rendered by looping over the resolved order, instead of a hardcoded top-to-bottom sequence.
+- Background striping (cream/white alternation) is computed from **loop index**, not hardcoded per section, so any order alternates cleanly and two same-colored blocks never touch.
+- Mirror the same ordered-loop approach in the order app home screen.
+- Unknown/missing ids are ignored; any movable section absent from the stored order is appended in default order (forward-compatible when new sections are added).
+
+**Admin UI:** a drag-to-reorder list of the movable sections in the hub, next to the enable toggles, with the Same/Different control for per-app order.
+
+**Acceptance:** reordering in the hub changes the live section sequence on the target app only; hero stays first; striping stays clean at any order; a section with no stored position still renders in a sensible default slot.
+
+---
+
+## 10. Explicitly out of scope
 
 - Rewriting the `(key, scope, locale)` storage model or the ~130 registry keys.
 - Inline/click-to-edit-on-live-preview authoring (possible later; the live preview frame stays read-only here).
