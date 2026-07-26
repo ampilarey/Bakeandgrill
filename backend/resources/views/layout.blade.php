@@ -227,7 +227,10 @@
             transition: box-shadow 0.2s;
         }
         .site-header.scrolled { box-shadow: 0 4px 24px rgba(28, 20, 8, 0.08); }
-        .site-header.scrolled .header-inner { height: 56px; }
+        .site-header.scrolled .header-inner {
+            min-height: 48px;
+            padding-block: 0.25rem;
+        }
         .site-header.scrolled .site-logo img { width: 32px; height: 32px; }
 
         /* ─── Announcement Banner ─────────────────────────────────── */
@@ -247,14 +250,16 @@
         }
         .site-announcement__arrow { opacity: 0.7; }
 
+        /* min-height (not height) so expanded prayer can grow — matches order-app .top-nav__inner */
         .header-inner {
             max-width: 1280px;
             margin: 0 auto;
-            padding: 0 2rem;
-            height: 68px;
+            padding: 0.45rem 2rem;
+            min-height: 64px;
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 0.75rem;
+            box-sizing: border-box;
         }
 
         .site-logo {
@@ -300,8 +305,10 @@
             min-width: 0;
             max-width: 28rem;
             margin-left: auto;
+            align-self: center;
         }
         .header-prayer .prayer-banner {
+            width: 100%;
             margin: 0;
             min-height: 40px;
             background: var(--surface);
@@ -319,15 +326,25 @@
             font-size: 0.6875rem;
             padding: 0.2rem 0.45rem;
         }
+        /* Keep logo/nav/actions pinned to the top row while the prayer panel opens downward */
+        .header-inner:has(.prayer-banner.is-expanded) {
+            align-items: flex-start;
+        }
+        .header-inner:has(.prayer-banner.is-expanded) .header-prayer {
+            align-self: stretch;
+        }
 
         /* Desktop header — matches order-app TopNav layout */
         @media (min-width: 769px) {
             .site-header .header-inner {
-                height: 74px;
-                padding: 0 clamp(1.25rem, 2.5vw, 2.25rem);
+                min-height: 64px;
+                padding: 0.45rem clamp(1.25rem, 2.5vw, 2.25rem);
                 gap: 0.75rem;
             }
-            .site-header.scrolled .header-inner { height: 62px; }
+            .site-header.scrolled .header-inner {
+                min-height: 48px;
+                padding-block: 0.25rem;
+            }
             .site-logo {
                 font-size: 1.28rem;
                 gap: 0.7rem;
@@ -1694,7 +1711,11 @@
         var panel=$$('hptPanel');
         if(panel) panel.addEventListener('click', function(e){ e.stopPropagation(); });
         document.addEventListener('click',   function(){ if(dropOpen) closeDropdown(); });
-        document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDropdown(); });
+        document.addEventListener('keydown', function(e){
+            if (e.key !== 'Escape') return;
+            if (dropOpen) { closeDropdown(); return; }
+            if (expanded) toggleExpanded();
+        });
     }
 
     function init() {
