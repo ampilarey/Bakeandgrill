@@ -181,8 +181,7 @@
             --surface-alt:  #2a1e0e;
         }
         [data-theme="dark"] .site-header,
-        [data-theme="dark"] .mobile-header,
-        [data-theme="dark"] .mobile-bottom-nav {
+        [data-theme="dark"] .mobile-header {
             background: rgba(26, 18, 8, 0.94);
         }
         [data-theme="dark"] .site-announcement--info    { background: rgba(96,165,250,0.1); color: #93c5fd; border-bottom-color: rgba(96,165,250,0.25); }
