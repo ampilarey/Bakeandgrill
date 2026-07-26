@@ -248,12 +248,24 @@
   }
 }
 
-/* Hero mobile: mirror Blade .hero-banner (soft portrait 4:5) */
+/* Hero mobile: mirror Blade .hero-banner (inset rounded 4:5) */
 @media (max-width: 768px) {
   .home-hero {
-    min-height: min(72dvh, calc(100vw * 1.25), 520px);
+    min-height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
     padding-top: 2rem;
     padding-bottom: 2rem;
+  }
+  .home-promo-hero {
+    width: auto;
+    margin: 0.75rem var(--page-gutter, 1rem) 0;
+    border-radius: 1.25rem;
+    border: none;
+    height: min(68vh, calc((100vw - 2 * var(--page-gutter, 1rem)) * 1.25), 500px);
+    height: min(68dvh, calc((100vw - 2 * var(--page-gutter, 1rem)) * 1.25), 500px);
+    min-height: 340px;
+  }
+  .home-promo-hero--empty {
+    border: none;
   }
 }
 
@@ -261,10 +273,10 @@
 .home-promo-hero {
   position: relative;
   width: 100%;
-  /* Mobile default: soft portrait 4:5 (taller than square strip, shorter than full-bleed square) */
-  height: min(72vh, calc(100vw * 1.25), 520px);
-  height: min(72dvh, calc(100vw * 1.25), 520px);
-  min-height: 360px;
+  /* Desktop height set in min-width:769px; mobile inset set above */
+  height: min(68vh, calc(100vw * 1.25), 500px);
+  height: min(68dvh, calc(100vw * 1.25), 500px);
+  min-height: 340px;
   overflow: hidden;
   background: #1c1408;
 }
@@ -429,9 +441,12 @@
 .home-promo-hero__btn--prev { left: 1.5rem; }
 .home-promo-hero__btn--next { right: 1.5rem; }
 
-/* Desktop: same height band as main website hero */
+/* Desktop: same height band as main website hero (full-bleed) */
 @media (min-width: 769px) {
   .home-promo-hero {
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
     height: min(78vh, 760px);
     min-height: 560px;
   }

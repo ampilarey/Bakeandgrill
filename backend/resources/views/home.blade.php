@@ -34,12 +34,16 @@
     overflow: hidden;
     background: var(--inverse-section-bg);
 }
-/* Mobile: soft portrait 4:5 (better than square or wide 16:9 for food + CTAs) */
+/* Mobile: inset rounded container (no border), soft portrait 4:5 */
 @media (max-width: 768px) {
     .hero-banner {
-        height: min(72vh, calc(100vw * 1.25), 520px);
-        height: min(72dvh, calc(100vw * 1.25), 520px);
-        min-height: 360px;
+        width: auto;
+        margin: 0.75rem 1rem 0;
+        border-radius: 1.25rem;
+        border: none;
+        height: min(68vh, calc((100vw - 2rem) * 1.25), 500px);
+        height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
+        min-height: 340px;
     }
 }
 
