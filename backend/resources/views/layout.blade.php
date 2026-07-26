@@ -271,32 +271,37 @@
 
         .header-nav {
             display: flex;
-            gap: 0.25rem;
+            gap: 0.15rem;
             align-items: center;
             flex: 1;
-            margin-left: 0.75rem;
+            margin-left: 0.5rem;
+            flex-wrap: wrap;
+            min-width: 0;
         }
-        .header-nav a,
-        .header-nav .more-btn {
-            padding: 0.45rem 0.875rem;
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 0.925rem;
-            color: var(--muted);
-            transition: all 0.15s;
+        .header-nav a {
+            padding: 0.5rem 0.8rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+            transition: background 0.15s, color 0.15s;
             text-decoration: none;
+            white-space: nowrap;
         }
         .header-nav a:hover,
-        .header-nav a.active,
-        .header-nav .more-btn:hover,
-        .header-nav .more-btn.open { background: var(--amber-light); color: var(--amber); }
+        .header-nav a.active {
+            background: var(--amber-light);
+            color: var(--amber);
+        }
 
-        /* Desktop header nav items — clearer hierarchy (mobile header is separate) */
+        /* Desktop header — matches mobile bottom nav + footer quick links */
         @media (min-width: 769px) {
             .site-header .header-inner {
-                height: 72px;
-                padding: 0 clamp(1.5rem, 3vw, 2.5rem);
+                height: 74px;
+                padding: 0 clamp(1.25rem, 2.5vw, 2.25rem);
+                gap: 1rem;
             }
+            .site-header.scrolled .header-inner { height: 62px; }
             .site-logo {
                 font-size: 1.28rem;
                 gap: 0.7rem;
@@ -307,116 +312,108 @@
                 border-radius: 10px;
             }
             .header-nav {
-                gap: 0.35rem;
-                margin-left: 1.25rem;
+                gap: 0.2rem;
+                margin-left: 0.75rem;
             }
-            .header-nav a,
-            .header-nav .more-btn {
-                padding: 0.55rem 1.05rem;
+            .header-nav a {
+                padding: 0.55rem 0.95rem;
                 font-size: 0.95rem;
-                font-weight: 600;
-                color: var(--text);
-                border-radius: 10px;
-            }
-            .header-nav a.active {
-                background: var(--amber-light);
-                color: var(--amber);
-            }
-            .more-panel {
-                min-width: 180px;
-                padding: 0.45rem;
-                box-shadow: 0 12px 32px rgba(28, 20, 8, 0.12);
-            }
-            .more-panel a {
-                padding: 0.65rem 1rem;
-                font-size: 0.925rem;
                 min-height: 44px;
-                display: flex;
+                display: inline-flex;
                 align-items: center;
             }
-            .hdr-order {
-                min-height: 44px;
-                padding: 0.65rem 1.25rem;
-                font-size: 0.95rem;
+            .header-nav .nav-label-full { display: inline; }
+            .header-nav .nav-label-short { display: none; }
+        }
+        @media (min-width: 769px) and (max-width: 1100px) {
+            .header-nav a {
+                padding: 0.5rem 0.7rem;
+                font-size: 0.875rem;
             }
+            .header-nav .nav-label-full { display: none; }
+            .header-nav .nav-label-short { display: inline; }
         }
-
-        /* ─── More dropdown ─────────────────────────────────── */
-        .more-wrap { position: relative; }
-        .more-btn {
-            background: none; border: none; cursor: pointer;
-            font-family: inherit; display: inline-flex; align-items: center; gap: 0.25rem;
-        }
-        .more-arrow { font-size: 0.6rem; opacity: 0.6; transition: transform 0.15s; }
-        .more-btn.open .more-arrow { transform: rotate(180deg); }
-        .more-panel {
-            display: none;
-            position: absolute; top: calc(100% + 6px); left: 0;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-            min-width: 150px;
-            z-index: 200;
-            overflow: hidden;
-            padding: 0.375rem;
-        }
-        .more-panel.open { display: block; }
-        .more-panel a {
-            display: block;
-            padding: 0.55rem 0.875rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--text);
-            transition: background 0.12s;
-        }
-        .more-panel a:hover { background: var(--surface-alt, #f7f3ec); }
 
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 0.625rem;
+            gap: 0.5rem;
             flex-shrink: 0;
         }
 
-        .hdr-login {
-            padding: 0.45rem 0.875rem;
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 0.875rem;
-            color: var(--muted);
-            transition: color 0.15s;
+        .hdr-login,
+        .hdr-account {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            min-height: 44px;
+            padding: 0.55rem 1.15rem;
+            border-radius: 11px;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--text);
+            text-decoration: none;
+            transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.15s;
+            box-sizing: border-box;
         }
-        .hdr-login:hover { color: var(--text); }
+        .hdr-login:hover,
+        .hdr-account:hover {
+            border-color: var(--amber);
+            background: var(--amber-light);
+            color: var(--amber);
+            transform: translateY(-1px);
+        }
         .hdr-logout-btn {
-            background: none;
-            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 0.55rem 1rem;
+            border-radius: 11px;
+            border: 1.5px solid var(--border);
+            background: transparent;
             cursor: pointer;
-            padding: 0.45rem 0.875rem;
-            border-radius: 8px;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 0.875rem;
             color: var(--muted);
             font-family: inherit;
-            transition: color 0.15s;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
         }
-        .hdr-logout-btn:hover { color: var(--text); }
+        .hdr-logout-btn:hover {
+            border-color: var(--border);
+            color: var(--text);
+            background: var(--surface-alt, #f7f3ec);
+        }
 
         .hdr-order {
-            padding: 0.55rem 1.25rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            min-height: 48px;
+            padding: 0.7rem 1.45rem;
             background: var(--amber);
             color: white;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            transition: all 0.15s;
-            box-shadow: 0 2px 10px var(--amber-glow);
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.975rem;
+            letter-spacing: -0.01em;
+            transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 4px 16px var(--amber-glow);
+            white-space: nowrap;
         }
         .hdr-order:hover {
             background: var(--amber-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 14px var(--amber-glow);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 129, 58, 0.4);
+        }
+        .site-header .dark-toggle {
+            width: 44px;
+            height: 44px;
+            border-radius: 11px;
         }
 
         /* ─── Status Badge (shared) ──────────────────────────────── */
@@ -1135,16 +1132,13 @@
         </a>
         <nav class="header-nav" aria-label="Main navigation">
             <a href="/order/menu">Menu</a>
-            <a href="/order/events">Catering &amp; Events</a>
-            <div class="more-wrap">
-                <button type="button" id="moreBtn" class="more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="morePanel">
-                    More <span class="more-arrow">▼</span>
-                </button>
-                <div id="morePanel" class="more-panel" role="menu">
-                    <a href="/hours" role="menuitem">🕐&nbsp; Hours</a>
-                    <a href="/contact" role="menuitem">📞&nbsp; Contact</a>
-                </div>
-            </div>
+            <a href="/#offers">Offers</a>
+            <a href="/order/events">
+                <span class="nav-label-full">Catering &amp; Events</span>
+                <span class="nav-label-short">Events</span>
+            </a>
+            <a href="/hours">Hours</a>
+            <a href="/contact">Contact</a>
         </nav>
         <div class="header-actions">
             @auth('customer')
@@ -1153,16 +1147,17 @@
                     $dispPhoneDesk = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
                     $greetDesk = !empty($cust->name) ? $cust->name : $dispPhoneDesk;
                 @endphp
-                <a href="/order/account" style="font-size:0.875rem;color:var(--muted);font-weight:500;text-decoration:none;">Hi, {{ $greetDesk }}</a>
+                <a href="/order/account" class="hdr-account" title="{{ $greetDesk }}">Account</a>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
                     @csrf
                     <button type="submit" class="hdr-logout-btn">Log out</button>
                 </form>
             @else
                 <a href="/customer/login" class="hdr-login">Login</a>
+                <a href="/order/account" class="hdr-account">Account</a>
             @endauth
             <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
-            <a href="/order/" class="hdr-order">{{ $navOrderCta }}</a>
+            <a href="/order/menu" class="hdr-order">{{ $navOrderCta }}</a>
         </div>
     </div>
     @if($orderBar)
