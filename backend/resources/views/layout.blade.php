@@ -273,9 +273,9 @@
             display: flex;
             gap: 0.15rem;
             align-items: center;
-            flex: 1;
+            flex: 0 1 auto;
             margin-left: 0.5rem;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             min-width: 0;
         }
         .header-nav a {
@@ -294,12 +294,38 @@
             color: var(--amber);
         }
 
-        /* Desktop header — matches mobile bottom nav + footer quick links */
+        /* Prayer strip in header row — matches order-app .top-nav__prayer */
+        .header-prayer {
+            flex: 1 1 12rem;
+            min-width: 0;
+            max-width: 28rem;
+            margin-left: auto;
+        }
+        .header-prayer .prayer-banner {
+            margin: 0;
+            min-height: 40px;
+            background: var(--surface);
+        }
+        .header-prayer .prayer-banner-summary,
+        .header-prayer .prayer-banner-expand,
+        .header-prayer .prayer-banner-skeleton,
+        .header-prayer .prayer-banner-unavailable {
+            min-height: 40px;
+        }
+        .header-prayer .prayer-banner-next {
+            font-size: 0.75rem;
+        }
+        .header-prayer .prayer-banner-island {
+            font-size: 0.6875rem;
+            padding: 0.2rem 0.45rem;
+        }
+
+        /* Desktop header — matches order-app TopNav layout */
         @media (min-width: 769px) {
             .site-header .header-inner {
                 height: 74px;
                 padding: 0 clamp(1.25rem, 2.5vw, 2.25rem);
-                gap: 1rem;
+                gap: 0.75rem;
             }
             .site-header.scrolled .header-inner { height: 62px; }
             .site-logo {
@@ -322,16 +348,18 @@
                 display: inline-flex;
                 align-items: center;
             }
-            .header-nav .nav-label-full { display: inline; }
-            .header-nav .nav-label-short { display: none; }
         }
         @media (min-width: 769px) and (max-width: 1100px) {
             .header-nav a {
                 padding: 0.5rem 0.7rem;
                 font-size: 0.875rem;
             }
-            .header-nav .nav-label-full { display: none; }
-            .header-nav .nav-label-short { display: inline; }
+            .header-prayer {
+                max-width: 16rem;
+            }
+            .header-prayer .prayer-banner-island {
+                display: none; /* island picker still available when expanded */
+            }
         }
 
         .header-actions {
@@ -747,11 +775,6 @@
         }
 
         /* ─── Prayer banner (matches order-app PrayerBar) ───────── */
-        .site-prayer-wrap--desktop {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 2rem 0.65rem;
-        }
         .site-prayer-wrap--mobile {
             display: none;
             padding: 0.5rem 1rem 0.65rem;
@@ -1130,16 +1153,15 @@
             <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
             <span>{{ $siteName }}</span>
         </a>
-        {{-- Desktop nav: discovery links only. Home = logo, Order + Account live in actions (like mobile). --}}
+        {{-- Desktop nav: discovery links. Prayer sits in-row like order-app TopNav. --}}
         <nav class="header-nav" aria-label="Main navigation">
             <a href="/order/menu">Menu</a>
             <a href="/#offers">Offers</a>
-            <a href="/order/events">
-                <span class="nav-label-full">Catering &amp; Events</span>
-                <span class="nav-label-short">Events</span>
-            </a>
-            <a href="/contact">Contact</a>
+            <a href="/order/events">Pre-order</a>
         </nav>
+        <div class="header-prayer">
+            @include('partials.prayer-banner')
+        </div>
         <div class="header-actions">
             @auth('customer')
                 @php
@@ -1172,9 +1194,6 @@
         <a href="{{ $orderBarLink }}" class="osb-cta osb-cta-link">{{ $orderBarMeta['active'] ? 'Track →' : 'View all →' }}</a>
     </div>
     @endif
-    <div class="site-prayer-wrap site-prayer-wrap--desktop">
-        @include('partials.prayer-banner')
-    </div>
 </header>
 
 {{-- ─── Announcement Banner ──────────────────────────────────────── --}}
@@ -1244,7 +1263,7 @@
 </div>
 @endif
 
-{{-- Prayer banner (mobile — matches order app; desktop copy lives in site-header) --}}
+{{-- Prayer banner (mobile — desktop copy lives inline in .header-prayer) --}}
 <div class="site-prayer-wrap site-prayer-wrap--mobile">
     @include('partials.prayer-banner')
 </div>
