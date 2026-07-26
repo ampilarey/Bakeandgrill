@@ -202,14 +202,11 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
     // ─── Site Settings ──────────────────────────────────────────────────────────
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
         Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
-        Route::put('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
-        Route::post('/site-settings/upload', [App\Http\Controllers\Api\SiteSettingsController::class, 'upload']);
 
         Route::get('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'index']);
         Route::put('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'update']);
         Route::get('/admin/content/drafts', [App\Http\Controllers\Api\ContentController::class, 'drafts']);
         Route::put('/admin/content/drafts', [App\Http\Controllers\Api\ContentController::class, 'saveDrafts']);
-        Route::get('/admin/content/media', [App\Http\Controllers\Api\ContentController::class, 'media']);
         Route::post('/admin/content/upload', [App\Http\Controllers\Api\ContentController::class, 'upload']);
         Route::post('/admin/content/upload-video', [App\Http\Controllers\Api\ContentController::class, 'uploadVideo']);
         Route::post('/admin/content/preview-token', [App\Http\Controllers\Api\ContentPreviewController::class, 'createToken']);

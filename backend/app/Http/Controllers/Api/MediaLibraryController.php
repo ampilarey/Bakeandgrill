@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Content\ContentRegistry;
+use App\Domains\Content\ContentWriter;
 use App\Domains\Media\Services\MediaEditor;
 use App\Domains\Media\Services\MediaLibraryService;
 use App\Domains\Media\Services\MediaUsageResolver;
@@ -24,6 +26,7 @@ class MediaLibraryController extends Controller
         private readonly MediaUsageResolver $usage,
         private readonly MediaEditor $editor,
         private readonly AuditLogService $audit,
+        private readonly ContentWriter $contentWriter,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -249,7 +252,11 @@ class MediaLibraryController extends Controller
             return response()->json(['message' => 'Only image assets can be used as brand/default photos.'], 422);
         }
 
-        $allowed = ['default_item_image', 'favicon', 'logo', 'logo_dark', 'og_image'];
+        // Image "Use as" targets — primary_color syncs via ContentWriter but is not an image assign.
+        $allowed = array_values(array_filter(
+            ContentRegistry::BRAND_SYNCED_KEYS,
+            static fn (string $k): bool => ContentRegistry::type($k) === 'image',
+        ));
         $validated = $request->validate([
             'key' => ['required', 'string', Rule::in($allowed)],
         ]);
@@ -260,41 +267,27 @@ class MediaLibraryController extends Controller
         }
 
         $old = SiteSetting::get($key);
-        $meta = match ($key) {
-            'default_item_image' => [
-                'type' => 'image',
-                'group' => 'Branding',
-                'label' => 'Default item photo',
-                'description' => 'Shown for menu items that don\'t have their own photo.',
-            ],
-            'logo' => ['type' => 'image', 'group' => 'Branding', 'label' => 'Logo (Light)', 'description' => ''],
-            'logo_dark' => ['type' => 'image', 'group' => 'Branding', 'label' => 'Logo (Dark)', 'description' => ''],
-            'favicon' => ['type' => 'image', 'group' => 'Branding', 'label' => 'Favicon', 'description' => ''],
-            'og_image' => ['type' => 'image', 'group' => 'SEO', 'label' => 'OG Image', 'description' => ''],
-            default => ['type' => 'image', 'group' => 'Branding', 'label' => $key, 'description' => ''],
-        };
+        $block = ContentRegistry::block($key) ?? [];
+        $meta = [
+            'type' => (string) ($block['type'] ?? 'image'),
+            'group' => (string) ($block['group'] ?? 'Branding'),
+            'label' => (string) ($block['label'] ?? $key),
+            'description' => is_string($block['description'] ?? null) ? (string) $block['description'] : '',
+        ];
 
-        $scopes = ($key === 'default_item_image' && SiteSetting::hasScopeColumn())
-            ? ['shared', 'website', 'order_app']
-            : ['shared'];
-        foreach ($scopes as $scope) {
-            SiteSetting::set($key, $url, $scope, 'en');
-            $row = SiteSetting::query()->where('key', $key);
-            if (SiteSetting::hasScopeColumn()) {
-                $row->where('scope', $scope);
-            }
-            if (SiteSetting::hasLocaleColumn()) {
-                $row->where('locale', 'en');
-            }
-            $row->update([
-                'type' => $meta['type'],
-                'group' => $meta['group'],
-                'label' => $meta['label'],
-                'description' => $meta['description'],
-                'is_public' => true,
-            ]);
+        // Ensure rows exist, then write through ContentWriter (mirrors all brand scopes).
+        foreach (ContentRegistry::SCOPES as $scope) {
+            $this->ensureSettingRow($key, $scope, 'en', $meta);
         }
-        SiteSetting::bust();
+        $this->contentWriter->write(
+            $key,
+            'shared',
+            $url,
+            'en',
+            $request,
+            'content.updated',
+            ['source' => 'media.use_as', 'media_id' => (int) $media->id],
+        );
 
         $this->audit->log(
             'media.use_as',
@@ -318,5 +311,48 @@ class MediaLibraryController extends Controller
             'key' => $key,
             'url' => $url,
         ]);
+    }
+
+    /**
+     * @param array{type: string, group: string, label: string, description: string} $meta
+     */
+    private function ensureSettingRow(string $key, string $scope, string $locale, array $meta): void
+    {
+        $query = SiteSetting::query()->where('key', $key);
+        if (SiteSetting::hasScopeColumn()) {
+            $query->where('scope', $scope);
+        }
+        if (SiteSetting::hasLocaleColumn()) {
+            $query->where('locale', $locale);
+        }
+        $row = $query->first();
+        if ($row) {
+            $row->update([
+                'type' => $meta['type'],
+                'group' => $meta['group'],
+                'label' => $meta['label'],
+                'description' => $meta['description'],
+                'is_public' => true,
+            ]);
+
+            return;
+        }
+
+        $attrs = [
+            'key' => $key,
+            'value' => '',
+            'type' => $meta['type'],
+            'group' => $meta['group'],
+            'label' => $meta['label'],
+            'description' => $meta['description'],
+            'is_public' => true,
+        ];
+        if (SiteSetting::hasScopeColumn()) {
+            $attrs['scope'] = $scope;
+        }
+        if (SiteSetting::hasLocaleColumn()) {
+            $attrs['locale'] = $locale;
+        }
+        SiteSetting::query()->create($attrs);
     }
 }

@@ -49,8 +49,8 @@ final class ContentWriter
 
         SiteSetting::set($key, $value, $scope, $locale);
 
-        // Default item photo must stay identical for website + order app.
-        // Content Studio writes one app scope — mirror to the other scopes.
+        // Brand keys (logo, favicon, default item photo, …) must stay identical
+        // across website + order app. Hub may write one scope — mirror the rest.
         if (ContentRegistry::isSyncedAcrossApps($key)) {
             foreach (ContentRegistry::SCOPES as $mirrorScope) {
                 if ($mirrorScope === $scope) {

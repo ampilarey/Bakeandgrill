@@ -218,45 +218,6 @@ class ContentController extends Controller
     }
 
     /**
-     * GET /api/admin/content/media — browse owned content uploads for reuse.
-     */
-    public function media(Request $request): JsonResponse
-    {
-        $disk = Storage::disk('public');
-        $items = [];
-
-        foreach (['site', 'site/website', 'site/order_app'] as $dir) {
-            if (!$disk->exists($dir)) {
-                continue;
-            }
-            foreach ($disk->allFiles($dir) as $path) {
-                // Skip masters/thumbs/video posters nesting noise for thumbs — still list images.
-                if (preg_match('/\.(jpe?g|png|webp)$/i', $path) !== 1) {
-                    continue;
-                }
-                if (str_contains($path, '/masters/') || str_contains($path, '/video/')) {
-                    continue;
-                }
-                $url = '/storage/' . ltrim($path, '/');
-                $thumbCandidate = preg_replace('#^(site(?:/website|/order_app)?)/#', '$1/thumbs/', $path) ?? $path;
-                $thumbUrl = $disk->exists($thumbCandidate) ? '/storage/' . ltrim($thumbCandidate, '/') : null;
-                $items[] = [
-                    'url' => $url,
-                    'thumb_url' => $thumbUrl,
-                    'name' => basename($path),
-                    'updated_at' => date('c', $disk->lastModified($path)),
-                ];
-            }
-        }
-
-        usort($items, static fn (array $a, array $b): int => strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? '')));
-
-        return response()->json([
-            'items' => array_slice($items, 0, 200),
-        ]);
-    }
-
-    /**
      * GET /api/admin/content/{key}/revisions
      */
     public function revisions(Request $request, string $key): JsonResponse
@@ -509,7 +470,8 @@ class ContentController extends Controller
             }
             foreach ($query->get() as $row) {
                 $old = $row->value;
-                MediaFileCleaner::deleteIfOwnedAndUnreferenced($row->value);
+                // Do not delete files here — collapsing to "Same" is a content
+                // operation; Media Library owns asset lifecycle (B7).
                 $row->delete();
                 $this->audit->log(
                     action: 'content.shared',

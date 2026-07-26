@@ -56,15 +56,18 @@ class DefaultItemImageTest extends TestCase
         ]);
     }
 
-    public function test_upload_persists_and_appears_in_public_settings(): void
+    public function test_content_upload_persists_and_appears_in_public_settings(): void
     {
         Sanctum::actingAs($this->owner, ['staff']);
         $file = UploadedFile::fake()->image('default-item.jpg', 400, 400);
 
-        $res = $this->post('/api/site-settings/upload', [
+        // Legacy PUT/POST /api/site-settings* write/upload doors are retired —
+        // brand uploads go through Content Studio / Media Library.
+        $res = $this->post('/api/admin/content/upload', [
             'file' => $file,
             'key' => 'default_item_image',
-        ], ['Accept' => 'application/json'])->assertOk();
+            'scope' => 'shared',
+        ], ['Accept' => 'application/json'])->assertCreated();
 
         $url = $res->json('url');
         $this->assertNotEmpty($url);
@@ -102,6 +105,10 @@ class DefaultItemImageTest extends TestCase
             ->assertOk()
             ->assertJsonPath('key', 'logo');
         $this->assertSame($media->url, SiteSetting::get('logo'));
+        $this->assertSame($media->url, SiteSetting::getScoped('logo', 'website'));
+        $this->assertSame($media->url, SiteSetting::getScoped('logo', 'order_app'));
+        $this->assertSame($media->url, SiteSetting::getScoped('logo', 'shared'));
+        $this->assertDatabaseHas('content_revisions', ['key' => 'logo']);
 
         Sanctum::actingAs($this->staff, ['staff']);
         $this->postJson("/api/admin/media/{$media->id}/use-as", ['key' => 'favicon'])

@@ -38,9 +38,9 @@ class ContentBlockResource extends JsonResource
         $website = SiteSetting::getScoped($key, 'website', $locale);
         $orderApp = SiteSetting::getScoped($key, 'order_app', $locale);
 
-        $hasWebsite = $this->hasAnyOverride($key, 'website');
-        $hasOrder = $this->hasAnyOverride($key, 'order_app');
-        $state = ($hasWebsite || $hasOrder) ? 'split' : 'shared';
+        $linkState = ContentRegistry::linkState($key, $locale);
+        // Back-compat for older admin clients (share/split wording).
+        $state = $linkState === 'different' ? 'split' : 'shared';
 
         $description = $block['description'] ?? null;
 
@@ -55,6 +55,9 @@ class ContentBlockResource extends JsonResource
             'shareable' => (bool) ($block['shareable'] ?? false),
             'public' => (bool) ($block['public'] ?? false),
             'rich' => (bool) ($block['rich'] ?? false),
+            'deprecated' => (bool) ($block['deprecated'] ?? false),
+            'section_enable' => (bool) ($block['section_enable'] ?? false),
+            'brand_synced' => ContentRegistry::isSyncedAcrossApps($key),
             'description' => is_string($description) && $description !== '' ? $description : null,
             'default' => $block['default'] ?? null,
             'shared' => $shared,
@@ -62,19 +65,9 @@ class ContentBlockResource extends JsonResource
             'order_app' => $orderApp,
             'resolved_website' => ContentResolver::for('website', $locale)->get($key),
             'resolved_order_app' => ContentResolver::for('order_app', $locale)->get($key),
+            'link_state' => $linkState,
             'state' => $state,
         ];
-    }
-
-    private function hasAnyOverride(string $key, string $scope): bool
-    {
-        $query = SiteSetting::query()->where('key', $key)->where('scope', $scope)
-            ->whereNotNull('value')->where('value', '!=', '');
-        if (SiteSetting::hasLocaleColumn()) {
-            // any locale counts as split
-        }
-
-        return $query->exists();
     }
 
     /**
@@ -83,7 +76,7 @@ class ContentBlockResource extends JsonResource
     public static function collectionFromRegistry(string $locale = 'en'): array
     {
         $out = [];
-        foreach (ContentRegistry::blocks() as $key => $block) {
+        foreach (ContentRegistry::hubBlocks() as $key => $block) {
             $out[] = (new self([
                 'key' => (string) $key,
                 'block' => $block,

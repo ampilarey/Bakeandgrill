@@ -269,33 +269,15 @@ class CmsContentTest extends TestCase
     // Auth guards — settings update
     // ──────────────────────────────────────────────────────────────────────────
 
-    public function test_unauthenticated_cannot_update_settings(): void
-    {
-        $response = $this->putJson('/api/site-settings', ['announcement_text' => 'hack']);
-        $response->assertUnauthorized();
-    }
-
-    public function test_non_owner_staff_cannot_update_settings(): void
-    {
-        Sanctum::actingAs($this->staffUser(), ['*']);
-
-        $response = $this->putJson('/api/site-settings', ['announcement_text' => 'hack']);
-        $response->assertForbidden();
-    }
-
-    public function test_owner_can_update_settings(): void
+    public function test_legacy_site_settings_write_routes_are_retired(): void
     {
         Sanctum::actingAs($this->ownerUser(), ['*']);
 
-        $this->seedSetting('announcement_text', 'original', 'Announcements', 'text', true);
-
-        $response = $this->putJson('/api/site-settings', ['settings' => ['announcement_text' => 'updated banner']]);
-        $response->assertOk();
-
-        $this->assertDatabaseHas('site_settings', [
-            'key' => 'announcement_text',
-            'value' => 'updated banner',
-        ]);
+        // GET /site-settings remains; write verbs are gone (405 Method Not Allowed).
+        $this->putJson('/api/site-settings', ['settings' => ['announcement_text' => 'updated banner']])
+            ->assertMethodNotAllowed();
+        $this->postJson('/api/site-settings/upload', ['key' => 'logo'])
+            ->assertNotFound();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
