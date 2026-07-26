@@ -484,12 +484,13 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border-bottom: none; /* prayer sits directly under — no divider line */
-            padding: 0.75rem 1rem;
-            padding-top: max(0.75rem, env(safe-area-inset-top));
+            /* Tight bottom pad — match order-app greeting → prayer gap */
+            padding: 0.65rem 1rem 0.2rem;
+            padding-top: max(0.65rem, env(safe-area-inset-top));
             transition: padding 0.2s ease;
         }
         .mobile-header.scrolled {
-            padding: 0.4rem 1rem;
+            padding: 0.4rem 1rem 0.15rem;
             padding-top: max(0.4rem, env(safe-area-inset-top));
             box-shadow: 0 2px 12px rgba(28, 20, 8, 0.06);
         }
@@ -794,7 +795,8 @@
         /* ─── Prayer banner (matches order-app PrayerBar) ───────── */
         .site-prayer-wrap--mobile {
             display: none;
-            padding: 0.35rem 1rem 0.4rem;
+            /* Match order-app .home-prayer-wrap */
+            padding: 0.25rem 1rem 0.4rem;
             background: transparent;
             border: none;
         }
