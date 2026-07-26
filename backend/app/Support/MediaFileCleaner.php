@@ -139,7 +139,19 @@ final class MediaFileCleaner
         }
 
         if (Schema::hasTable('site_settings')) {
-            $settingsQuery = SiteSetting::query()->where('value', $url);
+            // Exact match (image keys) or JSON embed (hero_slides, categories, …).
+            // json_encode may escape slashes as \/ — match both forms.
+            $jsonEscaped = str_replace('/', '\\/', $url);
+            $likes = [
+                '%' . addcslashes($url, '%_\\') . '%',
+                '%' . addcslashes($jsonEscaped, '%_\\') . '%',
+            ];
+            $settingsQuery = SiteSetting::query()->where(function ($q) use ($url, $likes): void {
+                $q->where('value', $url);
+                foreach ($likes as $like) {
+                    $q->orWhere('value', 'like', $like);
+                }
+            });
             if ($exceptSiteSettingIds !== []) {
                 $settingsQuery->whereNotIn('id', $exceptSiteSettingIds);
             }
