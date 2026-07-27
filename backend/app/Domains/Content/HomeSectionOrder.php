@@ -11,8 +11,8 @@ final class HomeSectionOrder
     public const MOVABLE = self::DEFAULT;
 
     /**
-     * Resolve stored section order, ignoring unknown IDs and appending missing
-     * sections in their original default positions.
+     * Resolve stored section order, ignoring unknown IDs and appending any
+     * sections missing from the stored order at the end, in default order.
      *
      * @return list<string>
      */

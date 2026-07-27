@@ -548,6 +548,7 @@
             -webkit-backdrop-filter: blur(14px);
             z-index: 300;
             box-sizing: border-box;
+            overflow: visible;
         }
         [data-theme="dark"] .mobile-bottom-nav {
             background: rgba(26, 18, 8, 0.97);
@@ -617,6 +618,62 @@
             font-size: 0.6875rem;
             font-weight: 600;
             line-height: 1.2;
+        }
+        /* Center Order CTA — raised amber badge, same 5-tab grid */
+        .mob-nav-order {
+            color: var(--amber);
+            z-index: 1;
+            overflow: visible;
+            justify-content: flex-end;
+            padding-bottom: 6px;
+            gap: 0;
+            min-height: var(--touch-target);
+        }
+        .mob-nav-order:hover,
+        .mob-nav-order.active {
+            color: var(--amber);
+        }
+        .mob-nav-order.active::after,
+        .mob-nav-order::after {
+            content: none;
+            display: none;
+        }
+        .mob-nav-order .mob-nav-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            background: var(--amber);
+            color: #1C1408;
+            box-shadow: 0 6px 16px rgba(201, 122, 42, 0.35);
+            transform: translateY(-10px);
+        }
+        .mob-nav-order .mob-nav-icon svg {
+            width: 22px;
+            height: 22px;
+            color: #1C1408;
+            stroke: #1C1408;
+        }
+        .mob-nav-order .mob-nav-label {
+            color: var(--amber);
+            font-weight: 700;
+            margin-top: -6px;
+            position: relative;
+            z-index: 1;
+        }
+        [data-theme="dark"] .mob-nav-order {
+            color: var(--amber);
+        }
+        [data-theme="dark"] .mob-nav-order .mob-nav-icon {
+            background: var(--amber);
+            color: #1C1408;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+        }
+        [data-theme="dark"] .mob-nav-order .mob-nav-icon svg {
+            color: #1C1408;
+            stroke: #1C1408;
+        }
+        [data-theme="dark"] .mob-nav-order .mob-nav-label {
+            color: var(--amber);
         }
 
         /* ─── Footer ────────────────────────────────────────────── */
@@ -1410,7 +1467,7 @@
         </span>
         <span class="mob-nav-label">Menu</span>
     </a>
-    <a href="/order/menu" class="mob-nav-item" data-nav="order">
+    <a href="/order/menu" class="mob-nav-item mob-nav-order" data-nav="order">
         <span class="mob-nav-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
         </span>
