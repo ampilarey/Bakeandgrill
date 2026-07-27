@@ -341,9 +341,6 @@
     .hero-banner {
         height: min(82vh, 820px);
     }
-    .banner-overlay > * {
-        max-width: 700px;
-    }
 }
 @keyframes banner-fade-up {
     from { opacity: 0; transform: translateY(14px); }
@@ -1039,15 +1036,21 @@
                 <div class="banner-overlay">
                     @php
                         $eyebrow = trim((string) ($slide['eyebrow'] ?? ''));
+                        $titleHtml = (string) ($slide['title'] ?? '');
+                        // Match order-app: omit empty title so it doesn't leave a blank line gap
+                        $titleVisible = trim(html_entity_decode(strip_tags($titleHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8')) !== '';
+                        $subtitle = trim((string) ($slide['subtitle'] ?? ''));
                         $cta1Text = trim((string) ($slide['cta_text'] ?? ''));
                         $cta2Text = trim((string) ($slide['cta2_text'] ?? ''));
                     @endphp
                     @if($eyebrow !== '')
                         <span class="banner-eyebrow">{{ $eyebrow }}</span>
                     @endif
-                    <h2 class="banner-title">{!! $slide['title'] !!}</h2>
-                    @if(!empty($slide['subtitle']))
-                        <p class="banner-sub">{{ $slide['subtitle'] }}</p>
+                    @if($titleVisible)
+                        <h2 class="banner-title">{!! $titleHtml !!}</h2>
+                    @endif
+                    @if($subtitle !== '')
+                        <p class="banner-sub">{{ $subtitle }}</p>
                     @endif
                     @if($cta1Text !== '' || $cta2Text !== '')
                     <div class="banner-ctas">
