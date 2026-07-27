@@ -102,4 +102,57 @@ class VideoStudioTest extends TestCase
         $this->assertStringContainsString('.mp4', (string) $res->json('url'));
         $this->assertStringContainsString('.jpg', (string) $res->json('poster_url'));
     }
+
+    public function test_process_portrait_original_aspect_exports(): void
+    {
+        $processor = app(VideoProcessor::class);
+        if (! $processor->available()) {
+            $this->markTestSkipped('FFmpeg not available in this environment');
+        }
+
+        $this->actingAsOwner();
+
+        Storage::disk('public')->makeDirectory('library/video');
+        $rel = 'library/video/studio-portrait.mp4';
+        $abs = Storage::disk('public')->path($rel);
+
+        $gen = proc_open(
+            [
+                'ffmpeg', '-y',
+                '-f', 'lavfi', '-i', 'color=c=blue:s=576x1024:d=2',
+                '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+                '-an',
+                $abs,
+            ],
+            [2 => ['pipe', 'w']],
+            $pipes,
+        );
+        if (is_resource($gen)) {
+            stream_get_contents($pipes[2]);
+            fclose($pipes[2]);
+            proc_close($gen);
+        }
+
+        if (! is_file($abs)) {
+            $this->markTestSkipped('Could not generate portrait test mp4');
+        }
+
+        $this->postJson('/api/admin/media/video/process', [
+            'source_url' => '/storage/'.$rel,
+            'trim_start' => 0,
+            'trim_end' => 1.5,
+            'aspect' => 'original',
+            'poster_at' => 0.3,
+            'register_library' => false,
+        ])->assertCreated();
+
+        $this->postJson('/api/admin/media/video/process', [
+            'source_url' => '/storage/'.$rel,
+            'trim_start' => 0,
+            'trim_end' => 1.5,
+            'aspect' => '4:5',
+            'poster_at' => 0.3,
+            'register_library' => false,
+        ])->assertCreated();
+    }
 }
