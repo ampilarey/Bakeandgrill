@@ -20,13 +20,41 @@ final class VideoProcessor
     public function available(): bool
     {
         try {
-            $ffmpeg = Process::timeout(10)->run(['ffmpeg', '-version']);
-            $ffprobe = Process::timeout(10)->run(['ffprobe', '-version']);
+            $ffmpeg = Process::timeout(10)->run([$this->bin('ffmpeg'), '-version']);
+            $ffprobe = Process::timeout(10)->run([$this->bin('ffprobe'), '-version']);
 
             return $ffmpeg->successful() && $ffprobe->successful();
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /** Prefer FFMPEG_PATH / FFPROBE_PATH when cPanel PATH is thin for php-fpm. */
+    private function bin(string $name): string
+    {
+        if ($name === 'ffmpeg') {
+            $configured = (string) config('media.ffmpeg_path', env('FFMPEG_PATH', ''));
+            if ($configured !== '' && is_executable($configured)) {
+                return $configured;
+            }
+        }
+        if ($name === 'ffprobe') {
+            $configured = (string) config('media.ffprobe_path', env('FFPROBE_PATH', ''));
+            if ($configured !== '' && is_executable($configured)) {
+                return $configured;
+            }
+        }
+
+        foreach (['/usr/bin/'.$name, '/usr/local/bin/'.$name, $name] as $candidate) {
+            if ($candidate === $name) {
+                return $name;
+            }
+            if (is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $name;
     }
 
     /**
@@ -37,7 +65,7 @@ final class VideoProcessor
         $this->assertReadable($absolutePath);
 
         $result = Process::timeout(30)->run([
-            'ffprobe', '-v', 'quiet', '-print_format', 'json',
+            $this->bin('ffprobe'), '-v', 'quiet', '-print_format', 'json',
             '-show_format', '-show_streams', $absolutePath,
         ]);
 
@@ -63,6 +91,12 @@ final class VideoProcessor
         $duration = (float) ($data['format']['duration'] ?? ($video['duration'] ?? 0));
         $width = (int) ($video['width'] ?? 0);
         $height = (int) ($video['height'] ?? 0);
+        if ($width < 2) {
+            $width = (int) ($video['coded_width'] ?? 0);
+        }
+        if ($height < 2) {
+            $height = (int) ($video['coded_height'] ?? 0);
+        }
         $codec = (string) ($video['codec_name'] ?? '');
         $rotation = $this->rotationDegrees($video);
 
@@ -158,43 +192,72 @@ final class VideoProcessor
         $outAbs = Storage::disk('public')->path($outRel);
         $posterAbs = Storage::disk('public')->path($posterRel);
 
-        $vf = $this->buildVideoFilter($crop, $aspect);
+        $ew = max(2, $crop['w'] & ~1);
+        $eh = max(2, $crop['h'] & ~1);
+        $ex = max(0, $crop['x'] & ~1);
+        $ey = max(0, $crop['y'] & ~1);
+        $ss = $this->fmtTime($trimStart);
+        $td = $this->fmtTime($trimDur);
 
-        // -noautorotate: crop coords match coded size (iPhone .mov).
-        // -t duration: more reliable than -to on FFmpeg 4.4.
-        $export = Process::timeout(300)->run([
-            'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
-            '-noautorotate',
-            '-i', $sourceAbsolute,
-            '-ss', $this->fmtTime($trimStart),
-            '-t', $this->fmtTime($trimDur),
-            '-vf', $vf,
-            '-c:v', 'libx264',
-            '-preset', 'veryfast',
-            '-crf', '23',
-            '-profile:v', 'main',
-            '-level', '4.0',
-            '-pix_fmt', 'yuv420p',
-            '-movflags', '+faststart',
-            '-an',
+        // Multiple FFmpeg 4.4 / iPhone-MOV strategies — first success wins.
+        $exportAttempts = $this->buildExportAttempts(
+            $sourceAbsolute,
             $outAbs,
-        ]);
+            $ss,
+            $td,
+            $aspect,
+            $ex,
+            $ey,
+            $ew,
+            $eh,
+            max(2, $srcW & ~1),
+            max(2, $srcH & ~1),
+        );
 
-        if (! $export->successful() || ! is_file($outAbs) || filesize($outAbs) < 32) {
+        $lastError = '';
+        $exported = false;
+        foreach ($exportAttempts as $cmd) {
             @unlink($outAbs);
-            throw new RuntimeException('Video export failed: '.$this->shortError($export->errorOutput().$export->output()));
+            $export = Process::timeout(300)->run($cmd);
+            if ($export->successful() && is_file($outAbs) && filesize($outAbs) >= 32) {
+                $exported = true;
+                break;
+            }
+            $lastError = $this->shortError($export->errorOutput().$export->output());
+            @unlink($outAbs);
         }
 
+        if (! $exported) {
+            throw new RuntimeException('Video export failed: '.$lastError);
+        }
+
+        $posterVf = $aspect === 'original'
+            ? sprintf('scale=%d:%d,format=yuv420p,setsar=1', max(2, $srcW & ~1), max(2, $srcH & ~1))
+            : sprintf('crop=%d:%d:%d:%d,scale=%d:%d,format=yuv420p,setsar=1', $ew, $eh, $ex, $ey, $ew, $eh);
+
+        $ff = $this->bin('ffmpeg');
         $poster = Process::timeout(90)->run([
-            'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
+            $ff, '-y', '-hide_banner', '-loglevel', 'error',
             '-noautorotate',
             '-ss', $this->fmtTime($posterAt),
             '-i', $sourceAbsolute,
-            '-vf', $vf,
             '-frames:v', '1',
             '-q:v', '3',
+            '-vf', $posterVf,
             $posterAbs,
         ]);
+
+        if (! $poster->successful() || ! is_file($posterAbs)) {
+            // Fallback poster: first frame, no filters
+            $poster = Process::timeout(90)->run([
+                $ff, '-y', '-hide_banner', '-loglevel', 'error',
+                '-ss', $this->fmtTime($posterAt),
+                '-i', $sourceAbsolute,
+                '-frames:v', '1',
+                '-q:v', '3',
+                $posterAbs,
+            ]);
+        }
 
         if (! $poster->successful() || ! is_file($posterAbs)) {
             @unlink($outAbs);
@@ -224,7 +287,7 @@ final class VideoProcessor
         $this->assertReadable($absolutePath);
 
         $result = Process::timeout(30)->run([
-            'ffprobe', '-v', 'quiet', '-print_format', 'json',
+            $this->bin('ffprobe'), '-v', 'quiet', '-print_format', 'json',
             '-show_format', '-show_streams', $absolutePath,
         ]);
 
@@ -243,36 +306,145 @@ final class VideoProcessor
             }
         }
 
+        $width = (int) ($video['width'] ?? 0);
+        $height = (int) ($video['height'] ?? 0);
+        if ($width < 2) {
+            $width = (int) ($video['coded_width'] ?? 0);
+        }
+        if ($height < 2) {
+            $height = (int) ($video['coded_height'] ?? 0);
+        }
+
         return [
             'duration' => max(0, (float) ($data['format']['duration'] ?? ($video['duration'] ?? 0))),
-            'width' => max(0, (int) ($video['width'] ?? 0)),
-            'height' => max(0, (int) ($video['height'] ?? 0)),
+            'width' => max(0, $width),
+            'height' => max(0, $height),
             'codec' => (string) ($video['codec_name'] ?? ''),
         ];
     }
 
     /**
-     * @param  array{x: int, y: int, w: int, h: int}  $crop
+     * Ordered encode strategies for FFmpeg 4.4 + iPhone .mov quirks.
+     * First success wins — stream-copy avoids libx264 init failures entirely.
+     *
+     * @return list<list<string>>
      */
-    private function buildVideoFilter(array $crop, string $aspect): string
-    {
-        // Skip crop for original — iPhone MOVs + FFmpeg 4.4 are happiest with scale only.
+    private function buildExportAttempts(
+        string $src,
+        string $out,
+        string $ss,
+        string $td,
+        string $aspect,
+        int $ex,
+        int $ey,
+        int $ew,
+        int $eh,
+        int $srcW,
+        int $srcH,
+    ): array {
+        $ff = $this->bin('ffmpeg');
+        $head = [$ff, '-y', '-hide_banner', '-loglevel', 'error'];
+
+        // Avoid -profile/-level — FFmpeg 4.4 + some iPhone fps/size combos reject level 4.0.
+        $encodeTail = [
+            '-c:v', 'libx264',
+            '-preset', 'veryfast',
+            '-crf', '23',
+            '-pix_fmt', 'yuv420p',
+            '-threads', '1',
+            '-movflags', '+faststart',
+            '-an',
+            $out,
+        ];
+
+        $attempts = [];
+
         if ($aspect === 'original') {
-            return 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p';
+            // 0) Stream copy — no encoder (fixes "Error while opening encoder" on many hosts)
+            $attempts[] = array_merge($head, [
+                '-noautorotate', '-ss', $ss, '-t', $td, '-i', $src,
+                '-c:v', 'copy', '-an', '-movflags', '+faststart', $out,
+            ]);
+            $attempts[] = array_merge($head, [
+                '-ss', $ss, '-t', $td, '-i', $src,
+                '-c:v', 'copy', '-an', '-movflags', '+faststart', $out,
+            ]);
+
+            // 1) Reencode, no filters
+            $attempts[] = array_merge($head, ['-ss', $ss, '-t', $td, '-i', $src], $encodeTail);
+
+            // 2) Force CFR 30 + pix_fmt only
+            $attempts[] = array_merge($head, [
+                '-noautorotate', '-i', $src, '-ss', $ss, '-t', $td,
+                '-vf', 'format=yuv420p',
+                '-vsync', 'cfr', '-r', '30',
+            ], $encodeTail);
+
+            // 3) Explicit even size
+            $attempts[] = array_merge($head, [
+                '-noautorotate', '-ss', $ss, '-t', $td, '-i', $src,
+                '-vf', sprintf('scale=%d:%d:flags=bicubic,format=yuv420p,setsar=1', $srcW, $srcH),
+                '-vsync', 'cfr', '-r', '30',
+            ], $encodeTail);
+
+            // 4) Pad to even (expression form)
+            $attempts[] = array_merge($head, [
+                '-noautorotate', '-ss', $ss, '-t', $td, '-i', $src,
+                '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2:(ow-iw)/2:(oh-ih)/2,format=yuv420p,setsar=1',
+            ], $encodeTail);
+
+            // 5) trim filter (when -ss/-t confuse timebase → 0 fps)
+            $attempts[] = array_merge($head, [
+                '-noautorotate', '-i', $src,
+                '-vf', sprintf(
+                    'trim=start=%s:duration=%s,setpts=PTS-STARTPTS,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p',
+                    $ss,
+                    $td,
+                ),
+                '-vsync', 'cfr', '-r', '30',
+            ], $encodeTail);
+
+            // 6) Downscale long edge (last resort)
+            $long = max($srcW, $srcH);
+            if ($long > 720) {
+                $attempts[] = array_merge($head, [
+                    '-noautorotate', '-ss', $ss, '-t', $td, '-i', $src,
+                    '-vf', 'scale=trunc(iw*min(720/iw\\,720/ih)/2)*2:trunc(ih*min(720/iw\\,720/ih)/2)*2,format=yuv420p,setsar=1',
+                    '-vsync', 'cfr', '-r', '30',
+                ], $encodeTail);
+            }
+        } else {
+            $cropVf = sprintf(
+                'crop=%d:%d:%d:%d,scale=%d:%d:flags=bicubic,format=yuv420p,setsar=1',
+                $ew, $eh, $ex, $ey, $ew, $eh,
+            );
+            $trimCropVf = sprintf(
+                'trim=start=%s:duration=%s,setpts=PTS-STARTPTS,%s',
+                $ss, $td, sprintf('crop=%d:%d:%d:%d,format=yuv420p,setsar=1', $ew, $eh, $ex, $ey),
+            );
+
+            $attempts[] = array_merge($head, [
+                '-noautorotate', '-ss', $ss, '-t', $td, '-i', $src,
+                '-vf', $cropVf, '-vsync', 'cfr', '-r', '30',
+            ], $encodeTail);
+
+            $attempts[] = array_merge($head, [
+                '-noautorotate', '-i', $src, '-ss', $ss, '-t', $td,
+                '-vf', $cropVf,
+            ], $encodeTail);
+
+            $attempts[] = array_merge($head, [
+                '-ss', $ss, '-t', $td, '-i', $src,
+                '-vf', $cropVf, '-vsync', 'cfr', '-r', '30',
+            ], $encodeTail);
+
+            $attempts[] = array_merge($head, [
+                '-noautorotate', '-i', $src,
+                '-vf', $trimCropVf, '-vsync', 'cfr', '-r', '30',
+            ], $encodeTail);
         }
 
-        $w = max(2, $crop['w'] & ~1);
-        $h = max(2, $crop['h'] & ~1);
-        $x = max(0, $crop['x'] & ~1);
-        $y = max(0, $crop['y'] & ~1);
-
-        return sprintf(
-            'crop=%d:%d:%d:%d,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p',
-            $w,
-            $h,
-            $x,
-            $y,
-        );
+        return $attempts;
     }
 
     /**

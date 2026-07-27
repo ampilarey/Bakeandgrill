@@ -42,7 +42,7 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
   const [posterAt, setPosterAt] = useState(0);
-  const [aspect, setAspect] = useState<VideoAspect>('4:5');
+  const [aspect, setAspect] = useState<VideoAspect>('original');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [metaLabel, setMetaLabel] = useState('');
