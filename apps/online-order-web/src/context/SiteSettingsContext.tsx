@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AnalyticsTracker } from '../components/AnalyticsTracker';
+import { applyFavicon } from '../lib/applyFavicon';
 import { applyBrandPalette, deriveBrandPalette } from '../lib/brandPalette';
 
 const SITE_SETTINGS_URL =
@@ -337,6 +338,11 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     return applyBrandPalette(deriveBrandPalette(settings.primary_color));
   }, [settings.primary_color]);
+
+  // Brand favicon — keeps index.html /logo.png until settings load, then swaps.
+  useEffect(() => {
+    applyFavicon(settings.favicon);
+  }, [settings.favicon]);
 
   const text = useCallback(
     (key: keyof SiteSettings | string, fallback: string) => {
