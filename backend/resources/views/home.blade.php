@@ -85,16 +85,50 @@
     );
 }
 @media (max-width: 768px) {
+    /* Match order-app .home-promo-hero mobile type + spacing */
     .banner-overlay {
         align-items: center;
         text-align: center;
+        justify-content: flex-end;
         padding: 1.75rem 1.25rem 2.75rem;
         background: linear-gradient(180deg, rgba(28,20,8,0.22) 0%, rgba(28,20,8,0.72) 55%, rgba(28,20,8,0.92) 100%);
-        justify-content: flex-end;
     }
-    .banner-eyebrow { margin-bottom: 0.85rem; }
-    .banner-title { margin-bottom: 0.65rem; }
-    .banner-sub { margin-bottom: 1.35rem; }
+    .banner-eyebrow {
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        margin-bottom: 0.75rem;
+        padding: 0;
+        background: none;
+        border: none;
+        color: #F0A96A;
+    }
+    .banner-title {
+        font-size: 1.7rem;
+        max-width: 100%;
+        margin: 0 0 0.5rem;
+        line-height: 1.08;
+        letter-spacing: -0.04em;
+    }
+    .banner-sub {
+        font-size: 0.8rem;
+        max-width: 100%;
+        margin: 0 0 1.25rem;
+        line-height: 1.55;
+        color: rgba(255, 255, 255, 0.78);
+    }
+    .banner-ctas {
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .banner-cta-primary,
+    .banner-cta-secondary {
+        width: auto;
+        max-width: 100%;
+        justify-content: center;
+        font-size: 0.875rem;
+        padding: 0.7rem 1.35rem;
+    }
     .banner-dots { bottom: 1rem; }
 }
 
@@ -214,7 +248,7 @@
     50% { opacity: 0.4; }
 }
 @media (max-width: 768px) {
-    .hero-status { top: 1rem; right: 1rem; }
+    .hero-status { top: 0.85rem; right: 0.85rem; }
 }
 
 /* Carousel nav */
@@ -251,21 +285,6 @@
     transition: all 0.3s; cursor: pointer;
 }
 .banner-dot.active { width: 24px; background: var(--amber); }
-
-/* Mobile hero adjustments */
-@media (max-width: 768px) {
-    .banner-eyebrow { font-size: 0.65rem; padding: 0.25rem 0.7rem; }
-    .banner-title { font-size: 1.7rem; max-width: 100%; }
-    .banner-sub   { font-size: 0.8rem; max-width: 100%; }
-    .banner-cta-primary, .banner-cta-secondary {
-        width: auto;
-        max-width: 100%;
-        justify-content: center;
-        font-size: 0.875rem;
-        padding: 0.7rem 1.35rem;
-    }
-    .banner-ctas { align-items: center; }
-}
 
 /* ── Desktop-only hero / banner polish (mobile unchanged) ───────── */
 @media (min-width: 769px) {
