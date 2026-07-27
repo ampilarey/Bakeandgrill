@@ -79,8 +79,18 @@ function relativeLuminance(rgb: { r: number; g: number; b: number }): number {
   return 0.2126 * chan[0] + 0.7152 * chan[1] + 0.0722 * chan[2];
 }
 
+function contrastRatio(rgb: { r: number; g: number; b: number }, hex: string): number {
+  const fg = hexToRgb(normalizeHex(hex) ?? hex);
+  const l1 = relativeLuminance(rgb);
+  const l2 = relativeLuminance(fg);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** Pick the foreground with the higher WCAG contrast against the background. */
 function contrastOn(rgb: { r: number; g: number; b: number }): string {
-  return relativeLuminance(rgb) >= 0.35 ? DARK_TEXT : LIGHT_TEXT;
+  return contrastRatio(rgb, DARK_TEXT) >= contrastRatio(rgb, LIGHT_TEXT) ? DARK_TEXT : LIGHT_TEXT;
 }
 
 export function deriveBrandPalette(raw: string | null | undefined): BrandTokens | null {

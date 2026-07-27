@@ -32,14 +32,35 @@ class BrandPaletteTest extends TestCase
         $this->assertStringContainsString('[data-theme="dark"]', $palette['css']);
     }
 
-    public function test_contrast_flips_for_light_vs_dark_brand_colour(): void
+    public function test_contrast_picks_higher_wcag_ratio(): void
     {
-        $light = BrandPalette::from('#F2C879');
-        $dark = BrandPalette::from('#2B1B0F');
-        $this->assertNotNull($light);
-        $this->assertNotNull($dark);
-        $this->assertSame(BrandPalette::DARK_TEXT, $light['light']['amber_contrast']);
-        $this->assertSame(BrandPalette::LIGHT_TEXT, $dark['light']['amber_contrast']);
-        $this->assertStringContainsString('--amber-contrast:', $light['css']);
+        $cases = [
+            '#D4813A' => BrandPalette::DARK_TEXT,  // current brand, light theme
+            '#E09242' => BrandPalette::DARK_TEXT,  // current brand, dark theme
+            '#F2C879' => BrandPalette::DARK_TEXT,  // very light
+            '#2B1B0F' => BrandPalette::LIGHT_TEXT, // very dark
+            '#FFFFFF' => BrandPalette::DARK_TEXT,
+            '#000000' => BrandPalette::LIGHT_TEXT,
+        ];
+
+        foreach ($cases as $hex => $expected) {
+            $palette = BrandPalette::from($hex);
+            $this->assertNotNull($palette, "palette for {$hex}");
+            $this->assertSame(
+                $expected,
+                $palette['light']['amber_contrast'],
+                "contrast for {$hex}",
+            );
+        }
+    }
+
+    public function test_current_brand_colour_keeps_hardcoded_amber_contrast(): void
+    {
+        $palette = BrandPalette::from('#D4813A');
+        $this->assertNotNull($palette);
+        // Choosing the site's existing brand colour must NOT change how it looks.
+        $this->assertSame('#1C1408', $palette['light']['amber_contrast']);
+        $this->assertSame(BrandPalette::DARK_TEXT, $palette['light']['amber_contrast']);
+        $this->assertStringContainsString('--amber-contrast: #1C1408', $palette['css']);
     }
 }

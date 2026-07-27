@@ -107,12 +107,38 @@ final class BrandPalette
     }
 
     /**
+     * WCAG contrast ratio between a background RGB and a foreground hex.
+     * (L1 + 0.05) / (L2 + 0.05) where L1 is the lighter luminance.
+     *
+     * @param  array{r: int, g: int, b: int}  $rgb
+     */
+    public static function contrastRatio(array $rgb, string $hex): float
+    {
+        $normalized = self::normalizeHex($hex);
+        if ($normalized === null) {
+            return 0.0;
+        }
+
+        $fg = self::hexToRgb($normalized);
+        $l1 = self::relativeLuminance($rgb);
+        $l2 = self::relativeLuminance($fg);
+        $lighter = max($l1, $l2);
+        $darker = min($l1, $l2);
+
+        return ($lighter + 0.05) / ($darker + 0.05);
+    }
+
+    /**
+     * Pick the foreground with the higher WCAG contrast against the background.
+     * Matches #1C1408 on #D4813A (dark text wins AA; light text fails).
+     *
      * @param  array{r: int, g: int, b: int}  $rgb
      */
     public static function contrastOn(array $rgb): string
     {
-        // Prefer dark text on light brand colours (matches #1C1408 on #D4813A).
-        return self::relativeLuminance($rgb) >= 0.35 ? self::DARK_TEXT : self::LIGHT_TEXT;
+        return self::contrastRatio($rgb, self::DARK_TEXT) >= self::contrastRatio($rgb, self::LIGHT_TEXT)
+            ? self::DARK_TEXT
+            : self::LIGHT_TEXT;
     }
 
     /**
