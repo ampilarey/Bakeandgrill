@@ -1114,24 +1114,41 @@ export function MediaLibraryPage() {
               )}
             </div>
 
-            {/* Video studio */}
-            {selected.media_type === 'video' && canManage && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>Video studio</div>
+            {/* Video editor — always highlight for video assets */}
+            {selected.media_type === 'video' && (
+              <div
+                data-testid="media-video-editor"
+                style={{
+                  marginBottom: 14,
+                  padding: 12,
+                  borderRadius: 12,
+                  border: '1.5px solid #E8D4B8',
+                  background: '#FFFBF5',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Clapperboard size={16} color="#D4813A" />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Video editor</div>
+                </div>
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6B5D4F' }}>
+                  Trim, crop aspect, pick a poster frame, export muted MP4.
+                </p>
                 <button
                   type="button"
                   onClick={() => setVideoStudioOpen(true)}
+                  disabled={!canManage}
                   style={{
-                    height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid #E8E0D8',
-                    background: '#FFF7ED', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-                    color: '#3D2B1F', display: 'inline-flex', alignItems: 'center', gap: 6,
+                    height: 40, padding: '0 14px', borderRadius: 8, border: 'none',
+                    background: canManage ? '#D4813A' : '#E8E0D8', cursor: canManage ? 'pointer' : 'not-allowed',
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+                    color: canManage ? '#fff' : '#9C8E7E', display: 'inline-flex', alignItems: 'center', gap: 8,
                   }}
                 >
-                  <Clapperboard size={14} /> Open video studio
+                  <Clapperboard size={16} /> Open video editor
                 </button>
-                <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9C8E7E' }}>
-                  Trim, crop aspect, poster frame, export muted MP4 into the library.
-                </p>
+                {!canManage ? (
+                  <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9C8E7E' }}>Needs media.manage permission.</p>
+                ) : null}
               </div>
             )}
 
