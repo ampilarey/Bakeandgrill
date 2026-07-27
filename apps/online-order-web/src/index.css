@@ -352,7 +352,7 @@ img.brand-logo--dark { display: none; }
   );
 }
 .home-promo-hero__eyebrow {
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -360,7 +360,7 @@ img.brand-logo--dark { display: none; }
   margin-bottom: 0.75rem;
 }
 .home-promo-hero__title {
-  font-size: 2rem;
+  font-size: 1.7rem;
   font-weight: 800;
   color: #fff;
   margin: 0 0 0.5rem;
@@ -373,7 +373,7 @@ img.brand-logo--dark { display: none; }
   color: #f0a96a;
 }
 .home-promo-hero__sub {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.78);
   margin: 0 0 1.25rem;
   line-height: 1.55;
@@ -389,6 +389,8 @@ img.brand-logo--dark { display: none; }
   width: auto;
   max-width: 100%;
   align-self: center;
+  font-size: 0.875rem;
+  padding: 0.7rem 1.35rem;
 }
 .home-promo-hero__cta-secondary {
   display: inline-flex;

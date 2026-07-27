@@ -254,9 +254,17 @@
 
 /* Mobile hero adjustments */
 @media (max-width: 768px) {
-    .banner-title { font-size: 2rem; max-width: 100%; }
-    .banner-sub   { font-size: 0.9rem; max-width: 100%; }
-    .banner-cta-primary, .banner-cta-secondary { width: 100%; justify-content: center; }
+    .banner-eyebrow { font-size: 0.65rem; padding: 0.25rem 0.7rem; }
+    .banner-title { font-size: 1.7rem; max-width: 100%; }
+    .banner-sub   { font-size: 0.8rem; max-width: 100%; }
+    .banner-cta-primary, .banner-cta-secondary {
+        width: auto;
+        max-width: 100%;
+        justify-content: center;
+        font-size: 0.875rem;
+        padding: 0.7rem 1.35rem;
+    }
+    .banner-ctas { align-items: center; }
 }
 
 /* ── Desktop-only hero / banner polish (mobile unchanged) ───────── */
