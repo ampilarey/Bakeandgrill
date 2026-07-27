@@ -1079,6 +1079,7 @@
         @endif
     </div>
 
+    @if($slideCount > 1)
     <button class="banner-btn prev" aria-label="Previous slide">‹</button>
     <button class="banner-btn next" aria-label="Next slide">›</button>
 
@@ -1087,12 +1088,14 @@
             <div class="banner-dot {{ $d === 0 ? 'active' : '' }}" data-slide="{{ $d }}"></div>
         @endfor
     </div>
+    @endif
 </div>
 
 <script nonce="{{ csp_nonce() }}">
 (function() {
     var idx = 0, total = {{ $slideCount }};
     var slides = document.querySelectorAll('.banner-slide');
+    if (total <= 1) return;
     var timer = setInterval(function() { move(1); }, 6000);
 
     function move(d) { idx = (idx + d + total) % total; apply(); }
