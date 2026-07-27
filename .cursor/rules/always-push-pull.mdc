@@ -1,0 +1,14 @@
+---
+description: After shipping a fix, always commit, push main, and give TEST pull
+alwaysApply: true
+---
+
+# Always push + TEST pull
+
+When a fix or small change is ready to ship (unless the user explicitly says not to, or is mid-feature on a named branch they want kept open):
+
+1. Commit with a clear message
+2. Push to `origin/main` (or merge the feature branch into `main` and push)
+3. End with a ready-to-paste **TEST** deploy command per `pull-after-push.mdc` / `deploy-commands.mdc` — never production unless asked
+
+Default to TEST only. Choose full vs quick deploy as those rules specify.
