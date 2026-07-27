@@ -1,9 +1,10 @@
 import { useRef, useState, type CSSProperties } from 'react';
-import { Film, Images } from 'lucide-react';
+import { Clapperboard, Film, Images } from 'lucide-react';
 import type { ContentEditorWithUploadProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
 import { ContentImageField, type ContentImageUploadResult } from './ContentImageField';
 import { MediaPicker } from '../MediaPicker';
+import { VideoStudioModal } from '../VideoStudioModal';
 import type { MediaAsset } from '../../api';
 import { Button } from '../ui';
 
@@ -93,6 +94,7 @@ export function HeroSlidesEditor({
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [libraryTarget, setLibraryTarget] = useState<LibraryTarget>(null);
+  const [studioIdx, setStudioIdx] = useState<number | null>(null);
 
   const commitSlides = (next: HeroSlideRow[]) => onChange(JSON.stringify(next));
 
@@ -357,6 +359,18 @@ export function HeroSlidesEditor({
                   Poster library
                 </Button>
                 {slide.video ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    icon={<Clapperboard size={13} />}
+                    disabled={busy}
+                    onClick={() => setStudioIdx(idx)}
+                  >
+                    Video studio
+                  </Button>
+                ) : null}
+                {slide.video ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -399,6 +413,27 @@ export function HeroSlidesEditor({
         title={libraryTarget?.kind === 'video' ? 'Pick hero video' : 'Pick video poster'}
         onPick={onLibraryPick}
       />
+      {studioIdx !== null && items[studioIdx]?.video ? (
+        <VideoStudioModal
+          open
+          sourceUrl={items[studioIdx].video || ''}
+          onClose={() => setStudioIdx(null)}
+          onExported={(res) => {
+            commitSlides(items.map((s, i) => (
+              i === studioIdx
+                ? {
+                    ...s,
+                    video: res.url,
+                    video_poster: res.poster_url,
+                    image: s.image || res.poster_url,
+                  }
+                : s
+            )));
+            setStudioIdx(null);
+            setStatus('Video studio export applied to this slide.');
+          }}
+        />
+      ) : null}
     </div>
   );
 }

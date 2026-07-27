@@ -118,6 +118,59 @@ export async function editMedia(
   });
 }
 
+export type VideoAspect = 'original' | '16:9' | '4:5' | '1:1' | '9:16';
+
+export type VideoStudioCapabilities = {
+  ffmpeg: boolean;
+  tools: string[];
+  aspects: VideoAspect[];
+};
+
+export type VideoProbeResult = {
+  duration: number;
+  width: number;
+  height: number;
+  codec: string;
+};
+
+export type VideoProcessResult = {
+  url: string;
+  poster_url: string;
+  duration: number;
+  width: number;
+  height: number;
+  media_id?: number | null;
+};
+
+export async function getVideoStudioCapabilities(): Promise<VideoStudioCapabilities> {
+  return req('/admin/media/video/capabilities');
+}
+
+export async function probeVideo(input: {
+  source_url?: string;
+  media_id?: number;
+}): Promise<VideoProbeResult> {
+  return req('/admin/media/video/probe', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function processVideo(input: {
+  source_url?: string;
+  media_id?: number;
+  trim_start?: number;
+  trim_end?: number | null;
+  aspect?: VideoAspect;
+  poster_at?: number;
+  register_library?: boolean;
+}): Promise<VideoProcessResult> {
+  return req('/admin/media/video/process', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export async function restoreMedia(id: number): Promise<{ asset: MediaAsset }> {
   return req(`/admin/media/${id}/restore`, { method: 'POST', body: '{}' });
 }

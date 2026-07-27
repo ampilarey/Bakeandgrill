@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import {
-  Check, ChevronLeft, ChevronRight, Copy, Crop, FileText, Film, Folder,
+  Check, ChevronLeft, ChevronRight, Clapperboard, Copy, Crop, FileText, Film, Folder,
   Image, Images, Music, Pencil, Plus, RefreshCw, RotateCw,
   Search, Sliders, Trash2, Upload, X,
 } from 'lucide-react';
@@ -17,6 +17,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useToast } from '../components/ui';
 import { Btn, EmptyState, Modal, PageHeader, PageShell, Spinner } from '../components/SharedUI';
+import { VideoStudioModal } from '../components/VideoStudioModal';
 
 const USE_AS_OPTIONS: { key: MediaUseAsKey; label: string }[] = [
   { key: 'default_item_image', label: 'Default item image' },
@@ -364,6 +365,8 @@ export function MediaLibraryPage() {
   const [usageItems, setUsageItems] = useState<MediaUsageItem[]>([]);
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
+
+  const [videoStudioOpen, setVideoStudioOpen] = useState(false);
 
   // Edit tools
   const [editOp, setEditOp] = useState<MediaEditOp | null>(null);
@@ -1111,6 +1114,27 @@ export function MediaLibraryPage() {
               )}
             </div>
 
+            {/* Video studio */}
+            {selected.media_type === 'video' && canManage && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>Video studio</div>
+                <button
+                  type="button"
+                  onClick={() => setVideoStudioOpen(true)}
+                  style={{
+                    height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid #E8E0D8',
+                    background: '#FFF7ED', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                    color: '#3D2B1F', display: 'inline-flex', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  <Clapperboard size={14} /> Open video studio
+                </button>
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9C8E7E' }}>
+                  Trim, crop aspect, poster frame, export muted MP4 into the library.
+                </p>
+              </div>
+            )}
+
             {/* Edit tools (images only) */}
             {selected.media_type === 'image' && canManage && (
               <div style={{ marginBottom: 14 }}>
@@ -1213,6 +1237,20 @@ export function MediaLibraryPage() {
           <Btn variant="ghost" onClick={() => setShowSaveModeModal(false)}>Cancel</Btn>
         </Modal>
       )}
+
+      {selected?.media_type === 'video' && videoStudioOpen ? (
+        <VideoStudioModal
+          open
+          sourceUrl={selected.url}
+          mediaId={selected.id}
+          onClose={() => setVideoStudioOpen(false)}
+          onExported={() => {
+            setVideoStudioOpen(false);
+            void loadAssets();
+            toast.success('Exported muted MP4 into the media library');
+          }}
+        />
+      ) : null}
 
       {/* Delete confirm modal */}
       {deleteTarget && (

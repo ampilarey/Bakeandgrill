@@ -120,6 +120,11 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::post('/reconcile', [App\Http\Controllers\Api\MediaLibraryController::class, 'reconcile'])
             ->middleware('permission:media.manage');
 
+        // Video studio (must be before /{media} routes). Permission checked in controller.
+        Route::get('/video/capabilities', [App\Http\Controllers\Api\VideoStudioController::class, 'capabilities']);
+        Route::post('/video/probe', [App\Http\Controllers\Api\VideoStudioController::class, 'probe']);
+        Route::post('/video/process', [App\Http\Controllers\Api\VideoStudioController::class, 'process']);
+
         Route::get('/collections', [App\Http\Controllers\Api\MediaCollectionController::class, 'index'])
             ->middleware('permission:media.view');
         Route::post('/collections', [App\Http\Controllers\Api\MediaCollectionController::class, 'store'])
