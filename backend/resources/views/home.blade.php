@@ -134,8 +134,9 @@
 }
 .banner-ctas {
     display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 0.75rem;
-    flex-wrap: wrap;
 }
 .banner-cta-primary {
     display: inline-flex;
@@ -311,8 +312,9 @@
         animation: banner-fade-up 0.8s ease 0.12s both;
     }
     .banner-ctas {
+        flex-direction: column;
+        align-items: center;
         gap: 0.9rem;
-        justify-content: center;
         animation: banner-fade-up 0.85s ease 0.18s both;
     }
     .banner-cta-primary,
