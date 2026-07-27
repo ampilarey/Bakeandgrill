@@ -384,6 +384,12 @@ img.brand-logo--dark { display: none; }
   align-items: center;
   gap: 0.75rem;
 }
+.home-promo-hero__ctas .home-banner-cta-primary,
+.home-promo-hero__ctas .home-promo-hero__cta-secondary {
+  width: auto;
+  max-width: 100%;
+  align-self: center;
+}
 .home-promo-hero__cta-secondary {
   display: inline-flex;
   align-items: center;
@@ -630,8 +636,9 @@ img.brand-logo--dark { display: none; }
 @media (max-width: 768px) {
   .home-banner-title { font-size: 2rem; max-width: 100%; }
   .home-banner-sub { font-size: 0.9rem; max-width: 100%; }
-  .home-banner-cta-primary,
-  .home-banner-cta-secondary {
+  /* Full-width only outside the hero — hero CTAs size to their label. */
+  .home-banner-ctas .home-banner-cta-primary,
+  .home-banner-ctas .home-banner-cta-secondary {
     width: 100%;
     justify-content: center;
   }
