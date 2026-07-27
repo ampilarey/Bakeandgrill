@@ -13,6 +13,7 @@ import {
 import { persistGuestPhone } from "../utils/guestPhone";
 import { useSiteSettingsContext } from "../context/SiteSettingsContext";
 import { useLanguage } from "../context/LanguageContext";
+import { brandLogoSrc } from "../lib/brandLogo";
 
 type Step =
   | "phone"
@@ -150,7 +151,8 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
   const { settings, text } = useSiteSettingsContext();
   const { t } = useLanguage();
 
-  const logoSrc  = settings.logo || "/logo.png";
+  const logoLight = brandLogoSrc(settings, false);
+  const logoDark = brandLogoSrc(settings, true);
   const siteName = settings.site_name || "Bake & Grill";
 
   const [step, setStep]       = useState<Step>("phone");
@@ -325,7 +327,8 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
 
   const logo = (
     <div style={S.logoWrap}>
-      <img src={logoSrc} alt={siteName} style={S.logo} />
+      <img className="brand-logo--light" src={logoLight} alt={siteName} style={S.logo} />
+      <img className="brand-logo--dark" src={logoDark} alt={siteName} style={S.logo} />
     </div>
   );
 
@@ -630,11 +633,12 @@ const S: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "center",
     marginBottom: "1.5rem",
+    position: "relative",
   },
   logo: {
     height: 48,
     width: "auto",
-    objectFit: "contain",
+    objectFit: "contain" as const,
   },
   title: {
     fontSize: "1.375rem",

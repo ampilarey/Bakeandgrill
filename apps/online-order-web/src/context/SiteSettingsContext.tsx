@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AnalyticsTracker } from '../components/AnalyticsTracker';
+import { applyBrandPalette, deriveBrandPalette } from '../lib/brandPalette';
 
 const SITE_SETTINGS_URL =
   ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
@@ -15,6 +16,8 @@ export interface SiteSettings {
   site_name?: string;
   site_tagline?: string;
   logo?: string;
+  /** Logo for dark backgrounds; falls back to `logo` when empty. */
+  logo_dark?: string;
   /** Fills circular cards when a menu item has no photo of its own. */
   default_item_image?: string;
   favicon?: string;
@@ -328,18 +331,9 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       });
   }, []);
 
-  // Optional brand accent from CMS (valid hex only).
+  // Optional brand accent from CMS (valid hex only) — full derived palette.
   useEffect(() => {
-    const raw = (settings.primary_color ?? '').trim();
-    const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw) ? raw : '';
-    if (!hex) return;
-    const root = document.documentElement;
-    const prev = root.style.getPropertyValue('--color-primary');
-    root.style.setProperty('--color-primary', hex);
-    return () => {
-      if (prev) root.style.setProperty('--color-primary', prev);
-      else root.style.removeProperty('--color-primary');
-    };
+    return applyBrandPalette(deriveBrandPalette(settings.primary_color));
   }, [settings.primary_color]);
 
   const text = useCallback(

@@ -16,6 +16,7 @@
   --color-primary-hover: #B86820;
   --color-primary-light: #FEF3E8;
   --color-primary-glow:  rgba(212, 129, 58, 0.22);
+  --color-primary-contrast: #1C1408;
   --color-border:        #EDE4D4;
   --color-success:       #16a34a;
   --color-success-bg:    #D6F0E2;
@@ -38,6 +39,7 @@
   --amber-hover:  var(--color-primary-hover);
   --amber-light:  var(--color-primary-light);
   --amber-glow:   var(--color-primary-glow);
+  --amber-contrast: var(--color-primary-contrast);
   --dark:         var(--color-dark);
   --surface:      var(--color-surface);
   --bg:           var(--color-bg);
@@ -115,6 +117,11 @@
   --text-lg:      1.125rem;    /* 18px */
 }
 
+/* Dual logo swap — light/dark assets, no JS flash (matches website) */
+.brand-logo--dark { display: none; }
+[data-theme="dark"] .brand-logo--light { display: none; }
+[data-theme="dark"] .brand-logo--dark { display: block; }
+
 /* ════════════════════════════════════════════════════════════
    DARK MODE TOKEN OVERRIDES
 ════════════════════════════════════════════════════════════ */
@@ -130,6 +137,7 @@
   --color-primary-hover: #c97a2a;
   --color-primary-light: rgba(224, 146, 66, 0.15);
   --color-primary-glow:  rgba(224, 146, 66, 0.22);
+  --color-primary-contrast: #1C1408;
   --color-dark:          #f5e6cc;
   --color-footer-bg:     #0e0a04;
   --color-header-bg:     rgba(26, 18, 8, 0.92);

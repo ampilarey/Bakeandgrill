@@ -32,6 +32,9 @@
     $metaKeywords = content('meta_keywords', 'Bake and Grill, food delivery Maldives, Male restaurant, cafe, grills, online order');
     $ogImage     = content('og_image',          asset('logo.png'));
     $logoUrl     = content('logo',              asset('logo.png'));
+    $logoDarkRaw = trim((string) content('logo_dark', ''));
+    $logoDarkUrl = $logoDarkRaw !== '' ? $logoDarkRaw : $logoUrl;
+    $brandPalette = \App\Domains\Content\BrandPalette::from(content('primary_color', ''));
     $phone       = content('business_phone',   '+960 912 0011');
     $email       = content('business_email',   'admin@bakeandgrill.mv');
     $address     = content('business_address', 'Kalaafaanu Hingun, Malé, Maldives');
@@ -147,6 +150,7 @@
             --amber-hover:  #B86820;
             --amber-light:  #FEF3E8;
             --amber-glow:   rgba(212, 129, 58, 0.22);
+            --amber-contrast: #1C1408;
             --dark:         #1C1408;
             --surface:      #FFFFFF;
             --bg:           #FFFDF9;
@@ -167,6 +171,7 @@
             --amber-hover:  #c97a2a;
             --amber-light:  rgba(224,146,66,0.15);
             --amber-glow:   rgba(224,146,66,0.22);
+            --amber-contrast: #1C1408;
             --dark:         #f5e6cc;
             --surface:      #231809;
             --bg:           #1a1208;
@@ -271,6 +276,9 @@
             letter-spacing: -0.02em;
         }
         .site-logo img { width: 38px; height: 38px; border-radius: 9px; }
+        .brand-logo--dark { display: none; }
+        [data-theme="dark"] .brand-logo--light { display: none; }
+        [data-theme="dark"] .brand-logo--dark { display: block; }
 
         .header-nav {
             display: flex;
@@ -643,15 +651,15 @@
             height: 44px;
             border-radius: 999px;
             background: var(--amber);
-            color: #1C1408;
+            color: var(--amber-contrast, #1C1408);
             box-shadow: 0 6px 16px rgba(201, 122, 42, 0.35);
             transform: translateY(-10px);
         }
         .mob-nav-order .mob-nav-icon svg {
             width: 22px;
             height: 22px;
-            color: #1C1408;
-            stroke: #1C1408;
+            color: var(--amber-contrast, #1C1408);
+            stroke: var(--amber-contrast, #1C1408);
         }
         .mob-nav-order .mob-nav-label {
             color: var(--amber);
@@ -665,12 +673,12 @@
         }
         [data-theme="dark"] .mob-nav-order .mob-nav-icon {
             background: var(--amber);
-            color: #1C1408;
+            color: var(--amber-contrast, #1C1408);
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
         }
         [data-theme="dark"] .mob-nav-order .mob-nav-icon svg {
-            color: #1C1408;
-            stroke: #1C1408;
+            color: var(--amber-contrast, #1C1408);
+            stroke: var(--amber-contrast, #1C1408);
         }
         [data-theme="dark"] .mob-nav-order .mob-nav-label {
             color: var(--amber);
@@ -1178,6 +1186,12 @@
     </style>
     @endverbatim
 
+    @if($brandPalette !== null)
+    <style id="brand-palette">
+        {!! $brandPalette['css'] !!}
+    </style>
+    @endif
+
     @yield('styles')
 
     <script nonce="{{ csp_nonce() }}">
@@ -1241,7 +1255,8 @@
 <header class="site-header">
     <div class="header-inner">
         <a href="/" class="site-logo">
-            <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
+            <img class="brand-logo--light" src="{{ $logoUrl }}" alt="{{ $siteName }}">
+            <img class="brand-logo--dark" src="{{ $logoDarkUrl }}" alt="{{ $siteName }}">
             <span>{{ $siteName }}</span>
         </a>
         {{-- Desktop nav: discovery links. Prayer sits in-row like order-app TopNav. --}}
@@ -1317,7 +1332,8 @@
 <div class="mobile-header">
     <div class="mob-hdr-row">
         <a href="/" class="mob-logo">
-            <img src="{{ $logoUrl }}" alt="{{ $siteName }}">
+            <img class="brand-logo--light" src="{{ $logoUrl }}" alt="{{ $siteName }}">
+            <img class="brand-logo--dark" src="{{ $logoDarkUrl }}" alt="{{ $siteName }}">
             <span>{{ $siteName }}</span>
         </a>
         <div class="mob-hdr-btns">
@@ -1364,7 +1380,7 @@
     <div class="footer-grid">
         <div class="footer-brand">
             <a href="/" class="footer-brand-logo">
-                <img src="{{ $logoUrl }}" alt="{{ $siteName }}" loading="lazy" decoding="async">
+                <img src="{{ $logoDarkUrl }}" alt="{{ $siteName }}" loading="lazy" decoding="async">
                 {{ $siteName }}
             </a>
             <p>{{ $footerBlurb }}</p>
@@ -1457,7 +1473,8 @@
 <nav class="mobile-bottom-nav" aria-label="Mobile navigation" data-mobile-bottom-nav>
     <a href="/" class="mob-nav-item" data-nav="home">
         <span class="mob-nav-icon" aria-hidden="true">
-            <img class="mob-nav-brand-logo" src="{{ $logoUrl }}" alt="" width="24" height="24" decoding="async">
+            <img class="mob-nav-brand-logo brand-logo--light" src="{{ $logoUrl }}" alt="" width="24" height="24" decoding="async">
+            <img class="mob-nav-brand-logo brand-logo--dark" src="{{ $logoDarkUrl }}" alt="" width="24" height="24" decoding="async">
         </span>
         <span class="mob-nav-label">Home</span>
     </a>

@@ -1,20 +1,32 @@
 import type { ComponentType } from 'react';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
+import { brandLogoSrc } from '../../lib/brandLogo';
 import { MenuIcon, OrdersIcon } from '../icons';
 
-/** Bake & Grill logo for the Home tab (bottom nav). */
+/** Bake & Grill logo for the Home tab (bottom nav). CSS swaps on [data-theme="dark"]. */
 export function BrandHomeIcon({ size = 24 }: { size?: number }) {
   const { settings } = useSiteSettingsContext();
-  const src = settings.logo || '/logo.png';
+  const light = brandLogoSrc(settings, false);
+  const dark = brandLogoSrc(settings, true);
   return (
-    <img
-      className="bottom-nav__brand-logo"
-      src={src}
-      alt=""
-      width={size}
-      height={size}
-      decoding="async"
-    />
+    <>
+      <img
+        className="bottom-nav__brand-logo brand-logo--light"
+        src={light}
+        alt=""
+        width={size}
+        height={size}
+        decoding="async"
+      />
+      <img
+        className="bottom-nav__brand-logo brand-logo--dark"
+        src={dark}
+        alt=""
+        width={size}
+        height={size}
+        decoding="async"
+      />
+    </>
   );
 }
 

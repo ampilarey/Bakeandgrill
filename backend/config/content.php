@@ -1068,7 +1068,7 @@ return [
         ],
         'menu_new_days' => [
             'label' => 'New items window (days)',
-            'group' => 'Branding',
+            'group' => 'Menu',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1189,13 +1189,14 @@ return [
             'default' => 'Feed the team — trays and packages for the office.',
         ],
         'og_image' => [
-            'label' => 'OG Image',
-            'group' => 'SEO',
+            'label' => 'Link preview image',
+            'group' => 'Branding',
             'type' => 'image',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
             'public' => true,
             'rich' => false,
+            'description' => 'Shown when someone shares a link on WhatsApp, Facebook, or iMessage.',
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],
@@ -1462,7 +1463,8 @@ return [
             'public' => true,
             'rich' => false,
             'validate' => 'nullable|string|max:32',
-            'default' => '#D4813A',
+            // Empty default: unset means "use hardcoded CSS palette" (non-breaking).
+            'default' => '',
         ],
         'privacy_address_label' => [
             'label' => 'Privacy Page — Address Label in Contact block',
