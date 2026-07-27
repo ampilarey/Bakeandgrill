@@ -87,6 +87,7 @@
     );
 }
 
+/* Eyebrow / title / sub — keep in lockstep with order-app .home-promo-hero__* */
 .banner-eyebrow {
     display: inline-flex;
     align-items: center;
@@ -107,18 +108,16 @@
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 1.08;
-    color: white;
+    color: #fff;
     margin: 0 0 0.5rem;
-    text-shadow: 0 2px 24px rgba(0,0,0,0.4);
-    max-width: 100%;
+    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
 }
 .banner-title em { font-style: normal; color: #F0A96A; }
 .banner-sub {
     font-size: 0.8rem;
-    color: rgba(255,255,255,0.78);
+    color: rgba(255, 255, 255, 0.78);
     margin: 0 0 1.25rem;
     font-weight: 400;
-    max-width: 100%;
     line-height: 1.55;
 }
 .banner-ctas {
@@ -276,28 +275,23 @@
         font-size: 0.78rem;
         padding: 0.4rem 1rem;
         margin-bottom: 1.35rem;
-        letter-spacing: 0.1em;
-        background: rgba(212,129,58,0.22);
-        border: 1px solid rgba(212,129,58,0.4);
-        border-radius: 999px;
         animation: banner-fade-up 0.7s ease both;
     }
     .banner-title {
-        font-size: clamp(3.25rem, 5.2vw, 4.75rem);
+        font-size: clamp(2.75rem, 4.5vw, 4.25rem);
         max-width: 800px;
-        margin: 0 auto 1.1rem;
-        letter-spacing: -0.045em;
-        line-height: 1.02;
+        margin-left: auto;
+        margin-right: auto;
+        margin-bottom: 1rem;
         animation: banner-fade-up 0.75s ease 0.06s both;
     }
     .banner-sub {
-        font-size: 1.2rem;
+        font-size: 1.15rem;
         max-width: 560px;
         margin-left: auto;
         margin-right: auto;
-        margin-bottom: 2.25rem;
+        margin-bottom: 2rem;
         color: rgba(255, 248, 240, 0.82);
-        line-height: 1.65;
         animation: banner-fade-up 0.8s ease 0.12s both;
     }
     .banner-ctas {
