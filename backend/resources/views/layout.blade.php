@@ -276,9 +276,10 @@
             letter-spacing: -0.02em;
         }
         .site-logo img { width: 38px; height: 38px; border-radius: 9px; }
-        .brand-logo--dark { display: none; }
-        [data-theme="dark"] .brand-logo--light { display: none; }
-        [data-theme="dark"] .brand-logo--dark { display: block; }
+        /* img. prefix beats .mob-nav-brand-logo { display:block } (same 0,1,0 otherwise) */
+        img.brand-logo--dark { display: none; }
+        [data-theme="dark"] img.brand-logo--light { display: none; }
+        [data-theme="dark"] img.brand-logo--dark { display: block; }
 
         .header-nav {
             display: flex;

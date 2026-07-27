@@ -117,10 +117,11 @@
   --text-lg:      1.125rem;    /* 18px */
 }
 
-/* Dual logo swap — light/dark assets, no JS flash (matches website) */
-.brand-logo--dark { display: none; }
-[data-theme="dark"] .brand-logo--light { display: none; }
-[data-theme="dark"] .brand-logo--dark { display: block; }
+/* Dual logo swap — light/dark assets, no JS flash (matches website).
+   img. prefix beats .bottom-nav__brand-logo { display:block }. */
+img.brand-logo--dark { display: none; }
+[data-theme="dark"] img.brand-logo--light { display: none; }
+[data-theme="dark"] img.brand-logo--dark { display: block; }
 
 /* ════════════════════════════════════════════════════════════
    DARK MODE TOKEN OVERRIDES
