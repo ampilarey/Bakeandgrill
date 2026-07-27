@@ -29,10 +29,11 @@ class ContentResolverTest extends TestCase
 
     public function test_shared_read_by_both_when_no_override(): void
     {
-        SiteSetting::set('cta_band_headline', 'Shared headline', 'shared');
+        // Use a key that genuinely targets both apps (cta_band_* is website-only).
+        SiteSetting::set('business_phone', '+960 SHARED BOTH', 'shared');
 
-        $this->assertSame('Shared headline', ContentResolver::for('website')->get('cta_band_headline'));
-        $this->assertSame('Shared headline', ContentResolver::for('order_app')->get('cta_band_headline'));
+        $this->assertSame('+960 SHARED BOTH', ContentResolver::for('website')->get('business_phone'));
+        $this->assertSame('+960 SHARED BOTH', ContentResolver::for('order_app')->get('business_phone'));
     }
 
     public function test_split_isolates_apps(): void

@@ -106,15 +106,15 @@ class BrandingSyncTest extends TestCase
         ]);
 
         // Dual-app text block holding the URL as the value (image keys are brand-synced).
-        SiteSetting::set('cta_band_subtext', $urlA, 'website');
-        SiteSetting::set('cta_band_subtext', $urlB, 'order_app');
-        SiteSetting::set('cta_band_subtext', '', 'shared');
+        SiteSetting::set('home_delivery_tagline', $urlA, 'website');
+        SiteSetting::set('home_delivery_tagline', $urlB, 'order_app');
+        SiteSetting::set('home_delivery_tagline', '', 'shared');
 
-        $this->assertSame('different', ContentRegistry::linkState('cta_band_subtext'));
+        $this->assertSame('different', ContentRegistry::linkState('home_delivery_tagline'));
         $this->assertTrue(MediaFileCleaner::isReferenced($urlA));
         $this->assertTrue(MediaFileCleaner::isReferenced($urlB));
 
-        $this->postJson('/api/admin/content/cta_band_subtext/share', ['locale' => 'en'])->assertOk();
+        $this->postJson('/api/admin/content/home_delivery_tagline/share', ['locale' => 'en'])->assertOk();
 
         // B7: collapsing to Same must never delete files still on disk / in catalog.
         $this->assertTrue(Storage::disk('public')->exists('site/website/a.jpg'));
