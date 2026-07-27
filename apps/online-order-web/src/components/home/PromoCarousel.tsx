@@ -191,6 +191,9 @@ export function PromoCarousel({
           const alt =
             slide.image_alt
             || (slide.title ? String(slide.title).replace(/<[^>]+>/g, '') : 'Promotional banner');
+          const eyebrow = (slide.eyebrow ?? '').trim();
+          const cta1 = (slide.cta_text ?? '').trim();
+          const cta2 = (slide.cta2_text ?? '').trim();
           return (
             <div
               key={i}
@@ -227,10 +230,10 @@ export function PromoCarousel({
               )}
 
               <div className="home-promo-hero__overlay">
-                {slide.eyebrow && (
-                  <span className="home-promo-hero__eyebrow">{slide.eyebrow}</span>
-                )}
-                {slide.title && (
+                {eyebrow ? (
+                  <span className="home-promo-hero__eyebrow">{eyebrow}</span>
+                ) : null}
+                {slide.title ? (
                   <h2
                     className="home-promo-hero__title"
                     dangerouslySetInnerHTML={{
@@ -239,8 +242,8 @@ export function PromoCarousel({
                       }),
                     }}
                   />
-                )}
-                {slide.subtitle && (
+                ) : null}
+                {slide.subtitle ? (
                   <p
                     className="home-promo-hero__sub"
                     dangerouslySetInnerHTML={{
@@ -249,20 +252,25 @@ export function PromoCarousel({
                       }),
                     }}
                   />
-                )}
-                {(slide.cta_text && slide.cta_url) ||
-                (slide.cta2_text && slide.cta2_url) ? (
+                ) : null}
+                {cta1 || cta2 ? (
                   <div className="home-promo-hero__ctas">
-                    {slide.cta_text && slide.cta_url && (
-                      <CtaLink href={slide.cta_url} className="home-banner-cta-primary">
-                        {slide.cta_text}
+                    {cta1 ? (
+                      <CtaLink
+                        href={(slide.cta_url ?? '').trim() || '/order/'}
+                        className="home-banner-cta-primary"
+                      >
+                        {cta1}
                       </CtaLink>
-                    )}
-                    {slide.cta2_text && slide.cta2_url && (
-                      <CtaLink href={slide.cta2_url} className="home-promo-hero__cta-secondary">
-                        {slide.cta2_text}
+                    ) : null}
+                    {cta2 ? (
+                      <CtaLink
+                        href={(slide.cta2_url ?? '').trim() || '/order/menu'}
+                        className="home-promo-hero__cta-secondary"
+                      >
+                        {cta2}
                       </CtaLink>
-                    )}
+                    ) : null}
                   </div>
                 ) : null}
               </div>

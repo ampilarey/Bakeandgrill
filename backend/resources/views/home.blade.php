@@ -1054,17 +1054,28 @@
                     >
                 @endif
                 <div class="banner-overlay">
-                    @if(!empty($slide['eyebrow']))
-                        <span class="banner-eyebrow">{{ $slide['eyebrow'] }}</span>
+                    @php
+                        $eyebrow = trim((string) ($slide['eyebrow'] ?? ''));
+                        $cta1Text = trim((string) ($slide['cta_text'] ?? ''));
+                        $cta2Text = trim((string) ($slide['cta2_text'] ?? ''));
+                    @endphp
+                    @if($eyebrow !== '')
+                        <span class="banner-eyebrow">{{ $eyebrow }}</span>
                     @endif
                     <h2 class="banner-title">{!! $slide['title'] !!}</h2>
                     @if(!empty($slide['subtitle']))
                         <p class="banner-sub">{{ $slide['subtitle'] }}</p>
                     @endif
+                    @if($cta1Text !== '' || $cta2Text !== '')
                     <div class="banner-ctas">
-                        <a href="{{ $slide['cta_url']  ?? '/order/' }}" class="banner-cta-primary">{{ $slide['cta_text']  ?? 'Order Now →' }}</a>
-                        <a href="{{ normalize_public_menu_link($slide['cta2_url'] ?? '/order/menu') }}" class="banner-cta-secondary">{{ $slide['cta2_text'] ?? 'View Menu' }}</a>
+                        @if($cta1Text !== '')
+                            <a href="{{ $slide['cta_url'] ?: '/order/' }}" class="banner-cta-primary">{{ $cta1Text }}</a>
+                        @endif
+                        @if($cta2Text !== '')
+                            <a href="{{ normalize_public_menu_link($slide['cta2_url'] ?: '/order/menu') }}" class="banner-cta-secondary">{{ $cta2Text }}</a>
+                        @endif
                     </div>
+                    @endif
                 </div>
             </div>
             @endforeach
