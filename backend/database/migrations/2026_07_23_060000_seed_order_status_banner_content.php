@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Seed Order App "Status banners" content keys with today's exact wording defaults.
  * Additive — registry defaults also cover empty rows via ContentResolver.
+ *
+ * Note (2026-07): order_status_* keys were retired from config/content.php (unused;
+ * live badges use order_hours_*). Historical seed rows may remain — do not delete.
  */
 return new class extends Migration
 {

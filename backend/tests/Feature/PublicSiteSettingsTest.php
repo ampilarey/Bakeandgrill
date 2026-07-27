@@ -25,7 +25,6 @@ class PublicSiteSettingsTest extends TestCase
         // Website-only keys (cta band, footer headings, hours note, …) are not in this payload.
         $orderAppKeys = [
             'menu_page_title',
-            'menu_page_subtitle',
             'preorder_page_title',
             'preorder_confirm_steps',
             'about_page_title',
@@ -45,7 +44,12 @@ class PublicSiteSettingsTest extends TestCase
             'hours_page_note',
         ];
 
-        foreach ([...$orderAppKeys, ...$websiteOnlyKeys] as $key) {
+        // Retired from the registry but seed rows remain (non-destructive).
+        $inertSeededKeys = [
+            'menu_page_subtitle',
+        ];
+
+        foreach ([...$orderAppKeys, ...$websiteOnlyKeys, ...$inertSeededKeys] as $key) {
             $this->assertNotNull(
                 SiteSetting::where('key', $key)->where('is_public', true)->first(),
                 "Expected public site setting key [{$key}] to exist after migrations",
