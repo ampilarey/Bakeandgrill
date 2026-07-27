@@ -527,6 +527,7 @@ return [
             'shareable' => true,
             'public' => true,
             'rich' => true,
+            'description' => 'Images or muted video per slide. Dim overlay, Media Library picks, and image-as-poster for video uploads.',
             'validate' => 'nullable|string',
             'default' => '[]',
         ],

@@ -117,6 +117,8 @@ export interface HeroSlideRow {
   image_focal_x?: number | string;
   image_focal_y?: number | string;
   image_alt?: string;
+  /** Overlay darkness 0–100 (100 = default wash). */
+  dim?: number | string;
   eyebrow?: string;
   title?: string;
   subtitle?: string;

@@ -407,7 +407,7 @@ export function AppContentEditor({ app }: AppContentEditorProps) {
             {...common}
             triggerUpload={triggerUpload}
             uploadImage={(cropped, original) => uploadContentImage(block.key, app, cropped, original, locale)}
-            uploadVideo={(video, poster) => uploadContentVideo(block.key, app, video, poster, locale)}
+            uploadVideo={(video, poster, posterUrl) => uploadContentVideo(block.key, app, video, poster, locale, posterUrl)}
           />
         );
       case 'categories':

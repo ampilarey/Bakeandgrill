@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
-import { Upload } from 'lucide-react';
+import { Images, Upload } from 'lucide-react';
 import { Button } from '../ui';
+import { MediaPicker } from '../MediaPicker';
+import type { MediaAsset } from '../../api';
 import { ImageCropModal } from '../../pages/MenuPage/ImageCropModal';
 import { MENU_IMAGE_ASPECT, MENU_IMAGE_HEIGHT, MENU_IMAGE_WIDTH } from '../../pages/MenuPage/cropImage';
 
@@ -25,6 +27,8 @@ type Props = {
     image_alt?: string;
   }) => void;
   showAlt?: boolean;
+  /** Show Media Library picker (default true). */
+  allowLibrary?: boolean;
 };
 
 /** Interactive crop + master upload for content images (reuses Menu ImageCropModal). */
@@ -36,12 +40,14 @@ export function ContentImageField({
   upload,
   onChange,
   showAlt = true,
+  allowLibrary = true,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,6 +80,17 @@ export function ContentImageField({
     }
   };
 
+  const pickFromLibrary = (asset: MediaAsset) => {
+    onChange({
+      image: asset.url,
+      image_master: asset.original_url || undefined,
+      image_focal_x: Number(focalX) || 50,
+      image_focal_y: Number(focalY) || 50,
+      image_alt: imageAlt || asset.alt_text || '',
+    });
+    setLibraryOpen(false);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -92,6 +109,11 @@ export function ContentImageField({
         <Button variant="secondary" size="sm" icon={<Upload size={13} />} onClick={() => inputRef.current?.click()} disabled={busy}>
           {busy ? 'Uploading…' : 'Crop & upload'}
         </Button>
+        {allowLibrary ? (
+          <Button variant="secondary" size="sm" icon={<Images size={13} />} onClick={() => setLibraryOpen(true)} disabled={busy}>
+            Library
+          </Button>
+        ) : null}
         <input ref={inputRef} type="file" accept="image/*,.heic,.heif" style={{ display: 'none' }} onChange={onFile} />
       </div>
       {showAlt ? (
@@ -132,6 +154,15 @@ export function ContentImageField({
             setOriginalFile(null);
           }}
           onConfirm={(file) => void confirmCrop(file)}
+        />
+      ) : null}
+      {allowLibrary ? (
+        <MediaPicker
+          open={libraryOpen}
+          onClose={() => setLibraryOpen(false)}
+          mediaType="image"
+          title="Pick hero image"
+          onPick={pickFromLibrary}
         />
       ) : null}
     </div>

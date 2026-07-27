@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import type { HeroSlideRow } from '../../context/SiteSettingsContext';
@@ -188,6 +188,8 @@ export function PromoCarousel({
           const imgBroken = imgErrors.has(i);
           const focalX = Number(slide.image_focal_x ?? 50);
           const focalY = Number(slide.image_focal_y ?? 50);
+          const dimRaw = Number(slide.dim ?? 100);
+          const heroDim = Number.isFinite(dimRaw) ? Math.min(1, Math.max(0, dimRaw / 100)) : 1;
           const alt =
             slide.image_alt
             || (slide.title ? String(slide.title).replace(/<[^>]+>/g, '') : 'Promotional banner');
@@ -198,7 +200,7 @@ export function PromoCarousel({
             <div
               key={i}
               className="home-promo-hero__slide"
-              style={{ flex: `0 0 ${100 / n}%` }}
+              style={{ flex: `0 0 ${100 / n}%`, ...( { '--hero-dim': String(heroDim) } as CSSProperties ) }}
             >
               {videoSrc ? (
                 <video

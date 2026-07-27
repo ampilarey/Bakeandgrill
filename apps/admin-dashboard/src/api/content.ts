@@ -170,22 +170,27 @@ export async function uploadContentImage(
   return req('/admin/content/upload', { method: 'POST', body: form });
 }
 
-/** Hero video — reuses item video pipeline (raw clip + poster). */
+/** Hero video — poster file optional when posterUrl (existing slide image) is set. */
 export async function uploadContentVideo(
   key: string,
   scope: ContentScope,
   video: File,
-  poster: File,
+  poster?: File | null,
   locale: ContentLocale = 'en',
+  posterUrl?: string,
 ): Promise<{ url: string; poster_url: string; thumb_url?: string }> {
-  const { prepareImageForUpload } = await import('../utils/prepareUpload');
-  const preparedPoster = await prepareImageForUpload(poster);
   const form = new FormData();
   form.append('key', key);
   form.append('scope', scope);
   form.append('locale', locale);
   form.append('video', video);
-  form.append('poster', preparedPoster);
+  if (poster) {
+    const { prepareImageForUpload } = await import('../utils/prepareUpload');
+    form.append('poster', await prepareImageForUpload(poster));
+  }
+  if (posterUrl) {
+    form.append('poster_url', posterUrl);
+  }
   return req('/admin/content/upload-video', { method: 'POST', body: form });
 }
 

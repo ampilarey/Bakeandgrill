@@ -58,16 +58,22 @@
     position: relative;
     overflow: hidden;
 }
-.banner-slide img {
+/* --hero-dim: 0–1 (from slide.dim 0–100). 1 = current dark wash; 0 = bright. */
+.banner-slide img,
+.banner-slide .banner-video {
     position: absolute;
     inset: 0;
     width: 100%; height: 100%;
     object-fit: cover;
-    opacity: 0.45;
+    opacity: calc(1 - 0.55 * var(--hero-dim, 1));
     transform: scale(1.05);
     transition: transform 8s linear;
 }
-.banner-slide.active img { transform: scale(1); }
+.banner-slide.active img,
+.banner-slide.active .banner-video { transform: scale(1); }
+.banner-slide .banner-video {
+    transform: none;
+}
 /* Mobile-first overlay (matches order-app .home-promo-hero__*) */
 .banner-overlay {
     position: absolute;
@@ -81,9 +87,9 @@
     z-index: 2;
     background: linear-gradient(
         180deg,
-        rgba(28,20,8,0.22) 0%,
-        rgba(28,20,8,0.72) 55%,
-        rgba(28,20,8,0.92) 100%
+        rgba(28,20,8, calc(0.22 * var(--hero-dim, 1))) 0%,
+        rgba(28,20,8, calc(0.72 * var(--hero-dim, 1))) 55%,
+        rgba(28,20,8, calc(0.92 * var(--hero-dim, 1))) 100%
     );
 }
 
@@ -254,7 +260,7 @@
     }
     .banner-slide img,
     .banner-slide .banner-video {
-        opacity: 0.62;
+        opacity: calc(1 - 0.38 * var(--hero-dim, 1));
     }
     .banner-overlay {
         align-items: center;
@@ -263,9 +269,9 @@
         padding: 4rem clamp(2.5rem, 8vw, 7rem) 4.5rem;
         background: linear-gradient(
             180deg,
-            rgba(28, 20, 8, 0.12) 0%,
-            rgba(28, 20, 8, 0.45) 45%,
-            rgba(14, 10, 4, 0.88) 100%
+            rgba(28, 20, 8, calc(0.12 * var(--hero-dim, 1))) 0%,
+            rgba(28, 20, 8, calc(0.45 * var(--hero-dim, 1))) 45%,
+            rgba(14, 10, 4, calc(0.88 * var(--hero-dim, 1))) 100%
         );
     }
     .banner-overlay > * {
@@ -1011,19 +1017,20 @@
     <div class="banner-track" id="bannerTrack">
         @if(count($heroSlides) > 0)
             @foreach($heroSlides as $sIdx => $slide)
-            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;">
-                @php
-                    $focalX = isset($slide['image_focal_x']) ? (float) $slide['image_focal_x'] : 50;
-                    $focalY = isset($slide['image_focal_y']) ? (float) $slide['image_focal_y'] : 50;
-                    $imgAlt = $slide['image_alt'] ?? content('site_name', 'Bake & Grill');
-                @endphp
+            @php
+                $focalX = isset($slide['image_focal_x']) ? (float) $slide['image_focal_x'] : 50;
+                $focalY = isset($slide['image_focal_y']) ? (float) $slide['image_focal_y'] : 50;
+                $imgAlt = $slide['image_alt'] ?? content('site_name', 'Bake & Grill');
+                $heroDim = isset($slide['dim']) ? max(0, min(100, (float) $slide['dim'])) / 100 : 1;
+            @endphp
+            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;--hero-dim:{{ $heroDim }};">
                 @if(!empty($slide['video']))
                     <video
                         class="banner-video"
                         src="{{ $slide['video'] }}"
                         poster="{{ $slide['video_poster'] ?? ($slide['image'] ?? '') }}"
                         autoplay muted loop playsinline
-                        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:{{ $focalX }}% {{ $focalY }}%;"
+                        style="object-position:{{ $focalX }}% {{ $focalY }}%;"
                     ></video>
                 @elseif(!empty($slide['image']))
                     <img

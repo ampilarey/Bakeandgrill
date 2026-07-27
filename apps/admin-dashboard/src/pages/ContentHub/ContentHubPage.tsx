@@ -639,7 +639,7 @@ export function ContentHubPage() {
             {...common}
             triggerUpload={triggerUpload}
             uploadImage={(cropped, original) => uploadContentImage(block.key, uploadAppFor(scope), cropped, original, locale)}
-            uploadVideo={(video, poster) => uploadContentVideo(block.key, uploadAppFor(scope), video, poster, locale)}
+            uploadVideo={(video, poster, posterUrl) => uploadContentVideo(block.key, uploadAppFor(scope), video, poster, locale, posterUrl)}
           />
         );
       case 'categories':

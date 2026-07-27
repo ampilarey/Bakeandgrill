@@ -126,6 +126,34 @@ class IphoneMediaUploadTest extends TestCase
         $this->assertStringContainsString('.mov', $res->json('url'));
     }
 
+    public function test_content_upload_video_accepts_poster_url_without_file(): void
+    {
+        $this->actingAsOwner();
+
+        $res = $this->post('/api/admin/content/upload-video', [
+            'key' => 'hero_slides',
+            'scope' => 'website',
+            'video' => $this->fakeMov(120),
+            'poster_url' => '/storage/site/hero/existing-poster.jpg',
+        ], ['Accept' => 'application/json']);
+
+        $res->assertCreated();
+        $this->assertSame('/storage/site/hero/existing-poster.jpg', $res->json('poster_url'));
+        $this->assertNotEmpty($res->json('url'));
+    }
+
+    public function test_content_upload_video_requires_poster_or_poster_url(): void
+    {
+        $this->actingAsOwner();
+
+        $this->post('/api/admin/content/upload-video', [
+            'key' => 'hero_slides',
+            'scope' => 'website',
+            'video' => $this->fakeMov(80),
+        ], ['Accept' => 'application/json'])
+            ->assertStatus(422);
+    }
+
     public function test_media_library_accepts_mov_without_crashing(): void
     {
         $owner = $this->actingAsOwner();

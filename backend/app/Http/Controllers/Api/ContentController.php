@@ -657,8 +657,16 @@ class ContentController extends Controller
             'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm,video/quicktime', 'max:51200'],
-            'poster' => ['required', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
+            'poster' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
+            // Existing slide image / library URL — used when no poster file is uploaded.
+            'poster_url' => ['nullable', 'string', 'max:2048'],
         ]);
+
+        if (! $request->hasFile('poster') && blank($data['poster_url'] ?? null)) {
+            return response()->json([
+                'message' => 'A poster image file or poster_url is required.',
+            ], 422);
+        }
 
         $key = $data['key'];
         $scope = $data['scope'];
@@ -667,7 +675,6 @@ class ContentController extends Controller
 
         try {
             $video = $request->file('video');
-            $poster = $request->file('poster');
             $ext = strtolower((string) $video->getClientOriginalExtension()) ?: 'mp4';
             if (!in_array($ext, ['mp4', 'webm', 'mov'], true)) {
                 $mime = (string) $video->getMimeType();
@@ -678,15 +685,22 @@ class ContentController extends Controller
                 };
             }
             $videoRel = $this->processor->storeRaw($video, $dir, $ext);
-            $posterRel = $this->processor->storeProcessed($poster, $dir . '/posters');
-            $thumbRel = $this->processor->storeThumbnail($poster, $dir . '/thumbs');
+
+            if ($request->hasFile('poster')) {
+                $poster = $request->file('poster');
+                $posterRel = $this->processor->storeProcessed($poster, $dir . '/posters');
+                $thumbRel = $this->processor->storeThumbnail($poster, $dir . '/thumbs');
+                $posterUrl = '/storage/' . ltrim($posterRel, '/');
+                $thumbUrl = '/storage/' . ltrim($thumbRel, '/');
+            } else {
+                $posterUrl = $this->normalizePublicMediaUrl((string) $data['poster_url']);
+                $thumbUrl = $posterUrl;
+            }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         $url = '/storage/' . ltrim($videoRel, '/');
-        $posterUrl = '/storage/' . ltrim($posterRel, '/');
-        $thumbUrl = '/storage/' . ltrim($thumbRel, '/');
 
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('media_assets')) {
@@ -721,6 +735,25 @@ class ContentController extends Controller
             'scope' => $scope,
             'locale' => $locale,
         ], 201);
+    }
+
+    /**
+     * Accept relative /storage/… paths or absolute http(s) URLs for poster reuse.
+     */
+    private function normalizePublicMediaUrl(string $url): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            throw new \InvalidArgumentException('poster_url is empty.');
+        }
+        if (str_starts_with($url, '/storage/') || str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            return $url;
+        }
+        if (str_starts_with($url, 'storage/')) {
+            return '/' . $url;
+        }
+
+        throw new \InvalidArgumentException('poster_url must be a /storage/… path or http(s) URL.');
     }
 
     private function ensureRow(string $key, string $scope, string $locale = 'en'): void
