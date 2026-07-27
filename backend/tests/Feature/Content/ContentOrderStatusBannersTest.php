@@ -31,6 +31,13 @@ class ContentOrderStatusBannersTest extends TestCase
         'order_status_opens',
         'order_status_delivery_from',
         'menu_page_subtitle',
+        'preorder_page_title',
+        'preorder_page_subtitle',
+        'preorder_submit_label',
+        'preorder_confirm_title',
+        'preorder_confirm_message',
+        'preorder_confirm_steps',
+        'office_orders_min_guests',
     ];
 
     public function test_registry_includes_hours_banner_keys_for_order_app(): void

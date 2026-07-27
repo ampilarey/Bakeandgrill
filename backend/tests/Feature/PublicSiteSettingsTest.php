@@ -25,8 +25,6 @@ class PublicSiteSettingsTest extends TestCase
         // Website-only keys (cta band, footer headings, hours note, …) are not in this payload.
         $orderAppKeys = [
             'menu_page_title',
-            'preorder_page_title',
-            'preorder_confirm_steps',
             'about_page_title',
             'about_values',
             'order_checkout_title',
@@ -47,6 +45,8 @@ class PublicSiteSettingsTest extends TestCase
         // Retired from the registry but seed rows remain (non-destructive).
         $inertSeededKeys = [
             'menu_page_subtitle',
+            'preorder_page_title',
+            'preorder_confirm_steps',
         ];
 
         foreach ([...$orderAppKeys, ...$websiteOnlyKeys, ...$inertSeededKeys] as $key) {
