@@ -91,11 +91,11 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    background: none;
-    border: none;
+    background: rgba(212, 129, 58, 0.22);
+    border: 1px solid rgba(212, 129, 58, 0.4);
     color: #F0A96A;
-    padding: 0;
-    border-radius: 0;
+    padding: 0.3rem 0.875rem;
+    border-radius: 999px;
     font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
