@@ -233,6 +233,83 @@ export function HeroSlidesEditor({
                 </p>
               </div>
 
+              {slide.video ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: 10,
+                    borderRadius: 10,
+                    border: '1px solid #E8E0D8',
+                    background: '#FAF7F2',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: 120,
+                      height: 68,
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      background: '#1C1408',
+                      flexShrink: 0,
+                      border: '1px solid #E8E0D8',
+                    }}
+                  >
+                    {(slide.video_poster || slide.image) ? (
+                      <img
+                        src={slide.video_poster || slide.image}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                    ) : (
+                      <video
+                        src={slide.video}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                    )}
+                    <span
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(28,20,8,0.35)',
+                      }}
+                    >
+                      <Film size={22} color="#fff" />
+                    </span>
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#1C1408' }}>Video attached</p>
+                    <p
+                      style={{
+                        margin: '3px 0 0',
+                        fontSize: 11,
+                        color: '#6B5D4F',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={slide.video}
+                    >
+                      {slide.video}
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9C8E7E' }}>
+                      {(slide.video_poster || slide.image)
+                        ? 'Showing poster thumbnail'
+                        : 'No poster — add one for a clearer preview'}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   type="button"
@@ -292,15 +369,11 @@ export function HeroSlidesEditor({
                   </button>
                 ) : null}
               </div>
-              {slide.video ? (
-                <p style={{ margin: 0, fontSize: 11, color: '#6B5D4F' }}>
-                  Video on · poster {slide.video_poster || slide.image || '(none)'}
-                </p>
-              ) : (
+              {!slide.video ? (
                 <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>
                   Tip: set a slide image first, then upload video — image is used as the poster automatically.
                 </p>
-              )}
+              ) : null}
 
               <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {FIELDS.map((f) => (
