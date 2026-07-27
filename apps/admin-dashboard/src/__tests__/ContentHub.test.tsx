@@ -137,7 +137,7 @@ describe('ContentHubPage', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText('Logo (Light)');
+    await screen.findByText('Logo — for light backgrounds');
     expect(screen.queryByText('Phone number')).toBeNull();
     expect(screen.queryByLabelText(/Different per app/i)).toBeNull();
     expect(screen.queryByLabelText(/Same in both/i)).toBeNull();
@@ -153,7 +153,7 @@ describe('ContentHubPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Branding' }).getAttribute('aria-pressed')).toBe('true');
     });
-    expect(screen.getByText('Logo (Light)')).toBeTruthy();
+    expect(screen.getByText('Logo — for light backgrounds')).toBeTruthy();
     expect(screen.queryByText('Phone number')).toBeNull();
   });
 });

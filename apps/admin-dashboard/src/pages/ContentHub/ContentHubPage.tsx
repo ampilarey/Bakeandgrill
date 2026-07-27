@@ -43,6 +43,8 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { LivePreviewFrame } from '../ContentStudio/LivePreviewFrame';
 import { MediaPicker } from '../../components/MediaPicker';
+import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
+import { BRAND_KIT_KEYS } from './brandKitConfig';
 import type { MediaAsset } from '../../api/media';
 
 type DraftMap = Record<string, string>;
@@ -1280,6 +1282,17 @@ export function ContentHubPage() {
               const sectionOrderBlock = sectionBlocks.find((block) => block.section_order || block.key === 'home_section_order');
               const sectionEnableBlocks = sectionBlocks.filter((block) => block.section_enable);
               const regularBlocks = sectionBlocks.filter((block) => !block.section_enable && block.key !== sectionOrderBlock?.key);
+              const isBrandKit = sectionName === 'Branding';
+              const brandBlocksByKey = new Map(
+                regularBlocks.filter((b) => BRAND_KIT_KEYS.includes(b.key)).map((b) => [b.key, b] as const),
+              );
+              const leftoverBrandBlocks = isBrandKit
+                ? regularBlocks.filter((b) => !BRAND_KIT_KEYS.includes(b.key))
+                : regularBlocks;
+              const siteNameBlock = contentBlocks.find((b) => b.key === 'site_name');
+              const siteName = siteNameBlock
+                ? (valueForScope(siteNameBlock, 'shared', drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
+                : 'Bake & Grill';
               return (
                 <section key={sectionName} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div
@@ -1297,7 +1310,9 @@ export function ContentHubPage() {
                       <div>
                         <h2 style={{ margin: 0, fontSize: 18, color: '#1C1408' }}>{sectionName}</h2>
                         <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>
-                          {regularBlocks.length} block{regularBlocks.length === 1 ? '' : 's'}
+                          {isBrandKit
+                            ? 'Brand Kit'
+                            : `${regularBlocks.length} block${regularBlocks.length === 1 ? '' : 's'}`}
                         </div>
                       </div>
                     </div>
@@ -1308,7 +1323,29 @@ export function ContentHubPage() {
                       </div>
                     ) : null}
                   </div>
-                  {regularBlocks.map(renderBlock)}
+                  {isBrandKit ? (
+                    <BrandKitCards
+                      blocksByKey={brandBlocksByKey}
+                      siteName={siteName}
+                      valueOf={(block) => valueForScope(block, brandKitWriteScope(block), drafts)}
+                      onSetValue={(block, value) => setDraft(brandKitWriteScope(block), block.key, value)}
+                      onUploadFile={(block, file) => onUpload(block, brandKitWriteScope(block), file)}
+                      onOpenLibrary={(block) => {
+                        const scope = brandKitWriteScope(block);
+                        uploadCtx.current = {
+                          blockKey: block.key,
+                          scope,
+                          onDone: (url) => setDraft(scope, block.key, url),
+                        };
+                        setMediaOpen(true);
+                      }}
+                      onOpenHistory={(block) => void openHistory(block, brandKitWriteScope(block))}
+                      historyPanel={(block) =>
+                        renderHistoryPanel(block, brandKitWriteScope(block), valueForScope(block, brandKitWriteScope(block), drafts))
+                      }
+                    />
+                  ) : null}
+                  {(isBrandKit ? leftoverBrandBlocks : regularBlocks).map(renderBlock)}
                 </section>
               );
             })}
