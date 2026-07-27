@@ -32,8 +32,10 @@ class BrandKitWiringTest extends TestCase
         $this->assertStringContainsString('brand-logo--dark', $html);
         $this->assertStringContainsString('/storage/site/logo-light.png', $html);
         $this->assertStringContainsString('/storage/site/logo-dark.png', $html);
-        $this->assertStringContainsString('[data-theme="dark"] .brand-logo--light', $html);
-        $this->assertStringContainsString('[data-theme="dark"] .brand-logo--dark', $html);
+        // img. prefix is required for specificity so .mob-nav-brand-logo { display:block }
+        // cannot win a 0,1,0 tie and keep the light logo visible in dark theme.
+        $this->assertStringContainsString('[data-theme="dark"] img.brand-logo--light', $html);
+        $this->assertStringContainsString('[data-theme="dark"] img.brand-logo--dark', $html);
 
         SiteSetting::set('logo_dark', '', 'shared');
         SiteSetting::bust();
