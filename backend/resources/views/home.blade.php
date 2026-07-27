@@ -269,17 +269,19 @@
         opacity: 0.62;
     }
     .banner-overlay {
-        padding: 4rem clamp(2.5rem, 8vw, 7rem);
+        align-items: center;
+        justify-content: flex-end;
+        text-align: center;
+        padding: 4rem clamp(2.5rem, 8vw, 7rem) 4.5rem;
         background: linear-gradient(
-            105deg,
-            rgba(14, 10, 4, 0.92) 0%,
-            rgba(28, 20, 8, 0.72) 42%,
-            rgba(28, 20, 8, 0.28) 68%,
-            rgba(28, 20, 8, 0.06) 100%
+            180deg,
+            rgba(28, 20, 8, 0.12) 0%,
+            rgba(28, 20, 8, 0.45) 45%,
+            rgba(14, 10, 4, 0.88) 100%
         );
     }
     .banner-overlay > * {
-        max-width: 640px;
+        max-width: 720px;
     }
     .banner-eyebrow {
         font-size: 0.78rem;
@@ -290,7 +292,9 @@
     }
     .banner-title {
         font-size: clamp(3.25rem, 5.2vw, 4.75rem);
-        max-width: 720px;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
         margin-bottom: 1.1rem;
         letter-spacing: -0.045em;
         line-height: 1.02;
@@ -298,7 +302,9 @@
     }
     .banner-sub {
         font-size: 1.2rem;
-        max-width: 520px;
+        max-width: 560px;
+        margin-left: auto;
+        margin-right: auto;
         margin-bottom: 2.25rem;
         color: rgba(255, 248, 240, 0.82);
         line-height: 1.65;
@@ -306,6 +312,7 @@
     }
     .banner-ctas {
         gap: 0.9rem;
+        justify-content: center;
         animation: banner-fade-up 0.85s ease 0.18s both;
     }
     .banner-cta-primary,
