@@ -68,103 +68,58 @@
     transition: transform 8s linear;
 }
 .banner-slide.active img { transform: scale(1); }
+/* Mobile-first overlay (matches order-app .home-promo-hero__*) */
 .banner-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 3rem 10%;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: center;
+    padding: 1.75rem 1.25rem 2.75rem;
     z-index: 2;
     background: linear-gradient(
-        90deg,
-        rgba(28,20,8,0.88) 0%,
-        rgba(28,20,8,0.55) 60%,
-        rgba(28,20,8,0.12) 100%
+        180deg,
+        rgba(28,20,8,0.22) 0%,
+        rgba(28,20,8,0.72) 55%,
+        rgba(28,20,8,0.92) 100%
     );
-}
-@media (max-width: 768px) {
-    /* Match order-app .home-promo-hero mobile type + spacing */
-    .banner-overlay {
-        align-items: center;
-        text-align: center;
-        justify-content: flex-end;
-        padding: 1.75rem 1.25rem 2.75rem;
-        background: linear-gradient(180deg, rgba(28,20,8,0.22) 0%, rgba(28,20,8,0.72) 55%, rgba(28,20,8,0.92) 100%);
-    }
-    .banner-eyebrow {
-        font-size: 0.65rem;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        margin-bottom: 0.75rem;
-        padding: 0;
-        background: none;
-        border: none;
-        color: #F0A96A;
-    }
-    .banner-title {
-        font-size: 1.7rem;
-        max-width: 100%;
-        margin: 0 0 0.5rem;
-        line-height: 1.08;
-        letter-spacing: -0.04em;
-    }
-    .banner-sub {
-        font-size: 0.8rem;
-        max-width: 100%;
-        margin: 0 0 1.25rem;
-        line-height: 1.55;
-        color: rgba(255, 255, 255, 0.78);
-    }
-    .banner-ctas {
-        align-items: center;
-        gap: 0.75rem;
-    }
-    .banner-cta-primary,
-    .banner-cta-secondary {
-        width: auto;
-        max-width: 100%;
-        justify-content: center;
-        font-size: 0.875rem;
-        padding: 0.7rem 1.35rem;
-    }
-    .banner-dots { bottom: 1rem; }
 }
 
 .banner-eyebrow {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    background: rgba(212,129,58,0.22);
-    border: 1px solid rgba(212,129,58,0.4);
+    background: none;
+    border: none;
     color: #F0A96A;
-    padding: 0.3rem 0.875rem;
-    border-radius: 999px;
-    font-size: 0.72rem;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 1.125rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
 }
 .banner-title {
-    font-size: 3.5rem;
+    font-size: 1.7rem;
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 1.08;
     color: white;
-    margin-bottom: 0.875rem;
+    margin: 0 0 0.5rem;
     text-shadow: 0 2px 24px rgba(0,0,0,0.4);
-    max-width: 600px;
+    max-width: 100%;
 }
 .banner-title em { font-style: normal; color: #F0A96A; }
 .banner-sub {
-    font-size: 1.05rem;
-    color: rgba(255,255,255,0.72);
-    margin-bottom: 2rem;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.78);
+    margin: 0 0 1.25rem;
     font-weight: 400;
-    max-width: 480px;
-    line-height: 1.6;
+    max-width: 100%;
+    line-height: 1.55;
 }
 .banner-ctas {
     display: flex;
@@ -175,13 +130,16 @@
 .banner-cta-primary {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4rem;
-    padding: 0.85rem 1.75rem;
+    width: auto;
+    max-width: 100%;
+    padding: 0.7rem 1.35rem;
     background: var(--amber);
     color: white;
     border-radius: 11px;
     font-weight: 700;
-    font-size: 0.975rem;
+    font-size: 0.875rem;
     transition: all 0.2s;
     box-shadow: 0 4px 18px rgba(212,129,58,0.4);
 }
@@ -193,15 +151,18 @@
 .banner-cta-secondary {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4rem;
-    padding: 0.85rem 1.5rem;
+    width: auto;
+    max-width: 100%;
+    padding: 0.7rem 1.35rem;
     background: rgba(255,255,255,0.1);
     border: 1.5px solid rgba(255,255,255,0.28);
     backdrop-filter: blur(6px);
     color: white;
     border-radius: 11px;
     font-weight: 600;
-    font-size: 0.975rem;
+    font-size: 0.875rem;
     transition: all 0.2s;
 }
 .banner-cta-secondary:hover {
@@ -275,7 +236,7 @@
 
 .banner-dots {
     position: absolute;
-    bottom: 1.5rem;
+    bottom: 1rem;
     left: 50%; transform: translateX(-50%);
     display: flex; gap: 6px; z-index: 10;
 }
@@ -316,14 +277,15 @@
         padding: 0.4rem 1rem;
         margin-bottom: 1.35rem;
         letter-spacing: 0.1em;
+        background: rgba(212,129,58,0.22);
+        border: 1px solid rgba(212,129,58,0.4);
+        border-radius: 999px;
         animation: banner-fade-up 0.7s ease both;
     }
     .banner-title {
         font-size: clamp(3.25rem, 5.2vw, 4.75rem);
         max-width: 800px;
-        margin-left: auto;
-        margin-right: auto;
-        margin-bottom: 1.1rem;
+        margin: 0 auto 1.1rem;
         letter-spacing: -0.045em;
         line-height: 1.02;
         animation: banner-fade-up 0.75s ease 0.06s both;
