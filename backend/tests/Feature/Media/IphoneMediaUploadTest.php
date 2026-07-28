@@ -65,24 +65,54 @@ class IphoneMediaUploadTest extends TestCase
 
     private function fakeMp4(int $kilobytes = 100): UploadedFile
     {
+        $videos = app(\App\Domains\Media\Services\VideoProcessor::class);
+        if ($videos->available()) {
+            $tmp = storage_path('framework/testing/'.uniqid('iphone_mp4_', true).'.mp4');
+            @mkdir(dirname($tmp), 0755, true);
+            $gen = proc_open(
+                [
+                    'ffmpeg', '-y',
+                    '-f', 'lavfi', '-i', 'color=c=orange:s=320x240:d=1',
+                    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-an', $tmp,
+                ],
+                [2 => ['pipe', 'w']],
+                $pipes,
+            );
+            if (is_resource($gen)) {
+                stream_get_contents($pipes[2]);
+                fclose($pipes[2]);
+                proc_close($gen);
+            }
+            if (is_file($tmp)) {
+                return new UploadedFile($tmp, 'clip.mp4', 'video/mp4', null, true);
+            }
+        }
+
         return UploadedFile::fake()->create('clip.mp4', $kilobytes, 'video/mp4');
     }
 
     public function test_gallery_accepts_mov_video(): void
     {
+        $videos = app(\App\Domains\Media\Services\VideoProcessor::class);
         $this->actingAsOwner();
         $item = Item::factory()->create();
 
-        $photo = $this->post("/api/items/{$item->id}/photos", [
+        $res = $this->post("/api/items/{$item->id}/photos", [
             'media_type' => 'video',
             'video' => $this->fakeMov(200),
             'poster' => $this->tinyJpeg(),
-        ], ['Accept' => 'application/json'])
-            ->assertCreated()
-            ->json('photo');
+        ], ['Accept' => 'application/json']);
 
-        $this->assertSame('video', $photo['media_type']);
-        $this->assertStringContainsString('.mov', $photo['url']);
+        if (! $videos->available()) {
+            $res->assertStatus(422)
+                ->assertJsonPath('message', \App\Domains\Media\Services\VideoProcessor::WEB_UNSAFE_MESSAGE);
+
+            return;
+        }
+
+        // Fake .mov bytes are not a real container — conversion/probe fails with FFmpeg present.
+        // Real HEVC→H.264 normalisation is covered in VideoPipelineTest.
+        $res->assertStatus(422);
     }
 
     public function test_gallery_still_accepts_mp4(): void
@@ -113,6 +143,7 @@ class IphoneMediaUploadTest extends TestCase
 
     public function test_content_upload_video_accepts_mov(): void
     {
+        $videos = app(\App\Domains\Media\Services\VideoProcessor::class);
         $this->actingAsOwner();
 
         $res = $this->post('/api/admin/content/upload-video', [
@@ -122,24 +153,58 @@ class IphoneMediaUploadTest extends TestCase
             'poster' => $this->tinyJpeg(),
         ], ['Accept' => 'application/json']);
 
-        $res->assertCreated();
-        $this->assertStringContainsString('.mov', $res->json('url'));
+        if (! $videos->available()) {
+            $res->assertStatus(422)
+                ->assertJsonPath('message', \App\Domains\Media\Services\VideoProcessor::WEB_UNSAFE_MESSAGE);
+
+            return;
+        }
+
+        // Fake .mov is not a real media file — normalisation rejects it.
+        $res->assertStatus(422);
     }
 
     public function test_content_upload_video_accepts_poster_url_without_file(): void
     {
+        $videos = app(\App\Domains\Media\Services\VideoProcessor::class);
         $this->actingAsOwner();
+
+        if ($videos->available()) {
+            $tmp = storage_path('framework/testing/'.uniqid('poster_url_', true).'.mp4');
+            @mkdir(dirname($tmp), 0755, true);
+            $gen = proc_open(
+                [
+                    'ffmpeg', '-y',
+                    '-f', 'lavfi', '-i', 'color=c=red:s=320x240:d=1',
+                    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-an', $tmp,
+                ],
+                [2 => ['pipe', 'w']],
+                $pipes,
+            );
+            if (is_resource($gen)) {
+                stream_get_contents($pipes[2]);
+                fclose($pipes[2]);
+                proc_close($gen);
+            }
+            if (! is_file($tmp)) {
+                $this->markTestSkipped('Could not generate mp4 for poster_url test');
+            }
+            $video = new UploadedFile($tmp, 'clip.mp4', 'video/mp4', null, true);
+        } else {
+            $video = $this->fakeMp4(120);
+        }
 
         $res = $this->post('/api/admin/content/upload-video', [
             'key' => 'hero_slides',
             'scope' => 'website',
-            'video' => $this->fakeMov(120),
+            'video' => $video,
             'poster_url' => '/storage/site/hero/existing-poster.jpg',
         ], ['Accept' => 'application/json']);
 
         $res->assertCreated();
         $this->assertSame('/storage/site/hero/existing-poster.jpg', $res->json('poster_url'));
         $this->assertNotEmpty($res->json('url'));
+        $this->assertStringContainsString('.mp4', (string) $res->json('url'));
     }
 
     public function test_content_upload_video_requires_poster_or_poster_url(): void
@@ -158,13 +223,18 @@ class IphoneMediaUploadTest extends TestCase
     {
         $owner = $this->actingAsOwner();
         $library = app(MediaLibraryService::class);
+        $videos = app(\App\Domains\Media\Services\VideoProcessor::class);
 
-        $result = $library->storeUpload($this->fakeMov(80), $owner);
-        $asset = $result['asset'];
+        try {
+            $library->storeUpload($this->fakeMov(80), $owner);
+            $this->fail('Expected fake .mov upload to be rejected after web-safe normalisation');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $this->assertSame(422, $e->getStatusCode());
+            if (! $videos->available()) {
+                $this->assertSame(\App\Domains\Media\Services\VideoProcessor::WEB_UNSAFE_MESSAGE, $e->getMessage());
+            }
+        }
 
-        $this->assertSame('video', $asset->media_type);
-        $this->assertStringContainsString('video/quicktime', (string) $asset->mime_type);
-        $this->assertNotEmpty($asset->thumb_url);
         $this->assertSame('video', $library->mediaTypeFromMime('video/quicktime'));
     }
 

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Media;
 
+use App\Domains\Media\Services\VideoProcessor;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Item;
 use App\Models\ItemPhoto;
+use App\Models\Media;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,6 +53,29 @@ class ItemVideoUploadTest extends TestCase
 
     private function fakeMp4(int $kilobytes = 100): UploadedFile
     {
+        $videos = app(VideoProcessor::class);
+        if ($videos->available()) {
+            $tmp = storage_path('framework/testing/'.uniqid('item_mp4_', true).'.mp4');
+            @mkdir(dirname($tmp), 0755, true);
+            $gen = proc_open(
+                [
+                    'ffmpeg', '-y',
+                    '-f', 'lavfi', '-i', 'color=c=orange:s=320x240:d=1',
+                    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-an', $tmp,
+                ],
+                [2 => ['pipe', 'w']],
+                $pipes,
+            );
+            if (is_resource($gen)) {
+                stream_get_contents($pipes[2]);
+                fclose($pipes[2]);
+                proc_close($gen);
+            }
+            if (is_file($tmp)) {
+                return new UploadedFile($tmp, 'clip.mp4', 'video/mp4', null, true);
+            }
+        }
+
         return UploadedFile::fake()->create('clip.mp4', $kilobytes, 'video/mp4');
     }
 
@@ -94,7 +119,8 @@ class ItemVideoUploadTest extends TestCase
 
         $this->post("/api/items/{$item->id}/photos", [
             'media_type' => 'video',
-            'video' => $this->fakeMp4(500),
+            // Size check runs before normalisation — use a Laravel fake sized upload.
+            'video' => UploadedFile::fake()->create('clip.mp4', 500, 'video/mp4'),
             'poster' => $this->tinyJpeg(),
         ], ['Accept' => 'application/json'])
             ->assertStatus(422);
@@ -115,6 +141,9 @@ class ItemVideoUploadTest extends TestCase
         $posterRel = ltrim(substr($photo['poster_url'], strlen('/storage/')), '/');
         $this->assertFileExists(storage_path('app/public/' . $videoRel));
         $this->assertFileExists(storage_path('app/public/' . $posterRel));
+
+        // storeRaw catalogs the video in media_assets, which blocks file cleanup.
+        Media::query()->where('path', $videoRel)->delete();
 
         ItemPhoto::findOrFail($photo['id'])->delete();
 
