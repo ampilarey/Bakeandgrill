@@ -392,9 +392,10 @@ final class VideoProcessor
         ]);
 
         if (! $poster->successful() || ! is_file($posterAbs)) {
-            // Fallback poster: first frame, no filters
+            // Fallback poster: same rotation handling as primary (-noautorotate).
             $poster = Process::timeout(90)->run([
                 $ff, '-y', '-hide_banner', '-loglevel', 'error',
+                '-noautorotate',
                 '-ss', $this->fmtTime($posterAt),
                 '-i', $sourceAbsolute,
                 '-frames:v', '1',
