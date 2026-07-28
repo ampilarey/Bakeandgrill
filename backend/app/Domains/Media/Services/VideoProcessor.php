@@ -375,24 +375,12 @@ final class VideoProcessor
             throw new RuntimeException('Video export failed: '.$lastError);
         }
 
-        $posterVf = $aspect === 'original'
-            ? sprintf('scale=%d:%d,format=yuv420p,setsar=1', max(2, $srcW & ~1), max(2, $srcH & ~1))
-            : sprintf('crop=%d:%d:%d:%d,scale=%d:%d,format=yuv420p,setsar=1', $ew, $eh, $ex, $ey, $ew, $eh);
+        try {
+            $posterVf = $aspect === 'original'
+                ? sprintf('scale=%d:%d,format=yuv420p,setsar=1', max(2, $srcW & ~1), max(2, $srcH & ~1))
+                : sprintf('crop=%d:%d:%d:%d,scale=%d:%d,format=yuv420p,setsar=1', $ew, $eh, $ex, $ey, $ew, $eh);
 
-        $ff = $this->bin('ffmpeg');
-        $poster = Process::timeout(90)->run([
-            $ff, '-y', '-hide_banner', '-loglevel', 'error',
-            '-noautorotate',
-            '-ss', $this->fmtTime($posterAt),
-            '-i', $sourceAbsolute,
-            '-frames:v', '1',
-            '-q:v', '3',
-            '-vf', $posterVf,
-            $posterAbs,
-        ]);
-
-        if (! $poster->successful() || ! is_file($posterAbs)) {
-            // Fallback poster: same rotation handling as primary (-noautorotate).
+            $ff = $this->bin('ffmpeg');
             $poster = Process::timeout(90)->run([
                 $ff, '-y', '-hide_banner', '-loglevel', 'error',
                 '-noautorotate',
@@ -400,26 +388,43 @@ final class VideoProcessor
                 '-i', $sourceAbsolute,
                 '-frames:v', '1',
                 '-q:v', '3',
+                '-vf', $posterVf,
                 $posterAbs,
             ]);
-        }
 
-        if (! $poster->successful() || ! is_file($posterAbs)) {
+            if (! $poster->successful() || ! is_file($posterAbs)) {
+                // Fallback poster: same rotation handling as primary (-noautorotate).
+                $poster = Process::timeout(90)->run([
+                    $ff, '-y', '-hide_banner', '-loglevel', 'error',
+                    '-noautorotate',
+                    '-ss', $this->fmtTime($posterAt),
+                    '-i', $sourceAbsolute,
+                    '-frames:v', '1',
+                    '-q:v', '3',
+                    $posterAbs,
+                ]);
+            }
+
+            if (! $poster->successful() || ! is_file($posterAbs)) {
+                throw new RuntimeException('Poster export failed: '.$this->shortError($poster->errorOutput().$poster->output()));
+            }
+
+            $outMeta = $this->probeCodedSize($outAbs);
+
+            return [
+                'url' => '/storage/'.ltrim($outRel, '/'),
+                'poster_url' => '/storage/'.ltrim($posterRel, '/'),
+                'duration' => $outMeta['duration'],
+                'width' => $outMeta['width'],
+                'height' => $outMeta['height'],
+                'path' => $outRel,
+                'poster_path' => $posterRel,
+            ];
+        } catch (\Throwable $e) {
             @unlink($outAbs);
-            throw new RuntimeException('Poster export failed: '.$this->shortError($poster->errorOutput().$poster->output()));
+            @unlink($posterAbs);
+            throw $e;
         }
-
-        $outMeta = $this->probeCodedSize($outAbs);
-
-        return [
-            'url' => '/storage/'.ltrim($outRel, '/'),
-            'poster_url' => '/storage/'.ltrim($posterRel, '/'),
-            'duration' => $outMeta['duration'],
-            'width' => $outMeta['width'],
-            'height' => $outMeta['height'],
-            'path' => $outRel,
-            'poster_path' => $posterRel,
-        ];
     }
 
     /**
