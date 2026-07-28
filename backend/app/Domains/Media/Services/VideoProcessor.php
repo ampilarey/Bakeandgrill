@@ -320,6 +320,12 @@ final class VideoProcessor
             : (float) $posterAt;
         $posterAt = min($trimEnd - 0.05, max($trimStart, $posterAt));
 
+        $sourceExt = strtolower((string) pathinfo($sourceAbsolute, PATHINFO_EXTENSION));
+        $sourceCodec = strtolower($coded['codec']);
+        $sourceIsH264Mp4 = $sourceExt === 'mp4' && in_array($sourceCodec, ['h264', 'avc1'], true);
+        $hasTrim = $trimStart > 0.0005 || abs($trimEnd - $duration) > 0.05;
+        $allowStreamCopy = $aspect === 'original' && $sourceIsH264Mp4 && ! $hasTrim;
+
         Storage::disk('public')->makeDirectory($outputDir);
         Storage::disk('public')->makeDirectory($outputDir.'/posters');
 
@@ -349,6 +355,7 @@ final class VideoProcessor
             $eh,
             max(2, $srcW & ~1),
             max(2, $srcH & ~1),
+            $allowStreamCopy,
         );
 
         $lastError = '';
@@ -478,6 +485,7 @@ final class VideoProcessor
         int $eh,
         int $srcW,
         int $srcH,
+        bool $allowStreamCopy = false,
     ): array {
         $ff = $this->bin('ffmpeg');
         $head = [$ff, '-y', '-hide_banner', '-loglevel', 'error'];
@@ -497,15 +505,18 @@ final class VideoProcessor
         $attempts = [];
 
         if ($aspect === 'original') {
-            // 0) Stream copy — no encoder (fixes "Error while opening encoder" on many hosts)
-            $attempts[] = array_merge($head, [
-                '-noautorotate', '-ss', $ss, '-t', $td, '-i', $src,
-                '-c:v', 'copy', '-an', '-movflags', '+faststart', $out,
-            ]);
-            $attempts[] = array_merge($head, [
-                '-ss', $ss, '-t', $td, '-i', $src,
-                '-c:v', 'copy', '-an', '-movflags', '+faststart', $out,
-            ]);
+            // Stream-copy only when source is already H.264 mp4 AND no trim is requested.
+            // Otherwise copy preserves HEVC and keyframe-aligns trim inaccurately.
+            if ($allowStreamCopy) {
+                $attempts[] = array_merge($head, [
+                    '-noautorotate', '-ss', $ss, '-t', $td, '-i', $src,
+                    '-c:v', 'copy', '-an', '-movflags', '+faststart', $out,
+                ]);
+                $attempts[] = array_merge($head, [
+                    '-ss', $ss, '-t', $td, '-i', $src,
+                    '-c:v', 'copy', '-an', '-movflags', '+faststart', $out,
+                ]);
+            }
 
             // 1) Reencode, no filters
             $attempts[] = array_merge($head, ['-ss', $ss, '-t', $td, '-i', $src], $encodeTail);
