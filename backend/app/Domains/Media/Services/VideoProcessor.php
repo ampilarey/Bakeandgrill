@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Media\Services;
 
+use App\Models\Media;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -17,8 +19,14 @@ use RuntimeException;
  */
 final class VideoProcessor
 {
+    public const WEB_UNSAFE_MESSAGE = "This video format can't play in all browsers. Please upload an MP4 (H.264), or convert it first.";
+
     public function available(): bool
     {
+        if ((bool) config('media.ffmpeg_disabled', false)) {
+            return false;
+        }
+
         try {
             $ffmpeg = Process::timeout(10)->run([$this->bin('ffmpeg'), '-version']);
             $ffprobe = Process::timeout(10)->run([$this->bin('ffprobe'), '-version']);
@@ -27,6 +35,135 @@ final class VideoProcessor
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /**
+     * Normalise an already-stored public-disk video to a web-safe H.264 MP4.
+     * Fast path keeps byte-identical h264 .mp4 files; otherwise re-encodes in place
+     * (replacing .mov/HEVC/etc). Applies display rotation into pixels on re-encode.
+     *
+     * @return array{
+     *   absolute_path: string,
+     *   relative_path: string,
+     *   mime: string,
+     *   extension: string,
+     *   codec: string,
+     *   converted: bool,
+     * }
+     */
+    public function ensureWebSafe(string $absolutePath): array
+    {
+        $this->assertReadable($absolutePath);
+        $this->assertUnderPublicDisk($absolutePath);
+
+        $relativePath = $this->relativeFromAbsolute($absolutePath);
+        $ext = strtolower((string) pathinfo($absolutePath, PATHINFO_EXTENSION));
+
+        if (! $this->available()) {
+            // Without FFmpeg we cannot verify codec or convert — only trust .mp4.
+            if ($ext === 'mp4') {
+                return [
+                    'absolute_path' => $absolutePath,
+                    'relative_path' => $relativePath,
+                    'mime' => 'video/mp4',
+                    'extension' => 'mp4',
+                    'codec' => 'h264',
+                    'converted' => false,
+                ];
+            }
+            $this->discardStoredVideo($absolutePath, $relativePath);
+            throw new RuntimeException(self::WEB_UNSAFE_MESSAGE);
+        }
+
+        try {
+            $meta = $this->probeCodedSize($absolutePath);
+        } catch (\Throwable) {
+            $this->discardStoredVideo($absolutePath, $relativePath);
+            throw new RuntimeException(self::WEB_UNSAFE_MESSAGE);
+        }
+
+        $codec = strtolower($meta['codec']);
+        $isH264 = in_array($codec, ['h264', 'avc1'], true);
+
+        if ($ext === 'mp4' && $isH264) {
+            return [
+                'absolute_path' => $absolutePath,
+                'relative_path' => $relativePath,
+                'mime' => 'video/mp4',
+                'extension' => 'mp4',
+                'codec' => $codec === 'avc1' ? 'h264' : $codec,
+                'converted' => false,
+            ];
+        }
+
+        $dir = dirname($absolutePath);
+        $stem = (string) pathinfo($absolutePath, PATHINFO_FILENAME);
+        if ($stem === '') {
+            $stem = Str::uuid()->toString();
+        }
+        $newAbs = $dir.DIRECTORY_SEPARATOR.$stem.'.mp4';
+        // Avoid clobbering the source when it is already named .mp4 (e.g. HEVC-in-mp4).
+        $tmpAbs = $dir.DIRECTORY_SEPARATOR.$stem.'.websafe-'.Str::lower(Str::random(8)).'.mp4';
+
+        $ff = $this->bin('ffmpeg');
+        // Do NOT pass -noautorotate — bake display rotation into the pixels.
+        $export = Process::timeout(300)->run([
+            $ff, '-y', '-hide_banner', '-loglevel', 'error',
+            '-i', $absolutePath,
+            '-c:v', 'libx264',
+            '-preset', 'veryfast',
+            '-crf', '23',
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',
+            '-an',
+            $tmpAbs,
+        ]);
+
+        if (! $export->successful() || ! is_file($tmpAbs) || filesize($tmpAbs) < 32) {
+            @unlink($tmpAbs);
+            $this->discardStoredVideo($absolutePath, $relativePath);
+            throw new RuntimeException(
+                'Video conversion failed: '.$this->shortError($export->errorOutput().$export->output())
+            );
+        }
+
+        if ($absolutePath !== $newAbs && is_file($absolutePath)) {
+            @unlink($absolutePath);
+        }
+        if ($tmpAbs !== $newAbs) {
+            if (is_file($newAbs) && realpath($newAbs) !== realpath($tmpAbs)) {
+                @unlink($newAbs);
+            }
+            if (! @rename($tmpAbs, $newAbs)) {
+                if (! @copy($tmpAbs, $newAbs)) {
+                    @unlink($tmpAbs);
+                    throw new RuntimeException('Could not finalise converted video file.');
+                }
+                @unlink($tmpAbs);
+            }
+        }
+
+        $newRel = $this->relativeFromAbsolute($newAbs);
+        $this->remapMediaPath($relativePath, $newRel, 'video/mp4', (int) (@filesize($newAbs) ?: 0));
+
+        $outCodec = 'h264';
+        try {
+            $outCodec = strtolower($this->probeCodedSize($newAbs)['codec'] ?: 'h264');
+            if ($outCodec === 'avc1') {
+                $outCodec = 'h264';
+            }
+        } catch (\Throwable) {
+            // Probe is best-effort after a successful encode.
+        }
+
+        return [
+            'absolute_path' => $newAbs,
+            'relative_path' => $newRel,
+            'mime' => 'video/mp4',
+            'extension' => 'mp4',
+            'codec' => $outCodec,
+            'converted' => true,
+        ];
     }
 
     /** Prefer FFMPEG_PATH / FFPROBE_PATH when cPanel PATH is thin for php-fpm. */
@@ -578,6 +715,67 @@ final class VideoProcessor
         $real = realpath($absolutePath) ?: $absolutePath;
         if (! str_starts_with($real, rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR) && $real !== $root) {
             throw new RuntimeException('Video path escapes public storage.');
+        }
+    }
+
+    private function relativeFromAbsolute(string $absolutePath): string
+    {
+        $root = Storage::disk('public')->path('');
+        $root = rtrim(str_replace('\\', '/', $root), '/').'/';
+        $normalized = str_replace('\\', '/', $absolutePath);
+        if (str_starts_with($normalized, $root)) {
+            return ltrim(substr($normalized, strlen($root)), '/');
+        }
+
+        $realRoot = realpath(Storage::disk('public')->path('')) ?: '';
+        $realFile = realpath($absolutePath) ?: '';
+        if ($realRoot !== '' && $realFile !== '' && str_starts_with($realFile, rtrim($realRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)) {
+            return ltrim(str_replace('\\', '/', substr($realFile, strlen(rtrim($realRoot, DIRECTORY_SEPARATOR)))), '/');
+        }
+
+        throw new RuntimeException('Video path is not under the public disk.');
+    }
+
+    private function discardStoredVideo(string $absolutePath, string $relativePath): void
+    {
+        @unlink($absolutePath);
+        $this->forgetMediaPath($relativePath);
+    }
+
+    private function forgetMediaPath(string $relativePath): void
+    {
+        $relativePath = ltrim($relativePath, '/');
+        if ($relativePath === '') {
+            return;
+        }
+        try {
+            if (! Schema::hasTable('media_assets')) {
+                return;
+            }
+            Media::query()->where('path', $relativePath)->delete();
+        } catch (\Throwable) {
+            // Catalog cleanup is best-effort.
+        }
+    }
+
+    private function remapMediaPath(string $oldRel, string $newRel, string $mime, int $fileSize): void
+    {
+        $oldRel = ltrim($oldRel, '/');
+        $newRel = ltrim($newRel, '/');
+        if ($oldRel === '' || $newRel === '' || $oldRel === $newRel) {
+            return;
+        }
+        try {
+            if (! Schema::hasTable('media_assets')) {
+                return;
+            }
+            Media::query()->where('path', $oldRel)->update([
+                'path' => $newRel,
+                'mime_type' => $mime,
+                'file_size' => $fileSize,
+            ]);
+        } catch (\Throwable) {
+            // Catalog remap is best-effort.
         }
     }
 }

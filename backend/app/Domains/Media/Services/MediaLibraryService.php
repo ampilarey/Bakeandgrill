@@ -44,6 +44,7 @@ final class MediaLibraryService
 
     public function __construct(
         private readonly MenuImageProcessor $images,
+        private readonly VideoProcessor $videos,
     ) {}
 
     /**
@@ -396,15 +397,21 @@ final class MediaLibraryService
 
         $dir = 'library/video';
         $path = $this->images->storeRaw($file, $dir, $ext);
-        $absolute = Storage::disk('public')->path($path);
-        // Frame extract from .mov isn't available under GD — use a generic poster instead of failing.
+        try {
+            $safe = $this->videos->ensureWebSafe(Storage::disk('public')->path($path));
+        } catch (\Throwable $e) {
+            abort(422, $e->getMessage());
+        }
+        $path = $safe['relative_path'];
+        $absolute = $safe['absolute_path'];
+        // Frame extract from video isn't available under GD — use a generic poster instead of failing.
         $thumbUrl = $this->genericVideoPosterThumb() ?: null;
 
-        return Media::create([
+        $attributes = [
             'disk' => 'public',
             'path' => $path,
             'media_type' => 'video',
-            'mime_type' => (string) ($file->getMimeType() ?: ($ext === 'mov' ? 'video/quicktime' : 'video/' . $ext)),
+            'mime_type' => $safe['mime'],
             'file_size' => (int) (@filesize($absolute) ?: 0),
             'thumb_url' => $thumbUrl,
             'title' => $title ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
@@ -412,7 +419,17 @@ final class MediaLibraryService
             'source' => 'library',
             'checksum' => $checksum,
             'uploaded_by' => $uploader?->id,
-        ]);
+        ];
+
+        // storeRaw may have already catalogued the path (and ensureWebSafe remaps it).
+        $existing = Media::query()->where('path', $path)->first();
+        if ($existing) {
+            $existing->fill($attributes)->save();
+
+            return $existing->fresh();
+        }
+
+        return Media::create($attributes);
     }
 
     /**

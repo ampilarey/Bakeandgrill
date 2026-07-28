@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Media\Services\VideoProcessor;
 use App\Http\Requests\StoreItemVideoRequest;
 use App\Models\Item;
 use App\Models\ItemPhoto;
@@ -13,12 +14,14 @@ use App\Support\MenuImageValidation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class ItemPhotoController extends Controller
 {
     public function __construct(
         private readonly MenuImageProcessor $processor,
+        private readonly VideoProcessor $videos,
     ) {}
 
     public function index(int $itemId): JsonResponse
@@ -116,7 +119,7 @@ class ItemPhotoController extends Controller
     }
 
     /**
-     * Gallery video clip — raw file + required poster image. No transcoding.
+     * Gallery video clip — store + normalise to web-safe H.264 mp4, with poster.
      */
     private function storeVideo(Request $request, int $itemId): JsonResponse
     {
@@ -146,6 +149,8 @@ class ItemPhotoController extends Controller
                 "item-photos/{$itemId}/video",
                 $ext,
             );
+            $safe = $this->videos->ensureWebSafe(Storage::disk('public')->path($videoRel));
+            $videoRel = $safe['relative_path'];
             $posterRel = $this->processor->storeProcessed($poster, "item-photos/{$itemId}/posters");
             $thumbRel = $this->processor->storeThumbnail($poster, "item-photos/{$itemId}/thumbs");
         } catch (\Throwable $e) {

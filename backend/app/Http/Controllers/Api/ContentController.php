@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
 use App\Domains\Content\ContentWriter;
+use App\Domains\Media\Services\VideoProcessor;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateContentRequest;
 use App\Http\Resources\ContentBlockResource;
@@ -28,6 +29,7 @@ class ContentController extends Controller
         private readonly AuditLogService $audit,
         private readonly MenuImageProcessor $processor,
         private readonly ContentWriter $writer,
+        private readonly VideoProcessor $videos,
     ) {}
 
     /**
@@ -685,6 +687,8 @@ class ContentController extends Controller
                 };
             }
             $videoRel = $this->processor->storeRaw($video, $dir, $ext);
+            $safe = $this->videos->ensureWebSafe(Storage::disk('public')->path($videoRel));
+            $videoRel = $safe['relative_path'];
 
             if ($request->hasFile('poster')) {
                 $poster = $request->file('poster');

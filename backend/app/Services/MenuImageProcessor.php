@@ -93,7 +93,9 @@ class MenuImageProcessor
         }
         $filename = Str::uuid()->toString() . '.' . $ext;
         $relative = trim($directory, '/') . '/' . $filename;
-        $absolute = storage_path('app/public/' . $relative);
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        $disk->makeDirectory(trim($directory, '/'));
+        $absolute = $disk->path($relative);
 
         $dir = dirname($absolute);
         if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
