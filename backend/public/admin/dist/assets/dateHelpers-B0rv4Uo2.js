@@ -1,0 +1,1 @@
+function n(t){const e=t.getTimezoneOffset()*6e4;return new Date(t.getTime()-e).toISOString().slice(0,10)}function a(){return n(new Date)}function o(t){const e=new Date;return e.setDate(e.getDate()-t),n(e)}function s(t){const e=new Date;return e.setDate(e.getDate()+t),n(e)}function r(){const t=new Date;return t.setDate(1),n(t)}export{s as a,o as d,r as m,a as t};
