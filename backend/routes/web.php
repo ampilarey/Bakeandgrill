@@ -105,8 +105,14 @@ Route::get('/invoices/{token}/pdf', [InvoicePageController::class, 'pdf'])->name
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');
 
 // Online Order SPA — redirect bare /order to /order/ then catch-all for React Router
-Route::get('/order', function () {
-    return redirect('/order/');
+Route::get('/order', function (\Illuminate\Http\Request $request) {
+    $target = '/order/';
+    $qs = $request->getQueryString();
+    if ($qs) {
+        $target .= '?'.$qs;
+    }
+
+    return redirect($target);
 })->name('order.redirect');
 
 // Specific paths inside /order/* that should resolve to their canonical Blade/static equivalents

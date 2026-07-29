@@ -100,4 +100,44 @@ class ContentPreviewTest extends TestCase
         $this->assertStringContainsString('Draft Hero Title', $html);
         $this->assertStringContainsString('noindex', strtolower(implode(' ', $this->get($url)->headers->all('x-robots-tag'))));
     }
+
+    public function test_website_preview_allows_same_origin_iframe(): void
+    {
+        $this->actingAsOwner();
+
+        $token = ContentDraftStore::put('website', 'en', [
+            'business_phone' => '+960 PREVIEW',
+        ]);
+
+        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'content.preview.website',
+            now()->addMinutes(10),
+            ['token' => $token],
+        );
+
+        $response = $this->get($url)->assertOk();
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $this->assertStringContainsString("frame-ancestors 'self'", (string) $response->headers->get('Content-Security-Policy'));
+    }
+
+    public function test_order_preview_allows_same_origin_iframe(): void
+    {
+        $token = ContentDraftStore::put('order_app', 'en', [
+            'business_phone' => '+960 ORDER PREVIEW',
+        ]);
+
+        // Hit the SPA catch-all (not the /order → /order/ redirect).
+        $response = $this->get('/order/menu?previewToken=' . urlencode($token));
+        // Order SPA shell may 200 (deployed) or 503 (missing dist) in CI — framing headers still apply.
+        $this->assertContains($response->status(), [200, 503]);
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $this->assertStringContainsString("frame-ancestors 'self'", (string) $response->headers->get('Content-Security-Policy'));
+    }
+
+    public function test_public_home_still_denies_framing(): void
+    {
+        $response = $this->get('/')->assertOk();
+        $response->assertHeader('X-Frame-Options', 'DENY');
+        $this->assertStringContainsString("frame-ancestors 'none'", (string) $response->headers->get('Content-Security-Policy'));
+    }
 }

@@ -336,24 +336,51 @@ export function ContentHubPage() {
     setServerDraftSynced(false);
   };
 
-  // Preview token
+  // Preview tokens — one per app so website/order drafts overlay correctly.
   useEffect(() => {
     const t = window.setTimeout(() => {
-      const overrides: Record<string, string> = {};
+      const websiteOverrides: Record<string, string> = {};
+      const orderOverrides: Record<string, string> = {};
       for (const block of contentBlocks) {
-        if (!block.apps.includes('website')) continue;
         const scopes = editorScopesForBlock(block);
-        const previewScope = scopes.includes('website') ? 'website' : scopes[0];
-        overrides[block.key] = valueForScope(block, previewScope, drafts);
+        if (block.apps.includes('website')) {
+          const previewScope = scopes.includes('website')
+            ? 'website'
+            : (scopes.includes('shared') ? 'shared' : scopes[0]);
+          websiteOverrides[block.key] = valueForScope(block, previewScope, drafts);
+        }
+        if (block.apps.includes('order_app')) {
+          const previewScope = scopes.includes('order_app')
+            ? 'order_app'
+            : (scopes.includes('shared') ? 'shared' : scopes[0]);
+          orderOverrides[block.key] = valueForScope(block, previewScope, drafts);
+        }
       }
-      if (Object.keys(overrides).length === 0) return;
+      if (Object.keys(websiteOverrides).length === 0 && Object.keys(orderOverrides).length === 0) {
+        return;
+      }
       setPreviewLoading(true);
-      void createContentPreviewToken('website', overrides, locale)
-        .then((res) => setPreviewState({ website: res.website_url || null, orderApp: res.order_app_url || null }))
-        .catch(() => setPreviewState({ website: null, orderApp: null }))
+      const websiteReq = Object.keys(websiteOverrides).length > 0
+        ? createContentPreviewToken('website', websiteOverrides, locale)
+        : Promise.resolve(null);
+      const orderReq = Object.keys(orderOverrides).length > 0
+        ? createContentPreviewToken('order_app', orderOverrides, locale)
+        : Promise.resolve(null);
+      void Promise.all([websiteReq, orderReq])
+        .then(([websiteRes, orderRes]) => {
+          setPreviewState({
+            website: websiteRes?.website_url || null,
+            orderApp: orderRes?.order_app_url || null,
+          });
+        })
+        .catch(() => {
+          setPreviewState({ website: null, orderApp: null });
+          error('Could not load live preview. Try again.');
+        })
         .finally(() => setPreviewLoading(false));
     }, 600);
     return () => window.clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drafts, contentBlocks, locale]);
 
   // Autosave

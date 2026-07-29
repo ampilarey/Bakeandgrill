@@ -14,7 +14,10 @@ class SecurityHeaders
     {
         $response = $next($request);
 
-        $response->headers->set('X-Frame-Options', 'DENY');
+        $embeddablePreview = $this->isEmbeddablePreview($request);
+
+        // Content Hub loads draft previews in a same-origin admin iframe.
+        $response->headers->set('X-Frame-Options', $embeddablePreview ? 'SAMEORIGIN' : 'DENY');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('X-XSS-Protection', '0'); // modern browsers ignore it; CSP is the real fix
@@ -24,9 +27,24 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
-        $response->headers->set('Content-Security-Policy', $this->contentSecurityPolicy($request));
+        $csp = $this->contentSecurityPolicy($request);
+        $csp .= $embeddablePreview ? "; frame-ancestors 'self'" : "; frame-ancestors 'none'";
+        $response->headers->set('Content-Security-Policy', $csp);
 
         return $response;
+    }
+
+    /**
+     * Staff Content Hub preview surfaces only — keep clickjacking protection elsewhere.
+     */
+    private function isEmbeddablePreview(Request $request): bool
+    {
+        if ($request->routeIs('content.preview.website')) {
+            return true;
+        }
+
+        return $request->query->has('previewToken')
+            && ($request->is('order') || $request->is('order/*'));
     }
 
     private function contentSecurityPolicy(Request $request): string
