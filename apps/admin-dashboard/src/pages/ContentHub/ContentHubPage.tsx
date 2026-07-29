@@ -16,6 +16,7 @@ import {
   restoreContentRevision,
   saveContentDrafts,
   scheduleContent,
+  copyContentBlock,
   shareContentBlock,
   splitContentBlock,
   updateContent,
@@ -475,6 +476,29 @@ export function ContentHubPage() {
       error('Could not update content mode');
     } finally {
       setLinkingKey(null);
+    }
+  };
+
+  const copyFromOtherApp = async (block: ContentBlock, from: ContentScope, to: ContentScope) => {
+    const fromLabel = labelForScope(from);
+    const toLabel = labelForScope(to);
+    if (!window.confirm(`Replace the ${toLabel} value with the ${fromLabel} value?`)) {
+      return;
+    }
+    try {
+      const { blocks: nextBlocks } = await copyContentBlock(block.key, from, to, locale);
+      setBlocks(nextBlocks);
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[draftKey('shared', block.key)];
+        delete next[draftKey('website', block.key)];
+        delete next[draftKey('order_app', block.key)];
+        draftsRef.current = next;
+        return next;
+      });
+      success(`Copied from ${fromLabel}`);
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Copy failed');
     }
   };
 
@@ -1035,6 +1059,8 @@ export function ContentHubPage() {
       editorContent = renderEditorForScope(block, primaryScope);
     }
 
+    const showCopyFromOtherApp = canChooseContentMode(block) && linkState(block) === 'different';
+
     return (
       <BlockCard
         key={`${block.key}-${locale}`}
@@ -1046,6 +1072,9 @@ export function ContentHubPage() {
         onOpenHistory={() => void openHistory(block, primaryScope)}
         historyOpen={!isMultiColumn && Boolean(historyTargetMatchPrimary)}
         historyPanel={renderHistoryPanel(block, primaryScope, primaryValue)}
+        showCopyFromOtherApp={showCopyFromOtherApp}
+        onCopyFromWebsite={() => void copyFromOtherApp(block, 'website', 'order_app')}
+        onCopyFromOrderApp={() => void copyFromOtherApp(block, 'order_app', 'website')}
         technicalScopesLabel={scopesLabelFor(scopes)}
         rawValuePreview={primaryValue.slice(0, 80)}
       />

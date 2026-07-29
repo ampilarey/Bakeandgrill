@@ -156,6 +156,89 @@ describe('ContentHubPage', () => {
     expect(screen.getByText('Logo — for light backgrounds')).toBeTruthy();
     expect(screen.queryByText('Phone number')).toBeNull();
   });
+
+  it('copy-from-other-app appears only on split blocks and calls the copy endpoint', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
+      locale: 'en',
+      locales: ['en', 'dv'],
+      blocks: [
+        {
+          ...phoneBlock,
+          state: 'split',
+          link_state: 'different',
+          shared: null,
+          website: '+960 WEB',
+          order_app: '+960 ORDER',
+          resolved_website: '+960 WEB',
+          resolved_order_app: '+960 ORDER',
+        },
+        logoBlock,
+      ],
+    });
+    vi.mocked(contentApi.copyContentBlock).mockResolvedValue({
+      blocks: [
+        {
+          ...phoneBlock,
+          state: 'split',
+          link_state: 'different',
+          shared: null,
+          website: '+960 ORDER',
+          order_app: '+960 ORDER',
+          resolved_website: '+960 ORDER',
+          resolved_order_app: '+960 ORDER',
+        },
+        logoBlock,
+      ],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Phone number');
+    fireEvent.click(screen.getByTestId('block-more-business_phone'));
+    expect(screen.getByTestId('copy-from-website-business_phone')).toBeTruthy();
+    expect(screen.getByTestId('copy-from-order-business_phone')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('copy-from-order-business_phone'));
+    await waitFor(() => {
+      expect(contentApi.copyContentBlock).toHaveBeenCalledWith(
+        'business_phone',
+        'order_app',
+        'website',
+        'en',
+      );
+    });
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue('+960 ORDER').length).toBeGreaterThanOrEqual(1);
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('copy-from-other-app is hidden for Same-in-both and branding blocks', async () => {
+    render(
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Phone number');
+    fireEvent.click(screen.getByTestId('block-more-business_phone'));
+    expect(screen.queryByTestId('copy-from-website-business_phone')).toBeNull();
+    expect(screen.queryByTestId('copy-from-order-business_phone')).toBeNull();
+
+    // Branding has no Same/Different control and no copy actions in the hub.
+    fireEvent.click(screen.getByRole('button', { name: 'Branding' }));
+    await screen.findByText('Logo — for light backgrounds');
+    expect(screen.queryByTestId('copy-from-website-logo')).toBeNull();
+    expect(screen.queryByTestId('copy-from-order-logo')).toBeNull();
+    expect(screen.queryByTestId('block-more-logo')).toBeNull();
+  });
 });
 
 describe('legacy content routes redirect to hub', () => {
