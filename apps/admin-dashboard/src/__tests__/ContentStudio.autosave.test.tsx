@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { AppContentEditor } from '../pages/ContentStudio/AppContentEditor';
+import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 
@@ -29,6 +29,7 @@ vi.mock('../api/content', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
 vi.mock('../components/ui', async () => {
   const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
   return {
@@ -36,6 +37,9 @@ vi.mock('../components/ui', async () => {
     useToast: () => ({ success: vi.fn(), error: vi.fn() }),
   };
 });
+vi.mock('../components/MediaPicker', () => ({
+  MediaPicker: () => null,
+}));
 
 const richBlock: ContentBlock = {
   key: 'cta_band_headline',
@@ -52,9 +56,10 @@ const richBlock: ContentBlock = {
   resolved_website: 'Hello',
   resolved_order_app: 'Hello',
   state: 'split',
+  link_state: 'different',
 };
 
-describe('Content Studio autosave + WYSIWYG', () => {
+describe('Content Hub autosave + WYSIWYG', () => {
   beforeEach(() => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
@@ -73,17 +78,16 @@ describe('Content Studio autosave + WYSIWYG', () => {
     vi.clearAllMocks();
   });
 
-  // Real timers only — fake timers in this file previously timed out sibling suites.
   it('renders WYSIWYG for rich blocks and autosaves drafts', async () => {
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
+      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByTestId('rich-text-editor')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
 
-    const editor = screen.getByTestId('rich-text-editor');
+    const editor = screen.getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Edited draft';
     fireEvent.input(editor);
 
@@ -102,13 +106,13 @@ describe('Content Studio autosave + WYSIWYG', () => {
 
   it('publish promotes via updateContent', async () => {
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
+      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByTestId('rich-text-editor')).toBeTruthy());
-    const editor = screen.getByTestId('rich-text-editor');
+    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
+    const editor = screen.getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Ready to publish';
     fireEvent.input(editor);
 
@@ -121,12 +125,12 @@ describe('Content Studio autosave + WYSIWYG', () => {
   it('registers beforeunload when there are dirty drafts', async () => {
     const addSpy = vi.spyOn(window, 'addEventListener');
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
+      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByTestId('rich-text-editor')).toBeTruthy());
-    const editor = screen.getByTestId('rich-text-editor');
+    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
+    const editor = screen.getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'dirty';
     fireEvent.input(editor);
 

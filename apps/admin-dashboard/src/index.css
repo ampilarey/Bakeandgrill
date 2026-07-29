@@ -1681,94 +1681,8 @@ a { text-decoration: none; color: inherit; }
     display: none !important;
   }
 
-  .content-studio-page .content-studio-header-actions {
-    width: 100%;
-  }
-
-  .content-studio-page .content-studio-header-actions > button {
-    flex: 1 1 calc(50% - 4px);
-    justify-content: center;
-  }
-
-  .content-studio-page .content-studio-toolbar {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  .content-studio-page .content-studio-toolbar-schedule {
-    margin-left: 0 !important;
-    width: 100%;
-  }
-
-  .content-studio-page .content-studio-toolbar-schedule input[type="datetime-local"] {
-    flex: 1 1 auto;
-    min-width: 0;
-    width: 100%;
-  }
-
-  .content-studio-page .content-studio-shell {
-    flex-direction: column !important;
-    gap: 12px !important;
-  }
-
-  .content-studio-page .content-studio-aside {
-    width: 100% !important;
-    position: static !important;
-    top: auto !important;
-    padding: 10px !important;
-  }
-
-  .content-studio-page .content-studio-aside-title {
-    margin-bottom: 8px !important;
-  }
-
-  .content-studio-page .content-studio-groups {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 6px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    margin: 0 -2px;
-    padding-bottom: 2px;
-  }
-
-  .content-studio-page .content-studio-groups::-webkit-scrollbar {
-    display: none;
-  }
-
-  .content-studio-page .content-studio-groups > button {
-    flex-shrink: 0 !important;
-    width: auto !important;
-    white-space: nowrap;
-    min-height: 40px !important;
-    padding: 8px 12px !important;
-    border: 1px solid #E8E0D8 !important;
-    border-radius: 10px !important;
-    background: #F8F6F3 !important;
-    color: #6B5D4F !important;
-  }
-
-  .content-studio-page .content-studio-groups > button[aria-pressed="true"] {
-    background: #F5E6D3 !important;
-    color: #1C1408 !important;
-    border-color: #E8C9A0 !important;
-    font-weight: 700 !important;
-  }
-
   .content-studio-page .content-studio-block {
     padding: 12px !important;
-  }
-
-  .content-studio-page .content-studio-block-actions {
-    width: 100%;
-  }
-
-  .content-studio-page .content-studio-block-actions > button {
-    flex: 1 1 calc(50% - 4px);
-    min-height: 44px !important;
-    justify-content: center;
   }
 
   .content-studio-page .content-studio-sticky-bar {
@@ -2290,11 +2204,6 @@ a { text-decoration: none; color: inherit; }
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-/* Hub uses its own section grid — suppress old horizontal chip strip */
-.hub-page .content-studio-groups {
-  display: none !important;
 }
 
 /* CSS-only hide for mobile overview when editor is open */

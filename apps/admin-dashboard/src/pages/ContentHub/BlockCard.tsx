@@ -16,7 +16,6 @@ type Props = {
   onOpenHistory: () => void;
   historyOpen: boolean;
   historyPanel: ReactNode;
-  copyFromOtherApp?: ReactNode;
   technicalScopesLabel: string;
   rawValuePreview: string;
 };
@@ -35,7 +34,6 @@ export function BlockCard({
   onOpenHistory,
   historyOpen,
   historyPanel,
-  copyFromOtherApp,
   technicalScopesLabel,
   rawValuePreview,
 }: Props) {
@@ -102,7 +100,6 @@ export function BlockCard({
                 >
                   History
                 </button>
-                {copyFromOtherApp ? <div className="hub-block-more-slot">{copyFromOtherApp}</div> : null}
                 <div className="hub-block-more-tech" data-testid={`block-tech-${block.key}`}>
                   <div>
                     <strong>Key</strong> {block.key}

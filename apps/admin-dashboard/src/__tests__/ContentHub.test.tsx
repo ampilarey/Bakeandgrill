@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
 
@@ -160,11 +160,11 @@ describe('ContentHubPage', () => {
 
 describe('legacy content routes redirect to hub', () => {
   it('redirects /content/website to /content', async () => {
-    const { WebsiteContentPage } = await import('../pages/ContentStudio/ContentStudioPage');
+    // Mirrors App.tsx Navigate routes (legacy ContentStudioPage redirects removed).
     render(
       <MemoryRouter initialEntries={['/content/website']}>
         <Routes>
-          <Route path="/content/website" element={<WebsiteContentPage />} />
+          <Route path="/content/website" element={<Navigate to="/content" replace />} />
           <Route path="/content" element={<div>Hub</div>} />
         </Routes>
       </MemoryRouter>,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { AppContentEditor } from '../pages/ContentStudio/AppContentEditor';
+import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 
@@ -29,6 +29,7 @@ vi.mock('../api/content', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
 vi.mock('../components/ui', async () => {
   const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
   return {
@@ -36,6 +37,9 @@ vi.mock('../components/ui', async () => {
     useToast: () => ({ success: vi.fn(), error: vi.fn() }),
   };
 });
+vi.mock('../components/MediaPicker', () => ({
+  MediaPicker: () => null,
+}));
 
 const heroShared = JSON.stringify({
   image: '/images/a.jpg',
@@ -74,42 +78,7 @@ function phoneBlock(): ContentBlock {
     resolved_website: '+960 912 0011',
     resolved_order_app: '+960 912 0011',
     state: 'shared',
-  };
-}
-
-function websiteOnlyBlock(): ContentBlock {
-  return {
-    key: 'meta_title',
-    label: 'Meta title',
-    group: 'SEO',
-    type: 'text',
-    apps: ['website'],
-    shareable: false,
-    public: true,
-    shared: 'Bake & Grill',
-    website: null,
-    order_app: null,
-    resolved_website: 'Bake & Grill',
-    resolved_order_app: null,
-    state: 'shared',
-  };
-}
-
-function orderOnlyBlock(): ContentBlock {
-  return {
-    key: 'order_app_welcome',
-    label: 'Welcome banner',
-    group: 'Order App',
-    type: 'text',
-    apps: ['order_app'],
-    shareable: false,
-    public: true,
-    shared: 'Welcome',
-    website: null,
-    order_app: null,
-    resolved_website: null,
-    resolved_order_app: 'Welcome',
-    state: 'shared',
+    link_state: 'same',
   };
 }
 
@@ -131,12 +100,13 @@ function heroBlock(): ContentBlock {
     resolved_website: websiteArr,
     resolved_order_app: orderArr,
     state: 'split',
+    link_state: 'different',
   };
 }
 
-const allBlocks = () => [phoneBlock(), websiteOnlyBlock(), orderOnlyBlock(), heroBlock()];
+const allBlocks = () => [phoneBlock(), heroBlock()];
 
-describe('Content Studio two app editors', () => {
+describe('Content Hub dual-app editing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
@@ -154,53 +124,31 @@ describe('Content Studio two app editors', () => {
         if (c.scope === 'order_app') {
           return { ...b, order_app: String(c.value), resolved_order_app: String(c.value), state: 'split' as const };
         }
+        if (c.scope === 'shared') {
+          return { ...b, shared: String(c.value), resolved_website: String(c.value), resolved_order_app: String(c.value), state: 'shared' as const };
+        }
         return b;
       }),
     }));
-    vi.mocked(contentApi.copyContentBlock).mockResolvedValue({
-      blocks: allBlocks().map((b) =>
-        b.key === 'business_phone'
-          ? { ...b, website: '+960 FROM ORDER', resolved_website: '+960 FROM ORDER', state: 'split' as const }
-          : b,
-      ),
-    });
+    vi.mocked(contentApi.splitContentBlock).mockImplementation(async () => ({
+      blocks: [
+        {
+          ...phoneBlock(),
+          state: 'split',
+          link_state: 'different',
+          website: '+960 912 0011',
+          order_app: '+960 912 0011',
+          shared: null,
+        },
+        heroBlock(),
+      ],
+    }));
   });
 
-  it('website editor lists only website-app blocks', async () => {
+  it('editing a shared field publishes to the shared scope', async () => {
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Phone number')).toBeTruthy();
-    });
-    expect(screen.getByText('Meta title')).toBeTruthy();
-    expect(screen.getAllByText('Hero Slides').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Welcome banner')).toBeNull();
-    expect(screen.queryByText(/Make different per app/i)).toBeNull();
-    expect(screen.queryByText(/Reset to shared/i)).toBeNull();
-  });
-
-  it('order app editor lists only order_app blocks', async () => {
-    render(
-      <MemoryRouter>
-        <AppContentEditor app="order_app" />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Welcome banner')).toBeTruthy();
-    });
-    expect(screen.getByText('Phone number')).toBeTruthy();
-    expect(screen.queryByText('Meta title')).toBeNull();
-  });
-
-  it('editing a field publishes to the current app scope only', async () => {
-    render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
 
@@ -223,41 +171,14 @@ describe('Content Studio two app editors', () => {
     const [changes, locale] = vi.mocked(contentApi.updateContent).mock.calls[0];
     expect(locale).toBe('en');
     expect(changes).toEqual([
-      { key: 'business_phone', scope: 'website', value: '+960 WEB EDIT', locale: 'en' },
+      { key: 'business_phone', scope: 'shared', value: '+960 WEB EDIT', locale: 'en' },
     ]);
-    expect(changes.every((c) => c.scope !== 'order_app' && c.scope !== 'shared')).toBe(true);
   }, 15000);
 
-  it('copy from other app calls copyContentBlock(key, other, current)', async () => {
+  it('hero visual editor drafts persist to the order_app scope on publish when split', async () => {
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
-      </MemoryRouter>,
-    );
-
-    await waitFor(
-      () => {
-        expect(screen.getByText('Phone number')).toBeTruthy();
-      },
-      { timeout: 8000 },
-    );
-
-    fireEvent.click(screen.getAllByRole('button', { name: /Copy from Order App/i })[0]);
-
-    await waitFor(() => {
-      expect(contentApi.copyContentBlock).toHaveBeenCalledWith(
-        'business_phone',
-        'order_app',
-        'website',
-        'en',
-      );
-    });
-  });
-
-  it('hero visual editor drafts persist to the current app on publish', async () => {
-    render(
-      <MemoryRouter>
-        <AppContentEditor app="order_app" />
+      <MemoryRouter initialEntries={['/content?group=Hero']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
 
@@ -275,15 +196,15 @@ describe('Content Studio two app editors', () => {
     });
 
     const [changes] = vi.mocked(contentApi.updateContent).mock.calls[0];
-    expect(changes[0].scope).toBe('order_app');
-    expect(changes[0].key).toBe('hero_slides');
-    expect(String(changes[0].value)).toContain('Edited order eyebrow');
+    const heroChange = changes.find((c) => c.key === 'hero_slides' && c.scope === 'order_app');
+    expect(heroChange).toBeTruthy();
+    expect(String(heroChange?.value)).toContain('Edited order eyebrow');
   });
 
   it('locale switch reloads blocks for that locale', async () => {
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
 
@@ -291,7 +212,7 @@ describe('Content Studio two app editors', () => {
       expect(contentApi.getContentBlocks).toHaveBeenCalledWith('en');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Dhivehi/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^DV$/i }));
 
     await waitFor(() => {
       expect(contentApi.getContentBlocks).toHaveBeenCalledWith('dv');

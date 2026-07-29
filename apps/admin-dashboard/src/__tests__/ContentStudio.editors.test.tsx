@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { AppContentEditor } from '../pages/ContentStudio/AppContentEditor';
+import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 
@@ -32,6 +32,7 @@ vi.mock('../api/content', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
 vi.mock('../components/ui', async () => {
   const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
   return {
@@ -39,6 +40,9 @@ vi.mock('../components/ui', async () => {
     useToast: () => ({ success: vi.fn(), error: vi.fn() }),
   };
 });
+vi.mock('../components/MediaPicker', () => ({
+  MediaPicker: () => null,
+}));
 
 const heroSlides = JSON.stringify([
   {
@@ -80,7 +84,7 @@ function categoriesBlock(): ContentBlock {
   return {
     key: 'homepage_categories',
     label: 'Hedhikaa',
-    group: 'Pages',
+    group: 'Homepage',
     type: 'json',
     editor: 'categories',
     apps: ['website', 'order_app'],
@@ -95,7 +99,7 @@ function categoriesBlock(): ContentBlock {
   };
 }
 
-describe('ContentStudio visual editors (per-app)', () => {
+describe('Content Hub visual editors', () => {
   beforeEach(() => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
@@ -108,10 +112,10 @@ describe('ContentStudio visual editors (per-app)', () => {
     });
   });
 
-  it('hero editor edits a slide field into the active website draft', async () => {
+  it('hero editor edits a slide field into the active draft', async () => {
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
+      <MemoryRouter initialEntries={['/content?group=Hero']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
 
@@ -128,10 +132,10 @@ describe('ContentStudio visual editors (per-app)', () => {
     });
   });
 
-  it('category image upload sets the app-scoped draft image_url via crop endpoint', async () => {
+  it('category image upload sets the draft image_url via crop endpoint', async () => {
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
+      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
 
@@ -177,8 +181,8 @@ describe('ContentStudio visual editors (per-app)', () => {
     });
 
     render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
+      <MemoryRouter initialEntries={['/content?group=Hero']}>
+        <ContentHubPage />
       </MemoryRouter>,
     );
 
@@ -186,21 +190,5 @@ describe('ContentStudio visual editors (per-app)', () => {
       expect(screen.getAllByText('Hero Slides').length).toBeGreaterThan(0);
     });
     expect(screen.queryByText('Hero Slide 1 (legacy)')).toBeNull();
-  });
-
-  it('does not expose reset-to-shared or shareContentBlock', async () => {
-    render(
-      <MemoryRouter>
-        <AppContentEditor app="website" />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Hero Slides').length).toBeGreaterThan(0);
-    });
-
-    expect(screen.queryByText(/Reset to shared/i)).toBeNull();
-    expect(contentApi.shareContentBlock).not.toHaveBeenCalled();
-    expect(contentApi.splitContentBlock).not.toHaveBeenCalled();
   });
 });

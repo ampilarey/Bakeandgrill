@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Monitor, Smartphone, X } from 'lucide-react';
-import { LivePreviewFrame } from '../ContentStudio/LivePreviewFrame';
+import { LivePreviewFrame } from './LivePreviewFrame';
 
 export type PreviewApp = 'website' | 'order_app';
 
