@@ -473,6 +473,7 @@ export function BrandKitCards({
 
       <div
         data-testid="brand-kit-summary"
+        className="hub-brand-kit-summary"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
@@ -481,6 +482,9 @@ export function BrandKitCards({
           border: '1px solid #E8E0D8',
           borderRadius: 12,
           padding: 12,
+          position: 'sticky',
+          top: 0,
+          zIndex: 2,
         }}
       >
         {cards.map((meta) => {
@@ -522,7 +526,7 @@ export function BrandKitCards({
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
+      <div className="hub-brand-kit-grid" data-testid="brand-kit-cards-grid">
         {cards.map((meta) => {
           const block = blocksByKey.get(meta.key)!;
           return (

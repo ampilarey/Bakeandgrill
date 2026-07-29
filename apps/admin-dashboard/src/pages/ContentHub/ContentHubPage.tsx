@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowDown, ArrowUp, Download, History, LayoutTemplate, Save, Search, Upload as UploadIcon } from 'lucide-react';
+import {
+  ArrowDown, ArrowUp, Download, Eye, History, MoreHorizontal,
+  Save, Search, Upload as UploadIcon, X,
+} from 'lucide-react';
 import {
   cancelContentSchedule,
   createContentPreviewToken,
@@ -41,10 +44,15 @@ import {
 } from '../../components/content-editors';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
-import { LivePreviewFrame } from '../ContentStudio/LivePreviewFrame';
 import { MediaPicker } from '../../components/MediaPicker';
 import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
 import { BRAND_KIT_KEYS } from './brandKitConfig';
+import { BlockCard, scopesLabelFor } from './BlockCard';
+import { SectionRail } from './SectionRail';
+import { SectionEditor } from './SectionEditor';
+import { PreviewPane } from './PreviewPane';
+import { orderSectionNames } from './hubLayoutConfig';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 
 type DraftMap = Record<string, string>;
@@ -62,23 +70,10 @@ type HistoryTarget = {
   label: string;
 } | null;
 
-const HUB_GROUP_ORDER = [
-  'Branding',
-  'Hero',
-  'Homepage',
-  'Menu',
-  'Footer',
-  'Legal',
-  'SEO',
-  'Order App',
-  'Status banners',
-  'Pre-Order',
-  'Contact',
-  'Pages',
-  'About',
-  'General',
-  'Announcements',
-];
+type PreviewState = {
+  website: string | null;
+  orderApp: string | null;
+};
 
 const ALL_SCOPES: ContentScope[] = ['shared', 'website', 'order_app'];
 
@@ -121,12 +116,7 @@ function collectChanges(drafts: DraftMap, locale: ContentLocale): DraftChange[] 
     .map(([composite, value]) => {
       const parsed = parseDraftKey(composite);
       if (!parsed) return null;
-      return {
-        key: parsed.key,
-        scope: parsed.scope,
-        value,
-        locale,
-      };
+      return { key: parsed.key, scope: parsed.scope, value, locale };
     })
     .filter((change): change is DraftChange => Boolean(change));
 }
@@ -179,7 +169,6 @@ function resolveHomeSectionOrder(raw: string | null | undefined): string[] {
   for (const id of HOME_SECTION_DEFAULT) {
     if (!seen.has(id)) out.push(id);
   }
-
   return out;
 }
 
@@ -221,16 +210,6 @@ function isDeprecatedBlock(block: ContentBlock): boolean {
   return Boolean(block.deprecated) || /^hero_slide_[123]$/.test(block.key);
 }
 
-function matchesQuery(block: ContentBlock, q: string): boolean {
-  const needle = q.trim().toLowerCase();
-  if (!needle) return true;
-  return (
-    block.key.toLowerCase().includes(needle) ||
-    block.label.toLowerCase().includes(needle) ||
-    block.group.toLowerCase().includes(needle)
-  );
-}
-
 function latestIso(values: Array<string | null | undefined>): string | null {
   const sorted = values
     .filter((value): value is string => Boolean(value))
@@ -241,12 +220,15 @@ function latestIso(values: Array<string | null | undefined>): string | null {
 export function ContentHubPage() {
   usePageTitle('Content & Branding');
   const { success, error } = useToast();
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlGroup = (searchParams.get('group') || searchParams.get('section') || '').trim();
+
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [group, setGroup] = useState<string>(() => urlGroup || 'All');
+  const [activeGroup, setActiveGroup] = useState<string | null>(() => urlGroup || null);
+  const [mobileEditorOpen, setMobileEditorOpen] = useState(() => Boolean(urlGroup));
   const [q, setQ] = useState('');
   const [drafts, setDrafts] = useState<DraftMap>({});
   const [locale, setLocale] = useState<ContentLocale>('en');
@@ -254,15 +236,20 @@ export function ContentHubPage() {
   const [revisions, setRevisions] = useState<ContentRevision[]>([]);
   const [schedules, setSchedules] = useState<ContentScheduleRow[]>([]);
   const [scheduleAt, setScheduleAt] = useState('');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<PreviewState>({ website: null, orderApp: null });
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewSheetOpen, setPreviewSheetOpen] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [autosaving, setAutosaving] = useState(false);
   const [serverDraftSynced, setServerDraftSynced] = useState(true);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [linkingKey, setLinkingKey] = useState<string | null>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const uploadCtx = useRef<{
     blockKey: string;
     scope: ContentScope;
@@ -310,42 +297,31 @@ export function ContentHubPage() {
   useEffect(() => {
     void load(locale);
     return () => { loadGen.current += 1; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when locale changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
 
+  // Sync URL group param → activeGroup (but not mobileEditorOpen)
   useEffect(() => {
-    const next = urlGroup || 'All';
-    setGroup((prev) => (prev === next ? prev : next));
+    if (urlGroup) setActiveGroup(urlGroup);
   }, [urlGroup]);
 
-  const selectGroup = (next: string) => {
-    setGroup(next);
-    setSearchParams((prev) => {
-      const p = new URLSearchParams(prev);
-      p.delete('section');
-      if (next === 'All') p.delete('group');
-      else p.set('group', next);
-      return p;
-    }, { replace: true });
-  };
-
+  // Once blocks load with no active group, default to first section
   const contentBlocks = useMemo(
     () => blocks.filter((block) => !isDeprecatedBlock(block)),
     [blocks],
   );
 
-  const groups = useMemo(() => {
-    const present = new Set(contentBlocks.map((block) => block.group));
-    const ordered = HUB_GROUP_ORDER.filter((name) => present.has(name));
-    const extras = Array.from(present).filter((name) => !HUB_GROUP_ORDER.includes(name)).sort();
-    return ['All', ...ordered, ...extras];
+  const orderedSectionNames = useMemo(() => {
+    const present = Array.from(new Set(contentBlocks.map((b) => b.group)));
+    return orderSectionNames(present);
   }, [contentBlocks]);
 
-  const visibleSectionNames = useMemo(() => {
-    const qq = q.trim();
-    const names = group === 'All' ? groups.filter((g) => g !== 'All') : [group];
-    return names.filter((name) => contentBlocks.some((block) => block.group === name && matchesQuery(block, qq)));
-  }, [contentBlocks, group, groups, q]);
+  useEffect(() => {
+    if (!loading && contentBlocks.length > 0 && !activeGroup && !urlGroup) {
+      const first = orderedSectionNames[0];
+      if (first) setActiveGroup(first);
+    }
+  }, [loading, contentBlocks, activeGroup, urlGroup, orderedSectionNames]);
 
   const dirtyCount = useMemo(() => Object.keys(drafts).length, [drafts]);
   const hasUnsaved = dirtyCount > 0 && !serverDraftSynced;
@@ -359,6 +335,7 @@ export function ContentHubPage() {
     setServerDraftSynced(false);
   };
 
+  // Preview token
   useEffect(() => {
     const t = window.setTimeout(() => {
       const overrides: Record<string, string> = {};
@@ -371,13 +348,14 @@ export function ContentHubPage() {
       if (Object.keys(overrides).length === 0) return;
       setPreviewLoading(true);
       void createContentPreviewToken('website', overrides, locale)
-        .then((res) => setPreviewUrl(res.website_url))
-        .catch(() => setPreviewUrl(null))
+        .then((res) => setPreviewState({ website: res.website_url || null, orderApp: res.order_app_url || null }))
+        .catch(() => setPreviewState({ website: null, orderApp: null }))
         .finally(() => setPreviewLoading(false));
     }, 600);
     return () => window.clearTimeout(t);
   }, [drafts, contentBlocks, locale]);
 
+  // Autosave
   useEffect(() => {
     if (dirtyCount === 0 || serverDraftSynced) return;
     const t = window.setTimeout(() => {
@@ -389,7 +367,7 @@ export function ContentHubPage() {
           setLastSavedAt(res.saved_at);
           setServerDraftSynced(true);
         })
-        .catch(() => { /* keep local changes available for publish */ })
+        .catch(() => { /* keep local changes */ })
         .finally(() => setAutosaving(false));
     }, 2500);
     return () => window.clearTimeout(t);
@@ -404,6 +382,43 @@ export function ContentHubPage() {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [hasUnsaved, dirtyCount]);
+
+  // More menu click-outside
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!moreMenuRef.current?.contains(e.target as Node)) setMoreMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [moreMenuOpen]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const selectGroup = (next: string) => {
+    setActiveGroup(next);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.delete('section');
+      p.set('group', next);
+      return p;
+    }, { replace: true });
+  };
+
+  const handleSectionSelect = (name: string) => {
+    selectGroup(name);
+    setMobileEditorOpen(true);
+  };
+
+  const handleMobileBack = () => {
+    setMobileEditorOpen(false);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.delete('group');
+      p.delete('section');
+      return p;
+    }, { replace: true });
+  };
 
   const publish = async () => {
     const changes = collectChanges(drafts, locale);
@@ -549,6 +564,48 @@ export function ContentHubPage() {
       error(err instanceof Error ? err.message : 'Import failed');
     }
   };
+
+  // ── Section dirty map ──────────────────────────────────────────────────────
+
+  const railSections = useMemo(() => {
+    return orderedSectionNames.map((name) => {
+      const sectionBlockKeys = new Set(contentBlocks.filter((b) => b.group === name).map((b) => b.key));
+      const dirty = Object.keys(drafts).some((dk) => {
+        const parsed = parseDraftKey(dk);
+        return parsed && sectionBlockKeys.has(parsed.key);
+      });
+      return {
+        name,
+        count: contentBlocks.filter((b) => b.group === name).length,
+        dirty,
+      };
+    });
+  }, [orderedSectionNames, contentBlocks, drafts]);
+
+  // ── Search (label only) ────────────────────────────────────────────────────
+
+  const searchResults = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return [];
+    return contentBlocks
+      .filter((b) => b.label.toLowerCase().includes(needle))
+      .slice(0, 12)
+      .map((b) => ({ block: b, sectionName: b.group }));
+  }, [contentBlocks, q]);
+
+  const handleSearchSelect = (block: ContentBlock) => {
+    selectGroup(block.group);
+    setMobileEditorOpen(true);
+    setQ('');
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-block-key="${block.key}"]`);
+      if (el && typeof (el as HTMLElement).scrollIntoView === 'function') {
+        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 120);
+  };
+
+  // ── Render helpers ─────────────────────────────────────────────────────────
 
   const renderContentModeControl = (block: ContentBlock) => {
     if (!canChooseContentMode(block)) return null;
@@ -794,14 +851,8 @@ export function ContentHubPage() {
       <div
         key={block.key}
         style={{
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          padding: '10px 12px',
-          borderRadius: 10,
-          border: '1px solid #E8E0D8',
-          background: '#fff',
+          display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center',
+          padding: '10px 12px', borderRadius: 10, border: '1px solid #E8E0D8', background: '#fff',
         }}
       >
         <div style={{ flex: '1 1 180px', minWidth: 0 }}>
@@ -825,16 +876,8 @@ export function ContentHubPage() {
               <label
                 key={`${scope}-${block.key}`}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  minHeight: 36,
-                  padding: '0 10px',
-                  borderRadius: 9,
-                  border: '1px solid #E8E0D8',
-                  background: '#F8F6F3',
-                  fontSize: 12,
-                  fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, padding: '0 10px',
+                  borderRadius: 9, border: '1px solid #E8E0D8', background: '#F8F6F3', fontSize: 12, fontWeight: 600,
                 }}
               >
                 <input
@@ -858,13 +901,7 @@ export function ContentHubPage() {
     return (
       <div
         key={`${scope}-${block.key}`}
-        style={{
-          border: '1px solid #F0EBE4',
-          borderRadius: 12,
-          padding: 12,
-          background: '#FFFDFC',
-          minWidth: 0,
-        }}
+        style={{ border: '1px solid #F0EBE4', borderRadius: 12, padding: 12, background: '#FFFDFC', minWidth: 0 }}
       >
         <div style={{ fontSize: 12, fontWeight: 800, color: '#1C1408', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
           {labelForScope(scope)}
@@ -874,14 +911,8 @@ export function ContentHubPage() {
             <div
               key={id}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                minHeight: 42,
-                padding: '0 10px',
-                borderRadius: 10,
-                border: '1px solid #E8E0D8',
-                background: '#fff',
+                display: 'flex', alignItems: 'center', gap: 8, minHeight: 42, padding: '0 10px',
+                borderRadius: 10, border: '1px solid #E8E0D8', background: '#fff',
               }}
             >
               <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 999, background: '#F8F6F3', color: '#6B5D4F', fontSize: 11, fontWeight: 800 }}>
@@ -895,15 +926,7 @@ export function ContentHubPage() {
                 aria-label={`Move ${id} up`}
                 disabled={idx === 0}
                 onClick={() => persist(moveHomeSection(order, idx, -1))}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9,
-                  border: '1px solid #E8E0D8',
-                  background: '#fff',
-                  cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                  opacity: idx === 0 ? 0.45 : 1,
-                }}
+                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid #E8E0D8', background: '#fff', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.45 : 1 }}
               >
                 <ArrowUp size={14} />
               </button>
@@ -912,15 +935,7 @@ export function ContentHubPage() {
                 aria-label={`Move ${id} down`}
                 disabled={idx === order.length - 1}
                 onClick={() => persist(moveHomeSection(order, idx, 1))}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9,
-                  border: '1px solid #E8E0D8',
-                  background: '#fff',
-                  cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer',
-                  opacity: idx === order.length - 1 ? 0.45 : 1,
-                }}
+                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid #E8E0D8', background: '#fff', cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === order.length - 1 ? 0.45 : 1 }}
               >
                 <ArrowDown size={14} />
               </button>
@@ -933,17 +948,8 @@ export function ContentHubPage() {
 
   const renderSectionOrder = (block: ContentBlock) => {
     const scopes = editorScopesForBlock(block);
-
     return (
-      <div
-        key={block.key}
-        style={{
-          padding: 12,
-          borderRadius: 12,
-          border: '1px solid #E8E0D8',
-          background: '#fff',
-        }}
-      >
+      <div key={block.key} style={{ padding: 12, borderRadius: 12, border: '1px solid #E8E0D8', background: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: '#1C1408' }}>Home section order</div>
@@ -953,406 +959,425 @@ export function ContentHubPage() {
           </div>
           {renderContentModeControl(block)}
         </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: scopes.length > 1 ? 'repeat(2, minmax(0, 1fr))' : '1fr',
-            gap: 12,
-          }}
-        >
+        <div style={{ display: 'grid', gridTemplateColumns: scopes.length > 1 ? 'repeat(2, minmax(0,1fr))' : '1fr', gap: 12 }}>
           {scopes.map((scope) => renderSectionOrderScope(block, scope))}
         </div>
       </div>
     );
   };
 
-  const renderBlock = (block: ContentBlock) => {
+  const renderBlock = (block: ContentBlock): ReactNode => {
     if (isSeoDescriptionKey(block.key)) {
       const titleKey = block.key === 'meta_description'
         ? 'meta_title'
         : block.key.replace(/_meta_description$/, '_meta_title');
-      if (contentBlocks.some((candidate) => candidate.key === titleKey)) return null;
+      if (contentBlocks.some((c) => c.key === titleKey)) return null;
     }
 
     const scopes = editorScopesForBlock(block);
     const isMultiColumn = scopes.length > 1;
     const primaryScope = scopes[0];
     const primaryValue = valueForScope(block, primaryScope, drafts);
+    const historyTargetMatchPrimary =
+      historyTarget?.key === block.key && historyTarget?.scope === primaryScope;
 
-    return (
-      <div
-        key={`${block.key}-${locale}`}
-        className="content-studio-block"
-        style={{
-          background: '#fff',
-          border: '1px solid #E8E0D8',
-          borderRadius: 14,
-          padding: 16,
-        }}
-      >
-        <div className="content-studio-block-head" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-          <div style={{ minWidth: 0, flex: '1 1 180px' }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#1C1408' }}>{block.label}</div>
-            {block.description ? (
-              <div style={{ fontSize: 13, color: '#6B5D4F', marginTop: 4, lineHeight: 1.4 }}>
-                {block.description}
-              </div>
-            ) : null}
-            <div className="content-studio-block-meta" style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2, wordBreak: 'break-word' }}>
-              {block.key} · {block.type}{block.editor ? ` · ${block.editor}` : ''} · {locale} · {isMultiColumn ? 'Website + Order app' : labelForScope(primaryScope)}
-            </div>
-          </div>
-          <div className="content-studio-block-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            {renderContentModeControl(block)}
-            {!isMultiColumn ? (
-              <button
-                type="button"
-                onClick={() => void openHistory(block, primaryScope)}
-                style={{
-                  height: 36,
-                  padding: '0 10px',
-                  borderRadius: 10,
-                  border: '1px solid #E8E0D8',
-                  background: '#fff',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  fontSize: 12,
-                }}
-              >
-                <History size={12} style={{ verticalAlign: -1 }} /> History
-              </button>
-            ) : null}
-          </div>
-        </div>
+    const modeControl = renderContentModeControl(block);
+    const isBoolean = block.type === 'boolean';
 
-        {!isMultiColumn ? renderHistoryPanel(block, primaryScope, primaryValue) : null}
+    let editorContent: ReactNode = null;
+    let booleanControl: ReactNode = undefined;
 
+    if (isBoolean && !isMultiColumn) {
+      booleanControl = (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 32, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={primaryValue === 'true' || primaryValue === '1'}
+            onChange={(e) => setDraft(primaryScope, block.key, e.target.checked ? 'true' : 'false')}
+          />
+          Enabled
+        </label>
+      );
+    } else if (isMultiColumn) {
+      editorContent = (
         <div
           className="content-preview-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: isMultiColumn ? 'repeat(2, minmax(0, 1fr))' : '1fr',
-            gap: 12,
-          }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 12 }}
         >
           {scopes.map((scope) => {
             const val = valueForScope(block, scope, drafts);
+            const histTarget = historyTarget?.key === block.key && historyTarget?.scope === scope;
             return (
               <div
-                key={`${scope}-${block.key}`}
-                style={{
-                  border: isMultiColumn ? '1px solid #F0EBE4' : 'none',
-                  borderRadius: isMultiColumn ? 12 : 0,
-                  padding: isMultiColumn ? 12 : 0,
-                  minWidth: 0,
-                  background: isMultiColumn ? '#FFFDFC' : 'transparent',
-                }}
+                key={scope}
+                style={{ border: '1px solid #F0EBE4', borderRadius: 12, padding: 12, minWidth: 0, background: '#FFFDFC' }}
               >
-                {isMultiColumn ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#1C1408', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {labelForScope(scope)}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void openHistory(block, scope)}
-                      style={{
-                        height: 32,
-                        padding: '0 9px',
-                        borderRadius: 9,
-                        border: '1px solid #E8E0D8',
-                        background: '#fff',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        fontSize: 12,
-                      }}
-                    >
-                      <History size={12} style={{ verticalAlign: -1 }} /> History
-                    </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#1C1408', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {labelForScope(scope)}
                   </div>
-                ) : null}
-                {renderHistoryPanel(block, scope, val)}
+                  <button
+                    type="button"
+                    onClick={() => void openHistory(block, scope)}
+                    style={{ height: 32, padding: '0 9px', borderRadius: 9, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}
+                  >
+                    <History size={12} style={{ verticalAlign: -1 }} /> History
+                  </button>
+                </div>
+                {histTarget ? renderHistoryPanel(block, scope, val) : null}
                 {renderEditorForScope(block, scope)}
               </div>
             );
           })}
         </div>
+      );
+    } else {
+      editorContent = renderEditorForScope(block, primaryScope);
+    }
 
-        <div style={{ marginTop: 10, fontSize: 12, color: '#9C8E7E' }}>
-          Editing {isMultiColumn ? 'Website + Order app' : labelForScope(primaryScope)}
-          {' · '}
-          Current website value “{(block.resolved_website ?? '—').toString().slice(0, 80)}”
-        </div>
-      </div>
+    return (
+      <BlockCard
+        key={`${block.key}-${locale}`}
+        block={block}
+        locale={locale}
+        modeControl={modeControl}
+        editor={editorContent}
+        booleanControl={booleanControl}
+        onOpenHistory={() => void openHistory(block, primaryScope)}
+        historyOpen={!isMultiColumn && Boolean(historyTargetMatchPrimary)}
+        historyPanel={renderHistoryPanel(block, primaryScope, primaryValue)}
+        technicalScopesLabel={scopesLabelFor(scopes)}
+        rawValuePreview={primaryValue.slice(0, 80)}
+      />
     );
   };
 
+  // ── Build section editor content ───────────────────────────────────────────
+
+  const buildSectionContent = (sectionName: string, withBack: boolean) => {
+    const sectionBlocks = contentBlocks.filter((b) => b.group === sectionName);
+    const sectionOrderBlock = sectionBlocks.find((b) => b.section_order || b.key === 'home_section_order');
+    const sectionEnableBlocks = sectionBlocks.filter((b) => b.section_enable);
+    const regularBlocks = sectionBlocks.filter(
+      (b) => !b.section_enable && b.key !== sectionOrderBlock?.key,
+    );
+    const isBrandKit = sectionName === 'Branding';
+
+    const brandBlocksByKey = new Map(
+      regularBlocks.filter((b) => BRAND_KIT_KEYS.includes(b.key)).map((b) => [b.key, b] as const),
+    );
+    const leftoverBrandBlocks = isBrandKit
+      ? regularBlocks.filter((b) => !BRAND_KIT_KEYS.includes(b.key))
+      : regularBlocks;
+
+    const siteNameBlock = contentBlocks.find((b) => b.key === 'site_name');
+    const siteName = siteNameBlock
+      ? (valueForScope(siteNameBlock, 'shared', drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
+      : 'Bake & Grill';
+
+    const chrome: ReactNode =
+      sectionOrderBlock || sectionEnableBlocks.length > 0 ? (
+        <>
+          {sectionOrderBlock ? renderSectionOrder(sectionOrderBlock) : null}
+          {sectionEnableBlocks.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {sectionEnableBlocks.map(renderSectionEnable)}
+            </div>
+          ) : null}
+        </>
+      ) : null;
+
+    const brandKit: ReactNode =
+      isBrandKit && brandBlocksByKey.size > 0 ? (
+        <BrandKitCards
+          blocksByKey={brandBlocksByKey}
+          siteName={siteName}
+          valueOf={(block) => valueForScope(block, brandKitWriteScope(block), drafts)}
+          onSetValue={(block, value) => setDraft(brandKitWriteScope(block), block.key, value)}
+          onUploadFile={(block, file) => onUpload(block, brandKitWriteScope(block), file)}
+          onOpenLibrary={(block) => {
+            const scope = brandKitWriteScope(block);
+            uploadCtx.current = { blockKey: block.key, scope, onDone: (url) => setDraft(scope, block.key, url) };
+            setMediaOpen(true);
+          }}
+          onOpenHistory={(block) => void openHistory(block, brandKitWriteScope(block))}
+          historyPanel={(block) =>
+            renderHistoryPanel(block, brandKitWriteScope(block), valueForScope(block, brandKitWriteScope(block), drafts))
+          }
+        />
+      ) : null;
+
+    return (
+      <SectionEditor
+        sectionName={sectionName}
+        blocks={leftoverBrandBlocks}
+        chrome={chrome}
+        brandKit={brandKit}
+        renderBlock={renderBlock}
+        onBack={withBack ? handleMobileBack : undefined}
+        isBrandKit={isBrandKit}
+      />
+    );
+  };
+
+  // ── Header actions ─────────────────────────────────────────────────────────
+
+  const headerActions = (
+    <div className="hub-header-actions">
+      {/* Search */}
+      <div className="hub-search-wrap" ref={searchRef}>
+        <div className="hub-search-input-row">
+          <Search size={14} className="hub-search-icon" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by label…"
+            className="hub-search-input"
+            aria-label="Search content by label"
+          />
+          {q ? (
+            <button
+              type="button"
+              onClick={() => setQ('')}
+              className="hub-search-clear"
+              aria-label="Clear search"
+            >
+              <X size={12} />
+            </button>
+          ) : null}
+        </div>
+        {q.trim() && searchResults.length > 0 ? (
+          <div className="hub-search-dropdown" role="listbox" aria-label="Search results">
+            {searchResults.map(({ block, sectionName }) => (
+              <button
+                key={block.key}
+                type="button"
+                role="option"
+                aria-selected="false"
+                className="hub-search-result"
+                onClick={() => handleSearchSelect(block)}
+              >
+                <span className="hub-search-result-section">{sectionName}</span>
+                <span className="hub-search-result-label">{block.label}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Locale */}
+      <div className="hub-locale-seg" role="group" aria-label="Language">
+        {(['en', 'dv'] as const).map((loc) => (
+          <button
+            key={loc}
+            type="button"
+            aria-pressed={locale === loc}
+            onClick={() => setLocale(loc)}
+            className={`hub-locale-btn${locale === loc ? ' hub-locale-btn--active' : ''}`}
+          >
+            {loc === 'en' ? 'EN' : 'DV'}
+          </button>
+        ))}
+      </div>
+
+      {/* Draft status */}
+      <span data-testid="draft-save-status" className="hub-draft-status">
+        {autosaving
+          ? 'Saving draft…'
+          : lastSavedAt
+            ? `Draft saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+            : dirtyCount > 0
+              ? 'Unsaved draft'
+              : 'All published'}
+      </span>
+
+      {/* Publish */}
+      <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0} className="content-studio-publish-desktop">
+        <Save size={16} /> {saving ? 'Publishing…' : `Publish${dirtyCount ? ` (${dirtyCount})` : ''}`}
+      </Btn>
+
+      {/* ⋯ More */}
+      <div className="hub-more-wrap" ref={moreMenuRef}>
+        <Btn variant="secondary" onClick={() => setMoreMenuOpen((o) => !o)} aria-expanded={moreMenuOpen}>
+          <MoreHorizontal size={16} /> ⋯ More
+        </Btn>
+        {moreMenuOpen ? (
+          <div className="hub-more-menu" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              className="hub-more-item"
+              onClick={() => { void doExport(); setMoreMenuOpen(false); }}
+            >
+              <Download size={14} /> Export
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="hub-more-item"
+              onClick={() => { importInputRef.current?.click(); setMoreMenuOpen(false); }}
+            >
+              <UploadIcon size={14} /> Import
+            </button>
+            <div className="hub-more-schedule">
+              <div className="hub-more-schedule-label">Schedule publish</div>
+              <input
+                type="datetime-local"
+                value={scheduleAt}
+                onChange={(e) => setScheduleAt(e.target.value)}
+                className="hub-more-schedule-input"
+              />
+              <button
+                type="button"
+                onClick={() => { void schedulePublish(); setMoreMenuOpen(false); }}
+                disabled={saving || dirtyCount === 0 || !scheduleAt}
+                className="hub-more-schedule-btn"
+              >
+                Schedule
+              </button>
+            </div>
+            <button
+              type="button"
+              role="menuitem"
+              className="hub-more-item"
+              onClick={() => { setMediaOpen(true); setMoreMenuOpen(false); }}
+            >
+              Media library
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  // ── Schedules banner ───────────────────────────────────────────────────────
+
+  const schedulesBanner = schedules.length > 0 ? (
+    <div className="hub-schedules-banner">
+      <strong>{schedules.length}</strong> pending schedule{schedules.length === 1 ? '' : 's'}
+      <ul style={{ margin: '8px 0 0', paddingLeft: 18, wordBreak: 'break-word' }}>
+        {schedules.slice(0, 5).map((schedule) => (
+          <li key={schedule.id} style={{ marginBottom: 4 }}>
+            {schedule.key} · {labelForScope(schedule.scope)} · {schedule.locale} → {new Date(schedule.publish_at).toLocaleString()}
+            {' '}
+            <button
+              type="button"
+              onClick={() => void cancelContentSchedule(schedule.id).then(() => load()).catch((e) => error(e instanceof Error ? e.message : 'Cancel failed'))}
+              style={{ background: 'none', border: 'none', color: '#D4813A', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, minHeight: 32 }}
+            >
+              Cancel
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
+
+  // ── Skeleton ───────────────────────────────────────────────────────────────
+
+  const skeleton = (
+    <div data-testid="content-skeleton" className="hub-skeleton">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="hub-skeleton-card" />
+      ))}
+    </div>
+  );
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <PageShell>
-      <div className={`content-studio-page${dirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
+      <div className={`content-studio-page hub-page${dirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
         <PageHeader
           section="System"
           title="Content & Branding"
           subtitle="Website + order app copy, branding & visuals"
-          action={
-            <div className="content-studio-header-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Btn onClick={() => void doExport()} variant="secondary">
-                <Download size={16} /> Export
-              </Btn>
-              <Btn onClick={() => importInputRef.current?.click()} variant="secondary">
-                <UploadIcon size={16} /> Import
-              </Btn>
-              <Btn onClick={() => setMediaOpen(true)} variant="secondary">
-                <LayoutTemplate size={16} /> Media
-              </Btn>
-              <span data-testid="draft-save-status" style={{ fontSize: 12, color: '#9C8E7E', minWidth: 120 }}>
-                {autosaving
-                  ? 'Saving draft…'
-                  : lastSavedAt
-                    ? `Draft saved ${new Date(lastSavedAt).toLocaleTimeString()}`
-                    : dirtyCount > 0
-                      ? 'Unsaved draft'
-                      : 'All published'}
-              </span>
-              <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0} className="content-studio-publish-desktop">
-                <Save size={16} /> {saving ? 'Publishing…' : `Publish${dirtyCount ? ` (${dirtyCount})` : ''}`}
-              </Btn>
-            </div>
-          }
+          action={headerActions}
         />
 
         <input ref={fileInputRef} type="file" accept="image/*,.heic,.heif" style={{ display: 'none' }} onChange={(e) => void handleEmbedFile(e)} />
         <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => void doImport(e)} />
 
-        <div className="content-studio-toolbar" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div className="content-studio-locale tab-scroll-row" style={{ display: 'flex', gap: 8 }}>
-            {(['en', 'dv'] as const).map((loc) => (
-              <button
-                key={loc}
-                type="button"
-                onClick={() => setLocale(loc)}
-                style={{
-                  height: 36,
-                  padding: '0 14px',
-                  borderRadius: 10,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  fontWeight: locale === loc ? 700 : 500,
-                  fontSize: 13,
-                  border: locale === loc ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
-                  background: locale === loc ? '#FFF7ED' : '#fff',
-                  color: '#1C1408',
-                }}
-              >
-                {loc === 'en' ? 'English' : 'Dhivehi (ދިވެހި)'}
-              </button>
-            ))}
-          </div>
-          <div className="content-studio-toolbar-schedule" style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
-            <input
-              type="datetime-local"
-              value={scheduleAt}
-              onChange={(e) => setScheduleAt(e.target.value)}
-              style={{ height: 36, borderRadius: 10, border: '1px solid #E8E0D8', padding: '0 10px', fontFamily: 'inherit', fontSize: 13, flex: 1, minWidth: 0 }}
-            />
-            <button
-              type="button"
-              onClick={() => void schedulePublish()}
-              disabled={saving || dirtyCount === 0 || !scheduleAt}
-              style={{
-                height: 36,
-                padding: '0 12px',
-                borderRadius: 10,
-                border: '1px solid #E8E0D8',
-                background: '#F8F6F3',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: 12,
-                fontWeight: 600,
-                opacity: dirtyCount === 0 || !scheduleAt ? 0.5 : 1,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Schedule publish
-            </button>
-          </div>
-        </div>
+        {schedulesBanner}
 
-        {schedules.length > 0 ? (
-          <div style={{
-            marginBottom: 14,
-            padding: 12,
-            borderRadius: 12,
-            background: '#FFF7ED',
-            border: '1px solid #F5D0A9',
-            fontSize: 13,
-            color: '#1C1408',
-          }}>
-            <strong>{schedules.length}</strong> pending schedule{schedules.length === 1 ? '' : 's'}
-            <ul style={{ margin: '8px 0 0', paddingLeft: 18, wordBreak: 'break-word' }}>
-              {schedules.slice(0, 5).map((schedule) => (
-                <li key={schedule.id} style={{ marginBottom: 4 }}>
-                  {schedule.key} · {labelForScope(schedule.scope)} · {schedule.locale} → {new Date(schedule.publish_at).toLocaleString()}
-                  {' '}
-                  <button
-                    type="button"
-                    onClick={() => void cancelContentSchedule(schedule.id).then(() => load()).catch((e) => error(e instanceof Error ? e.message : 'Cancel failed'))}
-                    style={{ background: 'none', border: 'none', color: '#D4813A', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, minHeight: 32 }}
-                  >
-                    Cancel
-                  </button>
-                </li>
-              ))}
-            </ul>
+        {isMobile ? (
+          /* ── Mobile layout ──────────────────────────────────────────────── */
+          <div className="hub-mobile-shell">
+            {/* SectionRail grid: always in DOM; hidden via CSS when editor open */}
+            <div className={`hub-mobile-overview${mobileEditorOpen ? ' hub-mobile-hidden' : ''}`}>
+              {loading ? skeleton : (
+                <SectionRail
+                  variant="grid"
+                  sections={railSections}
+                  active={activeGroup}
+                  onSelect={handleSectionSelect}
+                />
+              )}
+            </div>
+
+            {/* SectionEditor */}
+            {!loading && mobileEditorOpen && activeGroup
+              ? buildSectionContent(activeGroup, true)
+              : null}
+
+            {/* Floating preview button */}
+            {mobileEditorOpen ? (
+              <button
+                type="button"
+                data-testid="preview-sheet-btn"
+                className="hub-preview-float-btn"
+                onClick={() => setPreviewSheetOpen(true)}
+              >
+                <Eye size={16} /> Preview
+              </button>
+            ) : null}
+
+            {/* Preview sheet */}
+            <PreviewPane
+              variant="sheet"
+              websiteUrl={previewState.website}
+              orderAppUrl={previewState.orderApp}
+              loading={previewLoading}
+              open={previewSheetOpen}
+              onClose={() => setPreviewSheetOpen(false)}
+            />
+          </div>
+        ) : (
+          /* ── Desktop layout ─────────────────────────────────────────────── */
+          <div className="hub-desktop-shell">
+            <SectionRail
+              variant="rail"
+              sections={railSections}
+              active={activeGroup}
+              onSelect={handleSectionSelect}
+            />
+
+            <div className="hub-editor-area">
+              {loading
+                ? skeleton
+                : activeGroup
+                  ? buildSectionContent(activeGroup, false)
+                  : null}
+            </div>
+
+            <PreviewPane
+              variant="column"
+              websiteUrl={previewState.website}
+              orderAppUrl={previewState.orderApp}
+              loading={previewLoading}
+            />
+          </div>
+        )}
+
+        {/* Sticky mobile publish bar */}
+        {dirtyCount > 0 ? (
+          <div className="content-studio-sticky-bar" role="region" aria-label="Unsaved changes">
+            <span className="content-studio-sticky-bar-label">{dirtyCount} unsaved change{dirtyCount === 1 ? '' : 's'}</span>
+            <Btn onClick={() => void publish()} disabled={saving} style={{ flex: 1 }}>
+              <Save size={16} /> {saving ? 'Publishing…' : `Publish (${dirtyCount})`}
+            </Btn>
           </div>
         ) : null}
-
-        <div className="content-studio-shell" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-          <aside className="content-studio-aside" style={{
-            width: 220,
-            flexShrink: 0,
-            background: '#fff',
-            border: '1px solid #E8E0D8',
-            borderRadius: 14,
-            padding: 12,
-            position: 'sticky',
-            top: 12,
-          }}>
-            <div className="content-studio-aside-title" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, color: '#1C1408', fontWeight: 700 }}>
-              <LayoutTemplate size={16} /> Sections
-            </div>
-            <div className="content-studio-search" style={{ position: 'relative', marginBottom: 10 }}>
-              <Search size={14} style={{ position: 'absolute', left: 10, top: 11, color: '#9C8E7E' }} />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search blocks…"
-                style={{
-                  width: '100%',
-                  height: 36,
-                  paddingLeft: 30,
-                  borderRadius: 10,
-                  border: '1px solid #E8E0D8',
-                  fontSize: 13,
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div className="content-studio-groups">
-              {groups.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  aria-pressed={group === name}
-                  onClick={() => selectGroup(name)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '8px 10px',
-                    border: 'none',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: 13,
-                    fontWeight: group === name ? 700 : 500,
-                    background: group === name ? '#F5E6D3' : 'transparent',
-                    color: group === name ? '#1C1408' : '#6B5D4F',
-                  }}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-          </aside>
-
-          <div className="content-studio-blocks" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {loading ? (
-              <div data-testid="content-skeleton" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[0, 1, 2].map((i) => (
-                  <div key={i} style={{ height: 96, borderRadius: 14, background: 'linear-gradient(90deg,#F0EBE4 25%,#F8F6F3 50%,#F0EBE4 75%)', backgroundSize: '200% 100%', animation: 'none' }} />
-                ))}
-              </div>
-            ) : null}
-            {!loading && visibleSectionNames.length === 0 ? <p style={{ color: '#9C8E7E' }}>No blocks match.</p> : null}
-
-            {!loading && visibleSectionNames.map((sectionName) => {
-              const sectionBlocks = contentBlocks.filter((block) => block.group === sectionName && matchesQuery(block, q));
-              const sectionOrderBlock = sectionBlocks.find((block) => block.section_order || block.key === 'home_section_order');
-              const sectionEnableBlocks = sectionBlocks.filter((block) => block.section_enable);
-              const regularBlocks = sectionBlocks.filter((block) => !block.section_enable && block.key !== sectionOrderBlock?.key);
-              const isBrandKit = sectionName === 'Branding';
-              const brandBlocksByKey = new Map(
-                regularBlocks.filter((b) => BRAND_KIT_KEYS.includes(b.key)).map((b) => [b.key, b] as const),
-              );
-              const leftoverBrandBlocks = isBrandKit
-                ? regularBlocks.filter((b) => !BRAND_KIT_KEYS.includes(b.key))
-                : regularBlocks;
-              const siteNameBlock = contentBlocks.find((b) => b.key === 'site_name');
-              const siteName = siteNameBlock
-                ? (valueForScope(siteNameBlock, 'shared', drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
-                : 'Bake & Grill';
-              return (
-                <section key={sectionName} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div
-                    style={{
-                      background: '#F8F6F3',
-                      border: '1px solid #E8E0D8',
-                      borderRadius: 14,
-                      padding: 14,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 10,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                      <div>
-                        <h2 style={{ margin: 0, fontSize: 18, color: '#1C1408' }}>{sectionName}</h2>
-                        <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>
-                          {isBrandKit
-                            ? 'Brand Kit'
-                            : `${regularBlocks.length} block${regularBlocks.length === 1 ? '' : 's'}`}
-                        </div>
-                      </div>
-                    </div>
-                    {sectionOrderBlock ? renderSectionOrder(sectionOrderBlock) : null}
-                    {sectionEnableBlocks.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {sectionEnableBlocks.map(renderSectionEnable)}
-                      </div>
-                    ) : null}
-                  </div>
-                  {isBrandKit ? (
-                    <BrandKitCards
-                      blocksByKey={brandBlocksByKey}
-                      siteName={siteName}
-                      valueOf={(block) => valueForScope(block, brandKitWriteScope(block), drafts)}
-                      onSetValue={(block, value) => setDraft(brandKitWriteScope(block), block.key, value)}
-                      onUploadFile={(block, file) => onUpload(block, brandKitWriteScope(block), file)}
-                      onOpenLibrary={(block) => {
-                        const scope = brandKitWriteScope(block);
-                        uploadCtx.current = {
-                          blockKey: block.key,
-                          scope,
-                          onDone: (url) => setDraft(scope, block.key, url),
-                        };
-                        setMediaOpen(true);
-                      }}
-                      onOpenHistory={(block) => void openHistory(block, brandKitWriteScope(block))}
-                      historyPanel={(block) =>
-                        renderHistoryPanel(block, brandKitWriteScope(block), valueForScope(block, brandKitWriteScope(block), drafts))
-                      }
-                    />
-                  ) : null}
-                  {(isBrandKit ? leftoverBrandBlocks : regularBlocks).map(renderBlock)}
-                </section>
-              );
-            })}
-
-            <LivePreviewFrame url={previewUrl} loading={previewLoading} />
-          </div>
-        </div>
 
         <MediaPicker
           open={mediaOpen}
@@ -1371,15 +1396,6 @@ export function ContentHubPage() {
             void navigator.clipboard?.writeText(asset.url);
           }}
         />
-
-        {dirtyCount > 0 ? (
-          <div className="content-studio-sticky-bar" role="region" aria-label="Unsaved changes">
-            <span className="content-studio-sticky-bar-label">{dirtyCount} unsaved change{dirtyCount === 1 ? '' : 's'}</span>
-            <Btn onClick={() => void publish()} disabled={saving} style={{ flex: 1 }}>
-              <Save size={16} /> {saving ? 'Publishing…' : `Publish (${dirtyCount})`}
-            </Btn>
-          </div>
-        ) : null}
       </div>
     </PageShell>
   );

@@ -104,7 +104,7 @@ describe('ContentHubPage', () => {
 
   it('shows Same/Different control and splits into two editors', async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
