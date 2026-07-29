@@ -634,7 +634,9 @@
             z-index: 1;
             overflow: visible;
             justify-content: flex-end;
-            padding-bottom: 6px;
+            /* 12px (not 6) so the Order label baseline matches Menu/Home/Offers/Account
+               while the raised 44px badge (translateY(-10px)) stays unclipped. */
+            padding-bottom: 12px;
             gap: 0;
             min-height: var(--touch-target);
         }
