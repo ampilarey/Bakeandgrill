@@ -101,6 +101,8 @@ function categoriesBlock(): ContentBlock {
 
 describe('Content Hub visual editors', () => {
   beforeEach(() => {
+    window.localStorage.clear();
+    window.localStorage.setItem('bg_hub_preview_open', '1');
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
       locales: ['en', 'dv'],

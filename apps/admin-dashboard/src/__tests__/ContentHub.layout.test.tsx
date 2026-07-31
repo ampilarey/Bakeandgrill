@@ -90,6 +90,9 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     isMobileFlag = false;
+    window.localStorage.clear();
+    // Existing desktop layout tests expect the docked preview column.
+    window.localStorage.setItem('bg_hub_preview_open', '1');
     setup();
   });
 

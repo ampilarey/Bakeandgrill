@@ -1,3 +1,4 @@
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { clusterSections, sectionMeta } from './hubLayoutConfig';
 
 export type SectionRailItem = {
@@ -12,16 +13,26 @@ type Props = {
   onSelect: (name: string) => void;
   /** Desktop sticky rail vs mobile 2-column card grid. */
   variant: 'rail' | 'grid';
+  /** Desktop only — icon strip (~56px). Ignored for grid. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 };
 
 /**
- * Desktop: 240px sticky cluster rail.
+ * Desktop: 240px sticky cluster rail (collapsible to ~56px icon strip).
  * Mobile: 2-column section cards (replaces horizontal chip strip).
  *
  * Buttons use aria-label={name} so accessible name = section name only
  * (count and dirty dot are aria-hidden to avoid polluting the name).
  */
-export function SectionRail({ sections, active, onSelect, variant }: Props) {
+export function SectionRail({
+  sections,
+  active,
+  onSelect,
+  variant,
+  collapsed = false,
+  onToggleCollapsed,
+}: Props) {
   const names = sections.map((s) => s.name);
   const byName = new Map(sections.map((s) => [s.name, s]));
   const clusters = clusterSections(names);
@@ -73,11 +84,32 @@ export function SectionRail({ sections, active, onSelect, variant }: Props) {
   }
 
   return (
-    <aside data-testid="section-rail" className="hub-section-rail">
-      <div className="hub-section-rail-title">Sections</div>
+    <aside
+      data-testid="section-rail"
+      data-collapsed={collapsed ? 'true' : 'false'}
+      className={`hub-section-rail${collapsed ? ' hub-section-rail--collapsed' : ''}`}
+    >
+      <div className="hub-section-rail-header">
+        {!collapsed ? <div className="hub-section-rail-title">Sections</div> : <span />}
+        {onToggleCollapsed ? (
+          <button
+            type="button"
+            data-testid="rail-collapse-btn"
+            className="hub-section-rail-collapse"
+            aria-label={collapsed ? 'Expand sections' : 'Collapse sections'}
+            title={collapsed ? 'Expand sections' : 'Collapse sections'}
+            aria-pressed={collapsed}
+            onClick={onToggleCollapsed}
+          >
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+        ) : null}
+      </div>
       {clusters.map((cluster) => (
         <div key={cluster.cluster} className="hub-section-rail-cluster">
-          <div className="hub-section-rail-cluster-label">{cluster.label}</div>
+          {!collapsed ? (
+            <div className="hub-section-rail-cluster-label">{cluster.label}</div>
+          ) : null}
           {cluster.sections.map((name) => {
             const item = byName.get(name)!;
             const meta = sectionMeta(name);
@@ -88,14 +120,19 @@ export function SectionRail({ sections, active, onSelect, variant }: Props) {
                 key={name}
                 type="button"
                 aria-label={name}
+                title={name}
                 aria-pressed={pressed}
                 data-testid={`section-rail-${name}`}
                 className={`hub-section-rail-row${pressed ? ' hub-section-rail-row--active' : ''}`}
                 onClick={() => onSelect(name)}
               >
                 <Icon size={15} className="hub-section-rail-row-icon" aria-hidden="true" />
-                <span className="hub-section-rail-row-name" aria-hidden="true">{name}</span>
-                <span className="hub-section-rail-row-count" aria-hidden="true">{item.count}</span>
+                {!collapsed ? (
+                  <span className="hub-section-rail-row-name" aria-hidden="true">{name}</span>
+                ) : null}
+                {!collapsed ? (
+                  <span className="hub-section-rail-row-count" aria-hidden="true">{item.count}</span>
+                ) : null}
                 {item.dirty ? (
                   <span
                     className="hub-section-dirty-dot"

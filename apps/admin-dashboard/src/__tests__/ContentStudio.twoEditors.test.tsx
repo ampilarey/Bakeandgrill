@@ -182,6 +182,10 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
+    await screen.findByTestId('scope-tabs-hero_slides');
+    // Default tab is Website — switch to Order app to edit that scope.
+    fireEvent.click(screen.getByTestId('scope-tab-hero_slides-order_app'));
+
     await waitFor(() => {
       expect(screen.getByDisplayValue('Order eyebrow')).toBeTruthy();
     });

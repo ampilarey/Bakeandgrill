@@ -102,7 +102,7 @@ describe('ContentHubPage', () => {
     expect(screen.getByRole('button', { name: 'Contact' })).toBeTruthy();
   });
 
-  it('shows Same/Different control and splits into two editors', async () => {
+  it('shows Same/Different control and splits into scoped tabs', async () => {
     render(
       <MemoryRouter initialEntries={['/content?group=Contact']}>
         <ContentHubPage />
@@ -120,8 +120,15 @@ describe('ContentHubPage', () => {
     });
 
     await waitFor(() => {
+      expect(screen.getByTestId('scope-tabs-business_phone')).toBeTruthy();
       expect(screen.getByDisplayValue('+960 111')).toBeTruthy();
+      expect(screen.queryByDisplayValue('+960 222')).toBeNull();
+    });
+
+    fireEvent.click(screen.getByTestId('scope-tab-business_phone-order_app'));
+    await waitFor(() => {
       expect(screen.getByDisplayValue('+960 222')).toBeTruthy();
+      expect(screen.queryByDisplayValue('+960 111')).toBeNull();
     });
 
     fireEvent.click(screen.getByLabelText(/Same in both/i));

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  ArrowDown, ArrowUp, Download, Eye, History, MoreHorizontal,
-  Save, Search, Upload as UploadIcon, X,
+  ArrowDown, ArrowUp, Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
 } from 'lucide-react';
 import {
   cancelContentSchedule,
@@ -77,6 +76,40 @@ type PreviewState = {
 };
 
 const ALL_SCOPES: ContentScope[] = ['shared', 'website', 'order_app'];
+
+/** Desktop layout prefs — Content Hub only. */
+const LS_PREVIEW_OPEN = 'bg_hub_preview_open';
+const LS_RAIL_COLLAPSED = 'bg_hub_rail_collapsed';
+const PREVIEW_DEFAULT_MIN_WIDTH = 1600;
+
+function readStoredBool(key: string): boolean | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw === '1' || raw === 'true') return true;
+    if (raw === '0' || raw === 'false') return false;
+  } catch {
+    /* private mode */
+  }
+  return null;
+}
+
+function writeStoredBool(key: string, value: boolean): void {
+  try {
+    window.localStorage.setItem(key, value ? '1' : '0');
+  } catch {
+    /* private mode */
+  }
+}
+
+function defaultPreviewOpen(): boolean {
+  const stored = readStoredBool(LS_PREVIEW_OPEN);
+  if (stored !== null) return stored;
+  return typeof window !== 'undefined' && window.innerWidth >= PREVIEW_DEFAULT_MIN_WIDTH;
+}
+
+function defaultRailCollapsed(): boolean {
+  return readStoredBool(LS_RAIL_COLLAPSED) === true;
+}
 
 const HOME_SECTION_DEFAULT = ['specials', 'featured', 'categories', 'proof', 'cta', 'location'] as const;
 
@@ -207,6 +240,16 @@ function editorScopesForBlock(block: ContentBlock): ContentScope[] {
   return ['website'];
 }
 
+function preferredScopeTab(scopes: ContentScope[], preferred?: ContentScope): ContentScope {
+  if (preferred && scopes.includes(preferred)) return preferred;
+  if (scopes.includes('website')) return 'website';
+  return scopes[0];
+}
+
+function scopeHasDraft(scope: ContentScope, key: string, drafts: DraftMap): boolean {
+  return drafts[draftKey(scope, key)] !== undefined;
+}
+
 function isDeprecatedBlock(block: ContentBlock): boolean {
   return Boolean(block.deprecated) || /^hero_slide_[123]$/.test(block.key);
 }
@@ -240,6 +283,10 @@ export function ContentHubPage() {
   const [previewState, setPreviewState] = useState<PreviewState>({ website: null, orderApp: null });
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewSheetOpen, setPreviewSheetOpen] = useState(false);
+  const [desktopPreviewOpen, setDesktopPreviewOpen] = useState(defaultPreviewOpen);
+  const [railCollapsed, setRailCollapsed] = useState(defaultRailCollapsed);
+  /** Per-block active scope tab for split editors (resets on section change). */
+  const [blockScopeTab, setBlockScopeTab] = useState<Record<string, ContentScope>>({});
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [autosaving, setAutosaving] = useState(false);
   const [serverDraftSynced, setServerDraftSynced] = useState(true);
@@ -305,6 +352,21 @@ export function ContentHubPage() {
   useEffect(() => {
     if (urlGroup) setActiveGroup(urlGroup);
   }, [urlGroup]);
+
+  // Per-block scope tabs reset when the active section changes.
+  useEffect(() => {
+    setBlockScopeTab({});
+  }, [activeGroup]);
+
+  const setDesktopPreviewOpenPersisted = (open: boolean) => {
+    setDesktopPreviewOpen(open);
+    writeStoredBool(LS_PREVIEW_OPEN, open);
+  };
+
+  const setRailCollapsedPersisted = (collapsed: boolean) => {
+    setRailCollapsed(collapsed);
+    writeStoredBool(LS_RAIL_COLLAPSED, collapsed);
+  };
 
   // Once blocks load with no active group, default to first section
   const contentBlocks = useMemo(
@@ -997,8 +1059,54 @@ export function ContentHubPage() {
     );
   };
 
+  const renderScopeTabs = (
+    blockKey: string,
+    scopes: ContentScope[],
+    activeScope: ContentScope,
+    panel: ReactNode,
+  ) => (
+    <div className="hub-scope-tabs" data-testid={`scope-tabs-${blockKey}`}>
+      <div className="hub-scope-tablist" role="tablist" aria-label="App scope">
+        {scopes.map((scope) => {
+          const selected = scope === activeScope;
+          const dirty = scopeHasDraft(scope, blockKey, drafts);
+          return (
+            <button
+              key={scope}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              data-testid={`scope-tab-${blockKey}-${scope}`}
+              className={`hub-scope-tab${selected ? ' hub-scope-tab--active' : ''}`}
+              onClick={() => setBlockScopeTab((prev) => ({ ...prev, [blockKey]: scope }))}
+            >
+              {labelForScope(scope)}
+              {dirty && !selected ? (
+                <span
+                  className="hub-scope-tab-dot"
+                  data-testid={`scope-tab-dirty-${blockKey}-${scope}`}
+                  title="Unpublished edits"
+                  aria-hidden="true"
+                />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        role="tabpanel"
+        data-testid={`scope-panel-${blockKey}-${activeScope}`}
+        className="hub-scope-tabpanel"
+      >
+        {panel}
+      </div>
+    </div>
+  );
+
   const renderSectionOrder = (block: ContentBlock) => {
     const scopes = editorScopesForBlock(block);
+    const multi = scopes.length > 1;
+    const activeScope = preferredScopeTab(scopes, blockScopeTab[block.key]);
     return (
       <div key={block.key} style={{ padding: 12, borderRadius: 12, border: '1px solid #E8E0D8', background: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -1010,9 +1118,14 @@ export function ContentHubPage() {
           </div>
           {renderContentModeControl(block)}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: scopes.length > 1 ? 'repeat(2, minmax(0,1fr))' : '1fr', gap: 12 }}>
-          {scopes.map((scope) => renderSectionOrderScope(block, scope))}
-        </div>
+        {multi
+          ? renderScopeTabs(
+            block.key,
+            scopes,
+            activeScope,
+            renderSectionOrderScope(block, activeScope),
+          )
+          : renderSectionOrderScope(block, scopes[0])}
       </div>
     );
   };
@@ -1026,11 +1139,11 @@ export function ContentHubPage() {
     }
 
     const scopes = editorScopesForBlock(block);
-    const isMultiColumn = scopes.length > 1;
-    const primaryScope = scopes[0];
-    const primaryValue = valueForScope(block, primaryScope, drafts);
-    const historyTargetMatchPrimary =
-      historyTarget?.key === block.key && historyTarget?.scope === primaryScope;
+    const isSplitEditors = scopes.length > 1;
+    const activeScope = preferredScopeTab(scopes, blockScopeTab[block.key]);
+    const activeValue = valueForScope(block, activeScope, drafts);
+    const historyOpen =
+      historyTarget?.key === block.key && historyTarget?.scope === activeScope;
 
     const modeControl = renderContentModeControl(block);
     const isBoolean = block.type === 'boolean';
@@ -1038,52 +1151,45 @@ export function ContentHubPage() {
     let editorContent: ReactNode = null;
     let booleanControl: ReactNode = undefined;
 
-    if (isBoolean && !isMultiColumn) {
+    if (isBoolean && !isSplitEditors) {
       booleanControl = (
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 32, cursor: 'pointer' }}>
           <input
             type="checkbox"
-            checked={primaryValue === 'true' || primaryValue === '1'}
-            onChange={(e) => setDraft(primaryScope, block.key, e.target.checked ? 'true' : 'false')}
+            checked={activeValue === 'true' || activeValue === '1'}
+            onChange={(e) => setDraft(activeScope, block.key, e.target.checked ? 'true' : 'false')}
           />
           Enabled
         </label>
       );
-    } else if (isMultiColumn) {
+    } else if (isBoolean && isSplitEditors) {
+      // Compact dual switches — never tab a boolean.
       editorContent = (
-        <div
-          className="content-preview-grid"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 12 }}
-        >
+        <div className="hub-boolean-scopes" data-testid={`boolean-scopes-${block.key}`}>
           {scopes.map((scope) => {
             const val = valueForScope(block, scope, drafts);
-            const histTarget = historyTarget?.key === block.key && historyTarget?.scope === scope;
             return (
-              <div
-                key={scope}
-                style={{ border: '1px solid #F0EBE4', borderRadius: 12, padding: 12, minWidth: 0, background: '#FFFDFC' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#1C1408', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {labelForScope(scope)}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void openHistory(block, scope)}
-                    style={{ height: 32, padding: '0 9px', borderRadius: 9, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}
-                  >
-                    <History size={12} style={{ verticalAlign: -1 }} /> History
-                  </button>
-                </div>
-                {histTarget ? renderHistoryPanel(block, scope, val) : null}
-                {renderEditorForScope(block, scope)}
-              </div>
+              <label key={scope} className="hub-boolean-scope">
+                <input
+                  type="checkbox"
+                  checked={val === 'true' || val === '1'}
+                  onChange={(e) => setDraft(scope, block.key, e.target.checked ? 'true' : 'false')}
+                />
+                {labelForScope(scope)}
+              </label>
             );
           })}
         </div>
       );
+    } else if (isSplitEditors) {
+      editorContent = renderScopeTabs(
+        block.key,
+        scopes,
+        activeScope,
+        renderEditorForScope(block, activeScope),
+      );
     } else {
-      editorContent = renderEditorForScope(block, primaryScope);
+      editorContent = renderEditorForScope(block, activeScope);
     }
 
     const showCopyFromOtherApp = canChooseContentMode(block) && linkState(block) === 'different';
@@ -1096,14 +1202,14 @@ export function ContentHubPage() {
         modeControl={modeControl}
         editor={editorContent}
         booleanControl={booleanControl}
-        onOpenHistory={() => void openHistory(block, primaryScope)}
-        historyOpen={!isMultiColumn && Boolean(historyTargetMatchPrimary)}
-        historyPanel={renderHistoryPanel(block, primaryScope, primaryValue)}
+        onOpenHistory={() => void openHistory(block, activeScope)}
+        historyOpen={historyOpen}
+        historyPanel={renderHistoryPanel(block, activeScope, activeValue)}
         showCopyFromOtherApp={showCopyFromOtherApp}
         onCopyFromWebsite={() => void copyFromOtherApp(block, 'website', 'order_app')}
         onCopyFromOrderApp={() => void copyFromOtherApp(block, 'order_app', 'website')}
         technicalScopesLabel={scopesLabelFor(scopes)}
-        rawValuePreview={primaryValue.slice(0, 80)}
+        rawValuePreview={activeValue.slice(0, 80)}
       />
     );
   };
@@ -1246,6 +1352,19 @@ export function ContentHubPage() {
               ? 'Unsaved draft'
               : 'All published'}
       </span>
+
+      {/* Desktop preview dock toggle — mobile keeps the sheet button */}
+      {!isMobile ? (
+        <button
+          type="button"
+          data-testid="preview-toggle"
+          aria-pressed={desktopPreviewOpen}
+          className={`hub-preview-toggle${desktopPreviewOpen ? ' hub-preview-toggle--on' : ''}`}
+          onClick={() => setDesktopPreviewOpenPersisted(!desktopPreviewOpen)}
+        >
+          <Eye size={14} /> Preview
+        </button>
+      ) : null}
 
       {/* Publish */}
       <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0} className="content-studio-publish-desktop">
@@ -1400,15 +1519,22 @@ export function ContentHubPage() {
           </div>
         ) : (
           /* ── Desktop layout ─────────────────────────────────────────────── */
-          <div className="hub-desktop-shell">
+          <div
+            className={`hub-desktop-shell${railCollapsed ? ' hub-desktop-shell--rail-collapsed' : ''}${desktopPreviewOpen ? '' : ' hub-desktop-shell--preview-off'}`}
+            data-testid="hub-desktop-shell"
+            data-preview={desktopPreviewOpen ? 'on' : 'off'}
+            data-rail={railCollapsed ? 'collapsed' : 'expanded'}
+          >
             <SectionRail
               variant="rail"
               sections={railSections}
               active={activeGroup}
               onSelect={handleSectionSelect}
+              collapsed={railCollapsed}
+              onToggleCollapsed={() => setRailCollapsedPersisted(!railCollapsed)}
             />
 
-            <div className="hub-editor-area">
+            <div className="hub-editor-area" data-testid="hub-editor-area">
               {loading
                 ? skeleton
                 : activeGroup
@@ -1416,12 +1542,14 @@ export function ContentHubPage() {
                   : null}
             </div>
 
-            <PreviewPane
-              variant="column"
-              websiteUrl={previewState.website}
-              orderAppUrl={previewState.orderApp}
-              loading={previewLoading}
-            />
+            {desktopPreviewOpen ? (
+              <PreviewPane
+                variant="column"
+                websiteUrl={previewState.website}
+                orderAppUrl={previewState.orderApp}
+                loading={previewLoading}
+              />
+            ) : null}
           </div>
         )}
 
