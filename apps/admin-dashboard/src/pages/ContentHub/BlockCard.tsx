@@ -16,10 +16,11 @@ type Props = {
   onOpenHistory: () => void;
   historyOpen: boolean;
   historyPanel: ReactNode;
-  /** Split dual-app blocks only — copy one app's value over the other. */
+  /** Split dual-app blocks only — copy the other app into the active tab scope. */
   showCopyFromOtherApp?: boolean;
-  onCopyFromWebsite?: () => void;
-  onCopyFromOrderApp?: () => void;
+  /** Active tab scope (website | order_app) — determines which copy action is shown. */
+  activeScope?: ContentScope;
+  onCopyFromOtherScope?: () => void;
   technicalScopesLabel: string;
   rawValuePreview: string;
 };
@@ -39,8 +40,8 @@ export function BlockCard({
   historyOpen,
   historyPanel,
   showCopyFromOtherApp = false,
-  onCopyFromWebsite,
-  onCopyFromOrderApp,
+  activeScope,
+  onCopyFromOtherScope,
   technicalScopesLabel,
   rawValuePreview,
 }: Props) {
@@ -107,31 +108,31 @@ export function BlockCard({
                 >
                   History
                 </button>
-                {showCopyFromOtherApp ? (
-                  <>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      data-testid={`copy-from-website-${block.key}`}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onCopyFromWebsite?.();
-                      }}
-                    >
-                      Copy from Website
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      data-testid={`copy-from-order-${block.key}`}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onCopyFromOrderApp?.();
-                      }}
-                    >
-                      Copy from Order app
-                    </button>
-                  </>
+                {showCopyFromOtherApp && activeScope === 'order_app' ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    data-testid={`copy-from-website-${block.key}`}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onCopyFromOtherScope?.();
+                    }}
+                  >
+                    Copy from Website
+                  </button>
+                ) : null}
+                {showCopyFromOtherApp && activeScope === 'website' ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    data-testid={`copy-from-order-${block.key}`}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onCopyFromOtherScope?.();
+                    }}
+                  >
+                    Copy from Order app
+                  </button>
                 ) : null}
                 <div className="hub-block-more-tech" data-testid={`block-tech-${block.key}`}>
                   <div>

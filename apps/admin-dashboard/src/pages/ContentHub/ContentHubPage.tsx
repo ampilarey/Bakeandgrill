@@ -182,6 +182,10 @@ function labelForScope(scope: ContentScope): string {
   return 'Both';
 }
 
+function otherAppScope(scope: ContentScope): ContentScope {
+  return scope === 'website' ? 'order_app' : 'website';
+}
+
 function resolveHomeSectionOrder(raw: string | null | undefined): string[] {
   let decoded: unknown = [];
   try {
@@ -579,9 +583,7 @@ export function ContentHubPage() {
       setBlocks(nextBlocks);
       setDrafts((prev) => {
         const next = { ...prev };
-        delete next[draftKey('shared', block.key)];
-        delete next[draftKey('website', block.key)];
-        delete next[draftKey('order_app', block.key)];
+        delete next[draftKey(to, block.key)];
         draftsRef.current = next;
         return next;
       });
@@ -1193,6 +1195,7 @@ export function ContentHubPage() {
     }
 
     const showCopyFromOtherApp = canChooseContentMode(block) && linkState(block) === 'different';
+    const copyFromScope = otherAppScope(activeScope);
 
     return (
       <BlockCard
@@ -1206,8 +1209,8 @@ export function ContentHubPage() {
         historyOpen={historyOpen}
         historyPanel={renderHistoryPanel(block, activeScope, activeValue)}
         showCopyFromOtherApp={showCopyFromOtherApp}
-        onCopyFromWebsite={() => void copyFromOtherApp(block, 'website', 'order_app')}
-        onCopyFromOrderApp={() => void copyFromOtherApp(block, 'order_app', 'website')}
+        activeScope={activeScope}
+        onCopyFromOtherScope={() => void copyFromOtherApp(block, copyFromScope, activeScope)}
         technicalScopesLabel={scopesLabelFor(scopes)}
         rawValuePreview={activeValue.slice(0, 80)}
       />

@@ -207,8 +207,8 @@ describe('ContentHubPage', () => {
 
     await screen.findByText('Phone number');
     fireEvent.click(screen.getByTestId('block-more-business_phone'));
-    expect(screen.getByTestId('copy-from-website-business_phone')).toBeTruthy();
     expect(screen.getByTestId('copy-from-order-business_phone')).toBeTruthy();
+    expect(screen.queryByTestId('copy-from-website-business_phone')).toBeNull();
 
     fireEvent.click(screen.getByTestId('copy-from-order-business_phone'));
     await waitFor(() => {

@@ -192,6 +192,54 @@ describe('ContentHub desktop width', () => {
     });
   });
 
+  it('Copy from Website on Order app tab writes website value into order_app scope', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(contentApi.copyContentBlock).mockResolvedValue({
+      blocks: [
+        {
+          ...splitPhone,
+          website: '+960 WEB',
+          order_app: '+960 WEB',
+          resolved_website: '+960 WEB',
+          resolved_order_app: '+960 WEB',
+        },
+      ],
+    });
+
+    mockBlocks([splitPhone]);
+    render(
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId('scope-tabs-business_phone');
+    fireEvent.click(screen.getByTestId('scope-tab-business_phone-order_app'));
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('+960 ORDER')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('block-more-business_phone'));
+    expect(screen.getByTestId('copy-from-website-business_phone')).toBeTruthy();
+    expect(screen.queryByTestId('copy-from-order-business_phone')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('copy-from-website-business_phone'));
+    await waitFor(() => {
+      expect(contentApi.copyContentBlock).toHaveBeenCalledWith(
+        'business_phone',
+        'website',
+        'order_app',
+        'en',
+      );
+    });
+    expect(confirmSpy).toHaveBeenCalledWith('Replace the Order app value with the Website value?');
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('+960 WEB')).toBeTruthy();
+    });
+
+    confirmSpy.mockRestore();
+  });
+
   it('preview toggle docks/undocks and persists across remount', async () => {
     mockBlocks([sharedPhone]);
     window.localStorage.setItem('bg_hub_preview_open', '1');
