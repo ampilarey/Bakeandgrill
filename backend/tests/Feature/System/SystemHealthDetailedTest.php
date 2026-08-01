@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -96,6 +97,7 @@ class SystemHealthDetailedTest extends TestCase
             'print_proxy_ok',
             'print_proxy_status',
             'queue_depth',
+            'redis' => ['status', 'ok', 'latency_ms', 'error'],
             'checked_at',
             'recent_failed_jobs',
             'recent_webhook_failures',
@@ -109,6 +111,7 @@ class SystemHealthDetailedTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $data['payment_pending_stuck']);
         $this->assertGreaterThanOrEqual(1, $data['sms_failed_24h']);
         $this->assertTrue($data['print_proxy_ok']);
+        $this->assertArrayHasKey('redis', $data);
     }
 
     public function test_detailed_health_ok_when_no_issues(): void
@@ -120,12 +123,19 @@ class SystemHealthDetailedTest extends TestCase
         ]);
         config(['services.print_proxy.url' => '']);
 
+        // Host Redis may be down in CI — stub a healthy PING so this test
+        // only asserts the aggregate "no issues" path.
+        $conn = \Mockery::mock();
+        $conn->shouldReceive('ping')->andReturn('PONG');
+        Redis::shouldReceive('connection')->andReturn($conn);
+
         $response = $this->getJson('/api/admin/system/health/detailed')->assertOk();
 
         $data = $response->json();
         $this->assertSame(0, $data['failed_jobs_24h']);
         $this->assertSame('not_configured', $data['print_proxy_status']);
         $this->assertArrayHasKey('disk', $data);
+        $this->assertSame('up', $data['redis']['status']);
         // Disk may already be low on the host — only assert ok when disk is healthy.
         if (($data['disk']['ok'] ?? null) !== false) {
             $this->assertSame('ok', $data['status']);
