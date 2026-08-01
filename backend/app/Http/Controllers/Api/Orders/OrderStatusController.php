@@ -195,11 +195,12 @@ class OrderStatusController extends Controller
                 app(SmsService::class)->send(new SmsMessage(
                     to: $phone,
                     message: $message,
-                    type: 'transactional',
+                    type: 'pos_fire_to_kitchen',
                     customerId: $order->customer_id,
                     referenceType: 'order',
                     referenceId: (string) $order->id,
                     idempotencyKey: 'order:fired:received:' . $order->id,
+                    actingUserId: $request->user()?->id,
                 ));
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('fireToKitchen: SMS failed', [

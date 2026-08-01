@@ -21,12 +21,33 @@ use Illuminate\Support\Facades\Log;
  *   template_slug: string|null,
  *   enabled_setting: string|null,
  *   send_permission: string|null,
- *   always_on: bool
+ *   always_on: bool,
+ *   recipients: string,
+ *   user_initiated: bool
  * }
  */
 final class SmsTypeRegistry
 {
     public const GLOBAL_KILL_SWITCH = 'sms_global_kill_switch';
+
+    public const SEND_PERMISSION_SETTING_PREFIX = 'sms_type_send_permission.';
+
+    /**
+     * Permissions an admin may assign as a type's send_permission.
+     *
+     * @var list<string>
+     */
+    public const ASSIGNABLE_SEND_PERMISSIONS = [
+        'sms.campaigns.send',
+        'sms.transactional.manage',
+        'sms.templates.edit',
+        'sms.settings.manage',
+        'orders.send_sms_bill',
+        'orders.send_payment_link',
+        'promotions.discounts',
+        'promotions.discount_override',
+        'service_availability.notify',
+    ];
 
     /** @var array<string, string> Legacy SmsMessage.type → registry key */
     private const TYPE_ALIASES = [
@@ -59,46 +80,47 @@ final class SmsTypeRegistry
 
         $rows = [
             // Auth (always on — only global kill switch can block)
-            self::def('auth_customer_otp', 'Customer login OTP', 'auth', true, false, 'auth_customer_otp', null, null, true),
-            self::def('auth_staff_password_reset', 'Staff password reset OTP', 'auth', true, false, 'auth_staff_password_reset', null, null, true),
-            self::def('discount_approval_otp', 'Discount approval OTP', 'system', true, false, 'discount_approval_otp', null, 'promotions.discount_override', true),
+            self::def('auth_customer_otp', 'Customer login OTP', 'auth', true, false, 'auth_customer_otp', null, null, true, 'The customer requesting login / verification', false),
+            self::def('auth_staff_password_reset', 'Staff password reset OTP', 'auth', true, false, 'auth_staff_password_reset', null, null, true, 'The staff member resetting their password', false),
+            self::def('discount_approval_otp', 'Discount approval OTP', 'system', true, false, 'discount_approval_otp', null, 'promotions.discounts', true, 'Approver staff with discount-override permission', true),
 
             // Customer / POS transactional
-            self::def('customer_payment_confirmed_pos', 'Payment confirmed (POS)', 'transactional', true, false, 'customer_payment_confirmed_pos', 'sms_customer_payment_confirmed_enabled', 'sms.transactional.manage'),
-            self::def('customer_payment_confirmed_online', 'Payment confirmed (online)', 'transactional', true, false, 'customer_payment_confirmed_online', 'sms_customer_payment_confirmed_enabled', 'sms.transactional.manage'),
-            self::def('customer_completion_receipt', 'Completion receipt', 'transactional', true, false, 'customer_completion_receipt', 'sms_customer_completion_receipt_enabled', 'sms.transactional.manage'),
-            self::def('customer_order_preparing', 'Order preparing', 'transactional', true, false, 'customer_order_preparing', 'sms_customer_preparing_enabled', 'sms.transactional.manage'),
-            self::def('customer_order_ready', 'Order ready', 'transactional', true, false, 'customer_order_ready_pickup', 'sms_customer_ready_enabled', 'sms.transactional.manage'),
-            self::def('customer_order_on_the_way', 'Order on the way', 'transactional', true, false, 'customer_order_on_the_way', 'sms_customer_on_the_way_enabled', 'sms.transactional.manage'),
-            self::def('pos_send_bill', 'POS send bill', 'transactional', true, false, 'customer_send_bill', 'sms_pos_send_bill_enabled', 'orders.send_sms_bill'),
-            self::def('pos_send_pay_link', 'POS payment link', 'transactional', true, false, 'customer_send_pay_link', 'sms_pos_send_pay_link_enabled', 'orders.send_payment_link'),
-            self::def('pos_fire_to_kitchen', 'Fire to kitchen', 'transactional', true, false, 'customer_fire_to_kitchen', 'sms_pos_fire_to_kitchen_enabled', 'sms.transactional.manage'),
-            self::def('pos_receipt_resend', 'Receipt resend', 'transactional', true, false, 'customer_receipt_resend', 'sms_pos_receipt_resend_enabled', 'sms.transactional.manage'),
+            self::def('customer_payment_confirmed_pos', 'Payment confirmed (POS)', 'transactional', true, false, 'customer_payment_confirmed_pos', 'sms_customer_payment_confirmed_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_payment_confirmed_online', 'Payment confirmed (online)', 'transactional', true, false, 'customer_payment_confirmed_online', 'sms_customer_payment_confirmed_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_completion_receipt', 'Completion receipt', 'transactional', true, false, 'customer_completion_receipt', 'sms_customer_completion_receipt_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_order_preparing', 'Order preparing', 'transactional', true, false, 'customer_order_preparing', 'sms_customer_preparing_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_order_ready', 'Order ready', 'transactional', true, false, 'customer_order_ready_pickup', 'sms_customer_ready_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_order_on_the_way', 'Order on the way', 'transactional', true, false, 'customer_order_on_the_way', 'sms_customer_on_the_way_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('pos_send_bill', 'POS send bill', 'transactional', true, false, 'customer_send_bill', 'sms_pos_send_bill_enabled', 'orders.send_sms_bill', false, 'The ordering customer', true),
+            self::def('pos_send_pay_link', 'POS payment link', 'transactional', true, false, 'customer_send_pay_link', 'sms_pos_send_pay_link_enabled', 'orders.send_payment_link', false, 'The ordering customer', true),
+            self::def('pos_fire_to_kitchen', 'Fire to kitchen', 'transactional', true, false, 'customer_fire_to_kitchen', 'sms_pos_fire_to_kitchen_enabled', 'sms.transactional.manage', false, 'The ordering customer', true),
+            self::def('pos_receipt_resend', 'Receipt resend', 'transactional', true, false, 'customer_receipt_resend', 'sms_pos_receipt_resend_enabled', 'sms.transactional.manage', false, 'The ordering customer', true),
 
             // Staff
-            self::def('staff_new_order', 'Staff: new order', 'staff', true, false, 'order_new', 'staff_sms_new_order_enabled', 'sms.transactional.manage'),
-            self::def('staff_order_ready', 'Staff: order ready', 'staff', true, false, 'order_ready', 'staff_sms_order_ready_enabled', 'sms.transactional.manage'),
-            self::def('staff_order_out_for_delivery', 'Staff: out for delivery', 'staff', true, false, 'order_out_for_delivery', 'staff_sms_order_out_for_delivery_enabled', 'sms.transactional.manage'),
-            self::def('staff_no_staff_found', 'Staff: no staff found', 'staff', true, false, 'no_staff_found', 'staff_sms_no_staff_found_enabled', 'sms.transactional.manage'),
-            self::def('staff_new_customer', 'Staff: new customer', 'staff', true, false, 'customer_new', 'staff_sms_new_customer_enabled', 'sms.transactional.manage'),
+            self::def('staff_new_order', 'Staff: new order', 'staff', true, false, 'order_new', 'staff_sms_new_order_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
+            self::def('staff_order_ready', 'Staff: order ready', 'staff', true, false, 'order_ready', 'staff_sms_order_ready_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
+            self::def('staff_order_out_for_delivery', 'Staff: out for delivery', 'staff', true, false, 'order_out_for_delivery', 'staff_sms_order_out_for_delivery_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
+            self::def('staff_no_staff_found', 'Staff: no staff found', 'staff', true, false, 'no_staff_found', 'staff_sms_no_staff_found_enabled', 'sms.transactional.manage', false, 'Fallback staff / managers', false),
+            self::def('staff_new_customer', 'Staff: new customer', 'staff', true, false, 'customer_new', 'staff_sms_new_customer_enabled', 'sms.transactional.manage', false, 'Configured staff recipients', false),
 
             // Marketing
-            self::def('marketing_campaign', 'Bulk campaign', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send'),
-            self::def('marketing_promotion', 'SMS promotion', 'marketing', true, true, null, 'sms_marketing_promotions_enabled', 'sms.campaigns.send'),
-            self::def('marketing_abandoned_cart', 'Abandoned cart', 'marketing', true, true, null, 'marketing_abandoned_cart_enabled', 'sms.campaigns.send'),
-            self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send'),
-            self::def('marketing_tier_milestone', 'Tier milestone', 'marketing', true, true, null, 'marketing_tier_milestone_enabled', 'sms.campaigns.send'),
+            self::def('marketing_campaign', 'Bulk campaign', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'Campaign audience', true),
+            self::def('marketing_promotion', 'SMS promotion', 'marketing', true, true, null, 'sms_marketing_promotions_enabled', 'sms.campaigns.send', false, 'Promotion audience', true),
+            self::def('admin_direct', 'Admin direct SMS', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'Selected customer', true),
+            self::def('marketing_abandoned_cart', 'Abandoned cart', 'marketing', true, true, null, 'marketing_abandoned_cart_enabled', 'sms.campaigns.send', false, 'Customers with abandoned carts', false),
+            self::def('marketing_birthday', 'Birthday offer', 'marketing', true, true, null, 'marketing_birthday_enabled', 'sms.campaigns.send', false, 'Customers with birthday today', false),
+            self::def('marketing_tier_milestone', 'Tier milestone', 'marketing', true, true, null, 'marketing_tier_milestone_enabled', 'sms.campaigns.send', false, 'Loyalty members hitting a tier', false),
 
             // Catering (shared enabled toggle)
-            self::def('catering_request_received', 'Catering request received', 'transactional', true, false, 'catering_request_received', 'sms_catering_enabled', 'sms.transactional.manage'),
-            self::def('catering_request_staff', 'Catering request (staff)', 'staff', true, false, 'catering_request_staff', 'sms_catering_enabled', 'sms.transactional.manage'),
-            self::def('catering_confirmed_customer', 'Catering confirmed (customer)', 'transactional', true, false, 'catering_confirmed_customer', 'sms_catering_enabled', 'sms.transactional.manage'),
-            self::def('catering_confirmed_staff', 'Catering confirmed (staff)', 'staff', true, false, 'catering_confirmed_staff', 'sms_catering_enabled', 'sms.transactional.manage'),
+            self::def('catering_request_received', 'Catering request received', 'transactional', true, false, 'catering_request_received', 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_request_staff', 'Catering request (staff)', 'staff', true, false, 'catering_request_staff', 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
+            self::def('catering_confirmed_customer', 'Catering confirmed (customer)', 'transactional', true, false, 'catering_confirmed_customer', 'sms_catering_enabled', 'sms.transactional.manage', false, 'The event contact', false),
+            self::def('catering_confirmed_staff', 'Catering confirmed (staff)', 'staff', true, false, 'catering_confirmed_staff', 'sms_catering_enabled', 'sms.transactional.manage', false, 'Catering / ops staff', false),
 
             // Gift card + restoration
-            self::def('giftcard_delivery', 'Gift card delivery', 'transactional', true, false, 'giftcard_delivery', 'sms_giftcard_enabled', 'sms.transactional.manage'),
+            self::def('giftcard_delivery', 'Gift card delivery', 'transactional', true, false, 'giftcard_delivery', 'sms_giftcard_enabled', 'sms.transactional.manage', false, 'Gift card recipient phone', false),
             // suppressible=false: legacy callers used type transactional (non-suppressible)
-            self::def('service_restoration', 'Service restoration', 'marketing', true, false, 'service_restoration', 'sms_restoration_enabled', 'service_availability.notify'),
+            self::def('service_restoration', 'Service restoration', 'marketing', true, false, 'service_restoration', 'sms_restoration_enabled', 'service_availability.notify', false, 'Customers who signed up for notify-me', true),
         ];
 
         $defs = [];
@@ -169,6 +191,43 @@ final class SmsTypeRegistry
     }
 
     /**
+     * Effective send_permission after Control Center overrides.
+     * Returns null for system-initiated / no manual sending.
+     */
+    public static function effectiveSendPermission(array $entry): ?string
+    {
+        $key = (string) ($entry['key'] ?? '');
+        if ($key === '') {
+            return $entry['send_permission'] ?? null;
+        }
+
+        $override = SiteSetting::get(self::SEND_PERMISSION_SETTING_PREFIX . $key, null);
+        if ($override === null || $override === '') {
+            $perm = $entry['send_permission'] ?? null;
+
+            return $perm !== null && $perm !== '' ? (string) $perm : null;
+        }
+
+        if ($override === '__system__' || $override === 'system') {
+            return null;
+        }
+
+        return (string) $override;
+    }
+
+    public static function setSendPermissionOverride(string $typeKey, ?string $permissionSlug): void
+    {
+        $settingKey = self::SEND_PERMISSION_SETTING_PREFIX . $typeKey;
+        if ($permissionSlug === null || $permissionSlug === '') {
+            SiteSetting::set($settingKey, '__system__');
+
+            return;
+        }
+
+        SiteSetting::set($settingKey, $permissionSlug);
+    }
+
+    /**
      * Accepts legacy '1'/'0' (staff/marketing) and 'true'/'false' (customer SMS toggles).
      */
     public static function settingIsTruthy(mixed $value, bool $default = true): bool
@@ -212,6 +271,78 @@ final class SmsTypeRegistry
     }
 
     /**
+     * Sample merge-variable values for Control Center live preview.
+     *
+     * @return array<string, string>
+     */
+    public static function sampleVariables(string $typeKey): array
+    {
+        return match ($typeKey) {
+            'auth_customer_otp', 'auth_staff_password_reset', 'discount_approval_otp' => [
+                'code' => '123456',
+                'minutes' => '10',
+                'brand' => 'Bake & Grill',
+                'amount' => '25.00',
+                'order_number' => '1042',
+            ],
+            'pos_send_bill', 'pos_send_pay_link', 'pos_fire_to_kitchen', 'pos_receipt_resend',
+            'customer_payment_confirmed_pos', 'customer_payment_confirmed_online',
+            'customer_completion_receipt', 'customer_order_preparing', 'customer_order_ready',
+            'customer_order_on_the_way' => [
+                'greeting' => 'Hi Aisha!',
+                'amount' => '128.50',
+                'order_number' => '1042',
+                'pay_url' => 'https://bakeandgrill.mv/pay/demo',
+                'receipt_url' => 'https://bakeandgrill.mv/r/demo',
+                'order_type' => 'delivery',
+                'item_count' => '3',
+                'total' => 'MVR 128.50',
+                'customer_phone' => '7771234',
+                'eta' => '25 min',
+            ],
+            'staff_new_order', 'staff_order_ready', 'staff_order_out_for_delivery', 'staff_no_staff_found', 'staff_new_customer' => [
+                'order_type' => 'delivery',
+                'order_number' => '1042',
+                'item_count' => '3',
+                'total' => 'MVR 128.50',
+                'customer_phone' => '7771234',
+                'customer_name' => 'Aisha',
+            ],
+            'giftcard_delivery' => [
+                'sender' => 'From Ali',
+                'amount' => 'MVR 100.00',
+                'view_url' => 'https://bakeandgrill.mv/g/demo',
+                'code' => 'GIFT-DEMO',
+                'expires' => '31 Dec 2026',
+                'note' => 'Happy birthday!',
+            ],
+            'service_restoration' => [
+                'label' => 'Online Ordering',
+                'url' => 'https://bakeandgrill.mv/order/menu',
+                'service_key' => 'online_ordering',
+                'incident_id' => '12',
+            ],
+            default => [
+                'order_number' => '1042',
+                'date' => 'Mon, 21 Apr',
+                'start' => '09:00',
+                'end' => '17:00',
+                'reference' => 'EVT-DEMO',
+                'view_url' => 'https://bakeandgrill.mv/order/events/mine/EVT-DEMO',
+                'contact_name' => 'Aisha',
+                'paid' => '500.00',
+                'balance_bit' => '',
+                'when' => 'Sat 2pm',
+                'venue' => ' at Male\'',
+                'code' => '123456',
+                'minutes' => '10',
+                'brand' => 'Bake & Grill',
+                'receipt_url' => 'https://bakeandgrill.mv/r/demo',
+            ],
+        };
+    }
+
+    /**
      * @return SmsTypeDef
      */
     private static function categoryFallback(string $category, ?string $syntheticKey = null): array
@@ -228,6 +359,8 @@ final class SmsTypeRegistry
             'enabled_setting' => null,
             'send_permission' => null,
             'always_on' => $category === 'auth',
+            'recipients' => 'Legacy caller — recipient decided in code',
+            'user_initiated' => false,
         ];
     }
 
@@ -243,7 +376,9 @@ final class SmsTypeRegistry
         ?string $templateSlug,
         ?string $enabledSetting,
         ?string $sendPermission,
-        bool $alwaysOn = false,
+        bool $alwaysOn,
+        string $recipients,
+        bool $userInitiated,
     ): array {
         return [
             'key' => $key,
@@ -255,6 +390,8 @@ final class SmsTypeRegistry
             'enabled_setting' => $enabledSetting,
             'send_permission' => $sendPermission,
             'always_on' => $alwaysOn,
+            'recipients' => $recipients,
+            'user_initiated' => $userInitiated,
         ];
     }
 }

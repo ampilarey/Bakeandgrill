@@ -6,9 +6,12 @@ namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Support\SmsBudgetGate;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
+use App\Domains\Permissions\Services\PermissionService;
 use App\Models\Customer;
 use App\Models\SmsLog;
+use App\Models\User;
 use App\Rules\MaldivesPhone;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -23,7 +26,10 @@ use Illuminate\Support\Facades\Log;
  */
 class SmsService
 {
-    public function __construct(private readonly SmsProviderInterface $provider) {}
+    public function __construct(
+        private readonly SmsProviderInterface $provider,
+        private readonly PermissionService $permissions,
+    ) {}
 
     public function send(SmsMessage $sms): SmsLog
     {
@@ -106,7 +112,51 @@ class SmsService
             );
         }
 
-        // 3. Marketing-class messages: honour customer opt-out via registry suppressible flag.
+        // 3. User-initiated send_permission — only when actingUserId is set.
+        //    System paths (OTP, observers, queued jobs) leave it null.
+        if ($sms->actingUserId !== null && $registryEntry !== null) {
+            $perm = SmsTypeRegistry::effectiveSendPermission($registryEntry);
+            if ($perm !== null && $perm !== '') {
+                $actor = User::query()->find($sms->actingUserId);
+                if ($actor === null || !$this->permissions->hasPermission($actor, $perm)) {
+                    $reason = 'Acting user lacks send permission: ' . $perm;
+
+                    if ($existing !== null) {
+                        $existing->update([
+                            'status' => 'disabled',
+                            'error_message' => $reason,
+                            'message' => $this->messageForLog($sms),
+                            'to' => $normalized,
+                        ]);
+
+                        return $existing->fresh();
+                    }
+
+                    return $this->disabledLog($sms, $normalized, $estimate, $reason);
+                }
+            }
+        }
+
+        // 4. Spend ceilings — never block always_on auth types.
+        $alwaysOn = (bool) ($registryEntry['always_on'] ?? false);
+        $budgetReason = SmsBudgetGate::blockReason($estimate, $sms->campaignId, $alwaysOn);
+        if ($budgetReason !== null) {
+            if ($existing !== null) {
+                $existing->update([
+                    'status' => 'disabled',
+                    'error_message' => $budgetReason,
+                    'message' => $this->messageForLog($sms),
+                    'to' => $normalized,
+                    'cost_estimate_mvr' => 0,
+                ]);
+
+                return $existing->fresh();
+            }
+
+            return $this->disabledLog($sms, $normalized, $estimate, $budgetReason);
+        }
+
+        // 5. Marketing-class messages: honour customer opt-out via registry suppressible flag.
         $suppressible = $registryEntry === null
             ? true
             : SmsTypeRegistry::isSuppressible($registryEntry);

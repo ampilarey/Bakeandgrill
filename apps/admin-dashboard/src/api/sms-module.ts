@@ -278,32 +278,107 @@ export type SmsControlCenterType = {
   enabled: boolean;
   always_on: boolean;
   suppressible: boolean;
+  recipients: string;
+  user_initiated: boolean;
   send_permission: string | null;
   send_permission_label: string;
   roles_with_permission: string[];
+  default_send_permission?: string | null;
   template: {
     id: number;
     slug: string;
     body: string;
     variables: { name: string; description?: string }[];
   } | null;
+  code_fallback_note?: string | null;
+  sample_variables?: Record<string, string>;
   last_30_days: { count: number; cost_mvr: number };
+};
+
+export type SmsBudgetSnapshot = {
+  monthly_segment_ceiling: number | null;
+  per_campaign_segment_ceiling: number | null;
+  period_start: string;
+  period_segments_used: number;
+  period_cost_mvr: number;
+  period_blocked_count: number;
+  monthly_remaining: number | null;
+  monthly_exhausted: boolean;
+};
+
+export type SmsCampaignQueueHealth = {
+  running_campaigns: number;
+  pending_recipients: number;
+  failed_recipients_24h: number;
+  failed_queue_jobs: number;
+  campaigns: Array<{
+    id: number;
+    name: string;
+    status: string;
+    pending: number;
+    failed: number;
+    total: number;
+  }>;
 };
 
 export type SmsControlCenterResponse = {
   global_kill_switch: boolean;
   demo_mode: boolean;
+  budget: SmsBudgetSnapshot;
+  campaign_queue: SmsCampaignQueueHealth;
+  permission_options: Array<{ slug: string; name: string }>;
   types: SmsControlCenterType[];
+};
+
+export type SmsTypeUpdatePayload = {
+  enabled?: boolean;
+  body?: string;
+  send_permission?: string | null;
 };
 
 export async function getSmsControlCenter(): Promise<SmsControlCenterResponse> {
   return req('/admin/sms/control-center');
 }
 
-export async function updateSmsType(key: string, enabled: boolean): Promise<{ key: string; enabled: boolean }> {
+export async function updateSmsType(
+  key: string,
+  payload: SmsTypeUpdatePayload | boolean,
+): Promise<{
+  key: string;
+  enabled?: boolean;
+  send_permission?: string | null;
+  send_permission_label?: string;
+  template?: SmsControlCenterType['template'];
+  estimate?: { encoding: string; segments: number; cost_mvr: number; length: number };
+}> {
+  const body = typeof payload === 'boolean' ? { enabled: payload } : payload;
   return req(`/admin/sms/types/${encodeURIComponent(key)}`, {
     method: 'PATCH',
-    body: JSON.stringify({ enabled }),
+    body: JSON.stringify(body),
+  });
+}
+
+export async function previewSmsType(
+  key: string,
+  body?: string,
+): Promise<{
+  preview: string;
+  estimate: { encoding: string; segments: number; cost_mvr: number; length: number };
+  sample_variables: Record<string, string>;
+}> {
+  return req(`/admin/sms/types/${encodeURIComponent(key)}/preview`, {
+    method: 'POST',
+    body: JSON.stringify({ body: body ?? '' }),
+  });
+}
+
+export async function updateSmsBudget(payload: {
+  monthly_segment_ceiling?: number | null;
+  per_campaign_segment_ceiling?: number | null;
+}): Promise<{ budget: SmsBudgetSnapshot }> {
+  return req('/admin/sms/budget', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
   });
 }
 

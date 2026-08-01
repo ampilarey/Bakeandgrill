@@ -151,6 +151,10 @@ if (routes_domain_section_is('marketing', 'sms_admin') && !routes_domain_loaded(
         Route::get('/control-center', [App\Http\Controllers\Api\SmsControlCenterController::class, 'index']);
         Route::patch('/types/{key}', [App\Http\Controllers\Api\SmsControlCenterController::class, 'updateType'])
             ->middleware('permission:sms.settings.manage');
+        Route::post('/types/{key}/preview', [App\Http\Controllers\Api\SmsControlCenterController::class, 'previewType'])
+            ->middleware('permission:sms.settings.manage');
+        Route::patch('/budget', [App\Http\Controllers\Api\SmsControlCenterController::class, 'updateBudget'])
+            ->middleware('permission:sms.settings.manage');
         Route::patch('/global-kill-switch', [App\Http\Controllers\Api\SmsControlCenterController::class, 'updateGlobalKillSwitch'])
             ->middleware('permission:sms.settings.manage');
 
