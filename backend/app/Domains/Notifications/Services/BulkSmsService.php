@@ -119,9 +119,10 @@ class BulkSmsService
             $campaign->markStarted();
         });
 
-        // Dispatch one job per recipient (queued, respects backoff)
+        // Dispatch one job per recipient (queued, respects backoff).
+        // Resilient so a Redis outage cannot 500 the admin send endpoint.
         foreach ($campaign->recipients()->where('status', 'pending')->cursor() as $recipient) {
-            SendSmsCampaignRecipientJob::dispatch($recipient);
+            \App\Support\ResilientDispatch::jobClass(SendSmsCampaignRecipientJob::class, $recipient);
         }
 
         return $campaign->fresh();

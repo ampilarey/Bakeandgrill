@@ -86,7 +86,7 @@ class ServiceAvailabilityController extends Controller
             ->pluck('id');
 
         foreach ($subs as $id) {
-            SendRestorationSmsJob::dispatch((int) $id);
+            \App\Support\ResilientDispatch::jobClass(SendRestorationSmsJob::class, (int) $id);
         }
 
         AuditLog::create([

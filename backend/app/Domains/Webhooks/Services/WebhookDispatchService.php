@@ -6,6 +6,7 @@ namespace App\Domains\Webhooks\Services;
 
 use App\Domains\Webhooks\Jobs\DispatchWebhookJob;
 use App\Models\WebhookSubscription;
+use App\Support\ResilientDispatch;
 
 class WebhookDispatchService
 {
@@ -14,7 +15,7 @@ class WebhookDispatchService
         $subscriptions = WebhookSubscription::active()->forEvent($event)->get();
 
         foreach ($subscriptions as $subscription) {
-            DispatchWebhookJob::dispatch($subscription, $event, $payload);
+            ResilientDispatch::jobClass(DispatchWebhookJob::class, $subscription, $event, $payload);
         }
     }
 }

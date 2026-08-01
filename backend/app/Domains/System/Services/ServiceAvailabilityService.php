@@ -15,7 +15,6 @@ use App\Services\DeliveryGateService;
 use App\Services\OnlineOrderingGateService;
 use Illuminate\Http\Request;
 use App\Support\ResilientCache;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;

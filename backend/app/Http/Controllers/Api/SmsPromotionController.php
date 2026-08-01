@@ -125,7 +125,7 @@ class SmsPromotionController extends Controller
             ->orderBy('id')
             ->chunk(500, function ($chunk) {
                 foreach ($chunk as $recipient) {
-                    SendSmsPromotionRecipient::dispatch($recipient->id);
+                    \App\Support\ResilientDispatch::jobClass(SendSmsPromotionRecipient::class, $recipient->id);
                 }
             });
 

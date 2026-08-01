@@ -8,7 +8,6 @@ use App\Models\Item;
 use App\Models\Promotion;
 use App\Services\SpecialPricingService;
 use App\Support\ResilientCache;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Unified public offers feed: active daily specials + active auto-promotions.

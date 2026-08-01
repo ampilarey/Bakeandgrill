@@ -6,7 +6,6 @@ namespace App\Domains\Payments\Services;
 
 use App\Models\GiftCardPurchase;
 use App\Support\ResilientCache;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;

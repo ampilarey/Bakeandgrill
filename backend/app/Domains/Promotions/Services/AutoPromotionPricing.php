@@ -8,7 +8,6 @@ use App\Models\Item;
 use App\Models\Promotion;
 use Illuminate\Support\Collection;
 use App\Support\ResilientCache;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Resolves the best item/category-targeted auto-apply promotion for a catalog price.
