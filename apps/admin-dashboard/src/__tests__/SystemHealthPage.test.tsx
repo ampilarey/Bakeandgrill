@@ -16,6 +16,7 @@ describe('SystemHealthPage', () => {
       print_proxy_ok: true,
       print_proxy_status: 'ok',
       queue_depth: 3,
+      redis: { status: 'up', ok: true, latency_ms: 1.2, error: null },
       checked_at: new Date().toISOString(),
       recent_failed_jobs: [],
       recent_webhook_failures: [],
@@ -34,6 +35,8 @@ describe('SystemHealthPage', () => {
       expect(screen.getByRole('heading', { name: 'System Health' })).toBeTruthy();
       expect(screen.getByText('Failed jobs')).toBeTruthy();
       expect(screen.getByText('2')).toBeTruthy();
+      expect(screen.getByText('Redis')).toBeTruthy();
+      expect(screen.getByText('Up')).toBeTruthy();
       expect(screen.getByText('Issues detected in the last 24 hours')).toBeTruthy();
       expect(screen.getByText('#1009')).toBeTruthy();
     });

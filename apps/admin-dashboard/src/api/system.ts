@@ -9,6 +9,12 @@ export interface SystemHealthDetailed {
   print_proxy_ok: boolean | null;
   print_proxy_status: 'ok' | 'unreachable' | 'not_configured' | string;
   queue_depth: number;
+  redis?: {
+    status: 'up' | 'down' | 'degraded' | string;
+    ok: boolean;
+    latency_ms: number | null;
+    error: string | null;
+  };
   disk?: {
     ok: boolean | null;
     free_percent: number | null;

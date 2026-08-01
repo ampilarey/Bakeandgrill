@@ -10,6 +10,7 @@ use App\Models\SmsLog;
 use App\Models\WebhookLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
 
 class SystemHealthService
 {
@@ -104,12 +105,16 @@ class SystemHealthService
             ->all();
 
         $disk = $this->diskHealth();
+        $redis = $this->checkRedis();
 
         $issues = $failedJobs24h + $webhookFailures24h + $paymentPendingStuck + $smsFailed24h;
         if ($printProxy['status'] === 'unreachable') {
             $issues++;
         }
         if ($disk['ok'] === false) {
+            $issues++;
+        }
+        if ($redis['status'] === 'down') {
             $issues++;
         }
 
@@ -123,6 +128,7 @@ class SystemHealthService
             'print_proxy_status' => $printProxy['status'],
             'queue_depth' => $queueDepth,
             'disk' => $disk,
+            'redis' => $redis,
             'checked_at' => now()->toIso8601String(),
             'recent_failed_jobs' => $recentFailedJobs,
             'recent_webhook_failures' => $recentWebhookFailures,
@@ -154,6 +160,45 @@ class SystemHealthService
         \Illuminate\Support\Facades\Artisan::call('queue:forget', ['id' => $uuid]);
 
         return true;
+    }
+
+    /**
+     * Ping Redis. Never throws — reports up / down / degraded.
+     *
+     * @return array{status: string, ok: bool, latency_ms: float|null, error: string|null}
+     */
+    private function checkRedis(): array
+    {
+        $started = microtime(true);
+
+        try {
+            $pong = Redis::connection()->ping();
+            $latency = round((microtime(true) - $started) * 1000, 1);
+            $ok = $pong === true || $pong === 'PONG' || $pong === '+PONG';
+
+            if (! $ok) {
+                return [
+                    'status' => 'degraded',
+                    'ok' => false,
+                    'latency_ms' => $latency,
+                    'error' => is_string($pong) ? $pong : 'Unexpected PING response',
+                ];
+            }
+
+            return [
+                'status' => $latency > 200 ? 'degraded' : 'up',
+                'ok' => true,
+                'latency_ms' => $latency,
+                'error' => null,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'status' => 'down',
+                'ok' => false,
+                'latency_ms' => null,
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 
     /**

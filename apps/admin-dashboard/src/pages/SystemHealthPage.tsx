@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CheckCircle2, HardDrive, MessageSquare, Printer, RefreshCw, Server, Webhook } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, Database, HardDrive, MessageSquare, Printer, RefreshCw, Server, Webhook } from 'lucide-react';
 import {
   forgetFailedJob,
   getSystemHealthDetailed,
@@ -82,7 +82,7 @@ export function SystemHealthPage() {
     <div>
       <PageHeader section="System"
         title="System Health"
-        subtitle="Queue, payments, webhooks, SMS, and print-proxy status"
+        subtitle="Redis, queue, payments, webhooks, SMS, and print-proxy status"
         action={
           <button
             type="button"
@@ -184,6 +184,22 @@ export function SystemHealthPage() {
               sub="Last 24 hours"
               accent={data.sms_failed_24h > 0 ? '#ef4444' : '#22c55e'}
               icon={MessageSquare}
+            />
+            <StatCard
+              label="Redis"
+              value={data.redis?.status === 'up' ? 'Up' : data.redis?.status === 'degraded' ? 'Degraded' : data.redis ? 'Down' : '—'}
+              sub={
+                data.redis?.latency_ms != null
+                  ? `${data.redis.latency_ms} ms`
+                  : (data.redis?.error ? data.redis.error.slice(0, 40) : 'Not checked')
+              }
+              accent={
+                data.redis?.status === 'down' ? '#ef4444'
+                  : data.redis?.status === 'degraded' ? '#f59e0b'
+                    : data.redis?.status === 'up' ? '#22c55e'
+                      : '#9C8E7E'
+              }
+              icon={Database}
             />
             <StatCard
               label="Print proxy"
