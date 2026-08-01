@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Payments\Services;
 
 use App\Models\GiftCardPurchase;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
@@ -33,7 +34,7 @@ final class GiftCardPurchaseDeliveryWindow
         $encrypted = Crypt::encryptString($plainCode);
 
         try {
-            Cache::put(self::cacheKey((int) $purchase->id), $encrypted, $expiresAt);
+            ResilientCache::put(self::cacheKey((int) $purchase->id), $encrypted, $expiresAt);
         } catch (\Throwable) {
             // Redis/file cache optional — DB column is the durable copy.
         }
@@ -76,7 +77,7 @@ final class GiftCardPurchaseDeliveryWindow
 
         $encrypted = null;
         try {
-            $fromCache = Cache::get(self::cacheKey((int) $purchase->id));
+            $fromCache = ResilientCache::get(self::cacheKey((int) $purchase->id));
             if (is_string($fromCache) && $fromCache !== '') {
                 $encrypted = $fromCache;
             }
@@ -106,7 +107,7 @@ final class GiftCardPurchaseDeliveryWindow
     public function forget(GiftCardPurchase $purchase): void
     {
         try {
-            Cache::forget(self::cacheKey((int) $purchase->id));
+            ResilientCache::forget(self::cacheKey((int) $purchase->id));
         } catch (\Throwable) {
             // ignore
         }

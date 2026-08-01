@@ -7,6 +7,7 @@ namespace App\Domains\Promotions\Services;
 use App\Models\Item;
 use App\Models\Promotion;
 use App\Services\SpecialPricingService;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -24,7 +25,7 @@ class OffersService
 
     public function bustCache(): void
     {
-        Cache::forget(self::CACHE_KEY);
+        ResilientCache::forget(self::CACHE_KEY);
     }
 
     /**
@@ -33,7 +34,7 @@ class OffersService
     public function activeOffers(): array
     {
         try {
-            return Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, fn () => $this->buildOffers());
+            return ResilientCache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, fn () => $this->buildOffers());
         } catch (\Throwable) {
             return $this->buildOffers();
         }

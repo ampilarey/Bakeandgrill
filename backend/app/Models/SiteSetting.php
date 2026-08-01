@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Domains\Content\ContentResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
@@ -35,7 +36,7 @@ class SiteSetting extends Model
     {
         $cacheKey = self::cacheKeyFor($key, $scope, $locale);
 
-        $value = Cache::rememberForever($cacheKey, function () use ($key, $scope, $locale) {
+        $value = ResilientCache::rememberForever($cacheKey, function () use ($key, $scope, $locale) {
             $query = static::query()->where('key', $key);
             if (self::hasScopeColumn()) {
                 $query->where('scope', $scope);
@@ -85,10 +86,10 @@ class SiteSetting extends Model
 
         $row->save();
 
-        Cache::forget(self::cacheKeyFor($key, $scope, $locale));
-        Cache::forget("site_setting.{$key}");
-        Cache::forget('site_settings.public');
-        Cache::forget('site_settings.all');
+        ResilientCache::forget(self::cacheKeyFor($key, $scope, $locale));
+        ResilientCache::forget("site_setting.{$key}");
+        ResilientCache::forget('site_settings.public');
+        ResilientCache::forget('site_settings.all');
         ContentResolver::bust();
     }
 
@@ -110,7 +111,7 @@ class SiteSetting extends Model
      */
     public static function allPublic(): array
     {
-        return Cache::rememberForever('site_settings.public', function () {
+        return ResilientCache::rememberForever('site_settings.public', function () {
             if (class_exists(ContentResolver::class) && self::hasScopeColumn()) {
                 return ContentResolver::for('order_app', 'en')->allPublic();
             }
@@ -121,8 +122,8 @@ class SiteSetting extends Model
 
     public static function bust(): void
     {
-        Cache::forget('site_settings.public');
-        Cache::forget('site_settings.all');
+        ResilientCache::forget('site_settings.public');
+        ResilientCache::forget('site_settings.all');
         ContentResolver::bust();
     }
 

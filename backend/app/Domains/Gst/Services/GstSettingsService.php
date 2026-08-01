@@ -8,6 +8,7 @@ use App\Domains\Gst\Enums\GstAccountingBasis;
 use App\Domains\Gst\Enums\GstSector;
 use App\Domains\Gst\Enums\GstTaxablePeriod;
 use App\Models\GstSetting;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 
 class GstSettingsService
@@ -16,7 +17,7 @@ class GstSettingsService
 
     public function get(): GstSetting
     {
-        return Cache::remember(self::CACHE_KEY, 300, function () {
+        return ResilientCache::remember(self::CACHE_KEY, 300, function () {
             return GstSetting::query()->firstOrCreate(
                 ['id' => 1],
                 $this->defaultAttributes(),
@@ -26,7 +27,7 @@ class GstSettingsService
 
     public function bust(): void
     {
-        Cache::forget(self::CACHE_KEY);
+        ResilientCache::forget(self::CACHE_KEY);
     }
 
     /** @param array<string, mixed> $attributes */

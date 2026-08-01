@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Customers\Services;
 
 use App\Models\SiteSetting;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -21,7 +22,7 @@ final class VipSettingsService
 
     public function all(): array
     {
-        return Cache::remember(self::CACHE_KEY, 60, fn (): array => [
+        return ResilientCache::remember(self::CACHE_KEY, 60, fn (): array => [
             'min_spend_mvr' => $this->minSpendMvr(),
             'min_paid_orders' => $this->minPaidOrders(),
             'auto_sync_tag' => $this->autoSyncTag(),
@@ -31,7 +32,7 @@ final class VipSettingsService
 
     public function bustCache(): void
     {
-        Cache::forget(self::CACHE_KEY);
+        ResilientCache::forget(self::CACHE_KEY);
     }
 
     public function update(array $input): array

@@ -7,6 +7,7 @@ namespace App\Domains\Promotions\Services;
 use App\Models\Item;
 use App\Models\Promotion;
 use Illuminate\Support\Collection;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -30,7 +31,7 @@ class AutoPromotionPricing
 
     public function bustCache(): void
     {
-        Cache::forget(self::CACHE_KEY);
+        ResilientCache::forget(self::CACHE_KEY);
         $this->byItemId = null;
         $this->byCategoryId = null;
         $this->categoryWide = null;
@@ -119,7 +120,7 @@ class AutoPromotionPricing
         }
 
         try {
-            $payload = Cache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, fn () => $this->loadMaps());
+            $payload = ResilientCache::remember(self::CACHE_KEY, self::CACHE_TTL_SECONDS, fn () => $this->loadMaps());
         } catch (\Throwable) {
             $payload = $this->loadMaps();
         }

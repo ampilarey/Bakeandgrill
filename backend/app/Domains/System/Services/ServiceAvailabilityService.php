@@ -14,6 +14,7 @@ use App\Services\CateringOrderingGateService;
 use App\Services\DeliveryGateService;
 use App\Services\OnlineOrderingGateService;
 use Illuminate\Http\Request;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -76,7 +77,7 @@ class ServiceAvailabilityService
         $ttl = (int) config('service_availability.cache_ttl_seconds', 30);
 
         try {
-            return Cache::remember(self::CACHE_KEY, $ttl, fn () => $this->buildSnapshot());
+            return ResilientCache::remember(self::CACHE_KEY, $ttl, fn () => $this->buildSnapshot());
         } catch (Throwable $e) {
             Log::warning('service_availability cache read failed', ['error' => $e->getMessage()]);
 
@@ -282,7 +283,7 @@ class ServiceAvailabilityService
     public function bustCache(): void
     {
         try {
-            Cache::forget(self::CACHE_KEY);
+            ResilientCache::forget(self::CACHE_KEY);
         } catch (Throwable $e) {
             Log::warning('service_availability cache forget failed', ['error' => $e->getMessage()]);
         }

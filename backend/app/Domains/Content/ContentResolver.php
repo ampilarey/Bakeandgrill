@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Content;
 
 use App\Models\SiteSetting;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -142,7 +143,7 @@ final class ContentResolver
      */
     public function allPublic(): array
     {
-        return Cache::rememberForever($this->cacheKey(), function (): array {
+        return ResilientCache::rememberForever($this->cacheKey(), function (): array {
             $out = [];
             foreach (ContentRegistry::blocks() as $key => $block) {
                 if (empty($block['public'])) {
@@ -179,9 +180,9 @@ final class ContentResolver
     {
         foreach (ContentRegistry::APPS as $app) {
             foreach (ContentRegistry::LOCALES as $locale) {
-                Cache::forget("content.resolved.{$app}.{$locale}");
+                ResilientCache::forget("content.resolved.{$app}.{$locale}");
                 // Legacy cache key from before locales
-                Cache::forget("content.resolved.{$app}");
+                ResilientCache::forget("content.resolved.{$app}");
             }
         }
     }

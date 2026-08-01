@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\PrayerTimes\Support;
 
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -16,13 +17,13 @@ final class PrayerCacheVersion
 
     public static function current(): int
     {
-        return (int) Cache::get(self::VERSION_KEY, 1);
+        return (int) ResilientCache::get(self::VERSION_KEY, 1);
     }
 
     public static function bump(): int
     {
         $next = self::current() + 1;
-        Cache::forever(self::VERSION_KEY, $next);
+        ResilientCache::forever(self::VERSION_KEY, $next);
 
         return $next;
     }

@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\SiteSetting;
 use App\Services\OnlineOrderingGateService;
 use Carbon\Carbon;
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 
 final class PickupSlotService
@@ -96,7 +97,7 @@ final class PickupSlotService
     /** @return list<array{0: Carbon, 1: Carbon}> */
     private function openWindowsForDate(Carbon $day): array
     {
-        $status = Cache::remember(
+        $status = ResilientCache::remember(
             'pickup_gate_' . $day->toDateString(),
             now()->addMinutes(5),
             fn () => $this->gate->status(),

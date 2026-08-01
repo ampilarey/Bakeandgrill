@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\System\Services;
 
+use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ class SchedulerRunTracker
 
     public function recordLastRun(string $command): void
     {
-        Cache::forever(self::CACHE_PREFIX . $command, now()->toIso8601String());
+        ResilientCache::forever(self::CACHE_PREFIX . $command, now()->toIso8601String());
     }
 
     /**
@@ -43,7 +44,7 @@ class SchedulerRunTracker
                 return false;
             }
 
-            Cache::forever(self::HEARTBEAT_CACHE_KEY, now()->toIso8601String());
+            ResilientCache::forever(self::HEARTBEAT_CACHE_KEY, now()->toIso8601String());
 
             return true;
         } catch (\Throwable $e) {
@@ -58,7 +59,7 @@ class SchedulerRunTracker
 
     public function lastExternalHeartbeatAt(): ?string
     {
-        $value = Cache::get(self::HEARTBEAT_CACHE_KEY);
+        $value = ResilientCache::get(self::HEARTBEAT_CACHE_KEY);
 
         return is_string($value) ? $value : null;
     }
@@ -72,7 +73,7 @@ class SchedulerRunTracker
         $commands ??= $this->trackedCommands();
         $runs = [];
         foreach ($commands as $command) {
-            $runs[$command] = Cache::get(self::CACHE_PREFIX . $command);
+            $runs[$command] = ResilientCache::get(self::CACHE_PREFIX . $command);
         }
 
         return $runs;
