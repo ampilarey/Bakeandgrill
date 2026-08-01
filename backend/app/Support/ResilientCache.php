@@ -11,7 +11,7 @@ use Throwable;
 /**
  * Cache facade that never propagates store failures.
  *
- * On a dead Redis socket (or any store Throwable), remember*/put/forget
+ * On a dead Redis socket (or any store Throwable), remember / put / forget
  * degrade: reads execute the callback directly, writes are no-ops after a
  * single per-request warning log.
  */
