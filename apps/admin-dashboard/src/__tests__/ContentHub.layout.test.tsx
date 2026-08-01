@@ -194,6 +194,38 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     expect(menu.textContent).toMatch(/History/i);
     expect(menu.textContent).toContain('business_phone');
   });
+
+  it('section-enable card face has no content key either', async () => {
+    vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
+      locale: 'en',
+      locales: ['en', 'dv'],
+      blocks: [
+        {
+          ...phoneBlock,
+          key: 'section_contact_enabled',
+          label: 'Show Contact Section',
+          section_enable: true,
+          type: 'boolean',
+          shared: 'true',
+          resolved_website: 'true',
+          resolved_order_app: 'true',
+        } as never,
+        phoneBlock as never,
+        logoBlock as never,
+      ],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    const enable = await screen.findByTestId('section-enable-section_contact_enabled');
+    expect(enable.textContent).toContain('Show Contact Section');
+    expect(enable.textContent).not.toContain('section_contact_enabled');
+    expect(enable.querySelector('.hub-section-enable-face')?.textContent).not.toMatch(/·/);
+  });
 });
 
 describe('ContentHub layout — mobile (useIsMobile=true)', () => {

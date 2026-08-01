@@ -66,7 +66,7 @@ export function BlockCard({
       data-block-key={block.key}
     >
       <div className="hub-block-card-top">
-        <div className="hub-block-card-titles" style={{ flex: 1, minWidth: 0 }}>
+        <div className="hub-block-card-titles">
           {isBoolean ? (
             <div className="hub-block-card-boolean-row">
               <div style={{ minWidth: 0, flex: 1 }}>

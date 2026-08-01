@@ -110,8 +110,9 @@ describe('ContentHubPage', () => {
     );
 
     await screen.findByText('Phone number');
-    expect(screen.getByText(/Content:/i)).toBeTruthy();
+    expect(screen.getByTestId('content-mode-business_phone')).toBeTruthy();
     expect(screen.getByLabelText(/Different per app/i)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/[◉○]/);
 
     fireEvent.click(screen.getByLabelText(/Different per app/i));
 

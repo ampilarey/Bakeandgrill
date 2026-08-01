@@ -2226,6 +2226,10 @@ a { text-decoration: none; color: inherit; }
   gap: 12px;
   margin-bottom: 12px;
 }
+.hub-block-card-titles {
+  flex: 1;
+  min-width: 0;
+}
 .hub-block-card-label {
   font-weight: 700;
   font-size: 15px;
@@ -2251,6 +2255,117 @@ a { text-decoration: none; color: inherit; }
 }
 .hub-block-card-editor {
   margin-top: 2px;
+}
+
+/* Content mode (Same / Different) — shared by blocks, section enable, section order */
+.hub-content-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 230px;
+}
+.hub-content-mode-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6B5D4F;
+}
+.hub-content-mode-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.hub-content-mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid #E8E0D8;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1C1408;
+}
+.hub-content-mode-option--active {
+  border: 1.5px solid #D4813A;
+  background: #FFF7ED;
+  font-weight: 700;
+}
+
+/* Section-enable chrome card */
+.hub-section-enable {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #E8E0D8;
+  background: #fff;
+}
+.hub-section-enable-face {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.hub-section-enable-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1C1408;
+}
+.hub-section-enable-switches {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr);
+  gap: 8px;
+  flex: 0 1 180px;
+}
+.hub-section-enable-switches--split {
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  flex: 1 1 320px;
+}
+.hub-section-enable-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid #E8E0D8;
+  background: #F8F6F3;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Section-order chrome card */
+.hub-section-order {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #E8E0D8;
+  background: #fff;
+}
+.hub-section-order-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.hub-section-order-titles {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.hub-section-order-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1C1408;
+}
+.hub-section-order-helper {
+  font-size: 12px;
+  color: #9C8E7E;
+  margin-top: 2px;
+  line-height: 1.4;
 }
 
 /* ── Block ⋯ more menu ───────────────────────────────────────── */
@@ -2555,6 +2670,46 @@ a { text-decoration: none; color: inherit; }
   }
   .hub-desktop-shell {
     display: none !important;
+  }
+
+  /* Bug 4: stack block card title / mode control / ⋯ on mobile */
+  .hub-block-card-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hub-block-card-titles {
+    width: 100%;
+    flex: none;
+  }
+  .hub-block-card-actions {
+    width: 100%;
+    flex-shrink: 1;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .hub-content-mode {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .hub-section-enable {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hub-section-enable-face,
+  .hub-section-enable-switches,
+  .hub-section-enable-switches--split {
+    flex: none;
+    width: 100%;
+  }
+
+  .hub-section-order-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hub-section-order-titles {
+    flex: none;
+    width: 100%;
   }
 }
 

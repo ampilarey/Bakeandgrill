@@ -115,7 +115,7 @@ describe('Brand Kit UI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
     expect(await screen.findByText('Phone number')).toBeTruthy();
     expect(screen.queryByTestId('brand-kit')).toBeNull();
-    expect(screen.getByText(/Content:/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Different per app/i)).toBeTruthy();
   });
 
   it('shows one primary upload action and hides raw URL until Advanced', async () => {

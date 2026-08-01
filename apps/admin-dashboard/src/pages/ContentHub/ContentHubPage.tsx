@@ -727,28 +727,13 @@ export function ContentHubPage() {
     const state = linkState(block);
     const busy = linkingKey === block.key;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 230 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
-          Content: ◉ Same in both · ○ Different per app
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div className="hub-content-mode" data-testid={`content-mode-${block.key}`}>
+        <div className="hub-content-mode-label">Content</div>
+        <div className="hub-content-mode-options" role="radiogroup" aria-label="Content mode">
           {(['same', 'different'] as const).map((mode) => (
             <label
               key={mode}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                minHeight: 32,
-                padding: '0 9px',
-                borderRadius: 9,
-                border: state === mode ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
-                background: state === mode ? '#FFF7ED' : '#fff',
-                cursor: busy ? 'wait' : 'pointer',
-                fontSize: 12,
-                fontWeight: state === mode ? 700 : 500,
-                color: '#1C1408',
-              }}
+              className={`hub-content-mode-option${state === mode ? ' hub-content-mode-option--active' : ''}`}
             >
               <input
                 type="radio"
@@ -962,45 +947,38 @@ export function ContentHubPage() {
 
   const renderSectionEnable = (block: ContentBlock) => {
     const scopes = editorScopesForBlock(block);
+    const split = scopes.length > 1;
     return (
       <div
         key={block.key}
-        style={{
-          display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center',
-          padding: '10px 12px', borderRadius: 10, border: '1px solid #E8E0D8', background: '#fff',
-        }}
+        className="hub-section-enable"
+        data-testid={`section-enable-${block.key}`}
+        data-block-key={block.key}
       >
-        <div style={{ flex: '1 1 180px', minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>Show this section</div>
-          <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 2, wordBreak: 'break-word' }}>
-            {block.label} · {block.key}
-          </div>
+        <div className="hub-section-enable-face">
+          <div className="hub-section-enable-label">{block.label}</div>
         </div>
         {renderContentModeControl(block)}
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: scopes.length > 1 ? 'repeat(2, minmax(120px, 1fr))' : 'minmax(160px, 1fr)',
-            gap: 8,
-            flex: scopes.length > 1 ? '1 1 320px' : '0 1 180px',
-          }}
+          className={`hub-section-enable-switches${split ? ' hub-section-enable-switches--split' : ''}`}
         >
           {scopes.map((scope) => {
             const val = valueForScope(block, scope, drafts);
+            const switchLabel = scope === 'shared'
+              ? 'Show this section'
+              : labelForScope(scope);
             return (
               <label
                 key={`${scope}-${block.key}`}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, padding: '0 10px',
-                  borderRadius: 9, border: '1px solid #E8E0D8', background: '#F8F6F3', fontSize: 12, fontWeight: 600,
-                }}
+                className="hub-section-enable-switch"
+                data-testid={`section-enable-switch-${block.key}-${scope}`}
               >
                 <input
                   type="checkbox"
                   checked={val === 'true' || val === '1'}
                   onChange={(e) => setDraft(scope, block.key, e.target.checked ? 'true' : 'false')}
                 />
-                {labelForScope(scope)}
+                {switchLabel}
               </label>
             );
           })}
@@ -1110,11 +1088,16 @@ export function ContentHubPage() {
     const multi = scopes.length > 1;
     const activeScope = preferredScopeTab(scopes, blockScopeTab[block.key]);
     return (
-      <div key={block.key} style={{ padding: 12, borderRadius: 12, border: '1px solid #E8E0D8', background: '#fff' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#1C1408' }}>Home section order</div>
-            <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>
+      <div
+        key={block.key}
+        className="hub-section-order"
+        data-testid={`section-order-${block.key}`}
+        data-block-key={block.key}
+      >
+        <div className="hub-section-order-top">
+          <div className="hub-section-order-titles">
+            <div className="hub-section-order-label">Home section order</div>
+            <div className="hub-section-order-helper">
               Arrange movable homepage sections. Hero and trust strip stay pinned above this order.
             </div>
           </div>
@@ -1272,6 +1255,19 @@ export function ContentHubPage() {
         />
       ) : null;
 
+    const visibleRegularCount = leftoverBrandBlocks.filter((b) => {
+      if (!isSeoDescriptionKey(b.key)) return true;
+      const titleKey = b.key === 'meta_description'
+        ? 'meta_title'
+        : b.key.replace(/_meta_description$/, '_meta_title');
+      return !contentBlocks.some((c) => c.key === titleKey);
+    }).length;
+    const brandCardCount = isBrandKit ? brandBlocksByKey.size : 0;
+    const cardCount = brandCardCount
+      + visibleRegularCount
+      + sectionEnableBlocks.length
+      + (sectionOrderBlock ? 1 : 0);
+
     return (
       <SectionEditor
         sectionName={sectionName}
@@ -1281,6 +1277,7 @@ export function ContentHubPage() {
         renderBlock={renderBlock}
         onBack={withBack ? handleMobileBack : undefined}
         isBrandKit={isBrandKit}
+        cardCount={cardCount}
       />
     );
   };

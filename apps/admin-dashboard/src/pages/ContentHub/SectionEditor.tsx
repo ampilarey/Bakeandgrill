@@ -14,6 +14,8 @@ type Props = {
   /** Mobile section editor: back to grid. */
   onBack?: () => void;
   isBrandKit?: boolean;
+  /** Cards actually shown (chrome + brand kit + regular), for the header count. */
+  cardCount?: number;
 };
 
 type Bucket = { id: string; label: string; blocks: ContentBlock[] };
@@ -51,8 +53,10 @@ export function SectionEditor({
   renderBlock,
   onBack,
   isBrandKit,
+  cardCount,
 }: Props) {
   const buckets = bucketBlocks(sectionName, blocks);
+  const shownCount = cardCount ?? blocks.length;
 
   return (
     <section data-testid="section-editor" data-section={sectionName} className="hub-section-editor">
@@ -70,8 +74,8 @@ export function SectionEditor({
         ) : null}
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2 className="hub-section-editor-title">{sectionName}</h2>
-          <div className="hub-section-editor-sub">
-            {isBrandKit ? 'Brand Kit' : `${blocks.length} block${blocks.length === 1 ? '' : 's'}`}
+          <div className="hub-section-editor-sub" data-testid="section-editor-count">
+            {isBrandKit ? 'Brand Kit' : `${shownCount} block${shownCount === 1 ? '' : 's'}`}
           </div>
         </div>
       </header>
