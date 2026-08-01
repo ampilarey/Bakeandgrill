@@ -21,6 +21,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Rate Limiter Store
+    |--------------------------------------------------------------------------
+    |
+    | Laravel's throttle middleware and RateLimiter write to this store. Keep it
+    | off Redis so a Redis outage cannot 500 throttled routes in middleware
+    | before any controller runs. Defaults to the database cache table.
+    |
+    */
+
+    'limiter' => env('CACHE_LIMITER_STORE', 'database'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache Stores
     |--------------------------------------------------------------------------
     |
