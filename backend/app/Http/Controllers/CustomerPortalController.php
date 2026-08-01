@@ -4,21 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domains\Notifications\DTOs\SmsMessage;
-use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
-use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Auth\Services\CustomerOtpService;
+use App\Domains\Auth\Services\PasswordResetGrantService;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Models\OtpVerification;
 use App\Rules\MaldivesPhone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 
 class CustomerPortalController extends Controller
 {
+    public function __construct(
+        private readonly CustomerOtpService $otpService,
+        private readonly PasswordResetGrantService $resetGrantService,
+    ) {}
+
     public function showLogin()
     {
         // If already logged in via session, redirect immediately
@@ -56,26 +60,9 @@ class CustomerPortalController extends Controller
 
         RateLimiter::hit($key, 600);
 
-        $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otpCode = $this->otpService->issue($phone, 'web-login');
 
-        OtpVerification::create([
-            'phone' => $phone,
-            'code_hash' => Hash::make($otpCode),
-            'expires_at' => now()->addMinutes(10),
-            'attempts' => 0,
-        ]);
-
-        $smsService = app(SmsService::class);
-        $fallback = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes.";
-        $smsMessage = app(CustomerSmsMessageBuilder::class)->build(
-            'auth_customer_otp',
-            ['code' => $otpCode, 'minutes' => '10', 'brand' => 'Bake & Grill'],
-            $fallback,
-        );
-        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'auth_customer_otp'));
-        $smsSent = in_array($log->status, ['sent', 'demo'], true);
-
-        if (!app()->environment('production') && !$smsSent) {
+        if (!app()->environment('production')) {
             session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
         }
 
@@ -105,26 +92,9 @@ class CustomerPortalController extends Controller
 
         RateLimiter::hit($key, 600);
 
-        $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otpCode = $this->otpService->issue($phone, 'web-reset');
 
-        OtpVerification::create([
-            'phone' => $phone,
-            'code_hash' => Hash::make($otpCode),
-            'expires_at' => now()->addMinutes(10),
-            'attempts' => 0,
-        ]);
-
-        $smsService = app(SmsService::class);
-        $fallback = "Your Bake & Grill password reset code is {$otpCode}. Valid for 10 minutes.";
-        $smsMessage = app(CustomerSmsMessageBuilder::class)->build(
-            'auth_customer_otp',
-            ['code' => $otpCode, 'minutes' => '10', 'brand' => 'Bake & Grill'],
-            $fallback,
-        );
-        $log = $smsService->send(new SmsMessage(to: $phone, message: $smsMessage, type: 'auth_customer_otp'));
-        $smsSent = in_array($log->status, ['sent', 'demo'], true);
-
-        if (!app()->environment('production') && !$smsSent) {
+        if (!app()->environment('production')) {
             session()->flash('otp_hint', "Dev mode – SMS not sent. OTP: {$otpCode}");
         }
 
@@ -142,17 +112,18 @@ class CustomerPortalController extends Controller
 
         $phone = $this->normalizePhone($request->phone);
 
-        $otpRecord = OtpVerification::where('phone', $phone)
-            ->whereNull('used_at')
-            ->where('expires_at', '>', now())
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        if (!$otpRecord || !Hash::check($request->otp, $otpRecord->code_hash)) {
-            return back()->withErrors(['otp' => 'Invalid or expired code']);
+        try {
+            $this->otpService->verifyAndConsume($phone, $request->otp);
+        } catch (ValidationException $e) {
+            return back()
+                ->with('reset_otp_requested', true)
+                ->with('phone', $phone)
+                ->withErrors($e->errors());
         }
 
-        $otpRecord->update(['used_at' => now()]);
+        $grant = $this->resetGrantService->issue($phone);
+        $request->session()->put('password_reset_grant', $grant);
+        $request->session()->put('password_reset_phone', $phone);
 
         return back()
             ->with('reset_verified', true)
@@ -168,6 +139,26 @@ class CustomerPortalController extends Controller
         ]);
 
         $phone = $this->normalizePhone($request->phone);
+        $grantToken = $request->session()->get('password_reset_grant');
+        $grantedPhone = $request->session()->get('password_reset_phone');
+
+        // Session must carry both the grant token and the verified phone — never
+        // trust the submitted phone alone. Cache consume enforces single-use + TTL.
+        if (
+            !is_string($grantToken)
+            || !is_string($grantedPhone)
+            || $grantedPhone !== $phone
+            || !$this->resetGrantService->consume($grantToken, $phone)
+        ) {
+            $request->session()->forget(['password_reset_grant', 'password_reset_phone']);
+
+            return back()->withErrors([
+                'password' => 'Your reset session has expired. Please request a new code.',
+            ]);
+        }
+
+        $request->session()->forget(['password_reset_grant', 'password_reset_phone']);
+
         $customer = Customer::where('phone', $phone)->first();
 
         if (!$customer) {
@@ -222,17 +213,11 @@ class CustomerPortalController extends Controller
             ]);
         }
 
-        $otpRecord = OtpVerification::where('phone', $phone)
-            ->whereNull('used_at')
-            ->where('expires_at', '>', now())
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        if (!$otpRecord || !Hash::check($request->otp, $otpRecord->code_hash)) {
-            return back()->withErrors(['otp' => 'Invalid or expired OTP']);
+        try {
+            $this->otpService->verifyAndConsume($phone, $request->otp);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
         }
-
-        $otpRecord->update(['used_at' => now()]);
 
         // Successful verification — clear the OTP request rate limit for this phone
         $this->clearOtpRateLimit('otp-request:web:' . $phone);

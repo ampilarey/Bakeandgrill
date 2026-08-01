@@ -62,7 +62,7 @@
         @endif
 
         {{-- Step 1: Enter phone --}}
-        @if(!session('reset_otp_requested') && !session('reset_verified'))
+        @if(!session('reset_otp_requested') && !session('reset_verified') && !session('password_reset_grant'))
             <h1>Reset password</h1>
             <p class="subtitle">Enter your phone number and we'll send a code to reset your password.</p>
 
@@ -76,13 +76,13 @@
             </form>
 
         {{-- Step 2: Enter OTP --}}
-        @elseif(session('reset_otp_requested') && !session('reset_verified'))
+        @elseif((session('reset_otp_requested') || old('phone')) && !session('reset_verified') && !session('password_reset_grant'))
             <h1>Enter the code</h1>
-            <p class="subtitle">A code was sent to <strong>{{ session('phone') }}</strong></p>
+            <p class="subtitle">A code was sent to <strong>{{ session('phone') ?? old('phone') }}</strong></p>
 
             <form method="POST" action="{{ route('customer.verify-reset-otp') }}">
                 @csrf
-                <input type="hidden" name="phone" value="{{ session('phone') }}">
+                <input type="hidden" name="phone" value="{{ session('phone') ?? old('phone') }}">
                 <div class="form-group">
                     <label for="otp">🔐 Verification Code</label>
                     <input type="text" id="otp" name="otp" maxlength="6" inputmode="numeric"
@@ -92,14 +92,14 @@
                 <button type="submit" class="btn-submit">Verify Code →</button>
             </form>
 
-        {{-- Step 3: Set new password --}}
-        @elseif(session('reset_verified'))
+        {{-- Step 3: Set new password (UI only — server requires password_reset_grant) --}}
+        @elseif(session('password_reset_grant') || session('reset_verified'))
             <h1>New password</h1>
-            <p class="subtitle">Choose a new password for <strong>{{ session('phone') }}</strong></p>
+            <p class="subtitle">Choose a new password for <strong>{{ session('password_reset_phone') ?? session('phone') }}</strong></p>
 
             <form method="POST" action="{{ route('customer.reset-password') }}">
                 @csrf
-                <input type="hidden" name="phone" value="{{ session('phone') }}">
+                <input type="hidden" name="phone" value="{{ session('password_reset_phone') ?? session('phone') }}">
                 <div class="form-group">
                     <label for="password">🔒 New Password</label>
                     <input type="password" id="password" name="password" placeholder="At least 6 characters" autofocus autocomplete="new-password">

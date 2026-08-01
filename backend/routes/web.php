@@ -71,9 +71,15 @@ Route::post('/customer/complete-profile', [CustomerPortalController::class, 'com
 
 // Forgot / reset password via OTP
 Route::get('/customer/forgot-password', [CustomerPortalController::class, 'showForgotPassword'])->name('customer.forgot-password');
-Route::post('/customer/forgot-password', [CustomerPortalController::class, 'forgotPassword'])->name('customer.forgot-password.post');
-Route::post('/customer/verify-reset-otp', [CustomerPortalController::class, 'verifyResetOtp'])->name('customer.verify-reset-otp');
-Route::post('/customer/reset-password', [CustomerPortalController::class, 'resetPassword'])->name('customer.reset-password');
+Route::post('/customer/forgot-password', [CustomerPortalController::class, 'forgotPassword'])
+    ->middleware('throttle:5,1')
+    ->name('customer.forgot-password.post');
+Route::post('/customer/verify-reset-otp', [CustomerPortalController::class, 'verifyResetOtp'])
+    ->middleware('throttle:10,1')
+    ->name('customer.verify-reset-otp');
+Route::post('/customer/reset-password', [CustomerPortalController::class, 'resetPassword'])
+    ->middleware('throttle:10,1')
+    ->name('customer.reset-password');
 
 // Legacy redirects — these pages now live in the React order app
 Route::redirect('/order-type', '/order/', 301);

@@ -4,25 +4,22 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
-use App\Domains\Notifications\DTOs\SmsMessage;
-use App\Domains\Notifications\Events\CustomerCreated;
-use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
-use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Auth\Services\CustomerOtpService;
 use App\Http\Controllers\Controller;
-use App\Mail\CustomerOtpMail;
 use App\Models\Customer;
-use App\Models\Order;
-use App\Models\OtpVerification;
 use App\Rules\MaldivesPhone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class CustomerAuthController extends Controller
 {
+    public function __construct(
+        private readonly CustomerOtpService $otpService,
+    ) {}
+
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private function normalizePhone(string $phone): string
@@ -60,87 +57,6 @@ class CustomerAuthController extends Controller
             'message' => $message,
             'customer' => $this->customerResponse($customer),
         ];
-    }
-
-    private function sendOtp(string $phone, string $purpose = 'login', string $channel = 'sms', ?string $email = null): string
-    {
-        $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $channel = $channel === 'email' ? 'email' : 'sms';
-
-        $otpRow = OtpVerification::create([
-            'phone' => $phone,
-            'channel' => $channel,
-            'email' => $channel === 'email' ? $email : null,
-            'code_hash' => Hash::make($otpCode),
-            'expires_at' => now()->addMinutes(10),
-            'attempts' => 0,
-        ]);
-
-        if ($channel === 'email') {
-            Mail::to((string) $email)->send(new CustomerOtpMail($otpCode, 10));
-
-            return $otpCode;
-        }
-
-        $smsService = app(SmsService::class);
-        $fallback = "Your Bake & Grill verification code is {$otpCode}. Valid for 10 minutes. Do not share this code.";
-        $smsMessage = app(CustomerSmsMessageBuilder::class)->build(
-            'auth_customer_otp',
-            ['code' => $otpCode, 'minutes' => '10', 'brand' => 'Bake & Grill'],
-            $fallback,
-        );
-
-        // Idempotency key must be unique per OTP row, otherwise back-to-back
-        // requests in the same minute share a key and SmsService::send() drops
-        // the SMS as a duplicate — the OtpVerification row stays in DB and the
-        // customer fails verification on a code they never received.
-        // Scoping to the OTP row id guarantees a fresh dispatch every time.
-        $smsService->send(new SmsMessage(
-            to: $phone,
-            message: $smsMessage,
-            type: 'auth_customer_otp',
-            referenceType: 'otp',
-            referenceId: (string) $otpRow->id,
-            idempotencyKey: 'otp:' . $purpose . ':' . $phone . ':' . $otpRow->id,
-        ));
-
-        return $otpCode;
-    }
-
-    private function verifyAndConsumeOtp(string $phone, string $code): void
-    {
-        // Order by `id` (auto-increment, monotonic) rather than `created_at`
-        // (second-precision timestamp) so two requests within the same wall-
-        // clock second still resolve to a deterministic newest row. Without
-        // this, the SQL planner may return either row first → customer types
-        // the latest code they were sent and is verified against the older
-        // hash → spurious "Invalid OTP code" errors.
-        $otpRecord = OtpVerification::where('phone', $phone)
-            ->whereNull('used_at')
-            ->where('expires_at', '>', now())
-            ->orderByDesc('id')
-            ->first();
-
-        if (!$otpRecord) {
-            throw ValidationException::withMessages([
-                'otp' => ['OTP expired or invalid. Please request a new one.'],
-            ]);
-        }
-
-        if ($otpRecord->attempts >= 5) {
-            throw ValidationException::withMessages([
-                'otp' => ['Too many failed attempts. Please request a new OTP.'],
-            ]);
-        }
-
-        if (!Hash::check($code, $otpRecord->code_hash)) {
-            $otpRecord->increment('attempts');
-            throw ValidationException::withMessages([
-                'otp' => ['Invalid OTP code. ' . (5 - $otpRecord->attempts) . ' attempts remaining.'],
-            ]);
-        }
-
-        $otpRecord->update(['used_at' => now()]);
     }
 
     // ── Public endpoints ──────────────────────────────────────────────────────
@@ -256,7 +172,7 @@ class CustomerAuthController extends Controller
 
         RateLimiter::hit($key, 300);
 
-        $otpCode = $this->sendOtp($phone, $purpose, $channel, $email);
+        $otpCode = $this->otpService->issue($phone, $purpose, $channel, $email);
 
         // Audit trail without leaking the code. The actual code only ever lives
         // hashed in `otp_verifications.code_hash` and (briefly) in the SMS/email body.
@@ -292,7 +208,7 @@ class CustomerAuthController extends Controller
 
         $phone = $this->normalizePhone($input['phone']);
 
-        $this->verifyAndConsumeOtp($phone, $input['otp']);
+        $this->otpService->verifyAndConsume($phone, $input['otp']);
 
         // Successful verification — clear OTP request rate limit so user can request again cleanly
         RateLimiter::clear('otp-request:login:' . $phone);
@@ -405,7 +321,7 @@ class CustomerAuthController extends Controller
 
         RateLimiter::hit($key, 1800);
 
-        $otpCode = $this->sendOtp($phone, 'reset_password');
+        $otpCode = $this->otpService->issue($phone, 'reset_password');
 
         // Audit trail without the code itself — see requestOtp() for the
         // rationale on intentionally NOT logging the plaintext code.
@@ -437,7 +353,7 @@ class CustomerAuthController extends Controller
 
         $phone = $this->normalizePhone($input['phone']);
 
-        $this->verifyAndConsumeOtp($phone, $input['otp']);
+        $this->otpService->verifyAndConsume($phone, $input['otp']);
 
         $customer = Customer::where('phone', $phone)->first();
 
