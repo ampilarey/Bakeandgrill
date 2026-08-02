@@ -55,7 +55,7 @@ export function OrderSearch({
   if (value) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
-        <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>{value.label}</span>
+        <span style={{ flex: 1, color: 'var(--color-success-strong)', fontWeight: 600 }}>{value.label}</span>
         <button
           type="button"
           onClick={() => onChange(null)}

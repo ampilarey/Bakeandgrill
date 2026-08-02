@@ -29,11 +29,11 @@ function StatusCard({ status }: { status: XeroStatus | null }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{
             width: 56, height: 56, borderRadius: 14,
-            background: isConnected ? '#DCFCE7' : 'var(--color-danger-bg)',
+            background: isConnected ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {isConnected
-              ? <CheckCircle size={28} style={{ color: '#16A34A' }} />
+              ? <CheckCircle size={28} style={{ color: 'var(--color-success-strong)' }} />
               : <XCircle size={28} style={{ color: 'var(--color-danger-strong)' }} />}
           </div>
           <div>
@@ -163,7 +163,7 @@ export default function XeroPage() {
       />
 
       {toast && (
-        <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>
+        <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>
           {toast}
         </div>
       )}

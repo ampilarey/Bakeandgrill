@@ -52,7 +52,7 @@ export function Badge({
   children,
 }: { label?: string; color?: string; children?: ReactNode }) {
   const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    green:  { bg: '#dcfce7', text: '#15803d', border: '#86efac' },
+    green:  { bg: 'var(--color-success-bg)', text: 'var(--color-success-strong)', border: '#86efac' },
     red:    { bg: 'var(--color-danger-bg)', text: 'var(--color-danger-strong)', border: '#fca5a5' },
     yellow: { bg: '#fef9c3', text: '#a16207', border: '#fde047' },
     blue:   { bg: '#dbeafe', text: '#1d4ed8', border: '#93c5fd' },
@@ -488,8 +488,8 @@ export function StatCard({
           <span style={{
             fontSize: 11,
             fontWeight: 700,
-            color: trend.positive === true ? '#15803d' : trend.positive === false ? 'var(--color-danger-strong)' : 'var(--color-text-secondary)',
-            background: trend.positive === true ? '#dcfce7' : trend.positive === false ? 'var(--color-danger-bg)' : 'var(--color-bg)',
+            color: trend.positive === true ? 'var(--color-success-strong)' : trend.positive === false ? 'var(--color-danger-strong)' : 'var(--color-text-secondary)',
+            background: trend.positive === true ? 'var(--color-success-bg)' : trend.positive === false ? 'var(--color-danger-bg)' : 'var(--color-bg)',
             border: `1px solid ${trend.positive === true ? '#86efac' : trend.positive === false ? '#fca5a5' : 'var(--color-border)'}`,
             borderRadius: 9999,
             padding: '2px 7px',

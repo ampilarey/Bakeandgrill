@@ -808,8 +808,8 @@ export function SignagePage() {
                                     marginLeft: 8,
                                     fontSize: 12,
                                     fontWeight: 600,
-                                    color: d.online ? '#166534' : '#9A3412',
-                                    background: d.online ? '#DCFCE7' : '#FFEDD5',
+                                    color: d.online ? 'var(--color-success-strong)' : '#9A3412',
+                                    background: d.online ? 'var(--color-success-bg)' : '#FFEDD5',
                                     padding: '2px 8px',
                                     borderRadius: 999,
                                   }}

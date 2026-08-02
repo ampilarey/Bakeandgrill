@@ -172,7 +172,7 @@ export default function DevicesPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Devices" value={String(devices.length)} accent="var(--color-primary)" />
-        <StatCard label="Active" value={String(active)} accent="#16a34a" />
+        <StatCard label="Active" value={String(active)} accent="var(--color-success-strong)" />
         <StatCard label="Disabled" value={String(disabled)} accent="var(--color-text-muted)" />
         <StatCard label="Pending Approval" value={String(pending.length)} accent="var(--color-warning)" />
       </div>
@@ -283,11 +283,11 @@ export default function DevicesPage() {
         <Modal title="Pre-provision Device" onClose={() => { setModal(false); setProvisioned(null); }} maxWidth={460}>
           {provisioned ? (
             <>
-              <div style={{ background: '#dcfce7', border: '1px solid #16a34a', borderRadius: 10, padding: 16, marginBottom: 16 }}>
-                <p style={{ margin: '0 0 6px', fontWeight: 700, color: '#15803d', fontSize: 14 }}>
+              <div style={{ background: 'var(--color-success-bg)', border: '1px solid var(--color-success-strong)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+                <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--color-success-strong)', fontSize: 14 }}>
                   {provisioned.name} is ready
                 </p>
-                <p style={{ margin: 0, fontSize: 13, color: '#15803d' }}>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--color-success-strong)' }}>
                   Approved as <strong>{provisioned.type.toUpperCase()}</strong>. Open the setup link on the device once to bind it — no login or self-registration needed.
                 </p>
               </div>
@@ -331,7 +331,7 @@ export default function DevicesPage() {
                 </span>
               </label>
 
-              {copyToast && <p style={{ color: '#15803d', fontSize: 13, marginTop: 8, marginBottom: 0 }}>{copyToast}</p>}
+              {copyToast && <p style={{ color: 'var(--color-success-strong)', fontSize: 13, marginTop: 8, marginBottom: 0 }}>{copyToast}</p>}
 
               <ModalActions>
                 <Btn onClick={() => { setModal(false); setProvisioned(null); }}>Done</Btn>

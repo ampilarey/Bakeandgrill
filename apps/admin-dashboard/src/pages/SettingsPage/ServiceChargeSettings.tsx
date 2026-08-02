@@ -14,7 +14,7 @@ function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; d
       onClick={onClick}
       style={{
         flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none',
-        cursor: disabled ? 'wait' : 'pointer', background: on ? '#16A34A' : '#D1D5DB',
+        cursor: disabled ? 'wait' : 'pointer', background: on ? 'var(--color-success-strong)' : '#D1D5DB',
         position: 'relative', transition: 'background 0.2s',
       }}
     >
@@ -171,7 +171,7 @@ export function ServiceChargeSettings() {
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <Button onClick={() => void handleSave()} disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</Button>
-        {saved && <span style={{ fontSize: 13, color: '#16A34A', fontWeight: 600 }}>Saved</span>}
+        {saved && <span style={{ fontSize: 13, color: 'var(--color-success-strong)', fontWeight: 600 }}>Saved</span>}
       </div>
     </div>
   );

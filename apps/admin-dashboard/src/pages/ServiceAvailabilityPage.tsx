@@ -395,7 +395,7 @@ export default function ServiceAvailabilityPage() {
             bottom: 24,
             right: 24,
             zIndex: 'var(--z-toast)' as unknown as number,
-            background: toast.type === 'ok' ? '#166534' : 'var(--color-danger)',
+background: toast.type === 'ok' ? 'var(--color-success)' : 'var(--color-danger)',
             color: '#fff',
             padding: '12px 16px',
             borderRadius: 12,
@@ -429,7 +429,7 @@ export default function ServiceAvailabilityPage() {
               label="Open"
               value={String(summary.available)}
               sub={`${summary.total} total`}
-              accent="#16a34a"
+              accent="var(--color-success-strong)"
               icon={CheckCircle2}
             />
             <StatCard
@@ -785,7 +785,7 @@ function ServiceCard({
 
 function chipStyle(tone: 'green' | 'red' | 'orange' | 'blue'): CSSProperties {
   const map = {
-    green: { bg: '#dcfce7', fg: '#166534' },
+    green: { bg: 'var(--color-success-bg)', fg: 'var(--color-success-strong)' },
     red: { bg: 'var(--color-danger-bg)', fg: 'var(--color-danger-strong)' },
     orange: { bg: '#ffedd5', fg: '#c2410c' },
     blue: { bg: '#dbeafe', fg: '#1e40af' },

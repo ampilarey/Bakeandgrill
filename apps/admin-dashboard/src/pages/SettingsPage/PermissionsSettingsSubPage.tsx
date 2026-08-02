@@ -283,7 +283,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
               <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{role.label}</p>
               <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{role.summary}</p>
               {role.can.length > 0 && (
-                <ul style={{ margin: '0 0 6px', paddingLeft: 18, fontSize: 12, color: '#15803d', lineHeight: 1.5 }}>
+                <ul style={{ margin: '0 0 6px', paddingLeft: 18, fontSize: 12, color: 'var(--color-success-strong)', lineHeight: 1.5 }}>
                   {role.can.map((line) => <li key={line}>{line}</li>)}
                 </ul>
               )}

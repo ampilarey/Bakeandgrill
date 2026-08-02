@@ -70,7 +70,7 @@ const STATUS_BG: Record<string, string> = {
   pending:    '#FEF3C7',
   confirmed:  '#DBEAFE',
   preparing:  '#EDE9FE',
-  ready:      '#DCFCE7',
+  ready:      'var(--color-success-bg)',
   delivering: '#E0F2FE',
   delivered:  '#D1FAE5',
   completed:  'var(--color-bg)',
@@ -156,10 +156,10 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {stale ? <AlertTriangle size={16} color="#d97706" /> : <CheckCircle2 size={16} color="var(--color-success)" />}
-        <span style={{ fontWeight: 700, fontSize: 13, color: stale ? '#92400e' : '#166534' }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: stale ? '#92400e' : 'var(--color-success-strong)' }}>
           Shift Open{stale ? ' — close this shift' : ''}
         </span>
-        <span style={{ fontSize: 12, color: stale ? '#92400e' : '#15803d' }}>
+        <span style={{ fontSize: 12, color: stale ? '#92400e' : 'var(--color-success-strong)' }}>
           {hrs > 0 ? `${hrs}h ` : ''}{mins}m · by {shift.opened_by ?? 'Unknown'}
         </span>
         {stale && (
@@ -169,14 +169,14 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
         )}
       </div>
       <div style={{ display: 'flex', gap: 16, marginLeft: 'auto', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: stale ? '#92400e' : '#15803d' }}>
+        <span style={{ fontSize: 12, color: stale ? '#92400e' : 'var(--color-success-strong)' }}>
           <strong>Opening: </strong>{fmt(shift.opening_cash)}
         </span>
-        <span style={{ fontSize: 12, color: stale ? '#92400e' : '#15803d' }}>
+        <span style={{ fontSize: 12, color: stale ? '#92400e' : 'var(--color-success-strong)' }}>
           <strong>Expected: </strong>{fmt(shift.expected_cash ?? shift.opening_cash)}
         </span>
         {(shift.cash_movements?.length ?? 0) > 0 && (
-          <span style={{ fontSize: 12, color: '#15803d' }}>
+          <span style={{ fontSize: 12, color: 'var(--color-success-strong)' }}>
             <strong>Movements: </strong>{shift.cash_movements.length}
           </span>
         )}
@@ -271,7 +271,7 @@ function MaintenancePanel({ onDone }: { onDone: () => void }) {
           )}
 
           {result && (
-            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#15803d', fontWeight: 600 }}>{result}</p>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-success-strong)', fontWeight: 600 }}>{result}</p>
           )}
 
           <button
@@ -812,7 +812,7 @@ export function DashboardPage() {
             {[
               { label: 'Pending',   count: pendingCount,   color: 'var(--color-warning)', bg: '#FEF3C7', icon: <Clock size={12} /> },
               { label: 'Preparing', count: preparingCount, color: '#8b5cf6', bg: '#EDE9FE', icon: <ChefHat size={12} /> },
-              { label: 'Ready',     count: readyCount,     color: 'var(--color-success)', bg: '#DCFCE7', icon: <CheckCircle2 size={12} /> },
+              { label: 'Ready',     count: readyCount,     color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: <CheckCircle2 size={12} /> },
             ].map(({ label, count, color, bg, icon }) => (
               <div key={label} style={{
                 display: 'flex', alignItems: 'center', gap: 5,
@@ -1143,7 +1143,7 @@ export function DashboardPage() {
                     label={`Net ${row.label}`}
                     value={fmt(row.net)}
                     sub={`Gross ${fmt(row.gross)} · Fee ${fmt(row.commission)}`}
-                    accent="#16a34a"
+                    accent="var(--color-success-strong)"
                     icon={Receipt}
                   />
                 ))}
@@ -1189,7 +1189,7 @@ export function DashboardPage() {
                 background: health.status === 'ok' ? 'var(--color-success)' : 'var(--color-danger)',
                 display: 'inline-block',
               }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: health.status === 'ok' ? '#15803D' : 'var(--color-danger-strong)', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: health.status === 'ok' ? 'var(--color-success-strong)' : 'var(--color-danger-strong)', textTransform: 'uppercase' }}>
                 {health.status}
               </span>
               </div>

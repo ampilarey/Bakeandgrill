@@ -166,9 +166,9 @@ export function ItemSearch(props: Props) {
         border: '1px solid #86EFAC', borderRadius: 10, padding: '10px 12px', fontSize: 13,
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: '#166534', fontWeight: 700 }}>{value.label}</div>
+          <div style={{ color: 'var(--color-success-strong)', fontWeight: 700 }}>{value.label}</div>
           {categoryLabel && (
-            <div style={{ color: '#15803d', fontSize: 12, marginTop: 2 }}>{categoryLabel}</div>
+            <div style={{ color: 'var(--color-success-strong)', fontSize: 12, marginTop: 2 }}>{categoryLabel}</div>
           )}
         </div>
         <button

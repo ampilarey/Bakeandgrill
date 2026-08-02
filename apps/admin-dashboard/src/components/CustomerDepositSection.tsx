@@ -272,7 +272,7 @@ export function CustomerDepositSection({ customerId }: Props) {
             </div>
             <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
               <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>POS availability</p>
-              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: deposit.can_use ? '#15803D' : 'var(--color-text-muted)' }}>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: deposit.can_use ? 'var(--color-success-strong)' : 'var(--color-text-muted)' }}>
                 {deposit.can_use ? 'Can pay from deposit' : 'Unavailable'}
               </p>
             </div>

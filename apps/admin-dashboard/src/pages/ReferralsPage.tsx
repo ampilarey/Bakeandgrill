@@ -95,7 +95,7 @@ export default function ReferralsPage() {
                     {c.max_uses ? <span style={{ color: 'var(--color-text-muted)' }}> / {c.max_uses}</span> : null}
                   </td>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-primary)' }}>{mvr(c.referrer_reward_mvr)}</td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#16a34a' }}>{mvr(c.referee_discount_mvr)}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-success-strong)' }}>{mvr(c.referee_discount_mvr)}</td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Badge color={c.is_active ? 'green' : 'gray'}>{c.is_active ? 'Active' : 'Inactive'}</Badge>
@@ -146,7 +146,7 @@ export default function ReferralsPage() {
               background: checkResult.valid ? '#f0fdf4' : 'var(--color-danger-bg)',
               border: `1px solid ${checkResult.valid ? '#bbf7d0' : '#fecaca'}`,
             }}>
-              <p style={{ fontWeight: 700, color: checkResult.valid ? '#15803d' : 'var(--color-danger-strong)', margin: '0 0 4px', fontSize: 14 }}>
+              <p style={{ fontWeight: 700, color: checkResult.valid ? 'var(--color-success-strong)' : 'var(--color-danger-strong)', margin: '0 0 4px', fontSize: 14 }}>
                 {checkResult.valid ? '✓ Valid Code' : '✗ Invalid Code'}
               </p>
               {checkResult.valid && checkResult.referee_discount_mvr != null && (

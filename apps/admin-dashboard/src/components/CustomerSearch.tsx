@@ -46,7 +46,7 @@ export function CustomerSearch({
     <div style={{ position: 'relative' }}>
       {value ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '7px 10px', fontSize: 13 }}>
-          <span style={{ flex: 1, color: '#166534', fontWeight: 600 }}>{label || `Customer #${value}`}</span>
+          <span style={{ flex: 1, color: 'var(--color-success-strong)', fontWeight: 600 }}>{label || `Customer #${value}`}</span>
           <button
             type="button"
             onClick={() => { onChange(null, ''); setLabel(''); }}

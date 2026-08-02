@@ -308,7 +308,7 @@ export function PurchaseOrdersPage() {
     <>
       <PageHeader section="Manage" title="Purchase Orders" subtitle="Manage procurement workflow" />
       {toast && (
-        <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
+        <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {toast}
         </div>
       )}
@@ -373,7 +373,7 @@ export function PurchaseOrdersPage() {
                     <div key={item.inventory_item_id} style={{ background: 'var(--color-surface)', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
                       <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.name}</span>
                       <span style={{ color: 'var(--color-danger)', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
-                      <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>
+                      <span style={{ color: 'var(--color-success-strong)' }}>Order: {item.suggested_quantity} {item.unit}</span>
                       {item.suggestion_reason && (
                         <span style={{ color: '#92400e', marginLeft: 6, fontSize: 11 }}>
                           ({item.suggestion_reason === 'usage_cover' ? 'usage' : item.suggestion_reason === 'reorder_quantity' ? 'reorder qty' : 'ROP'})

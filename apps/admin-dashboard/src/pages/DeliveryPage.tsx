@@ -193,7 +193,7 @@ export function DeliveryPage() {
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
                 <StatCard label="Delivery Orders" value={String(settlement.totals.orders_count)} accent="#0ea5e9" />
-                <StatCard label="Cash Collected" value={`MVR ${settlement.totals.cash_collected.toFixed(2)}`} accent="#16a34a" />
+                <StatCard label="Cash Collected" value={`MVR ${settlement.totals.cash_collected.toFixed(2)}`} accent="var(--color-success-strong)" />
                 <StatCard label="Delivery Fees" value={`MVR ${settlement.totals.delivery_fees.toFixed(2)}`} accent="var(--color-primary)" />
               </div>
               <Card>
@@ -217,7 +217,7 @@ export function DeliveryPage() {
                           <td style={{ padding: '10px 12px' }}>{row.completed_count}</td>
                           <td style={{ padding: '10px 12px' }}>MVR {row.order_total.toFixed(2)}</td>
                           <td style={{ padding: '10px 12px' }}>MVR {row.delivery_fees.toFixed(2)}</td>
-                          <td style={{ padding: '10px 12px', color: '#16a34a', fontWeight: 600 }}>MVR {row.cash_collected.toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--color-success-strong)', fontWeight: 600 }}>MVR {row.cash_collected.toFixed(2)}</td>
                           <td style={{ padding: '10px 12px' }}>MVR {row.card_collected.toFixed(2)}</td>
                           <td style={{ padding: '10px 12px' }}>MVR {(row.qr_collected ?? 0).toFixed(2)}</td>
                           <td style={{ padding: '10px 12px' }}>MVR {(row.transfer_collected ?? 0).toFixed(2)}</td>
@@ -337,7 +337,7 @@ function DeliveryCard({
       {/* Driver badge or quick assign */}
       {driverName ? (
         <div style={{ marginTop: 6 }}>
-          <p style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>🛵 {driverName}</p>
+          <p style={{ fontSize: 13, color: 'var(--color-success-strong)', fontWeight: 600 }}>🛵 {driverName}</p>
           {isActiveDelivery && extOrder.delivery_driver_id && (
             <DriverLocationBadge orderId={order.id} />
           )}
@@ -637,8 +637,8 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
                   {d.vehicle_type && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>🚗 {d.vehicle_type}</p>}
                   <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                     <span style={{
-                      padding: '2px 8px', background: d.is_active ? '#dcfce7' : 'var(--color-border-light)',
-                      color: d.is_active ? '#16a34a' : 'var(--color-text-secondary)',
+                      padding: '2px 8px', background: d.is_active ? 'var(--color-success-bg)' : 'var(--color-border-light)',
+                      color: d.is_active ? 'var(--color-success-strong)' : 'var(--color-text-secondary)',
                       borderRadius: 99, fontSize: 11, fontWeight: 600,
                     }}>
                       {d.is_active ? 'Active' : 'Inactive'}

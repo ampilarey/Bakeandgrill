@@ -296,7 +296,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
         </p>
 
         {otpSuccess ? (
-          <div style={{ background: '#dcfce7', color: '#166534', borderRadius: 10, padding: '14px', fontSize: 14, textAlign: 'center', fontWeight: 600 }}>
+          <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', borderRadius: 10, padding: '14px', fontSize: 14, textAlign: 'center', fontWeight: 600 }}>
             {otpSuccess}
           </div>
         ) : (

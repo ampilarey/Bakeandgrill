@@ -307,7 +307,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
         </div>
 
         {toast && (
-          <div style={{ background: '#DCFCE7', color: '#166534', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{toast}</div>
+          <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{toast}</div>
         )}
         {actionErr && (
           <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{actionErr}</div>
@@ -546,7 +546,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
                   🚗 Driver
-                  {order.driver && <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 12, color: '#16a34a' }}>✓ {order.driver.name}</span>}
+                  {order.driver && <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 12, color: 'var(--color-success-strong)' }}>✓ {order.driver.name}</span>}
                 </p>
                 {drivers.length > 0 ? (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

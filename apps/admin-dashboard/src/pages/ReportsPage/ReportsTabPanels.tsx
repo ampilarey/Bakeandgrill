@@ -72,7 +72,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               <>
                 <StatCard label="Card/Gateway Gross" value={mvr(summary.payment_commission!.totals.gross_commissionable)} accent="#6366f1" />
                 <StatCard label="BML Commission" value={mvr(summary.payment_commission!.totals.commission_total)} sub="Processing fees" accent="var(--color-danger-strong)" />
-                <StatCard label="Net Settlement" value={mvr(summary.payment_commission!.totals.net_settlement)} sub="After fees" accent="#16a34a" />
+                <StatCard label="Net Settlement" value={mvr(summary.payment_commission!.totals.net_settlement)} sub="After fees" accent="var(--color-success-strong)" />
               </>
             )}
           </div>
@@ -1128,8 +1128,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={S.td}>
                       <span style={{
                         fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                        background: row.velocity === 'fast' ? '#DCFCE7' : row.velocity === 'slow' ? 'var(--color-danger-bg)' : '#F3F4F6',
-                        color: row.velocity === 'fast' ? '#166534' : row.velocity === 'slow' ? 'var(--color-danger-strong)' : '#6B7280',
+                        background: row.velocity === 'fast' ? 'var(--color-success-bg)' : row.velocity === 'slow' ? 'var(--color-danger-bg)' : '#F3F4F6',
+                        color: row.velocity === 'fast' ? 'var(--color-success-strong)' : row.velocity === 'slow' ? 'var(--color-danger-strong)' : '#6B7280',
                       }}>{row.velocity}</span>
                     </td>
                   </tr>
@@ -1169,7 +1169,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={{ ...S.td, fontSize: 12, color: 'var(--color-text-muted)' }}>{row.closed_at ? new Date(row.closed_at).toLocaleString() : '—'}</td>
                     <td style={S.td}>{row.expected_cash != null ? mvr(row.expected_cash) : '—'}</td>
                     <td style={S.td}>{row.closing_cash != null ? mvr(row.closing_cash) : '—'}</td>
-                    <td style={{ ...S.td, fontWeight: 700, color: row.variance != null && Math.abs(row.variance) >= 0.01 ? 'var(--color-danger)' : '#16a34a' }}>
+                    <td style={{ ...S.td, fontWeight: 700, color: row.variance != null && Math.abs(row.variance) >= 0.01 ? 'var(--color-danger)' : 'var(--color-success-strong)' }}>
                       {row.variance != null ? mvr(row.variance) : '—'}
                     </td>
                   </tr>
@@ -1303,7 +1303,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={S.td}>{row.category ?? '—'}</td>
                     <td style={S.td}>{mvr(row.price)}</td>
                     <td style={S.td}>{row.cost != null ? mvr(row.cost) : '—'}</td>
-                    <td style={{ ...S.td, fontWeight: 700, color: row.margin_pct != null && row.margin_pct < 30 ? 'var(--color-danger)' : '#16a34a' }}>
+                    <td style={{ ...S.td, fontWeight: 700, color: row.margin_pct != null && row.margin_pct < 30 ? 'var(--color-danger)' : 'var(--color-success-strong)' }}>
                       {row.margin_pct != null ? `${row.margin_pct}%` : '—'}
                     </td>
                   </tr>

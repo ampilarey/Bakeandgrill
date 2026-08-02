@@ -102,7 +102,7 @@ export function SystemHealthPage() {
 
       {err && <ErrorMsg message={err} />}
       {actionMsg && (
-        <p style={{ color: '#15803d', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{actionMsg}</p>
+        <p style={{ color: 'var(--color-success-strong)', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{actionMsg}</p>
       )}
       {loading && !data && <Spinner />}
 
@@ -114,9 +114,9 @@ export function SystemHealthPage() {
             background: degraded ? 'var(--color-danger-bg)' : '#F0FDF4',
             border: `1px solid ${degraded ? '#FECACA' : '#BBF7D0'}`,
           }}>
-            {degraded ? <AlertTriangle size={20} color="var(--color-danger-strong)" /> : <CheckCircle2 size={20} color="#16A34A" />}
+            {degraded ? <AlertTriangle size={20} color="var(--color-danger-strong)" /> : <CheckCircle2 size={20} color="var(--color-success-strong)" />}
             <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: degraded ? 'var(--color-danger-strong)' : '#166534' }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: degraded ? 'var(--color-danger-strong)' : 'var(--color-success-strong)' }}>
                 {degraded ? 'Issues detected in the last 24 hours' : 'All systems nominal'}
               </p>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
@@ -334,7 +334,7 @@ export function SystemHealthPage() {
                   {(data.scheduler_last_runs ?? []).map((row) => (
                     <div key={row.command} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{row.command}</span>
-                      <span style={{ color: row.stale ? 'var(--color-danger-strong)' : '#16A34A' }}>
+                      <span style={{ color: row.stale ? 'var(--color-danger-strong)' : 'var(--color-success-strong)' }}>
                         {row.last_run ? fmtTime(row.last_run) : 'Never recorded'}
                         {row.stale && row.last_run ? ' · stale' : ''}
                       </span>

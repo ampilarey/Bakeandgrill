@@ -27,7 +27,7 @@ function priceChangeBadge(item: RestockPlanItem): { label: string; color: string
     return { label: `↑ ${item.price_change_pct}%`, color: 'var(--color-danger-strong)', bg: 'var(--color-danger-bg)' };
   }
   if (item.price_change === 'down') {
-    return { label: `↓ ${Math.abs(item.price_change_pct)}%`, color: '#15803d', bg: '#dcfce7' };
+    return { label: `↓ ${Math.abs(item.price_change_pct)}%`, color: 'var(--color-success-strong)', bg: 'var(--color-success-bg)' };
   }
   return { label: 'same', color: 'var(--color-text-secondary)', bg: 'var(--color-border-light)' };
 }
@@ -47,7 +47,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_BG: Record<string, string> = {
-  ok:           '#dcfce7',
+  ok:           'var(--color-success-bg)',
   warning:      '#fef3c7',
   low:          '#ffedd5',
   critical:     'var(--color-danger-bg)',
@@ -1132,7 +1132,7 @@ export function ForecastPage() {
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Revenue Forecast (Next 4 Weeks)</div>
               <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
                 Weighted Moving Avg: MVR {parseFloat(String(forecast.weighted_moving_avg ?? 0)).toFixed(2)}/wk ·
-                Growth Rate: <span style={{ color: forecast.growth_rate_pct >= 0 ? '#16a34a' : 'var(--color-danger-strong)', fontWeight: 700 }}>
+                Growth Rate: <span style={{ color: forecast.growth_rate_pct >= 0 ? 'var(--color-success-strong)' : 'var(--color-danger-strong)', fontWeight: 700 }}>
                   {forecast.growth_rate_pct >= 0 ? '+' : ''}{parseFloat(String(forecast.growth_rate_pct ?? 0)).toFixed(2)}%/wk
                 </span>
               </div>
@@ -1384,7 +1384,7 @@ export function ForecastPage() {
                       style={{
                         padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
                         background: 'var(--color-surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                        fontFamily: 'inherit', color: '#16a34a',
+                        fontFamily: 'inherit', color: 'var(--color-success-strong)',
                       }}
                     >
                       {snoozingId === -1 ? '…' : `Include (${selectedIncludable.length})`}
@@ -1456,7 +1456,7 @@ export function ForecastPage() {
                 <StatCard label="Tracked items" value={String(activeRestockItems.length)} accent="var(--color-text-secondary)" />
                 <StatCard label="Due soon" value={String(restock.totals.due_soon)} accent="#f97316" />
                 <StatCard label="Below ROP" value={String(restock.totals.below_rop)} accent="var(--color-danger)" />
-                <StatCard label="Ready for PO" value={String(readyRestock.length)} accent="#16a34a" />
+                <StatCard label="Ready for PO" value={String(readyRestock.length)} accent="var(--color-success-strong)" />
                 {(restock.totals.with_open_po ?? 0) > 0 && (
                   <StatCard label="Already on PO" value={String(restock.totals.with_open_po)} accent="#b45309" />
                 )}
@@ -1817,7 +1817,7 @@ export function ForecastPage() {
                                 width: 72, height: 28, padding: '0 6px', borderRadius: 6,
                                 border: qtyIsEdited(item) || qtyHasSavedPack(item) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                                 fontSize: 12, fontFamily: 'inherit', fontWeight: 700,
-                                color: '#16a34a',
+                                color: 'var(--color-success-strong)',
                                 background: qtyIsEdited(item) ? '#FFF7ED' : qtyHasSavedPack(item) ? '#FFFBEB' : 'var(--color-surface)',
                               }}
                             />
@@ -1832,7 +1832,7 @@ export function ForecastPage() {
                                   onClick={() => void saveOrderQty(item)}
                                   style={{
                                     padding: 0, border: 'none', background: 'none',
-                                    fontSize: 10, fontWeight: 700, color: '#16a34a', cursor: 'pointer',
+                                    fontSize: 10, fontWeight: 700, color: 'var(--color-success-strong)', cursor: 'pointer',
                                     fontFamily: 'inherit',
                                   }}
                                   title="Save as inventory reorder quantity (pack size)"
@@ -1889,7 +1889,7 @@ export function ForecastPage() {
                               <div>{item.reorder_point}</div>
                               <div style={{
                                 fontWeight: 700,
-                                color: canApplyRop(item) ? '#c2410c' : '#16a34a',
+                                color: canApplyRop(item) ? '#c2410c' : 'var(--color-success-strong)',
                               }}>
                                 → {item.suggested_reorder_point}
                               </div>

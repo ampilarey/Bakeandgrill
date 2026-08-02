@@ -211,7 +211,7 @@ function ProgramSettingsPanel() {
   return (
     <Card>
       {error && <ErrorMsg message={error} />}
-      {saved && <p style={{ color: '#16a34a', fontSize: 13, margin: '0 0 12px' }}>{saved}</p>}
+      {saved && <p style={{ color: 'var(--color-success-strong)', fontSize: 13, margin: '0 0 12px' }}>{saved}</p>}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
@@ -351,7 +351,7 @@ function TiersPanel() {
   return (
     <Card>
       {error && <ErrorMsg message={error} />}
-      {saved && <p style={{ color: '#16a34a', fontSize: 13, margin: '0 0 12px' }}>{saved}</p>}
+      {saved && <p style={{ color: 'var(--color-success-strong)', fontSize: 13, margin: '0 0 12px' }}>{saved}</p>}
       <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 16px' }}>
         Customers are placed in the highest tier whose minimum lifetime points they have reached. Earn multiplier applies when tier multipliers are enabled in Program Settings.
       </p>

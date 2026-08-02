@@ -274,7 +274,7 @@ export function SupplierIntelligencePage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 200px', minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>{sup.supplier_name}</div>
-                  <div style={{ fontSize: 12, color: sup.is_active ? '#16a34a' : 'var(--color-text-muted)', marginTop: 3 }}>
+                  <div style={{ fontSize: 12, color: sup.is_active ? 'var(--color-success-strong)' : 'var(--color-text-muted)', marginTop: 3 }}>
                     {sup.is_active ? '● Active' : '○ Inactive'}
                   </div>
                 </div>
@@ -341,7 +341,7 @@ export function SupplierIntelligencePage() {
           {compareLoading ? <Spinner /> : compareData ? (
             <>
               {compareData.cheapest && (
-                <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 8, marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
+                <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 8, marginBottom: 14, fontSize: 13, fontWeight: 600 }}>
                   ✓ Cheapest: {compareData.cheapest.supplier_name} — MVR {parseFloat(String(compareData.cheapest.unit_price ?? 0)).toFixed(2)}
                 </div>
               )}
@@ -362,10 +362,10 @@ export function SupplierIntelligencePage() {
                         .sort((a, b) => a.unit_price - b.unit_price)
                         .map((p, i) => (
                           <tr key={p.supplier_id} style={{ background: i === 0 ? '#F0FDF4' : undefined }}>
-                            <td style={{ ...TD, fontWeight: i === 0 ? 700 : 400, color: i === 0 ? '#166534' : 'var(--color-text)' }}>
+                            <td style={{ ...TD, fontWeight: i === 0 ? 700 : 400, color: i === 0 ? 'var(--color-success-strong)' : 'var(--color-text)' }}>
                               {i === 0 && '🏆 '}{p.supplier_name}
                             </td>
-                            <td style={{ ...TD, fontWeight: 700, color: i === 0 ? '#166534' : 'var(--color-primary)' }}>
+                            <td style={{ ...TD, fontWeight: 700, color: i === 0 ? 'var(--color-success-strong)' : 'var(--color-primary)' }}>
                               {parseFloat(String(p.unit_price ?? 0)).toFixed(2)}
                             </td>
                             <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{p.unit}</td>

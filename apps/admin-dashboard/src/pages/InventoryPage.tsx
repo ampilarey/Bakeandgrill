@@ -411,7 +411,7 @@ export default function InventoryPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Total Items" value={String(items.length)} accent="var(--color-primary)" />
-            <StatCard label="Low Stock" value={String(lowCount)} accent={lowCount > 0 ? 'var(--color-danger)' : '#16a34a'} />
+            <StatCard label="Low Stock" value={String(lowCount)} accent={lowCount > 0 ? 'var(--color-danger)' : 'var(--color-success-strong)'} />
           </div>
 
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -647,7 +647,7 @@ export default function InventoryPage() {
                         {m.created_at ? new Date(m.created_at).toLocaleString() : '—'}
                       </td>
                       <td style={{ ...TD, textTransform: 'capitalize' }}>{m.type?.replace(/_/g, ' ')}</td>
-                      <td style={{ ...TD, fontWeight: 700, color: Number(m.quantity) < 0 ? 'var(--color-danger)' : '#16a34a' }}>
+                      <td style={{ ...TD, fontWeight: 700, color: Number(m.quantity) < 0 ? 'var(--color-danger)' : 'var(--color-success-strong)' }}>
                         {Number(m.quantity) > 0 ? '+' : ''}{Number(m.quantity)}
                       </td>
                       <td style={TD}>{m.balance_after ?? '—'}</td>
@@ -847,7 +847,7 @@ export default function InventoryPage() {
           {countError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{countError}</p>}
           {countResult ? (
             <div>
-              <div style={{ background: '#DCFCE7', color: '#166534', padding: '12px 16px', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
+              <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '12px 16px', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
                 ✓ Stock count submitted. {countResult.filter(r => r.difference !== 0).length} adjustments made.
               </div>
               <TableCard>
@@ -857,7 +857,7 @@ export default function InventoryPage() {
                     {countResult.map((r) => (
                       <tr key={r.item_id}>
                         <td style={TD}>{countItems.find(i => i.id === r.item_id)?.name ?? `#${r.item_id}`}</td>
-                        <td style={{ ...TD, color: r.difference > 0 ? '#15803D' : r.difference < 0 ? 'var(--color-danger-strong)' : 'var(--color-text-muted)', fontWeight: 700 }}>
+                        <td style={{ ...TD, color: r.difference > 0 ? 'var(--color-success-strong)' : r.difference < 0 ? 'var(--color-danger-strong)' : 'var(--color-text-muted)', fontWeight: 700 }}>
                           {r.difference > 0 ? '+' : ''}{r.difference}
                         </td>
                         <td style={TD}>{r.balance_after}</td>
@@ -937,7 +937,7 @@ export default function InventoryPage() {
           {historyLoading ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Loading…</p> : (
             <>
               {cheapestSupplier && (
-                <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
+                <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
                   💰 Cheapest supplier: <strong>{cheapestSupplier.name}</strong> at MVR {cheapestSupplier.min_cost.toFixed(2)}
                 </div>
               )}

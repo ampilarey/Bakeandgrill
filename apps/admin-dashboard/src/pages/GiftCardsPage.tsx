@@ -377,16 +377,16 @@ export default function GiftCardsPage() {
         </div>
         {balanceResult && (
           <div style={{ marginTop: 12, padding: 12, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
-            <p style={{ margin: 0, color: '#166534', fontWeight: 700 }}>
+            <p style={{ margin: 0, color: 'var(--color-success-strong)', fontWeight: 700 }}>
               {balanceResult.masked_code} — Available: MVR {Number(balanceResult.available_balance).toFixed(2)}
             </p>
-            <p style={{ margin: '4px 0 0', color: '#166534', fontSize: 12 }}>
+            <p style={{ margin: '4px 0 0', color: 'var(--color-success-strong)', fontSize: 12 }}>
               Ledger: MVR {Number(balanceResult.current_balance).toFixed(2)}
               {Number(balanceResult.held_balance) > 0
                 ? ` · Held on unpaid orders: MVR ${Number(balanceResult.held_balance).toFixed(2)}`
                 : ''}
             </p>
-            {balanceResult.expires_at && <p style={{ margin: '4px 0 0', color: '#166534', fontSize: 12 }}>Expires: {balanceResult.expires_at}</p>}
+            {balanceResult.expires_at && <p style={{ margin: '4px 0 0', color: 'var(--color-success-strong)', fontSize: 12 }}>Expires: {balanceResult.expires_at}</p>}
           </div>
         )}
         {balanceError && <p style={{ color: 'var(--color-danger)', margin: '8px 0 0', fontSize: 13 }}>{balanceError}</p>}
@@ -427,7 +427,7 @@ export default function GiftCardsPage() {
                   )}
                 </td>
                 <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
-                <td style={{ ...TD, fontWeight: 700, color: (card.available_balance ?? card.current_balance) > 0 ? '#166534' : 'var(--color-text-muted)' }}>
+                <td style={{ ...TD, fontWeight: 700, color: (card.available_balance ?? card.current_balance) > 0 ? 'var(--color-success-strong)' : 'var(--color-text-muted)' }}>
                   <div>MVR {Number(card.available_balance ?? card.current_balance).toFixed(2)}</div>
                   {(Number(card.held_balance ?? 0) > 0 || Number(card.available_balance ?? card.current_balance) !== Number(card.current_balance)) && (
                     <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-muted)', marginTop: 2 }}>
@@ -537,7 +537,7 @@ export default function GiftCardsPage() {
                   <tr key={row.id}>
                     <td style={TD}>{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
                     <td style={TD}>{row.type}</td>
-                    <td style={{ ...TD, color: row.amount < 0 ? 'var(--color-danger-strong)' : '#166534', fontWeight: 600 }}>
+                    <td style={{ ...TD, color: row.amount < 0 ? 'var(--color-danger-strong)' : 'var(--color-success-strong)', fontWeight: 600 }}>
                       {row.amount < 0 ? '−' : '+'}MVR {Math.abs(row.amount).toFixed(2)}
                     </td>
                     <td style={TD}>MVR {row.balance_after.toFixed(2)}</td>
@@ -582,7 +582,7 @@ export default function GiftCardsPage() {
                 <p style={{
                   margin: '12px 0 0',
                   fontSize: 13,
-                  color: issueSms.ok ? '#166534' : 'var(--color-danger-strong)',
+                  color: issueSms.ok ? 'var(--color-success-strong)' : 'var(--color-danger-strong)',
                   fontWeight: 600,
                 }}>
                   {issueSms.ok
@@ -594,7 +594,7 @@ export default function GiftCardsPage() {
                 <p style={{
                   margin: '8px 0 0',
                   fontSize: 13,
-                  color: issueEmail.ok ? '#166534' : 'var(--color-danger-strong)',
+                  color: issueEmail.ok ? 'var(--color-success-strong)' : 'var(--color-danger-strong)',
                   fontWeight: 600,
                 }}>
                   {issueEmail.ok

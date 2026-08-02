@@ -36,19 +36,19 @@ const defaultForm = { name: '', capacity: '2', location: '' };
 type ViewMode = 'cards' | 'floorplan';
 
 const STATUS_BG: Record<string, string> = {
-  available: '#DCFCE7',
+  available: 'var(--color-success-bg)',
   occupied:  '#FEF3C7',
   reserved:  '#DBEAFE',
   closed:    '#F3F4F6',
 };
 const STATUS_BORDER: Record<string, string> = {
-  available: '#16a34a',
+  available: 'var(--color-success-strong)',
   occupied:  '#d97706',
   reserved:  '#2563eb',
   closed:    '#9ca3af',
 };
 const STATUS_TEXT: Record<string, string> = {
-  available: '#15803d',
+  available: 'var(--color-success-strong)',
   occupied:  '#b45309',
   reserved:  '#1d4ed8',
   closed:    '#6b7280',
@@ -182,7 +182,7 @@ export default function TablesPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard label="Total Tables" value={String(tables.length)} accent="var(--color-primary)" />
-        <StatCard label="Available" value={String(available)} accent="#16a34a" />
+        <StatCard label="Available" value={String(available)} accent="var(--color-success-strong)" />
         <StatCard label="Occupied" value={String(occupied)} accent="var(--color-warning)" />
       </div>
 
@@ -232,7 +232,7 @@ export default function TablesPage() {
               }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{zone}</span>
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{zoneTables.length} table{zoneTables.length !== 1 ? 's' : ''}</span>
-                <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+                <span style={{ fontSize: 12, color: 'var(--color-success-strong)', fontWeight: 600 }}>
                   {zoneTables.filter(t => t.status === 'available').length} available
                 </span>
                 {zoneTables.filter(t => t.status === 'occupied').length > 0 && (

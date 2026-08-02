@@ -986,7 +986,7 @@ export function MediaLibraryPage() {
             <button
               type="button"
               onClick={() => void copyUrl()}
-              style={{ width: '100%', height: 36, borderRadius: 8, border: '1px solid var(--color-border)', background: copiedUrl ? '#f0fdf4' : 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: copiedUrl ? '#15803d' : 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}
+              style={{ width: '100%', height: 36, borderRadius: 8, border: '1px solid var(--color-border)', background: copiedUrl ? '#f0fdf4' : 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: copiedUrl ? 'var(--color-success-strong)' : 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}
             >
               {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
               {copiedUrl ? 'Copied!' : 'Copy URL'}
