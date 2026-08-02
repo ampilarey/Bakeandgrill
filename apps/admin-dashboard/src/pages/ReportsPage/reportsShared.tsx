@@ -25,11 +25,11 @@ export function pct(n: number, total: number) { return total > 0 ? `${((n / tota
 
 export function PaymentCommissionBlock({ commission }: { commission?: PaymentCommissionSummary }) {
   if (!commission || (commission.totals.gross_commissionable ?? 0) <= 0) return null;
-  const th = { textAlign: 'left' as const, padding: '8px 12px', fontSize: 11, color: '#9C8E7E', borderBottom: '1px solid #E8E0D8' };
+  const th = { textAlign: 'left' as const, padding: '8px 12px', fontSize: 11, color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' };
   const td = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #F3EDE4' };
   return (
     <div style={{ marginTop: 20 }}>
-      <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Card / QR / gateway settlement</p>
+      <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', margin: '0 0 8px' }}>Card / QR / gateway settlement</p>
       <ResponsiveTable>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -46,7 +46,7 @@ export function PaymentCommissionBlock({ commission }: { commission?: PaymentCom
               <tr key={row.channel}>
                 <td style={td}>{row.label}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{mvr(row.gross)}</td>
-                <td style={{ ...td, textAlign: 'right', color: '#9C8E7E' }}>{row.rate_percent}%</td>
+                <td style={{ ...td, textAlign: 'right', color: 'var(--color-text-muted)' }}>{row.rate_percent}%</td>
                 <td style={{ ...td, textAlign: 'right', color: '#dc2626' }}>{mvr(row.commission)}</td>
                 <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.net)}</td>
               </tr>
@@ -214,18 +214,18 @@ export const S = {
     padding: '10px 16px',
     fontSize: 13,
     fontWeight: active ? 700 : 500,
-    color: active ? '#D4813A' : '#9C8E7E',
+    color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
     background: 'none',
     border: 'none',
     cursor: 'pointer',
     fontFamily: 'inherit',
-    borderBottom: active ? '2px solid #D4813A' : '2px solid transparent',
+    borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
     marginBottom: -2,
     whiteSpace: 'nowrap',
   }),
   sectionBar: {
     marginBottom: 0,
-    borderBottom: '2px solid #E8E0D8',
+    borderBottom: '2px solid var(--color-border)',
   },
   subTabBar: {
     marginBottom: 20,
@@ -234,14 +234,14 @@ export const S = {
   tab: (active: boolean): React.CSSProperties => ({
     padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 700 : 400,
-    background: active ? '#D4813A' : 'transparent', color: active ? '#fff' : '#6B5D4F',
+    background: active ? 'var(--color-primary)' : 'transparent', color: active ? '#fff' : 'var(--color-text-secondary)',
     transition: 'all .15s',
   }),
   table: { width: '100%', borderCollapse: 'collapse' } as React.CSSProperties,
-  th: { textAlign: 'left' as const, padding: '8px 12px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3', whiteSpace: 'nowrap' as const },
-  td: { padding: '10px 12px', fontSize: 13, color: '#1C1408', borderBottom: '1px solid #F8F4F0' },
+  th: { textAlign: 'left' as const, padding: '8px 12px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3', whiteSpace: 'nowrap' as const },
+  td: { padding: '10px 12px', fontSize: 13, color: 'var(--color-text)', borderBottom: '1px solid #F8F4F0' },
   bar: (pctVal: number): React.CSSProperties => ({
-    height: 8, borderRadius: 4, background: '#D4813A', width: `${Math.min(100, pctVal)}%`, minWidth: pctVal > 0 ? 4 : 0,
+    height: 8, borderRadius: 4, background: 'var(--color-primary)', width: `${Math.min(100, pctVal)}%`, minWidth: pctVal > 0 ? 4 : 0,
   }),
 };
 
@@ -251,7 +251,7 @@ export function BarCell({ value, max }: { value: number; max: number }) {
       <div style={{ flex: 1, background: '#F0EAE3', borderRadius: 4, height: 8 }}>
         <div style={S.bar(max > 0 ? (value / max) * 100 : 0)} />
       </div>
-      <span style={{ fontSize: 12, color: '#6B5D4F', width: 80, textAlign: 'right' }}>{mvr(value)}</span>
+      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', width: 80, textAlign: 'right' }}>{mvr(value)}</span>
     </div>
   );
 }
