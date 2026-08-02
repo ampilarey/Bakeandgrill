@@ -23,8 +23,8 @@ type Tab = 'overview' | 'segments' | 'marketing' | 'quality' | 'corporate' | 'pa
 const TAB_STYLE = (active: boolean): React.CSSProperties => ({
   padding: '8px 18px', border: 'none', borderRadius: 8, cursor: 'pointer',
   fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
-  background: active ? '#D4813A' : 'transparent',
-  color: active ? '#fff' : '#6B5D4F',
+  background: active ? 'var(--color-primary)' : 'transparent',
+  color: active ? '#fff' : 'var(--color-text-secondary)',
 });
 
 export function CustomerGrowthPage() {
@@ -197,7 +197,7 @@ export function CustomerGrowthPage() {
       <PageHeader section="Customers & Marketing"
         title="Customer Growth"
         subtitle="Metrics, segments, CRM tools, and data quality"
-        action={<Link to="/customers" style={{ fontSize: 14, color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>← Customer list</Link>}
+        action={<Link to="/customers" style={{ fontSize: 14, color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>← Customer list</Link>}
       />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -227,7 +227,7 @@ export function CustomerGrowthPage() {
               <StatCard label="Credit exposure" value={`${(metrics.total_credit_balance / 100).toFixed(0)} MVR`} />
             </div>
             {metrics.vip && (
-              <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 16px' }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
                 VIP = paid-order spend segment ({metrics.vip.label}). Not the same as loyalty Gold/Platinum (points earn tiers). Configure under Marketing → VIP settings.
               </p>
             )}
@@ -267,12 +267,12 @@ export function CustomerGrowthPage() {
                 onClick={() => setActiveSegment(s.slug)}
                 style={{
                   textAlign: 'left', padding: 12, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-                  border: activeSegment === s.slug ? '2px solid #D4813A' : '1px solid #E8E0D8',
+                  border: activeSegment === s.slug ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
                   background: activeSegment === s.slug ? '#FEF3E2' : '#fff',
                 }}
               >
                 <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{s.label}</p>
-                <p style={{ margin: '4px 0 0', fontSize: 20, fontWeight: 800, color: '#D4813A' }}>{s.count}</p>
+                <p style={{ margin: '4px 0 0', fontSize: 20, fontWeight: 800, color: 'var(--color-primary)' }}>{s.count}</p>
               </button>
             ))}
           </div>
@@ -300,7 +300,7 @@ export function CustomerGrowthPage() {
                       ))}
                     </tbody>
                   </table>
-                  <p style={{ padding: 12, fontSize: 12, color: '#9C8E7E' }}>{segmentMeta.total} customers</p>
+                  <p style={{ padding: 12, fontSize: 12, color: 'var(--color-text-muted)' }}>{segmentMeta.total} customers</p>
                 </TableCard>
               )}
             </>
@@ -324,15 +324,15 @@ export function CustomerGrowthPage() {
                 Birthday loyalty bonus + SMS
               </label>
               <Input label="Birthday bonus points" type="number" value={String(automation.birthday_points)} onChange={(v) => setAutomation({ ...automation, birthday_points: Number(v) })} />
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Birthday SMS template</label>
-              <textarea value={automation.birthday_sms_template} onChange={(e) => setAutomation({ ...automation, birthday_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Birthday SMS template</label>
+              <textarea value={automation.birthday_sms_template} onChange={(e) => setAutomation({ ...automation, birthday_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit' }} />
 
               {!automation.abandoned_cart_enabled && (
                 <div style={{
                   padding: '12px 14px',
                   borderRadius: 10,
                   background: '#FEF3C7',
-                  border: '1px solid #F59E0B',
+                  border: '1px solid var(--color-warning)',
                   color: '#92400E',
                   fontSize: 13,
                   lineHeight: 1.45,
@@ -346,21 +346,21 @@ export function CustomerGrowthPage() {
               </label>
               <Input label="Delay before SMS (minutes)" type="number" value={String(automation.abandoned_cart_delay_minutes)} onChange={(v) => setAutomation({ ...automation, abandoned_cart_delay_minutes: Number(v) })} />
               <Input label="Cart snapshot retention (days)" type="number" value={String(automation.abandoned_cart_ttl_days)} onChange={(v) => setAutomation({ ...automation, abandoned_cart_ttl_days: Number(v) })} />
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Abandoned cart SMS template</label>
-              <textarea value={automation.abandoned_cart_sms_template} onChange={(e) => setAutomation({ ...automation, abandoned_cart_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Abandoned cart SMS template</label>
+              <textarea value={automation.abandoned_cart_sms_template} onChange={(e) => setAutomation({ ...automation, abandoned_cart_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit' }} />
 
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginTop: 8 }}>
                 <input type="checkbox" checked={automation.tier_milestone_enabled} onChange={(e) => setAutomation({ ...automation, tier_milestone_enabled: e.target.checked })} />
                 Tier milestone SMS (near next loyalty tier)
               </label>
               <Input label="Points within next tier" type="number" value={String(automation.tier_milestone_within)} onChange={(v) => setAutomation({ ...automation, tier_milestone_within: Number(v) })} />
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Tier milestone SMS template</label>
-              <textarea value={automation.tier_milestone_sms_template} onChange={(e) => setAutomation({ ...automation, tier_milestone_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Tier milestone SMS template</label>
+              <textarea value={automation.tier_milestone_sms_template} onChange={(e) => setAutomation({ ...automation, tier_milestone_sms_template: e.target.value })} rows={2} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit' }} />
 
               <Btn onClick={() => void saveAutomation()} disabled={automationSaving}>
                 {automationSaving ? 'Saving…' : 'Save automation settings'}
               </Btn>
-              <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
                 Only customers who have not opted out of SMS receive these messages. One SMS per birthday per year, one per cart snapshot, and one tier milestone SMS per customer per day.
               </p>
             </div>
@@ -368,7 +368,7 @@ export function CustomerGrowthPage() {
         </Card>
         <Card>
           <p style={{ margin: '0 0 8px', fontWeight: 700 }}>VIP settings</p>
-          <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 12px', lineHeight: 1.45 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px', lineHeight: 1.45 }}>
             VIP is a CRM spend segment (paid orders + lifetime spend). Loyalty Gold/Platinum are separate points-based earn tiers.
           </p>
           {vipSettings ? (
@@ -404,13 +404,13 @@ export function CustomerGrowthPage() {
               {vipMsg && <p style={{ fontSize: 13, color: vipMsg.includes('saved') || vipMsg.includes('Synced') ? '#15803d' : '#b91c1c', margin: 0 }}>{vipMsg}</p>}
             </div>
           ) : (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>{vipMsg || 'Loading VIP settings…'}</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{vipMsg || 'Loading VIP settings…'}</p>
           )}
         </Card>
         <Card>
           <p style={{ margin: '0 0 12px', fontWeight: 700 }}>Segment outreach</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-            <select value={marketingSegment} onChange={(e) => setMarketingSegment(e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #E8E0D8' }}>
+            <select value={marketingSegment} onChange={(e) => setMarketingSegment(e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid var(--color-border)' }}>
               {segments.map((s) => <option key={s.slug} value={s.slug}>{s.label} ({s.count})</option>)}
             </select>
             <StatCard label="Selected segment" value={String(marketingOptIn)} />
@@ -421,7 +421,7 @@ export function CustomerGrowthPage() {
             onChange={(e) => setDraftSms(e.target.value)}
             rows={4}
             placeholder="Draft SMS message…"
-            style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit' }}
           />
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Link to={`/sms?${campaignHandoffQs.toString()}`} style={{ textDecoration: 'none' }}>
@@ -431,7 +431,7 @@ export function CustomerGrowthPage() {
               <Btn variant="ghost" onClick={() => setMarketingSegment('vip_customers')}>Target VIP</Btn>
             )}
           </div>
-          <p style={{ fontSize: 12, color: '#9C8E7E', marginTop: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 12 }}>
             Opens SMS Campaigns with this segment preselected. Opt-out customers are excluded when the campaign uses opted-in targeting.
           </p>
         </Card>
@@ -442,7 +442,7 @@ export function CustomerGrowthPage() {
         <Card>
           <p style={{ margin: 0, fontSize: 14, color: '#5C4E3E', lineHeight: 1.5 }}>
             Office &amp; event catering requests now live under{' '}
-            <Link to="/catering" style={{ color: '#D4813A', fontWeight: 700 }}>Catering</Link>
+            <Link to="/catering" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Catering</Link>
             {' '}in the sidebar (inquiry → quote → confirm pipeline).
           </p>
         </Card>
@@ -453,7 +453,7 @@ export function CustomerGrowthPage() {
           <Card><EmptyState message="You need customers.analytics permission to view item pairs." /></Card>
         ) : loading && itemPairs.length === 0 ? <Spinner /> : (
           <TableCard>
-            <p style={{ padding: '12px 14px 0', margin: 0, fontSize: 13, color: '#6B5D4F' }}>
+            <p style={{ padding: '12px 14px 0', margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
               Frequently bought together — based on completed orders (run nightly via insights:compute-item-pairs).
             </p>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -476,7 +476,7 @@ export function CustomerGrowthPage() {
                 ))}
               </tbody>
             </table>
-            <p style={{ padding: 12, fontSize: 12, color: '#9C8E7E' }}>
+            <p style={{ padding: 12, fontSize: 12, color: 'var(--color-text-muted)' }}>
               {pairsMeta.total} pairs
               {pairsMeta.last_page > 1 && (
                 <>
@@ -503,16 +503,16 @@ export function CustomerGrowthPage() {
               <Card key={key}>
                 <p style={{ margin: '0 0 8px', fontWeight: 700 }}>{title} ({section.count})</p>
                 {section.rows.length === 0 ? (
-                  <p style={{ fontSize: 13, color: '#9C8E7E' }}>None found.</p>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>None found.</p>
                 ) : (
                   section.rows.slice(0, 10).map((row, i) => (
-                    <div key={i} style={{ fontSize: 13, padding: '4px 0', borderBottom: '1px solid #F0EBE5' }}>
+                    <div key={i} style={{ fontSize: 13, padding: '4px 0', borderBottom: '1px solid var(--color-border-light)' }}>
                       {JSON.stringify(row)}
                       {'id' in row && typeof row.id === 'number' && (
                         <Btn small variant="ghost" onClick={() => setView360Id(row.id as number)} style={{ marginLeft: 8 }}>View</Btn>
                       )}
                       {'primary_id' in row && (
-                        <Link to="/customers" style={{ marginLeft: 8, fontSize: 12, color: '#D4813A' }}>Review merge in Customers</Link>
+                        <Link to="/customers" style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-primary)' }}>Review merge in Customers</Link>
                       )}
                     </div>
                   ))
