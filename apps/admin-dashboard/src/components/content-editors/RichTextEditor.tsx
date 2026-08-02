@@ -30,8 +30,8 @@ export function RichTextEditor({ label, description, value, onChange }: ContentE
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {label ? <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>{label}</label> : null}
-      {description ? <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>{description}</p> : null}
+      {label ? <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>{label}</label> : null}
+      {description ? <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{description}</p> : null}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} role="toolbar" aria-label="Formatting">
         {[
           ['bold', 'Bold'],
@@ -52,8 +52,8 @@ export function RichTextEditor({ label, description, value, onChange }: ContentE
               }
             }}
             style={{
-              height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8',
-              background: '#F8F6F3', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)',
+              background: 'var(--color-bg)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
             {name}
@@ -69,8 +69,8 @@ export function RichTextEditor({ label, description, value, onChange }: ContentE
         suppressContentEditableWarning
         onInput={emit}
         style={{
-          minHeight: 88, borderRadius: 10, border: '1px solid #E8E0D8', padding: 12,
-          fontSize: 14, fontFamily: 'inherit', background: '#fff', color: '#1C1408',
+          minHeight: 88, borderRadius: 10, border: '1px solid var(--color-border)', padding: 12,
+          fontSize: 14, fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)',
         }}
       />
     </div>
