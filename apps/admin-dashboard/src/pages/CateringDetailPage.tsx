@@ -58,12 +58,12 @@ const fieldStyle: React.CSSProperties = {
   minHeight: 44,
   marginTop: 4,
   borderRadius: 8,
-  border: '1px solid #E8E0D8',
+  border: '1px solid var(--color-border)',
   padding: '0 10px',
   fontFamily: 'inherit',
 };
 
-const labelStyle: React.CSSProperties = { fontSize: 12, color: '#9C8E7E', fontWeight: 600 };
+const labelStyle: React.CSSProperties = { fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 };
 
 export function CateringDetailPage() {
   usePageTitle('Event quote');
@@ -269,7 +269,7 @@ export function CateringDetailPage() {
     { label: 'Confirmed', at: row?.confirmed_at },
   ];
 
-  if (loading) return <p style={{ color: '#9C8E7E' }}>Loading…</p>;
+  if (loading) return <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>;
   if (!row) return <p style={{ color: '#b91c1c' }}>{error || 'Not found'}</p>;
 
   return (
@@ -291,14 +291,14 @@ export function CateringDetailPage() {
       <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Lines */}
-          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Quote lines</h3>
             {lines.map((l, idx) => (
               <div key={l.key} style={{ borderBottom: '1px solid #F0E8E0', padding: '10px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>
                     {l.name}
-                    {l.is_custom && <span style={{ color: '#9C8E7E', fontWeight: 500 }}> · custom</span>}
+                    {l.is_custom && <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}> · custom</span>}
                     {l.price_needs_review && (
                       <span
                         data-testid="price-review-badge"
@@ -370,7 +370,7 @@ export function CateringDetailPage() {
                       </label>
                     ) : (
                       l.packaging_option_name && (
-                        <div style={{ fontSize: 12, color: '#9C8E7E' }} data-testid={`packaging-label-${idx}`}>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }} data-testid={`packaging-label-${idx}`}>
                           Packaging: {l.packaging_option_name}
                         </div>
                       )
@@ -400,7 +400,7 @@ export function CateringDetailPage() {
           </section>
 
           {/* Fulfilment */}
-          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Fulfilment</h3>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <label style={labelStyle}>
@@ -484,7 +484,7 @@ export function CateringDetailPage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Quote summary</h3>
             <div style={{ fontSize: 14, color: '#5C4E3E', lineHeight: 1.7 }}>
               <div>Subtotal: MVR {tax ? mvr(tax.subtotal_laar) : '—'}</div>
@@ -508,7 +508,7 @@ export function CateringDetailPage() {
               {row.has_live_quote ? `Resend quote (v${row.quote_version ?? 1})` : `Send quote (v${row.quote_version ?? 1})`}
             </Btn>
             {row.quote_expires_at && (
-              <p style={{ fontSize: 12, color: '#9C8E7E', marginTop: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8 }}>
                 Expires {new Date(row.quote_expires_at).toLocaleString()}
               </p>
             )}
@@ -517,7 +517,7 @@ export function CateringDetailPage() {
             )}
           </section>
 
-          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Assignment & status</h3>
             <label style={labelStyle}>
               Assigned to
@@ -559,7 +559,7 @@ export function CateringDetailPage() {
             </label>
           </section>
 
-          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Status timeline</h3>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#5C4E3E' }}>
               {timeline.map((t) => (
