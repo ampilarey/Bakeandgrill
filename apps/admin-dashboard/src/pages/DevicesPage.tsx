@@ -11,9 +11,9 @@ import {
 } from '../api';
 
 const S = {
-  input: { width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
-  select: { width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' },
-  label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: '#6B5D4F', marginBottom: 4 },
+  input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
+  select: { width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' },
+  label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: 'var(--color-text-secondary)', marginBottom: 4 },
 };
 
 const DEVICE_TYPES = ['pos', 'kds', 'display', 'other'];
@@ -168,13 +168,13 @@ export default function DevicesPage() {
         }
       />
 
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard label="Total Devices" value={String(devices.length)} accent="#D4813A" />
+        <StatCard label="Total Devices" value={String(devices.length)} accent="var(--color-primary)" />
         <StatCard label="Active" value={String(active)} accent="#16a34a" />
-        <StatCard label="Disabled" value={String(disabled)} accent="#9C8E7E" />
-        <StatCard label="Pending Approval" value={String(pending.length)} accent="#f59e0b" />
+        <StatCard label="Disabled" value={String(disabled)} accent="var(--color-text-muted)" />
+        <StatCard label="Pending Approval" value={String(pending.length)} accent="var(--color-warning)" />
       </div>
 
       <p style={{ margin: '0 0 20px', fontSize: 13, color: '#64748B', maxWidth: 720 }}>
@@ -194,8 +194,8 @@ export default function DevicesPage() {
             {pending.map(d => (
               <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', borderRadius: 10, padding: '12px 16px', border: '1px solid #fde68a', flexWrap: 'wrap', gap: 10 }}>
                 <div>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{d.name}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{d.name}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
                     {d.type?.toUpperCase()} · {d.identifier ?? '—'} · {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Just now'}
                   </p>
                 </div>
@@ -234,7 +234,7 @@ export default function DevicesPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={canManage ? 7 : 6} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+              <tr><td colSpan={canManage ? 7 : 6} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : approved.length === 0 ? (
               <tr><td colSpan={canManage ? 7 : 6}><EmptyState message="No approved devices yet." /></td></tr>
             ) : approved.map(d => (
@@ -242,17 +242,17 @@ export default function DevicesPage() {
                 <td style={{ ...TD, fontWeight: 600 }}>{d.name}</td>
                 <td style={TD}><Badge color="blue">{d.type?.toUpperCase()}</Badge></td>
                 <td style={TD}><Badge color={d.is_active ? 'green' : 'gray'}>{d.is_active ? 'Active' : 'Disabled'}</Badge></td>
-                <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{d.user?.name ?? d.registered_by ?? '—'}</td>
+                <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>{d.user?.name ?? d.registered_by ?? '—'}</td>
                 <td style={TD}>
                   {d.open_shift_id ? (
                     <Link to={`/shifts?shift=${d.open_shift_id}`} style={{ textDecoration: 'none' }}>
                       <Badge color="green">Shift #{d.open_shift_id}</Badge>
                     </Link>
                   ) : (
-                    <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>
                   )}
                 </td>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>
+                <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>
                   {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'Never'}
                 </td>
                 {canManage && (
@@ -298,7 +298,7 @@ export default function DevicesPage() {
                   <code style={{
                     flex: 1, display: 'block', padding: '10px 12px', borderRadius: 8,
                     background: '#F8FAFC', border: '1px solid #E2E8F0',
-                    fontSize: 13, color: '#1C1408', wordBreak: 'break-all',
+                    fontSize: 13, color: 'var(--color-text)', wordBreak: 'break-all',
                   }}>
                     {provisioned.identifier}
                   </code>
@@ -316,7 +316,7 @@ export default function DevicesPage() {
                   <code style={{
                     flex: 1, display: 'block', padding: '10px 12px', borderRadius: 8,
                     background: '#F8FAFC', border: '1px solid #E2E8F0',
-                    fontSize: 12, color: '#1C1408', wordBreak: 'break-all',
+                    fontSize: 12, color: 'var(--color-text)', wordBreak: 'break-all',
                   }}>
                     {setupUrl(provisioned.identifier)}
                   </code>
@@ -326,7 +326,7 @@ export default function DevicesPage() {
                       .catch(() => setCopyToast('Copy failed — select and copy manually.'));
                   }}>Copy</Btn>
                 </div>
-                <span style={{ fontSize: 12, color: '#6B5D4F', marginTop: 6, display: 'block' }}>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 6, display: 'block' }}>
                   Open this URL once on the target device. The POS will store the identifier locally and load straight as <strong>{provisioned.name}</strong> on every visit afterwards.
                 </span>
               </label>
@@ -339,10 +339,10 @@ export default function DevicesPage() {
             </>
           ) : (
             <>
-              <p style={{ margin: '0 0 14px', fontSize: 13, color: '#6B5D4F' }}>
+              <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
                 Use this for headless devices (KDS screens, manager displays) where nobody logs in. For a normal cashier POS, just open the site on the device and approve it under <strong>Pending Approval</strong> above.
               </p>
-              {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
+              {formError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{formError}</p>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <label>
                   <span style={S.label}>Device name *</span>
@@ -373,7 +373,7 @@ export default function DevicesPage() {
                     onChange={e => setForm(f => ({ ...f, identifier: e.target.value }))}
                     style={{ ...S.input, fontFamily: 'monospace' }}
                   />
-                  <span style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4, display: 'block' }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
                     Letters, numbers, hyphens and underscores only. Match an existing identifier to re-bind a lost device.
                   </span>
                 </label>
@@ -390,12 +390,12 @@ export default function DevicesPage() {
       {/* ── Approve Modal ── */}
       {approveTarget && (
         <Modal title="Approve Device" onClose={() => setApproveTarget(null)} maxWidth={400}>
-          <p style={{ margin: '0 0 16px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
             Give this device a friendly name so you can identify it later.
           </p>
           <div style={{ background: '#FEF3E8', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
             <p style={{ margin: 0, fontSize: 11, color: '#8B7355', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Device ID</p>
-            <p style={{ margin: '3px 0 0', fontSize: 13, fontFamily: 'monospace', color: '#D4813A', fontWeight: 700 }}>{approveTarget.identifier ?? '—'}</p>
+            <p style={{ margin: '3px 0 0', fontSize: 13, fontFamily: 'monospace', color: 'var(--color-primary)', fontWeight: 700 }}>{approveTarget.identifier ?? '—'}</p>
           </div>
           <label>
             <span style={S.label}>Device Name *</span>
