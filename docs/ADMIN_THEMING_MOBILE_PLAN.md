@@ -276,6 +276,61 @@ later sweep does not re-migrate them.
 renders a mock of something outside the admin. If so, its colours are content,
 not theme. Grep for `preview`, `Preview`, `mock`, `snippet`, `BrandKit`.
 
+### Stage 2e — Themed text on hardcoded surfaces (29 sites, 17 invisible)
+
+The most serious defect found. **The migration caused it**, and it follows
+directly from the ten-mapping set being incomplete.
+
+The ten mappings theme text, borders and status colours but **not surfaces**.
+`#fff` is not among them, so every white background stayed a hardcoded literal
+while the text on it became `var(--color-text)`. In dark mode that is
+`#F0EAE0` — near-white text on a white box.
+
+```jsx
+// before: dark text on white — readable in dark mode, just un-themed
+background: '#fff', color: '#1C1408'
+// after: near-white on white — 1.2:1
+background: '#fff', color: 'var(--color-text)'
+```
+
+Measured contrast across the tree: **29 failures, 17 at 1.1–1.2:1**, mostly
+form inputs (`SharedUI` Input, `ItemSearch`, `RichTextEditor`, the content
+editors, and a dozen pages).
+
+**The existing mitigation never worked.** `index.css:861` tries to catch this:
+
+```css
+[data-theme="dark"] [style*="background: #fff"] { … }
+```
+
+React sets inline styles through the CSSOM, and the browser serialises the
+attribute as `background: rgb(255, 255, 255)`. Verified in Chromium: neither
+`[style*="background: #fff"]` nor `[style*="background: white"]` matches. Only
+the rule's `.bg-white` selector has ever fired. Delete the two attribute
+selectors — they are dead weight that created false confidence.
+
+**Fix — add the missing surface mapping (11th):**
+
+| Hex | Variable | Light value |
+|---|---|---|
+| `#fff` / `#ffffff` / `white` | `--color-surface` | `#FFFFFF` |
+
+Light mode stays pixel-identical, same as the other ten. Apply to
+**background properties only** — `color: '#fff'` is white text on a coloured
+button and is correct in both themes. This resolves all 17 invisible sites.
+
+**The ~12 tint backgrounds need judgement, not a mapping.** `#F9F5F0`,
+`#FAF7F3`, `#FAF7F4`, `#FEF3E8`, `#FFF7ED`, `#FEE2E2` are semantic tints with
+no dark equivalent. Per site, either revert the text to a literal (keeps the
+pair un-themed and readable) or introduce a proper tint variable. Do not guess.
+
+**Method note.** Every one of these passed `tsc`, tests, eslint and the
+light-mode invariant. The invariant is blind by construction: literal and
+variable agree in light mode and diverge only in dark. Contrast has to be
+checked directly — a script computing WCAG ratios against the
+`[data-theme="dark"]` values catches this class in seconds and should run
+before the remaining files are migrated, not after.
+
 ### Stage 3 — Long tail and verification
 
 1. Sweep remaining ~988 one-off literals; convert what maps cleanly, leave
