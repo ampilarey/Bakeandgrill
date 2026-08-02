@@ -147,10 +147,10 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
       }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0EAE3', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: '#1C1408' }}>Customer 360</p>
-            <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>{profile?.name ?? profile?.phone ?? `#${customerId}`}</p>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: 'var(--color-text)' }}>Customer 360</p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{profile?.name ?? profile?.phone ?? `#${customerId}`}</p>
           </div>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#9C8E7E' }}>✕</button>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--color-text-muted)' }}>✕</button>
         </div>
 
         {loading ? (
@@ -172,8 +172,8 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
                 { label: 'Avg order', value: `MVR ${summary.lifetime.average_order_value.toFixed(2)}` },
               ].map(({ label, value }) => (
                 <div key={label} style={{ background: '#FAF7F3', borderRadius: 10, padding: 10, textAlign: 'center' }}>
-                  <p style={{ margin: 0, fontWeight: 800, color: '#D4813A', fontSize: 14 }}>{value}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 10, color: '#9C8E7E' }}>{label}</p>
+                  <p style={{ margin: 0, fontWeight: 800, color: 'var(--color-primary)', fontSize: 14 }}>{value}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 10, color: 'var(--color-text-muted)' }}>{label}</p>
                 </div>
               ))}
             </div>
@@ -190,7 +190,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
             </div>
 
             <div>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Date of birth</p>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Date of birth</p>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <Input
                   type="date"
@@ -200,14 +200,14 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
                 />
                 <Btn small onClick={() => void handleSaveDob()} disabled={saving}>Save</Btn>
               </div>
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#9C8E7E' }}>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
                 Used for birthday loyalty SMS when enabled in Customer Growth → Marketing.
               </p>
             </div>
 
             {summary.favourite_items.length > 0 && (
               <div>
-                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Favourite items</p>
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Favourite items</p>
                 {summary.favourite_items.map((i) => (
                   <p key={i.item_id} style={{ margin: '2px 0', fontSize: 13 }}>{i.name} × {i.quantity}</p>
                 ))}
@@ -225,12 +225,12 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
             )}
 
             <div>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Tags</p>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Tags</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                 {summary.tags.map((t) => (
                   <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FAF7F3', borderRadius: 999, padding: '4px 10px', fontSize: 12 }}>
                     {t.name}
-                    <button type="button" onClick={() => void detachCustomerTag(customerId, t.id).then(reload)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9C8E7E' }}>×</button>
+                    <button type="button" onClick={() => void detachCustomerTag(customerId, t.id).then(reload)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
                   </span>
                 ))}
               </div>
@@ -241,12 +241,12 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
             </div>
 
             <div>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Follow-up note</p>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Follow-up note</p>
               <textarea
                 value={followNote}
                 onChange={(e) => setFollowNote(e.target.value)}
                 rows={2}
-                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit', fontSize: 13 }}
+                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 }}
                 placeholder="Call back about…"
               />
               <Btn small onClick={handleFollowUp} disabled={saving} style={{ marginTop: 8 }}>Save note</Btn>
@@ -254,14 +254,14 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
 
             {can('integrations.sms') && (
               <div>
-                <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Send SMS</p>
+                <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Send SMS</p>
                 {summary.sms.opt_out && (
                   <p style={{ color: '#dc2626', fontSize: 13, margin: '0 0 8px' }}>
                     Customer has opted out of SMS — sending is blocked.
                   </p>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: smsInfo.segments > 1 || smsInfo.isUnicode ? '#ef4444' : '#9C8E7E' }}>
+                  <span style={{ fontSize: 11, color: smsInfo.segments > 1 || smsInfo.isUnicode ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
                     {smsInfo.chars} chars · {smsInfo.segments} segment{smsInfo.segments !== 1 ? 's' : ''} · {smsInfo.encoding}
                   </span>
                 </div>
@@ -270,7 +270,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
                   onChange={(e) => setSmsMessage(e.target.value)}
                   rows={3}
                   disabled={summary.sms.opt_out}
-                  style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit', fontSize: 13 }}
+                  style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13 }}
                   placeholder="Message to customer…"
                 />
                 <Btn small onClick={handleSendSms} disabled={saving || summary.sms.opt_out} style={{ marginTop: 8 }}>Send SMS</Btn>
@@ -278,21 +278,21 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
             )}
 
             <div>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Activity timeline</p>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Activity timeline</p>
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                 {timeline.length === 0 ? (
-                  <p style={{ fontSize: 13, color: '#9C8E7E' }}>No activity yet.</p>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No activity yet.</p>
                 ) : timeline.map((ev, idx) => {
                   const path = timelineEventPath(ev);
                   return (
-                  <div key={`${ev.type}-${ev.source_id ?? idx}`} style={{ padding: '8px 0', borderBottom: '1px solid #F0EBE5' }}>
+                  <div key={`${ev.type}-${ev.source_id ?? idx}`} style={{ padding: '8px 0', borderBottom: '1px solid var(--color-border-light)' }}>
                     <p style={{ margin: 0, fontWeight: 600, fontSize: 13 }}>
                       {path ? (
-                        <Link to={path} style={{ color: '#D4813A', textDecoration: 'none' }}>{ev.title}</Link>
+                        <Link to={path} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>{ev.title}</Link>
                       ) : ev.title}
                     </p>
-                    <p style={{ margin: '2px 0', fontSize: 12, color: '#6B5D4F' }}>{ev.description}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>{new Date(ev.created_at).toLocaleString()}</p>
+                    <p style={{ margin: '2px 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>{ev.description}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>{new Date(ev.created_at).toLocaleString()}</p>
                   </div>
                   );
                 })}
