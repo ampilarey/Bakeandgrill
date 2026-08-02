@@ -187,7 +187,7 @@ export function CustomerCreditSection({ customerId }: Props) {
   return (
     <div style={{ border: '1px solid #E8DDD0', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: '#1C1408' }}>Credit Account</p>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: 'var(--color-text)' }}>Credit Account</p>
         {credit && (
           <Badge color={!credit.enabled ? 'gray' : (STATUS_COLOR[credit.status] ?? 'gray')}>
             {statusLabel}
@@ -197,7 +197,7 @@ export function CustomerCreditSection({ customerId }: Props) {
 
       {error && <ErrorMsg message={error} />}
       {loading ? (
-        <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>Loading credit…</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Loading credit…</p>
       ) : credit ? (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
@@ -207,8 +207,8 @@ export function CustomerCreditSection({ customerId }: Props) {
               { label: 'Available', value: `MVR ${credit.available_mvr.toFixed(2)}` },
             ].map(({ label, value }) => (
               <div key={label} style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
-                <p style={{ margin: 0, fontSize: 10, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase' }}>{label}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>{value}</p>
+                <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{label}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{value}</p>
               </div>
             ))}
           </div>
@@ -221,7 +221,7 @@ export function CustomerCreditSection({ customerId }: Props) {
           )}
 
           {credit.enabled && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#6B5D4F' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: 'var(--color-text-secondary)' }}>
               <span><strong>Payment terms:</strong> Net {credit.payment_terms_days} days</span>
               {credit.next_payment_due_date && (
                 <span><strong>Next due:</strong> {formatDueDate(credit.next_payment_due_date)}</span>
@@ -231,10 +231,10 @@ export function CustomerCreditSection({ customerId }: Props) {
 
           {canManage && !credit.enabled && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                 Approve credit limit (MVR)
                 {credit.limit_max_mvr != null && (
-                  <span style={{ fontWeight: 400, color: '#9C8E7E' }}> · max MVR {credit.limit_max_mvr.toFixed(2)}</span>
+                  <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}> · max MVR {credit.limit_max_mvr.toFixed(2)}</span>
                 )}
               </label>
               <input
@@ -247,7 +247,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                 onChange={(e) => setApproveLimit(e.target.value)}
                 placeholder="e.g. 5000"
               />
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Payment terms</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Payment terms</label>
               <select style={inputStyle} value={approveTerms} onChange={(e) => setApproveTerms(Number(e.target.value))}>
                 {CREDIT_PAYMENT_TERMS_OPTIONS.map((days) => (
                   <option key={days} value={days}>Net {days} days</option>
@@ -306,10 +306,10 @@ export function CustomerCreditSection({ customerId }: Props) {
 
           {canManage && credit.enabled && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                 Update credit limit (MVR)
                 {credit.limit_max_mvr != null && (
-                  <span style={{ fontWeight: 400, color: '#9C8E7E' }}> · max MVR {credit.limit_max_mvr.toFixed(2)}</span>
+                  <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}> · max MVR {credit.limit_max_mvr.toFixed(2)}</span>
                 )}
               </label>
               <input
@@ -325,7 +325,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                 <input type="checkbox" checked={overrideLimit} onChange={(e) => setOverrideLimit(e.target.checked)} />
                 Override (allow limit below current balance)
               </label>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                 Reason for change <span style={{ color: '#B45309' }}>(required, 5+ chars)</span>
               </label>
               <input
@@ -364,7 +364,7 @@ export function CustomerCreditSection({ customerId }: Props) {
 
           {canManage && credit.enabled && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Payment terms</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Payment terms</label>
               <select style={inputStyle} value={editTerms} onChange={(e) => setEditTerms(Number(e.target.value))}>
                 {CREDIT_PAYMENT_TERMS_OPTIONS.map((days) => (
                   <option key={days} value={days}>Net {days} days</option>
@@ -377,7 +377,7 @@ export function CustomerCreditSection({ customerId }: Props) {
           )}
 
           {canManage && credit.enabled && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#6B5D4F' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-text-secondary)' }}>
               <input
                 type="checkbox"
                 checked={credit.reminder_sms_enabled}
@@ -390,14 +390,14 @@ export function CustomerCreditSection({ customerId }: Props) {
 
           {openInvoices.length > 0 && (
             <div>
-              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase' }}>Open invoices</p>
+              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Open invoices</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {openInvoices.map((inv) => (
                   <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #F0EAE3', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
-                    <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>
+                    <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
                       {inv.invoice_number}
                     </Link>
-                    <span style={{ color: isOverdue(inv.due_date) ? '#B45309' : '#6B5D4F' }}>
+                    <span style={{ color: isOverdue(inv.due_date) ? '#B45309' : 'var(--color-text-secondary)' }}>
                       Due {formatDueDate(inv.due_date)}
                     </span>
                     <span style={{ fontWeight: 700, color: '#B45309' }}>MVR {(inv.balance_due_laar / 100).toFixed(2)}</span>
@@ -424,7 +424,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                   <textarea style={{ ...inputStyle, height: 50, resize: 'vertical' }} value={repayNotes} onChange={(e) => setRepayNotes(e.target.value)} placeholder="Notes (optional)" />
                   {openInvoices.length > 0 && (
                     <div>
-                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#9C8E7E' }}>Apply to invoices (optional)</p>
+                      <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)' }}>Apply to invoices (optional)</p>
                       {openInvoices.map((inv) => (
                         <label key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 4 }}>
                           <input
@@ -491,12 +491,12 @@ export function CustomerCreditSection({ customerId }: Props) {
           {ledger.length > 0 && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase' }}>Recent ledger</p>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Recent ledger</p>
                 <a
                   href={customerCreditLedgerCsvUrl(customerId)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: 11, color: '#D4813A', textDecoration: 'none', fontWeight: 700 }}
+                  style={{ fontSize: 11, color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 700 }}
                 >
                   ↓ Export CSV
                 </a>
