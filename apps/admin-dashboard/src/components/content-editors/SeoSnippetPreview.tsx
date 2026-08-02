@@ -62,12 +62,13 @@ export function SeoSnippetPreview({
           }}
         />
       </div>
+      {/* Preview fidelity: mocks a Google SERP — must not follow admin theme */}
       <div
         style={{
-          borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)', padding: 12,
+          borderRadius: 10, border: '1px solid #E8E0D8', background: '#F8F6F3', padding: 12,
         }}
       >
-        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6 }}>Search preview</div>
+        <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 6 }}>Search preview</div>
         <div style={{ fontSize: 18, color: '#1a0dab', fontFamily: 'Arial, sans-serif', lineHeight: 1.3 }}>
           {displayTitle.length > TITLE_SOFT ? `${displayTitle.slice(0, TITLE_SOFT - 1)}…` : displayTitle}
         </div>

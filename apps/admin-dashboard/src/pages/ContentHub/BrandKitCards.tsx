@@ -29,14 +29,15 @@ function Preview({
 }) {
   if (kind === 'header-light' || kind === 'header-dark') {
     const dark = kind === 'header-dark';
+    // Preview fidelity: mocks the customer site — must not follow admin theme
     return (
       <div
         data-testid={`preview-${kind}`}
         style={{
           borderRadius: 12,
-          border: '1px solid var(--color-border)',
+          border: '1px solid #E8E0D8',
           overflow: 'hidden',
-          background: dark ? 'var(--color-text)' : '#FFFDF9',
+          background: dark ? '#1C1408' : '#FFFDF9',
           padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -61,8 +62,8 @@ function Preview({
             }}
           />
         )}
-        <div style={{ fontWeight: 800, fontSize: 15, color: dark ? '#f5e6cc' : 'var(--color-text)' }}>{siteName}</div>
-        <div style={{ marginLeft: 'auto', fontSize: 11, color: dark ? '#9c8060' : 'var(--color-text-muted)' }}>Menu · Offers</div>
+        <div style={{ fontWeight: 800, fontSize: 15, color: dark ? '#f5e6cc' : '#1C1408' }}>{siteName}</div>
+        <div style={{ marginLeft: 'auto', fontSize: 11, color: dark ? '#9c8060' : '#9C8E7E' }}>Menu · Offers</div>
       </div>
     );
   }
