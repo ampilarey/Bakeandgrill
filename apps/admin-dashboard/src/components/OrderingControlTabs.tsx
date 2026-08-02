@@ -14,8 +14,8 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   fontFamily: 'inherit',
   fontSize: 13,
   fontWeight: active ? 700 : 500,
-  background: active ? '#D4813A' : 'transparent',
-  color: active ? '#fff' : '#6B5D4F',
+  background: active ? 'var(--color-primary)' : 'transparent',
+  color: active ? '#fff' : 'var(--color-text-secondary)',
 });
 
 function isTabActive(pathname: string, search: string, tabId: (typeof TABS)[number]['id']): boolean {
