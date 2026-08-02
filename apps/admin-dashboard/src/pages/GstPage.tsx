@@ -152,7 +152,7 @@ export default function GstPage() {
       />
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <label style={{ fontSize: 13, color: '#6B5D4F' }}>
+        <label style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
           Period{' '}
           <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6, border: '1px solid #E8DDD0' }} />
         </label>
@@ -172,10 +172,10 @@ export default function GstPage() {
       {!loading && tab === 'Dashboard' && summary && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 16 }}>
-            <StatCard label="Net GST payable" value={mvr(summary.net_gst_payable_laar)} accent="#D4813A" />
+            <StatCard label="Net GST payable" value={mvr(summary.net_gst_payable_laar)} accent="var(--color-primary)" />
             <StatCard label="Output tax" value={mvr(summary.gst_on_standard_sales_laar)} accent="#8B4513" />
             <StatCard label="Input tax (claimable)" value={mvr(summary.claimable_input_revenue_laar + summary.claimable_input_capital_laar)} accent="#059669" />
-            <StatCard label="Sales ex-GST" value={mvr(summary.standard_rated_sales_ex_gst_laar)} accent="#6B5D4F" />
+            <StatCard label="Sales ex-GST" value={mvr(summary.standard_rated_sales_ex_gst_laar)} accent="var(--color-text-secondary)" />
             <StatCard label="Credit notes / refunds" value={mvr(Math.abs(summary.credit_note_refund_adjustments_laar))} accent="#DC2626" />
           </div>
 
@@ -202,7 +202,7 @@ export default function GstPage() {
             )}
           </div>
 
-          <p style={{ fontSize: 12, color: '#9C8E7E', marginTop: 12, maxWidth: 720 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 12, maxWidth: 720 }}>
             Output Tax Statement export is mandatory only when MIRA requires it — for example when annual total income for the previous tax year&apos;s taxable periods reaches the MIRA threshold.
             Input Tax Statement export is required whenever you claim input tax.
           </p>
@@ -212,7 +212,7 @@ export default function GstPage() {
       {tab === 'Output GST' && output && (
         <Card style={{ marginTop: 16, padding: 16 }}>
           <h3 style={{ marginTop: 0 }}>Tax Invoices ({output.tax_invoices?.length ?? 0})</h3>
-          <p style={{ fontSize: 13, color: '#6B5D4F' }}>GST-registered customers with issued tax invoices.</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>GST-registered customers with issued tax invoices.</p>
           <h3>Other Transactions</h3>
           <p style={{ fontSize: 13 }}>POS / walk-in / cash / card / BML sales not in TaxInvoices sheet.</p>
           <pre style={{ fontSize: 11, overflow: 'auto', background: '#FAF7F2', padding: 12, borderRadius: 8 }}>
@@ -234,7 +234,7 @@ export default function GstPage() {
         <div style={{ marginTop: 16, display: 'grid', gap: 16 }}>
           <Card style={{ padding: 16 }}>
             <h3 style={{ marginTop: 0 }}>Manual adjustment</h3>
-            <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 0 }}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 0 }}>
               Post a correcting ledger entry for period {period}. Amounts in MVR (use negative for reversals).
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
@@ -261,20 +261,20 @@ export default function GstPage() {
           <Card style={{ padding: 16 }}>
             <h3 style={{ marginTop: 0 }}>Ledger ({ledgerMeta.total})</h3>
             {ledger.length === 0 ? (
-              <p style={{ color: '#9C8E7E' }}>No ledger entries for this period.</p>
+              <p style={{ color: 'var(--color-text-muted)' }}>No ledger entries for this period.</p>
             ) : (
               <ResponsiveTable>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
                       {['Doc', 'Date', 'Type', 'Dir', 'Taxable', 'Tax', 'Total'].map((h) => (
-                        <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
+                        <th key={h} style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {ledger.map((row) => (
-                      <tr key={row.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                      <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                         <td style={{ padding: '8px 6px', fontWeight: 600 }}>{row.document_no}</td>
                         <td style={{ padding: '8px 6px' }}>{String(row.document_date).slice(0, 10)}</td>
                         <td style={{ padding: '8px 6px' }}>{row.source_type}</td>
@@ -301,24 +301,24 @@ export default function GstPage() {
       {tab === 'Tax Invoices' && (
         <Card style={{ marginTop: 16, padding: 16 }}>
           <h3 style={{ marginTop: 0 }}>Tax invoices ({taxInvoices.length})</h3>
-          <p style={{ fontSize: 13, color: '#6B5D4F' }}>B2B tax invoices issued in {period}. Create more from Finance → Invoices or from an order.</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>B2B tax invoices issued in {period}. Create more from Finance → Invoices or from an order.</p>
           {taxInvoices.length === 0 ? (
-            <p style={{ color: '#9C8E7E' }}>No tax invoices in this period.</p>
+            <p style={{ color: 'var(--color-text-muted)' }}>No tax invoices in this period.</p>
           ) : (
             <ResponsiveTable>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
                     {['Number', 'Customer TIN', 'Recipient', 'Date', 'Total', 'Status'].map((h) => (
-                      <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
+                      <th key={h} style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {taxInvoices.map((inv) => (
-                    <tr key={inv.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                    <tr key={inv.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                       <td style={{ padding: '8px 6px', fontWeight: 600 }}>
-                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
                           {inv.invoice_number}
                         </Link>
                       </td>
@@ -340,22 +340,22 @@ export default function GstPage() {
         <Card style={{ marginTop: 16, padding: 16 }}>
           <h3 style={{ marginTop: 0 }}>Credit notes ({creditNotes.length})</h3>
           {creditNotes.length === 0 ? (
-            <p style={{ color: '#9C8E7E' }}>No credit notes in this period.</p>
+            <p style={{ color: 'var(--color-text-muted)' }}>No credit notes in this period.</p>
           ) : (
             <ResponsiveTable>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E8DDD0', textAlign: 'left' }}>
                     {['Number', 'Date', 'Total', 'Reason', 'Status'].map((h) => (
-                      <th key={h} style={{ padding: '8px 6px', color: '#6B5D4F' }}>{h}</th>
+                      <th key={h} style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {creditNotes.map((inv) => (
-                    <tr key={inv.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                    <tr key={inv.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                       <td style={{ padding: '8px 6px', fontWeight: 600 }}>
-                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
                           {inv.invoice_number}
                         </Link>
                       </td>
@@ -414,12 +414,12 @@ export default function GstPage() {
                 <option value="payment">Payment basis</option>
                 <option value="hybrid">Hybrid — POS on payment, B2B tax invoices on issue date</option>
               </select>
-              <span style={{ fontSize: 11, color: '#9C8E7E' }}>{settings.legal_default_note}</span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{settings.legal_default_note}</span>
             </label>
             <label style={{ fontSize: 13 }}>
               GST rate (basis points)
               <input type="number" value={settings.default_tax_rate_bp} onChange={(e) => setSettings({ ...settings, default_tax_rate_bp: parseInt(e.target.value, 10) || 800 })} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }} />
-              <span style={{ fontSize: 11, color: '#9C8E7E' }}>Bake &amp; Grill General Sector: 800 bp (8%). Tourism sector was 16% (1 Jan 2023–30 Jun 2025) and 17% from 1 Jul 2025 — not used unless a tourism activity is added.</span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Bake &amp; Grill General Sector: 800 bp (8%). Tourism sector was 16% (1 Jan 2023–30 Jun 2025) and 17% from 1 Jul 2025 — not used unless a tourism activity is added.</span>
             </label>
             <label style={{ fontSize: 13 }}>
               Taxable period
