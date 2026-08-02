@@ -68,7 +68,6 @@
   "src/pages/SettingsPage/WebsiteSettingsSubPage.tsx": 1,
   "src/pages/ShiftsPage.tsx": 1,
   "src/pages/SignagePage.tsx": 5,
-  "src/pages/SmsControlCenterPage.tsx": 14,
   "src/pages/SmsPage/AutomationsTab.tsx": 1,
   "src/pages/SmsPage/CampaignsTab.tsx": 3,
   "src/pages/SmsPage/ContactsTab.tsx": 3,

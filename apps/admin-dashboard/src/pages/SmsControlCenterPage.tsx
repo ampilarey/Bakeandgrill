@@ -131,7 +131,7 @@ export function SmsControlCenterPage() {
     return (
       <PageShell>
         <PageHeader title="SMS Control Center" section="Customers & Marketing" />
-        <p style={{ color: '#9C8E7E' }}>You need SMS log or settings permission to view this page.</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>You need SMS log or settings permission to view this page.</p>
       </PageShell>
     );
   }
@@ -144,7 +144,7 @@ export function SmsControlCenterPage() {
         action={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {demoMode && (
-              <span style={badgeStyle('#FEF3C7', '#92400E')}>Demo mode</span>
+              <span style={badgeStyle('var(--color-warning-bg)', 'var(--color-warning-strong)')}>Demo mode</span>
             )}
             {isOwner && (
               <Btn
@@ -168,9 +168,9 @@ export function SmsControlCenterPage() {
           padding: '12px 14px',
           marginBottom: 16,
           borderRadius: 10,
-          background: '#FEF2F2',
-          border: '1px solid #FECACA',
-          color: '#991B1B',
+          background: 'var(--color-danger-bg)',
+          border: '1px solid var(--color-danger)',
+          color: 'var(--color-danger-strong)',
           fontSize: 13,
         }}>
           <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -181,25 +181,25 @@ export function SmsControlCenterPage() {
       )}
 
       {error && (
-        <p style={{ color: '#B91C1C', marginBottom: 12 }}>{error}</p>
+        <p style={{ color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</p>
       )}
 
       {!loading && budget && (
         <section style={panelStyle}>
           <h2 style={sectionTitle}>Spend ceiling</h2>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5A4E' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             This month: {budget.period_segments_used} segments · MVR {budget.period_cost_mvr.toFixed(2)}
             {budget.monthly_segment_ceiling != null && (
               <> · Cap {budget.monthly_segment_ceiling} ({budget.monthly_remaining ?? 0} left)</>
             )}
             {budget.monthly_exhausted && (
-              <span style={{ color: '#B91C1C', fontWeight: 600 }}> · Cap reached</span>
+              <span style={{ color: 'var(--color-danger-strong)', fontWeight: 600 }}> · Cap reached</span>
             )}
             {budget.period_blocked_count > 0 && (
               <> · {budget.period_blocked_count} blocked</>
             )}
           </p>
-          <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
             OTP / always-on auth types are never blocked by budget, but still count toward usage.
           </p>
           {canManageSettings && (
@@ -237,19 +237,19 @@ export function SmsControlCenterPage() {
       {!loading && queue && (
         <section style={panelStyle}>
           <h2 style={sectionTitle}>Campaign queue health</h2>
-          <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6B5A4E' }}>
+          <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             Running: {queue.running_campaigns}
             {' · '}Pending recipients: {queue.pending_recipients}
             {' · '}Failed recipients (24h): {queue.failed_recipients_24h}
             {' · '}Failed queue jobs (24h): {queue.failed_queue_jobs}
           </p>
           {(queue.pending_recipients > 0 || queue.failed_queue_jobs > 0) && (
-            <p style={{ margin: 0, fontSize: 12, color: '#92400E' }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-warning-strong)' }}>
               Stalled sends usually mean the Redis/database queue worker is down — check System Health.
             </p>
           )}
           {queue.campaigns.length > 0 && (
-            <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: '#6B5A4E' }}>
+            <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--color-text-secondary)' }}>
               {queue.campaigns.map((c) => (
                 <li key={c.id}>
                   #{c.id} {c.name} — pending {c.pending}/{c.total}, failed {c.failed}
@@ -261,11 +261,11 @@ export function SmsControlCenterPage() {
       )}
 
       {loading ? (
-        <p style={{ color: '#9C8E7E' }}>Loading…</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : (
         grouped.map((group) => (
           <section key={group.category} style={{ marginBottom: 28 }}>
-            <h2 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: '#3D2B1F' }}>
+            <h2 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>
               {group.label}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -296,7 +296,7 @@ export function SmsControlCenterPage() {
           onClose={() => !killPending && setKillModalOpen(false)}
           title={killSwitch ? 'Turn off global kill switch?' : 'Enable global kill switch?'}
         >
-          <p style={{ margin: '0 0 16px', fontSize: 14, color: '#3D2B1F', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text)', lineHeight: 1.5 }}>
             {KILL_SWITCH_WARNING}
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -344,29 +344,29 @@ function TypeRow({
 
   return (
     <div style={{
-      background: '#fff',
-      border: '1px solid #E8E0D8',
+      background: 'var(--color-surface)',
+      border: '1px solid var(--color-border)',
       borderRadius: 10,
       padding: '12px 16px',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#3D2B1F' }}>{row.label}</p>
-            {row.always_on && <span style={badgeStyle('#EEF2FF', '#3730A3')}>Always on</span>}
+            <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{row.label}</p>
+            {row.always_on && <span style={badgeStyle('var(--color-border-light)', 'var(--color-info)')}>Always on</span>}
           </div>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6B5A4E' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
             Recipients: {row.recipients || '—'}
           </p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
             Who can send: {row.send_permission_label}
             {!systemOnly && row.roles_with_permission.length > 0 && (
               <> · {row.roles_with_permission.join(', ')}</>
             )}
             {' · '}
-            <Link to="/settings?tab=permissions" style={{ color: '#D4813A' }}>Roles & Permissions</Link>
+            <Link to="/settings?tab=permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>
           </p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6B5A4E' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
             Last 30 days: {row.last_30_days.count} · MVR {row.last_30_days.cost_mvr.toFixed(2)}
           </p>
         </div>
@@ -375,7 +375,7 @@ function TypeRow({
             {expanded ? 'Hide controls' : 'Edit'}
           </button>
           {row.always_on ? (
-            <span style={badgeStyle('#F3F4F6', '#6B7280')}>Always on</span>
+            <span style={badgeStyle('var(--color-border-light)', 'var(--color-text-muted)')}>Always on</span>
           ) : (
             <button
               type="button"
@@ -388,7 +388,7 @@ function TypeRow({
                 borderRadius: 12,
                 border: 'none',
                 cursor: !canToggle || saving ? 'not-allowed' : 'pointer',
-                background: row.enabled ? '#D4813A' : '#D1D5DB',
+                background: row.enabled ? 'var(--color-primary)' : 'var(--color-border)',
                 position: 'relative',
                 opacity: !canToggle ? 0.55 : 1,
               }}
@@ -400,7 +400,7 @@ function TypeRow({
                 width: 20,
                 height: 20,
                 borderRadius: '50%',
-                background: '#fff',
+                background: 'var(--color-surface)',
                 transition: 'left 0.15s',
               }} />
             </button>
@@ -510,7 +510,7 @@ function TypeEditor({
   };
 
   return (
-    <div style={{ borderTop: '1px solid #F3EDE6', marginTop: 12, paddingTop: 12 }}>
+    <div style={{ borderTop: '1px solid var(--color-border-light)', marginTop: 12, paddingTop: 12 }}>
       <label style={{ ...fieldLabel, marginBottom: 12 }}>
         Who can send
         <select
@@ -540,7 +540,7 @@ function TypeEditor({
             style={{
               width: '100%',
               boxSizing: 'border-box',
-              border: '1px solid #E8E0D8',
+              border: '1px solid var(--color-border)',
               borderRadius: 8,
               padding: '10px 12px',
               fontSize: 13,
@@ -550,7 +550,7 @@ function TypeEditor({
             }}
           />
           {row.code_fallback_note && displayBody.trim() === '' && (
-            <p style={{ margin: '8px 0 0', fontSize: 12, color: '#92400E' }}>{row.code_fallback_note}</p>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-warning-strong)' }}>{row.code_fallback_note}</p>
           )}
           {unicodeOffenders.length > 0 && (
             <p
@@ -559,9 +559,9 @@ function TypeEditor({
                 margin: '8px 0 0',
                 fontSize: 12,
                 lineHeight: 1.45,
-                color: '#92400E',
-                background: '#FFFBEB',
-                border: '1px solid #FDE68A',
+                color: 'var(--color-warning-strong)',
+                background: 'var(--color-warning-bg)',
+                border: '1px solid var(--color-warning)',
                 borderRadius: 8,
                 padding: '8px 10px',
               }}
@@ -585,8 +585,8 @@ function TypeEditor({
                     fontSize: 11,
                     padding: '2px 8px',
                     borderRadius: 99,
-                    background: '#F5F0EB',
-                    color: '#6B5A4E',
+                    background: 'var(--color-border-light)',
+                    color: 'var(--color-text-secondary)',
                     fontFamily: 'monospace',
                   }}
                 >
@@ -603,7 +603,7 @@ function TypeEditor({
             gap: 8,
             flexWrap: 'wrap',
           }}>
-            <span style={{ fontSize: 11, color: '#9C8E7E' }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
               {estimate
                 ? `${estimate.encoding} · ${estimate.segments} segment${estimate.segments === 1 ? '' : 's'} · MVR ${estimate.cost_mvr.toFixed(2)}`
                 : `${count.encoding} · ${count.chars} chars · ${count.segments} segment${count.segments === 1 ? '' : 's'} · ~MVR ${(count.segments * 0.25).toFixed(2)}`}
@@ -617,17 +617,17 @@ function TypeEditor({
           </div>
         </>
       ) : (
-        <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
           Message body is set per campaign / send — no type-level template.
         </p>
       )}
 
-      {err && <p style={{ color: '#B91C1C', fontSize: 12, margin: '8px 0 0' }}>{err}</p>}
+      {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: '8px 0 0' }}>{err}</p>}
       {preview && (
         <div style={{
           marginTop: 10,
           padding: 10,
-          background: '#F9F6F2',
+          background: 'var(--color-bg)',
           borderRadius: 8,
           fontSize: 13,
           whiteSpace: 'pre-wrap',
@@ -651,8 +651,8 @@ function badgeStyle(bg: string, color: string): CSSProperties {
 }
 
 const panelStyle: CSSProperties = {
-  background: '#fff',
-  border: '1px solid #E8E0D8',
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
   borderRadius: 10,
   padding: '14px 16px',
   marginBottom: 18,
@@ -662,7 +662,7 @@ const sectionTitle: CSSProperties = {
   margin: '0 0 8px',
   fontSize: 14,
   fontWeight: 700,
-  color: '#3D2B1F',
+  color: 'var(--color-text)',
 };
 
 const fieldLabel: CSSProperties = {
@@ -670,13 +670,13 @@ const fieldLabel: CSSProperties = {
   flexDirection: 'column',
   gap: 4,
   fontSize: 12,
-  color: '#6B5A4E',
+  color: 'var(--color-text-secondary)',
   minWidth: 160,
 };
 
 const inputStyle: CSSProperties = {
   minHeight: 44,
-  border: '1px solid #E8E0D8',
+  border: '1px solid var(--color-border)',
   borderRadius: 8,
   padding: '8px 10px',
   fontSize: 13,
@@ -686,7 +686,7 @@ const inputStyle: CSSProperties = {
 const linkBtn: CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#D4813A',
+  color: 'var(--color-primary)',
   fontSize: 12,
   fontWeight: 600,
   cursor: 'pointer',
@@ -697,8 +697,8 @@ const linkBtn: CSSProperties = {
 const secondaryBtn: CSSProperties = {
   padding: '6px 12px',
   borderRadius: 8,
-  border: '1px solid #E8E0D8',
-  background: '#fff',
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-surface)',
   fontSize: 12,
   cursor: 'pointer',
   fontFamily: 'inherit',
@@ -706,9 +706,9 @@ const secondaryBtn: CSSProperties = {
 
 const primaryBtn: CSSProperties = {
   ...secondaryBtn,
-  background: '#D4813A',
-  borderColor: '#D4813A',
-  color: '#fff',
+  background: 'var(--color-primary)',
+  borderColor: 'var(--color-primary)',
+  color: '#fff', // on-primary text; not a surface token
   fontWeight: 600,
 };
 
