@@ -753,21 +753,21 @@ export function ContentHubPage() {
   const renderHistoryPanel = (block: ContentBlock, scope: ContentScope, currentValue: string) => {
     if (!historyTarget || historyTarget.key !== block.key || historyTarget.scope !== scope) return null;
     return (
-      <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: '#F8F6F3', border: '1px solid #E8E0D8' }}>
+      <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
           History · {historyTarget.label} · {locale}
         </div>
-        {revisions.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>No revisions yet.</p> : null}
+        {revisions.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>No revisions yet.</p> : null}
         {revisions.map((revision) => (
           <div key={revision.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 10, fontSize: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: '#9C8E7E', marginBottom: 4 }}>{new Date(revision.created_at).toLocaleString()}</div>
+              <div style={{ color: 'var(--color-text-muted)', marginBottom: 4 }}>{new Date(revision.created_at).toLocaleString()}</div>
               <RevisionDiff before={revision.value || ''} after={currentValue} />
             </div>
             <button
               type="button"
               onClick={() => void restore(revision.id)}
-              style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8', background: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}
+              style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}
             >
               Restore
             </button>
@@ -776,7 +776,7 @@ export function ContentHubPage() {
         <button
           type="button"
           onClick={() => setHistoryTarget(null)}
-          style={{ background: 'none', border: 'none', color: '#9C8E7E', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+          style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
         >
           Close
         </button>
@@ -879,7 +879,7 @@ export function ContentHubPage() {
             value={val}
             onChange={(e) => setDraft(scope, block.key, e.target.value)}
             placeholder="/storage/…"
-            style={{ flex: 1, minWidth: 180, height: 40, borderRadius: 10, border: '1px solid #E8E0D8', padding: '0 10px', fontFamily: 'inherit' }}
+            style={{ flex: 1, minWidth: 180, height: 40, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 10px', fontFamily: 'inherit' }}
           />
         </div>
       );
@@ -894,7 +894,7 @@ export function ContentHubPage() {
           style={{
             width: '100%',
             borderRadius: 10,
-            border: '1px solid #E8E0D8',
+            border: '1px solid var(--color-border)',
             padding: 10,
             fontFamily: block.type === 'json' ? 'ui-monospace, monospace' : 'inherit',
             fontSize: 13,
@@ -911,7 +911,7 @@ export function ContentHubPage() {
           width: '100%',
           height: 44,
           borderRadius: 10,
-          border: '1px solid #E8E0D8',
+          border: '1px solid var(--color-border)',
           padding: '0 12px',
           fontFamily: 'inherit',
           fontSize: 14,
@@ -996,7 +996,7 @@ export function ContentHubPage() {
         key={`${scope}-${block.key}`}
         style={{ border: '1px solid #F0EBE4', borderRadius: 12, padding: 12, background: '#FFFDFC', minWidth: 0 }}
       >
-        <div style={{ fontSize: 12, fontWeight: 800, color: '#1C1408', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
           {labelForScope(scope)}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1005,13 +1005,13 @@ export function ContentHubPage() {
               key={id}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, minHeight: 42, padding: '0 10px',
-                borderRadius: 10, border: '1px solid #E8E0D8', background: 'var(--color-surface)',
+                borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)',
               }}
             >
-              <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 999, background: '#F8F6F3', color: '#6B5D4F', fontSize: 11, fontWeight: 800 }}>
+              <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 999, background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 11, fontWeight: 800 }}>
                 {idx + 1}
               </span>
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#1C1408' }}>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
                 {HOME_SECTION_LABELS[id as keyof typeof HOME_SECTION_LABELS] ?? id}
               </span>
               <button
@@ -1019,7 +1019,7 @@ export function ContentHubPage() {
                 aria-label={`Move ${id} up`}
                 disabled={idx === 0}
                 onClick={() => persist(moveHomeSection(order, idx, -1))}
-                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid #E8E0D8', background: 'var(--color-surface)', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.45 : 1 }}
+                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.45 : 1 }}
               >
                 <ArrowUp size={14} />
               </button>
@@ -1028,7 +1028,7 @@ export function ContentHubPage() {
                 aria-label={`Move ${id} down`}
                 disabled={idx === order.length - 1}
                 onClick={() => persist(moveHomeSection(order, idx, 1))}
-                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid #E8E0D8', background: 'var(--color-surface)', cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === order.length - 1 ? 0.45 : 1 }}
+                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === order.length - 1 ? 0.45 : 1 }}
               >
                 <ArrowDown size={14} />
               </button>
@@ -1438,7 +1438,7 @@ export function ContentHubPage() {
             <button
               type="button"
               onClick={() => void cancelContentSchedule(schedule.id).then(() => load()).catch((e) => error(e instanceof Error ? e.message : 'Cancel failed'))}
-              style={{ background: 'none', border: 'none', color: '#D4813A', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, minHeight: 32 }}
+              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, minHeight: 32 }}
             >
               Cancel
             </button>
