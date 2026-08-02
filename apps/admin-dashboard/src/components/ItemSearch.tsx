@@ -189,14 +189,14 @@ export function ItemSearch(props: Props) {
   const showEmptyHint = browseByCategory && !q.trim() && categoryId === '' && !searching;
   const list = (
     <>
-      {searching && <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 6 }}>Loading items…</div>}
+      {searching && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 6 }}>Loading items…</div>}
       {showEmptyHint && (
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9C8E7E', lineHeight: 1.45 }}>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
           Pick a category to browse, or type a name to search.
         </p>
       )}
       {!searching && !showEmptyHint && results.length === 0 && (q.trim() || categoryId !== '') && (
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9C8E7E' }}>No items found.</p>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>No items found.</p>
       )}
       {results.length > 0 && (
         <div
@@ -204,14 +204,14 @@ export function ItemSearch(props: Props) {
           style={resultsPlacement === 'inline' ? {
             marginTop: 8,
             background: '#fff',
-            border: '1px solid #E8E0D8',
+            border: '1px solid var(--color-border)',
             borderRadius: 10,
             maxHeight: 240,
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
           } : {
             position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff',
-            border: '1px solid #E8E0D8', borderRadius: 8, zIndex: 50,
+            border: '1px solid var(--color-border)', borderRadius: 8, zIndex: 50,
             boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 2, maxHeight: 260, overflowY: 'auto',
           }}
         >
@@ -226,8 +226,8 @@ export function ItemSearch(props: Props) {
                 borderBottom: '1px solid #F5F0EB', fontFamily: 'inherit', minHeight: 44,
               }}
             >
-              <div style={{ fontWeight: 700, color: '#1C1408' }}>{r.label}</div>
-              <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{r.sub}</div>
+              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{r.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{r.sub}</div>
             </button>
           ))}
         </div>
@@ -239,7 +239,7 @@ export function ItemSearch(props: Props) {
     <div className="item-search" style={{ position: 'relative' }}>
       {browseByCategory && (
         <label style={{ display: 'block', marginBottom: 8 }}>
-          <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+          <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
             Category
           </span>
           <select
@@ -247,8 +247,8 @@ export function ItemSearch(props: Props) {
             onChange={(e) => selectCategory(e.target.value)}
             style={{
               width: '100%', minHeight: 44, height: 44, padding: '0 12px',
-              border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14,
-              fontFamily: 'inherit', background: '#fff', color: '#1C1408',
+              border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14,
+              fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)',
             }}
           >
             <option value="">All categories</option>
