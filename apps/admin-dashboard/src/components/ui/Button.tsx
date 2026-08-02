@@ -12,11 +12,11 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<Variant, string> = {
-  primary:   'bg-[#D4813A] hover:bg-[#B5692E] text-white shadow-sm',
-  secondary: 'bg-[#F8F6F3] hover:bg-[#EDE4D4] text-[#1C1408] border border-[#E8E0D8]',
+  primary:   'bg-[var(--color-primary)] hover:bg-[#B5692E] text-white shadow-sm',
+  secondary: 'bg-[var(--color-bg)] hover:bg-[#EDE4D4] text-[var(--color-text)] border border-[var(--color-border)]',
   danger:    'bg-red-500 hover:bg-red-600 text-white shadow-sm',
-  ghost:     'bg-transparent hover:bg-[#F8F6F3] text-[#6B5D4F]',
-  outline:   'bg-transparent border border-[#D4813A] text-[#D4813A] hover:bg-[#FDF8F4]',
+  ghost:     'bg-transparent hover:bg-[var(--color-bg)] text-[var(--color-text-secondary)]',
+  outline:   'bg-transparent border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[#FDF8F4]',
 };
 
 const sizeStyles: Record<Size, string> = {
@@ -33,7 +33,7 @@ export function Button({ variant = 'primary', size = 'md', loading, icon, childr
       disabled={isDisabled}
       className={[
         'inline-flex items-center justify-center font-semibold rounded-[10px] transition-all duration-150 cursor-pointer border-0',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4813A] focus-visible:ring-offset-1',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         variantStyles[variant],
         sizeStyles[size],
