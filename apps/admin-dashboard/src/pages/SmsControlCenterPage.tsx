@@ -14,7 +14,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, PageShell, Btn, Modal } from '../components/SharedUI';
-import { smsCharCount } from '../utils/smsCharCount';
+import { nonGsm7Characters, smsCharCount } from '../utils/smsCharCount';
 
 const CATEGORY_ORDER = ['auth', 'transactional', 'staff', 'marketing', 'system'] as const;
 const CATEGORY_LABELS: Record<string, string> = {
@@ -131,7 +131,7 @@ export function SmsControlCenterPage() {
     return (
       <PageShell>
         <PageHeader title="SMS Control Center" section="Customers & Marketing" />
-        <p style={{ color: 'var(--color-text-muted)' }}>You need SMS log or settings permission to view this page.</p>
+        <p style={{ color: '#9C8E7E' }}>You need SMS log or settings permission to view this page.</p>
       </PageShell>
     );
   }
@@ -144,7 +144,7 @@ export function SmsControlCenterPage() {
         action={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {demoMode && (
-              <span style={badgeStyle('var(--color-warning-bg)', 'var(--color-warning-strong)')}>Demo mode</span>
+              <span style={badgeStyle('#FEF3C7', '#92400E')}>Demo mode</span>
             )}
             {isOwner && (
               <Btn
@@ -168,9 +168,9 @@ export function SmsControlCenterPage() {
           padding: '12px 14px',
           marginBottom: 16,
           borderRadius: 10,
-          background: 'var(--color-danger-bg)',
+          background: '#FEF2F2',
           border: '1px solid #FECACA',
-          color: 'var(--color-danger-strong)',
+          color: '#991B1B',
           fontSize: 13,
         }}>
           <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -181,7 +181,7 @@ export function SmsControlCenterPage() {
       )}
 
       {error && (
-        <p style={{ color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</p>
+        <p style={{ color: '#B91C1C', marginBottom: 12 }}>{error}</p>
       )}
 
       {!loading && budget && (
@@ -193,13 +193,13 @@ export function SmsControlCenterPage() {
               <> · Cap {budget.monthly_segment_ceiling} ({budget.monthly_remaining ?? 0} left)</>
             )}
             {budget.monthly_exhausted && (
-              <span style={{ color: 'var(--color-danger-strong)', fontWeight: 600 }}> · Cap reached</span>
+              <span style={{ color: '#B91C1C', fontWeight: 600 }}> · Cap reached</span>
             )}
             {budget.period_blocked_count > 0 && (
               <> · {budget.period_blocked_count} blocked</>
             )}
           </p>
-          <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
             OTP / always-on auth types are never blocked by budget, but still count toward usage.
           </p>
           {canManageSettings && (
@@ -244,7 +244,7 @@ export function SmsControlCenterPage() {
             {' · '}Failed queue jobs (24h): {queue.failed_queue_jobs}
           </p>
           {(queue.pending_recipients > 0 || queue.failed_queue_jobs > 0) && (
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-warning-strong)' }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#92400E' }}>
               Stalled sends usually mean the Redis/database queue worker is down — check System Health.
             </p>
           )}
@@ -261,7 +261,7 @@ export function SmsControlCenterPage() {
       )}
 
       {loading ? (
-        <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
+        <p style={{ color: '#9C8E7E' }}>Loading…</p>
       ) : (
         grouped.map((group) => (
           <section key={group.category} style={{ marginBottom: 28 }}>
@@ -344,8 +344,8 @@ function TypeRow({
 
   return (
     <div style={{
-      background: 'var(--color-surface)',
-      border: '1px solid var(--color-border)',
+      background: '#fff',
+      border: '1px solid #E8E0D8',
       borderRadius: 10,
       padding: '12px 16px',
     }}>
@@ -358,13 +358,13 @@ function TypeRow({
           <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6B5A4E' }}>
             Recipients: {row.recipients || '—'}
           </p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>
             Who can send: {row.send_permission_label}
             {!systemOnly && row.roles_with_permission.length > 0 && (
               <> · {row.roles_with_permission.join(', ')}</>
             )}
             {' · '}
-            <Link to="/settings?tab=permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>
+            <Link to="/settings?tab=permissions" style={{ color: '#D4813A' }}>Roles & Permissions</Link>
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6B5A4E' }}>
             Last 30 days: {row.last_30_days.count} · MVR {row.last_30_days.cost_mvr.toFixed(2)}
@@ -388,7 +388,7 @@ function TypeRow({
                 borderRadius: 12,
                 border: 'none',
                 cursor: !canToggle || saving ? 'not-allowed' : 'pointer',
-                background: row.enabled ? 'var(--color-primary)' : '#D1D5DB',
+                background: row.enabled ? '#D4813A' : '#D1D5DB',
                 position: 'relative',
                 opacity: !canToggle ? 0.55 : 1,
               }}
@@ -400,7 +400,7 @@ function TypeRow({
                 width: 20,
                 height: 20,
                 borderRadius: '50%',
-                background: 'var(--color-surface)',
+                background: '#fff',
                 transition: 'left 0.15s',
               }} />
             </button>
@@ -450,6 +450,7 @@ function TypeEditor({
 
   const displayBody = body;
   const count = smsCharCount(displayBody || ' ');
+  const unicodeOffenders = count.isUnicode ? nonGsm7Characters(displayBody) : [];
   const variables = row.template?.variables ?? [];
   const hasTemplate = !!row.template;
 
@@ -518,9 +519,10 @@ function TypeEditor({
           onChange={(e) => void savePermission(e.target.value)}
           style={inputStyle}
         >
-          <option value="__system__">System-initiated — no manual sending</option>
           {permissionOptions.map((p) => (
-            <option key={p.slug} value={p.slug}>{p.name} ({p.slug})</option>
+            <option key={p.slug} value={p.slug}>
+              {p.slug === '__system__' ? p.name : `${p.name} (${p.slug})`}
+            </option>
           ))}
         </select>
       </label>
@@ -538,7 +540,7 @@ function TypeEditor({
             style={{
               width: '100%',
               boxSizing: 'border-box',
-              border: '1px solid var(--color-border)',
+              border: '1px solid #E8E0D8',
               borderRadius: 8,
               padding: '10px 12px',
               fontSize: 13,
@@ -548,7 +550,30 @@ function TypeEditor({
             }}
           />
           {row.code_fallback_note && displayBody.trim() === '' && (
-            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-warning-strong)' }}>{row.code_fallback_note}</p>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: '#92400E' }}>{row.code_fallback_note}</p>
+          )}
+          {unicodeOffenders.length > 0 && (
+            <p
+              role="status"
+              style={{
+                margin: '8px 0 0',
+                fontSize: 12,
+                lineHeight: 1.45,
+                color: '#92400E',
+                background: '#FFFBEB',
+                border: '1px solid #FDE68A',
+                borderRadius: 8,
+                padding: '8px 10px',
+              }}
+            >
+              Unicode encoding (UCS-2): non-GSM-7 characters cut each segment from 160 to 70 chars
+              and roughly double SMS cost.
+              {' '}
+              Offending character{unicodeOffenders.length === 1 ? '' : 's'}:{' '}
+              {unicodeOffenders.map((o) => o.label).join(', ')}.
+              {' '}
+              Dhivehi and other Unicode text is allowed when needed — just be aware of the cost.
+            </p>
           )}
           {variables.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
@@ -578,7 +603,7 @@ function TypeEditor({
             gap: 8,
             flexWrap: 'wrap',
           }}>
-            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+            <span style={{ fontSize: 11, color: '#9C8E7E' }}>
               {estimate
                 ? `${estimate.encoding} · ${estimate.segments} segment${estimate.segments === 1 ? '' : 's'} · MVR ${estimate.cost_mvr.toFixed(2)}`
                 : `${count.encoding} · ${count.chars} chars · ${count.segments} segment${count.segments === 1 ? '' : 's'} · ~MVR ${(count.segments * 0.25).toFixed(2)}`}
@@ -592,12 +617,12 @@ function TypeEditor({
           </div>
         </>
       ) : (
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+        <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
           Message body is set per campaign / send — no type-level template.
         </p>
       )}
 
-      {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: '8px 0 0' }}>{err}</p>}
+      {err && <p style={{ color: '#B91C1C', fontSize: 12, margin: '8px 0 0' }}>{err}</p>}
       {preview && (
         <div style={{
           marginTop: 10,
@@ -626,8 +651,8 @@ function badgeStyle(bg: string, color: string): CSSProperties {
 }
 
 const panelStyle: CSSProperties = {
-  background: 'var(--color-surface)',
-  border: '1px solid var(--color-border)',
+  background: '#fff',
+  border: '1px solid #E8E0D8',
   borderRadius: 10,
   padding: '14px 16px',
   marginBottom: 18,
@@ -651,7 +676,7 @@ const fieldLabel: CSSProperties = {
 
 const inputStyle: CSSProperties = {
   minHeight: 44,
-  border: '1px solid var(--color-border)',
+  border: '1px solid #E8E0D8',
   borderRadius: 8,
   padding: '8px 10px',
   fontSize: 13,
@@ -661,7 +686,7 @@ const inputStyle: CSSProperties = {
 const linkBtn: CSSProperties = {
   background: 'none',
   border: 'none',
-  color: 'var(--color-primary)',
+  color: '#D4813A',
   fontSize: 12,
   fontWeight: 600,
   cursor: 'pointer',
@@ -672,8 +697,8 @@ const linkBtn: CSSProperties = {
 const secondaryBtn: CSSProperties = {
   padding: '6px 12px',
   borderRadius: 8,
-  border: '1px solid var(--color-border)',
-  background: 'var(--color-surface)',
+  border: '1px solid #E8E0D8',
+  background: '#fff',
   fontSize: 12,
   cursor: 'pointer',
   fontFamily: 'inherit',
@@ -681,8 +706,8 @@ const secondaryBtn: CSSProperties = {
 
 const primaryBtn: CSSProperties = {
   ...secondaryBtn,
-  background: 'var(--color-primary)',
-  borderColor: 'var(--color-primary)',
+  background: '#D4813A',
+  borderColor: '#D4813A',
   color: '#fff',
   fontWeight: 600,
 };

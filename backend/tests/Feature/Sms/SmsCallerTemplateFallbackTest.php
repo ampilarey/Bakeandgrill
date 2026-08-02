@@ -97,13 +97,13 @@ class SmsCallerTemplateFallbackTest extends TestCase
             ],
         );
 
-        config()->set('service_availability.restoration_sms.default_template', 'Bake & Grill: :label is back — order now :url. Reply STOP to opt out.');
+        config()->set('service_availability.restoration_sms.default_template', 'Bake & Grill: :label is back - order now :url. Reply STOP to opt out.');
         config()->set('service_availability.restoration_sms.link', 'https://bakeandgrill.mv/order/menu');
         config()->set('service_availability.keys.online_ordering.label', 'Online Ordering');
 
         $body = app(RestorationSmsBuilder::class)->build('online_ordering');
         $this->assertSame(
-            'Bake & Grill: Online Ordering is back — order now https://bakeandgrill.mv/order/menu. Reply STOP to opt out.',
+            'Bake & Grill: Online Ordering is back - order now https://bakeandgrill.mv/order/menu. Reply STOP to opt out.',
             $body,
         );
     }

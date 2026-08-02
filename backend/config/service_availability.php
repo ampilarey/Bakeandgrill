@@ -109,13 +109,13 @@ return [
      * `templates.<service_key>`.
      */
     'restoration_sms' => [
-        'default_template' => 'Bake & Grill: :label is back — order at :url',
+        'default_template' => 'Bake & Grill: :label is back - order at :url',
         'link' => env('RESTORATION_SMS_LINK', 'https://bakeandgrill.mv/order/menu'),
         'templates' => [
-            'online_checkout' => 'Bake & Grill: Online ordering is back — order at :url',
-            'online_delivery' => 'Bake & Grill: Delivery is back — order at :url',
-            'online_pickup' => 'Bake & Grill: Pickup is back — order at :url',
-            'catering_inquiry' => 'Bake & Grill: Catering inquiries are back — get in touch at :url',
+            'online_checkout' => 'Bake & Grill: Online ordering is back - order at :url',
+            'online_delivery' => 'Bake & Grill: Delivery is back - order at :url',
+            'online_pickup' => 'Bake & Grill: Pickup is back - order at :url',
+            'catering_inquiry' => 'Bake & Grill: Catering inquiries are back - get in touch at :url',
         ],
     ],
 

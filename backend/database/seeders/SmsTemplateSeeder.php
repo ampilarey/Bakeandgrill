@@ -175,7 +175,7 @@ class SmsTemplateSeeder extends Seeder
                 'slug' => 'catering_confirmed_customer',
                 'name' => 'Catering Confirmed (Customer)',
                 'type' => 'customer_notification',
-                'body' => 'Event confirmed — ref {{reference}}, paid MVR {{paid}}{{balance_bit}}. {{when}}{{venue}}',
+                'body' => 'Event confirmed - ref {{reference}}, paid MVR {{paid}}{{balance_bit}}. {{when}}{{venue}}',
                 'description' => 'Customer confirmation when quote payment confirms the event.',
                 'is_system' => true,
                 'variables' => json_encode([
