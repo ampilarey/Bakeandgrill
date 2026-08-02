@@ -19,18 +19,18 @@ export function HeroSlideEditor({ label, description, uploadKey, value, onChange
   ];
 
   return (
-    <div style={{ background: '#FAFAF8', borderRadius: 12, border: '1.5px solid #E8E0D8', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: '#FAFAF8', borderRadius: 12, border: '1.5px solid var(--color-border)', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
-        <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: 0 }}>{label}</p>
-        {description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: '3px 0 0' }}>{description}</p>}
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{label}</p>
+        {description && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '3px 0 0' }}>{description}</p>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <label style={{ fontSize: 11, fontWeight: 700, color: '#6B5D4F', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Slide Image</label>
+        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Slide Image</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {parsed.image ? (
-            <img src={parsed.image} alt="slide" style={{ height: 54, width: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8', flexShrink: 0 }} />
+            <img src={parsed.image} alt="slide" style={{ height: 54, width: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--color-border)', flexShrink: 0 }} />
           ) : (
-            <div style={{ height: 54, width: 90, borderRadius: 8, border: '1.5px dashed #E8E0D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9C8E7E', fontSize: 11, flexShrink: 0 }}>No image</div>
+            <div style={{ height: 54, width: 90, borderRadius: 8, border: '1.5px dashed var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 11, flexShrink: 0 }}>No image</div>
           )}
           <Button variant="secondary" size="sm" icon={<Upload size={13} />} onClick={() => triggerUpload(uploadKey, (url) => update('image', url))}>
             Upload image
@@ -39,16 +39,16 @@ export function HeroSlideEditor({ label, description, uploadKey, value, onChange
             value={parsed.image ?? ''}
             onChange={(e) => update('image', e.target.value)}
             placeholder="/images/cafe/filename.jpg"
-            style={{ flex: 1, minWidth: 160, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', background: '#fff', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: '#6B5D4F' }}
+            style={{ flex: 1, minWidth: 160, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-secondary)' }}
           />
         </div>
       </div>
       <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {fields.map((f) => (
           <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: f.col === 'full' ? '1 / -1' : undefined }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#6B5D4F' }}>{f.label}</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{f.label}</label>
             <input value={parsed[f.key] ?? ''} onChange={(e) => update(f.key, e.target.value)} placeholder={f.placeholder}
-              style={{ height: 32, borderRadius: 8, border: '1px solid #E8E0D8', background: '#fff', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }} />
+              style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
           </div>
         ))}
       </div>
