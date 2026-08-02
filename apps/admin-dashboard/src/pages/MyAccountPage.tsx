@@ -87,23 +87,23 @@ export function MyAccountPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <div style={{
             width: 44, height: 44, borderRadius: '50%', background: 'rgba(212,129,58,0.15)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D4813A',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)',
           }}>
             <UserCircle size={26} />
           </div>
           <div>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: '#1C1408' }}>{name || '…'}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9C8E7E', textTransform: 'capitalize' }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--color-text)' }}>{name || '…'}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>
               {role.replace(/_/g, ' ')}
             </p>
           </div>
         </div>
 
         <label style={{ display: 'block', marginBottom: 8 }}>
-          <span style={{ display: 'block', fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 4 }}>
+          <span style={{ display: 'block', fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 4 }}>
             POS auto-lock after inactivity
           </span>
-          <span style={{ display: 'block', fontSize: 12, color: '#9C8E7E', lineHeight: 1.5, marginBottom: 10 }}>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: 10 }}>
             How long the POS waits with no taps or key presses before locking when you are signed in.
             Each staff member sets their own — shared iPads use whoever is logged in.
           </span>
@@ -113,7 +113,7 @@ export function MyAccountPage() {
             onChange={(e) => setIdleLockMinutes(Number(e.target.value))}
             style={{
               width: '100%', padding: '10px 12px', borderRadius: 8,
-              border: '1px solid #E8E0D8', fontSize: 14, background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)', fontSize: 14, background: 'var(--color-surface)',
             }}
           >
             {LOCK_OPTIONS.map((opt) => (
