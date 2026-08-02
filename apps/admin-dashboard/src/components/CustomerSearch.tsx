@@ -59,11 +59,11 @@ export function CustomerSearch({
       ) : (
         <>
           <Input value={q} onChange={search} placeholder={placeholder} />
-          {searching && <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Searching…</div>}
+          {searching && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Searching…</div>}
           {results.length > 0 && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff',
-              border: '1px solid #E8E0D8', borderRadius: 8, zIndex: 50,
+              border: '1px solid var(--color-border)', borderRadius: 8, zIndex: 50,
               boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 2,
             }}>
               {results.map((c) => (
@@ -78,7 +78,7 @@ export function CustomerSearch({
                   }}
                 >
                   <span style={{ fontWeight: 600 }}>{c.name ?? 'Unknown'}</span>
-                  <span style={{ color: '#9C8E7E', marginLeft: 8 }}>{c.phone}</span>
+                  <span style={{ color: 'var(--color-text-muted)', marginLeft: 8 }}>{c.phone}</span>
                 </button>
               ))}
             </div>
