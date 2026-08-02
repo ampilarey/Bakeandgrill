@@ -43,7 +43,7 @@ function PermissionGroupList({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {Object.entries(grouped).map(([group, items]) => (
         <div key={group}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
             {group}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -73,7 +73,7 @@ function PermissionGroupList({
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 14, color: '#1C1408' }}>{p.name}</span>
+                      <span style={{ fontSize: 14, color: 'var(--color-text)' }}>{p.name}</span>
                       {!roleMode && (
                         <>
                           <Badge variant={p.source === 'override' || isModified ? 'brand' : 'neutral'} className="text-[10px]">
@@ -83,14 +83,14 @@ function PermissionGroupList({
                             {effectiveGranted ? 'allowed' : 'denied'}
                           </Badge>
                           {p.role_default !== undefined && (
-                            <span style={{ fontSize: 11, color: '#9C8E7E' }}>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                               role default: {p.role_default ? 'allow' : 'deny'}
                             </span>
                           )}
                         </>
                       )}
                     </div>
-                    <span style={{ fontSize: 11, color: '#9C8E7E' }}>{p.slug}</span>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.slug}</span>
                   </div>
 
                   {readOnly ? (
@@ -111,7 +111,7 @@ function PermissionGroupList({
                         style={{
                           height: 32,
                           borderRadius: 8,
-                          border: '1.5px solid #E8E0D8',
+                          border: '1.5px solid var(--color-border)',
                           background: '#fff',
                           padding: '0 8px',
                           fontSize: 12,
@@ -126,7 +126,7 @@ function PermissionGroupList({
                         <button
                           type="button"
                           onClick={() => onResetOverride?.(p.slug)}
-                          style={{ fontSize: 11, color: '#9C8E7E', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                          style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
                         >
                           reset
                         </button>
@@ -263,8 +263,8 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 820 }}>
       <Card>
-        <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>How permissions work</p>
-        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#6B5D4F', lineHeight: 1.55 }}>
+        <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>How permissions work</p>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
           <li><strong>Owner</strong> bypasses all checks — always full access.</li>
           <li><strong>Role defaults</strong> apply to Manager and Staff; changes here affect every user on that role.</li>
           <li><strong>User overrides</strong> (Allow / Deny / Inherit) win over role defaults for one person.</li>
@@ -273,15 +273,15 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
         </ul>
       </Card>
 
-      <details style={{ border: '1px solid #E8E0D8', borderRadius: 12, padding: '12px 16px', background: '#FFFBF7' }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14, color: '#1C1408' }}>
+      <details style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '12px 16px', background: '#FFFBF7' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
           Role cheat sheet (for managers)
         </summary>
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {ROLE_CHEAT_SHEET.map((role) => (
             <div key={role.slug}>
-              <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{role.label}</p>
-              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6B5D4F' }}>{role.summary}</p>
+              <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{role.label}</p>
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{role.summary}</p>
               {role.can.length > 0 && (
                 <ul style={{ margin: '0 0 6px', paddingLeft: 18, fontSize: 12, color: '#15803d', lineHeight: 1.5 }}>
                   {role.can.map((line) => <li key={line}>{line}</li>)}
@@ -297,18 +297,18 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #E8E0D8', textAlign: 'left' }}>
-                  <th style={{ padding: '6px 8px', color: '#9C8E7E' }}>Slug</th>
-                  <th style={{ padding: '6px 8px', color: '#9C8E7E' }}>Gates</th>
-                  <th style={{ padding: '6px 8px', color: '#9C8E7E' }}>Typical role</th>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                  <th style={{ padding: '6px 8px', color: 'var(--color-text-muted)' }}>Slug</th>
+                  <th style={{ padding: '6px 8px', color: 'var(--color-text-muted)' }}>Gates</th>
+                  <th style={{ padding: '6px 8px', color: 'var(--color-text-muted)' }}>Typical role</th>
                 </tr>
               </thead>
               <tbody>
                 {COMMON_PERMISSION_SLUGS.map((row) => (
-                  <tr key={row.slug} style={{ borderBottom: '1px solid #F0EBE5' }}>
-                    <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#1C1408' }}>{row.slug}</td>
-                    <td style={{ padding: '6px 8px', color: '#6B5D4F' }}>{row.gates}</td>
-                    <td style={{ padding: '6px 8px', color: '#6B5D4F' }}>{row.typical}</td>
+                  <tr key={row.slug} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: 'var(--color-text)' }}>{row.slug}</td>
+                    <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>{row.gates}</td>
+                    <td style={{ padding: '6px 8px', color: 'var(--color-text-secondary)' }}>{row.typical}</td>
                   </tr>
                 ))}
               </tbody>
@@ -330,11 +330,11 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
         <>
           <Card>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>Select role</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>Select role</label>
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-                style={{ height: 36, borderRadius: 10, border: '1.5px solid #E8E0D8', background: '#fff', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', color: '#1C1408', outline: 'none', cursor: 'pointer' }}
+                style={{ height: 36, borderRadius: 10, border: '1.5px solid var(--color-border)', background: '#fff', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
               >
                 {ROLE_OPTIONS.map((r) => <option key={r.slug} value={r.slug}>{r.label}</option>)}
               </select>
@@ -362,7 +362,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
                   onRoleToggle={(slug, granted) => setRoleChanges((c) => ({ ...c, [slug]: granted }))}
                 />
                 {selectedRole !== 'owner' && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, marginTop: 12, borderTop: '1px solid #E8E0D8' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, marginTop: 12, borderTop: '1px solid var(--color-border)' }}>
                     <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={() => setRoleChanges({})}>
                       Reset changes
                     </Button>
@@ -381,11 +381,11 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
         <>
           <Card>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#1C1408' }}>Select staff member</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>Select staff member</label>
               <select
                 value={selectedUserId ?? ''}
                 onChange={(e) => setSelectedUserId(Number(e.target.value) || null)}
-                style={{ height: 36, borderRadius: 10, border: '1.5px solid #E8E0D8', background: '#fff', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', color: '#1C1408', outline: 'none', cursor: 'pointer' }}
+                style={{ height: 36, borderRadius: 10, border: '1.5px solid var(--color-border)', background: '#fff', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
               >
                 <option value="">— Choose staff member —</option>
                 {staff.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.role})</option>)}
@@ -418,7 +418,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
                       return next;
                     })}
                   />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, marginTop: 12, borderTop: '1px solid #E8E0D8' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, marginTop: 12, borderTop: '1px solid var(--color-border)' }}>
                     <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={() => setUserOverrides({})}>
                       Reset all changes
                     </Button>
