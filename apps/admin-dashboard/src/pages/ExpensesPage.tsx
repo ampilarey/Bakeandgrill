@@ -49,38 +49,38 @@ function GstExpenseFields({ form, setForm, fieldStyle }: {
 }) {
   return (
     <div style={{ borderTop: '1px solid #E8DDD0', paddingTop: 12, marginTop: 4 }}>
-      <p style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', margin: '0 0 10px' }}>Input GST (optional)</p>
+      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>Input GST (optional)</p>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 10 }}>
         <input type="checkbox" checked={form.is_input_tax_claimable} onChange={(e) => setForm((f) => ({ ...f, is_input_tax_claimable: e.target.checked }))} />
         Claimable input tax
       </label>
       {form.is_input_tax_claimable && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
             Supplier TIN *
             <input value={form.supplier_tin} onChange={(e) => setForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
           </label>
           <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Supplier invoice no. *
               <input value={form.supplier_invoice_no} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
             </label>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Invoice date *
               <input type="date" value={form.supplier_invoice_date} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
             </label>
           </div>
           <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Amount ex-GST (MVR)
               <input type="number" value={form.amount_ex_gst} onChange={(e) => setForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
             </label>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               GST amount (MVR, 8%)
               <input type="number" value={form.gst_amount} onChange={(e) => setForm((f) => ({ ...f, gst_amount: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
             </label>
           </div>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
             Revenue or capital
             <select value={form.revenue_or_capital} onChange={(e) => setForm((f) => ({ ...f, revenue_or_capital: e.target.value as 'revenue' | 'capital' }))} style={{ ...fieldStyle, marginTop: 4 }}>
               <option value="revenue">Revenue expense</option>
@@ -352,9 +352,9 @@ export function ExpensesPage() {
 
   const fieldStyle = {
     width: '100%', height: 36, padding: '0 10px',
-    border: '1.5px solid #E8E0D8', borderRadius: 10,
+    border: '1.5px solid var(--color-border)', borderRadius: 10,
     fontSize: 13, fontFamily: 'inherit', background: '#fff',
-    color: '#1C1408', outline: 'none', boxSizing: 'border-box' as const,
+    color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' as const,
   };
 
   return (
@@ -372,21 +372,21 @@ export function ExpensesPage() {
           </div>
         }
       />
-      <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px', lineHeight: 1.45 }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.45 }}>
         Use Expenses for non-stock operating costs (utilities, rent, packaging, services). Stock purchases belong in{' '}
-        <Link to="/purchase-orders" style={{ color: '#D4813A', fontWeight: 600 }}>Purchase Orders</Link>
+        <Link to="/purchase-orders" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Purchase Orders</Link>
         {' '}so they flow into inventory and COGS — linking a PO here is optional reference only, not a second cost entry.
         {' '}See{' '}
-        <Link to="/reports?tab=Spend%20Hub" style={{ color: '#D4813A', fontWeight: 600 }}>Reports → Spend Hub</Link>
+        <Link to="/reports?tab=Spend%20Hub" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Reports → Spend Hub</Link>
         {' '}for purchases + expenses together.
       </p>
       <div style={{
         display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-        background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 12, padding: '12px 14px', marginBottom: 16,
+        background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '12px 14px', marginBottom: 16,
       }}>
         <div style={{ flex: '1 1 240px' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Auto-expense non-stock PO lines</div>
-          <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 4, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Auto-expense non-stock PO lines</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
             Off by default. When on, receiving PO lines without an inventory item creates a pending expense
             linked to that PO. Stock/inventory lines are never auto-expensed.
           </div>
@@ -415,12 +415,12 @@ export function ExpensesPage() {
           placeholder="Search expense #, description…"
           style={{
             height: 36, minWidth: 220, padding: '0 12px',
-            border: '1.5px solid #E8E0D8', borderRadius: 10,
-            fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none',
+            border: '1.5px solid var(--color-border)', borderRadius: 10,
+            fontSize: 13, fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)', outline: 'none',
           }}
         />
         {debouncedSearch && (
-          <span style={{ fontSize: 12, color: '#9C8E7E' }}>Date range paused while searching</span>
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Date range paused while searching</span>
         )}
       </div>
 
@@ -429,10 +429,10 @@ export function ExpensesPage() {
 
           {/* Left: total + table */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <StatCard label="Total Expenses" value={`MVR ${parseFloat(String(totalAmount ?? 0)).toFixed(2)}`} accent="#ef4444" />
+            <StatCard label="Total Expenses" value={`MVR ${parseFloat(String(totalAmount ?? 0)).toFixed(2)}`} accent="var(--color-danger)" />
 
             {bulkSelected.size > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 10, marginBottom: 10, background: '#1C1408', color: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 10, marginBottom: 10, background: 'var(--color-text)', color: '#fff' }}>
                 <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{bulkSelected.size} selected</span>
                 <Btn small onClick={bulkApprove} disabled={bulkLoading}>✓ Approve</Btn>
                 <button onClick={() => setBulkSelected(new Set())} style={{ background: 'none', border: 'none', color: '#C4B5A3', cursor: 'pointer', fontSize: 18 }}>×</button>
@@ -454,23 +454,23 @@ export function ExpensesPage() {
                   {expenses.map((exp) => (
                     <tr key={exp.id} style={{ background: bulkSelected.has(exp.id) ? '#FEF8F2' : undefined }}>
                       <td style={{ ...TD, width: 36 }}><input type="checkbox" checked={bulkSelected.has(exp.id)} onChange={() => toggleBulk(exp.id)} style={{ cursor: 'pointer' }} /></td>
-                      <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: '#1C1408', whiteSpace: 'nowrap' }}>
+                      <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
                         {exp.expense_number ?? '—'}
                       </td>
-                      <td style={{ ...TD, whiteSpace: 'nowrap', color: '#9C8E7E' }}>{exp.expense_date}</td>
+                      <td style={{ ...TD, whiteSpace: 'nowrap', color: 'var(--color-text-muted)' }}>{exp.expense_date}</td>
                       <td style={TD}>{exp.category?.icon} {exp.category?.name}</td>
-                      <td style={{ ...TD, color: '#1C1408' }}>
+                      <td style={{ ...TD, color: 'var(--color-text)' }}>
                         {exp.description}
                         {exp.is_auto && (
                           <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 6px', borderRadius: 4 }}>AUTO</span>
                         )}
                       </td>
-                      <td style={{ ...TD, fontWeight: 700, color: '#D4813A', whiteSpace: 'nowrap' }}>MVR {parseFloat(String(exp.amount ?? 0)).toFixed(2)}</td>
+                      <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>MVR {parseFloat(String(exp.amount ?? 0)).toFixed(2)}</td>
                       <td style={TD}>
                         {exp.purchase?.purchase_number || exp.purchase_id ? (
                           <Link
                             to={`/purchase-orders?search=${encodeURIComponent(exp.purchase?.purchase_number || String(exp.purchase_id))}`}
-                            style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
+                            style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
                             title="Open purchase order"
                           >
                             {exp.purchase?.purchase_number || `PO #${exp.purchase_id}`}
@@ -479,7 +479,7 @@ export function ExpensesPage() {
                           <span style={{ color: '#C4B5A3' }}>—</span>
                         )}
                       </td>
-                      <td style={{ ...TD, color: '#6B5D4F' }}>{paymentMethodLabel(exp.payment_method)}</td>
+                      <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{paymentMethodLabel(exp.payment_method)}</td>
                       <td style={TD}>
                         <Badge label={exp.status} color={STATUS_COLOR[exp.status] ?? 'gray'} />
                       </td>
@@ -516,20 +516,20 @@ export function ExpensesPage() {
 
           {/* Right: by category */}
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 20, margin: '0 0 20px' }}>By Category</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 20, margin: '0 0 20px' }}>By Category</p>
             {summary?.by_category.length === 0 && (
-              <p style={{ color: '#9C8E7E', fontSize: 13 }}>No data for this period.</p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No data for this period.</p>
             )}
             {summary?.by_category.map((cat) => (
               <div key={cat.category} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-                  <span style={{ color: '#1C1408', fontWeight: 600 }}>{cat.icon} {cat.category}</span>
-                  <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(cat.total ?? 0)).toFixed(2)}</span>
+                  <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{cat.icon} {cat.category}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(cat.total ?? 0)).toFixed(2)}</span>
                 </div>
-                <div style={{ height: 6, background: '#F0EBE5', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${cat.pct}%`, background: '#D4813A', borderRadius: 3 }} />
+                <div style={{ height: 6, background: 'var(--color-border-light)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${cat.pct}%`, background: 'var(--color-primary)', borderRadius: 3 }} />
                 </div>
-                <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 3 }}>{cat.pct}% · {cat.count} entries</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>{cat.pct}% · {cat.count} entries</div>
               </div>
             ))}
           </Card>
@@ -540,28 +540,28 @@ export function ExpensesPage() {
       {editingExpense && (
         <Modal title="Edit Expense" onClose={() => { setEditingExpense(null); setForm(emptyForm); setError(''); }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Category *
               <select value={form.expense_category_id} onChange={(e) => setForm((f) => ({ ...f, expense_category_id: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }}>
                 <option value="">Select category</option>
                 {cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
             </label>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Description *
               <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
             </label>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                 Amount (MVR) *
                 <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
               </label>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                 Date *
                 <input type="date" value={form.expense_date} onChange={(e) => setForm((f) => ({ ...f, expense_date: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
               </label>
             </div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Payment Method
               <select value={form.payment_method} onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }}>
                 {ADMIN_EXPENSE_PAYMENT_METHODS.map((m) => (
@@ -569,16 +569,16 @@ export function ExpensesPage() {
                 ))}
               </select>
             </label>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Notes
               <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }} />
             </label>
             {editingExpense.purchase && (
-              <div style={{ fontSize: 12, color: '#6B5D4F' }}>
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                 Linked PO:{' '}
                 <Link
                   to={`/purchase-orders?search=${encodeURIComponent(editingExpense.purchase.purchase_number)}`}
-                  style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                  style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}
                 >
                   {editingExpense.purchase.purchase_number}
                 </Link>
@@ -599,7 +599,7 @@ export function ExpensesPage() {
       {showAdd && (
         <Modal title="Add Expense" onClose={() => { setShowAdd(false); setLinkedPurchase(null); setError(''); }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Category *
               <select
                 value={form.expense_category_id}
@@ -610,7 +610,7 @@ export function ExpensesPage() {
                 {cats.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
             </label>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Description *
               <input
                 value={form.description}
@@ -619,7 +619,7 @@ export function ExpensesPage() {
               />
             </label>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                 Amount (MVR) *
                 <input
                   type="number"
@@ -628,7 +628,7 @@ export function ExpensesPage() {
                   style={{ ...fieldStyle, marginTop: 4 }}
                 />
               </label>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                 Date *
                 <input
                   type="date"
@@ -638,7 +638,7 @@ export function ExpensesPage() {
                 />
               </label>
             </div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Payment Method
               <select
                 value={form.payment_method}
@@ -650,7 +650,7 @@ export function ExpensesPage() {
                 ))}
               </select>
             </label>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Notes
               <textarea
                 value={form.notes}
@@ -659,7 +659,7 @@ export function ExpensesPage() {
                 style={{ ...fieldStyle, height: 'auto', padding: '8px 10px', resize: 'vertical', marginTop: 4 }}
               />
             </label>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block' }}>
               Link to purchase order (optional)
               <div style={{ marginTop: 4 }}>
                 <PurchaseSearch value={linkedPurchase} onChange={setLinkedPurchase} />
