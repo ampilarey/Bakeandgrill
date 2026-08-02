@@ -112,7 +112,7 @@ function PermissionGroupList({
                           height: 32,
                           borderRadius: 8,
                           border: '1.5px solid var(--color-border)',
-                          background: '#fff',
+                          background: 'var(--color-surface)',
                           padding: '0 8px',
                           fontSize: 12,
                           fontFamily: 'inherit',
@@ -334,7 +334,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-                style={{ height: 36, borderRadius: 10, border: '1.5px solid var(--color-border)', background: '#fff', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
+                style={{ height: 36, borderRadius: 10, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
               >
                 {ROLE_OPTIONS.map((r) => <option key={r.slug} value={r.slug}>{r.label}</option>)}
               </select>
@@ -385,7 +385,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
               <select
                 value={selectedUserId ?? ''}
                 onChange={(e) => setSelectedUserId(Number(e.target.value) || null)}
-                style={{ height: 36, borderRadius: 10, border: '1.5px solid var(--color-border)', background: '#fff', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
+                style={{ height: 36, borderRadius: 10, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
               >
                 <option value="">— Choose staff member —</option>
                 {staff.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.role})</option>)}

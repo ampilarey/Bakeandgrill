@@ -155,7 +155,7 @@ export function SmsNotificationRow({
   if (toggleDisabled && template) {
     return (
       <div style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         border: '1px solid #E8E0D8',
         borderRadius: 10,
         padding: '12px 16px',
@@ -167,7 +167,7 @@ export function SmsNotificationRow({
 
   return (
     <div style={{
-      background: '#fff',
+      background: 'var(--color-surface)',
       border: '1px solid #E8E0D8',
       borderRadius: 10,
       padding: '12px 16px',
@@ -207,7 +207,7 @@ export function SmsNotificationRow({
             width: 18,
             height: 18,
             borderRadius: '50%',
-            background: '#fff',
+            background: 'var(--color-surface)',
             transition: 'left 0.2s',
           }} />
         </button>
@@ -236,6 +236,6 @@ const secondaryBtn: CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   cursor: 'pointer',
-  background: '#fff',
+  background: 'var(--color-surface)',
   color: '#3D2B1F',
 };

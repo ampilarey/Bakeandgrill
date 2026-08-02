@@ -168,7 +168,7 @@ function LogsDrawer({
       zIndex: 40, display: 'flex', justifyContent: 'flex-end',
     }}>
       <div style={{
-        background: '#fff', width: '100%', maxWidth: 480,
+        background: 'var(--color-surface)', width: '100%', maxWidth: 480,
         height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.1)',
       }}>
         <div style={{

@@ -203,14 +203,14 @@ export function ItemSearch(props: Props) {
           className={resultsPlacement === 'inline' ? 'item-search-results item-search-results--inline' : 'item-search-results'}
           style={resultsPlacement === 'inline' ? {
             marginTop: 8,
-            background: '#fff',
+            background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: 10,
             maxHeight: 240,
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
           } : {
-            position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff',
+            position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)',
             border: '1px solid var(--color-border)', borderRadius: 8, zIndex: 50,
             boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 2, maxHeight: 260, overflowY: 'auto',
           }}
@@ -248,7 +248,7 @@ export function ItemSearch(props: Props) {
             style={{
               width: '100%', minHeight: 44, height: 44, padding: '0 12px',
               border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14,
-              fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)',
+              fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)',
             }}
           >
             <option value="">All categories</option>

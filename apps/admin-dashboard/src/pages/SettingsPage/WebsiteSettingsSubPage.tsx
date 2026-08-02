@@ -31,7 +31,7 @@ export function WebsiteSettings() {
       <div
         data-testid="dinein-menu-card"
         style={{
-          padding: 24, borderRadius: 14, background: '#fff',
+          padding: 24, borderRadius: 14, background: 'var(--color-surface)',
           border: '1px solid #E8E0D8', display: 'flex', flexDirection: 'column', gap: 12,
         }}
       >
@@ -45,7 +45,7 @@ export function WebsiteSettings() {
           <div
             data-testid="dinein-menu-qr"
             style={{
-              padding: 10, borderRadius: 12, background: '#fff',
+              padding: 10, borderRadius: 12, background: 'var(--color-surface)',
               border: '1px solid #E8E0D8', lineHeight: 0,
             }}
           >
@@ -95,7 +95,7 @@ export function WebsiteSettings() {
       </div>
 
       <div style={{
-        padding: 24, borderRadius: 14, background: '#fff',
+        padding: 24, borderRadius: 14, background: 'var(--color-surface)',
         border: '1px solid #E8E0D8', display: 'flex', flexDirection: 'column', gap: 12,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#1C1408', fontWeight: 700, fontSize: 16 }}>

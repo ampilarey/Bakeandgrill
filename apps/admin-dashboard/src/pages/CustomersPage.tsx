@@ -276,7 +276,7 @@ export function CustomersPage() {
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)',
     borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none',
-    background: '#fff', color: 'var(--color-text)', boxSizing: 'border-box',
+    background: 'var(--color-surface)', color: 'var(--color-text)', boxSizing: 'border-box',
   };
 
   return (
@@ -415,7 +415,7 @@ export function CustomersPage() {
           <div style={{
             position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50,
             width: 'min(480px, 100vw)',
-            background: '#fff', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
+            background: 'var(--color-surface)', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
           }}>
             {/* Header */}

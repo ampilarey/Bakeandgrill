@@ -173,7 +173,7 @@ export default function WasteLogsPage() {
         <div style={{ display: 'flex', gap: 6 }}>
           {[7, 30, 90].map(d => (
             <button key={d} onClick={() => { setFrom(daysAgo(d - 1)); setTo(today); setPage(1); }}
-              style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, border: '1.5px solid var(--color-border)', borderRadius: 8, background: '#fff', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, border: '1.5px solid var(--color-border)', borderRadius: 8, background: 'var(--color-surface)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit' }}>
               {d}d
             </button>
           ))}
@@ -239,7 +239,7 @@ export default function WasteLogsPage() {
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
 
               {/* Daily waste trend */}
-              <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>
+              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 16px' }}>
                   Waste Cost Trend
                 </h3>
@@ -270,7 +270,7 @@ export default function WasteLogsPage() {
               </div>
 
               {/* Breakdown by reason */}
-              <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20 }}>
+              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16, margin: '0 0 16px' }}>
                   By Reason
                 </h3>
@@ -309,7 +309,7 @@ export default function WasteLogsPage() {
               </div>
 
               {/* Top wasted items */}
-              <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20 }}>
+              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16, margin: '0 0 16px' }}>
                   Top Items by Cost
                 </h3>
@@ -399,7 +399,7 @@ export default function WasteLogsPage() {
                     setInvSelection(null);
                     setFormError('');
                   }}
-                  style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: itemType === t ? 700 : 500, background: itemType === t ? 'var(--color-primary)' : '#fff', color: itemType === t ? '#fff' : 'var(--color-text-secondary)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: itemType === t ? 700 : 500, background: itemType === t ? 'var(--color-primary)' : 'var(--color-surface)', color: itemType === t ? '#fff' : 'var(--color-text-secondary)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {t === 'menu' ? 'Menu Item' : 'Inventory Item'}
                 </button>

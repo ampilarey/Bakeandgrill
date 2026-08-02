@@ -353,7 +353,7 @@ export function ExpensesPage() {
   const fieldStyle = {
     width: '100%', height: 36, padding: '0 10px',
     border: '1.5px solid var(--color-border)', borderRadius: 10,
-    fontSize: 13, fontFamily: 'inherit', background: '#fff',
+    fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)',
     color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' as const,
   };
 
@@ -416,7 +416,7 @@ export function ExpensesPage() {
           style={{
             height: 36, minWidth: 220, padding: '0 12px',
             border: '1.5px solid var(--color-border)', borderRadius: 10,
-            fontSize: 13, fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)', outline: 'none',
+            fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none',
           }}
         />
         {debouncedSearch && (

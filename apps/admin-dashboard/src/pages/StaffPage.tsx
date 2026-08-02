@@ -111,7 +111,7 @@ function RowActionMenu({ items }: { items: MenuItem[] }) {
       {open && (
         <div style={{
           position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 20,
-          minWidth: 180, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 10,
+          minWidth: 180, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
           boxShadow: '0 8px 24px rgba(28,20,8,0.12)', padding: 4,
         }}>
           {items.map((item) => (
@@ -750,7 +750,7 @@ export function StaffPage() {
 
   const filterStyle: React.CSSProperties = {
     padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10,
-    fontSize: 13, fontFamily: 'inherit', background: '#fff', minHeight: 40,
+    fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', minHeight: 40,
   };
 
   return (

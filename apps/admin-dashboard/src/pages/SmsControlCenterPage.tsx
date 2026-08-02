@@ -240,7 +240,7 @@ function TypeRow({
 }) {
   return (
     <div style={{
-      background: '#fff',
+      background: 'var(--color-surface)',
       border: '1px solid #E8E0D8',
       borderRadius: 10,
       padding: '12px 16px',
@@ -295,7 +295,7 @@ function TypeRow({
                 width: 20,
                 height: 20,
                 borderRadius: '50%',
-                background: '#fff',
+                background: 'var(--color-surface)',
                 transition: 'left 0.15s',
               }} />
             </button>
@@ -464,7 +464,7 @@ const secondaryBtn: CSSProperties = {
   padding: '6px 12px',
   borderRadius: 8,
   border: '1px solid #E8E0D8',
-  background: '#fff',
+  background: 'var(--color-surface)',
   fontSize: 12,
   cursor: 'pointer',
   fontFamily: 'inherit',

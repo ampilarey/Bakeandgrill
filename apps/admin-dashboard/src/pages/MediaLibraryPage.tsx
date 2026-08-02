@@ -129,7 +129,7 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
           data-testid="detail-preview-pdf"
           title={asset.title || 'PDF'}
           src={fullSrc}
-          style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+          style={{ width: '100%', height: '100%', border: 'none', background: 'var(--color-surface)' }}
         />
       );
     }
@@ -149,7 +149,7 @@ const tabStyle = (active: boolean, mobile = false): CSSProperties => ({
   height: mobile ? 44 : 36, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
   fontWeight: active ? 700 : 500, fontSize: 13,
   border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-  background: active ? '#FFF7ED' : '#fff', color: 'var(--color-text)', whiteSpace: 'nowrap',
+  background: active ? '#FFF7ED' : 'var(--color-surface)', color: 'var(--color-text)', whiteSpace: 'nowrap',
   display: 'inline-flex', alignItems: 'center', gap: 6,
 });
 
@@ -289,7 +289,7 @@ function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditPa
                   key={d}
                   type="button"
                   onClick={() => set('degrees', d)}
-                  style={{ height: 36, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', background: (params.degrees as number) === d ? '#FFF7ED' : '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                  style={{ height: 36, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', background: (params.degrees as number) === d ? '#FFF7ED' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
                 >
                   {d}°
                 </button>
@@ -731,9 +731,9 @@ export function MediaLibraryPage() {
           data-testid="collections-sidebar"
           data-layout={isMobile ? 'chips' : 'sidebar'}
           style={isMobile ? {
-            width: '100%', flexShrink: 0, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 12,
+            width: '100%', flexShrink: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 12,
           } : {
-            width: 200, flexShrink: 0, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 12, position: 'sticky', top: 12,
+            width: 200, flexShrink: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 12, position: 'sticky', top: 12,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, color: 'var(--color-text)', marginBottom: 10 }}>
@@ -957,9 +957,9 @@ export function MediaLibraryPage() {
             style={isMobile ? {
               position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number,
               width: '100%', maxWidth: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-              background: '#fff', border: 'none', borderRadius: 0, padding: 16, paddingBottom: 96,
+              background: 'var(--color-surface)', border: 'none', borderRadius: 0, padding: 16, paddingBottom: 96,
             } : {
-              width: 300, flexShrink: 0, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16, position: 'sticky', top: 12,
+              width: 300, flexShrink: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16, position: 'sticky', top: 12,
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -1001,7 +1001,7 @@ export function MediaLibraryPage() {
                     onChange={(e) => setUseAsKey(e.target.value as MediaUseAsKey)}
                     style={{
                       flex: 1, height: 38, borderRadius: 8, border: '1px solid var(--color-border)',
-                      padding: '0 10px', fontFamily: 'inherit', fontSize: 13, background: '#fff',
+                      padding: '0 10px', fontFamily: 'inherit', fontSize: 13, background: 'var(--color-surface)',
                     }}
                   >
                     {USE_AS_OPTIONS.map((opt) => (

@@ -31,7 +31,7 @@ export function RevisionDiff({ before, after }: Props) {
       style={{
         margin: 0, fontSize: 11, lineHeight: 1.45, fontFamily: 'ui-monospace, monospace',
         maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-        borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: 8,
+        borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: 8,
       }}
     >
       {rows.map((r, i) => (

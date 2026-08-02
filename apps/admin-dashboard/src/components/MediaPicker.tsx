@@ -127,7 +127,7 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
       <div
         style={{
           width: 'min(860px, 100%)', maxHeight: '90vh', overflow: 'hidden',
-          background: '#fff', borderRadius: 16, border: '1px solid var(--color-border)',
+          background: 'var(--color-surface)', borderRadius: 16, border: '1px solid var(--color-border)',
           display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(28,20,8,0.18)',
         }}
         onClick={(e) => e.stopPropagation()}

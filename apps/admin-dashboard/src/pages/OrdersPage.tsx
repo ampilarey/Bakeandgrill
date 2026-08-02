@@ -296,7 +296,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
       alignItems: 'stretch', justifyContent: 'flex-end',
     }} onClick={onClose}>
       <div className="order-detail-drawer" style={{
-        width: 'min(420px, 100vw)', background: '#fff', height: '100%',
+        width: 'min(420px, 100vw)', background: 'var(--color-surface)', height: '100%',
         overflowY: 'auto', padding: 24, boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
       }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -554,7 +554,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                       defaultValue={order.driver?.id ?? ''}
                       onChange={(e) => { if (e.target.value) void handleAssignDriver(Number(e.target.value)); }}
                       disabled={driverAssigning}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: '#FAF7F3', color: 'var(--color-text)', cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: '#FAF7F3', color: '#1C1408', cursor: 'pointer' }}
                     >
                       <option value="">— select driver —</option>
                       {drivers.map((d) => (
@@ -664,7 +664,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     <select
                       value={row.method}
                       onChange={(e) => setPayRows((rs) => rs.map((r, j) => j === i ? { ...r, method: e.target.value } : r))}
-                      style={{ height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: '#fff', flex: '0 0 110px' }}
+                      style={{ height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: 'var(--color-surface)', flex: '0 0 110px' }}
                     >
                       {ADMIN_ORDER_PAYMENT_METHODS.map((m) => (
                         <option key={m.value} value={m.value}>{m.label}</option>
@@ -910,14 +910,14 @@ export function OrdersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search order # or customer…"
-          style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280, padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)', outline: 'none' }}
+          style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280, padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none' }}
         />
         <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ width: 160 }} />
         <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ width: 160 }} />
         <select
           value={cashierFilter}
           onChange={(e) => { setCashierFilter(e.target.value); setPage(1); }}
-          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', minWidth: 140 }}
+          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', minWidth: 140 }}
         >
           <option value="">All cashiers</option>
           {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -925,7 +925,7 @@ export function OrdersPage() {
         <select
           value={deviceFilter}
           onChange={(e) => { setDeviceFilter(e.target.value); setPage(1); }}
-          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', minWidth: 140 }}
+          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', minWidth: 140 }}
         >
           <option value="">All stations</option>
           {deviceOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -938,7 +938,7 @@ export function OrdersPage() {
           style={{
             padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
             border: unpaidOnly ? '1.5px solid #B91C1C' : '1.5px solid var(--color-border)',
-            background: unpaidOnly ? '#FEF2F2' : '#fff',
+            background: unpaidOnly ? '#FEF2F2' : 'var(--color-surface)',
             color: unpaidOnly ? '#B91C1C' : 'var(--color-text-secondary)',
             cursor: 'pointer', whiteSpace: 'nowrap',
           }}

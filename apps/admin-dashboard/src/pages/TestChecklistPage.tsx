@@ -654,7 +654,7 @@ export default function TestChecklistPage() {
       />
 
       {/* Progress bar */}
-      <div style={{ background: 'white', borderRadius: 14, padding: '16px 20px', border: '1px solid #E5E7EB', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
+      <div style={{ background: 'var(--color-surface)', borderRadius: 14, padding: '16px 20px', border: '1px solid #E5E7EB', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
         <div style={{ flex: 1 }}>
           <div style={{ height: 10, background: '#F3F4F6', borderRadius: 999, overflow: 'hidden' }}>
             <div style={{
@@ -732,7 +732,7 @@ export default function TestChecklistPage() {
 
           return (
             <div key={section.title} style={{
-              background: 'white',
+              background: 'var(--color-surface)',
               border: `1px solid ${allDone ? '#6EE7B7' : '#E5E7EB'}`,
               borderRadius: 14, overflow: 'hidden',
             }}>
@@ -767,7 +767,7 @@ export default function TestChecklistPage() {
                       display: 'flex', alignItems: 'flex-start', gap: 12,
                       padding: '11px 16px', cursor: 'pointer',
                       borderTop: i === 0 ? 'none' : '1px solid #F3F4F6',
-                      background: isDone ? '#F0FDF4' : 'white',
+                      background: isDone ? '#F0FDF4' : 'var(--color-surface)',
                       transition: 'background 0.15s',
                     }}
                   >

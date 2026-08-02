@@ -111,7 +111,7 @@ const S = {
   btnSecondary: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 10,
-    border: '1.5px solid #E8E0D8', background: '#fff',
+    border: '1.5px solid #E8E0D8', background: 'var(--color-surface)',
     color: '#4A3728', fontSize: 13, fontWeight: 600,
     cursor: 'pointer',
   } as React.CSSProperties,
@@ -146,7 +146,7 @@ const S = {
   toggleThumb: (on: boolean): React.CSSProperties => ({
     position: 'absolute', top: 3, left: on ? 26 : 3,
     width: 20, height: 20, borderRadius: '50%',
-    background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+    background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
     transition: 'left 0.2s',
   }),
 };

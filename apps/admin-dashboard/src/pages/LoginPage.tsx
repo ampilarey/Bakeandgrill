@@ -112,7 +112,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
   };
 
   const card: React.CSSProperties = {
-    background: '#fff', borderRadius: 20, padding: '40px 36px',
+    background: 'var(--color-surface)', borderRadius: 20, padding: '40px 36px',
     width: '100%', maxWidth: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
   };
 

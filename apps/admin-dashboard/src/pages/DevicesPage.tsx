@@ -192,7 +192,7 @@ export default function DevicesPage() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pending.map(d => (
-              <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 10, padding: '12px 16px', border: '1px solid #fde68a', flexWrap: 'wrap', gap: 10 }}>
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', borderRadius: 10, padding: '12px 16px', border: '1px solid #fde68a', flexWrap: 'wrap', gap: 10 }}>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{d.name}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9C8E7E' }}>

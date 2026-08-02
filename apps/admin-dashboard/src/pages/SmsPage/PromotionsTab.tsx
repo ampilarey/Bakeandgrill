@@ -142,7 +142,7 @@ export function PromotionsTab() {
               <select
                 value={form.segment}
                 onChange={(e) => { setForm({ ...form, segment: e.target.value }); setPreview(null); }}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)' }}
               >
                 {SEGMENT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>

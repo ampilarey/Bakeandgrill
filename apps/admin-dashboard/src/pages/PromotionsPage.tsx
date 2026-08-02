@@ -439,7 +439,7 @@ function PromotionForm({
                     style={{
                       minHeight: 36, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
                       border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      background: on ? '#FFF7ED' : '#fff', color: on ? 'var(--color-primary)' : 'var(--color-text-secondary)', fontWeight: 600, fontSize: 12,
+                      background: on ? '#FFF7ED' : 'var(--color-surface)', color: on ? 'var(--color-primary)' : 'var(--color-text-secondary)', fontWeight: 600, fontSize: 12,
                     }}
                   >
                     {d.label}

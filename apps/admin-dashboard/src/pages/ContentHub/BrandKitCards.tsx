@@ -49,7 +49,7 @@ function Preview({
           <img
             src={value}
             alt=""
-            style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 9, background: dark ? '#2a1a0a' : '#fff' }}
+            style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 9, background: dark ? '#2a1a0a' : 'var(--color-surface)' }}
           />
         ) : (
           <div
@@ -112,7 +112,7 @@ function Preview({
           borderRadius: 14,
           border: '1px solid var(--color-border)',
           overflow: 'hidden',
-          background: '#fff',
+          background: 'var(--color-surface)',
           maxWidth: 320,
         }}
       >
@@ -315,7 +315,7 @@ function Card({
   const isColor = meta.preview === 'color';
 
   const cardStyle: CSSProperties = {
-    background: '#fff',
+    background: 'var(--color-surface)',
     border: '1px solid var(--color-border)',
     borderRadius: 14,
     padding: 16,
@@ -339,7 +339,7 @@ function Card({
             type="color"
             value={/^#([0-9a-fA-F]{6})$/.test(value) ? value : '#D4813A'}
             onChange={(e) => onSetValue(e.target.value.toUpperCase())}
-            style={{ width: 48, height: 44, border: '1px solid var(--color-border)', borderRadius: 10, padding: 2, background: '#fff', cursor: 'pointer' }}
+            style={{ width: 48, height: 44, border: '1px solid var(--color-border)', borderRadius: 10, padding: 2, background: 'var(--color-surface)', cursor: 'pointer' }}
             aria-label="Pick brand colour"
           />
           <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>Pick a colour</span>
@@ -425,7 +425,7 @@ function Card({
                 padding: '0 10px',
                 borderRadius: 10,
                 border: '1px solid var(--color-border)',
-                background: '#fff',
+                background: 'var(--color-surface)',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 fontSize: 12,
@@ -504,7 +504,7 @@ export function BrandKitCards({
                   height: 48,
                   margin: '0 auto 6px',
                   borderRadius: meta.preview === 'menu-circle' ? '50%' : 10,
-                  background: meta.preview === 'color' ? thumb : '#fff',
+                  background: meta.preview === 'color' ? thumb : 'var(--color-surface)',
                   border: '1px solid var(--color-border)',
                   overflow: 'hidden',
                   display: 'flex',

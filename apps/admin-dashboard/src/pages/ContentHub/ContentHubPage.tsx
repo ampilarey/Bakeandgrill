@@ -767,7 +767,7 @@ export function ContentHubPage() {
             <button
               type="button"
               onClick={() => void restore(revision.id)}
-              style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}
+              style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8', background: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}
             >
               Restore
             </button>
@@ -1005,7 +1005,7 @@ export function ContentHubPage() {
               key={id}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, minHeight: 42, padding: '0 10px',
-                borderRadius: 10, border: '1px solid #E8E0D8', background: '#fff',
+                borderRadius: 10, border: '1px solid #E8E0D8', background: 'var(--color-surface)',
               }}
             >
               <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 999, background: '#F8F6F3', color: '#6B5D4F', fontSize: 11, fontWeight: 800 }}>
@@ -1019,7 +1019,7 @@ export function ContentHubPage() {
                 aria-label={`Move ${id} up`}
                 disabled={idx === 0}
                 onClick={() => persist(moveHomeSection(order, idx, -1))}
-                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid #E8E0D8', background: '#fff', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.45 : 1 }}
+                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid #E8E0D8', background: 'var(--color-surface)', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.45 : 1 }}
               >
                 <ArrowUp size={14} />
               </button>
@@ -1028,7 +1028,7 @@ export function ContentHubPage() {
                 aria-label={`Move ${id} down`}
                 disabled={idx === order.length - 1}
                 onClick={() => persist(moveHomeSection(order, idx, 1))}
-                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid #E8E0D8', background: '#fff', cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === order.length - 1 ? 0.45 : 1 }}
+                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid #E8E0D8', background: 'var(--color-surface)', cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === order.length - 1 ? 0.45 : 1 }}
               >
                 <ArrowDown size={14} />
               </button>

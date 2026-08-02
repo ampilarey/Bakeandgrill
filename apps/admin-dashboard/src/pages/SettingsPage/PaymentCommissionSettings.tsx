@@ -20,7 +20,7 @@ function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; d
     >
       <span style={{
         position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18,
-        borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        borderRadius: '50%', background: 'var(--color-surface)', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
       }} />
     </button>
   );

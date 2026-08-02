@@ -291,7 +291,7 @@ export function CateringDetailPage() {
       <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Lines */}
-          <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Quote lines</h3>
             {lines.map((l, idx) => (
               <div key={l.key} style={{ borderBottom: '1px solid #F0E8E0', padding: '10px 0' }}>
@@ -333,7 +333,7 @@ export function CateringDetailPage() {
                     <input
                       data-testid={l.is_custom ? 'custom-price-input' : 'catalog-price-input'}
                       disabled={!l.is_custom}
-                      style={{ ...fieldStyle, background: l.is_custom ? '#fff' : '#F5F0EB' }}
+                      style={{ ...fieldStyle, background: l.is_custom ? 'var(--color-surface)' : '#F5F0EB' }}
                       value={l.unit_price}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -400,7 +400,7 @@ export function CateringDetailPage() {
           </section>
 
           {/* Fulfilment */}
-          <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Fulfilment</h3>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <label style={labelStyle}>
@@ -484,7 +484,7 @@ export function CateringDetailPage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Quote summary</h3>
             <div style={{ fontSize: 14, color: '#5C4E3E', lineHeight: 1.7 }}>
               <div>Subtotal: MVR {tax ? mvr(tax.subtotal_laar) : '—'}</div>
@@ -517,7 +517,7 @@ export function CateringDetailPage() {
             )}
           </section>
 
-          <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Assignment & status</h3>
             <label style={labelStyle}>
               Assigned to
@@ -559,7 +559,7 @@ export function CateringDetailPage() {
             </label>
           </section>
 
-          <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Status timeline</h3>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#5C4E3E' }}>
               {timeline.map((t) => (

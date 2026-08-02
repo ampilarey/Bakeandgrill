@@ -84,7 +84,7 @@ export default function ReviewsPage() {
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          style={{ height: 36, padding: '0 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', cursor: 'pointer' }}
+          style={{ height: 36, padding: '0 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: '#1C1408', cursor: 'pointer' }}
         >
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>

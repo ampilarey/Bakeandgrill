@@ -73,7 +73,7 @@ export function PurchaseSearch({
       {searching && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Searching…</div>}
       {results.length > 0 && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff',
+          position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)',
           border: '1px solid var(--color-border)', borderRadius: 8, zIndex: 50,
           boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 2, maxHeight: 240, overflowY: 'auto',
         }}>

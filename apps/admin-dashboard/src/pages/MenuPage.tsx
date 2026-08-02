@@ -108,7 +108,7 @@ function CategoryFormModal({
   const selectStyle: React.CSSProperties = {
     width: '100%', border: '1px solid var(--color-border)', borderRadius: 9,
     padding: '9px 12px', fontSize: 14, fontFamily: 'inherit',
-    background: '#fff', cursor: 'pointer', boxSizing: 'border-box',
+    background: 'var(--color-surface)', cursor: 'pointer', boxSizing: 'border-box',
   };
 
   return (
@@ -419,7 +419,7 @@ export function MenuPage() {
 
       {m.recipeItem && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', maxHeight: '80vh', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Recipe — {m.recipeItem.name}</h3>
               <button onClick={() => m.setRecipeItem(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
@@ -456,7 +456,7 @@ export function MenuPage() {
 
       {m.barcodeLabel && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 32, maxWidth: 360, width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 32, maxWidth: 360, width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 800 }}>Barcode Label</h3>
             <div style={{ border: '2px solid var(--color-border)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
               <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 16 }}>{m.barcodeLabel.name}</p>

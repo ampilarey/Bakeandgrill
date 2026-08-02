@@ -612,7 +612,7 @@ export default function SpecialsPage() {
   const dateFieldStyle: CSSProperties = {
     width: '100%', minHeight: 44, height: 44, padding: '0 12px', boxSizing: 'border-box',
     border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit',
-    background: '#fff', color: 'var(--color-text)',
+    background: 'var(--color-surface)', color: 'var(--color-text)',
   };
   const fieldLabel: CSSProperties = {
     display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4,
@@ -650,11 +650,11 @@ export default function SpecialsPage() {
       {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       <div className="page-stat-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px' }}>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 4px', fontWeight: 600 }}>TOTAL SPECIALS</p>
           <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{meta.total}</p>
         </div>
-        <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px' }}>
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px' }}>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 4px', fontWeight: 600 }}>ACTIVE TODAY</p>
           <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-success)', margin: 0 }}>{activeCount}</p>
         </div>

@@ -91,7 +91,7 @@ export function SystemHealthPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', borderRadius: 10, border: '1px solid var(--color-border)',
-              background: '#fff', cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit',
+              background: 'var(--color-surface)', cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit',
               fontSize: 13, fontWeight: 600, color: 'var(--color-text)',
             }}
           >
@@ -142,7 +142,7 @@ export function SystemHealthPage() {
                           onClick={() => navigate(alert.link!)}
                           style={{
                             padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)',
-                            background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--color-primary)',
+                            background: 'var(--color-surface)', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--color-primary)',
                           }}
                         >
                           Review →
@@ -300,7 +300,7 @@ export function SystemHealthPage() {
                           onClick={() => void handleRetry(j.uuid)}
                           style={{
                             padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-border)',
-                            background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                            background: 'var(--color-surface)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
                             color: 'var(--color-primary)', fontFamily: 'inherit',
                           }}
                         >

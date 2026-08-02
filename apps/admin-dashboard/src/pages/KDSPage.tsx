@@ -176,7 +176,7 @@ export function KDSPage() {
           ? <div style={{ color: 'var(--color-text-muted)', fontSize: 13, padding: '20px 0' }}>Nothing here</div>
           : items.map((t) => (
             <div key={t.id} style={{
-              background: '#fff', borderRadius: 14, padding: '16px',
+              background: 'var(--color-surface)', borderRadius: 14, padding: '16px',
               border: `2px solid ${urgencyColor(t.created_at).faint}`,
               boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
             }}>
@@ -293,7 +293,7 @@ function TicketHeader({
         <div>
           <Link to={`/orders?order=${ticket.id}`} style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-primary)', textDecoration: 'none' }}>#{ticket.order_number}</Link>
           {overdue && (
-            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: 'var(--color-danger)', background: '#FEE2E2', padding: '2px 6px', borderRadius: 999 }}>
+            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: '#EF4444', background: '#FEE2E2', padding: '2px 6px', borderRadius: 999 }}>
               OVERDUE
             </span>
           )}

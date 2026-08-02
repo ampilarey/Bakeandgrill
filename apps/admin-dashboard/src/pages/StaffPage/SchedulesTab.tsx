@@ -152,7 +152,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
               {weekDates.map((date, di) => {
                 const daySchedules = schedules.filter((sc) => sc.date === date);
                 return (
-                  <tr key={date} style={{ background: di % 2 === 0 ? '#FAFAF9' : '#fff' }}>
+                  <tr key={date} style={{ background: di % 2 === 0 ? '#FAFAF9' : 'var(--color-surface)' }}>
                     <td style={{ ...TD, fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {DAYS[di]}<br />
                       <span style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 400 }}>

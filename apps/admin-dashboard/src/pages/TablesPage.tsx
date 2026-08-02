@@ -14,7 +14,7 @@ const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
   label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: 'var(--color-text-secondary)', marginBottom: 4 },
   card: (): React.CSSProperties => ({
-    background: '#fff',
+    background: 'var(--color-surface)',
     border: '1.5px solid var(--color-border)',
     borderRadius: 14,
     padding: '18px 16px',
@@ -157,7 +157,7 @@ export default function TablesPage() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '7px 14px', fontSize: 13, fontWeight: viewMode === mode ? 700 : 500,
-                    background: viewMode === mode ? 'var(--color-primary)' : '#fff',
+                    background: viewMode === mode ? 'var(--color-primary)' : 'var(--color-surface)',
                     color: viewMode === mode ? '#fff' : 'var(--color-text-secondary)',
                     border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                     transition: 'background 0.15s, color 0.15s',
@@ -210,7 +210,7 @@ export default function TablesPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '12px 16px', background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
             {Object.entries(STATUS_BG).map(([status, bg]) => (
               <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 14, height: 14, borderRadius: 4, background: bg, border: `2px solid ${STATUS_BORDER[status]}` }} />
@@ -223,7 +223,7 @@ export default function TablesPage() {
           </div>
 
           {zones.map(([zone, zoneTables]) => (
-            <div key={zone} style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 16, overflow: 'hidden' }}>
+            <div key={zone} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 16, overflow: 'hidden' }}>
               <div style={{
                 padding: '12px 20px',
                 borderBottom: '1px solid #F0EAE3',
@@ -282,7 +282,7 @@ export default function TablesPage() {
                       <button
                         type="button"
                         onClick={() => openModal(t)}
-                        style={{ fontSize: 10, padding: '2px 7px', marginTop: 4, border: '1px solid var(--color-border)', borderRadius: 6, background: '#fff', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
+                        style={{ fontSize: 10, padding: '2px 7px', marginTop: 4, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
                       >
                         Edit
                       </button>

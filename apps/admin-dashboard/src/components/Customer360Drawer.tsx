@@ -142,7 +142,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,20,8,0.35)', zIndex: 55 }} />
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 56,
-        width: 'min(520px, 100vw)', background: '#fff', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
+        width: 'min(520px, 100vw)', background: 'var(--color-surface)', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0EAE3', display: 'flex', alignItems: 'center', gap: 12 }}>

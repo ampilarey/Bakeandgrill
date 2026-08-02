@@ -52,7 +52,7 @@ export function CategoriesEditor({ label, description, value, onChange, triggerU
               <Button variant="secondary" size="sm" icon={<Upload size={13} />}
                 onClick={() => triggerUpload(`cat_${idx + 1}_image`, (url) => update({ image_url: url }))}>Upload</Button>
               <input value={item.image_url} onChange={(e) => update({ image_url: e.target.value })} placeholder="/images/cafe/photo.jpg"
-                style={{ flex: 1, minWidth: 140, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-secondary)' }} />
+                style={{ flex: 1, minWidth: 140, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-secondary)' }} />
             </div>
             <input
               value={item.image_alt || ''}

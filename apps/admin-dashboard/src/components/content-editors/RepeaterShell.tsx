@@ -67,7 +67,7 @@ export function RepeaterShell<T extends Record<string, unknown>>({
           }}
           data-testid="repeater-row"
           style={{
-            background: '#fff',
+            background: 'var(--color-surface)',
             border: overIdx === idx ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
             borderRadius: 12,
             padding: 14,
@@ -133,7 +133,7 @@ export function RepeaterShell<T extends Record<string, unknown>>({
         onClick={() => onChange([...items, createItem()])}
         style={{
           alignSelf: 'flex-start', height: 36, padding: '0 12px', borderRadius: 10,
-          border: '1px dashed var(--color-primary)', background: '#FFF7ED', color: 'var(--color-primary)',
+          border: '1px dashed var(--color-primary)', background: '#FFF7ED', color: '#D4813A',
           fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
           display: 'inline-flex', alignItems: 'center', gap: 6,
         }}
@@ -147,7 +147,7 @@ export function RepeaterShell<T extends Record<string, unknown>>({
 function iconBtnStyle(disabled: boolean): CSSProperties {
   return {
     height: 28, width: 28, borderRadius: 8, border: '1px solid var(--color-border)',
-    background: '#fff', cursor: disabled ? 'not-allowed' : 'pointer',
+    background: 'var(--color-surface)', cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.4 : 1, display: 'inline-flex', alignItems: 'center',
     justifyContent: 'center', color: 'var(--color-text-secondary)', padding: 0,
   };

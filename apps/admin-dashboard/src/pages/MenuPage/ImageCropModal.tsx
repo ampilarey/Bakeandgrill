@@ -104,7 +104,7 @@ function ImageCropModalBody({
       }}
     >
       <div style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: 16,
         padding: 24,
         width: '100%',

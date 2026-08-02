@@ -339,7 +339,7 @@ export function InvoicesPage() {
     height: 36, padding: '0 10px',
     border: '1.5px solid var(--color-border)', borderRadius: 10,
     fontSize: 13, fontFamily: 'inherit',
-    background: '#fff', color: 'var(--color-text)', outline: 'none', cursor: 'pointer',
+    background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer',
   };
 
   return (
@@ -562,7 +562,7 @@ export function InvoicesPage() {
             <select
               value={payMethod}
               onChange={(e) => setPayMethod(e.target.value)}
-              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none' }}
+              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none' }}
             >
               {ADMIN_INVOICE_PAYMENT_METHODS.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -583,7 +583,7 @@ export function InvoicesPage() {
             <>
               <p style={{ color: '#047857', fontWeight: 600, marginBottom: 8 }}>✓ Invoice sent!</p>
               <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Public link:</p>
-              <div style={{ background: '#F9F5F0', borderRadius: 8, padding: '10px 12px', fontSize: 12, wordBreak: 'break-all', marginBottom: 16, color: 'var(--color-text)' }}>
+              <div style={{ background: '#F9F5F0', borderRadius: 8, padding: '10px 12px', fontSize: 12, wordBreak: 'break-all', marginBottom: 16, color: '#1C1408' }}>
                 {smsResult.link}
               </div>
               <ModalActions>
@@ -606,7 +606,7 @@ export function InvoicesPage() {
                   value={smsPhone}
                   onChange={(e) => setSmsPhone(e.target.value)}
                   placeholder="7654321"
-                  style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
               {smsError && <p style={{ color: 'var(--color-danger)', fontSize: 13, marginBottom: 8 }}>{smsError}</p>}
@@ -669,7 +669,7 @@ export function InvoicesPage() {
                 type={type}
                 value={editForm[key]}
                 onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
-                style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
           ))}
@@ -778,7 +778,7 @@ export function InvoicesPage() {
               value={cnForm.reason}
               onChange={(e) => setCnForm((f) => ({ ...f, reason: e.target.value }))}
               placeholder="e.g. Overcharge, returned item…"
-              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -788,7 +788,7 @@ export function InvoicesPage() {
               value={cnForm.amount}
               onChange={(e) => setCnForm((f) => ({ ...f, amount: e.target.value }))}
               placeholder="0.00"
-              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
           <ModalActions>

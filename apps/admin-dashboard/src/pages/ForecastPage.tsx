@@ -1168,7 +1168,7 @@ export function ForecastPage() {
                 <select
                   value={itemForecastDays}
                   onChange={(e) => setItemForecastDays(Number(e.target.value))}
-                  style={{ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}
+                  style={{ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', cursor: 'pointer' }}
                 >
                   {[7, 14, 30].map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
@@ -1341,7 +1341,7 @@ export function ForecastPage() {
                       onClick={() => void snoozeSelectedRestock(d)}
                       style={{
                         padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
-                        background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        background: 'var(--color-surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', color: 'var(--color-text-secondary)',
                       }}
                     >
@@ -1355,7 +1355,7 @@ export function ForecastPage() {
                       onClick={() => void wakeSelectedRestock()}
                       style={{
                         padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
-                        background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        background: 'var(--color-surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', color: '#374151',
                       }}
                     >
@@ -1369,7 +1369,7 @@ export function ForecastPage() {
                       onClick={() => void excludeSelectedRestock()}
                       style={{
                         padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
-                        background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        background: 'var(--color-surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', color: '#6B7280',
                       }}
                     >
@@ -1383,7 +1383,7 @@ export function ForecastPage() {
                       onClick={() => void includeSelectedRestock()}
                       style={{
                         padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
-                        background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        background: 'var(--color-surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', color: '#16a34a',
                       }}
                     >
@@ -1420,7 +1420,7 @@ export function ForecastPage() {
                       onClick={() => void saveSelectedOrderQtys()}
                       style={{
                         marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: '1px solid #FED7AA',
-                        background: '#fff', color: '#c2410c', fontSize: 11, fontWeight: 700,
+                        background: 'var(--color-surface)', color: '#c2410c', fontSize: 11, fontWeight: 700,
                         cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
@@ -1569,7 +1569,7 @@ export function ForecastPage() {
                                   onClick={() => void setRestockExcluded(item, false)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
+                                    border: '1px solid #D1D5DB', background: 'var(--color-surface)', color: '#374151',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1595,7 +1595,7 @@ export function ForecastPage() {
                                   onClick={() => void clearRestockSnooze(item)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
+                                    border: '1px solid #D1D5DB', background: 'var(--color-surface)', color: '#374151',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1671,7 +1671,7 @@ export function ForecastPage() {
                                   onClick={() => void dismissReorderAlert(item)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #fecaca', background: '#fff', color: '#991b1b',
+                                    border: '1px solid #fecaca', background: 'var(--color-surface)', color: '#991b1b',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1818,7 +1818,7 @@ export function ForecastPage() {
                                 border: qtyIsEdited(item) || qtyHasSavedPack(item) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                                 fontSize: 12, fontFamily: 'inherit', fontWeight: 700,
                                 color: '#16a34a',
-                                background: qtyIsEdited(item) ? '#FFF7ED' : qtyHasSavedPack(item) ? '#FFFBEB' : '#fff',
+                                background: qtyIsEdited(item) ? '#FFF7ED' : qtyHasSavedPack(item) ? '#FFFBEB' : 'var(--color-surface)',
                               }}
                             />
                             <span style={{ color: 'var(--color-text-muted)' }}>{item.unit}</span>

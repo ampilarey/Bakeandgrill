@@ -171,28 +171,28 @@ export default function ProcurementReportPage() {
           </div>
 
           <div className="form-grid-2" data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
+            <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Spend by category</h3>
               {data.spend_by_category.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No expenses.</p> : null}
               {data.spend_by_category.map((r) => (
                 <BarRow key={r.category} label={r.category} value={r.amount_laar} max={maxCat} suffix={`MVR ${mvr(r.amount_laar)}`} />
               ))}
             </section>
-            <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
+            <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Spend by supplier</h3>
               {data.spend_by_supplier.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No supplier spend.</p> : null}
               {data.spend_by_supplier.map((r) => (
                 <BarRow key={`${r.supplier_id}-${r.supplier}`} label={r.supplier} value={r.expense_laar} max={maxSup} suffix={`MVR ${mvr(r.expense_laar)}`} />
               ))}
             </section>
-            <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
+            <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Spend by buyer</h3>
               {data.spend_by_buyer.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No buyer totals.</p> : null}
               {data.spend_by_buyer.map((r) => (
                 <BarRow key={`${r.buyer_id}`} label={r.buyer} value={r.bought_laar} max={maxBuyer} suffix={`MVR ${mvr(r.bought_laar)} · ${r.request_count} PR`} />
               ))}
             </section>
-            <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
+            <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Item price trend</h3>
               <PriceTrendChart points={data.price_trend} />
             </section>

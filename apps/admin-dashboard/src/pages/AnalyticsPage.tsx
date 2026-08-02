@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {forecast.map((f) => (
             <div key={f.date} style={{
-              background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12,
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12,
               padding: '16px 20px', minWidth: 90, textAlign: 'center',
               boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
             }}>

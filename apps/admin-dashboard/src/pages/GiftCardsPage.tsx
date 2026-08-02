@@ -335,7 +335,7 @@ export default function GiftCardsPage() {
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
+          style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)' }}
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -361,7 +361,7 @@ export default function GiftCardsPage() {
         <StatCard label="Active Balance" value={`MVR ${Number(meta.active_balance ?? 0).toFixed(2)}`} accent="#8b5cf6" />
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: 20, marginBottom: 24 }}>
+      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 20, marginBottom: 24 }}>
         <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px', fontSize: 14 }}>Check Balance</p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <input

@@ -324,7 +324,7 @@ export function PurchaseOrdersPage() {
           style={{
             height: 36, minWidth: 220, padding: '0 12px',
             border: '1.5px solid var(--color-border)', borderRadius: 10,
-            fontSize: 13, fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)', outline: 'none',
+            fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none',
           }}
         />
         <Btn variant="secondary" onClick={load}>↻ Refresh</Btn>
@@ -370,7 +370,7 @@ export function PurchaseOrdersPage() {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {group.items.map((item) => (
-                    <div key={item.inventory_item_id} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
+                    <div key={item.inventory_item_id} style={{ background: 'var(--color-surface)', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
                       <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.name}</span>
                       <span style={{ color: 'var(--color-danger)', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
                       <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>

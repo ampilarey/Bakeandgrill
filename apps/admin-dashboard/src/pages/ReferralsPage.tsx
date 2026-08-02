@@ -134,7 +134,7 @@ export default function ReferralsPage() {
               onKeyDown={(e) => e.key === 'Enter' && void handleCheck()}
               style={{
                 width: '100%', height: 38, padding: '0 12px', border: '1.5px solid #E8E0D8',
-                borderRadius: 10, fontSize: 14, fontFamily: 'monospace', background: '#fff',
+                borderRadius: 10, fontSize: 14, fontFamily: 'monospace', background: 'var(--color-surface)',
                 outline: 'none', boxSizing: 'border-box', textTransform: 'uppercase', letterSpacing: '0.08em',
               }}
             />

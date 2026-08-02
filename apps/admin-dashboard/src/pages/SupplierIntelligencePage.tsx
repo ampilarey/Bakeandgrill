@@ -197,7 +197,7 @@ export function SupplierIntelligencePage() {
               width: 36, height: 36, borderRadius: '50%',
               border: `2px solid ${rateForm[field] === n ? 'var(--color-warning)' : 'var(--color-border)'}`,
               cursor: 'pointer', fontWeight: 700, fontSize: 14,
-              background: rateForm[field] === n ? 'var(--color-warning)' : '#fff',
+              background: rateForm[field] === n ? 'var(--color-warning)' : 'var(--color-surface)',
               color: rateForm[field] === n ? '#fff' : 'var(--color-text-secondary)',
             }}
           >

@@ -266,7 +266,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                   style={{
                     width: '100%', boxSizing: 'border-box', minHeight: 32,
                     border: '1px solid #E8E0D8', borderRadius: 6, padding: '4px 6px',
-                    fontSize: 11, fontFamily: 'inherit', color: '#1C1408', background: '#fff',
+                    fontSize: 11, fontFamily: 'inherit', color: '#1C1408', background: 'var(--color-surface)',
                   }}
                 />
               </div>

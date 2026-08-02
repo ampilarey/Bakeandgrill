@@ -62,7 +62,7 @@ export function TagChipField({
                 padding: '0 12px',
                 borderRadius: 999,
                 border: on ? '2px solid #D4813A' : '1.5px solid #E8E0D8',
-                background: on ? '#FEF3E8' : '#fff',
+                background: on ? '#FEF3E8' : 'var(--color-surface)',
                 color: on ? '#B86820' : '#6B5D4F',
                 fontSize: 12,
                 fontWeight: 700,

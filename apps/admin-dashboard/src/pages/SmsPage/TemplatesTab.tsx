@@ -137,7 +137,7 @@ export function TemplatesTab() {
                 </div>
               </div>
               {preview?.templateId === t.id && (
-                <div style={{ marginTop: 10, background: '#fff', border: '1px solid #D4813A', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#3B2A1A' }}>
+                <div style={{ marginTop: 10, background: 'var(--color-surface)', border: '1px solid #D4813A', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#3B2A1A' }}>
                   <strong style={{ fontSize: 11, color: '#D4813A' }}>PREVIEW:</strong> {preview.text}
                 </div>
               )}

@@ -32,7 +32,7 @@ export function Card({
     <div
       className={className}
       style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
         borderRadius: 14,
         padding: '1.25rem',
@@ -294,7 +294,7 @@ export function Input({ label, id, style, onChange, ...rest }: InputProps) {
           minHeight: 44, height: 44, padding: '0 0.75rem',
           border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: '0.9rem', fontFamily: 'inherit',
-          background: '#fff', color: 'var(--color-text)',
+          background: 'var(--color-surface)', color: 'var(--color-text)',
           outline: 'none',
           ...style,
         }}
@@ -323,7 +323,7 @@ export function Select({ options, value, onChange, label, style, ...rest }: Sele
           minHeight: 44, height: 44, padding: '0 0.75rem',
           border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: '0.875rem', fontFamily: 'inherit',
-          background: '#fff', color: 'var(--color-text)',
+          background: 'var(--color-surface)', color: 'var(--color-text)',
           cursor: 'pointer', outline: 'none',
           ...style,
         }}
@@ -457,7 +457,7 @@ export function StatCard({
 }) {
   return (
     <div style={{
-      background: '#fff',
+      background: 'var(--color-surface)',
       border: '1px solid var(--color-border)',
       borderRadius: 14,
       padding: '16px 20px',
@@ -508,7 +508,7 @@ export function StatCard({
 export function TableCard({ children, stickyHead }: { children: ReactNode; stickyHead?: boolean }) {
   return (
     <div style={{
-      background: '#fff', border: '1px solid var(--color-border)',
+      background: 'var(--color-surface)', border: '1px solid var(--color-border)',
       borderRadius: 14, overflow: 'hidden',
       boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
     }}>
@@ -547,7 +547,7 @@ export function DateInput({ value, onChange, label, max }: {
           height: 36, padding: '0 10px',
           border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: 13, fontFamily: 'inherit',
-          background: '#fff', color: 'var(--color-text)', outline: 'none',
+          background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none',
         }}
       />
     </div>
@@ -656,7 +656,7 @@ export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; clo
       <div
         className="modal-container"
         style={{
-          background: '#fff', borderRadius: 14, padding: '1.75rem',
+          background: 'var(--color-surface)', borderRadius: 14, padding: '1.75rem',
           maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
         }}
         onClick={(e) => e.stopPropagation()}

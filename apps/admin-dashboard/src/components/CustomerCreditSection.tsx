@@ -393,7 +393,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Open invoices</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {openInvoices.map((inv) => (
-                  <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #F0EAE3', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
+                  <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid #F0EAE3', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
                     <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
                       {inv.invoice_number}
                     </Link>
@@ -503,7 +503,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
                 {ledger.map((row) => (
-                  <div key={row.id} style={{ fontSize: 12, padding: '6px 8px', background: '#fff', borderRadius: 6, border: '1px solid #F0EAE3' }}>
+                  <div key={row.id} style={{ fontSize: 12, padding: '6px 8px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid #F0EAE3' }}>
                     <span style={{ fontWeight: 700, textTransform: 'capitalize' }}>{row.type.replace('_', ' ')}</span>
                     {' · '}
                     <span style={{ color: row.amount_mvr >= 0 ? '#B45309' : '#059669' }}>

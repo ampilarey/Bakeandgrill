@@ -109,7 +109,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 </table>
                 </ResponsiveTable>
                 {(summary.collected != null || summary.on_credit != null) && (
-                  <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Collected</span>
                       <strong style={{ color: 'var(--color-text)' }}>{mvr(summary.collected ?? 0)}</strong>
@@ -488,7 +488,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                         </table>
                         </ResponsiveTable>
                         {(data.collected != null || data.on_credit != null) && (
-                          <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                          <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>Collected</span>
                               <strong style={{ color: 'var(--color-text)' }}>{mvr(data.collected ?? 0)}</strong>

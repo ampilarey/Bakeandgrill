@@ -206,7 +206,7 @@ const selectStyle: React.CSSProperties = {
   border: '1.5px solid #E8E0D8',
   fontSize: 13,
   fontFamily: 'inherit',
-  background: '#fff',
+  background: 'var(--color-surface)',
 };
 
 function detailSnippet(row: AuditLogRow): string {

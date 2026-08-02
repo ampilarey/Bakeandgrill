@@ -704,7 +704,7 @@ function ServiceCard({
     <div
       className="svc-avail-card"
       style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         border: `1.5px solid ${down ? '#fecaca' : 'var(--color-border)'}`,
         borderRadius: 12,
         padding: 14,
@@ -1050,7 +1050,7 @@ function TabBtn({
         padding: '0 12px',
         borderRadius: 10,
         border: active ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
-        background: active ? '#fff7ed' : '#fff',
+        background: active ? '#fff7ed' : 'var(--color-surface)',
         color: active ? '#c2410c' : 'var(--color-text-secondary)',
         fontWeight: 700,
         fontSize: 13,
@@ -1240,5 +1240,5 @@ const textareaStyle: CSSProperties = {
   resize: 'vertical',
   boxSizing: 'border-box',
   color: 'var(--color-text)',
-  background: '#fff',
+  background: 'var(--color-surface)',
 };

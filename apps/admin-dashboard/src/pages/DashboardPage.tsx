@@ -89,7 +89,7 @@ function OrderCard({ order, now }: { order: Order; now: number }) {
 
   return (
     <div style={{
-      background: '#fff',
+      background: 'var(--color-surface)',
       border: `1.5px solid ${urgent ? 'var(--color-danger)' : 'var(--color-border)'}`,
       borderRadius: 12,
       padding: '12px 14px',
@@ -1095,7 +1095,7 @@ export function DashboardPage() {
                 const pct = summary.revenue > 0 ? (t.revenue / summary.revenue) * 100 : 0;
                 return (
                   <div key={t.type} style={{
-                    background: '#fff', borderRadius: 10, padding: '11px 16px',
+                    background: 'var(--color-surface)', borderRadius: 10, padding: '11px 16px',
                     border: '1px solid var(--color-border)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>

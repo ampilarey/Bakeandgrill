@@ -67,7 +67,7 @@ const btnStyle: CSSProperties = {
   padding: '0 10px',
   borderRadius: 8,
   border: '1px solid var(--color-border)',
-  background: '#fff',
+  background: 'var(--color-surface)',
   fontSize: 12,
   cursor: 'pointer',
   fontFamily: 'inherit',
@@ -401,7 +401,7 @@ export function HeroSlidesEditor({
                       value={String(slide[f.key] ?? '')}
                       onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
                       placeholder={f.placeholder}
-                      style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }}
+                      style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }}
                     />
                   </div>
                 ))}

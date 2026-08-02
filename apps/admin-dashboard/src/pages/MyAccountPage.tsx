@@ -113,7 +113,7 @@ export function MyAccountPage() {
             onChange={(e) => setIdleLockMinutes(Number(e.target.value))}
             style={{
               width: '100%', padding: '10px 12px', borderRadius: 8,
-              border: '1px solid #E8E0D8', fontSize: 14, background: '#fff',
+              border: '1px solid #E8E0D8', fontSize: 14, background: 'var(--color-surface)',
             }}
           >
             {LOCK_OPTIONS.map((opt) => (

@@ -39,7 +39,7 @@ export function HeroSlideEditor({ label, description, uploadKey, value, onChange
             value={parsed.image ?? ''}
             onChange={(e) => update('image', e.target.value)}
             placeholder="/images/cafe/filename.jpg"
-            style={{ flex: 1, minWidth: 160, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-secondary)' }}
+            style={{ flex: 1, minWidth: 160, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text-secondary)' }}
           />
         </div>
       </div>
@@ -48,7 +48,7 @@ export function HeroSlideEditor({ label, description, uploadKey, value, onChange
           <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: f.col === 'full' ? '1 / -1' : undefined }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{f.label}</label>
             <input value={parsed[f.key] ?? ''} onChange={(e) => update(f.key, e.target.value)} placeholder={f.placeholder}
-              style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
+              style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
           </div>
         ))}
       </div>

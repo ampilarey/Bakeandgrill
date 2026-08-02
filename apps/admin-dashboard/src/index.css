@@ -857,10 +857,9 @@ a { text-decoration: none; color: inherit; }
   color: var(--color-text);
 }
 
-/* Make white card surfaces dark */
-[data-theme="dark"] .bg-white,
-[data-theme="dark"] [style*="background: #fff"],
-[data-theme="dark"] [style*="background: white"] {
+/* Make white card surfaces dark (Tailwind bg-white class only —
+   React serialises inline styles as rgb(), so attribute selectors never matched) */
+[data-theme="dark"] .bg-white {
   background: var(--color-surface) !important;
 }
 

@@ -68,7 +68,7 @@ export function LivePreviewFrame({ url, loading }: Props) {
               height: 560,
               border: 'none',
               borderRadius: 10,
-              background: '#fff',
+              background: 'var(--color-surface)',
             }}
           />
         )}

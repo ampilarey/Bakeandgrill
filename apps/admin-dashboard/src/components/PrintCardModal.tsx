@@ -42,7 +42,7 @@ function CardFace({ data, size }: { data: PrintCardData; size: CardSize }) {
     <div
       style={{
         width: w, height: h,
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: 8,
         overflow: 'hidden',
         position: 'relative',
@@ -90,7 +90,7 @@ function CardFace({ data, size }: { data: PrintCardData; size: CardSize }) {
 
         {/* Right: QR code */}
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <div style={{ background: '#fff', padding: 3, borderRadius: 4, border: '1px solid var(--color-border)' }}>
+          <div style={{ background: 'var(--color-surface)', padding: 3, borderRadius: 4, border: '1px solid var(--color-border)' }}>
             <QRCodeSVG value={data.code} size={qrSize} level="M" />
           </div>
           <div style={{ fontSize: Math.max(5, h * 0.08), color: '#C0B4A8' }}>Scan or enter code</div>

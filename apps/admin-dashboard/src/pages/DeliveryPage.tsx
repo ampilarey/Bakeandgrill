@@ -111,7 +111,7 @@ export function DeliveryPage() {
             style={{
               padding: '8px 20px', borderRadius: 10, border: '1.5px solid',
               borderColor: tab === t ? 'var(--color-primary)' : '#e5e7eb',
-              background: tab === t ? 'var(--color-primary)' : 'white',
+              background: tab === t ? 'var(--color-primary)' : 'var(--color-surface)',
               color: tab === t ? 'white' : '#374151',
               fontWeight: 600, fontSize: 14, cursor: 'pointer',
               fontFamily: 'inherit',
@@ -431,7 +431,7 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
         style={{
           width: '100%', padding: '6px 10px', borderRadius: 8,
           border: '1.5px solid #e5e7eb', fontSize: 13, color: '#374151',
-          background: saving ? '#f9fafb' : 'white', cursor: 'pointer', fontFamily: 'inherit',
+          background: saving ? '#f9fafb' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit',
         }}
       >
         <option value="" disabled>🛵 Assign driver…</option>

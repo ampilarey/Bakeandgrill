@@ -77,7 +77,7 @@ const tabBtn = (active: boolean): CSSProperties => ({
   fontWeight: active ? 700 : 500,
   fontSize: 13,
   border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-  background: active ? '#FFF7ED' : '#fff',
+  background: active ? '#FFF7ED' : 'var(--color-surface)',
   color: active ? '#9A3412' : 'var(--color-text-secondary)',
 });
 

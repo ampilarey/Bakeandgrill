@@ -115,7 +115,7 @@ export function AutomationsTab() {
               return (
                 <div key={event.key} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: '#fff', border: '1px solid #E8E0D8', borderRadius: 10, padding: '12px 16px',
+                  background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 10, padding: '12px 16px',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ color: '#D4813A' }}>{event.icon}</span>
@@ -135,7 +135,7 @@ export function AutomationsTab() {
                   >
                     <span style={{
                       position: 'absolute', top: 3, left: enabled ? 22 : 3,
-                      width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+                      width: 18, height: 18, borderRadius: '50%', background: 'var(--color-surface)', transition: 'left 0.2s',
                     }} />
                   </button>
                 </div>

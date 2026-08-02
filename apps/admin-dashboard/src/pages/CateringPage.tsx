@@ -92,7 +92,7 @@ export function CateringPage() {
               to={`/catering/${row.id}`}
               data-testid={`catering-row-${row.id}`}
               style={{
-                background: '#fff',
+                background: 'var(--color-surface)',
                 border: '1px solid #E8E0D8',
                 borderRadius: 12,
                 padding: 16,

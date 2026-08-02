@@ -288,7 +288,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
     }
   };
 
-  const panel: CSSProperties = { padding: 14, borderRadius: 12, background: '#fff', border: '1px solid #E8E0D8' };
+  const panel: CSSProperties = { padding: 14, borderRadius: 12, background: 'var(--color-surface)', border: '1px solid #E8E0D8' };
   const label: CSSProperties = { fontSize: 11, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 };
   const input: CSSProperties = { minHeight: 40, width: '100%', borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' };
 
@@ -330,7 +330,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                 onClick={() => setSelected([el.id])}
                 style={{
                   minHeight: 32, textAlign: 'left', borderRadius: 8, border: selected.includes(el.id) ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
-                  background: selected.includes(el.id) ? '#FFF7ED' : '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, padding: '0 8px',
+                  background: selected.includes(el.id) ? '#FFF7ED' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, padding: '0 8px',
                   display: 'flex', alignItems: 'center', gap: 6,
                 }}
               >

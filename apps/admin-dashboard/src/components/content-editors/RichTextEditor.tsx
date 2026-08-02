@@ -70,7 +70,7 @@ export function RichTextEditor({ label, description, value, onChange }: ContentE
         onInput={emit}
         style={{
           minHeight: 88, borderRadius: 10, border: '1px solid var(--color-border)', padding: 12,
-          fontSize: 14, fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)',
+          fontSize: 14, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)',
         }}
       />
     </div>

@@ -32,7 +32,7 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 10,
   fontSize: 13,
   fontFamily: 'inherit',
-  background: '#fff',
+  background: 'var(--color-surface)',
   color: '#1C1408',
   outline: 'none',
   width: '100%',
@@ -56,7 +56,7 @@ const fieldStyle: React.CSSProperties = {
 };
 
 const cardStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--color-surface)',
   border: '1px solid #E8E0D8',
   borderRadius: 16,
   padding: '24px',
@@ -133,7 +133,7 @@ function ReservationsList() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            style={{ height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none', cursor: 'pointer' }}
+            style={{ height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: '#1C1408', outline: 'none', cursor: 'pointer' }}
           >
             <option value="">All Statuses</option>
             {['pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no_show'].map((s) => (

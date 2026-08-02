@@ -268,7 +268,7 @@ export function CustomerGrowthPage() {
                 style={{
                   textAlign: 'left', padding: 12, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
                   border: activeSegment === s.slug ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: activeSegment === s.slug ? '#FEF3E2' : '#fff',
+                  background: activeSegment === s.slug ? '#FEF3E2' : 'var(--color-surface)',
                 }}
               >
                 <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>{s.label}</p>

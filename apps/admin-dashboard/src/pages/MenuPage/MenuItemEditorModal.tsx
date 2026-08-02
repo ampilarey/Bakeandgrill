@@ -622,7 +622,7 @@ export function MenuItemEditorModal({
                     }}
                     style={{
                       minHeight: 44, border: '1px solid var(--color-border)', borderRadius: 8,
-                      background: '#fff', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-muted)',
+                      background: 'var(--color-surface)', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-muted)',
                     }}
                     aria-label="Remove packaging option"
                   >
@@ -671,7 +671,7 @@ export function MenuItemEditorModal({
                     </Field>
                     <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>Included items</p>
                     {form.combo_items.map((row, idx) => (
-                      <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: '#fff' }}>
+                      <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-surface)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Component {idx + 1}</span>
                           <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>Remove</Btn>

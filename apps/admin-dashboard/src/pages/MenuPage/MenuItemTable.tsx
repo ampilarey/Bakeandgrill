@@ -114,7 +114,7 @@ export function MenuItemTable({
         <label style={{
           display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6B5D4F',
           padding: '8px 12px', borderRadius: 9, border: '1px solid #E8E0D8',
-          background: cateringOnly ? '#FEF3E8' : '#fff', cursor: 'pointer', minHeight: 44,
+          background: cateringOnly ? '#FEF3E8' : 'var(--color-surface)', cursor: 'pointer', minHeight: 44,
         }}>
           <input
             type="checkbox"
@@ -219,7 +219,7 @@ export function MenuItemTable({
                       >
                         <span style={{
                           position: 'absolute', top: 2, width: 20, height: 20, borderRadius: '50%',
-                          background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                          background: 'var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                           transition: 'left 0.2s',
                           left: item.is_available ? 22 : 2,
                         }} />
