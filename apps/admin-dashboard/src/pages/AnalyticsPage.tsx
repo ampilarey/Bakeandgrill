@@ -81,13 +81,13 @@ export default function AnalyticsPage() {
                 <div
                   style={{
                     width: '100%', borderRadius: '4px 4px 0 0',
-                    background: '#D4813A',
+                    background: 'var(--color-primary)',
                     height: `${Math.max((h.count / maxCount) * 100, h.count > 0 ? 4 : 0)}px`,
                     transition: 'height 0.3s ease',
                   }}
                   title={`${h.label}: ${h.count} orders`}
                 />
-                <span style={{ fontSize: 10, color: '#9C8E7E' }}>{h.hour}</span>
+                <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{h.hour}</span>
               </div>
             ))}
           </div>
@@ -100,18 +100,18 @@ export default function AnalyticsPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {forecast.map((f) => (
             <div key={f.date} style={{
-              background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12,
+              background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12,
               padding: '16px 20px', minWidth: 90, textAlign: 'center',
               boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
             }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>{f.day}</div>
-              <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 6 }}>{f.date?.slice(5) ?? ''}</div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#D4813A' }}>{f.avg_orders}</div>
-              <div style={{ fontSize: 11, color: '#9C8E7E' }}>orders</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>{f.day}</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6 }}>{f.date?.slice(5) ?? ''}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)' }}>{f.avg_orders}</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>orders</div>
             </div>
           ))}
           {forecast.length === 0 && (
-            <div style={{ color: '#9C8E7E', fontSize: 13, padding: '16px 0' }}>No forecast data available.</div>
+            <div style={{ color: 'var(--color-text-muted)', fontSize: 13, padding: '16px 0' }}>No forecast data available.</div>
           )}
         </div>
       </div>
@@ -130,13 +130,13 @@ export default function AnalyticsPage() {
               <tbody>
                 {retention.slice(-8).map((r) => (
                   <tr key={r.week}>
-                    <td style={{ ...TD, color: '#6B5D4F' }}>{r.week}</td>
-                    <td style={{ ...TD, color: '#22c55e', fontWeight: 700 }}>{r.new}</td>
-                    <td style={{ ...TD, color: '#D4813A', fontWeight: 700 }}>{r.returning}</td>
+                    <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{r.week}</td>
+                    <td style={{ ...TD, color: 'var(--color-success)', fontWeight: 700 }}>{r.new}</td>
+                    <td style={{ ...TD, color: 'var(--color-primary)', fontWeight: 700 }}>{r.returning}</td>
                   </tr>
                 ))}
                 {retention.length === 0 && (
-                  <tr><td colSpan={3} style={{ ...TD, color: '#9C8E7E', textAlign: 'center' }}>No data yet.</td></tr>
+                  <tr><td colSpan={3} style={{ ...TD, color: 'var(--color-text-muted)', textAlign: 'center' }}>No data yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -155,13 +155,13 @@ export default function AnalyticsPage() {
               <tbody>
                 {ltvCustomers.slice(0, 8).map((c) => (
                   <tr key={c.id}>
-                    <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{c.name}</td>
-                    <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{c.order_count}</td>
-                    <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(c.total_spent ?? 0)).toFixed(2)}</td>
+                    <td style={{ ...TD, fontWeight: 600, color: 'var(--color-text)' }}>{c.name}</td>
+                    <td style={{ ...TD, color: 'var(--color-text-secondary)', textAlign: 'center' }}>{c.order_count}</td>
+                    <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(c.total_spent ?? 0)).toFixed(2)}</td>
                   </tr>
                 ))}
                 {ltvCustomers.length === 0 && (
-                  <tr><td colSpan={3} style={{ ...TD, color: '#9C8E7E', textAlign: 'center' }}>No data yet.</td></tr>
+                  <tr><td colSpan={3} style={{ ...TD, color: 'var(--color-text-muted)', textAlign: 'center' }}>No data yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -184,19 +184,19 @@ export default function AnalyticsPage() {
             <tbody>
               {profitItems.slice(0, 15).map((item) => (
                 <tr key={item.id}>
-                  <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>{item.name}</td>
-                  <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{item.total_qty}</td>
-                  <td style={{ ...TD, color: '#1C1408' }}>MVR {parseFloat(String(item.total_revenue ?? 0)).toFixed(2)}</td>
-                  <td style={{ ...TD, fontWeight: 700, color: item.gross_profit >= 0 ? '#22c55e' : '#ef4444' }}>
+                  <td style={{ ...TD, fontWeight: 600, color: 'var(--color-text)' }}>{item.name}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', textAlign: 'center' }}>{item.total_qty}</td>
+                  <td style={{ ...TD, color: 'var(--color-text)' }}>MVR {parseFloat(String(item.total_revenue ?? 0)).toFixed(2)}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: item.gross_profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                     MVR {parseFloat(String(item.gross_profit ?? 0)).toFixed(2)}
                   </td>
-                  <td style={{ ...TD, fontWeight: 700, color: item.margin_pct >= 50 ? '#22c55e' : item.margin_pct >= 20 ? '#D4813A' : '#ef4444' }}>
+                  <td style={{ ...TD, fontWeight: 700, color: item.margin_pct >= 50 ? 'var(--color-success)' : item.margin_pct >= 20 ? 'var(--color-primary)' : 'var(--color-danger)' }}>
                     {item.margin_pct}%
                   </td>
                 </tr>
               ))}
               {profitItems.length === 0 && (
-                <tr><td colSpan={5} style={{ ...TD, color: '#9C8E7E', textAlign: 'center' }}>No profitability data yet.</td></tr>
+                <tr><td colSpan={5} style={{ ...TD, color: 'var(--color-text-muted)', textAlign: 'center' }}>No profitability data yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -208,9 +208,9 @@ export default function AnalyticsPage() {
         <div style={{ marginTop: 24 }}>
           <SectionLabel>Summary</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-            <StatCard label="Top Customer Spend" value={`MVR ${parseFloat(String(ltvCustomers[0]?.total_spent ?? 0)).toFixed(2)}`} accent="#D4813A" />
+            <StatCard label="Top Customer Spend" value={`MVR ${parseFloat(String(ltvCustomers[0]?.total_spent ?? 0)).toFixed(2)}`} accent="var(--color-primary)" />
             <StatCard label="Unique Customers" value={String(ltvCustomers.length)} accent="#8b5cf6" />
-            <StatCard label="Menu Items Tracked" value={String(profitItems.length)} accent="#22c55e" />
+            <StatCard label="Menu Items Tracked" value={String(profitItems.length)} accent="var(--color-success)" />
           </div>
         </div>
       )}
