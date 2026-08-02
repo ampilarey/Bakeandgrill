@@ -99,12 +99,12 @@ export function ContentImageField({
             src={imageUrl}
             alt={imageAlt || ''}
             style={{
-              height: 54, width: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid #E8E0D8', flexShrink: 0,
+              height: 54, width: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--color-border)', flexShrink: 0,
               objectPosition: `${focalX}% ${focalY}%`,
             }}
           />
         ) : (
-          <div style={{ height: 54, width: 90, borderRadius: 8, border: '1.5px dashed #E8E0D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9C8E7E', fontSize: 11, flexShrink: 0 }}>No image</div>
+          <div style={{ height: 54, width: 90, borderRadius: 8, border: '1.5px dashed var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 11, flexShrink: 0 }}>No image</div>
         )}
         <Button variant="secondary" size="sm" icon={<Upload size={13} />} onClick={() => inputRef.current?.click()} disabled={busy}>
           {busy ? 'Uploading…' : 'Crop & upload'}
@@ -121,21 +121,21 @@ export function ContentImageField({
           value={imageAlt}
           onChange={(e) => onChange({ image_alt: e.target.value })}
           placeholder="Alt text (accessibility)"
-          style={{ height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 12, fontFamily: 'inherit' }}
+          style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 12, fontFamily: 'inherit' }}
         />
       ) : null}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <label style={{ fontSize: 11, color: '#6B5D4F' }}>Focal X%</label>
+        <label style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Focal X%</label>
         <input
           type="number" min={0} max={100} value={Number(focalX) || 50}
           onChange={(e) => onChange({ image_focal_x: Number(e.target.value) })}
-          style={{ width: 64, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 8px', fontFamily: 'inherit' }}
+          style={{ width: 64, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontFamily: 'inherit' }}
         />
-        <label style={{ fontSize: 11, color: '#6B5D4F' }}>Focal Y%</label>
+        <label style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Focal Y%</label>
         <input
           type="number" min={0} max={100} value={Number(focalY) || 50}
           onChange={(e) => onChange({ image_focal_y: Number(e.target.value) })}
-          style={{ width: 64, height: 32, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 8px', fontFamily: 'inherit' }}
+          style={{ width: 64, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontFamily: 'inherit' }}
         />
       </div>
       {error ? <p style={{ margin: 0, fontSize: 12, color: '#B91C1C' }}>{error}</p> : null}
