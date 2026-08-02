@@ -12,12 +12,12 @@ import {
 import type { ShiftHistoryRow } from '../api/pos-admin';
 
 const S = {
-  input: { width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
-  label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: '#6B5D4F', marginBottom: 4 },
+  input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
+  label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: 'var(--color-text-secondary)', marginBottom: 4 },
   tab: (active: boolean): React.CSSProperties => ({
     padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 700 : 400,
-    background: active ? '#D4813A' : 'transparent', color: active ? '#fff' : '#6B5D4F',
+    background: active ? 'var(--color-primary)' : 'transparent', color: active ? '#fff' : 'var(--color-text-secondary)',
   }),
 };
 
@@ -66,17 +66,17 @@ function AdminShiftTable({
               id={highlighted ? `shift-${s.id}` : undefined}
               style={{
                 background: highlighted ? '#FEF8F2' : stale ? '#FEF3C7' : undefined,
-                outline: highlighted ? '2px solid #D4813A' : undefined,
+                outline: highlighted ? '2px solid var(--color-primary)' : undefined,
                 outlineOffset: -2,
               }}
             >
-              <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: highlighted ? '#D4813A' : '#1C1408' }}>
+              <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: highlighted ? 'var(--color-primary)' : 'var(--color-text)' }}>
                 #{s.id}
               </td>
               <td style={{ ...TD, fontWeight: 600, color: stale ? '#92400e' : undefined }}>
                 {stale && <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
                 {s.user_id ? (
-                  <Link to={`/staff?staff=${s.user_id}`} style={{ color: stale ? '#92400e' : '#D4813A', textDecoration: 'none' }}>
+                  <Link to={`/staff?staff=${s.user_id}`} style={{ color: stale ? '#92400e' : 'var(--color-primary)', textDecoration: 'none' }}>
                     {s.user?.name ?? `#${s.user_id}`}
                   </Link>
                 ) : (
@@ -84,8 +84,8 @@ function AdminShiftTable({
                 )}
               </td>
               <td style={TD}>{s.device?.name ?? '—'}</td>
-              <td style={{ ...TD, fontSize: 12, color: stale ? '#92400e' : '#9C8E7E' }}>{new Date(s.opened_at).toLocaleString()}</td>
-              <td style={{ ...TD, fontSize: 12, color: '#9C8E7E' }}>
+              <td style={{ ...TD, fontSize: 12, color: stale ? '#92400e' : 'var(--color-text-muted)' }}>{new Date(s.opened_at).toLocaleString()}</td>
+              <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-muted)' }}>
                 {s.closed_at ? new Date(s.closed_at).toLocaleString() : stale ? 'Still open — close shift' : '—'}
               </td>
               <td style={TD}>{formatMVR(s.opening_cash)}</td>
@@ -199,9 +199,9 @@ export default function ShiftsPage() {
     <PageShell>
     <div>
       <PageHeader section="Team" title="Shifts & Cash Drawer" />
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
-      <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 16px' }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 16px' }}>
         To open or close your own shift and record cash movements, use the <strong>POS terminal</strong>.
       </p>
 
@@ -216,10 +216,10 @@ export default function ShiftsPage() {
 
           {tab === 'live' && (
             adminLoading ? (
-              <div style={{ padding: 40, textAlign: 'center', color: '#9C8E7E' }}>Loading…</div>
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>
             ) : (
               <>
-                <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12 }}>
+                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
                   {liveShifts.length} open shift{liveShifts.length !== 1 ? 's' : ''} across all stations
                 </p>
                 <AdminShiftTable
@@ -234,7 +234,7 @@ export default function ShiftsPage() {
 
           {tab === 'history' && (
             adminLoading ? (
-              <div style={{ padding: 40, textAlign: 'center', color: '#9C8E7E' }}>Loading…</div>
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>
             ) : (
               <AdminShiftTable rows={historyShifts} highlightId={focusShiftId} />
             )
@@ -244,7 +244,7 @@ export default function ShiftsPage() {
 
       {forceTarget && (
         <Modal title="Force Close Shift" onClose={() => setForceTarget(null)} maxWidth={420}>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
             Use when a cashier forgot to close their shift. Expected cash will be recorded as closing cash.
           </p>
           <label>
