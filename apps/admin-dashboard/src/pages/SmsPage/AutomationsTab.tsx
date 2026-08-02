@@ -104,7 +104,7 @@ export function AutomationsTab() {
       {/* Event Toggles */}
       <div style={{ marginBottom: 28 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Event Triggers</h3>
-        <p style={{ fontSize: 13, color: '#9C8E7E', marginBottom: 16 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
           Enable or disable SMS notifications for each event. Staff routing is configured per-staff in the Staff page.
         </p>
 
@@ -115,13 +115,13 @@ export function AutomationsTab() {
               return (
                 <div key={event.key} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: 'var(--color-surface)', border: '1px solid #E8E0D8', borderRadius: 10, padding: '12px 16px',
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '12px 16px',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ color: '#D4813A' }}>{event.icon}</span>
+                    <span style={{ color: 'var(--color-primary)' }}>{event.icon}</span>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{event.label}</div>
-                      <div style={{ color: '#9C8E7E', fontSize: 12 }}>{event.description}</div>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{event.description}</div>
                     </div>
                   </div>
                   <button
@@ -129,7 +129,7 @@ export function AutomationsTab() {
                     disabled={savingKey === event.key}
                     style={{
                       width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-                      background: enabled ? '#D4813A' : '#D1D5DB', transition: 'background 0.2s',
+                      background: enabled ? 'var(--color-primary)' : '#D1D5DB', transition: 'background 0.2s',
                       position: 'relative', flexShrink: 0,
                     }}
                   >
@@ -151,7 +151,7 @@ export function AutomationsTab() {
           <h3 style={{ fontSize: 15, fontWeight: 700 }}>Staff Notification Log</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              style={{ border: '1px solid #E8E0D8', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+              style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit' }}>
               <option value="">All Statuses</option>
               <option value="sent">Sent</option>
               <option value="failed">Failed</option>
@@ -163,9 +163,9 @@ export function AutomationsTab() {
 
         {logsMeta && (
           <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
-            <StatCard label="Total Sent" value={sentCount.toString()} accent="#22c55e" />
-            <StatCard label="Failed" value={failedCount.toString()} accent="#ef4444" />
-            <StatCard label="Fallback Used" value={fallbackCount.toString()} accent="#F59E0B" />
+            <StatCard label="Total Sent" value={sentCount.toString()} accent="var(--color-success)" />
+            <StatCard label="Failed" value={failedCount.toString()} accent="var(--color-danger)" />
+            <StatCard label="Fallback Used" value={fallbackCount.toString()} accent="var(--color-warning)" />
           </div>
         )}
 
@@ -182,7 +182,7 @@ export function AutomationsTab() {
                       {l.order_id && l.order_number ? (
                         <Link
                           to={`/orders?order=${l.order_id}`}
-                          style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                          style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}
                         >
                           #{l.order_number}
                         </Link>
@@ -191,21 +191,21 @@ export function AutomationsTab() {
                       ) : (
                         '—'
                       )}
-                      {l.order_type && <div style={{ color: '#9C8E7E', fontSize: 11 }}>{l.order_type}</div>}
+                      {l.order_type && <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{l.order_type}</div>}
                     </td>
                     <td style={TD}><Badge label={l.event_type.replace(/_/g, ' ')} color="blue" /></td>
-                    <td style={{ ...TD, color: '#6B5D4F', fontSize: 11 }}>
+                    <td style={{ ...TD, color: 'var(--color-text-secondary)', fontSize: 11 }}>
                       <Badge label={l.recipient_type} color="gray" />
                     </td>
                     <td style={{ ...TD, fontFamily: 'monospace', fontSize: 12 }}>{l.phone}</td>
-                    <td style={{ ...TD, maxWidth: 200, color: '#6B5D4F', fontSize: 11 }}>
+                    <td style={{ ...TD, maxWidth: 200, color: 'var(--color-text-secondary)', fontSize: 11 }}>
                       <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.message}</span>
                     </td>
                     <td style={TD}><Badge label={l.status} color={STATUS_COLOR[l.status] ?? 'gray'} /></td>
                     <td style={{ ...TD, textAlign: 'center' }}>
-                      {l.fallback_used ? <span style={{ color: '#F59E0B', fontSize: 13 }}>⚠</span> : '—'}
+                      {l.fallback_used ? <span style={{ color: 'var(--color-warning)', fontSize: 13 }}>⚠</span> : '—'}
                     </td>
-                    <td style={{ ...TD, color: '#9C8E7E', fontSize: 11, whiteSpace: 'nowrap' }}>
+                    <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 11, whiteSpace: 'nowrap' }}>
                       {l.sent_at ? new Date(l.sent_at).toLocaleString() : '—'}
                     </td>
                     <td style={TD}>
