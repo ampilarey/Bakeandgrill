@@ -113,7 +113,7 @@ describe("posCartTotals", () => {
     expect(cartPackagingFeeMvr(items, "dine_in")).toBe(0);
   });
 
-  it("inclusive: total = discountedSubtotal + SC + packaging; tax extracted; no SC tax", () => {
+  it("inclusive: total = discountedSubtotal + SC + packaging; tax extracted; SC GST extracted", () => {
     const items = [{ price: 100, quantity: 1, packaging_fee: 5 }];
     const sub = cartSubtotalFromLines(items);
     const discounted = sub;
@@ -124,8 +124,8 @@ describe("posCartTotals", () => {
     });
     const sc = cartServiceChargeMvr(taxableSc, "takeaway", discounted);
     const packaging = cartPackagingFeeMvr(items, "takeaway");
-    // Embedded tax: round(10000 * 8 / 108) = 741 laar = 7.41; no SC tax
-    expect(tax).toBe(7.41);
+    // Embedded tax: merch round(10000 * 8 / 108) = 741 + SC round(1000 * 8 / 108) = 74 → 8.15
+    expect(tax).toBe(8.15);
     expect(sc).toBe(10);
     expect(packaging).toBe(5);
     // Grand total must NOT add tax again
