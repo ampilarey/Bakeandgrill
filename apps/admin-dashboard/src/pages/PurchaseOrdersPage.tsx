@@ -323,8 +323,8 @@ export function PurchaseOrdersPage() {
           placeholder="Search PO number or supplier…"
           style={{
             height: 36, minWidth: 220, padding: '0 12px',
-            border: '1.5px solid #E8E0D8', borderRadius: 10,
-            fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none',
+            border: '1.5px solid var(--color-border)', borderRadius: 10,
+            fontSize: 13, fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)', outline: 'none',
           }}
         />
         <Btn variant="secondary" onClick={load}>↻ Refresh</Btn>
@@ -350,12 +350,12 @@ export function PurchaseOrdersPage() {
             <Btn small variant="ghost" onClick={() => setSuggestions(null)}>Dismiss</Btn>
           </div>
           {(suggestions.by_supplier ?? []).length === 0 ? (
-            <p style={{ color: '#6B5D4F', fontSize: 13, margin: 0 }}>All items are above reorder points. No purchases needed.</p>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, margin: 0 }}>All items are above reorder points. No purchases needed.</p>
           ) : (
             (suggestions.by_supplier ?? []).map((group) => (
               <div key={group.supplier_id ?? 'unknown'} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 12, flexWrap: 'wrap' }}>
-                  <p style={{ fontWeight: 700, color: '#1C1408', fontSize: 13, margin: 0 }}>
+                  <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: 13, margin: 0 }}>
                     {group.supplier_name} — Est. MVR {parseFloat(String(group.estimated_total ?? 0)).toFixed(2)}
                   </p>
                   {group.supplier_id && (
@@ -371,8 +371,8 @@ export function PurchaseOrdersPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {group.items.map((item) => (
                     <div key={item.inventory_item_id} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
-                      <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.name}</span>
-                      <span style={{ color: '#ef4444', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
+                      <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.name}</span>
+                      <span style={{ color: 'var(--color-danger)', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
                       <span style={{ color: '#16a34a' }}>Order: {item.suggested_quantity} {item.unit}</span>
                       {item.suggestion_reason && (
                         <span style={{ color: '#92400e', marginLeft: 6, fontSize: 11 }}>
@@ -407,21 +407,21 @@ export function PurchaseOrdersPage() {
                   <td style={{ ...TD, fontWeight: 700 }}>
                     <button
                       onClick={() => openDetail(po)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: '#D4813A', fontSize: 14, fontFamily: 'inherit', padding: 0 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'var(--color-primary)', fontSize: 14, fontFamily: 'inherit', padding: 0 }}
                     >
                       {po.purchase_number}
                     </button>
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F' }}>{po.supplier?.name ?? '—'}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{po.supplier?.name ?? '—'}</td>
                   <td style={TD}>
                     <Badge label={po.status.toUpperCase()} color={STATUS_COLOR[po.status] ?? 'gray'} />
                   </td>
-                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(po.total ?? po.subtotal ?? 0)).toFixed(2)}</td>
-                  <td style={{ ...TD, color: '#6B5D4F', whiteSpace: 'nowrap' }}>{po.purchase_date}</td>
-                  <td style={{ ...TD, color: po.expected_delivery_date ? '#6B5D4F' : '#9C8E7E', whiteSpace: 'nowrap' }}>
+                  <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(po.total ?? po.subtotal ?? 0)).toFixed(2)}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{po.purchase_date}</td>
+                  <td style={{ ...TD, color: po.expected_delivery_date ? 'var(--color-text-secondary)' : 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                     {po.expected_delivery_date ?? '—'}
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{po.items?.length ?? 0}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', textAlign: 'center' }}>{po.items?.length ?? 0}</td>
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {po.status === 'draft' && (
@@ -445,10 +445,10 @@ export function PurchaseOrdersPage() {
       {/* Detail / Receive modal */}
       {detail && (
         <Modal title={detail.purchase_number} onClose={() => setDetail(null)} maxWidth={580}>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
-            Supplier: <strong style={{ color: '#1C1408' }}>{detail.supplier?.name ?? '—'}</strong>
-            {' · '}Status: <strong style={{ color: '#1C1408' }}>{detail.status}</strong>
-            {' · '}Total: <strong style={{ color: '#D4813A' }}>MVR {parseFloat(String(detail.total ?? 0)).toFixed(2)}</strong>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+            Supplier: <strong style={{ color: 'var(--color-text)' }}>{detail.supplier?.name ?? '—'}</strong>
+            {' · '}Status: <strong style={{ color: 'var(--color-text)' }}>{detail.status}</strong>
+            {' · '}Total: <strong style={{ color: 'var(--color-primary)' }}>MVR {parseFloat(String(detail.total ?? 0)).toFixed(2)}</strong>
           </p>
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -469,7 +469,7 @@ export function PurchaseOrdersPage() {
                     <td style={{ ...TD, textAlign: 'center' }}>{item.quantity}</td>
                     <td style={{
                       ...TD, textAlign: 'center', fontWeight: 700,
-                      color: item.received_quantity >= item.quantity ? '#22c55e' : '#f59e0b',
+                      color: item.received_quantity >= item.quantity ? 'var(--color-success)' : 'var(--color-warning)',
                     }}>
                       {item.received_quantity}
                     </td>
@@ -481,7 +481,7 @@ export function PurchaseOrdersPage() {
                           max={item.quantity - item.received_quantity}
                           value={receiveQtys[item.id] ?? 0}
                           onChange={(e) => { const v = parseFloat(e.target.value); setReceiveQtys((q) => ({ ...q, [item.id]: isNaN(v) ? 0 : Math.max(0, v) })); }}
-                          style={{ width: 70, height: 30, padding: '0 6px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', textAlign: 'center' }}
+                          style={{ width: 70, height: 30, padding: '0 6px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', textAlign: 'center' }}
                         />
                       </td>
                     )}
@@ -500,30 +500,30 @@ export function PurchaseOrdersPage() {
           {['ordered', 'partial'].includes(detail.status) && (
             <>
             <div style={{ marginTop: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
               <textarea
                 rows={2}
                 value={receiveNotes}
                 onChange={(e) => setReceiveNotes(e.target.value)}
-                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
               />
             </div>
-            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #E8E0D8' }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', margin: '0 0 10px' }}>Input GST (optional)</p>
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>Input GST (optional)</p>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 10 }}>
                 <input type="checkbox" checked={gstForm.is_input_tax_claimable} onChange={(e) => setGstForm((f) => ({ ...f, is_input_tax_claimable: e.target.checked }))} />
                 Claimable input tax on this purchase
               </label>
               {gstForm.is_input_tax_claimable && (
                 <div style={{ display: 'grid', gap: 10 }}>
-                  <input placeholder="Supplier TIN" value={gstForm.supplier_tin} onChange={(e) => setGstForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
+                  <input placeholder="Supplier TIN" value={gstForm.supplier_tin} onChange={(e) => setGstForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
                   <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <input placeholder="Supplier invoice no." value={gstForm.supplier_invoice_no} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
-                    <input type="date" value={gstForm.supplier_invoice_date} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
+                    <input placeholder="Supplier invoice no." value={gstForm.supplier_invoice_no} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
+                    <input type="date" value={gstForm.supplier_invoice_date} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
                   </div>
                   <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <input type="number" placeholder="Amount ex-GST (MVR)" value={gstForm.amount_ex_gst} onChange={(e) => setGstForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
-                    <input type="number" placeholder="GST amount (MVR)" value={gstForm.gst_amount} onChange={(e) => setGstForm((f) => ({ ...f, gst_amount: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13 }} />
+                    <input type="number" placeholder="Amount ex-GST (MVR)" value={gstForm.amount_ex_gst} onChange={(e) => setGstForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
+                    <input type="number" placeholder="GST amount (MVR)" value={gstForm.gst_amount} onChange={(e) => setGstForm((f) => ({ ...f, gst_amount: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
                   </div>
                 </div>
               )}
@@ -551,14 +551,14 @@ export function PurchaseOrdersPage() {
             onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
           <div
             onClick={() => receiptInputRef.current?.click()}
-            style={{ border: '2px dashed #E8E0D8', borderRadius: 12, padding: '32px 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 16 }}
+            style={{ border: '2px dashed var(--color-border)', borderRadius: 12, padding: '32px 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 16 }}
           >
             {receiptFile ? (
-              <p style={{ margin: 0, fontSize: 13, color: '#1C1408', fontWeight: 600 }}>{receiptFile.name}</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>{receiptFile.name}</p>
             ) : (
               <>
                 <p style={{ margin: '0 0 4px', fontSize: 22 }}>📎</p>
-                <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>Click to select a receipt (PDF, JPG, PNG)</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Click to select a receipt (PDF, JPG, PNG)</p>
               </>
             )}
           </div>
@@ -575,34 +575,34 @@ export function PurchaseOrdersPage() {
       {showImport && (
         <Modal title="Import Purchase from CSV" onClose={() => setShowImport(false)} maxWidth={480}>
           {importError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{importError}</p>}
-          <p style={{ fontSize: 12, color: '#6B5D4F', marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
             CSV must have columns: <strong>name</strong>, <strong>quantity</strong>, <strong>unit_cost</strong>. Optional: <strong>inventory_item_id</strong>.
           </p>
           <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }}
             onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
           <div
             onClick={() => csvInputRef.current?.click()}
-            style={{ border: '2px dashed #E8E0D8', borderRadius: 12, padding: '28px 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 16 }}
+            style={{ border: '2px dashed var(--color-border)', borderRadius: 12, padding: '28px 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 16 }}
           >
             {importFile ? (
-              <p style={{ margin: 0, fontSize: 13, color: '#1C1408', fontWeight: 600 }}>{importFile.name}</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>{importFile.name}</p>
             ) : (
               <>
                 <p style={{ margin: '0 0 4px', fontSize: 22 }}>📂</p>
-                <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>Click to select a CSV file</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Click to select a CSV file</p>
               </>
             )}
           </div>
           <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Purchase Date</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Purchase Date</label>
               <input type="date" value={importDate} onChange={(e) => setImportDate(e.target.value)}
-                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
               <input value={importNotes} onChange={(e) => setImportNotes(e.target.value)} placeholder="e.g. Weekly stock"
-                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
           </div>
           <ModalActions>
@@ -618,20 +618,20 @@ export function PurchaseOrdersPage() {
       {showManualPo && (
         <Modal title="Create Manual Purchase Order" onClose={() => setShowManualPo(false)} maxWidth={560}>
           {manualPoError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{manualPoError}</p>}
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Supplier *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Supplier *</label>
           <select value={manualPoForm.supplier_id} onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_id: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 12 }}>
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12 }}>
             <option value="">Select supplier…</option>
             {manualSuppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Purchase date *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Purchase date *</label>
           <input type="date" value={manualPoForm.purchase_date} onChange={(e) => setManualPoForm((f) => ({ ...f, purchase_date: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
-          <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Line items</p>
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', margin: '0 0 8px' }}>Line items</p>
           {manualPoForm.lines.map((line, idx) => (
-            <div key={idx} style={{ border: '1px solid #E8E0D8', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+            <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Item {idx + 1}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Item {idx + 1}</span>
                 {manualPoForm.lines.length > 1 && (
                   <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }))}>Remove</Btn>
                 )}
@@ -654,19 +654,19 @@ export function PurchaseOrdersPage() {
               <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                 <input type="number" min="0.001" step="any" placeholder="Qty" value={line.quantity}
                   onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }} />
+                  style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
                 <input type="number" min="0" step="0.01" placeholder="Unit cost" value={line.unit_cost}
                   onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value } : l) }))}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }} />
+                  style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
               </div>
             </div>
           ))}
           <Btn small variant="secondary" onClick={() => setManualPoForm((f) => ({ ...f, lines: [...f.lines, blankManualLine()] }))} style={{ marginBottom: 12 }}>
             + Add line
           </Btn>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
           <textarea rows={2} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 16 }} />
+            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 16 }} />
           <ModalActions>
             <Btn variant="ghost" onClick={() => setShowManualPo(false)}>Cancel</Btn>
             <Btn onClick={() => void handleCreateManualPo()} disabled={manualPoSaving}>{manualPoSaving ? 'Creating…' : 'Create PO'}</Btn>
@@ -677,16 +677,16 @@ export function PurchaseOrdersPage() {
       {/* Reject modal */}
       {rejectId !== null && (
         <Modal title="Reject Purchase Order" onClose={() => setRejectId(null)} maxWidth={420}>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
             Please provide a reason for rejecting this purchase order.
           </p>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Reason *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Reason *</label>
           <textarea
             rows={3}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="e.g. Price too high, wrong items, supplier issue…"
-            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 4 }}
+            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 4 }}
           />
           <ModalActions>
             <Btn variant="ghost" onClick={() => setRejectId(null)}>Cancel</Btn>
