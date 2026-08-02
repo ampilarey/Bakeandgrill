@@ -333,11 +333,32 @@ before the remaining files are migrated, not after.
 
 ### Stage 3 — Long tail and verification
 
-1. Sweep remaining ~988 one-off literals; convert what maps cleanly, leave
-   genuinely bespoke chart/badge colours as-is.
-2. Remove the `[style*="background: #fff"]` hack from `index.css` — it becomes
-   dead weight once surfaces use variables.
-3. Walk every page in dark mode at 375px width and confirm no dark-on-dark text.
+#### Stage 3a — Dead attribute selectors (done in Stage 2e)
+
+Removed from `src/index.css`:
+
+```css
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background: white"]
+```
+
+Kept `[data-theme="dark"] .bg-white`. Confirmed absent on tip; React serialises
+inline styles as `background: rgb(255, 255, 255)`, so the attribute selectors
+never matched.
+
+#### Stage 3b — Visual dark-mode walk (report only; no code changes)
+
+Walk Dashboard, Orders, Inventory/Reports, Settings, Menu modal, ContentHub at
+desktop and 375px. Screenshots under `/opt/cursor/artifacts/theme-qa/`. Do not
+start Stage 3c until 3b is reviewed.
+
+#### Stage 3c — Status palette (DESIGN DECISION, gated on 3b)
+
+~937 remaining literals are semantic variants (danger/success/warning shades,
+tints, brown text). Cannot be mechanically mapped without light-mode change.
+Requires explicit decision on whether status badges should theme, then new
+variable pairs (`--color-danger-strong`, `--color-danger-bg`, …) in `:root` and
+`[data-theme="dark"]`.
 
 ---
 
