@@ -254,7 +254,7 @@ export function CustomerDepositSection({ customerId }: Props) {
   return (
     <div style={{ border: '1px solid #E8DDD0', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: '#1C1408' }}>Customer Deposit</p>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: 'var(--color-text)' }}>Customer Deposit</p>
         {deposit && (
           <Badge color={STATUS_COLOR[deposit.status] ?? 'gray'}>{statusLabel}</Badge>
         )}
@@ -262,29 +262,29 @@ export function CustomerDepositSection({ customerId }: Props) {
 
       {error && <ErrorMsg message={error} />}
       {loading ? (
-        <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>Loading deposit…</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Loading deposit…</p>
       ) : deposit ? (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
             <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
-              <p style={{ margin: 0, fontSize: 10, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase' }}>Deposit balance</p>
-              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>MVR {deposit.balance_mvr.toFixed(2)}</p>
+              <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Deposit balance</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>MVR {deposit.balance_mvr.toFixed(2)}</p>
             </div>
             <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
-              <p style={{ margin: 0, fontSize: 10, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase' }}>POS availability</p>
-              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: deposit.can_use ? '#15803D' : '#9C8E7E' }}>
+              <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>POS availability</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: deposit.can_use ? '#15803D' : 'var(--color-text-muted)' }}>
                 {deposit.can_use ? 'Can pay from deposit' : 'Unavailable'}
               </p>
             </div>
             <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
-              <p style={{ margin: 0, fontSize: 10, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase' }}>Total received</p>
-              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>
+              <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total received</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
                 MVR {(deposit.total_received_mvr ?? 0).toFixed(2)}
               </p>
             </div>
             <div style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
-              <p style={{ margin: 0, fontSize: 10, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase' }}>Total used</p>
-              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>
+              <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total used</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
                 MVR {(deposit.total_used_mvr ?? 0).toFixed(2)}
               </p>
             </div>
@@ -300,7 +300,7 @@ export function CustomerDepositSection({ customerId }: Props) {
 
           {canReceive && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Receive deposit</p>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Receive deposit</p>
               <input style={inputStyle} type="number" min="0" step="0.01" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} placeholder="Amount MVR" />
               <select style={inputStyle} value={topUpMethod} onChange={(e) => setTopUpMethod(e.target.value as typeof topUpMethod)}>
                 <option value="cash">Cash</option>
@@ -315,7 +315,7 @@ export function CustomerDepositSection({ customerId }: Props) {
 
           {canRefund && deposit.balance_laar > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Refund deposit (payout to customer)</p>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Refund deposit (payout to customer)</p>
               <input style={inputStyle} type="number" min="0" step="0.01" max={deposit.balance_mvr} value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} placeholder="Amount MVR" />
               <select style={inputStyle} value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as typeof refundMethod)}>
                 <option value="cash">Cash</option>
@@ -352,7 +352,7 @@ export function CustomerDepositSection({ customerId }: Props) {
 
           {canAdjust && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Manual adjustment (laari)</p>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Manual adjustment (laari)</p>
               <input style={inputStyle} type="number" value={adjustLaar} onChange={(e) => setAdjustLaar(e.target.value)} placeholder="e.g. -5000 to deduct MVR 50" />
               <textarea style={{ ...inputStyle, height: 48, resize: 'vertical' }} value={adjustNotes} onChange={(e) => setAdjustNotes(e.target.value)} placeholder="Reason (required)" />
               <Btn small variant="secondary" onClick={() => void handleAdjust()} disabled={saving}>Post adjustment</Btn>
@@ -360,22 +360,22 @@ export function CustomerDepositSection({ customerId }: Props) {
           )}
 
           <div>
-            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase' }}>Ledger</p>
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Ledger</p>
             {ledgerLoading && ledger.length === 0 ? (
-              <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>Loading ledger…</p>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>Loading ledger…</p>
             ) : ledger.length === 0 ? (
-              <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>No transactions yet.</p>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>No transactions yet.</p>
             ) : (
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                 {ledger.map((row) => (
-                  <div key={row.id} style={{ padding: '6px 0', borderBottom: '1px solid #F0EBE5', fontSize: 12 }}>
+                  <div key={row.id} style={{ padding: '6px 0', borderBottom: '1px solid var(--color-border-light)', fontSize: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                       <span style={{ fontWeight: 600 }}>{TYPE_LABELS[row.type] ?? row.type}</span>
                       <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {row.amount_mvr >= 0 ? '+' : ''}MVR {row.amount_mvr.toFixed(2)}
                       </span>
                     </div>
-                    <p style={{ margin: '2px 0 0', color: '#9C8E7E', fontSize: 11 }}>
+                    <p style={{ margin: '2px 0 0', color: 'var(--color-text-muted)', fontSize: 11 }}>
                       {row.method ? `${paymentMethodLabel(row.method)} · ` : ''}
                       Bal MVR {row.balance_after_mvr.toFixed(2)}
                       {row.order_id ? (
@@ -383,7 +383,7 @@ export function CustomerDepositSection({ customerId }: Props) {
                           {' · '}
                           <Link
                             to={`/orders?order=${row.order_id}`}
-                            style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                            style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}
                           >
                             Order {row.order_number ? `#${row.order_number}` : `#${row.order_id}`}
                           </Link>
@@ -399,7 +399,7 @@ export function CustomerDepositSection({ customerId }: Props) {
             {ledgerLastPage > 1 && (
               <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
                 <Btn small variant="secondary" disabled={ledgerPage <= 1 || ledgerLoading} onClick={() => setLedgerPage((p) => p - 1)}>Prev</Btn>
-                <span style={{ fontSize: 11, color: '#9C8E7E' }}>Page {ledgerPage} / {ledgerLastPage}</span>
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Page {ledgerPage} / {ledgerLastPage}</span>
                 <Btn small variant="secondary" disabled={ledgerPage >= ledgerLastPage || ledgerLoading} onClick={() => setLedgerPage((p) => p + 1)}>Next</Btn>
               </div>
             )}
