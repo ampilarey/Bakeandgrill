@@ -331,6 +331,49 @@ checked directly — a script computing WCAG ratios against the
 `[data-theme="dark"]` values catches this class in seconds and should run
 before the remaining files are migrated, not after.
 
+### Stage 3d — The stylesheet was never in scope (160 literals)
+
+Found by the Stage 3b visual walk, which caught what static analysis could not.
+
+Every stage so far scoped to `.tsx` files. `src/index.css` — 2,937 lines — was
+never migrated, never audited, and is not covered by the ESLint guard, which
+only inspects `style={{…}}` objects in `src/pages/**` and `src/components/**`.
+
+**160 hardcoded colour literals sit in its rules**, outside the `:root` and
+`[data-theme="dark"]` blocks where literals belong. 125 are the canonical ten:
+
+| Hex | Count | | Hex | Count |
+|---|---|---|---|---|
+| `#e8e0d8` | 27 | | `#9c8e7e` | 15 |
+| `#fff` | 26 | | `#6b5d4f` | 15 |
+| `#1c1408` | 25 | | `#d4813a` | 11 |
+| `#f8f6f3` | 16 | | others | 25 |
+
+These rules do not respond to `[data-theme="dark"]` at all, which is why the
+admin still shows light surfaces in dark mode. Confirmed example:
+
+```css
+/* index.css:803 */
+.modal-backdrop .modal-container { background: #fff; }
+```
+
+This accounts for the failures the visual walk named — modals, the cheat
+sheet, Inventory tabs, Brand Kit — none of which any `.tsx` change could fix.
+
+**This is the highest-value work remaining and it is mechanical.** The same
+ten mappings apply, and `var()` in a stylesheet is ordinary CSS with none of
+the caveats that applied to inline styles, Tailwind classes or SVG attributes.
+Light mode stays byte-identical by the same construction as everywhere else.
+
+Do this **before** deciding Stage 3c: much of what looks wrong in dark mode
+today is the stylesheet, not the badge palette, and the badge question cannot
+be judged fairly until the surfaces behind them are correct.
+
+**Also extend the guard.** The ESLint rule cannot see CSS. Either add a
+stylelint-style check for hex literals outside `:root`/`[data-theme]` blocks
+in `src/**/*.css`, or accept that this file needs manual discipline — but do
+not assume the existing guard protects it.
+
 ### Stage 3 — Long tail and verification
 
 #### Stage 3a — Dead attribute selectors (done in Stage 2e)
