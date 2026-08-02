@@ -87,7 +87,7 @@ export function SmsNotificationRow({
         style={{
           width: '100%',
           boxSizing: 'border-box',
-          border: '1px solid #E8E0D8',
+          border: '1px solid var(--color-border)',
           borderRadius: 8,
           padding: '10px 12px',
           fontSize: 13,
@@ -123,7 +123,7 @@ export function SmsNotificationRow({
         gap: 8,
         flexWrap: 'wrap',
       }}>
-        <span style={{ fontSize: 11, color: '#9C8E7E' }}>
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
           {count.encoding} · {count.chars} chars · {count.segments} segment{count.segments === 1 ? '' : 's'}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -156,7 +156,7 @@ export function SmsNotificationRow({
     return (
       <div style={{
         background: 'var(--color-surface)',
-        border: '1px solid #E8E0D8',
+        border: '1px solid var(--color-border)',
         borderRadius: 10,
         padding: '12px 16px',
       }}>
@@ -168,7 +168,7 @@ export function SmsNotificationRow({
   return (
     <div style={{
       background: 'var(--color-surface)',
-      border: '1px solid #E8E0D8',
+      border: '1px solid var(--color-border)',
       borderRadius: 10,
       padding: '12px 16px',
       display: 'flex',
@@ -180,7 +180,7 @@ export function SmsNotificationRow({
           <span style={{ fontSize: 22, flexShrink: 0 }}>{emoji}</span>
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#3D2B1F' }}>{label}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9C8E7E' }}>{desc}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{desc}</p>
           </div>
         </div>
         <button
@@ -194,7 +194,7 @@ export function SmsNotificationRow({
             borderRadius: 12,
             border: 'none',
             cursor: toggleDisabled || savingToggle ? 'not-allowed' : 'pointer',
-            background: enabled ? '#D4813A' : '#D1D5DB',
+            background: enabled ? 'var(--color-primary)' : '#D1D5DB',
             transition: 'background 0.2s',
             position: 'relative',
             flexShrink: 0,
@@ -225,12 +225,12 @@ const primaryBtn: CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   cursor: 'pointer',
-  background: '#D4813A',
+  background: 'var(--color-primary)',
   color: '#fff',
 };
 
 const secondaryBtn: CSSProperties = {
-  border: '1px solid #E8E0D8',
+  border: '1px solid var(--color-border)',
   borderRadius: 8,
   padding: '6px 12px',
   fontSize: 12,
