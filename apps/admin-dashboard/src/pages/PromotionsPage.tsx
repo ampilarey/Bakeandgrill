@@ -200,7 +200,7 @@ function PromotionForm({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {error && <ErrorMsg message={error} />}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', padding: '10px 12px', background: autoApply ? '#F0FDF4' : '#F8F6F3', borderRadius: 8, border: `1px solid ${autoApply ? '#86EFAC' : '#E8E0D8'}` }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', padding: '10px 12px', background: autoApply ? '#F0FDF4' : 'var(--color-bg)', borderRadius: 8, border: `1px solid ${autoApply ? '#86EFAC' : 'var(--color-border)'}` }}>
         <input
           type="checkbox"
           checked={autoApply}
@@ -216,7 +216,7 @@ function PromotionForm({
         />
         <span>
           <strong>Automatic (all customers, no code)</strong>
-          <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
             Applies at checkout to everyone. Hide the code field and use targeting + schedule window instead.
           </div>
         </span>
@@ -259,7 +259,7 @@ function PromotionForm({
             onChange={handleBudgetChange}
             type="number" placeholder="No budget cap"
           />
-          <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 3 }}>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>
             Approximate under high concurrency.
           </div>
         </Field>
@@ -399,7 +399,7 @@ function PromotionForm({
       )}
 
       {form.type === 'free_delivery' && (
-        <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>
           Waives the delivery fee on delivery orders. Use min order + schedule window as needed.
         </p>
       )}
@@ -419,9 +419,9 @@ function PromotionForm({
             {(form.targets ?? []).length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                 {(form.targets ?? []).map((t, i) => (
-                  <span key={`${t.target_type}-${t.target_id}-${i}`} style={{ fontSize: 12, background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 6, padding: '4px 8px' }}>
+                  <span key={`${t.target_type}-${t.target_id}-${i}`} style={{ fontSize: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 8px' }}>
                     {t.target_type} #{t.target_id}
-                    <button type="button" onClick={() => removeTarget(i)} style={{ marginLeft: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: '#9C8E7E' }}>×</button>
+                    <button type="button" onClick={() => removeTarget(i)} style={{ marginLeft: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
                   </span>
                 ))}
               </div>
@@ -438,8 +438,8 @@ function PromotionForm({
                     onClick={() => toggleDay(d.value)}
                     style={{
                       minHeight: 36, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
-                      border: `1px solid ${on ? '#D4813A' : '#E8E0D8'}`,
-                      background: on ? '#FFF7ED' : '#fff', color: on ? '#D4813A' : '#6B5D4F', fontWeight: 600, fontSize: 12,
+                      border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      background: on ? '#FFF7ED' : '#fff', color: on ? 'var(--color-primary)' : 'var(--color-text-secondary)', fontWeight: 600, fontSize: 12,
                     }}
                   >
                     {d.label}
@@ -466,7 +466,7 @@ function PromotionForm({
             onChange={(id) => set('restricted_customer_id', id)}
             placeholder="Search by name or phone… (leave empty for public)"
           />
-          <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 3 }}>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>
             If set, only this customer can redeem the code — useful for personal discounts.
           </div>
         </Field>
@@ -502,7 +502,7 @@ function PromotionForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>{label}</label>
       {children}
     </div>
   );
@@ -652,10 +652,10 @@ export function PromotionsPage() {
       {showPerf && perf && (
         <Card style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0, color: '#1C1408' }}>Customer offers preview & performance</h3>
+            <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0, color: 'var(--color-text)' }}>Customer offers preview & performance</h3>
             <Btn small variant="ghost" onClick={() => setShowPerf(false)}>Close</Btn>
           </div>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
             What customers see on the menu Offers rail right now ({perf.offers_preview.length} cards).
           </p>
           {perf.offers_preview.length === 0 ? (
@@ -663,15 +663,15 @@ export function PromotionsPage() {
           ) : (
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8, marginBottom: 18 }}>
               {perf.offers_preview.map((o) => (
-                <div key={o.id} style={{ flexShrink: 0, width: 160, border: '1px solid #E8E0D8', borderRadius: 10, padding: 10, background: '#F8F6F3' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#D4813A', marginBottom: 4 }}>{o.kind.toUpperCase()}</div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#1C1408' }}>{o.title}</div>
+                <div key={o.id} style={{ flexShrink: 0, width: 160, border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-bg)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)', marginBottom: 4 }}>{o.kind.toUpperCase()}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>{o.title}</div>
                   {o.badge && <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>{o.badge}</div>}
                   {o.effective_price != null && (
-                    <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6, color: '#D4813A' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6, color: 'var(--color-primary)' }}>
                       MVR {Number(o.effective_price).toFixed(2)}
                       {o.original_price != null && Number(o.original_price) > Number(o.effective_price) && (
-                        <span style={{ marginLeft: 6, textDecoration: 'line-through', color: '#9C8E7E', fontWeight: 500 }}>
+                        <span style={{ marginLeft: 6, textDecoration: 'line-through', color: 'var(--color-text-muted)', fontWeight: 500 }}>
                           {Number(o.original_price).toFixed(2)}
                         </span>
                       )}
@@ -681,7 +681,7 @@ export function PromotionsPage() {
               ))}
             </div>
           )}
-          <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px', color: '#1C1408' }}>Promotion redemptions</h4>
+          <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px', color: 'var(--color-text)' }}>Promotion redemptions</h4>
           <ScrollX style={{ marginBottom: 16 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
@@ -703,7 +703,7 @@ export function PromotionsPage() {
               </tbody>
             </table>
           </ScrollX>
-          <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px', color: '#1C1408' }}>Daily specials</h4>
+          <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 8px', color: 'var(--color-text)' }}>Daily specials</h4>
           <ScrollX>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
@@ -719,7 +719,7 @@ export function PromotionsPage() {
                     <td style={TD}>{s.name}</td>
                     <td style={TD}>{s.sold_count}{s.max_quantity ? ` / ${s.max_quantity}` : ''}</td>
                     <td style={TD}>{s.is_active ? 'Yes' : 'No'}</td>
-                    <td style={{ ...TD, fontSize: 12, color: '#9C8E7E' }}>{s.start_date ?? '—'} → {s.end_date ?? '—'}</td>
+                    <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-muted)' }}>{s.start_date ?? '—'} → {s.end_date ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -730,7 +730,7 @@ export function PromotionsPage() {
 
       {(creating || editing) && (
         <Card style={{ marginBottom: 24 }}>
-          <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 18, color: '#1C1408' }}>
+          <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 18, color: 'var(--color-text)' }}>
             {creating ? 'Create New Promotion' : `Edit: ${editing?.name}`}
           </h3>
           <PromotionForm
@@ -758,7 +758,7 @@ export function PromotionsPage() {
             <tbody>
               {promos.map((p) => (
                 <tr key={p.id}>
-                  <td style={{ ...TD, fontWeight: 600, color: '#1C1408' }}>
+                  <td style={{ ...TD, fontWeight: 600, color: 'var(--color-text)' }}>
                     {p.name}
                     {p.auto_apply && (
                       <div style={{ fontSize: 11, color: '#059669', fontWeight: 400, marginTop: 2 }}>
@@ -766,7 +766,7 @@ export function PromotionsPage() {
                       </div>
                     )}
                     {p.first_order_only && (
-                      <div style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 400, marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>
                         First order only
                       </div>
                     )}
@@ -780,23 +780,23 @@ export function PromotionsPage() {
                   </td>
                   <td style={TD}>
                     {p.auto_apply ? (
-                      <span style={{ fontSize: 12, color: '#9C8E7E' }}>—</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>—</span>
                     ) : (
-                      <code style={{ background: '#F8F6F3', padding: '2px 8px', borderRadius: 6, fontSize: 13, fontWeight: 700, letterSpacing: 1, color: '#1C1408', border: '1px solid #E8E0D8' }}>
+                      <code style={{ background: 'var(--color-bg)', padding: '2px 8px', borderRadius: 6, fontSize: 13, fontWeight: 700, letterSpacing: 1, color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>
                         {p.code}
                       </code>
                     )}
                   </td>
-                  <td style={{ ...TD, color: '#D4813A', fontWeight: 700 }}>
+                  <td style={{ ...TD, color: 'var(--color-primary)', fontWeight: 700 }}>
                     {formatDiscount(p)}
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F', fontSize: 12 }}>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', fontSize: 12 }}>
                     {formatBudget(p)}
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F' }}>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>
                     {p.redemptions_count}{p.max_uses ? ` / ${p.max_uses}` : ''}
                   </td>
-                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12, whiteSpace: 'nowrap' }}>
+                  <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
                     {p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '∞'}
                   </td>
                   <td style={TD}>
