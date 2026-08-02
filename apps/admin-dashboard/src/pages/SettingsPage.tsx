@@ -202,9 +202,9 @@ function NotificationsSettings() {
   const renderSection = (title: string, subtitle: string, configs: NotifConfig[]) => (
     <div style={{ marginBottom: 28 }}>
       <h3 style={{ fontSize: 15, fontWeight: 700, color: '#3D2B1F', margin: '0 0 4px' }}>{title}</h3>
-      <p style={{ fontSize: 13, color: '#9C8E7E', margin: '0 0 14px' }}>{subtitle}</p>
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>{subtitle}</p>
       {loading ? (
-        <p style={{ fontSize: 13, color: '#9C8E7E' }}>Loading…</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {renderConfigRows(configs)}
@@ -236,7 +236,7 @@ function NotificationsSettings() {
       )}
 
       <div style={{ padding: '12px 16px', background: '#FFF7ED', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10 }}>
-        <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.6 }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
           Staff SMS templates (new order alerts, shift reminders, etc.) are under{' '}
           <strong>SMS → Templates</strong> and <strong>SMS → Automations</strong>.
         </p>
