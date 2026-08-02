@@ -18,7 +18,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>{label}</label>
       {children}
     </div>
   );
@@ -31,7 +31,7 @@ function RoleSelect({ value, onChange, roles }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14, minHeight: 44 }}
+      style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '9px 12px', fontSize: 14, minHeight: 44 }}
     >
       <option value="">— Select role —</option>
       {roles.map((r) => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
@@ -111,7 +111,7 @@ function RowActionMenu({ items }: { items: MenuItem[] }) {
       {open && (
         <div style={{
           position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 20,
-          minWidth: 180, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 10,
+          minWidth: 180, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 10,
           boxShadow: '0 8px 24px rgba(28,20,8,0.12)', padding: 4,
         }}>
           {items.map((item) => (
@@ -123,7 +123,7 @@ function RowActionMenu({ items }: { items: MenuItem[] }) {
                 display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px',
                 border: 'none', background: 'none', cursor: 'pointer', borderRadius: 8,
                 fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-                color: item.danger ? '#DC2626' : '#1C1408', minHeight: 44,
+                color: item.danger ? '#DC2626' : 'var(--color-text)', minHeight: 44,
               }}
             >
               {item.label}
@@ -316,7 +316,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
       {prefs && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!member.phone && (
-            <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#92400e' }}>
+            <div style={{ background: '#fef3c7', border: '1px solid var(--color-warning)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#92400e' }}>
               No phone number set. Add a phone in Edit to enable SMS notifications.
             </div>
           )}
@@ -326,22 +326,22 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
             <span><strong>Enable SMS Notifications</strong> for this staff member</span>
           </label>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
               Receive notifications for:
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => setPrefs((p) => (p ? { ...p, order_types: null } : p))} style={{
                 padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
-                background: prefs.order_types === null ? '#22c55e' : '#F5F0EA',
-                color: prefs.order_types === null ? '#fff' : '#6B5D4F', border: 'none',
+                background: prefs.order_types === null ? 'var(--color-success)' : '#F5F0EA',
+                color: prefs.order_types === null ? '#fff' : 'var(--color-text-secondary)', border: 'none',
               }}>All Types</button>
               {ORDER_TYPES.map((ot) => {
                 const active = prefs.order_types === null || prefs.order_types.includes(ot.value);
                 return (
                   <button key={ot.value} type="button" onClick={() => toggleOrderType(ot.value)} style={{
                     padding: '8px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
-                    background: active ? '#D4813A' : '#F5F0EA',
-                    color: active ? '#fff' : '#6B5D4F', border: 'none',
+                    background: active ? 'var(--color-primary)' : '#F5F0EA',
+                    color: active ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                   }}>
                     {ot.label}
                   </button>
@@ -358,7 +358,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
           </div>
           {prefs.is_fallback && (
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Fallback Priority (higher = notified first)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Fallback Priority (higher = notified first)</label>
               <Input type="number" value={String(prefs.fallback_priority)}
                 onChange={(v) => setPrefs((p) => (p ? { ...p, fallback_priority: parseInt(v) || 0 } : p))} />
             </div>
@@ -513,12 +513,12 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
           <Spinner />
         ) : (
           <>
-            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
               Toggle overrides for this person. Role defaults still apply unless overridden.{' '}
               <button
                 type="button"
                 onClick={() => navigate(`/settings?tab=permissions&user=${member.id}`)}
-                style={{ background: 'none', border: 'none', color: '#D4813A', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 13 }}
+                style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 13 }}
               >
                 Open full permissions editor →
               </button>
@@ -528,7 +528,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
                 <div key={category} style={{ marginBottom: 20 }}>
                   <div style={{
                     fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                    color: '#9C8E7E', textTransform: 'uppercase', marginBottom: 8,
+                    color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8,
                     paddingBottom: 4, borderBottom: '1px solid #f1ece6',
                   }}>
                     {category}
@@ -542,12 +542,12 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
                         padding: '8px 0', borderBottom: '1px solid #faf8f6', minHeight: 44,
                       }}>
                         <div style={{ flex: 1 }}>
-                          <span style={{ fontSize: 14, color: '#1C1408', fontWeight: 500 }}>{p.name}</span>
+                          <span style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 500 }}>{p.name}</span>
                           {' '}
                           <span style={{
                             fontSize: 11, padding: '1px 6px', borderRadius: 99,
                             background: modified ? '#fef3c7' : '#f1ece6',
-                            color: modified ? '#92400e' : '#9C8E7E',
+                            color: modified ? '#92400e' : 'var(--color-text-muted)',
                             fontWeight: 600,
                           }}>
                             {modified ? 'override' : p.source}
@@ -744,12 +744,12 @@ export function StaffPage() {
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer',
     fontWeight: 600, fontSize: 14, fontFamily: 'inherit', minHeight: 40,
-    background: active ? '#D4813A' : 'transparent',
-    color: active ? '#fff' : '#6B5D4F',
+    background: active ? 'var(--color-primary)' : 'transparent',
+    color: active ? '#fff' : 'var(--color-text-secondary)',
   });
 
   const filterStyle: React.CSSProperties = {
-    padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10,
+    padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10,
     fontSize: 13, fontFamily: 'inherit', background: '#fff', minHeight: 40,
   };
 
@@ -795,7 +795,7 @@ export function StaffPage() {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-            <span style={{ fontSize: 12, color: '#9C8E7E' }}>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
               {filtered.length} of {staff.length}
             </span>
             <Btn small variant="ghost" onClick={() => navigate('/time-clock')}>Time Clock →</Btn>
@@ -838,10 +838,10 @@ export function StaffPage() {
 
                       return (
                         <tr key={m.id} style={{ opacity: m.is_active ? 1 : 0.55 }}>
-                          <td style={{ ...TD, fontWeight: 700, color: '#1C1408' }}>{m.name}</td>
-                          <td style={{ ...TD, color: '#6B5D4F' }}>
+                          <td style={{ ...TD, fontWeight: 700, color: 'var(--color-text)' }}>{m.name}</td>
+                          <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>
                             <div>{m.email}</div>
-                            <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#9C8E7E' }}>
+                            <div style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>
                               {m.phone ?? '—'}
                             </div>
                           </td>
@@ -850,14 +850,14 @@ export function StaffPage() {
                           </td>
                           <td style={TD}>
                             {m.has_pin
-                              ? <span style={{ color: '#22c55e', fontSize: 13, fontWeight: 700 }}>Set</span>
-                              : <span style={{ color: '#f59e0b', fontSize: 13, fontWeight: 700 }}>Not set</span>
+                              ? <span style={{ color: 'var(--color-success)', fontSize: 13, fontWeight: 700 }}>Set</span>
+                              : <span style={{ color: 'var(--color-warning)', fontSize: 13, fontWeight: 700 }}>Not set</span>
                             }
                           </td>
                           <td style={TD}>
                             <Badge label={m.is_active ? 'Active' : 'Inactive'} color={m.is_active ? 'green' : 'gray'} />
                           </td>
-                          <td style={{ ...TD, color: '#9C8E7E', fontSize: 12, whiteSpace: 'nowrap' }}>
+                          <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
                             {timeAgo(m.last_login_at)}
                           </td>
                           <td style={TD}>
