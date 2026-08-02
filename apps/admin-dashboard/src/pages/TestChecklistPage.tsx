@@ -643,7 +643,7 @@ export default function TestChecklistPage() {
   const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
 
   const pctColor =
-    pct === 100 ? '#10B981' : pct >= 70 ? '#F59E0B' : pct >= 40 ? '#F97316' : '#EF4444';
+    pct === 100 ? '#10B981' : pct >= 70 ? 'var(--color-warning)' : pct >= 40 ? '#F97316' : 'var(--color-danger)';
 
   return (
     <PageShell style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px 80px' }}>
