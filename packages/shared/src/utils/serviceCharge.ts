@@ -38,7 +38,8 @@ export function parseServiceChargePublicSettings(
     label: (settings.service_charge_label ?? 'Service charge').trim() || 'Service charge',
     type,
     value: parseFloat(String(settings.service_charge_value ?? '0')) || 0,
-    apply_dine_in: bool('service_charge_apply_dine_in', true),
+    // Match ServiceChargeCalculator::calculate() defaults (engine is source of truth).
+    apply_dine_in: bool('service_charge_apply_dine_in', false),
     apply_takeaway: bool('service_charge_apply_takeaway', false),
     apply_online_pickup: bool('service_charge_apply_online_pickup', false),
     apply_delivery: bool('service_charge_apply_delivery', false),
@@ -78,19 +79,25 @@ export function serviceChargeTaxLaar(
   config: ServiceChargePublicConfig,
   serviceChargeLaar: number,
   weightedTaxRatePercent: number,
+  taxInclusive = false,
 ): number {
   if (!config.taxable || serviceChargeLaar <= 0 || weightedTaxRatePercent <= 0) return 0;
+  if (taxInclusive) {
+    return Math.round((serviceChargeLaar * weightedTaxRatePercent) / (100 + weightedTaxRatePercent));
+  }
   return Math.round(serviceChargeLaar * weightedTaxRatePercent / 100);
 }
 
 /**
  * Mirror backend OrderTotalsCalculator::calculateServiceChargeTaxLaar —
  * allocate SC across tax-rate buckets, then tax each share.
+ * Inclusive: extract embedded GST (does not change the SC principal / grand total).
  */
 export function serviceChargeTaxLaarByBuckets(
   config: ServiceChargePublicConfig,
   serviceChargeLaar: number,
   buckets: ReadonlyArray<{ ratePercent: number; laar: number }>,
+  taxInclusive = false,
 ): number {
   if (!config.taxable || serviceChargeLaar <= 0) return 0;
   const totalTaxableLaar = buckets.reduce((sum, b) => sum + (b.laar > 0 && b.ratePercent > 0 ? b.laar : 0), 0);
@@ -99,7 +106,11 @@ export function serviceChargeTaxLaarByBuckets(
   for (const b of buckets) {
     if (b.laar <= 0 || b.ratePercent <= 0) continue;
     const scShareLaar = Math.round((serviceChargeLaar * b.laar) / totalTaxableLaar);
-    scTaxLaar += Math.round((scShareLaar * b.ratePercent) / 100);
+    if (taxInclusive) {
+      scTaxLaar += Math.round((scShareLaar * b.ratePercent) / (100 + b.ratePercent));
+    } else {
+      scTaxLaar += Math.round((scShareLaar * b.ratePercent) / 100);
+    }
   }
   return scTaxLaar;
 }

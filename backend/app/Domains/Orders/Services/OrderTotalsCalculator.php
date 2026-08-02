@@ -106,13 +106,19 @@ class OrderTotalsCalculator
 
         if ($taxRateBp !== null) {
             if ($taxInclusive) {
+                // Inclusive: extract embedded GST from merchandise (+ taxable SC).
+                // Do not add tax on top of grand total — it is already embedded.
                 $tax = $discountedSubtotal->extractTax($taxRateBp);
+                if ($serviceCharge->taxable && $serviceCharge->amountLaar > 0) {
+                    $scTax = (new Money($serviceCharge->amountLaar))->extractTax($taxRateBp);
+                    $tax = $tax->add($scTax);
+                }
                 $grandTotal = $discountedSubtotal->add($serviceChargeMoney);
             } else {
                 $itemTax = $discountedSubtotal->addTax($taxRateBp)->subtract($discountedSubtotal);
                 $tax = $itemTax;
                 if ($serviceCharge->taxable && $serviceCharge->amountLaar > 0) {
-                    $scTax = new Money($serviceCharge->amountLaar)->addTax($taxRateBp)->subtract(new Money($serviceCharge->amountLaar));
+                    $scTax = (new Money($serviceCharge->amountLaar))->addTax($taxRateBp)->subtract(new Money($serviceCharge->amountLaar));
                     $tax = $tax->add($scTax);
                 }
                 $grandTotal = $discountedSubtotal->add($serviceChargeMoney)->add($tax);
@@ -121,12 +127,16 @@ class OrderTotalsCalculator
         } else {
             $tax = $this->calculatePerItemTax($order, $subtotal, $discountedSubtotal, $taxInclusive);
 
-            if ($serviceCharge->taxable && $serviceCharge->amountLaar > 0 && !$taxInclusive) {
+            // Inclusive + taxable SC: extract embedded GST into tax_laar only
+            // (mirrors packaging fees in recalculateAndPersist). Exclusive: add
+            // SC tax into tax_laar and grand total below.
+            if ($serviceCharge->taxable && $serviceCharge->amountLaar > 0) {
                 $scTaxLaar = $this->calculateServiceChargeTaxLaar(
                     $order,
                     $subtotal,
                     $discountedSubtotal,
                     $serviceCharge->amountLaar,
+                    $taxInclusive,
                 );
                 if ($scTaxLaar > 0) {
                     $tax = $tax->add(new Money($scTaxLaar));
@@ -446,13 +456,16 @@ class OrderTotalsCalculator
     }
 
     /**
-     * Allocate service charge tax across item tax buckets (not a single blended rate).
+     * Allocate service charge tax across item tax-code buckets (not a single blended rate).
+     * Inclusive: extract embedded GST via GstTaxCalculator (do not add to grand total).
+     * Exclusive: GST on top of the SC principal.
      */
     private function calculateServiceChargeTaxLaar(
         Order $order,
         Money $subtotal,
         Money $discountedSubtotal,
         int $serviceChargeLaar,
+        bool $taxInclusive,
     ): int {
         if ($serviceChargeLaar <= 0 || $subtotal->amountLaar === 0) {
             return 0;
@@ -461,19 +474,20 @@ class OrderTotalsCalculator
         $order->loadMissing('items');
         $discountRatio = $discountedSubtotal->amountLaar / $subtotal->amountLaar;
 
-        /** @var array<float, int> $buckets tax rate percent => post-discount laar */
+        /** @var array<string, int> $buckets tax_code => post-discount laar */
         $buckets = [];
         foreach ($order->items as $item) {
-            $rate = $this->gstTax->resolveTaxRatePercent($item->tax_code ?? null);
-            if ($rate <= 0) {
+            $code = $item->tax_code ?? null;
+            if ($this->gstTax->resolveTaxRatePercent($code) <= 0) {
                 continue;
             }
+            $codeValue = $this->gstTax->resolveTaxCode($code)->value;
             $itemLaar = (int) round((float) $item->total_price * 100);
             $effectiveLaar = (int) round($itemLaar * $discountRatio);
             if ($effectiveLaar <= 0) {
                 continue;
             }
-            $buckets[$rate] = ($buckets[$rate] ?? 0) + $effectiveLaar;
+            $buckets[$codeValue] = ($buckets[$codeValue] ?? 0) + $effectiveLaar;
         }
 
         $totalTaxableLaar = array_sum($buckets);
@@ -482,9 +496,9 @@ class OrderTotalsCalculator
         }
 
         $scTaxLaar = 0;
-        foreach ($buckets as $rate => $bucketLaar) {
+        foreach ($buckets as $taxCode => $bucketLaar) {
             $scShareLaar = (int) round($serviceChargeLaar * $bucketLaar / $totalTaxableLaar);
-            $scTaxLaar += (int) round($scShareLaar * $rate / 100);
+            $scTaxLaar += $this->gstTax->calculateLineTaxLaar($scShareLaar, $taxCode, $taxInclusive);
         }
 
         return $scTaxLaar;
