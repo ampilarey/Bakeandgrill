@@ -35,9 +35,9 @@ function Preview({
         data-testid={`preview-${kind}`}
         style={{
           borderRadius: 12,
-          border: '1px solid #E8E0D8',
+          border: '1px solid var(--color-border)',
           overflow: 'hidden',
-          background: dark ? '#1C1408' : '#FFFDF9',
+          background: dark ? 'var(--color-text)' : '#FFFDF9',
           padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -62,8 +62,8 @@ function Preview({
             }}
           />
         )}
-        <div style={{ fontWeight: 800, fontSize: 15, color: dark ? '#f5e6cc' : '#1C1408' }}>{siteName}</div>
-        <div style={{ marginLeft: 'auto', fontSize: 11, color: dark ? '#9c8060' : '#9C8E7E' }}>Menu · Offers</div>
+        <div style={{ fontWeight: 800, fontSize: 15, color: dark ? '#f5e6cc' : 'var(--color-text)' }}>{siteName}</div>
+        <div style={{ marginLeft: 'auto', fontSize: 11, color: dark ? '#9c8060' : 'var(--color-text-muted)' }}>Menu · Offers</div>
       </div>
     );
   }
@@ -139,7 +139,7 @@ function Preview({
   }
 
   if (kind === 'color') {
-    const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim()) ? value.trim() : '#D4813A';
+    const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim()) ? value.trim() : 'var(--color-primary)';
     return (
       <div data-testid="preview-color" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <button
@@ -337,7 +337,7 @@ function Card({
         <label style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44, cursor: 'pointer' }}>
           <input
             type="color"
-            value={/^#([0-9a-fA-F]{6})$/.test(value) ? value : '#D4813A'}
+            value={/^#([0-9a-fA-F]{6})$/.test(value) ? value : 'var(--color-primary)'}
             onChange={(e) => onSetValue(e.target.value.toUpperCase())}
             style={{ width: 48, height: 44, border: '1px solid var(--color-border)', borderRadius: 10, padding: 2, background: 'var(--color-surface)', cursor: 'pointer' }}
             aria-label="Pick brand colour"
@@ -404,7 +404,7 @@ function Card({
             <input
               value={value}
               onChange={(e) => onSetValue(e.target.value)}
-              placeholder={isColor ? '#D4813A' : '/storage/…'}
+              placeholder={isColor ? 'var(--color-primary)' : '/storage/…'}
               aria-label={`${meta.title} raw value`}
               style={{
                 width: '100%',
@@ -494,7 +494,7 @@ export function BrandKitCards({
           const set = isSet(value);
           const thumb =
             meta.preview === 'color'
-              ? (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim()) ? value.trim() : '#D4813A')
+              ? (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim()) ? value.trim() : 'var(--color-primary)')
               : value;
           return (
             <div key={meta.key} style={{ textAlign: 'center', minWidth: 0 }}>
