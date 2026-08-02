@@ -27,10 +27,10 @@ function shiftWeek(weekStart: string, deltaWeeks: number): string {
   return toLocalDateStr(d);
 }
 
-const FS: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', minHeight: 44 };
-const LS: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 };
-const TH: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#9C8E7E', borderBottom: '2px solid #F0EBE5', whiteSpace: 'nowrap' };
-const TD: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid #F0EBE5' };
+const FS: React.CSSProperties = { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', minHeight: 44 };
+const LS: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 };
+const TH: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', borderBottom: '2px solid var(--color-border-light)', whiteSpace: 'nowrap' };
+const TD: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid var(--color-border-light)' };
 
 export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
@@ -155,7 +155,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
                   <tr key={date} style={{ background: di % 2 === 0 ? '#FAFAF9' : 'var(--color-surface)' }}>
                     <td style={{ ...TD, fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {DAYS[di]}<br />
-                      <span style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 400 }}>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400 }}>
                         {new Date(date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </span>
                     </td>
@@ -164,11 +164,11 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
                       return (
                         <td key={s.id} style={{ ...TD, verticalAlign: 'top', padding: 8 }}>
                           {shift ? (
-                            <div style={{ background: '#FEF3E8', border: '1px solid #D4813A', borderRadius: 8, padding: '8px 10px' }}>
-                              <div style={{ fontWeight: 700, color: '#D4813A', fontSize: 12 }}>
+                            <div style={{ background: '#FEF3E8', border: '1px solid var(--color-primary)', borderRadius: 8, padding: '8px 10px' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 12 }}>
                                 {shift.start_time.slice(0, 5)} – {shift.end_time.slice(0, 5)}
                               </div>
-                              {shift.notes && <div style={{ fontSize: 11, color: '#6B5D4F', marginTop: 2 }}>{shift.notes}</div>}
+                              {shift.notes && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{shift.notes}</div>}
                               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                                 <Btn small variant="ghost" onClick={() => openModal(shift)}>Edit</Btn>
                                 <Btn small variant="danger" onClick={() => handleDelete(shift.id)}>Remove</Btn>
@@ -184,7 +184,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
                                 setModal(true);
                               }}
                               style={{
-                                fontSize: 12, color: '#9C8E7E', background: 'none', border: '1px dashed #E8E0D8',
+                                fontSize: 12, color: 'var(--color-text-muted)', background: 'none', border: '1px dashed var(--color-border)',
                                 borderRadius: 8, cursor: 'pointer', padding: '10px 8px', width: '100%', minHeight: 44,
                               }}
                             >
@@ -208,7 +208,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={LS}>Staff Member *</span>
-              <select value={form.staff_id} onChange={(e) => setForm((f) => ({ ...f, staff_id: e.target.value }))} style={{ ...FS, border: '1px solid #E8E0D8', borderRadius: 8 }}>
+              <select value={form.staff_id} onChange={(e) => setForm((f) => ({ ...f, staff_id: e.target.value }))} style={{ ...FS, border: '1px solid var(--color-border)', borderRadius: 8 }}>
                 <option value="">Select staff…</option>
                 {activeStaff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
@@ -227,7 +227,7 @@ export function SchedulesTab({ staff }: { staff: StaffMember[] }) {
                 <input type="time" value={form.end_time} onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))} style={FS} />
               </label>
             </div>
-            <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>Overnight shifts (end before start) are not supported.</p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>Overnight shifts (end before start) are not supported.</p>
             <label>
               <span style={LS}>Notes</span>
               <input type="text" placeholder="Optional note…" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} style={FS} />
