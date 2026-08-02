@@ -61,7 +61,7 @@ const sectionTabStyle = (active: boolean): React.CSSProperties => ({
   fontSize: 13,
   fontWeight: active ? 700 : 500,
   background: active ? 'var(--color-surface)' : 'transparent',
-  color: active ? '#1C1408' : '#6B5D4F',
+  color: active ? 'var(--color-text)' : 'var(--color-text-secondary)',
   boxShadow: active ? '0 1px 3px rgba(28,20,8,0.08)' : 'none',
 });
 
@@ -93,7 +93,7 @@ function parseSchedule(raw: string): Schedule {
 const S = {
   card: {
     background: '#FDFAF7',
-    border: '1px solid #E8E0D8',
+    border: '1px solid var(--color-border)',
     borderRadius: 16,
     padding: '1.5rem',
     marginBottom: '1.25rem',
@@ -101,7 +101,7 @@ const S = {
   sectionTitle: {
     fontSize: 14,
     fontWeight: 700,
-    color: '#6B5D4F',
+    color: 'var(--color-text-secondary)',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.05em',
     marginBottom: '1rem',
@@ -109,7 +109,7 @@ const S = {
   input: {
     width: '100%',
     padding: '9px 12px',
-    border: '1.5px solid #E8E0D8',
+    border: '1.5px solid var(--color-border)',
     borderRadius: 10,
     fontSize: 13,
     fontFamily: 'inherit',
@@ -119,20 +119,20 @@ const S = {
     display: 'block' as const,
     fontSize: 13,
     fontWeight: 600 as const,
-    color: '#6B5D4F',
+    color: 'var(--color-text-secondary)',
     marginBottom: 4,
   },
   row: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const },
   btnPrimary: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 10, border: 'none',
-    background: '#D4813A', color: '#fff', fontSize: 13, fontWeight: 600,
+    background: 'var(--color-primary)', color: '#fff', fontSize: 13, fontWeight: 600,
     cursor: 'pointer',
   } as React.CSSProperties,
   btnSecondary: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 10,
-    border: '1.5px solid #E8E0D8', background: 'var(--color-surface)',
+    border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
     color: '#4A3728', fontSize: 13, fontWeight: 600,
     cursor: 'pointer',
   } as React.CSSProperties,
@@ -160,7 +160,7 @@ const S = {
   toggleTrack: (on: boolean): React.CSSProperties => ({
     display: 'inline-block', position: 'relative',
     width: 48, height: 26, borderRadius: 13,
-    background: on ? '#D4813A' : '#D1C9BE',
+    background: on ? 'var(--color-primary)' : '#D1C9BE',
     transition: 'background 0.2s',
     cursor: 'pointer', flexShrink: 0,
   }),
@@ -687,7 +687,7 @@ export default function OnlineOrderingPage() {
                 </p>
               )}
               {cateringStatus?.override_until && (
-                <p style={{ ...S.reasonNote, color: '#D4813A', fontWeight: 600 }}>
+                <p style={{ ...S.reasonNote, color: 'var(--color-primary)', fontWeight: 600 }}>
                   Force-open until {new Date(cateringStatus.override_until).toLocaleString()}
                 </p>
               )}
@@ -743,7 +743,7 @@ export default function OnlineOrderingPage() {
 
         <div style={S.card}>
           <p style={S.sectionTitle}>Force-open Override</p>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
             Force pre-order <strong>open</strong> until a specific time, ignoring the schedule.
           </p>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
@@ -787,7 +787,7 @@ export default function OnlineOrderingPage() {
                 <div key={key} style={{
                   padding: '10px 14px', borderRadius: 10,
                   background: day.enabled ? '#FDFAF7' : '#F5F0EB',
-                  border: `1px solid ${day.enabled ? '#E8E0D8' : '#DDD5CB'}`,
+                  border: `1px solid ${day.enabled ? 'var(--color-border)' : '#DDD5CB'}`,
                   opacity: day.enabled ? 1 : 0.65,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
@@ -850,7 +850,7 @@ export default function OnlineOrderingPage() {
 
         <div style={S.card} data-testid="catering-events-settings">
           <p style={S.sectionTitle}>Notifications & lead time</p>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9C8E7E', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
             Notify fallbacks when no event staff are online, lead time for new requests, and quote link validity.
             Appoint handlers via Roles & Permissions → <code>events.manage</code>.
           </p>
@@ -1000,7 +1000,7 @@ export default function OnlineOrderingPage() {
               </p>
             )}
             {status.override_until && (
-              <p style={{ ...S.reasonNote, color: '#D4813A', fontWeight: 600 }}>
+              <p style={{ ...S.reasonNote, color: 'var(--color-primary)', fontWeight: 600 }}>
                 Force-open override active until {new Date(status.override_until).toLocaleString()}
               </p>
             )}
@@ -1055,7 +1055,7 @@ export default function OnlineOrderingPage() {
       {/* Force-open Override */}
       <div style={S.card}>
         <p style={S.sectionTitle}>Force-open Override</p>
-        <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
           Force online ordering <strong>open</strong> until a specific time, ignoring the schedule.
           Useful for running promotions outside normal hours. Leave blank to deactivate.
         </p>
@@ -1115,7 +1115,7 @@ export default function OnlineOrderingPage() {
                 <div key={key} style={{
                   padding: '10px 14px', borderRadius: 10,
                   background: day.enabled ? '#FDFAF7' : '#F5F0EB',
-                  border: `1px solid ${day.enabled ? '#E8E0D8' : '#DDD5CB'}`,
+                  border: `1px solid ${day.enabled ? 'var(--color-border)' : '#DDD5CB'}`,
                   opacity: day.enabled ? 1 : 0.65,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
@@ -1184,7 +1184,7 @@ export default function OnlineOrderingPage() {
       {section === 'pickup' && (
         <div style={S.card}>
           <p style={S.sectionTitle}>Pickup time slots</p>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 14, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
             When enabled, online pickup checkout offers timed windows. Capacity limits how many
             orders can book each slot. POS dine-in is unaffected.
           </p>
@@ -1235,7 +1235,7 @@ export default function OnlineOrderingPage() {
       {feeSettings && (
         <div style={S.card}>
           <p style={S.sectionTitle}>Order fees & limits</p>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9C8E7E' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)' }}>
             Packaging is set per menu item. This page only controls the receipt label, small-order fee, and order caps.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
