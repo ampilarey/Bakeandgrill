@@ -90,9 +90,9 @@ export function SystemHealthPage() {
             disabled={loading}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px', borderRadius: 10, border: '1px solid #E8E0D8',
+              padding: '8px 14px', borderRadius: 10, border: '1px solid var(--color-border)',
               background: '#fff', cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit',
-              fontSize: 13, fontWeight: 600, color: '#1C1408',
+              fontSize: 13, fontWeight: 600, color: 'var(--color-text)',
             }}
           >
             <RefreshCw size={14} /> Refresh
@@ -119,7 +119,7 @@ export function SystemHealthPage() {
               <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: degraded ? '#991B1B' : '#166534' }}>
                 {degraded ? 'Issues detected in the last 24 hours' : 'All systems nominal'}
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B5D4F' }}>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                 Last checked {fmtTime(data.checked_at)}
               </p>
             </div>
@@ -130,19 +130,19 @@ export function SystemHealthPage() {
               <SectionLabel>Alert inbox</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
                 {data.alert_inbox!.map((alert) => (
-                  <Card key={alert.type} style={{ padding: '12px 16px', borderLeft: `4px solid ${alert.severity === 'critical' ? '#ef4444' : '#f59e0b'}` }}>
+                  <Card key={alert.type} style={{ padding: '12px 16px', borderLeft: `4px solid ${alert.severity === 'critical' ? 'var(--color-danger)' : 'var(--color-warning)'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                       <div>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{alert.message}</p>
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>{alert.count} item(s) · {alert.severity}</p>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{alert.message}</p>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{alert.count} item(s) · {alert.severity}</p>
                       </div>
                       {alert.link && (
                         <button
                           type="button"
                           onClick={() => navigate(alert.link!)}
                           style={{
-                            padding: '6px 12px', borderRadius: 8, border: '1px solid #E8E0D8',
-                            background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#D4813A',
+                            padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-border)',
+                            background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--color-primary)',
                           }}
                         >
                           Review →
@@ -161,28 +161,28 @@ export function SystemHealthPage() {
               label="Failed jobs"
               value={String(data.failed_jobs_24h)}
               sub={data.failed_jobs_24h > 0 ? 'Check queue worker' : 'None'}
-              accent={data.failed_jobs_24h > 0 ? '#ef4444' : '#22c55e'}
+              accent={data.failed_jobs_24h > 0 ? 'var(--color-danger)' : 'var(--color-success)'}
               icon={Server}
             />
             <StatCard
               label="BML webhook failures"
               value={String(data.webhook_failures_24h)}
               sub="Potential missed payments"
-              accent={data.webhook_failures_24h > 0 ? '#ef4444' : '#22c55e'}
+              accent={data.webhook_failures_24h > 0 ? 'var(--color-danger)' : 'var(--color-success)'}
               icon={Webhook}
             />
             <StatCard
               label="Stuck payments"
               value={String(data.payment_pending_stuck)}
               sub="payment_pending > 30 min"
-              accent={data.payment_pending_stuck > 0 ? '#f59e0b' : '#22c55e'}
+              accent={data.payment_pending_stuck > 0 ? 'var(--color-warning)' : 'var(--color-success)'}
               icon={Activity}
             />
             <StatCard
               label="SMS failures"
               value={String(data.sms_failed_24h)}
               sub="Last 24 hours"
-              accent={data.sms_failed_24h > 0 ? '#ef4444' : '#22c55e'}
+              accent={data.sms_failed_24h > 0 ? 'var(--color-danger)' : 'var(--color-success)'}
               icon={MessageSquare}
             />
             <StatCard
@@ -194,10 +194,10 @@ export function SystemHealthPage() {
                   : (data.redis?.error ? data.redis.error.slice(0, 40) : 'Not checked')
               }
               accent={
-                data.redis?.status === 'down' ? '#ef4444'
-                  : data.redis?.status === 'degraded' ? '#f59e0b'
-                    : data.redis?.status === 'up' ? '#22c55e'
-                      : '#9C8E7E'
+                data.redis?.status === 'down' ? 'var(--color-danger)'
+                  : data.redis?.status === 'degraded' ? 'var(--color-warning)'
+                    : data.redis?.status === 'up' ? 'var(--color-success)'
+                      : 'var(--color-text-muted)'
               }
               icon={Database}
             />
@@ -205,14 +205,14 @@ export function SystemHealthPage() {
               label="Print proxy"
               value={printProxyLabel(data.print_proxy_status, data.print_proxy_ok)}
               sub={data.print_proxy_status}
-              accent={data.print_proxy_ok === false ? '#ef4444' : data.print_proxy_ok === true ? '#22c55e' : '#9C8E7E'}
+              accent={data.print_proxy_ok === false ? 'var(--color-danger)' : data.print_proxy_ok === true ? 'var(--color-success)' : 'var(--color-text-muted)'}
               icon={Printer}
             />
             <StatCard
               label="Queue depth"
               value={String(data.queue_depth)}
               sub="Pending jobs"
-              accent={data.queue_depth > 50 ? '#f59e0b' : '#0ea5e9'}
+              accent={data.queue_depth > 50 ? 'var(--color-warning)' : '#0ea5e9'}
               icon={Server}
             />
             <StatCard
@@ -228,9 +228,9 @@ export function SystemHealthPage() {
                   : 'Unavailable'
               }
               accent={
-                data.disk?.ok === false ? '#ef4444'
-                  : data.disk?.ok === true ? '#22c55e'
-                    : '#9C8E7E'
+                data.disk?.ok === false ? 'var(--color-danger)'
+                  : data.disk?.ok === true ? 'var(--color-success)'
+                    : 'var(--color-text-muted)'
               }
               icon={HardDrive}
             />
@@ -246,11 +246,11 @@ export function SystemHealthPage() {
                       <button
                         type="button"
                         onClick={() => navigate(`/orders?order=${o.id}`)}
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700, color: '#D4813A', fontFamily: 'inherit' }}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'inherit' }}
                       >
                         #{o.order_number}
                       </button>
-                      <span style={{ color: '#6B5D4F' }}>
+                      <span style={{ color: 'var(--color-text-secondary)' }}>
                         MVR {o.total.toFixed(2)} · {fmtTime(o.created_at)}
                       </span>
                     </div>
@@ -267,9 +267,9 @@ export function SystemHealthPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {data.recent_webhook_failures.map((w) => (
                     <div key={w.id} style={{ fontSize: 13 }}>
-                      <div style={{ fontWeight: 600, color: '#1C1408' }}>{w.event_type ?? 'unknown event'}</div>
-                      <div style={{ color: '#6B5D4F' }}>{w.error_message ?? 'No error message'}</div>
-                      <div style={{ color: '#9C8E7E', fontSize: 12 }}>{fmtTime(w.created_at)}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{w.event_type ?? 'unknown event'}</div>
+                      <div style={{ color: 'var(--color-text-secondary)' }}>{w.error_message ?? 'No error message'}</div>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{fmtTime(w.created_at)}</div>
                     </div>
                   ))}
                 </div>
@@ -286,10 +286,10 @@ export function SystemHealthPage() {
                     <div key={j.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 600 }}>{j.queue} · {j.connection}</span>
-                        <span style={{ color: '#9C8E7E' }}>{fmtTime(j.failed_at)}</span>
+                        <span style={{ color: 'var(--color-text-muted)' }}>{fmtTime(j.failed_at)}</span>
                       </div>
                       {j.exception_snippet && (
-                        <div style={{ color: '#6B5D4F', fontSize: 12, fontFamily: 'monospace' }}>
+                        <div style={{ color: 'var(--color-text-secondary)', fontSize: 12, fontFamily: 'monospace' }}>
                           {j.exception_snippet}
                         </div>
                       )}
@@ -299,9 +299,9 @@ export function SystemHealthPage() {
                           disabled={jobBusy === j.uuid}
                           onClick={() => void handleRetry(j.uuid)}
                           style={{
-                            padding: '5px 10px', borderRadius: 8, border: '1px solid #E8E0D8',
+                            padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-border)',
                             background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                            color: '#D4813A', fontFamily: 'inherit',
+                            color: 'var(--color-primary)', fontFamily: 'inherit',
                           }}
                         >
                           {jobBusy === j.uuid ? '…' : 'Retry'}
