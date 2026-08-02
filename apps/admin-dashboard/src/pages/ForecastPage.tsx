@@ -29,7 +29,7 @@ function priceChangeBadge(item: RestockPlanItem): { label: string; color: string
   if (item.price_change === 'down') {
     return { label: `↓ ${Math.abs(item.price_change_pct)}%`, color: '#15803d', bg: '#dcfce7' };
   }
-  return { label: 'same', color: '#6B5D4F', bg: '#F0EBE5' };
+  return { label: 'same', color: 'var(--color-text-secondary)', bg: 'var(--color-border-light)' };
 }
 
 const REASON_LABEL: Record<string, string> = {
@@ -39,10 +39,10 @@ const REASON_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  ok:           '#22c55e',
-  warning:      '#f59e0b',
+  ok:           'var(--color-success)',
+  warning:      'var(--color-warning)',
   low:          '#f97316',
-  critical:     '#ef4444',
+  critical:     'var(--color-danger)',
   out_of_stock: '#dc2626',
 };
 
@@ -1062,16 +1062,16 @@ export function ForecastPage() {
       {/* Controls */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
         <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 14 }} />
-        <span style={{ color: '#9C8E7E' }}>to</span>
+          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }} />
+        <span style={{ color: 'var(--color-text-muted)' }}>to</span>
         <input type="date" value={to} onChange={e => setTo(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 14 }} />
-        <div style={{ display: 'flex', background: '#F0EBE5', borderRadius: 8, overflow: 'hidden' }}>
+          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }} />
+        <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: 8, overflow: 'hidden' }}>
           {(['daily', 'weekly', 'monthly'] as const).map(g => (
             <button key={g} onClick={() => setGran(g)}
               style={{ padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: granularity === g ? '#1C1408' : 'transparent',
-                color: granularity === g ? '#fff' : '#6B5D4F' }}>
+                background: granularity === g ? 'var(--color-text)' : 'transparent',
+                color: granularity === g ? '#fff' : 'var(--color-text-secondary)' }}>
               {g.charAt(0).toUpperCase() + g.slice(1)}
             </button>
           ))}
@@ -1088,7 +1088,7 @@ export function ForecastPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>Sales Trends</div>
-                  <div style={{ fontSize: 13, color: '#6B5D4F', marginTop: 2 }}>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>
                     MVR {parseFloat(String(trends.total_revenue ?? 0)).toFixed(2)} · {trends.total_orders} orders
                   </div>
                 </div>
@@ -1096,20 +1096,20 @@ export function ForecastPage() {
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120, overflowX: 'auto', paddingBottom: 8 }}>
                 {trends.data.map(d => (
                   <div key={d.period} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, minWidth: 40 }}>
-                    <div style={{ fontSize: 10, color: '#6B5D4F', marginBottom: 4 }}>
+                    <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
                       {d.growth_pct !== null ? (d.growth_pct >= 0 ? '+' : '') + parseFloat(String(d.growth_pct ?? 0)).toFixed(0) + '%' : ''}
                     </div>
                     <div
                       style={{
                         width: 32,
                         height: Math.max(4, (d.revenue / maxRevenue) * 100),
-                        background: d.growth_pct !== null && d.growth_pct < 0 ? '#ef4444' : '#D4813A',
+                        background: d.growth_pct !== null && d.growth_pct < 0 ? 'var(--color-danger)' : 'var(--color-primary)',
                         borderRadius: '4px 4px 0 0',
                         transition: 'height 0.4s ease',
                       }}
                       title={`${d.period}: MVR ${parseFloat(String(d.revenue ?? 0)).toFixed(2)} (${d.orders} orders)`}
                     />
-                    <div style={{ fontSize: 9, color: '#9C8E7E', marginTop: 4, textAlign: 'center', lineHeight: 1.2, maxWidth: 40 }}>
+                    <div style={{ fontSize: 9, color: 'var(--color-text-muted)', marginTop: 4, textAlign: 'center', lineHeight: 1.2, maxWidth: 40 }}>
                       {d.period.slice(-5)}
                     </div>
                   </div>
@@ -1121,7 +1121,7 @@ export function ForecastPage() {
           {/* Revenue forecast */}
           {!forecast && !loading && (
             <Card>
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#9C8E7E' }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                 <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Revenue Forecast</div>
                 <div style={{ fontSize: 13 }}>Not enough sales history yet — need at least 2 weeks of completed orders.</div>
               </div>
@@ -1130,7 +1130,7 @@ export function ForecastPage() {
           {forecast && (
             <Card>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Revenue Forecast (Next 4 Weeks)</div>
-              <div style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
                 Weighted Moving Avg: MVR {parseFloat(String(forecast.weighted_moving_avg ?? 0)).toFixed(2)}/wk ·
                 Growth Rate: <span style={{ color: forecast.growth_rate_pct >= 0 ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
                   {forecast.growth_rate_pct >= 0 ? '+' : ''}{parseFloat(String(forecast.growth_rate_pct ?? 0)).toFixed(2)}%/wk
@@ -1138,10 +1138,10 @@ export function ForecastPage() {
               </div>
               <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
                 {(forecast.forecast ?? []).map((wk, i) => (
-                  <div key={wk.week_start} style={{ background: '#F8F6F3', borderRadius: 10, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: '#6B5D4F', marginBottom: 6 }}>Week {i + 1}</div>
-                    <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 8 }}>{wk.week_start}</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#D4813A' }}>MVR {parseFloat(String(wk.projected_revenue ?? 0)).toFixed(2)}</div>
+                  <div key={wk.week_start} style={{ background: 'var(--color-bg)', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Week {i + 1}</div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8 }}>{wk.week_start}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-primary)' }}>MVR {parseFloat(String(wk.projected_revenue ?? 0)).toFixed(2)}</div>
                   </div>
                 ))}
               </div>
@@ -1151,7 +1151,7 @@ export function ForecastPage() {
           {/* Per-item demand forecast */}
           <Card>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Per-Item Demand Forecast</div>
-            <div style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
               Search a menu item to see its projected daily demand.
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
@@ -1164,11 +1164,11 @@ export function ForecastPage() {
                 />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label style={{ fontSize: 12, color: '#6B5D4F', fontWeight: 700 }}>Days:</label>
+                <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 700 }}>Days:</label>
                 <select
                   value={itemForecastDays}
                   onChange={(e) => setItemForecastDays(Number(e.target.value))}
-                  style={{ height: 36, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}
+                  style={{ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', cursor: 'pointer' }}
                 >
                   {[7, 14, 30].map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
@@ -1176,10 +1176,10 @@ export function ForecastPage() {
             </div>
 
             {itemLoading && <Spinner />}
-            {itemError && <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 8 }}>{itemError}</div>}
+            {itemError && <div style={{ color: 'var(--color-danger)', fontSize: 13, marginBottom: 8 }}>{itemError}</div>}
             {itemForecast && !itemLoading && (
               <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 12 }}>
                   {itemForecast.item_name} — next {itemForecastDays} days
                 </div>
                 <div style={{ overflowX: 'auto' }}>
@@ -1189,14 +1189,14 @@ export function ForecastPage() {
                       const barH = Math.max(4, (d.predicted_qty / maxQty) * 84);
                       return (
                         <div key={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 28 }}>
-                          <div style={{ fontSize: 10, color: '#6B5D4F', marginBottom: 3, fontWeight: 600 }}>
+                          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 3, fontWeight: 600 }}>
                             {Math.round(d.predicted_qty)}
                           </div>
                           <div
-                            style={{ width: '100%', maxWidth: 32, height: barH, background: '#D4813A', borderRadius: '3px 3px 0 0', opacity: 0.85 }}
+                            style={{ width: '100%', maxWidth: 32, height: barH, background: 'var(--color-primary)', borderRadius: '3px 3px 0 0', opacity: 0.85 }}
                             title={`${d.date}: ${d.predicted_qty.toFixed(1)} units · MVR ${d.predicted_revenue.toFixed(2)}`}
                           />
-                          <div style={{ fontSize: 9, color: '#9C8E7E', marginTop: 3, textAlign: 'center' }}>
+                          <div style={{ fontSize: 9, color: 'var(--color-text-muted)', marginTop: 3, textAlign: 'center' }}>
                             {d.date.slice(5)}
                           </div>
                         </div>
@@ -1204,14 +1204,14 @@ export function ForecastPage() {
                     })}
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 10, textAlign: 'right' }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 10, textAlign: 'right' }}>
                   Est. revenue: MVR {itemForecast.forecast.reduce((s, d) => s + d.predicted_revenue, 0).toFixed(2)} ·{' '}
                   Total units: {itemForecast.forecast.reduce((s, d) => s + d.predicted_qty, 0).toFixed(0)}
                 </div>
               </div>
             )}
             {!selectedItem && !itemLoading && (
-              <p style={{ color: '#9C8E7E', fontSize: 13, margin: 0 }}>Search and select a menu item above to see its demand forecast.</p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: 0 }}>Search and select a menu item above to see its demand forecast.</p>
             )}
           </Card>
 
@@ -1222,7 +1222,7 @@ export function ForecastPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>Restock Plan</div>
-                  <div style={{ fontSize: 13, color: '#6B5D4F', marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                     Combines usage runway, buy cadence, and reorder points. Suggested ROP stays advisory until you apply it.
                   </div>
                 </div>
@@ -1274,14 +1274,14 @@ export function ForecastPage() {
                         : `Create draft POs (${selectedRestockItems.length})`}
                     </Btn>
                   )}
-                  <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>
+                  <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
                     Open Purchase Orders →
                   </Link>
                 </div>
               </div>
               <div style={{
                 marginBottom: 12, padding: '10px 12px', borderRadius: 8,
-                background: '#F8F6F3', border: '1px solid #E8E0D8',
+                background: 'var(--color-bg)', border: '1px solid var(--color-border)',
                 display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end',
               }}>
                 {([
@@ -1290,7 +1290,7 @@ export function ForecastPage() {
                   { key: 'lead_days' as const, label: 'Default lead', min: 1, max: 60, suffix: 'd' },
                   { key: 'cover_days' as const, label: 'Default cover', min: 3, max: 90, suffix: 'd' },
                 ]).map((f) => (
-                  <label key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, fontWeight: 700, color: '#6B5D4F' }}>
+                  <label key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                     {f.label}
                     <input
                       type="number"
@@ -1300,8 +1300,8 @@ export function ForecastPage() {
                       disabled={restockBusy || loading}
                       onChange={(e) => setRestockParamDrafts((d) => ({ ...d, [f.key]: e.target.value }))}
                       style={{
-                        width: 72, padding: '6px 8px', borderRadius: 6, border: '1px solid #E8E0D8',
-                        fontSize: 13, fontFamily: 'inherit', color: '#1C1408',
+                        width: 72, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)',
+                        fontSize: 13, fontFamily: 'inherit', color: 'var(--color-text)',
                       }}
                     />
                   </label>
@@ -1309,7 +1309,7 @@ export function ForecastPage() {
                 <Btn small variant="secondary" disabled={restockBusy || loading} onClick={applyRestockDefaults}>
                   Apply defaults
                 </Btn>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginLeft: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginLeft: 4 }}>
                   <input
                     type="checkbox"
                     checked={includeWaste}
@@ -1320,7 +1320,7 @@ export function ForecastPage() {
                   />
                   Include waste in suggestions
                 </label>
-                <span style={{ fontSize: 11, color: '#9C8E7E', alignSelf: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)', alignSelf: 'center' }}>
                   Active: usage {restockParams.lookback_days}d · buys {restockParams.buy_lookback_days}d · lead {restockParams.lead_days}d · cover {restockParams.cover_days}d
                   {includeWaste ? ' · waste ON' : ''}
                   {' '}(saved in this browser)
@@ -1329,10 +1329,10 @@ export function ForecastPage() {
               {canManageInventory && selectedAnyRestock.length > 0 && (
                 <div style={{
                   marginBottom: 12, padding: '10px 12px', borderRadius: 8,
-                  background: '#F8F6F3', border: '1px solid #E8E0D8', fontSize: 13, color: '#6B5D4F',
+                  background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontSize: 13, color: 'var(--color-text-secondary)',
                   display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
                 }}>
-                  <strong style={{ color: '#1C1408' }}>{selectedAnyRestock.length} selected</strong>
+                  <strong style={{ color: 'var(--color-text)' }}>{selectedAnyRestock.length} selected</strong>
                   {selectedSnoozeable.length > 0 && [7, 14, 30].map((d) => (
                     <button
                       key={d}
@@ -1340,9 +1340,9 @@ export function ForecastPage() {
                       disabled={restockBusy}
                       onClick={() => void snoozeSelectedRestock(d)}
                       style={{
-                        padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
                         background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                        fontFamily: 'inherit', color: '#6B5D4F',
+                        fontFamily: 'inherit', color: 'var(--color-text-secondary)',
                       }}
                     >
                       {snoozingId === -1 ? '…' : `Snooze ${d}d (${selectedSnoozeable.length})`}
@@ -1354,7 +1354,7 @@ export function ForecastPage() {
                       disabled={restockBusy}
                       onClick={() => void wakeSelectedRestock()}
                       style={{
-                        padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
                         background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', color: '#374151',
                       }}
@@ -1368,7 +1368,7 @@ export function ForecastPage() {
                       disabled={restockBusy}
                       onClick={() => void excludeSelectedRestock()}
                       style={{
-                        padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
                         background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', color: '#6B7280',
                       }}
@@ -1382,7 +1382,7 @@ export function ForecastPage() {
                       disabled={restockBusy}
                       onClick={() => void includeSelectedRestock()}
                       style={{
-                        padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E0D8',
+                        padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
                         background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         fontFamily: 'inherit', color: '#16a34a',
                       }}
@@ -1453,9 +1453,9 @@ export function ForecastPage() {
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <StatCard label="Tracked items" value={String(activeRestockItems.length)} accent="#6B5D4F" />
+                <StatCard label="Tracked items" value={String(activeRestockItems.length)} accent="var(--color-text-secondary)" />
                 <StatCard label="Due soon" value={String(restock.totals.due_soon)} accent="#f97316" />
-                <StatCard label="Below ROP" value={String(restock.totals.below_rop)} accent="#ef4444" />
+                <StatCard label="Below ROP" value={String(restock.totals.below_rop)} accent="var(--color-danger)" />
                 <StatCard label="Ready for PO" value={String(readyRestock.length)} accent="#16a34a" />
                 {(restock.totals.with_open_po ?? 0) > 0 && (
                   <StatCard label="Already on PO" value={String(restock.totals.with_open_po)} accent="#b45309" />
@@ -1467,13 +1467,13 @@ export function ForecastPage() {
                   <StatCard label="Open alerts" value={String(restock.totals.open_alerts)} accent="#dc2626" />
                 )}
                 {(restock.totals.snoozed ?? 0) > 0 && (
-                  <StatCard label="Snoozed" value={String(restock.totals.snoozed)} accent="#6B5D4F" />
+                  <StatCard label="Snoozed" value={String(restock.totals.snoozed)} accent="var(--color-text-secondary)" />
                 )}
                 {(restock.totals.excluded ?? 0) > 0 && (
                   <StatCard label="Excluded" value={String(restock.totals.excluded)} accent="#6B7280" />
                 )}
                 {cheapestRestock.length > 0 && (
-                  <StatCard label="No preferred yet" value={String(cheapestRestock.length)} accent="#6B5D4F" />
+                  <StatCard label="No preferred yet" value={String(cheapestRestock.length)} accent="var(--color-text-secondary)" />
                 )}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
@@ -1492,9 +1492,9 @@ export function ForecastPage() {
                     style={{
                       padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
                       cursor: 'pointer',
-                      border: restockFilter === f.id ? '1px solid #D4813A' : '1px solid #E8E0D8',
-                      background: restockFilter === f.id ? '#FFF7ED' : '#F8F6F3',
-                      color: restockFilter === f.id ? '#c2410c' : '#6B5D4F',
+                      border: restockFilter === f.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      background: restockFilter === f.id ? '#FFF7ED' : 'var(--color-bg)',
+                      color: restockFilter === f.id ? '#c2410c' : 'var(--color-text-secondary)',
                     }}
                   >
                     {f.label}
@@ -1505,7 +1505,7 @@ export function ForecastPage() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #F0EBE5' }}>
+                    <tr style={{ borderBottom: '2px solid var(--color-border-light)' }}>
                       <th style={{ padding: '8px 12px', width: 36 }}>
                         {selectableInFilter.length > 0 ? (
                           <input
@@ -1518,7 +1518,7 @@ export function ForecastPage() {
                         ) : null}
                       </th>
                       {['Item', 'Stock', 'Days left', 'Waste %', 'Buy every', 'Next order', 'Lead', 'Cover', 'Order qty', 'ROP', 'Supplier', 'Why'].map((h) => (
-                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-secondary)', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1527,7 +1527,7 @@ export function ForecastPage() {
                       <tr
                         key={item.id}
                         style={{
-                          borderBottom: '1px solid #F8F6F3',
+                          borderBottom: '1px solid var(--color-bg)',
                           background: item.excluded
                             ? '#F3F4F6'
                             : item.snoozed
@@ -1550,8 +1550,8 @@ export function ForecastPage() {
                           ) : null}
                         </td>
                         <td style={{ padding: '8px 12px', fontWeight: 600 }}>
-                          <Link to={`/inventory?item=${item.id}`} style={{ color: '#1C1408', textDecoration: 'none' }}>{item.name}</Link>
-                          <div style={{ fontSize: 11, color: '#9C8E7E' }}>{item.category ?? '—'}</div>
+                          <Link to={`/inventory?item=${item.id}`} style={{ color: 'var(--color-text)', textDecoration: 'none' }}>{item.name}</Link>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.category ?? '—'}</div>
                           {item.excluded && (
                             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                               <span
@@ -1615,7 +1615,7 @@ export function ForecastPage() {
                                   title={`Hide from due-soon until ${daysFromToday(d)}`}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #E8E0D8', background: '#F8F6F3', color: '#6B5D4F',
+                                    border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1629,7 +1629,7 @@ export function ForecastPage() {
                                 title="Hide permanently from Restock Plan (no alerts/SMS)"
                                 style={{
                                   fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                  border: '1px solid #E8E0D8', background: '#F8F6F3', color: '#6B7280',
+                                  border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: '#6B7280',
                                   borderRadius: 6, padding: '2px 6px',
                                 }}
                               >
@@ -1686,12 +1686,12 @@ export function ForecastPage() {
                           {item.days_of_stock === null ? '∞' : item.days_of_stock === 0 ? 'OUT' : `${item.days_of_stock}d`}
                           <span style={{
                             marginLeft: 6, padding: '2px 6px', borderRadius: 12, fontSize: 10, fontWeight: 700,
-                            background: STATUS_BG[item.status] ?? '#F0EBE5', color: STATUS_COLOR[item.status] ?? '#6B5D4F',
+                            background: STATUS_BG[item.status] ?? 'var(--color-border-light)', color: STATUS_COLOR[item.status] ?? 'var(--color-text-secondary)',
                           }}>
                             {item.status.replace('_', ' ')}
                           </span>
                         </td>
-                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F' }}>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                           {(item.waste_pct ?? 0) > 0 ? `${(item.waste_pct ?? 0).toFixed(1)}%` : '—'}
                           {item.high_waste ? (
                             <span style={{
@@ -1702,20 +1702,20 @@ export function ForecastPage() {
                             </span>
                           ) : null}
                         </td>
-                        <td style={{ padding: '8px 12px', color: '#6B5D4F' }}>
+                        <td style={{ padding: '8px 12px', color: 'var(--color-text-secondary)' }}>
                           {item.buy_frequency?.avg_days_between != null
                             ? `${item.buy_frequency.avg_days_between}d`
                             : '—'}
                           {item.buy_frequency ? (
-                            <div style={{ fontSize: 11, color: '#9C8E7E' }}>
+                            <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                               {item.buy_frequency.purchase_count} buys · avg {item.buy_frequency.avg_buy_qty} {item.unit}
                             </div>
                           ) : null}
                         </td>
-                        <td style={{ padding: '8px 12px', fontWeight: item.due_soon ? 700 : 500, color: item.due_soon ? '#c2410c' : '#1C1408' }}>
+                        <td style={{ padding: '8px 12px', fontWeight: item.due_soon ? 700 : 500, color: item.due_soon ? '#c2410c' : 'var(--color-text)' }}>
                           {item.suggested_next_order_date ?? '—'}
                         </td>
-                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F', minWidth: 96 }}>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-text-secondary)', minWidth: 96 }}>
                           {canManageInventory ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -1730,7 +1730,7 @@ export function ForecastPage() {
                                   aria-label={`Lead days for ${item.name}`}
                                   style={{
                                     width: 52, height: 28, padding: '0 6px', borderRadius: 6,
-                                    border: '1px solid #E8E0D8', fontSize: 12, fontFamily: 'inherit',
+                                    border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit',
                                   }}
                                 />
                                 <button
@@ -1738,28 +1738,28 @@ export function ForecastPage() {
                                   disabled={restockBusy}
                                   onClick={() => void saveLeadDays(item)}
                                   style={{
-                                    padding: '2px 6px', borderRadius: 6, border: '1px solid #E8E0D8',
-                                    background: '#F8F6F3', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                                    fontFamily: 'inherit', color: '#1C1408',
+                                    padding: '2px 6px', borderRadius: 6, border: '1px solid var(--color-border)',
+                                    background: 'var(--color-bg)', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                                    fontFamily: 'inherit', color: 'var(--color-text)',
                                   }}
                                 >
                                   {savingLeadId === item.id ? '…' : 'Save'}
                                 </button>
                               </div>
-                              <div style={{ fontSize: 10, color: '#9C8E7E' }}>
+                              <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
                                 {item.lead_days_source === 'item' ? 'item' : `default ${restock.lead_days}d`}
                               </div>
                             </div>
                           ) : (
                             <>
                               {item.lead_days}d
-                              <div style={{ fontSize: 10, color: '#9C8E7E' }}>
+                              <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
                                 {item.lead_days_source === 'item' ? 'item' : 'default'}
                               </div>
                             </>
                           )}
                         </td>
-                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F', minWidth: 96 }}>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-text-secondary)', minWidth: 96 }}>
                           {canManageInventory ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -1774,7 +1774,7 @@ export function ForecastPage() {
                                   aria-label={`Cover days for ${item.name}`}
                                   style={{
                                     width: 52, height: 28, padding: '0 6px', borderRadius: 6,
-                                    border: '1px solid #E8E0D8', fontSize: 12, fontFamily: 'inherit',
+                                    border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit',
                                   }}
                                 />
                                 <button
@@ -1782,28 +1782,28 @@ export function ForecastPage() {
                                   disabled={restockBusy}
                                   onClick={() => void saveCoverDays(item)}
                                   style={{
-                                    padding: '2px 6px', borderRadius: 6, border: '1px solid #E8E0D8',
-                                    background: '#F8F6F3', fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                                    fontFamily: 'inherit', color: '#1C1408',
+                                    padding: '2px 6px', borderRadius: 6, border: '1px solid var(--color-border)',
+                                    background: 'var(--color-bg)', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                                    fontFamily: 'inherit', color: 'var(--color-text)',
                                   }}
                                 >
                                   {savingCoverId === item.id ? '…' : 'Save'}
                                 </button>
                               </div>
-                              <div style={{ fontSize: 10, color: '#9C8E7E' }}>
+                              <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
                                 {item.cover_days_source === 'item' ? 'item' : `default ${restock.cover_days}d`}
                               </div>
                             </div>
                           ) : (
                             <>
                               {item.cover_days}d
-                              <div style={{ fontSize: 10, color: '#9C8E7E' }}>
+                              <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
                                 {item.cover_days_source === 'item' ? 'item' : 'default'}
                               </div>
                             </>
                           )}
                         </td>
-                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F', minWidth: 110 }}>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-text-secondary)', minWidth: 110 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <input
                               type="number"
@@ -1815,13 +1815,13 @@ export function ForecastPage() {
                               aria-label={`Order qty for ${item.name}`}
                               style={{
                                 width: 72, height: 28, padding: '0 6px', borderRadius: 6,
-                                border: qtyIsEdited(item) || qtyHasSavedPack(item) ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+                                border: qtyIsEdited(item) || qtyHasSavedPack(item) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                                 fontSize: 12, fontFamily: 'inherit', fontWeight: 700,
                                 color: '#16a34a',
                                 background: qtyIsEdited(item) ? '#FFF7ED' : qtyHasSavedPack(item) ? '#FFFBEB' : '#fff',
                               }}
                             />
-                            <span style={{ color: '#9C8E7E' }}>{item.unit}</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}>{item.unit}</span>
                           </div>
                           {canManageInventory && !item.excluded && (
                             <div style={{ marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -1851,7 +1851,7 @@ export function ForecastPage() {
                                   })}
                                   style={{
                                     padding: 0, border: 'none', background: 'none',
-                                    fontSize: 10, fontWeight: 700, color: '#D4813A', cursor: 'pointer',
+                                    fontSize: 10, fontWeight: 700, color: 'var(--color-primary)', cursor: 'pointer',
                                     fontFamily: 'inherit',
                                   }}
                                   title={`Reset to ${qtyBaseline(item)}`}
@@ -1866,7 +1866,7 @@ export function ForecastPage() {
                                   onClick={() => void clearOrderQty(item)}
                                   style={{
                                     padding: 0, border: 'none', background: 'none',
-                                    fontSize: 10, fontWeight: 700, color: '#9C8E7E', cursor: 'pointer',
+                                    fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', cursor: 'pointer',
                                     fontFamily: 'inherit',
                                   }}
                                   title="Clear saved pack qty — use plan suggestion"
@@ -1878,12 +1878,12 @@ export function ForecastPage() {
                           )}
                           {qtyHasSavedPack(item)
                             && Math.abs(item.suggested_order_qty - (item.reorder_quantity ?? 0)) >= 0.001 && (
-                            <div style={{ fontSize: 10, color: '#9C8E7E', marginTop: 2 }}>
+                            <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>
                               plan suggests {item.suggested_order_qty}
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#6B5D4F' }}>
+                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                           {item.suggested_reorder_point != null ? (
                             <>
                               <div>{item.reorder_point}</div>
@@ -1898,11 +1898,11 @@ export function ForecastPage() {
                             <>{item.reorder_point || '—'}</>
                           )}
                         </td>
-                        <td style={{ padding: '8px 12px', color: '#6B5D4F', fontSize: 12 }}>
+                        <td style={{ padding: '8px 12px', color: 'var(--color-text-secondary)', fontSize: 12 }}>
                           {item.suggested_supplier ? (
                             <>
-                              <div style={{ fontWeight: 600, color: '#1C1408' }}>{item.suggested_supplier.name}</div>
-                              <div style={{ fontSize: 11, color: '#9C8E7E', display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.suggested_supplier.name}</div>
+                              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                                 <span>
                                   {item.unit_cost != null ? `MVR ${item.unit_cost.toFixed(2)}` : '—'}
                                   {item.suggested_supplier.source ? ` · ${item.suggested_supplier.source}` : ''}
@@ -1926,7 +1926,7 @@ export function ForecastPage() {
                                 })()}
                               </div>
                               {item.last_purchase_price != null && item.price_change && item.price_change !== 'flat' && (
-                                <div style={{ fontSize: 10, color: '#9C8E7E', marginTop: 2 }}>
+                                <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>
                                   was MVR {item.last_purchase_price.toFixed(2)}
                                 </div>
                               )}
@@ -1936,8 +1936,8 @@ export function ForecastPage() {
                                   disabled={restockBusy}
                                   onClick={() => void setPreferredFromSuggestion(item)}
                                   style={{
-                                    marginTop: 4, padding: '2px 8px', borderRadius: 6, border: '1px solid #E8E0D8',
-                                    background: '#F8F6F3', color: '#1C1408', fontSize: 11, fontWeight: 700,
+                                    marginTop: 4, padding: '2px 8px', borderRadius: 6, border: '1px solid var(--color-border)',
+                                    background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 11, fontWeight: 700,
                                     cursor: settingPreferredId === item.id ? 'wait' : 'pointer', fontFamily: 'inherit',
                                   }}
                                 >
@@ -1947,28 +1947,28 @@ export function ForecastPage() {
                             </>
                           ) : '—'}
                         </td>
-                        <td style={{ padding: '8px 12px', color: '#6B5D4F', fontSize: 12 }}>
+                        <td style={{ padding: '8px 12px', color: 'var(--color-text-secondary)', fontSize: 12 }}>
                           {REASON_LABEL[item.reason] ?? item.reason}
                         </td>
                       </tr>
                     ))}
                     {restock.items.length === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 32, textAlign: 'center', color: '#9C8E7E' }}>No usage or purchase history yet.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-muted)' }}>No usage or purchase history yet.</td></tr>
                     )}
                     {restockFilter === 'due_soon' && restock.totals.due_soon === 0 && restock.items.length > 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>Nothing due soon — switch to All tracked items.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>Nothing due soon — switch to All tracked items.</td></tr>
                     )}
                     {restockFilter === 'price_up' && (restock.totals.price_up ?? 0) === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No items priced above last purchase (≥1%).</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>No items priced above last purchase (≥1%).</td></tr>
                     )}
                     {restockFilter === 'alerts' && (restock.totals.open_alerts ?? 0) === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No open reorder alerts. Scheduler creates them when stock hits ROP.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>No open reorder alerts. Scheduler creates them when stock hits ROP.</td></tr>
                     )}
                     {restockFilter === 'snoozed' && (restock.totals.snoozed ?? 0) === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No snoozed items. Use 7d / 14d / 30d on a due-soon row to hide it temporarily.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>No snoozed items. Use 7d / 14d / 30d on a due-soon row to hide it temporarily.</td></tr>
                     )}
                     {restockFilter === 'excluded' && (restock.totals.excluded ?? 0) === 0 && (
-                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#9C8E7E' }}>No excluded items. Use Exclude on a due-soon row to hide it permanently.</td></tr>
+                      <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)' }}>No excluded items. Use Exclude on a due-soon row to hide it permanently.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -2024,33 +2024,33 @@ export function ForecastPage() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #F0EBE5' }}>
+                    <tr style={{ borderBottom: '2px solid var(--color-border-light)' }}>
                       {['Item', 'Category', 'Stock', 'Daily Usage', 'Days Left', 'Status'].map(h => (
-                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#6B5D4F', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-secondary)', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {invForecast.items.slice(0, 30).map(item => (
-                      <tr key={item.id} style={{ borderBottom: '1px solid #F8F6F3' }}>
+                      <tr key={item.id} style={{ borderBottom: '1px solid var(--color-bg)' }}>
                         <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1e293b' }}>{item.name}</td>
-                        <td style={{ padding: '8px 12px', color: '#6B5D4F' }}>{item.category ?? '—'}</td>
+                        <td style={{ padding: '8px 12px', color: 'var(--color-text-secondary)' }}>{item.category ?? '—'}</td>
                         <td style={{ padding: '8px 12px' }}>{parseFloat(String(item.current_stock ?? 0)).toFixed(2)} {item.unit}</td>
-                        <td style={{ padding: '8px 12px', color: '#6B5D4F' }}>{parseFloat(String(item.daily_usage_rate ?? 0)).toFixed(3)}/day</td>
+                        <td style={{ padding: '8px 12px', color: 'var(--color-text-secondary)' }}>{parseFloat(String(item.daily_usage_rate ?? 0)).toFixed(3)}/day</td>
                         <td style={{ padding: '8px 12px', fontWeight: 700 }}>
                           {item.days_of_stock === null ? '∞' : item.days_of_stock === 0 ? 'OUT' : `${item.days_of_stock}d`}
                         </td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                            background: STATUS_BG[item.status] ?? '#F0EBE5',
-                            color: STATUS_COLOR[item.status] ?? '#6B5D4F' }}>
+                            background: STATUS_BG[item.status] ?? 'var(--color-border-light)',
+                            color: STATUS_COLOR[item.status] ?? 'var(--color-text-secondary)' }}>
                             {item.status.replace('_', ' ').toUpperCase()}
                           </span>
                         </td>
                       </tr>
                     ))}
                     {invForecast.items.length === 0 && (
-                      <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#9C8E7E' }}>No inventory data available</td></tr>
+                      <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>No inventory data available</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -2062,22 +2062,22 @@ export function ForecastPage() {
 
       {buyingListPreview && (
         <Modal title="Generate buying list" onClose={() => setBuyingListPreview(null)} maxWidth={560}>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 0 }}>
             Creates a Purchase Request (status: requested) for items below ROP or due by next order date.
             Suggested qty and last-paid price are prefilled. Manager still approves/assigns.
           </p>
-          <div style={{ maxHeight: 280, overflow: 'auto', border: '1px solid #E8E0D8', borderRadius: 8 }}>
+          <div style={{ maxHeight: 280, overflow: 'auto', border: '1px solid var(--color-border)', borderRadius: 8 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ background: '#F8F6F3' }}>
+                <tr style={{ background: 'var(--color-bg)' }}>
                   {['Item', 'Qty', 'Last paid'].map((h) => (
-                    <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, color: '#6B5D4F' }}>{h}</th>
+                    <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, color: 'var(--color-text-secondary)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {buyingListPreview.map((item) => (
-                  <tr key={item.id} style={{ borderTop: '1px solid #F0EBE5' }}>
+                  <tr key={item.id} style={{ borderTop: '1px solid var(--color-border-light)' }}>
                     <td style={{ padding: '8px 10px', fontWeight: 600 }}>{item.name}</td>
                     <td style={{ padding: '8px 10px' }}>{item.suggested_order_qty} {item.unit}</td>
                     <td style={{ padding: '8px 10px' }}>
