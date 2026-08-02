@@ -30,9 +30,19 @@ Commit to claude/service-availability-maintenance-zj4whc.
 Read docs/ADMIN_THEMING_MOBILE_PLAN.md first, especially §1.4 and §3.
 
 Migrate hardcoded hex literals to CSS variables in apps/admin-dashboard,
-starting with src/pages/DashboardPage.tsx ONLY.
+in src/pages/<PAGE>.tsx ONLY.
 
-Apply case-insensitive replacement of exactly these ten mappings:
+FIRST — safety check, before changing anything. var() is invalid in
+canvas-rendered charts and in any colour string parsed by JS. Confirm every
+hex on this page flows into a CSS context:
+  - grep the file for chart libraries (recharts, chart.js, canvas), and for
+    non-style colour props (color={, fill=, stroke=)
+  - trace any module-level colour constants (e.g. STATUS_COLOR maps) to
+    their consumption sites
+If any hex reaches a non-CSS context, exclude that site and say so in the
+commit. Do not assume the previous page's answer applies to this one.
+
+Then apply case-insensitive replacement of exactly these ten mappings:
   #6b5d4f → var(--color-text-secondary)
   #9c8e7e → var(--color-text-muted)
   #e8e0d8 → var(--color-border)
@@ -51,15 +61,24 @@ CRITICAL: light mode must be pixel-identical afterwards. Each variable's
 light-mode change means the replacement hit the wrong property — revert it,
 don't tune it.
 
-Run `npm test` in apps/admin-dashboard. Report the result honestly, including
-failures.
+THEN regenerate the ESLint baseline so the guard ratchets DOWN:
+  npm run lint:baseline:hex-style
+Without this the baseline still records the old, higher count for a file
+that now has fewer, leaving room for new hex literals to land silently.
+Report the before/after count for the page and the total.
+
+Verify, and report results honestly including any failures:
+  npx tsc --noEmit
+  npm test
+  npx eslint src/pages/<PAGE>.tsx
 
 Commit this page on its own to claude/service-availability-maintenance-zj4whc,
 then STOP and report. Do not continue to other pages in the same run.
 ```
 
-Then repeat, substituting the next page in the §3 order: `OrdersPage.tsx`,
-`ReportsPage/ReportsTabPanels.tsx`, `ForecastPage.tsx`, then descending by count.
+Then repeat, substituting the next page in the §3 order. Remaining after
+DashboardPage (done): `OrdersPage.tsx`, `ReportsPage/ReportsTabPanels.tsx`,
+`ForecastPage.tsx`, then descending by count.
 
 ---
 
