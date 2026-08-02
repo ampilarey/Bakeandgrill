@@ -68,8 +68,8 @@ export function MenuItemTable({
   return (
     <>
       <Card style={{ padding: '16px 18px', marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 8 }}>Chef menu on duty</div>
-        <p style={{ fontSize: 12, color: '#6B5D4F', margin: '0 0 12px', lineHeight: 1.45 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 8 }}>Chef menu on duty</div>
+        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.45 }}>
           Only items in the selected menu groups appear on the public menu (per channel rules). Choose one or more groups that are live right now.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', marginBottom: 12 }}>
@@ -96,7 +96,7 @@ export function MenuItemTable({
         <select
           value={selectedCat ?? ''}
           onChange={(e) => onSelectedCatChange(e.target.value ? parseInt(e.target.value) : null)}
-          style={{ border: '1px solid #E8E0D8', borderRadius: 9, padding: '8px 12px', fontSize: 14, minWidth: 180 }}
+          style={{ border: '1px solid var(--color-border)', borderRadius: 9, padding: '8px 12px', fontSize: 14, minWidth: 180 }}
         >
           <option value="">All Categories</option>
           {categories.filter((c) => !c.parent_id).map((parent) => (
@@ -112,8 +112,8 @@ export function MenuItemTable({
           <Input value={search} onChange={onSearchChange} placeholder="Search by name or SKU…" />
         </div>
         <label style={{
-          display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6B5D4F',
-          padding: '8px 12px', borderRadius: 9, border: '1px solid #E8E0D8',
+          display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)',
+          padding: '8px 12px', borderRadius: 9, border: '1px solid var(--color-border)',
           background: cateringOnly ? '#FEF3E8' : 'var(--color-surface)', cursor: 'pointer', minHeight: 44,
         }}>
           <input
@@ -123,12 +123,12 @@ export function MenuItemTable({
           />
           Catering items only
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B5D4F' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-secondary)' }}>
           Per page:
           <select
             value={perPage}
             onChange={(e) => onPerPageChange(Number(e.target.value))}
-            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
           >
             {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -144,22 +144,22 @@ export function MenuItemTable({
             <div className="table-scroll">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
-                <tr style={{ background: '#F8F6F3', borderBottom: '1px solid #E8E0D8' }}>
+                <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   {['', 'Name', 'Category', 'Price', 'Available', 'Active', ''].map((h, i) => (
-                    <th key={i} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                    <th key={i} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {visibleItems.map((item) => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #F0EBE5', opacity: item.is_active ? 1 : 0.5 }}>
+                  <tr key={item.id} style={{ borderBottom: '1px solid var(--color-border-light)', opacity: item.is_active ? 1 : 0.5 }}>
                     <td style={{ padding: '10px 14px', width: 52 }}>
                       {item.image_url ? (
                         <img src={item.image_url} alt={item.name}
                           style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }}
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                       ) : (
-                        <div style={{ width: 40, height: 40, background: '#F0EBE5', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🍽</div>
+                        <div style={{ width: 40, height: 40, background: 'var(--color-border-light)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🍽</div>
                       )}
                     </td>
                     <td style={{ padding: '10px 14px' }}>
@@ -193,7 +193,7 @@ export function MenuItemTable({
                         );
                       })()}
                     </td>
-                    <td style={{ padding: '10px 14px', color: '#6B5D4F', fontSize: 13 }}>
+                    <td style={{ padding: '10px 14px', color: 'var(--color-text-secondary)', fontSize: 13 }}>
                       {item.category ? (() => {
                         const cat = categories.find((c) => c.id === item.category_id);
                         const parent = cat?.parent_id ? categories.find((c) => c.id === cat.parent_id) : null;
@@ -202,7 +202,7 @@ export function MenuItemTable({
                           : cat?.name ?? item.category.name;
                       })() : <span style={{ color: '#cbd5e1' }}>—</span>}
                     </td>
-                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#D4813A' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 700, color: 'var(--color-primary)' }}>
                       MVR {parseFloat(String(item.base_price)).toFixed(2)}
                     </td>
                     <td style={{ padding: '10px 14px' }}>
@@ -212,7 +212,7 @@ export function MenuItemTable({
                         title={item.is_available ? 'Click to mark sold out' : 'Click to mark available'}
                         style={{
                           width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-                          background: item.is_available ? '#22c55e' : '#d1d5db',
+                          background: item.is_available ? 'var(--color-success)' : '#d1d5db',
                           position: 'relative', transition: 'background 0.2s', flexShrink: 0, display: 'inline-block',
                           verticalAlign: 'middle',
                         }}
@@ -256,7 +256,7 @@ export function MenuItemTable({
                 onClick={() => onPageChange(page - 1)}>
                 ← Prev
               </Btn>
-              <span style={{ padding: '6px 14px', fontSize: 14, color: '#6B5D4F' }}>
+              <span style={{ padding: '6px 14px', fontSize: 14, color: 'var(--color-text-secondary)' }}>
                 Page {page} of {lastPage}
               </span>
               <Btn small variant="secondary" disabled={page >= lastPage}
