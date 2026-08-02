@@ -17,7 +17,7 @@ export function Skeleton({ className = '', height, width, rounded = false }: Pro
 
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-[14px] border border-[#E8E0D8] p-5 space-y-3">
+    <div className="bg-white rounded-[14px] border border-[var(--color-border)] p-5 space-y-3">
       <Skeleton height={16} width="40%" />
       <Skeleton height={32} width="60%" />
       <Skeleton height={12} width="80%" />
