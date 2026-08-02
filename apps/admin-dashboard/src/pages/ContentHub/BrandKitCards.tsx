@@ -34,9 +34,9 @@ function Preview({
         data-testid={`preview-${kind}`}
         style={{
           borderRadius: 12,
-          border: '1px solid #E8E0D8',
+          border: '1px solid var(--color-border)',
           overflow: 'hidden',
-          background: dark ? '#1C1408' : '#FFFDF9',
+          background: dark ? 'var(--color-text)' : '#FFFDF9',
           padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -61,8 +61,8 @@ function Preview({
             }}
           />
         )}
-        <div style={{ fontWeight: 800, fontSize: 15, color: dark ? '#f5e6cc' : '#1C1408' }}>{siteName}</div>
-        <div style={{ marginLeft: 'auto', fontSize: 11, color: dark ? '#9c8060' : '#9C8E7E' }}>Menu · Offers</div>
+        <div style={{ fontWeight: 800, fontSize: 15, color: dark ? '#f5e6cc' : 'var(--color-text)' }}>{siteName}</div>
+        <div style={{ marginLeft: 'auto', fontSize: 11, color: dark ? '#9c8060' : 'var(--color-text-muted)' }}>Menu · Offers</div>
       </div>
     );
   }
@@ -73,8 +73,8 @@ function Preview({
         data-testid="preview-browser-tab"
         style={{
           borderRadius: 12,
-          border: '1px solid #E8E0D8',
-          background: '#E8E0D8',
+          border: '1px solid var(--color-border)',
+          background: 'var(--color-border)',
           padding: '12px 12px 0',
         }}
       >
@@ -93,9 +93,9 @@ function Preview({
           {value ? (
             <img src={value} alt="" style={{ width: 16, height: 16, objectFit: 'contain', borderRadius: 3 }} />
           ) : (
-            <div style={{ width: 16, height: 16, borderRadius: 3, background: '#E8E0D8' }} />
+            <div style={{ width: 16, height: 16, borderRadius: 3, background: 'var(--color-border)' }} />
           )}
-          <span style={{ fontSize: 12, color: '#6B5D4F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {siteName}
           </span>
         </div>
@@ -109,7 +109,7 @@ function Preview({
         data-testid="preview-share-card"
         style={{
           borderRadius: 14,
-          border: '1px solid #E8E0D8',
+          border: '1px solid var(--color-border)',
           overflow: 'hidden',
           background: '#fff',
           maxWidth: 320,
@@ -122,16 +122,16 @@ function Preview({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#9C8E7E',
+            color: 'var(--color-text-muted)',
             fontSize: 12,
           }}
         >
           {!value ? 'Preview image' : null}
         </div>
         <div style={{ padding: '10px 12px 12px' }}>
-          <div style={{ fontSize: 11, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.04em' }}>bakeandgrill.mv</div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginTop: 2 }}>{siteName}</div>
-          <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 2 }}>Café & online orders</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>bakeandgrill.mv</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginTop: 2 }}>{siteName}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>Café & online orders</div>
         </div>
       </div>
     );
@@ -148,7 +148,7 @@ function Preview({
             borderRadius: 12,
             padding: '12px 20px',
             background: hex,
-            color: '#1C1408',
+            color: 'var(--color-text)',
             fontWeight: 800,
             fontFamily: 'inherit',
             fontSize: 14,
@@ -166,7 +166,7 @@ function Preview({
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#1C1408',
+            color: 'var(--color-text)',
             fontWeight: 800,
             fontSize: 11,
             boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
@@ -174,7 +174,7 @@ function Preview({
         >
           ●
         </span>
-        <span style={{ fontSize: 13, color: '#6B5D4F', fontFamily: 'ui-monospace, monospace' }}>{hex}</span>
+        <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontFamily: 'ui-monospace, monospace' }}>{hex}</span>
       </div>
     );
   }
@@ -189,7 +189,7 @@ function Preview({
           borderRadius: '50%',
           overflow: 'hidden',
           border: '3px solid #F0EBE4',
-          background: '#F8F6F3',
+          background: 'var(--color-bg)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -198,12 +198,12 @@ function Preview({
         {value ? (
           <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <span style={{ fontSize: 11, color: '#9C8E7E', textAlign: 'center', padding: 8 }}>No photo</span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-muted)', textAlign: 'center', padding: 8 }}>No photo</span>
         )}
       </div>
       <div>
-        <div style={{ fontWeight: 700, color: '#1C1408' }}>Sample dish</div>
-        <div style={{ fontSize: 12, color: '#9C8E7E' }}>Shown when an item has no picture</div>
+        <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>Sample dish</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Shown when an item has no picture</div>
       </div>
     </div>
   );
@@ -237,7 +237,7 @@ function DropZone({
       }}
       onClick={() => inputRef.current?.click()}
       style={{
-        border: `2px dashed ${dragging ? '#D4813A' : '#E8E0D8'}`,
+        border: `2px dashed ${dragging ? 'var(--color-primary)' : 'var(--color-border)'}`,
         background: dragging ? '#FEF3E8' : '#FFFDFC',
         borderRadius: 12,
         padding: '18px 16px',
@@ -257,10 +257,10 @@ function DropZone({
           if (file) onFile(file);
         }}
       />
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#1C1408', fontSize: 14 }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--color-text)', fontSize: 14 }}>
         <ImagePlus size={18} /> Upload, or choose from library
       </div>
-      <div style={{ marginTop: 6, fontSize: 12, color: '#9C8E7E' }}>
+      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>
         Drop a file here, or{' '}
         <button
           type="button"
@@ -271,7 +271,7 @@ function DropZone({
           style={{
             background: 'none',
             border: 'none',
-            color: '#D4813A',
+            color: 'var(--color-primary)',
             fontWeight: 700,
             cursor: 'pointer',
             fontFamily: 'inherit',
@@ -315,7 +315,7 @@ function Card({
 
   const cardStyle: CSSProperties = {
     background: '#fff',
-    border: '1px solid #E8E0D8',
+    border: '1px solid var(--color-border)',
     borderRadius: 14,
     padding: 16,
     display: 'flex',
@@ -326,8 +326,8 @@ function Card({
   return (
     <article data-testid={`brand-kit-card-${meta.key}`} style={cardStyle}>
       <div>
-        <div style={{ fontWeight: 800, fontSize: 16, color: '#1C1408' }}>{meta.title}</div>
-        <div style={{ fontSize: 13, color: '#6B5D4F', marginTop: 4, lineHeight: 1.45 }}>{meta.where}</div>
+        <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-text)' }}>{meta.title}</div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4, lineHeight: 1.45 }}>{meta.where}</div>
       </div>
 
       <Preview kind={meta.preview} value={value} siteName={siteName} />
@@ -338,10 +338,10 @@ function Card({
             type="color"
             value={/^#([0-9a-fA-F]{6})$/.test(value) ? value : '#D4813A'}
             onChange={(e) => onSetValue(e.target.value.toUpperCase())}
-            style={{ width: 48, height: 44, border: '1px solid #E8E0D8', borderRadius: 10, padding: 2, background: '#fff', cursor: 'pointer' }}
+            style={{ width: 48, height: 44, border: '1px solid var(--color-border)', borderRadius: 10, padding: 2, background: '#fff', cursor: 'pointer' }}
             aria-label="Pick brand colour"
           />
-          <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Pick a colour</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>Pick a colour</span>
         </label>
       ) : (
         <DropZone
@@ -352,7 +352,7 @@ function Card({
         />
       )}
 
-      <div style={{ fontSize: 12, color: '#9C8E7E' }}>{meta.requirements}</div>
+      <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{meta.requirements}</div>
 
       <div
         style={{
@@ -361,7 +361,7 @@ function Card({
           gap: 6,
           fontSize: 13,
           fontWeight: 700,
-          color: set ? '#195C36' : '#9C8E7E',
+          color: set ? '#195C36' : 'var(--color-text-muted)',
         }}
       >
         {set ? (
@@ -384,7 +384,7 @@ function Card({
             background: 'none',
             border: 'none',
             padding: 0,
-            color: '#6B5D4F',
+            color: 'var(--color-text-secondary)',
             fontSize: 12,
             fontWeight: 700,
             cursor: 'pointer',
@@ -397,7 +397,7 @@ function Card({
         </button>
         {advancedOpen ? (
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 12, color: '#9C8E7E' }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
               {block.key} · {block.type} · en · Website + Order app
             </div>
             <input
@@ -409,7 +409,7 @@ function Card({
                 width: '100%',
                 height: 40,
                 borderRadius: 10,
-                border: '1px solid #E8E0D8',
+                border: '1px solid var(--color-border)',
                 padding: '0 10px',
                 fontFamily: 'ui-monospace, monospace',
                 fontSize: 12,
@@ -423,7 +423,7 @@ function Card({
                 height: 36,
                 padding: '0 10px',
                 borderRadius: 10,
-                border: '1px solid #E8E0D8',
+                border: '1px solid var(--color-border)',
                 background: '#fff',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -462,11 +462,11 @@ export function BrandKitCards({
           borderRadius: 12,
           padding: '12px 14px',
           fontSize: 13,
-          color: '#6B5D4F',
+          color: 'var(--color-text-secondary)',
           lineHeight: 1.45,
         }}
       >
-        <strong style={{ color: '#1C1408' }}>Branding is always identical on the website and the order app.</strong>
+        <strong style={{ color: 'var(--color-text)' }}>Branding is always identical on the website and the order app.</strong>
         {' '}
         Change it once — both surfaces update together.
       </div>
@@ -478,8 +478,8 @@ export function BrandKitCards({
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
           gap: 10,
-          background: '#F8F6F3',
-          border: '1px solid #E8E0D8',
+          background: 'var(--color-bg)',
+          border: '1px solid var(--color-border)',
           borderRadius: 12,
           padding: 12,
           position: 'sticky',
@@ -504,7 +504,7 @@ export function BrandKitCards({
                   margin: '0 auto 6px',
                   borderRadius: meta.preview === 'menu-circle' ? '50%' : 10,
                   background: meta.preview === 'color' ? thumb : '#fff',
-                  border: '1px solid #E8E0D8',
+                  border: '1px solid var(--color-border)',
                   overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'center',
@@ -515,10 +515,10 @@ export function BrandKitCards({
                   <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : null}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#1C1408', lineHeight: 1.2 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.2 }}>
                 {meta.title.split('—')[0].trim().split(' ').slice(0, 2).join(' ')}
               </div>
-              <div style={{ fontSize: 11, color: set ? '#195C36' : '#9C8E7E', marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: set ? '#195C36' : 'var(--color-text-muted)', marginTop: 2 }}>
                 {set ? '✓' : 'not set'}
               </div>
             </div>
