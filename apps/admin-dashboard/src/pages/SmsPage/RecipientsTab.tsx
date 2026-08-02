@@ -72,7 +72,7 @@ function StaffPrefsModal({
       {prefs && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!member.phone && (
-            <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ background: '#fef3c7', border: '1px solid var(--color-warning)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <AlertCircle size={14} style={{ marginTop: 1, flexShrink: 0 }} />
               <span>No phone number set. Go to <strong>Staff</strong> page → Edit this member to add a phone number first.</span>
             </div>
@@ -83,7 +83,7 @@ function StaffPrefsModal({
             <span><strong>Enable SMS Notifications</strong> for this staff member</span>
           </label>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
               Receive notifications for (blank = all order types):
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -93,15 +93,15 @@ function StaffPrefsModal({
                 return (
                   <button key={ot.value} onClick={() => toggleOrderType(ot.value)} style={{
                     padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                    background: active ? '#D4813A' : '#F5F0EA',
-                    color: active ? '#fff' : '#6B5D4F', border: 'none',
+                    background: active ? 'var(--color-primary)' : '#F5F0EA',
+                    color: active ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                   }}>{ot.label}</button>
                 );
               })}
               <button onClick={() => setPrefs(p => p ? { ...p, order_types: null } : p)} style={{
                 padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                background: prefs.order_types === null ? '#22c55e' : '#F5F0EA',
-                color: prefs.order_types === null ? '#fff' : '#6B5D4F', border: 'none',
+                background: prefs.order_types === null ? 'var(--color-success)' : '#F5F0EA',
+                color: prefs.order_types === null ? '#fff' : 'var(--color-text-secondary)', border: 'none',
               }}>All Types</button>
             </div>
           </div>
@@ -112,7 +112,7 @@ function StaffPrefsModal({
           </label>
           {prefs.is_fallback && (
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>
                 Fallback Priority (higher = notified first)
               </label>
               <Input type="number" value={String(prefs.fallback_priority ?? 0)}
@@ -153,9 +153,9 @@ function PhoneModal({ member, onClose, onSaved }: { member: StaffMember; onClose
     <Modal title={`Set Phone — ${member.name}`} onClose={onClose}>
       {error && <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#991b1b', marginBottom: 12 }}>{error}</div>}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Mobile Phone Number</label>
+        <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Mobile Phone Number</label>
         <Input placeholder="e.g. 7972434" value={phone} onChange={setPhone} />
-        <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Maldivian 7-digit local number. Used for SMS notifications.</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Maldivian 7-digit local number. Used for SMS notifications.</div>
       </div>
       <ModalActions>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
@@ -244,16 +244,16 @@ function ExternalContactModal({
                 <button key={d} onClick={() => toggleDay(d)} style={{
                   padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
                   fontFamily: 'inherit', border: 'none',
-                  background: on ? '#D4813A' : '#F5F0EA',
-                  color: on ? '#fff' : '#6B5D4F',
+                  background: on ? 'var(--color-primary)' : '#F5F0EA',
+                  color: on ? '#fff' : 'var(--color-text-secondary)',
                 }}>{DAY_LABEL[d]}</button>
               );
             })}
             <button onClick={() => set('active_days', null)} style={{
               padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
               fontFamily: 'inherit', border: 'none',
-              background: !form.active_days ? '#22c55e' : '#F5F0EA',
-              color: !form.active_days ? '#fff' : '#6B5D4F',
+              background: !form.active_days ? 'var(--color-success)' : '#F5F0EA',
+              color: !form.active_days ? '#fff' : 'var(--color-text-secondary)',
             }}>Every day</button>
           </div>
         </div>
@@ -354,18 +354,18 @@ export function RecipientsTab() {
   return (
     <>
       {/* Summary banner */}
-      <div style={{ background: '#F5F0EA', border: '1px solid #E8E0D8', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+      <div style={{ background: '#F5F0EA', border: '1px solid var(--color-border)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13 }}>
-          <strong style={{ fontSize: 15, color: '#D4813A' }}>{enabledStaff.length}</strong>
-          <span style={{ color: '#6B5D4F', marginLeft: 6 }}>staff with notifications on</span>
+          <strong style={{ fontSize: 15, color: 'var(--color-primary)' }}>{enabledStaff.length}</strong>
+          <span style={{ color: 'var(--color-text-secondary)', marginLeft: 6 }}>staff with notifications on</span>
         </div>
         <div style={{ fontSize: 13 }}>
-          <strong style={{ fontSize: 15, color: '#D4813A' }}>{fallbackStaff.length}</strong>
-          <span style={{ color: '#6B5D4F', marginLeft: 6 }}>fallback recipient{fallbackStaff.length !== 1 ? 's' : ''}</span>
+          <strong style={{ fontSize: 15, color: 'var(--color-primary)' }}>{fallbackStaff.length}</strong>
+          <span style={{ color: 'var(--color-text-secondary)', marginLeft: 6 }}>fallback recipient{fallbackStaff.length !== 1 ? 's' : ''}</span>
         </div>
         <div style={{ fontSize: 13 }}>
-          <strong style={{ fontSize: 15, color: '#D4813A' }}>{externalContacts.filter(c => c.is_enabled).length}</strong>
-          <span style={{ color: '#6B5D4F', marginLeft: 6 }}>active external contacts</span>
+          <strong style={{ fontSize: 15, color: 'var(--color-primary)' }}>{externalContacts.filter(c => c.is_enabled).length}</strong>
+          <span style={{ color: 'var(--color-text-secondary)', marginLeft: 6 }}>active external contacts</span>
         </div>
       </div>
 
@@ -374,7 +374,7 @@ export function RecipientsTab() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Staff Recipients</h3>
-            <p style={{ fontSize: 12, color: '#9C8E7E' }}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
               Toggle SMS on/off per staff. Use <strong>Configure</strong> to set which order types they receive and whether they're a fallback.
             </p>
           </div>
@@ -402,7 +402,7 @@ export function RecipientsTab() {
                     <tr key={m.id} style={{ opacity: m.is_active ? 1 : 0.5 }}>
                       <td style={{ ...TD, fontWeight: 600 }}>
                         {m.name}
-                        <div style={{ color: '#9C8E7E', fontSize: 11 }}>{m.role_name ?? m.role ?? '—'}</div>
+                        <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{m.role_name ?? m.role ?? '—'}</div>
                       </td>
                       <td style={{ ...TD, fontFamily: 'monospace' }}>
                         {m.phone ? (
@@ -410,7 +410,7 @@ export function RecipientsTab() {
                         ) : (
                           <button onClick={() => setPhoneModal(m)} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 12, color: '#ef4444', background: '#fee2e2',
+                            fontSize: 12, color: 'var(--color-danger)', background: '#fee2e2',
                             border: '1px solid #fca5a5', borderRadius: 6, padding: '2px 8px',
                             cursor: 'pointer', fontFamily: 'inherit',
                           }}>
@@ -426,7 +426,7 @@ export function RecipientsTab() {
                           style={{
                             width: 40, height: 22, borderRadius: 11, border: 'none',
                             cursor: m.phone ? 'pointer' : 'not-allowed',
-                            background: !m.phone ? '#E5E7EB' : enabled ? '#D4813A' : '#D1D5DB',
+                            background: !m.phone ? '#E5E7EB' : enabled ? 'var(--color-primary)' : '#D1D5DB',
                             position: 'relative', transition: 'background 0.2s',
                             opacity: togglingId === m.id ? 0.6 : 1,
                           }}
@@ -446,7 +446,7 @@ export function RecipientsTab() {
                             {orderTypes.map(t => <Badge key={t} label={t.replace('online_pickup', 'Online Pickup').replace('dine_in', 'Dine-in').replace('delivery', 'Delivery')} color="blue" />)}
                           </div>
                         ) : (
-                          <span style={{ color: '#9C8E7E', fontSize: 12 }}>Not configured</span>
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Not configured</span>
                         )}
                       </td>
                       <td style={{ ...TD, textAlign: 'center' }}>
@@ -480,7 +480,7 @@ export function RecipientsTab() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>External Contacts</h3>
-            <p style={{ fontSize: 12, color: '#9C8E7E' }}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
               Non-staff phone numbers that receive fallback alerts (e.g. owner's personal phone, on-call manager). Supports day &amp; time windows.
             </p>
           </div>
@@ -492,8 +492,8 @@ export function RecipientsTab() {
         {externalContacts.length === 0 ? (
           <div style={{ background: '#F5F0EA', border: '1px dashed #C4A882', borderRadius: 10, padding: '20px 24px', textAlign: 'center' }}>
             <Bell size={22} style={{ color: '#C4A882', marginBottom: 8 }} />
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>No external contacts yet</div>
-            <div style={{ fontSize: 13, color: '#9C8E7E', marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>No external contacts yet</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
               Add a phone number that should always receive fallback alerts, even if no staff is on shift.
             </div>
             <Btn onClick={() => setContactModal('new')}><Plus size={13} style={{ marginRight: 4 }} /> Add First Contact</Btn>
@@ -516,12 +516,12 @@ export function RecipientsTab() {
                         <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                           {c.active_days.map(d => <Badge key={d} label={DAY_LABEL[d] ?? d} color="blue" />)}
                         </div>
-                      ) : <span style={{ color: '#9C8E7E' }}>Every day</span>}
+                      ) : <span style={{ color: 'var(--color-text-muted)' }}>Every day</span>}
                     </td>
                     <td style={{ ...TD, fontFamily: 'monospace', fontSize: 12 }}>
                       {c.active_from || c.active_until
                         ? `${c.active_from ?? '—'} – ${c.active_until ?? '—'}`
-                        : <span style={{ color: '#9C8E7E' }}>All hours</span>
+                        : <span style={{ color: 'var(--color-text-muted)' }}>All hours</span>
                       }
                     </td>
                     <td style={TD}>
