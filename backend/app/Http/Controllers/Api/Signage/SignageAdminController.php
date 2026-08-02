@@ -31,6 +31,7 @@ final class SignageAdminController extends Controller
             'campaigns' => SignageCampaign::query()->with('playlist:id,name')->orderByDesc('priority')->get(),
             'emergency' => (string) SiteSetting::get('signage_emergency', 'none'),
             'prayer' => $this->prayerConfig(),
+            'banner' => $this->bannerConfig(),
             'templates' => SignageTemplateFactory::templateCatalog(),
             'custom_templates' => $this->customTemplates(),
             'wifi' => [
@@ -291,6 +292,30 @@ final class SignageAdminController extends Controller
         return response()->json(['prayer' => $cfg]);
     }
 
+    public function updateBanner(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'enabled' => 'required|boolean',
+            'position' => 'nullable|string|in:top,bottom',
+            'fields' => 'nullable|array',
+            'fields.*' => 'string|in:date,time,next_prayer,countdown',
+            'speed_seconds' => 'nullable|integer|min:10|max:180',
+        ]);
+        $old = $this->bannerConfig();
+        $cfg = [
+            'enabled' => (bool) $data['enabled'],
+            'position' => $data['position'] ?? $old['position'],
+            'fields' => array_values($data['fields'] ?? $old['fields']),
+            'speed_seconds' => (int) ($data['speed_seconds'] ?? $old['speed_seconds']),
+        ];
+        SiteSetting::set('signage_banner', $cfg);
+        SiteSetting::bust();
+        $this->touch($request, 'signage.banner.updated', null, $old, $cfg);
+        SignageCache::bust();
+
+        return response()->json(['banner' => $cfg]);
+    }
+
     public function saveCustomTemplate(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -344,6 +369,28 @@ final class SignageAdminController extends Controller
             'enabled' => (bool) ($cfg['enabled'] ?? true),
             'prayers' => array_values($cfg['prayers'] ?? ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']),
             'break_minutes' => (int) ($cfg['break_minutes'] ?? 15),
+        ];
+    }
+
+    /** @return array{enabled: bool, position: string, fields: list<string>, speed_seconds: int} */
+    private function bannerConfig(): array
+    {
+        $raw = SiteSetting::get('signage_banner', '{}');
+        $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+        $fields = $cfg['fields'] ?? ['date', 'time', 'next_prayer', 'countdown'];
+        if (! is_array($fields) || $fields === []) {
+            $fields = ['date', 'time', 'next_prayer', 'countdown'];
+        }
+        $position = (string) ($cfg['position'] ?? 'bottom');
+        if (! in_array($position, ['top', 'bottom'], true)) {
+            $position = 'bottom';
+        }
+
+        return [
+            'enabled' => (bool) ($cfg['enabled'] ?? false),
+            'position' => $position,
+            'fields' => array_values(array_map('strval', $fields)),
+            'speed_seconds' => max(10, min(180, (int) ($cfg['speed_seconds'] ?? 40))),
         ];
     }
 

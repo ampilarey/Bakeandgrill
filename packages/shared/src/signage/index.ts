@@ -1,8 +1,10 @@
 export type {
   MenuItemLite,
+  SignageBannerSettings,
   SignageCategoryLite,
   SignageConfig,
   SignageElement,
+  SignagePrayerEntry,
   SignageSlide,
   SignageTheme,
 } from './types';
@@ -20,6 +22,14 @@ export { interpolate, buildWeightedRotation } from './interpolate';
 export { resolveBoundItems, formatPrice } from './bindMenu';
 export { SlideCanvas } from './SlideCanvas';
 export type { SlideCanvasProps } from './SlideCanvas';
+export {
+  SignageBanner,
+  pickNextPrayer,
+  formatCountdown,
+  shouldShowBanner,
+  buildBannerSegments,
+} from './SignageBanner';
+export type { SignageBannerProps } from './SignageBanner';
 export {
   PARITY_THEME,
   PARITY_VARIABLES,

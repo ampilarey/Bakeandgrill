@@ -37,6 +37,7 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:signage.manage'])
 
         Route::put('/emergency', [SignageAdminController::class, 'updateEmergency']);
         Route::put('/prayer', [SignageAdminController::class, 'updatePrayer']);
+        Route::put('/banner', [SignageAdminController::class, 'updateBanner']);
         Route::post('/templates', [SignageAdminController::class, 'saveCustomTemplate']);
         Route::post('/templates/build', [SignageAdminController::class, 'buildTemplate']);
 

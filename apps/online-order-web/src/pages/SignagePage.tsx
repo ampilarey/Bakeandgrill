@@ -11,6 +11,8 @@ import {
   buildWeightedRotation,
   expandPlaylist,
   interpolate,
+  SignageBanner,
+  shouldShowBanner,
   SlideCanvas,
   type MenuItemLite,
   type SignageCategoryLite,
@@ -356,6 +358,11 @@ export function SignagePage() {
   const transition = currentSlide?.transition || 'fade';
   const orientation = config?.orientation === 'portrait' ? 'portrait' : 'landscape';
   const showPairing = !deviceApproved && Boolean(pairingCode);
+  const showBanner = Boolean(
+    config
+    && !black
+    && shouldShowBanner(config.banner, config.mode),
+  );
 
   return (
     <div
@@ -385,6 +392,16 @@ export function SignagePage() {
             burnInOffset={burnIn}
           />
         </div>
+      )}
+      {showBanner && config?.banner && (
+        <SignageBanner
+          banner={config.banner}
+          schedule={config.prayer_schedule ?? []}
+          mode={config.mode}
+          burnInOffset={burnIn}
+          dateLabel={liveVars.today || undefined}
+          timeLabel={liveVars.current_time || undefined}
+        />
       )}
       {!currentSlide && !black && (
         <div className="signage-empty" data-testid="signage-loading">

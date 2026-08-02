@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Copy, ExternalLink, Pencil, Save } from 'lucide-react';
+import { Copy, ExternalLink, Pencil, Save, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   approveSignageDevice,
@@ -11,6 +11,7 @@ import {
   createSignageScreen,
   fetchSignageDevices,
   getSignageOverview,
+  setSignageBanner,
   setSignageEmergency,
   setSignagePrayer,
   updateSignageGroup,
@@ -27,7 +28,7 @@ import { useToast } from '../components/ui';
 import { Btn, Card, EmptyState, Input, PageHeader, PageShell, Select, Spinner } from '../components/SharedUI';
 import { SignageDesigner, type DesignerSlide } from './signage/SignageDesigner';
 
-type Tab = 'screens' | 'playlists' | 'campaigns' | 'emergency' | 'prayer' | 'devices';
+type Tab = 'screens' | 'playlists' | 'campaigns' | 'emergency' | 'prayer' | 'banner' | 'devices';
 
 type SlideDraft = {
   id: string;
@@ -45,6 +46,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'campaigns', label: 'Campaigns' },
   { id: 'emergency', label: 'Emergency' },
   { id: 'prayer', label: 'Prayer' },
+  { id: 'banner', label: 'Banner' },
   { id: 'devices', label: 'Devices' },
 ];
 
@@ -135,6 +137,11 @@ export function SignagePage() {
   const [prayerSelected, setPrayerSelected] = useState<string[]>([]);
   const [prayerSaving, setPrayerSaving] = useState(false);
 
+  const [bannerEnabled, setBannerEnabled] = useState(false);
+  const [bannerPosition, setBannerPosition] = useState<'top' | 'bottom'>('bottom');
+  const [bannerSpeed, setBannerSpeed] = useState('40');
+  const [bannerSaving, setBannerSaving] = useState(false);
+
   const [campaignForm, setCampaignForm] = useState({
     name: '',
     playlist_id: '',
@@ -175,6 +182,9 @@ export function SignagePage() {
     setPrayerEnabled(data.prayer?.enabled ?? true);
     setPrayerBreak(String(data.prayer?.break_minutes ?? 15));
     setPrayerSelected(data.prayer?.prayers ?? []);
+    setBannerEnabled(data.banner?.enabled ?? false);
+    setBannerPosition(data.banner?.position === 'top' ? 'top' : 'bottom');
+    setBannerSpeed(String(data.banner?.speed_seconds ?? 40));
     const drafts: Record<number, number | ''> = {};
     for (const g of data.groups) drafts[g.id] = g.playlist_id ?? '';
     setGroupDrafts(drafts);
@@ -298,6 +308,23 @@ export function SignagePage() {
     });
   };
 
+  const onDeleteSlide = (index: number) => {
+    const slide = slides[index];
+    if (!slide) return;
+    const label = slideLabel(slide);
+    if (!window.confirm(`Delete slide "${label}"? Save the playlist to publish.`)) {
+      return;
+    }
+    setSlides((prev) => prev.filter((_, i) => i !== index));
+    setDesignIndex((current) => {
+      if (current == null) return current;
+      if (current === index) return null;
+      if (index < current) return current - 1;
+      return current;
+    });
+    toast.success('Slide removed — save playlist to publish.');
+  };
+
   const onSaveGroup = async (group: SignageGroup) => {
     const draft = groupDrafts[group.id];
     const playlistId = draft === '' ? null : Number(draft);
@@ -352,6 +379,29 @@ export function SignagePage() {
       toast.error(e instanceof Error ? e.message : 'Prayer settings failed');
     } finally {
       setPrayerSaving(false);
+    }
+  };
+
+  const onSaveBanner = async () => {
+    const speed = Number.parseInt(bannerSpeed, 10);
+    if (!Number.isFinite(speed) || speed < 10 || speed > 180) {
+      toast.error('Banner speed must be between 10 and 180 seconds.');
+      return;
+    }
+    setBannerSaving(true);
+    try {
+      const res = await setSignageBanner({
+        enabled: bannerEnabled,
+        position: bannerPosition,
+        fields: ['date', 'time', 'next_prayer', 'countdown'],
+        speed_seconds: speed,
+      });
+      setOverview((prev) => (prev ? { ...prev, banner: res.banner } : prev));
+      toast.success('Banner settings saved.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Banner settings failed');
+    } finally {
+      setBannerSaving(false);
     }
   };
 
@@ -664,7 +714,8 @@ export function SignagePage() {
           {tab === 'playlists' && (
             <div>
               {designIndex != null && slides[designIndex] && (
-                <Card style={{ marginBottom: 16 }} data-testid="signage-designer-host">
+                <div data-testid="signage-designer-host">
+                <Card style={{ marginBottom: 16 }}>
                   <SignageDesigner
                     slide={slides[designIndex] as DesignerSlide}
                     onClose={() => setDesignIndex(null)}
@@ -674,6 +725,7 @@ export function SignagePage() {
                     }}
                   />
                 </Card>
+                </div>
               )}
 
               <div data-testid="signage-new-playlist">
@@ -733,18 +785,22 @@ export function SignagePage() {
                 <EmptyState message="No slides yet. Add a template slide to this playlist." />
               ) : (
                 slides.map((slide, index) => (
-                  <Card key={slide.id} style={{ marginBottom: 10 }} data-testid={`signage-slide-${index}`}>
+                  <div key={slide.id} data-testid={`signage-slide-${index}`}>
+                  <Card style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
                       <div>
                         <strong>{slideLabel(slide)}</strong>
                         <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>ID: {slide.id}</div>
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <Btn variant="secondary" onClick={() => setDesignIndex(index)} style={{ minHeight: 44 }} data-testid={`signage-design-${index}`}>
                           <Pencil size={14} /> Design
                         </Btn>
                         <Btn variant="secondary" onClick={() => moveSlide(index, -1)} disabled={index === 0} style={{ minHeight: 44 }}>↑</Btn>
                         <Btn variant="secondary" onClick={() => moveSlide(index, 1)} disabled={index === slides.length - 1} style={{ minHeight: 44 }}>↓</Btn>
+                        <Btn variant="danger" onClick={() => onDeleteSlide(index)} style={{ minHeight: 44 }} data-testid={`signage-delete-${index}`}>
+                          <Trash2 size={14} /> Delete
+                        </Btn>
                       </div>
                     </div>
                     <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
@@ -793,6 +849,7 @@ export function SignagePage() {
                       </div>
                     </div>
                   </Card>
+                  </div>
                 ))
               )}
             </div>
@@ -933,6 +990,48 @@ export function SignagePage() {
               </div>
               <Btn onClick={() => void onSavePrayer()} disabled={prayerSaving} style={{ minHeight: 44 }}>
                 <Save size={16} /> {prayerSaving ? 'Saving…' : 'Save prayer settings'}
+              </Btn>
+            </Card>
+          )}
+
+          {tab === 'banner' && (
+            <Card data-testid="signage-banner-panel">
+              <h3 style={cardTitle}>Info banner</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 560 }}>
+                Persistent scrolling strip on every slide: date, time, next prayer, and countdown.
+                Hidden automatically during emergency and prayer-break modes.
+              </p>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 16, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={bannerEnabled}
+                  onChange={(e) => setBannerEnabled(e.target.checked)}
+                  style={{ width: 18, height: 18 }}
+                  data-testid="signage-banner-enabled"
+                />
+                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Enable info banner</span>
+              </label>
+              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
+                <Select
+                  label="Position"
+                  value={bannerPosition}
+                  onChange={(val) => setBannerPosition(val === 'top' ? 'top' : 'bottom')}
+                  options={[
+                    { value: 'bottom', label: 'Bottom' },
+                    { value: 'top', label: 'Top' },
+                  ]}
+                />
+                <Input
+                  label="Scroll speed (seconds)"
+                  type="number"
+                  min={10}
+                  max={180}
+                  value={bannerSpeed}
+                  onChange={(val) => setBannerSpeed(val)}
+                />
+              </div>
+              <Btn onClick={() => void onSaveBanner()} disabled={bannerSaving} style={{ minHeight: 44 }} data-testid="signage-banner-save">
+                <Save size={16} /> {bannerSaving ? 'Saving…' : 'Save banner settings'}
               </Btn>
             </Card>
           )}

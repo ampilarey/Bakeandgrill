@@ -96,6 +96,7 @@ final class SignageResolver
         }
 
         $rotation = WeightedRotation::buildOrder($slides);
+        $prayer = $this->prayerPayload($now);
 
         return [
             'screen' => $screen ? [
@@ -114,7 +115,9 @@ final class SignageResolver
             'theme' => $theme,
             'slides' => array_values($slides),
             'rotation' => $rotation,
-            'variables' => $this->variables($now),
+            'variables' => $this->variables($now, $prayer['next_prayer']),
+            'prayer_schedule' => $prayer['schedule'],
+            'banner' => $this->bannerConfig(),
             'bestsellers' => $this->bestsellers(8),
             'menu_new_days' => (int) SiteSetting::get('menu_new_days', 30),
             'templates' => SignageTemplateFactory::templateCatalog(),
@@ -257,37 +260,97 @@ final class SignageResolver
     }
 
     /**
-     * @return array<string, string>
+     * @return array{next_prayer: string, schedule: list<array{name: string, at: string}>}
      */
-    private function variables(Carbon $now): array
+    private function prayerPayload(Carbon $now): array
     {
-        $branch = (string) SiteSetting::get('site_name', 'Bake & Grill');
+        $schedule = [];
         $nextPrayer = '';
         $island = $this->maleIsland();
-        if ($island instanceof IslandData) {
-            try {
-                $result = $this->prayerTimes->execute($island, $now->copy()->startOfDay());
-                if ($result) {
-                    $nowMin = ((int) $now->format('H')) * 60 + (int) $now->format('i');
-                    foreach ($result->prayersOnly() as $name => $t) {
-                        if (! is_string($t) || ! preg_match('/^\d{1,2}:\d{2}/', $t)) {
-                            continue;
-                        }
-                        [$h, $m] = array_map('intval', explode(':', $t));
-                        $pMin = $h * 60 + $m;
-                        if ($pMin > $nowMin) {
-                            $nextPrayer = ucfirst((string) $name) . ' ' . substr($t, 0, 5);
-                            break;
-                        }
-                    }
-                }
-            } catch (\Throwable) {
-                $nextPrayer = '';
+        if (! $island instanceof IslandData) {
+            return ['next_prayer' => '', 'schedule' => []];
+        }
+
+        try {
+            $result = $this->prayerTimes->execute($island, $now->copy()->startOfDay());
+            if (! $result) {
+                return ['next_prayer' => '', 'schedule' => []];
             }
+            $nowMin = ((int) $now->format('H')) * 60 + (int) $now->format('i');
+            foreach ($result->prayersOnly() as $name => $t) {
+                if (! is_string($t) || ! preg_match('/^\d{1,2}:\d{2}/', $t)) {
+                    continue;
+                }
+                [$h, $m] = array_map('intval', explode(':', substr($t, 0, 5)));
+                if ($h < 0 || $h > 23 || $m < 0 || $m > 59) {
+                    continue;
+                }
+                $at = $now->copy()
+                    ->timezone(PrayerTimeHelper::MVT_TIMEZONE)
+                    ->setTime($h, $m, 0)
+                    ->toIso8601String();
+                $label = ucfirst((string) $name);
+                $schedule[] = [
+                    'name' => $label,
+                    'at' => $at,
+                ];
+                $pMin = $h * 60 + $m;
+                if ($nextPrayer === '' && $pMin > $nowMin) {
+                    $nextPrayer = $label . ' ' . substr($t, 0, 5);
+                }
+            }
+        } catch (\Throwable) {
+            return ['next_prayer' => '', 'schedule' => []];
         }
 
         return [
-            'branch_name' => $branch,
+            'next_prayer' => $nextPrayer,
+            'schedule' => $schedule,
+        ];
+    }
+
+    /**
+     * @return array{enabled: bool, position: string, fields: list<string>, speed_seconds: int}
+     */
+    private function bannerConfig(): array
+    {
+        $raw = SiteSetting::get('signage_banner', '{}');
+        $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+        $fields = $cfg['fields'] ?? ['date', 'time', 'next_prayer', 'countdown'];
+        if (! is_array($fields)) {
+            $fields = ['date', 'time', 'next_prayer', 'countdown'];
+        }
+        $fields = array_values(array_filter(array_map('strval', $fields), fn (string $f) => in_array($f, ['date', 'time', 'next_prayer', 'countdown'], true)));
+        if ($fields === []) {
+            $fields = ['date', 'time', 'next_prayer', 'countdown'];
+        }
+        $position = (string) ($cfg['position'] ?? 'bottom');
+        if (! in_array($position, ['top', 'bottom'], true)) {
+            $position = 'bottom';
+        }
+        $speed = (int) ($cfg['speed_seconds'] ?? 40);
+        if ($speed < 10) {
+            $speed = 10;
+        }
+        if ($speed > 180) {
+            $speed = 180;
+        }
+
+        return [
+            'enabled' => (bool) ($cfg['enabled'] ?? false),
+            'position' => $position,
+            'fields' => $fields,
+            'speed_seconds' => $speed,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function variables(Carbon $now, string $nextPrayer = ''): array
+    {
+        return [
+            'branch_name' => (string) SiteSetting::get('site_name', 'Bake & Grill'),
             'current_time' => $now->format('g:i A'),
             'today' => $now->format('l, j M Y'),
             'next_prayer' => $nextPrayer,

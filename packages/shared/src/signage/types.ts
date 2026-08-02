@@ -45,6 +45,19 @@ export type SignageTheme = {
   [key: string]: string | undefined;
 };
 
+export type SignagePrayerEntry = {
+  name: string;
+  /** Absolute ISO 8601 timestamp with timezone offset. */
+  at: string;
+};
+
+export type SignageBannerSettings = {
+  enabled: boolean;
+  position: 'top' | 'bottom' | string;
+  fields: Array<'date' | 'time' | 'next_prayer' | 'countdown' | string>;
+  speed_seconds: number;
+};
+
 export type SignageConfig = {
   screen: { id: number; name: string; slug: string; group_id: number | null } | null;
   playlist_id: number | null;
@@ -58,6 +71,8 @@ export type SignageConfig = {
   slides: SignageSlide[];
   rotation: string[];
   variables: Record<string, string>;
+  prayer_schedule?: SignagePrayerEntry[];
+  banner?: SignageBannerSettings;
   bestsellers: Array<{
     id: number;
     name: string;

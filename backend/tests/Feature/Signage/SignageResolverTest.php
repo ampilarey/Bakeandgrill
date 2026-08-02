@@ -214,4 +214,63 @@ final class SignageResolverTest extends TestCase
             ->assertJson(['mode' => 'maintenance']);
         $this->assertSame('maintenance', (string) SiteSetting::get('signage_emergency'));
     }
+
+    public function test_resolve_includes_prayer_schedule_and_disabled_banner_by_default(): void
+    {
+        /** @var SignageResolver $resolver */
+        $resolver = app(SignageResolver::class);
+        $cfg = $resolver->resolveFresh('default', Carbon::now('Indian/Maldives'), null, 'v-banner');
+
+        $this->assertArrayHasKey('prayer_schedule', $cfg);
+        $this->assertIsArray($cfg['prayer_schedule']);
+        // When prayer lookup works we get five ISO entries; when it fails we get [].
+        if ($cfg['prayer_schedule'] !== []) {
+            $this->assertCount(5, $cfg['prayer_schedule']);
+            foreach ($cfg['prayer_schedule'] as $entry) {
+                $this->assertArrayHasKey('name', $entry);
+                $this->assertArrayHasKey('at', $entry);
+                $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T/', (string) $entry['at']);
+            }
+        }
+        $this->assertArrayHasKey('banner', $cfg);
+        $this->assertFalse((bool) $cfg['banner']['enabled']);
+        $this->assertSame('bottom', $cfg['banner']['position']);
+    }
+
+    public function test_banner_settings_round_trip_and_bust_cache(): void
+    {
+        $owner = User::create([
+            'name' => 'Owner Banner',
+            'email' => 'owner-banner@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->putJson('/api/admin/signage/banner', [
+            'enabled' => true,
+            'position' => 'top',
+            'fields' => ['date', 'time', 'next_prayer', 'countdown'],
+            'speed_seconds' => 55,
+        ])->assertOk()->assertJsonPath('banner.enabled', true)
+            ->assertJsonPath('banner.position', 'top')
+            ->assertJsonPath('banner.speed_seconds', 55);
+
+        $raw = SiteSetting::get('signage_banner');
+        $stored = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+        $this->assertIsArray($stored);
+        $this->assertTrue((bool) ($stored['enabled'] ?? false));
+
+        $overview = $this->getJson('/api/admin/signage')->assertOk();
+        $overview->assertJsonPath('banner.enabled', true);
+        $overview->assertJsonPath('banner.position', 'top');
+
+        /** @var SignageResolver $resolver */
+        $resolver = app(SignageResolver::class);
+        $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-2');
+        $this->assertTrue((bool) $cfg['banner']['enabled']);
+        $this->assertSame('top', $cfg['banner']['position']);
+        $this->assertSame(55, $cfg['banner']['speed_seconds']);
+    }
 }

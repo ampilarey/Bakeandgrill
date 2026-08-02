@@ -204,4 +204,84 @@ describe('SignagePage', () => {
       expect(screen.getByTestId('signage-page').getAttribute('data-command')).toBe('pause');
     });
   });
+
+  it('shows info banner under normal mode when enabled', async () => {
+    const withBanner = {
+      ...config,
+      mode: 'normal',
+      banner: {
+        enabled: true,
+        position: 'bottom',
+        fields: ['date', 'time', 'next_prayer', 'countdown'],
+        speed_seconds: 40,
+      },
+      prayer_schedule: [
+        { name: 'Dhuhr', at: new Date(Date.now() + 90 * 60_000).toISOString() },
+      ],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: null,
+          }),
+        };
+      }
+      return { ok: true, json: async () => withBanner };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('signage-banner')).toBeTruthy();
+  });
+
+  it('hides info banner under emergency and prayer_break modes', async () => {
+    for (const mode of ['emergency:closed', 'prayer_break'] as const) {
+      const withBanner = {
+        ...config,
+        mode,
+        banner: {
+          enabled: true,
+          position: 'bottom',
+          fields: ['date', 'time'],
+          speed_seconds: 40,
+        },
+        prayer_schedule: [],
+      };
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/signage/heartbeat')) {
+          return {
+            ok: true,
+            json: async () => ({
+              device: { approved: true, pairing_code: null, screen_slug: 'default' },
+              command: null,
+            }),
+          };
+        }
+        return { ok: true, json: async () => withBanner };
+      }));
+
+      const { unmount } = render(
+        <MemoryRouter initialEntries={['/tv']}>
+          <Routes>
+            <Route path="/tv" element={<SignagePage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(screen.getByTestId('signage-page')).toBeTruthy());
+      expect(screen.queryByTestId('signage-banner')).toBeNull();
+      unmount();
+    }
+  });
 });

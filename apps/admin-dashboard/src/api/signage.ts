@@ -1,5 +1,12 @@
 import { req } from './client';
 
+export type SignageBannerSettings = {
+  enabled: boolean;
+  position: 'top' | 'bottom' | string;
+  fields: string[];
+  speed_seconds: number;
+};
+
 export type SignageOverview = {
   playlists: SignagePlaylist[];
   groups: SignageGroup[];
@@ -7,6 +14,7 @@ export type SignageOverview = {
   campaigns: SignageCampaign[];
   emergency: string;
   prayer: { enabled: boolean; prayers: string[]; break_minutes: number };
+  banner?: SignageBannerSettings;
   templates: Array<{ key: string; label: string }>;
   custom_templates: Array<{ key: string; label: string; slide: Record<string, unknown> }> | Record<string, unknown>;
   wifi: { name: string; password: string };
@@ -128,6 +136,13 @@ export async function setSignageEmergency(mode: string) {
 
 export async function setSignagePrayer(body: { enabled: boolean; prayers?: string[]; break_minutes?: number }) {
   return req<{ prayer: SignageOverview['prayer'] }>('/admin/signage/prayer', {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function setSignageBanner(body: Partial<SignageBannerSettings> & { enabled: boolean }) {
+  return req<{ banner: SignageBannerSettings }>('/admin/signage/banner', {
     method: 'PUT',
     body: JSON.stringify(body),
   });

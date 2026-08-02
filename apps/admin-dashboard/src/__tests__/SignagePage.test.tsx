@@ -224,4 +224,116 @@ describe('SignagePage', () => {
     });
     expect(create).not.toHaveBeenCalled();
   });
+
+  async function openPlaylistsTab() {
+    renderWithRouter(<SignagePage />);
+    expect(await screen.findByTestId('signage-studio')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Playlists' }));
+    expect(await screen.findByTestId('signage-new-playlist')).toBeTruthy();
+  }
+
+  it('deletes a slide and keeps remaining slides in order', async () => {
+    vi.spyOn(api, 'getSignageOverview').mockResolvedValue({
+      ...mockOverview,
+      playlists: [{
+        id: 1,
+        name: 'Default Board',
+        slides: [
+          { id: 's1', name: 'Hero', seconds: 12, weight: 1, transition: 'fade' },
+          { id: 's2', name: 'Menu', seconds: 10, weight: 1, transition: 'fade' },
+          { id: 's3', name: 'Promo', seconds: 8, weight: 1, transition: 'fade' },
+        ],
+        theme: null,
+        is_active: true,
+      }],
+    });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    await openPlaylistsTab();
+    expect(await screen.findByTestId('signage-slide-0')).toBeTruthy();
+    expect(screen.getByTestId('signage-slide-1').textContent).toMatch(/Menu/);
+    expect(screen.getByTestId('signage-slide-2').textContent).toMatch(/Promo/);
+
+    fireEvent.click(screen.getByTestId('signage-delete-1'));
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.queryByText('Menu')).toBeNull();
+    });
+    expect(screen.getByTestId('signage-slide-0').textContent).toMatch(/Hero/);
+    expect(screen.getByTestId('signage-slide-1').textContent).toMatch(/Promo/);
+    expect(screen.queryByTestId('signage-slide-2')).toBeNull();
+    expect(toastSuccess).toHaveBeenCalledWith('Slide removed — save playlist to publish.');
+  });
+
+  it('closes the designer when its slide is deleted', async () => {
+    vi.spyOn(api, 'getSignageOverview').mockResolvedValue({
+      ...mockOverview,
+      playlists: [{
+        id: 1,
+        name: 'Default Board',
+        slides: [
+          { id: 's1', name: 'Hero', seconds: 12, weight: 1, transition: 'fade' },
+          { id: 's2', name: 'Menu', seconds: 10, weight: 1, transition: 'fade' },
+        ],
+        theme: null,
+        is_active: true,
+      }],
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    await openPlaylistsTab();
+    fireEvent.click(await screen.findByTestId('signage-design-0'));
+    expect(await screen.findByTestId('signage-designer-host')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('signage-delete-0'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('signage-designer-host')).toBeNull();
+    });
+  });
+
+  it('keeps the same designer slide open when a lower-index slide is deleted', async () => {
+    vi.spyOn(api, 'getSignageOverview').mockResolvedValue({
+      ...mockOverview,
+      playlists: [{
+        id: 1,
+        name: 'Default Board',
+        slides: [
+          { id: 's1', name: 'Hero', seconds: 12, weight: 1, transition: 'fade' },
+          { id: 's2', name: 'Menu', seconds: 10, weight: 1, transition: 'fade' },
+          { id: 's3', name: 'Promo', seconds: 8, weight: 1, transition: 'fade' },
+        ],
+        theme: null,
+        is_active: true,
+      }],
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    await openPlaylistsTab();
+    // Open designer on Promo (index 2). Deleting Hero must decrement designIndex
+    // to 1 — otherwise slides[2] is gone and the designer would unmount.
+    fireEvent.click(await screen.findByTestId('signage-design-2'));
+    expect(await screen.findByTestId('signage-designer-host')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('signage-delete-0'));
+    await waitFor(() => {
+      expect(screen.getByTestId('signage-slide-0').textContent).toMatch(/Menu/);
+    });
+    expect(screen.getByTestId('signage-designer-host')).toBeTruthy();
+    expect(screen.getByTestId('signage-slide-1').textContent).toMatch(/Promo/);
+    expect(screen.queryByTestId('signage-slide-2')).toBeNull();
+  });
+
+  it('shows empty state after deleting the only slide', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    await openPlaylistsTab();
+    expect(await screen.findByTestId('signage-slide-0')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('signage-delete-0'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('signage-slide-0')).toBeNull();
+    });
+    expect(screen.getByText(/No slides yet/i)).toBeTruthy();
+    expect(toastSuccess).toHaveBeenCalledWith('Slide removed — save playlist to publish.');
+  });
 });
