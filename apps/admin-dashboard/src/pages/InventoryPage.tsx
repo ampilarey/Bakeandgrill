@@ -20,14 +20,14 @@ import {
 } from '../api';
 
 const S = {
-  input: { width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
-  select: { width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' },
-  label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: '#6B5D4F', marginBottom: 4 },
+  input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
+  select: { width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' },
+  label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: 'var(--color-text-secondary)', marginBottom: 4 },
   tab: (active: boolean): React.CSSProperties => ({
     padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer',
     fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
-    background: active ? '#D4813A' : 'transparent',
-    color: active ? '#fff' : '#6B5D4F',
+    background: active ? 'var(--color-primary)' : 'transparent',
+    color: active ? '#fff' : 'var(--color-text-secondary)',
   }),
 };
 
@@ -404,14 +404,14 @@ export default function InventoryPage() {
       {tab === 'stock' && (
         <>
           {lowCount > 0 && (
-            <div style={{ background: '#FEF3E8', border: '1px solid #D4813A', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#D4813A', fontWeight: 600 }}>
+            <div style={{ background: '#FEF3E8', border: '1px solid var(--color-primary)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}>
               ⚠ {lowCount} item{lowCount !== 1 ? 's are' : ' is'} below reorder level
             </div>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Items" value={String(items.length)} accent="#D4813A" />
-            <StatCard label="Low Stock" value={String(lowCount)} accent={lowCount > 0 ? '#ef4444' : '#16a34a'} />
+            <StatCard label="Total Items" value={String(items.length)} accent="var(--color-primary)" />
+            <StatCard label="Low Stock" value={String(lowCount)} accent={lowCount > 0 ? 'var(--color-danger)' : '#16a34a'} />
           </div>
 
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -457,10 +457,10 @@ export default function InventoryPage() {
                   return (
                     <tr key={item.id}>
                       <td style={{ ...TD, fontWeight: 600 }}>{item.name}</td>
-                      <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{item.sku ?? '—'}</td>
-                      <td style={TD}>{item.category?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
+                      <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{item.sku ?? '—'}</td>
+                      <td style={TD}>{item.category?.name ?? <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
                       <td style={{ ...TD, fontWeight: 700 }}>{item.quantity_on_hand} {item.unit}</td>
-                      <td style={{ ...TD, color: '#9C8E7E' }}>
+                      <td style={{ ...TD, color: 'var(--color-text-muted)' }}>
                         {item.reorder_level != null ? `${item.reorder_level} ${item.unit}` : '—'}
                       </td>
                       <td style={TD}>
@@ -474,16 +474,16 @@ export default function InventoryPage() {
                             onClick={() => quickAdjust(item, -1)}
                             disabled={quickAdjusting[item.id] || item.quantity_on_hand <= 0}
                             title="Remove 1"
-                            style={{ width: 28, height: 28, borderRadius: 7, border: '1.5px solid #E8E0D8', background: '#F8F6F3', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#ef4444', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (quickAdjusting[item.id] || item.quantity_on_hand <= 0) ? 0.4 : 1 }}
+                            style={{ width: 28, height: 28, borderRadius: 7, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--color-danger)', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (quickAdjusting[item.id] || item.quantity_on_hand <= 0) ? 0.4 : 1 }}
                           >−</button>
-                          <span style={{ minWidth: 32, textAlign: 'center', fontSize: 13, fontWeight: 700, color: isLow ? '#ef4444' : '#1C1408' }}>
+                          <span style={{ minWidth: 32, textAlign: 'center', fontSize: 13, fontWeight: 700, color: isLow ? 'var(--color-danger)' : 'var(--color-text)' }}>
                             {quickAdjusting[item.id] ? '…' : item.quantity_on_hand}
                           </span>
                           <button
                             onClick={() => quickAdjust(item, 1)}
                             disabled={quickAdjusting[item.id]}
                             title="Add 1"
-                            style={{ width: 28, height: 28, borderRadius: 7, border: '1.5px solid #E8E0D8', background: '#F8F6F3', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#22c55e', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: quickAdjusting[item.id] ? 0.4 : 1 }}
+                            style={{ width: 28, height: 28, borderRadius: 7, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--color-success)', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: quickAdjusting[item.id] ? 0.4 : 1 }}
                           >+</button>
                           <Btn small variant="secondary" onClick={() => {
                             setAdjustItem(item);
@@ -492,7 +492,7 @@ export default function InventoryPage() {
                           }} title="Full adjust dialog">⚙</Btn>
                           </>
                           ) : (
-                            <span style={{ fontSize: 13, fontWeight: 700, color: isLow ? '#ef4444' : '#1C1408' }}>{item.quantity_on_hand}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: isLow ? 'var(--color-danger)' : 'var(--color-text)' }}>{item.quantity_on_hand}</span>
                           )}
                           <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
                           <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
@@ -511,7 +511,7 @@ export default function InventoryPage() {
       {/* ── Prepared Stock Tab ── */}
       {tab === 'prepared' && (
         <>
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 14, lineHeight: 1.5, maxWidth: 720 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, lineHeight: 1.5, maxWidth: 720 }}>
             Prepared / bake-ahead stock tracks finished menu units separately from raw SKUs.
             Sales deduct prepared qty when stock tracking is on; recipe ingredients still deduct from raw inventory via recipes.
             COGS uses recipe cost at sale time — baking ahead does not double-count ingredient cost when both paths are configured correctly.
@@ -537,8 +537,8 @@ export default function InventoryPage() {
                     return (
                       <tr key={`${row.item_id}-${row.variant_id ?? 'base'}`}>
                         <td style={{ ...TD, fontWeight: 600 }}>{row.name}</td>
-                        <td style={{ ...TD, color: isLow ? '#ef4444' : '#1C1408', fontWeight: 700 }}>{row.stock}</td>
-                        <td style={{ ...TD, color: '#9C8E7E' }}>{row.low_stock_threshold}</td>
+                        <td style={{ ...TD, color: isLow ? 'var(--color-danger)' : 'var(--color-text)', fontWeight: 700 }}>{row.stock}</td>
+                        <td style={{ ...TD, color: 'var(--color-text-muted)' }}>{row.low_stock_threshold}</td>
                         <td style={TD}>
                           {canPrepared ? (
                             <Btn small onClick={() => { setPrepAdjust(row); setPrepDelta(''); setPrepNotes(''); setPrepAdjError(''); }}>
@@ -573,7 +573,7 @@ export default function InventoryPage() {
               </thead>
               <tbody>
                 {catsLoading ? (
-                  <tr><td colSpan={2} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+                  <tr><td colSpan={2} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
                 ) : cats.length === 0 ? (
                   <tr><td colSpan={2}><EmptyState message="No categories yet." /></td></tr>
                 ) : cats.map(cat => (
@@ -593,8 +593,8 @@ export default function InventoryPage() {
       {/* ── Adjust Modal ── */}
       {adjustItem && (
         <Modal title={`Adjust Stock — ${adjustItem.name}`} onClose={() => setAdjustItem(null)} maxWidth={400}>
-          {adjError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{adjError}</p>}
-          <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+          {adjError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{adjError}</p>}
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
             Current stock: <strong>{adjustItem.quantity_on_hand} {adjustItem.unit}</strong>
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -625,9 +625,9 @@ export default function InventoryPage() {
       {/* ── Stock movements ledger ── */}
       {ledgerItem && (
         <Modal title={`Movements — ${ledgerItem.name}`} onClose={() => setLedgerItem(null)} maxWidth={640}>
-          {ledgerError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{ledgerError}</p>}
+          {ledgerError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{ledgerError}</p>}
           {ledgerLoading ? (
-            <p style={{ color: '#9C8E7E', fontSize: 13 }}>Loading…</p>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p>
           ) : ledgerRows.length === 0 ? (
             <EmptyState message="No stock movements yet for this item." />
           ) : (
@@ -643,16 +643,16 @@ export default function InventoryPage() {
                 <tbody>
                   {ledgerRows.map((m) => (
                     <tr key={m.id}>
-                      <td style={{ ...TD, fontSize: 12, color: '#9C8E7E', whiteSpace: 'nowrap' }}>
+                      <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                         {m.created_at ? new Date(m.created_at).toLocaleString() : '—'}
                       </td>
                       <td style={{ ...TD, textTransform: 'capitalize' }}>{m.type?.replace(/_/g, ' ')}</td>
-                      <td style={{ ...TD, fontWeight: 700, color: Number(m.quantity) < 0 ? '#ef4444' : '#16a34a' }}>
+                      <td style={{ ...TD, fontWeight: 700, color: Number(m.quantity) < 0 ? 'var(--color-danger)' : '#16a34a' }}>
                         {Number(m.quantity) > 0 ? '+' : ''}{Number(m.quantity)}
                       </td>
                       <td style={TD}>{m.balance_after ?? '—'}</td>
                       <td style={{ ...TD, fontSize: 12 }}>{m.user?.name ?? '—'}</td>
-                      <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{m.notes ?? '—'}</td>
+                      <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>{m.notes ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -668,7 +668,7 @@ export default function InventoryPage() {
       {/* ── Create SKU Modal ── */}
       {createOpen && (
         <Modal title="Add Inventory SKU" onClose={() => setCreateOpen(false)} maxWidth={480}>
-          {createError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{createError}</p>}
+          {createError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{createError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={S.label}>Name *</span>
@@ -789,7 +789,7 @@ export default function InventoryPage() {
       {/* ── Category Modal ── */}
       {catModal && (
         <Modal title={editCat ? 'Edit Category' : 'Add Category'} onClose={() => setCatModal(false)} maxWidth={360}>
-          {catError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{catError}</p>}
+          {catError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{catError}</p>}
           <label>
             <span style={S.label}>Category Name *</span>
             <input type="text" placeholder="e.g. Produce, Dairy…" value={catName} onChange={e => setCatName(e.target.value)} style={S.input} />
@@ -804,7 +804,7 @@ export default function InventoryPage() {
       {/* ── Unit Conversions Tab ── */}
       {tab === 'conversions' && (
         <div>
-          {convError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{convError}</p>}
+          {convError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{convError}</p>}
           <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end', marginBottom: 20, background: '#F9F5F0', padding: 16, borderRadius: 12 }}>
             {(['from_unit', 'to_unit', 'factor'] as const).map((k) => (
               <div key={k}>
@@ -817,7 +817,7 @@ export default function InventoryPage() {
             ))}
             <Btn onClick={() => void handleAddConversion()} disabled={convSaving}>{convSaving ? '…' : '+ Add'}</Btn>
           </div>
-          {convLoading ? <p style={{ color: '#9C8E7E', fontSize: 13 }}>Loading…</p> : conversions.length === 0 ? (
+          {convLoading ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading…</p> : conversions.length === 0 ? (
             <EmptyState message="No conversions defined." />
           ) : (
             <TableCard>
@@ -844,7 +844,7 @@ export default function InventoryPage() {
       {/* ── Stock Count Tab ── */}
       {tab === 'stock-count' && (
         <div>
-          {countError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{countError}</p>}
+          {countError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{countError}</p>}
           {countResult ? (
             <div>
               <div style={{ background: '#DCFCE7', color: '#166534', padding: '12px 16px', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
@@ -857,7 +857,7 @@ export default function InventoryPage() {
                     {countResult.map((r) => (
                       <tr key={r.item_id}>
                         <td style={TD}>{countItems.find(i => i.id === r.item_id)?.name ?? `#${r.item_id}`}</td>
-                        <td style={{ ...TD, color: r.difference > 0 ? '#15803D' : r.difference < 0 ? '#991B1B' : '#9C8E7E', fontWeight: 700 }}>
+                        <td style={{ ...TD, color: r.difference > 0 ? '#15803D' : r.difference < 0 ? '#991B1B' : 'var(--color-text-muted)', fontWeight: 700 }}>
                           {r.difference > 0 ? '+' : ''}{r.difference}
                         </td>
                         <td style={TD}>{r.balance_after}</td>
@@ -868,9 +868,9 @@ export default function InventoryPage() {
               </TableCard>
               <Btn variant="secondary" onClick={() => { setCountResult(null); void loadCountItems(); }} style={{ marginTop: 16 }}>New Count</Btn>
             </div>
-          ) : countLoading ? <p style={{ color: '#9C8E7E', fontSize: 13 }}>Loading items…</p> : (
+          ) : countLoading ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading items…</p> : (
             <div>
-              <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
                 Enter the actual counted quantities. Leave blank to skip an item.
               </p>
               <TableCard>
@@ -884,18 +884,18 @@ export default function InventoryPage() {
                       <tr key={item.id}>
                         <td style={{ ...TD, fontWeight: 600 }}>{item.name}</td>
                         <td style={TD}>{item.unit}</td>
-                        <td style={{ ...TD, color: '#9C8E7E' }}>{item.quantity_on_hand ?? '—'}</td>
+                        <td style={{ ...TD, color: 'var(--color-text-muted)' }}>{item.quantity_on_hand ?? '—'}</td>
                         <td style={TD}>
                           <input type="number" min="0" step="0.001"
                             value={countQtys[item.id] ?? ''}
                             onChange={(e) => setCountQtys((q) => ({ ...q, [item.id]: e.target.value }))}
-                            style={{ width: 90, padding: '5px 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }} />
+                            style={{ width: 90, padding: '5px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }} />
                         </td>
                         <td style={TD}>
                           <input value={countNotes[item.id] ?? ''}
                             onChange={(e) => setCountNotes((n) => ({ ...n, [item.id]: e.target.value }))}
                             placeholder="Optional note"
-                            style={{ width: 160, padding: '5px 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }} />
+                            style={{ width: 160, padding: '5px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }} />
                         </td>
                       </tr>
                     ))}
@@ -916,7 +916,7 @@ export default function InventoryPage() {
       {prepAdjust && (
         <Modal title={`Adjust Prepared Stock — ${prepAdjust.name}`} onClose={() => setPrepAdjust(null)}>
           {prepAdjError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{prepAdjError}</p>}
-          <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
             Current on hand: <strong>{prepAdjust.stock}</strong>. Use positive to add, negative to remove.
           </p>
           <label style={S.label}>Delta (+/−)</label>
@@ -934,7 +934,7 @@ export default function InventoryPage() {
       {priceHistoryItem && (
         <Modal title={`Price History — ${priceHistoryItem.name}`} onClose={() => setPriceHistoryItem(null)} maxWidth={560}>
           {historyError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{historyError}</p>}
-          {historyLoading ? <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: 20 }}>Loading…</p> : (
+          {historyLoading ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Loading…</p> : (
             <>
               {cheapestSupplier && (
                 <div style={{ background: '#DCFCE7', color: '#166534', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
@@ -942,7 +942,7 @@ export default function InventoryPage() {
                 </div>
               )}
               {priceHistory.length === 0 ? (
-                <p style={{ color: '#9C8E7E', textAlign: 'center', padding: 20, fontSize: 13 }}>No purchase history.</p>
+                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 20, fontSize: 13 }}>No purchase history.</p>
               ) : (
                 <div style={{ maxHeight: '50vh', overflowY: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -960,12 +960,12 @@ export default function InventoryPage() {
                             {h.purchase_id ? (
                               <Link
                                 to={`/purchase-orders?search=${encodeURIComponent(h.purchase_number || String(h.purchase_id))}`}
-                                style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
+                                style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
                               >
                                 {h.purchase_number || `PO #${h.purchase_id}`}
                               </Link>
                             ) : (
-                              <span style={{ color: '#9C8E7E' }}>—</span>
+                              <span style={{ color: 'var(--color-text-muted)' }}>—</span>
                             )}
                           </td>
                           <td style={TD}>{h.quantity}</td>
