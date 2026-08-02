@@ -66,7 +66,7 @@ export function PaymentCommissionSettings() {
   };
 
   if (loading || !form) {
-    return <p style={{ color: '#9C8E7E', fontSize: 14 }}>Loading…</p>;
+    return <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Loading…</p>;
   }
 
   const posExample = exampleNet(100, form.pos_card_rate_percent);
@@ -80,15 +80,15 @@ export function PaymentCommissionSettings() {
         </p>
       )}
 
-      <p style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
         BML deducts a processing fee from card, QR, and online gateway income. These rates are snapshotted on each payment at settlement time — changing them does not rewrite history. Refunds do not automatically reverse commission (BML typically keeps the fee).
       </p>
 
       <Card>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Track payment commission</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>When off, no commission is calculated on new payments.</p>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>Track payment commission</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>When off, no commission is calculated on new payments.</p>
           </div>
           <Toggle on={form.enabled} onClick={() => setForm({ ...form, enabled: !form.enabled })} />
         </div>
@@ -97,7 +97,7 @@ export function PaymentCommissionSettings() {
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>POS card / QR rate (%)</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>POS card / QR rate (%)</label>
             <input
               type="number"
               min={0}
@@ -105,14 +105,14 @@ export function PaymentCommissionSettings() {
               step={0.1}
               value={form.pos_card_rate_percent}
               onChange={(e) => setForm({ ...form, pos_card_rate_percent: parseFloat(e.target.value) || 0 })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8E0D8', fontFamily: 'inherit' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontFamily: 'inherit' }}
             />
-            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
               Example: MVR 100 POS card/QR → MVR {posExample.fee.toFixed(2)} fee → MVR {posExample.net.toFixed(2)} net
             </p>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Online / BML gateway rate (%)</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Online / BML gateway rate (%)</label>
             <input
               type="number"
               min={0}
@@ -120,9 +120,9 @@ export function PaymentCommissionSettings() {
               step={0.1}
               value={form.online_gateway_rate_percent}
               onChange={(e) => setForm({ ...form, online_gateway_rate_percent: parseFloat(e.target.value) || 0 })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8E0D8', fontFamily: 'inherit' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontFamily: 'inherit' }}
             />
-            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
               Example: MVR 100 online pay → MVR {gwExample.fee.toFixed(2)} fee → MVR {gwExample.net.toFixed(2)} net
             </p>
           </div>
