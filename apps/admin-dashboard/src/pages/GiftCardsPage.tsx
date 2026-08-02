@@ -328,14 +328,14 @@ export default function GiftCardsPage() {
           resetIssueForm();
         }}>+ Issue Gift Card</Btn>}
       />
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
-      {actionError && <p style={{ color: '#ef4444', marginBottom: 16 }}>{actionError}</p>}
+      {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
+      {actionError && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{actionError}</p>}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          style={{ padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
+          style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: '#fff' }}
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -350,26 +350,26 @@ export default function GiftCardsPage() {
           onKeyDown={e => {
             if (e.key === 'Enter') { setSearchQ(searchInput.trim()); setPage(1); }
           }}
-          style={{ padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', minWidth: 200 }}
+          style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', minWidth: 200 }}
         />
         <Btn variant="secondary" onClick={() => { setSearchQ(searchInput.trim()); setPage(1); }}>Search</Btn>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard label="Total Issued" value={String(meta.total)} accent="#D4813A" />
-        <StatCard label="Active Cards" value={String(meta.active_count ?? 0)} accent="#22c55e" />
+        <StatCard label="Total Issued" value={String(meta.total)} accent="var(--color-primary)" />
+        <StatCard label="Active Cards" value={String(meta.active_count ?? 0)} accent="var(--color-success)" />
         <StatCard label="Active Balance" value={`MVR ${Number(meta.active_balance ?? 0).toFixed(2)}`} accent="#8b5cf6" />
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: 20, marginBottom: 24 }}>
-        <p style={{ fontWeight: 700, color: '#1C1408', margin: '0 0 12px', fontSize: 14 }}>Check Balance</p>
+      <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: 20, marginBottom: 24 }}>
+        <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px', fontSize: 14 }}>Check Balance</p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <input
             placeholder="XXXX-XXXX-XXXX-XXXX"
             value={balanceCode}
             onChange={e => { setBalanceCode(e.target.value.toUpperCase()); setBalanceResult(null); setBalanceError(''); }}
             onKeyDown={e => e.key === 'Enter' && void handleCheckBalance()}
-            style={{ fontFamily: 'monospace', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, maxWidth: 260, textTransform: 'uppercase' }}
+            style={{ fontFamily: 'monospace', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, maxWidth: 260, textTransform: 'uppercase' }}
           />
           <Btn variant="secondary" onClick={() => void handleCheckBalance()} disabled={checkingBalance}>
             <Search size={14} style={{ marginRight: 6 }} />{checkingBalance ? 'Checking…' : 'Check'}
@@ -389,7 +389,7 @@ export default function GiftCardsPage() {
             {balanceResult.expires_at && <p style={{ margin: '4px 0 0', color: '#166534', fontSize: 12 }}>Expires: {balanceResult.expires_at}</p>}
           </div>
         )}
-        {balanceError && <p style={{ color: '#ef4444', margin: '8px 0 0', fontSize: 13 }}>{balanceError}</p>}
+        {balanceError && <p style={{ color: 'var(--color-danger)', margin: '8px 0 0', fontSize: 13 }}>{balanceError}</p>}
       </div>
 
       <TableCard>
@@ -403,34 +403,34 @@ export default function GiftCardsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : cards.length === 0 ? (
               <tr><td colSpan={8}><EmptyState message="No gift cards yet." /></td></tr>
             ) : cards.map(card => (
               <tr key={card.id}>
-                <td style={TD}><code style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em', color: '#1C1408' }}>{card.masked_code}</code></td>
+                <td style={TD}><code style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em', color: 'var(--color-text)' }}>{card.masked_code}</code></td>
                 <td style={TD}>
                   {card.issued_to ? (
-                    <Link to={`/customers?customer=${card.issued_to.id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                    <Link to={`/customers?customer=${card.issued_to.id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                       {card.issued_to.name}
                     </Link>
                   ) : (
-                    <span style={{ color: '#9C8E7E' }}>—</span>
+                    <span style={{ color: 'var(--color-text-muted)' }}>—</span>
                   )}
                   {card.purchased_by && (
-                    <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
                       Bought by{' '}
-                      <Link to={`/customers?customer=${card.purchased_by.id}`} style={{ color: '#6B5D4F', textDecoration: 'none' }}>
+                      <Link to={`/customers?customer=${card.purchased_by.id}`} style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
                         {card.purchased_by.name}
                       </Link>
                     </div>
                   )}
                 </td>
                 <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
-                <td style={{ ...TD, fontWeight: 700, color: (card.available_balance ?? card.current_balance) > 0 ? '#166534' : '#9C8E7E' }}>
+                <td style={{ ...TD, fontWeight: 700, color: (card.available_balance ?? card.current_balance) > 0 ? '#166534' : 'var(--color-text-muted)' }}>
                   <div>MVR {Number(card.available_balance ?? card.current_balance).toFixed(2)}</div>
                   {(Number(card.held_balance ?? 0) > 0 || Number(card.available_balance ?? card.current_balance) !== Number(card.current_balance)) && (
-                    <div style={{ fontSize: 11, fontWeight: 500, color: '#9C8E7E', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-muted)', marginTop: 2 }}>
                       Ledger {Number(card.current_balance).toFixed(2)}
                       {Number(card.held_balance ?? 0) > 0 ? ` · held ${Number(card.held_balance).toFixed(2)}` : ''}
                     </div>
@@ -438,7 +438,7 @@ export default function GiftCardsPage() {
                 </td>
                 <td style={TD}><Badge color={STATUS_COLOR[card.status] ?? 'gray'}>{STATUS_LABEL[card.status] ?? card.status}</Badge></td>
                 <td style={TD}>{card.expires_at ?? '—'}</td>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{card.created_at ? new Date(card.created_at).toLocaleDateString() : '—'}</td>
+                <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{card.created_at ? new Date(card.created_at).toLocaleDateString() : '—'}</td>
                 <td style={{ ...TD, whiteSpace: 'nowrap' }}>
                   <Btn small variant="secondary" onClick={() => void openLedger(card)}>Ledger</Btn>
                   {' '}
@@ -464,10 +464,10 @@ export default function GiftCardsPage() {
 
       {topUpCard && (
         <Modal title={`Top up · ${topUpCard.masked_code}`} onClose={() => setTopUpCard(null)}>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             Current balance: MVR {Number(topUpCard.current_balance).toFixed(2)}
           </p>
-          {topUpError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{topUpError}</p>}
+          {topUpError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{topUpError}</p>}
           <Input
             label="Amount (MVR)"
             type="number"
@@ -489,10 +489,10 @@ export default function GiftCardsPage() {
 
       {expiryCard && (
         <Modal title={`Expiry · ${expiryCard.masked_code}`} onClose={() => setExpiryCard(null)}>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             Leave blank to clear expiry. Expired cards with balance become active again.
           </p>
-          {expiryError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{expiryError}</p>}
+          {expiryError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{expiryError}</p>}
           <Input
             label="Expires on"
             type="date"
@@ -510,7 +510,7 @@ export default function GiftCardsPage() {
 
       {ledgerCard && (
         <Modal title={`Ledger · ${ledgerCard.masked_code}`} onClose={() => setLedgerCard(null)}>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
             Status: <strong>{STATUS_LABEL[ledgerCard.status] ?? ledgerCard.status}</strong>
             {' · '}Available: MVR {Number(ledgerCard.available_balance ?? ledgerCard.current_balance).toFixed(2)}
             {' · '}Ledger: MVR {Number(ledgerCard.current_balance).toFixed(2)}
@@ -520,7 +520,7 @@ export default function GiftCardsPage() {
             {ledgerCard.purchased_by ? ` · Bought by ${ledgerCard.purchased_by.name}` : ''}
           </p>
           {ledgerLoading ? (
-            <p style={{ color: '#9C8E7E' }}>Loading…</p>
+            <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
           ) : ledgerRows.length === 0 ? (
             <EmptyState message="No transactions yet." />
           ) : (
@@ -557,26 +557,26 @@ export default function GiftCardsPage() {
         <Modal title="Issue Gift Card" onClose={() => setIssueOpen(false)}>
           {issuedCard ? (
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <Gift size={40} style={{ color: '#D4813A', marginBottom: 16 }} />
-              <p style={{ fontWeight: 700, color: '#1C1408', marginBottom: 8 }}>Gift card issued!</p>
+              <Gift size={40} style={{ color: 'var(--color-primary)', marginBottom: 16 }} />
+              <p style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 8 }}>Gift card issued!</p>
               <p style={{ color: '#b45309', fontSize: 12, marginBottom: 10 }}>
                 Full code is shown once — copy, print, or SMS it now.
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
-                <p style={{ fontFamily: 'monospace', fontSize: 18, letterSpacing: '0.08em', color: '#D4813A', fontWeight: 700, margin: 0 }}>
+                <p style={{ fontFamily: 'monospace', fontSize: 18, letterSpacing: '0.08em', color: 'var(--color-primary)', fontWeight: 700, margin: 0 }}>
                   {issuedCard.code ?? issuedCard.masked_code}
                 </p>
                 <button
                   type="button"
                   onClick={() => handleCopyCode(issuedCard.code ?? issuedCard.masked_code)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#22c55e' : '#9C8E7E', padding: 4 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? 'var(--color-success)' : 'var(--color-text-muted)', padding: 4 }}
                   title="Copy code"
                 >
                   {copied ? <Check size={16} /> : <Copy size={16} />}
                 </button>
               </div>
-              <p style={{ color: '#6B5D4F', fontSize: 14 }}>Balance: MVR {issuedCard.current_balance.toFixed(2)}</p>
-              {issuedCard.expires_at && <p style={{ color: '#9C8E7E', fontSize: 13 }}>Expires: {issuedCard.expires_at}</p>}
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Balance: MVR {issuedCard.current_balance.toFixed(2)}</p>
+              {issuedCard.expires_at && <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Expires: {issuedCard.expires_at}</p>}
 
               {issueSms && (
                 <p style={{
@@ -611,28 +611,28 @@ export default function GiftCardsPage() {
                   borderRadius: 10,
                   textAlign: 'left',
                 }}>
-                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Send / resend</p>
+                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Send / resend</p>
                   <input
                     placeholder="Phone — 7XXXXXX or +9607XXXXXX"
                     value={smsResendPhone}
                     onChange={e => setSmsResendPhone(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }}
                   />
                   <Btn variant="secondary" onClick={() => void handleResendSms()} disabled={smsSending}>
                     {smsSending ? 'Sending…' : 'SMS code now'}
                   </Btn>
-                  {smsResendMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6B5D4F' }}>{smsResendMsg}</p>}
+                  {smsResendMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>{smsResendMsg}</p>}
 
                   <input
                     placeholder="Email — name@example.com"
                     value={emailResendTo}
                     onChange={e => setEmailResendTo(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', margin: '12px 0 8px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', margin: '12px 0 8px', boxSizing: 'border-box' }}
                   />
                   <Btn variant="secondary" onClick={() => void handleResendEmail()} disabled={emailSending}>
                     {emailSending ? 'Sending…' : 'Email code now'}
                   </Btn>
-                  {emailResendMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6B5D4F' }}>{emailResendMsg}</p>}
+                  {emailResendMsg && <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>{emailResendMsg}</p>}
                 </div>
               )}
 
@@ -657,14 +657,14 @@ export default function GiftCardsPage() {
             </div>
           ) : (
             <>
-              {issueError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{issueError}</p>}
+              {issueError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{issueError}</p>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <label>
-                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Amount (MVR) *</span>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Amount (MVR) *</span>
                   <Input type="number" min="1" max="5000" step="0.01" placeholder="50.00" value={amount} onChange={setAmount} />
                 </label>
                 <label>
-                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Customer (optional)</span>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Customer (optional)</span>
                   <CustomerSearch
                     value={customerId}
                     onChange={(id) => setCustomerId(id)}
@@ -672,17 +672,17 @@ export default function GiftCardsPage() {
                   />
                 </label>
                 <label>
-                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Expiry date (optional)</span>
-                  <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Expiry date (optional)</span>
+                  <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }} />
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408' }}>Send code by SMS</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Send code by SMS</span>
                 </label>
                 {sendSms && (
                   <label>
-                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
                       Recipient phone {!customerId ? '*' : '(optional if customer has phone)'}
                     </span>
                     <Input
@@ -696,11 +696,11 @@ export default function GiftCardsPage() {
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408' }}>Send code by email</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Send code by email</span>
                 </label>
                 {sendEmail && (
                   <label>
-                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
                       Recipient email {!customerId ? '*' : '(optional if customer has email)'}
                     </span>
                     <Input
@@ -714,13 +714,13 @@ export default function GiftCardsPage() {
 
                 {(sendSms || sendEmail) && (
                   <label>
-                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Personal note (optional)</span>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Personal note (optional)</span>
                     <input
                       value={deliveryNote}
                       onChange={e => setDeliveryNote(e.target.value)}
                       maxLength={sendSms ? 160 : 500}
                       placeholder="Happy birthday from…"
-                      style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
                     />
                   </label>
                 )}
