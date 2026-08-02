@@ -69,7 +69,7 @@ export default function ReferralsPage() {
             <thead>
               <tr>
                 {['Code', 'Owner', 'Uses', 'Referrer Reward', 'Referee Discount', 'Status'].map((h) => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #E8E0D8', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -77,24 +77,24 @@ export default function ReferralsPage() {
               {codes.length === 0 ? (
                 <tr><td colSpan={6}><EmptyState>No referral codes generated yet</EmptyState></td></tr>
               ) : codes.map((c) => (
-                <tr key={c.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={{ padding: '12px 16px' }}>
-                    <code style={{ fontSize: 12, background: '#F8F6F3', padding: '2px 8px', borderRadius: 6, fontWeight: 700, letterSpacing: '0.05em' }}>
+                    <code style={{ fontSize: 12, background: 'var(--color-bg)', padding: '2px 8px', borderRadius: 6, fontWeight: 700, letterSpacing: '0.05em' }}>
                       {c.code}
                     </code>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     {c.customer ? (
-                      <Link to={`/customers?customer=${c.customer.id}`} style={{ fontWeight: 600, fontSize: 13, color: '#D4813A', textDecoration: 'none' }}>
+                      <Link to={`/customers?customer=${c.customer.id}`} style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-primary)', textDecoration: 'none' }}>
                         {c.customer.name}
                       </Link>
-                    ) : <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>}
+                    ) : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>}
                   </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#1C1408' }}>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--color-text)' }}>
                     <strong>{c.uses_count}</strong>
-                    {c.max_uses ? <span style={{ color: '#9C8E7E' }}> / {c.max_uses}</span> : null}
+                    {c.max_uses ? <span style={{ color: 'var(--color-text-muted)' }}> / {c.max_uses}</span> : null}
                   </td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#D4813A' }}>{mvr(c.referrer_reward_mvr)}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-primary)' }}>{mvr(c.referrer_reward_mvr)}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: '#16a34a' }}>{mvr(c.referee_discount_mvr)}</td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -126,14 +126,14 @@ export default function ReferralsPage() {
       {showCheck && (
         <Modal title="Validate Referral Code" onClose={() => { setShowCheck(false); setCheckCode(''); setCheckResult(null); }} maxWidth={380}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Referral Code</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Referral Code</label>
             <input
               value={checkCode}
               onChange={(e) => setCheckCode(e.target.value.toUpperCase())}
               placeholder="e.g. JOHND123"
               onKeyDown={(e) => e.key === 'Enter' && void handleCheck()}
               style={{
-                width: '100%', height: 38, padding: '0 12px', border: '1.5px solid #E8E0D8',
+                width: '100%', height: 38, padding: '0 12px', border: '1.5px solid var(--color-border)',
                 borderRadius: 10, fontSize: 14, fontFamily: 'monospace', background: 'var(--color-surface)',
                 outline: 'none', boxSizing: 'border-box', textTransform: 'uppercase', letterSpacing: '0.08em',
               }}
@@ -150,12 +150,12 @@ export default function ReferralsPage() {
                 {checkResult.valid ? '✓ Valid Code' : '✗ Invalid Code'}
               </p>
               {checkResult.valid && checkResult.referee_discount_mvr != null && (
-                <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>
+                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>
                   Friend gets <strong>{mvr(checkResult.referee_discount_mvr)}</strong> off their first order.
                 </p>
               )}
               {checkResult.message && (
-                <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>{checkResult.message}</p>
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>{checkResult.message}</p>
               )}
             </div>
           )}
