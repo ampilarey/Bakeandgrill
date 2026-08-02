@@ -109,19 +109,19 @@ export function TemplatesTab() {
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{t.name}</span>
                     <Badge label={t.type.replace(/_/g, ' ')} color={TYPE_COLORS[t.type] ?? 'gray'} />
                     {t.is_system && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#9C8E7E' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--color-text-muted)' }}>
                         <Lock size={10} />System
                       </span>
                     )}
                   </div>
-                  {t.description && <div style={{ color: '#9C8E7E', fontSize: 12, marginBottom: 6 }}>{t.description}</div>}
+                  {t.description && <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginBottom: 6 }}>{t.description}</div>}
                   <div style={{ background: '#F5F0EA', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#3B2A1A', fontFamily: 'monospace', lineHeight: 1.5 }}>
-                    {t.body || <em style={{ color: '#9C8E7E' }}>Empty template</em>}
+                    {t.body || <em style={{ color: 'var(--color-text-muted)' }}>Empty template</em>}
                   </div>
                   {t.variables && t.variables.length > 0 && (
                     <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {t.variables.map(v => (
-                        <span key={v.name} style={{ background: '#E8E0D8', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: '#6B5D4F' }} title={v.description}>
+                        <span key={v.name} style={{ background: 'var(--color-border)', borderRadius: 4, padding: '2px 7px', fontSize: 11, color: 'var(--color-text-secondary)' }} title={v.description}>
                           {`{{${v.name}}}`}
                         </span>
                       ))}
@@ -137,8 +137,8 @@ export function TemplatesTab() {
                 </div>
               </div>
               {preview?.templateId === t.id && (
-                <div style={{ marginTop: 10, background: 'var(--color-surface)', border: '1px solid #D4813A', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#3B2A1A' }}>
-                  <strong style={{ fontSize: 11, color: '#D4813A' }}>PREVIEW:</strong> {preview.text}
+                <div style={{ marginTop: 10, background: '#fff', border: '1px solid var(--color-primary)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#3B2A1A' }}>
+                  <strong style={{ fontSize: 11, color: 'var(--color-primary)' }}>PREVIEW:</strong> {preview.text}
                 </div>
               )}
             </Card>
@@ -152,13 +152,13 @@ export function TemplatesTab() {
             {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Template Name *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Template Name *</label>
                 <Input value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="e.g. Shift Reminder" />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Type</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Type</label>
                 <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as TemplateForm['type'] }))}
-                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                   <option value="order_notification">Order Notification</option>
                   <option value="schedule_reminder">Schedule Reminder</option>
                   <option value="duty_reminder">Duty Reminder</option>
@@ -167,20 +167,20 @@ export function TemplatesTab() {
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Description</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Description</label>
               <Input value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="What is this template used for?" />
             </div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Message Body *</label>
-                <span style={{ fontSize: 11, color: info.segments > 1 ? '#ef4444' : '#9C8E7E' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Message Body *</label>
+                <span style={{ fontSize: 11, color: info.segments > 1 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
                   {info.chars} chars · {info.segments} segment{info.segments !== 1 ? 's' : ''} · {info.encoding}
                 </span>
               </div>
               <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
                 rows={4} placeholder={'Use {{variable_name}} for dynamic values\ne.g. Order #{{order_number}} is ready.'}
-                style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '10px 12px', fontSize: 13, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }} />
-              <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>Use {'{{variable}}'} syntax for dynamic values.</div>
+                style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }} />
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>Use {'{{variable}}'} syntax for dynamic values.</div>
             </div>
           </div>
           <ModalActions>
