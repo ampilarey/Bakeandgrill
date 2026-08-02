@@ -7,8 +7,8 @@ const styles: Record<Variant, string> = {
   warning: 'bg-yellow-50 text-yellow-700 border-yellow-200',
   danger:  'bg-red-50 text-red-700 border-red-200',
   info:    'bg-blue-50 text-blue-700 border-blue-200',
-  neutral: 'bg-[#F8F6F3] text-[#6B5D4F] border-[#E8E0D8]',
-  brand:   'bg-orange-50 text-[#D4813A] border-orange-200',
+  neutral: 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] border-[var(--color-border)]',
+  brand:   'bg-orange-50 text-[var(--color-primary)] border-orange-200',
 };
 
 interface Props {
