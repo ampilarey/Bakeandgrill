@@ -649,6 +649,30 @@ export function MenuItemEditorModal({
               </button>
             </div>
 
+            <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>TV signage board</p>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={form.show_on_signage}
+                  onChange={(e) => set('show_on_signage', e.target.checked)}
+                />
+                <span style={{ fontWeight: 600 }}>Show on the TV board</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: form.show_on_signage ? 'pointer' : 'not-allowed', opacity: form.show_on_signage ? 1 : 0.5 }}>
+                <input
+                  type="checkbox"
+                  disabled={!form.show_on_signage}
+                  checked={form.is_signage_promoted}
+                  onChange={(e) => set('is_signage_promoted', e.target.checked)}
+                />
+                <span style={{ fontWeight: 600 }}>Feature on its own slide</span>
+              </label>
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                Items with a photo or an active discount already get their own slide. Tick this to feature an item that has neither.
+              </p>
+            </div>
+
             {!form.has_variants && (
               <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: form.is_combo ? 12 : 0 }}>

@@ -6,8 +6,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPE } from 'react';
 import { AlignCenter, Copy, Eye, EyeOff, Lock, Redo2, Save, Trash2, Undo2, Unlock } from 'lucide-react';
 import {
+  AUTO_MENU_ORIGIN,
+  expandAutoSlides,
   SlideCanvas,
   type MenuItemLite,
+  type SignageCategoryLite,
   type SignageConfig,
   type SignageElement,
   type SignageSlide,
@@ -52,6 +55,11 @@ const PREVIEW_ITEMS: MenuItemLite[] = [
   { id: 1, name: 'Chicken Wrap', base_price: 45, sales_30d: 120, category_id: 1 },
   { id: 2, name: 'Beef Burger', base_price: 55, sales_30d: 90, category_id: 1 },
   { id: 3, name: 'Fish Combo', base_price: 65, sales_30d: 70, is_combo: true, category_id: 2 },
+];
+
+const PREVIEW_CATEGORIES: SignageCategoryLite[] = [
+  { id: 1, name: 'Wraps & Burgers' },
+  { id: 2, name: 'From the Grill' },
 ];
 
 function uid() {
@@ -110,6 +118,18 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
   const elements = useMemo(
     () => [...(local.elements ?? [])].sort((a, b) => (a.z ?? 1) - (b.z ?? 1)),
     [local.elements],
+  );
+
+  // An auto_menu entry is a placeholder — the player expands it into generated
+  // slides. Preview the first generated slide so the designer shows what the TV
+  // will show, and suppress the editing overlay since those elements are built,
+  // not authored.
+  const isAuto = local.template_origin === AUTO_MENU_ORIGIN;
+  const previewSlide = useMemo(
+    () => (isAuto
+      ? expandAutoSlides(local, PREVIEW_ITEMS, PREVIEW_CATEGORIES, 0)[0] ?? local
+      : local),
+    [isAuto, local],
   );
 
   const config = useMemo(() => previewConfig(local, orient), [local, orient]);
@@ -359,7 +379,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           >
             {/* Shared TV renderer — identical to /order/tv */}
             <SlideCanvas
-              slide={local}
+              slide={previewSlide}
               theme={PREVIEW_THEME}
               variables={config.variables}
               items={PREVIEW_ITEMS}
@@ -368,11 +388,24 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
               preview
             />
 
+            {isAuto ? (
+              <div
+                data-testid="signage-auto-preview-note"
+                style={{
+                  position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2100,
+                  background: 'rgba(28,20,8,.82)', color: 'rgba(255,248,240,.95)', fontSize: 12,
+                  padding: '6px 10px', textAlign: 'center', pointerEvents: 'none',
+                }}
+              >
+                Auto slide — generated from the live menu. Showing the first of many; elements are not editable.
+              </div>
+            ) : null}
+
             {/* Safe zone guide */}
             <div style={{ position: 'absolute', inset: '5%', border: '1px dashed rgba(212,129,58,.45)', pointerEvents: 'none', zIndex: 2000 }} data-testid="signage-safe-zone" />
 
             {/* Interaction overlay — selection / drag / resize only */}
-            {elements.map((el) => (
+            {(isAuto ? [] : elements).map((el) => (
               <div
                 key={el.id}
                 data-testid={`designer-el-${el.id}`}

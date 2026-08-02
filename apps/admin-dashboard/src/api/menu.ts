@@ -93,6 +93,8 @@ export type MenuItem = {
   menu_group?: { id: number; name: string; slug: string } | null;
   channel_availabilities?: ItemChannelAvailabilityRow[] | null;
   is_combo?: boolean;
+  show_on_signage?: boolean;
+  is_signage_promoted?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: Array<{
     item_id: number;
@@ -152,6 +154,8 @@ export type MenuItemPayload = {
     valid_until?: string | null;
   }>;
   is_combo?: boolean;
+  show_on_signage?: boolean;
+  is_signage_promoted?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean }>;
   dietary_tags?: string[] | null;

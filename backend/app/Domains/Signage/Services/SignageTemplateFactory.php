@@ -23,11 +23,12 @@ final class SignageTemplateFactory
                     'eyebrow' => 'Dine-in menu',
                 ],
             ]),
-            self::template('menu_grid', [
-                'name' => 'Menu highlights',
-                'seconds' => 18,
+            // Expands client-side into showcase + category slides from the live menu.
+            self::template('auto_menu', [
+                'name' => 'Full menu',
+                'seconds' => 10,
                 'weight' => 3,
-                'fields' => ['title' => 'On the board'],
+                'fields' => ['title' => 'Our menu'],
             ]),
             self::smartSlide('offers', ['name' => "Today's offers", 'seconds' => 14, 'weight' => 4]),
             self::smartSlide('bestsellers', ['name' => 'Bestsellers', 'seconds' => 14, 'weight' => 3]),
@@ -176,6 +177,22 @@ final class SignageTemplateFactory
                     'style' => ['fontSize' => 5, 'fontWeight' => 800, 'color' => '#fff', 'textShadow' => '0 2px 12px rgba(0,0,0,.5)'],
                 ]),
             ],
+            // Placeholder entry — the player expands this into generated slides
+            // (see packages/shared/src/signage/autoSlides.ts). The binding carries
+            // the tuning knobs; the text only ever shows if the menu is empty.
+            'auto_menu' => [
+                self::el('text', 8, 40, 84, 14, [
+                    'text' => (string) ($fields['title'] ?? 'Our menu'),
+                    'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#FFF8F0', 'textAlign' => 'center'],
+                    'binding' => [
+                        'showcase_cap' => (int) ($fields['showcase_cap'] ?? 12),
+                        'rows_per_slide' => (int) ($fields['rows_per_slide'] ?? 14),
+                        'showcase_seconds' => (int) ($fields['showcase_seconds'] ?? 10),
+                        'category_seconds' => (int) ($fields['category_seconds'] ?? 14),
+                        'show_thumbs' => (bool) ($fields['show_thumbs'] ?? false),
+                    ],
+                ]),
+            ],
             'blank' => [],
             default => [],
         };
@@ -242,6 +259,7 @@ final class SignageTemplateFactory
             ['key' => 'video', 'label' => 'Video'],
             ['key' => 'split', 'label' => 'Split'],
             ['key' => 'full_screen', 'label' => 'Full screen'],
+            ['key' => 'auto_menu', 'label' => 'Auto · Full menu'],
             ['key' => 'blank', 'label' => 'Blank'],
             ['key' => 'smart:offers', 'label' => 'Smart · Offers'],
             ['key' => 'smart:todays_special', 'label' => "Smart · Today's special"],

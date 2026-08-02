@@ -56,6 +56,16 @@ export function resolveBoundItems(
     return list.slice(0, limit);
   }
 
+  if (type === 'ids') {
+    const ids = Array.isArray(binding.item_ids) ? binding.item_ids.map(Number) : [];
+    const byId = new Map(items.map((i) => [i.id, i]));
+
+    return ids
+      .map((id) => byId.get(id))
+      .filter((i): i is MenuItemLite => !!i)
+      .slice(0, Math.max(limit, ids.length));
+  }
+
   if (type === 'category') {
     const catId = binding.category_id != null ? Number(binding.category_id) : null;
     const list = catId != null

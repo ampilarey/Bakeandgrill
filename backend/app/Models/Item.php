@@ -57,6 +57,8 @@ class Item extends Model
         'spice_level',
         'is_combo',
         'combo_discount_pct',
+        'show_on_signage',
+        'is_signage_promoted',
     ];
 
     public function category(): BelongsTo
@@ -159,6 +161,8 @@ class Item extends Model
         'prep_time_minutes' => 'integer',
         'is_combo' => 'boolean',
         'combo_discount_pct' => 'decimal:2',
+        'show_on_signage' => 'boolean',
+        'is_signage_promoted' => 'boolean',
     ];
 
     /** True when the item is configured to require a variant selection. */

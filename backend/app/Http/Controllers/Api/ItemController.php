@@ -156,6 +156,9 @@ class ItemController extends Controller
                 'snoozed_until' => $item->snoozed_until?->toIso8601String(),
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
+                // Signage board flags — default safely when the columns predate the migration.
+                'show_on_signage' => (bool) ($item->show_on_signage ?? true),
+                'is_signage_promoted' => (bool) ($item->is_signage_promoted ?? false),
                 'created_at' => $item->created_at?->toIso8601String(),
                 'category_id' => $item->category_id,
                 'menu_group_id' => $item->menu_group_id,

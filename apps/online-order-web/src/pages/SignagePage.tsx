@@ -5,11 +5,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_ORIGIN, fetchCategories, fetchItems, fetchOffers } from '../api';
 import type { Item } from '../api';
+import type { Category } from '@shared/types';
 import {
+  AUTO_MENU_ORIGIN,
   buildWeightedRotation,
+  expandPlaylist,
   interpolate,
   SlideCanvas,
   type MenuItemLite,
+  type SignageCategoryLite,
   type SignageConfig,
   type SignageSlide,
 } from '@shared/signage';
@@ -37,6 +41,7 @@ function getOrCreateDeviceId(): string {
 type CacheBlob = {
   config: SignageConfig;
   items: MenuItemLite[];
+  categories?: SignageCategoryLite[];
   savedAt: number;
 };
 
@@ -47,11 +52,14 @@ function toLite(items: Item[]): MenuItemLite[] {
     base_price: Number(i.base_price),
     category_id: i.category_id,
     image_url: i.image_url,
+    thumb_url: i.thumb_url ?? null,
     short_description: i.short_description,
     created_at: i.created_at ?? null,
     sales_30d: i.sales_30d,
     is_combo: i.is_combo,
     special: i.special ?? null,
+    show_on_signage: i.show_on_signage,
+    is_signage_promoted: i.is_signage_promoted,
   }));
 }
 
@@ -87,6 +95,7 @@ export function SignagePage() {
 
   const [config, setConfig] = useState<SignageConfig | null>(null);
   const [items, setItems] = useState<MenuItemLite[]>([]);
+  const [categories, setCategories] = useState<SignageCategoryLite[]>([]);
   const [offline, setOffline] = useState(false);
   const [index, setIndex] = useState(0);
   const [pendingConfig, setPendingConfig] = useState<SignageConfig | null>(null);
@@ -115,17 +124,40 @@ export function SignagePage() {
     return base;
   }, [config?.variables, tick]);
 
+  const hasAutoMenu = useMemo(
+    () => (config?.slides ?? []).some((s) => s.template_origin === AUTO_MENU_ORIGIN),
+    [config?.slides],
+  );
+
+  // The expanded rotation has a fixed length (the showcase window is capped and
+  // every generated slide carries weight 1), so loop N can be derived from the
+  // running slide index without feeding the expansion back into itself.
+  const rotationLength = useMemo(() => {
+    if (!config) return 0;
+    if (!hasAutoMenu) return (config.rotation?.length ? config.rotation : buildWeightedRotation(config.slides ?? [])).length;
+    return buildWeightedRotation(expandPlaylist(config.slides ?? [], items, categories, 0)).length;
+  }, [config, hasAutoMenu, items, categories]);
+
+  const loopIndex = rotationLength > 0 ? Math.floor(index / rotationLength) : 0;
+
+  const slides = useMemo(
+    () => (hasAutoMenu ? expandPlaylist(config?.slides ?? [], items, categories, loopIndex) : (config?.slides ?? [])),
+    [config?.slides, hasAutoMenu, items, categories, loopIndex],
+  );
+
   const slidesById = useMemo(() => {
     const map = new Map<string, SignageSlide>();
-    for (const s of config?.slides ?? []) map.set(s.id, s);
+    for (const s of slides) map.set(s.id, s);
     return map;
-  }, [config?.slides]);
+  }, [slides]);
 
   const rotation = useMemo(() => {
     if (!config) return [] as string[];
+    // Generated slide ids are not in the server-built rotation — rebuild locally.
+    if (hasAutoMenu) return buildWeightedRotation(slides);
     if (config.rotation?.length) return config.rotation;
     return buildWeightedRotation(config.slides ?? []);
-  }, [config]);
+  }, [config, hasAutoMenu, slides]);
 
   const currentSlide = rotation.length
     ? slidesById.get(rotation[index % rotation.length]) ?? null
@@ -136,20 +168,26 @@ export function SignagePage() {
     let cancelled = false;
     const load = async (isRefresh: boolean) => {
       try {
-        const [cfg, itemsRes] = await Promise.all([
+        const [cfg, itemsRes, catsRes] = await Promise.all([
           fetchConfig(screen),
           fetchItems('online_pickup').catch(() => ({ data: [] as Item[] })),
+          // Category names title the generated menu slides. A failure here
+          // degrades to untitled groups rather than blanking the board.
+          fetchCategories().catch(() => ({ data: [] as Category[] })),
         ]);
         if (cancelled) return;
         const lite = toLite(itemsRes.data ?? []);
+        const cats: SignageCategoryLite[] = (catsRes.data ?? [])
+          .map((c) => ({ id: Number(c.id), name: String(c.name ?? '') }))
+          .filter((c) => Number.isFinite(c.id) && c.name !== '');
         // Also pull offers into specials hint — items already carry special
         void fetchOffers().catch(() => null);
-        void fetchCategories().catch(() => null);
 
-        writeCache(screen, { config: cfg, items: lite, savedAt: Date.now() });
+        writeCache(screen, { config: cfg, items: lite, categories: cats, savedAt: Date.now() });
         setOffline(false);
         offlineRef.current = false;
         setItems(lite);
+        setCategories(cats);
 
         if (!isRefresh || !versionRef.current) {
           versionRef.current = cfg.playlist_version;
@@ -168,6 +206,7 @@ export function SignagePage() {
           offlineRef.current = true;
           setConfig(cached.config);
           setItems(cached.items);
+          setCategories(cached.categories ?? []);
           versionRef.current = cached.config.playlist_version;
         }
       }

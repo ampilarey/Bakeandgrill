@@ -99,6 +99,8 @@ class UpdateItemRequest extends FormRequest
             'variants.*.is_active' => 'nullable|boolean',
             'variants.*.sort_order' => 'nullable|integer',
             'is_combo' => 'sometimes|boolean',
+            'show_on_signage' => 'sometimes|boolean',
+            'is_signage_promoted' => 'sometimes|boolean',
             'combo_discount_pct' => 'nullable|numeric|min:0|max:100',
             'combo_items' => 'sometimes|array',
             'combo_items.*.item_id' => 'required_with:combo_items|integer|exists:items,id',

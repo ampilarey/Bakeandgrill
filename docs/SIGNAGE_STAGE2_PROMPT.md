@@ -83,11 +83,15 @@ New module `packages/shared/src/signage/autoSlides.ts`:
 export function expandAutoSlides(
   slide: SignageSlide,
   items: MenuItemLite[],
-  categories: Array<{ id: number; name: string }>,
-  config: SignageConfig,
-  loopIndex: number,
+  categories: SignageCategoryLite[],
+  loopIndex?: number,
 ): SignageSlide[]
 ```
+
+As built this takes no `SignageConfig`: the expander partitions and groups items
+but never resolves a binding, so it needs nothing from the config, and both apps
+compile with `noUnusedParameters`. `expandPlaylist(...)` wraps it for a whole
+slide list.
 
 Behaviour:
 
@@ -105,6 +109,9 @@ Behaviour:
   admin designer preview and the TV must agree.
 - Order showcase items: specials and promoted first, then by `sales_30d` desc, then
   by name. Stable sort, and stable across renders with equal inputs.
+- Give every generated slide `weight: 1`. If weight varied with the featured set,
+  the weighted rotation would change length between loops and the loop counter
+  would drift.
 - Listed slides: one `menu_list` slide per category that has listed items, titled with
   the category name, paginated at ~14 rows per slide so a large category splits rather
   than overflowing.
@@ -155,6 +162,10 @@ stage is about showing discounts:
   tunable without a deploy.
 
 ### 6. Tests
+
+Note on placement: `packages/shared` has no test runner of its own and the app
+vitest projects root at the app directory, so shared-logic tests live in an app
+suite (`apps/admin-dashboard/src/__tests__/`) and import through `@shared/signage`.
 
 - Unit tests for `expandAutoSlides`: partition rule, cap, rotation windowing across
   successive `loopIndex` values (every item eventually features, none dropped),

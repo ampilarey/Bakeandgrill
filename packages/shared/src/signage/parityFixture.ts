@@ -1,4 +1,11 @@
-import type { MenuItemLite, SignageConfig, SignageSlide, SignageTheme } from './types';
+import { AUTO_MENU_ORIGIN } from './autoSlides';
+import type {
+  MenuItemLite,
+  SignageCategoryLite,
+  SignageConfig,
+  SignageSlide,
+  SignageTheme,
+} from './types';
 
 /** Canonical sample used by parity tests in order + admin apps. */
 export const PARITY_THEME: SignageTheme = {
@@ -93,3 +100,47 @@ export const PARITY_MARKERS = [
   'signage-el-text',
   'signage-el-menu_list',
 ] as const;
+
+export const PARITY_CATEGORIES: SignageCategoryLite[] = [
+  { id: 1, name: 'Wraps' },
+  { id: 2, name: 'Grill' },
+];
+
+/** Auto-menu items: one photographed, one discounted, one plain. */
+export const PARITY_AUTO_ITEMS: MenuItemLite[] = [
+  { id: 21, name: 'Grilled Reef Fish', base_price: 90, category_id: 2, image_url: '/fish.jpg' },
+  {
+    id: 22,
+    name: 'Chicken Wrap',
+    base_price: 45,
+    category_id: 1,
+    special: { effective_price: 35, original_price: 45, discount_pct: 22 },
+  },
+  { id: 23, name: 'Garlic Bread', base_price: 20, category_id: 1 },
+  { id: 24, name: 'Hidden Item', base_price: 15, category_id: 1, show_on_signage: false },
+];
+
+/** Placeholder playlist entry the player expands into generated slides. */
+export const PARITY_AUTO_SLIDE: SignageSlide = {
+  id: 'parity-auto',
+  name: 'Full menu',
+  seconds: 10,
+  weight: 1,
+  transition: 'fade',
+  transition_ms: 200,
+  background: { type: 'solid', value: '#1C1408', opacity: 1 },
+  template_origin: AUTO_MENU_ORIGIN,
+  elements: [
+    {
+      id: 'a1',
+      type: 'text',
+      x: 8,
+      y: 40,
+      w: 84,
+      h: 14,
+      text: 'Our menu',
+      style: { fontSize: 6, fontWeight: 800 },
+      binding: { showcase_cap: 12, rows_per_slide: 14 },
+    },
+  ],
+};

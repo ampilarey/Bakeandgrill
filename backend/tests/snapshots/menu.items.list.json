@@ -23,6 +23,8 @@
             "snoozed_until": null,
             "is_active": true,
             "sort_order": 0,
+            "show_on_signage": true,
+            "is_signage_promoted": false,
             "created_at": "__VOLATILE__",
             "category_id": "__VOLATILE__",
             "menu_group_id": 1,

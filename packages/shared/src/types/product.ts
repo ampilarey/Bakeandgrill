@@ -102,6 +102,10 @@ export type MenuItem = {
   calories?: number | null;
   prep_time_minutes?: number | null;
   spice_level?: SpiceLevel | null;
+  /** TV signage board — hard exclude the item. Undefined means visible. */
+  show_on_signage?: boolean;
+  /** TV signage board — force a showcase slide with no photo or discount. */
+  is_signage_promoted?: boolean;
   // Combo / bundle
   is_combo?: boolean;
   combo_discount_pct?: number | null;

@@ -76,9 +76,19 @@ export type MenuItemLite = {
   base_price: number;
   category_id?: number | null;
   image_url?: string | null;
+  thumb_url?: string | null;
   short_description?: string | null;
   created_at?: string | null;
   sales_30d?: number;
   is_combo?: boolean;
   special?: { effective_price?: number; original_price?: number; discount_pct?: number | null } | null;
+  /** Hard exclude from the TV board. Undefined is treated as visible. */
+  show_on_signage?: boolean;
+  /** Force a showcase slide even with no photo and no discount. */
+  is_signage_promoted?: boolean;
+};
+
+export type SignageCategoryLite = {
+  id: number;
+  name: string;
 };

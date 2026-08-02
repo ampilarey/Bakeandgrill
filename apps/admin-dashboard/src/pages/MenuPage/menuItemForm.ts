@@ -40,6 +40,8 @@ export type ItemForm = {
   is_combo: boolean;
   combo_discount_pct: string;
   combo_items: ComboRow[];
+  show_on_signage: boolean;
+  is_signage_promoted: boolean;
   track_stock: boolean;
   stock_quantity: string;
   low_stock_threshold: string;
@@ -110,6 +112,8 @@ export function itemToForm(item: MenuItem): ItemForm {
     channels: channelsFromItem(item),
     has_variants: item.has_variants ?? false,
     is_combo: item.is_combo ?? false,
+    show_on_signage: item.show_on_signage ?? true,
+    is_signage_promoted: item.is_signage_promoted ?? false,
     combo_discount_pct: item.combo_discount_pct != null ? String(item.combo_discount_pct) : '',
     combo_items: (item.combo_items ?? []).map((row) => ({
       item_id: String(row.item_id),
@@ -189,6 +193,8 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     }));
   }
   payload.is_combo = form.is_combo;
+  payload.show_on_signage = form.show_on_signage;
+  payload.is_signage_promoted = form.is_signage_promoted;
   payload.combo_discount_pct = form.combo_discount_pct !== '' ? parseFloat(form.combo_discount_pct) : null;
   if (form.is_combo) {
     payload.combo_items = form.combo_items
@@ -236,6 +242,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true, catering: false },
     has_variants: false, variants: [],
     is_combo: false, combo_discount_pct: '', combo_items: [],
+    show_on_signage: true, is_signage_promoted: false,
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
     dietary_tags: '', allergens: '',
     prep_time_minutes: '', calories: '', spice_level: 'none',

@@ -142,14 +142,27 @@ function SignageEl({
       const cols = Number(style.columns ?? 2) || 2;
       body = (
         <div className="signage-menu-list" style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '0.6vmin 2vmin', width: '100%', height: '100%', alignContent: 'start' }}>
-          {list.map((item) => (
-            <div key={item.id} className="signage-menu-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '1vmin', borderBottom: '1px solid rgba(255,255,255,0.12)', padding: '0.4vmin 0' }}>
-              <span style={{ fontWeight: 700 }}>{item.name}</span>
-              <span style={{ color: theme.primary, fontWeight: 800, whiteSpace: 'nowrap' }}>
-                {formatPrice(Number(item.special?.effective_price ?? item.base_price))}
-              </span>
-            </div>
-          ))}
+          {list.map((item) => {
+            const thumb = style.showThumbs ? (item.thumb_url ?? item.image_url) : null;
+            return (
+              <div key={item.id} className="signage-menu-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '1vmin', borderBottom: '1px solid rgba(255,255,255,0.12)', padding: '0.4vmin 0', alignItems: 'center' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '1vmin', minWidth: 0 }}>
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt=""
+                      data-testid="signage-row-thumb"
+                      style={{ width: '3.4vmin', height: '3.4vmin', objectFit: 'cover', borderRadius: '50%', flex: '0 0 auto' }}
+                    />
+                  ) : null}
+                  <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                </span>
+                <span style={{ color: theme.primary, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                  {formatPrice(Number(item.special?.effective_price ?? item.base_price))}
+                </span>
+              </div>
+            );
+          })}
         </div>
       );
       break;
@@ -157,11 +170,40 @@ function SignageEl({
     case 'item_card': {
       const list = resolveBoundItems(el, items, config);
       const item = list[0];
+      const special = item?.special ?? null;
+      const wasPrice = Number(special?.original_price ?? item?.base_price ?? 0);
+      const nowPrice = Number(special?.effective_price ?? item?.base_price ?? 0);
+      const badge = special
+        ? (special.discount_pct ? `${special.discount_pct}% OFF` : 'SPECIAL')
+        : null;
       body = item ? (
-        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: '0.8vmin' }}>
-          {item.image_url ? <img src={item.image_url} alt="" style={{ flex: 1, objectFit: 'cover', borderRadius: '50%', aspectRatio: '1' }} /> : null}
-          <div style={{ fontWeight: 800 }}>{item.name}</div>
-          <div style={{ color: theme.primary, fontWeight: 800 }}>{formatPrice(item.base_price)}</div>
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: '0.8vmin', alignItems: 'center', justifyContent: 'center' }}>
+          {item.image_url ? <img src={item.image_url} alt="" style={{ flex: 1, minHeight: 0, objectFit: 'cover', borderRadius: '50%', aspectRatio: '1' }} /> : null}
+          {badge && style.showBadge ? (
+            <div
+              data-testid="signage-special-badge"
+              style={{ background: theme.primary, color: '#1C1408', fontWeight: 800, borderRadius: '99vmin', padding: '0.3vmin 1.6vmin', fontSize: '0.55em', letterSpacing: '0.08em' }}
+            >
+              {badge}
+            </div>
+          ) : null}
+          <div style={{ fontWeight: 800, textAlign: 'center' }}>{item.name}</div>
+          {style.showDescription && item.short_description ? (
+            <div style={{ fontSize: '0.5em', color: theme.muted, textAlign: 'center', maxWidth: '80%' }}>
+              {item.short_description}
+            </div>
+          ) : null}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1.2vmin' }}>
+            {special && wasPrice > nowPrice ? (
+              <span
+                data-testid="signage-was-price"
+                style={{ color: theme.muted, textDecoration: 'line-through', fontSize: '0.62em' }}
+              >
+                {formatPrice(wasPrice)}
+              </span>
+            ) : null}
+            <span style={{ color: theme.primary, fontWeight: 800 }}>{formatPrice(nowPrice)}</span>
+          </div>
         </div>
       ) : null;
       break;
@@ -172,7 +214,9 @@ function SignageEl({
       body = item ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
           <span>{item.name}</span>
-          <span className="signage-price" style={{ color: theme.primary, fontWeight: 800 }}>{formatPrice(item.base_price)}</span>
+          <span className="signage-price" style={{ color: theme.primary, fontWeight: 800 }}>
+            {formatPrice(Number(item.special?.effective_price ?? item.base_price))}
+          </span>
         </div>
       ) : null;
       break;
