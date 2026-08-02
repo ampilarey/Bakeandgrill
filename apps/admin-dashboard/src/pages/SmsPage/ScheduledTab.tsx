@@ -155,23 +155,23 @@ export function ScheduledTab() {
               {messages.map(m => (
                 <tr key={m.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>{m.name}</td>
-                  <td style={{ ...TD, color: '#6B5D4F' }}>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>
                     {m.to_type === 'contact' && m.to_contact_name}
                     {m.to_type === 'group' && m.to_group_name}
                     {m.to_type === 'phone' && <span style={{ fontFamily: 'monospace' }}>{m.to_phone}</span>}
                   </td>
-                  <td style={{ ...TD, maxWidth: 180, color: '#6B5D4F', fontSize: 11 }}>
+                  <td style={{ ...TD, maxWidth: 180, color: 'var(--color-text-secondary)', fontSize: 11 }}>
                     <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {m.template_name ?? m.body ?? '—'}
                     </div>
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F', fontSize: 11 }}>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', fontSize: 11 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {m.is_recurring ? <RefreshCw size={10} /> : <Clock size={10} />}
                       {formatRecurrence(m)}
                     </div>
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F', fontSize: 11, whiteSpace: 'nowrap' }}>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', fontSize: 11, whiteSpace: 'nowrap' }}>
                     {m.next_send_at ? new Date(m.next_send_at).toLocaleString() : '—'}
                   </td>
                   <td style={TD}><Badge label={m.status} color={STATUS_COLOR[m.status] ?? 'gray'} /></td>
@@ -202,19 +202,19 @@ export function ScheduledTab() {
             {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
 
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Name *</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Name *</label>
               <Input value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="e.g. Sunday Schedule Reminder" />
             </div>
 
             {/* Recipient */}
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Send To</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Send To</label>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                 {(['phone', 'contact', 'group'] as const).map(t => (
                   <button key={t} onClick={() => setForm(f => ({ ...f, to_type: t }))} style={{
                     padding: '5px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                    background: form.to_type === t ? '#D4813A' : '#F5F0EA',
-                    color: form.to_type === t ? '#fff' : '#6B5D4F', border: 'none',
+                    background: form.to_type === t ? 'var(--color-primary)' : '#F5F0EA',
+                    color: form.to_type === t ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                   }}>
                     {t === 'phone' ? 'Raw Phone' : t === 'contact' ? 'Contact' : 'Group'}
                   </button>
@@ -223,14 +223,14 @@ export function ScheduledTab() {
               {form.to_type === 'phone' && <Input value={form.to_phone} onChange={v => setForm(f => ({ ...f, to_phone: v }))} placeholder="+9607xxxxxx" />}
               {form.to_type === 'contact' && (
                 <select value={form.to_contact_id} onChange={e => setForm(f => ({ ...f, to_contact_id: e.target.value }))}
-                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                   <option value="">— Select contact —</option>
                   {contacts.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>)}
                 </select>
               )}
               {form.to_type === 'group' && (
                 <select value={form.to_group_id} onChange={e => setForm(f => ({ ...f, to_group_id: e.target.value }))}
-                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                   <option value="">— Select group —</option>
                   {groups.map(g => <option key={g.id} value={g.id}>{g.name} ({g.contacts_count} members)</option>)}
                 </select>
@@ -239,19 +239,19 @@ export function ScheduledTab() {
 
             {/* Template or Body */}
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Template (optional)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Template (optional)</label>
               <select value={form.template_id} onChange={e => setForm(f => ({ ...f, template_id: e.target.value }))}
-                style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                 <option value="">— Use custom message below —</option>
                 {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
             {!form.template_id && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Custom Message *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Custom Message *</label>
                 <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={3}
                   placeholder="Type your SMS message…"
-                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
               </div>
             )}
 
@@ -264,7 +264,7 @@ export function ScheduledTab() {
 
             {!form.is_recurring && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Send At *</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Send At *</label>
                 <Input type="datetime-local" value={form.send_at} onChange={v => setForm(f => ({ ...f, send_at: v }))} />
               </div>
             )}
@@ -273,9 +273,9 @@ export function ScheduledTab() {
               <>
                 <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Repeat *</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Repeat *</label>
                     <select value={form.recurrence_type} onChange={e => setForm(f => ({ ...f, recurrence_type: e.target.value as ScheduleForm['recurrence_type'] }))}
-                      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
+                      style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}>
                       <option value="">— Select —</option>
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
@@ -283,19 +283,19 @@ export function ScheduledTab() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Time *</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Time *</label>
                     <Input type="time" value={form.recurrence_time} onChange={v => setForm(f => ({ ...f, recurrence_time: v }))} />
                   </div>
                 </div>
                 {form.recurrence_type === 'weekly' && (
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Days</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Days</label>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {DAYS.map(d => (
                         <button key={d} onClick={() => toggleDay(d)} style={{
                           padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                          background: form.recurrence_days.includes(d) ? '#D4813A' : '#F5F0EA',
-                          color: form.recurrence_days.includes(d) ? '#fff' : '#6B5D4F', border: 'none',
+                          background: form.recurrence_days.includes(d) ? 'var(--color-primary)' : '#F5F0EA',
+                          color: form.recurrence_days.includes(d) ? '#fff' : 'var(--color-text-secondary)', border: 'none',
                         }}>{DAY_LABEL[d]}</button>
                       ))}
                     </div>
@@ -303,7 +303,7 @@ export function ScheduledTab() {
                 )}
                 {form.recurrence_type === 'monthly' && (
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Day of Month (1–28)</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Day of Month (1–28)</label>
                     <Input type="number" value={form.recurrence_day_of_month} onChange={v => setForm(f => ({ ...f, recurrence_day_of_month: v }))} placeholder="e.g. 1" />
                   </div>
                 )}
