@@ -15,13 +15,13 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function JobTypeIcon({ type }: { type: string }) {
-  return <span style={{ fontSize: 11, color: '#9C8E7E', background: '#F0EBE5', padding: '2px 7px', borderRadius: 4, fontWeight: 600 }}>{(type ?? '').replace(/_/g, ' ').toUpperCase()}</span>;
+  return <span style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'var(--color-border-light)', padding: '2px 7px', borderRadius: 4, fontWeight: 600 }}>{(type ?? '').replace(/_/g, ' ').toUpperCase()}</span>;
 }
 
 function RetryCountBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
-    <span style={{ fontSize: 11, color: count >= 3 ? '#DC2626' : '#F59E0B', background: count >= 3 ? '#FEE2E2' : '#FEF3C7', padding: '2px 7px', borderRadius: 4, fontWeight: 600, marginLeft: 6 }}>
+    <span style={{ fontSize: 11, color: count >= 3 ? '#DC2626' : 'var(--color-warning)', background: count >= 3 ? '#FEE2E2' : '#FEF3C7', padding: '2px 7px', borderRadius: 4, fontWeight: 600, marginLeft: 6 }}>
       {count}x retried
     </span>
   );
@@ -77,8 +77,8 @@ export default function PrintJobsPage() {
   };
 
   const statusDot = (s: string) => {
-    const colors: Record<string, string> = { printed: '#22C55E', failed: '#EF4444', pending: '#F59E0B' };
-    return <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: colors[s] ?? '#9C8E7E' }} />;
+    const colors: Record<string, string> = { printed: 'var(--color-success)', failed: 'var(--color-danger)', pending: 'var(--color-warning)' };
+    return <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: colors[s] ?? 'var(--color-text-muted)' }} />;
   };
 
   return (
@@ -104,9 +104,9 @@ export default function PrintJobsPage() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }} className="stat-grid">
         <StatCard label="Total Jobs"        value={String(meta.total)} />
-        <StatCard label="Pending (page)"    value={String(stats.pending)} accent="#F59E0B" />
-        <StatCard label="Failed (page)"     value={String(stats.failed)}  accent="#EF4444" />
-        <StatCard label="Printed (page)"    value={String(stats.printed)} accent="#22C55E" />
+        <StatCard label="Pending (page)"    value={String(stats.pending)} accent="var(--color-warning)" />
+        <StatCard label="Failed (page)"     value={String(stats.failed)}  accent="var(--color-danger)" />
+        <StatCard label="Printed (page)"    value={String(stats.printed)} accent="var(--color-success)" />
       </div>
 
       {/* Filter */}
@@ -122,7 +122,7 @@ export default function PrintJobsPage() {
           onChange={(val) => { setStatusFilter(val); setPage(1); }}
           style={{ width: 160 }}
         />
-        <span style={{ fontSize: 13, color: '#9C8E7E' }}>{meta.total} job{meta.total !== 1 ? 's' : ''}</span>
+        <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{meta.total} job{meta.total !== 1 ? 's' : ''}</span>
       </Card>
 
       {/* Table */}
@@ -148,17 +148,17 @@ export default function PrintJobsPage() {
             </thead>
             <tbody>
               {jobs.map((job) => (
-                <tr key={job.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                <tr key={job.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={TD}>
-                    <span style={{ fontWeight: 600, color: '#1C1408' }}>#{job.id}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>#{job.id}</span>
                   </td>
                   <td style={TD}>
                     {job.order_id ? (
-                      <Link to={`/orders?order=${job.order_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', fontSize: 13 }}>
+                      <Link to={`/orders?order=${job.order_id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: 13 }}>
                         #{job.order_number ?? job.order_id}
                       </Link>
                     ) : (
-                      <span style={{ color: '#9C8E7E', fontSize: 13 }}>—</span>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>—</span>
                     )}
                   </td>
                   <td style={TD}>
@@ -166,7 +166,7 @@ export default function PrintJobsPage() {
                     <RetryCountBadge count={job.retry_count} />
                   </td>
                   <td style={TD}>
-                    <span style={{ fontSize: 13 }}>{job.printer_name ?? <span style={{ color: '#9C8E7E' }}>Default</span>}</span>
+                    <span style={{ fontSize: 13 }}>{job.printer_name ?? <span style={{ color: 'var(--color-text-muted)' }}>Default</span>}</span>
                   </td>
                   <td style={TD}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -175,21 +175,21 @@ export default function PrintJobsPage() {
                     </div>
                   </td>
                   <td style={TD}>
-                    <span style={{ fontSize: 13, color: '#6B5D4F' }}>{job.copies}</span>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{job.copies}</span>
                   </td>
                   <td style={{ ...TD, maxWidth: 200 }}>
                     {job.error_message ? (
-                      <span style={{ fontSize: 12, color: '#EF4444', fontFamily: 'monospace', wordBreak: 'break-word' }}>{job.error_message}</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-danger)', fontFamily: 'monospace', wordBreak: 'break-word' }}>{job.error_message}</span>
                     ) : (
-                      <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>
                     )}
                   </td>
                   <td style={TD}>
-                    <div style={{ fontSize: 12, color: '#6B5D4F' }}>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                       {new Date(job.created_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })}
                     </div>
                     {job.printed_at && (
-                      <div style={{ fontSize: 11, color: '#22C55E' }}>
+                      <div style={{ fontSize: 11, color: 'var(--color-success)' }}>
                         Printed {new Date(job.printed_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })}
                       </div>
                     )}
@@ -216,7 +216,7 @@ export default function PrintJobsPage() {
           {meta.last_page > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0' }}>
               <Btn small variant="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>← Prev</Btn>
-              <span style={{ fontSize: 13, color: '#6B5D4F', padding: '6px 12px' }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', padding: '6px 12px' }}>
                 Page {meta.current_page} of {meta.last_page}
               </span>
               <Btn small variant="secondary" disabled={page === meta.last_page} onClick={() => setPage(page + 1)}>Next →</Btn>
