@@ -159,7 +159,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
     } catch (e) { setError((e as Error).message); }
   };
 
-  if (loading) return <div style={{ padding: 24, textAlign: 'center', color: '#9C8E7E', fontSize: 14 }}>Loading photos…</div>;
+  if (loading) return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>Loading photos…</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -171,9 +171,9 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         disabled={uploading}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          padding: '10px 16px', background: '#F0EBE5', border: '2px dashed #cbd5e1',
+          padding: '10px 16px', background: 'var(--color-border-light)', border: '2px dashed #cbd5e1',
           borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
-          fontSize: 13, fontWeight: 600, color: '#6B5D4F',
+          fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
         }}
       >
         <Upload size={15} />
@@ -193,7 +193,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
         <Upload size={15} />
         Add video clip (≤{MENU_VIDEO_LIMITS.maxSeconds}s)
       </button>
-      <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
         Photos: 1200×900 crop. Videos play muted in the item sheet only (cards show the poster). Max {(MENU_VIDEO_LIMITS.maxBytes / (1024 * 1024)).toFixed(0)} MB.
       </p>
       <input
@@ -229,17 +229,17 @@ export function PhotosTab({ itemId }: { itemId: number }) {
       )}
 
       {photos.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#9C8E7E', padding: '20px 0', fontSize: 13 }}>
+        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '20px 0', fontSize: 13 }}>
           No photos yet. Upload one above.
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
           {[...photos].sort((a, b) => a.sort_order - b.sort_order).map((ph, index, sorted) => (
-            <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid #D4813A' : '2px solid #E8E0D8' }}>
+            <div key={ph.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: ph.is_primary ? '2px solid var(--color-primary)' : '2px solid var(--color-border)' }}>
               <img
                 src={resolveMediaUrl(ph.media_type === 'video' ? (ph.poster_url || ph.thumb_url || ph.url) : ph.url)}
                 alt={ph.alt_text || ''}
-                style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', background: '#F8F6F3' }}
+                style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', background: 'var(--color-bg)' }}
               />
               {ph.media_type === 'video' && (
                 <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(28,20,8,0.75)', color: '#fff', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700 }}>
@@ -247,7 +247,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                 </div>
               )}
               {ph.is_primary && (
-                <div style={{ position: 'absolute', top: 4, left: 4, background: '#D4813A', color: '#fff', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700 }}>
+                <div style={{ position: 'absolute', top: 4, left: 4, background: 'var(--color-primary)', color: '#fff', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 700 }}>
                   Primary
                 </div>
               )}
@@ -265,8 +265,8 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                   }}
                   style={{
                     width: '100%', boxSizing: 'border-box', minHeight: 32,
-                    border: '1px solid #E8E0D8', borderRadius: 6, padding: '4px 6px',
-                    fontSize: 11, fontFamily: 'inherit', color: '#1C1408', background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 6px',
+                    fontSize: 11, fontFamily: 'inherit', color: 'var(--color-text)', background: 'var(--color-surface)',
                   }}
                 />
               </div>
@@ -287,7 +287,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                   title="Move earlier"
                   disabled={index === 0}
                   onClick={() => void movePhoto(ph.id, -1)}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 6, cursor: index === 0 ? 'not-allowed' : 'pointer', opacity: index === 0 ? 0.4 : 1 }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 6, cursor: index === 0 ? 'not-allowed' : 'pointer', opacity: index === 0 ? 0.4 : 1 }}
                 >
                   <ChevronLeft size={13} />
                 </button>
@@ -296,7 +296,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                   title="Move later"
                   disabled={index === sorted.length - 1}
                   onClick={() => void movePhoto(ph.id, 1)}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 6, cursor: index === sorted.length - 1 ? 'not-allowed' : 'pointer', opacity: index === sorted.length - 1 ? 0.4 : 1 }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 6, cursor: index === sorted.length - 1 ? 'not-allowed' : 'pointer', opacity: index === sorted.length - 1 ? 0.4 : 1 }}
                 >
                   <ChevronRight size={13} />
                 </button>
