@@ -348,16 +348,18 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       }
       buckets.push({ ratePercent: rate, laar: effectiveLaar });
     }
-    if (serviceChargeConfig && !taxInclusive) {
+    if (serviceChargeConfig) {
       const scPreview = previewServiceCharge(
         serviceChargeConfig,
         backendOrderType,
         discountedLaar,
       );
+      // Inclusive: extract embedded SC GST into tax display only (grand total unchanged).
       taxLaar += serviceChargeTaxLaarByBuckets(
         serviceChargeConfig,
         scPreview.amountLaar,
         buckets,
+        taxInclusive,
       );
     }
     // Packaging GST is computed after cartPackagingFee — folded in below.

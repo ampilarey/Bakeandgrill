@@ -550,10 +550,13 @@ export function useCheckout() {
     }
     taxBuckets.push({ ratePercent: rate, laar: effectiveLaar });
   }
-  // Backend skips service-charge tax in the inclusive branch.
-  const scTaxLaar = taxInclusive
-    ? 0
-    : serviceChargeTaxLaarByBuckets(serviceChargeConfig, serviceChargeLaar, taxBuckets);
+  // Inclusive: extract embedded SC GST into tax_laar only (grand total unchanged).
+  const scTaxLaar = serviceChargeTaxLaarByBuckets(
+    serviceChargeConfig,
+    serviceChargeLaar,
+    taxBuckets,
+    taxInclusive,
+  );
   let packagingTaxLaar = 0;
   if (packagingFeeTaxable && packagingFeeLaar > 0 && defaultTaxRatePercent > 0) {
     packagingTaxLaar = taxInclusive

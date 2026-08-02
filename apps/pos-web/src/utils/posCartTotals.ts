@@ -104,16 +104,18 @@ export function cartTaxMvr(
     }
     buckets.push({ ratePercent: rate, laar: effectiveLaar });
   }
-  if (options.serviceChargeConfig && !taxInclusive) {
+  if (options.serviceChargeConfig) {
     const scPreview = previewServiceCharge(
       options.serviceChargeConfig,
       options.orderType ?? "dine_in",
       discountedLaar,
     );
+    // Inclusive: extract embedded SC GST into tax only (grand total unchanged).
     taxLaar += serviceChargeTaxLaarByBuckets(
       options.serviceChargeConfig,
       scPreview.amountLaar,
       buckets,
+      taxInclusive,
     );
   }
   const packagingFeeMvr = options.packagingFeeMvr ?? 0;
