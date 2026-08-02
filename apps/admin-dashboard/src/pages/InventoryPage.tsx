@@ -404,7 +404,7 @@ export default function InventoryPage() {
       {tab === 'stock' && (
         <>
           {lowCount > 0 && (
-            <div style={{ background: '#FEF3E8', border: '1px solid var(--color-primary)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#D4813A', fontWeight: 600 }}>
+            <div style={{ background: '#FEF3E8', border: '1px solid var(--color-primary)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--color-primary)', fontWeight: 600 }}>
               ⚠ {lowCount} item{lowCount !== 1 ? 's are' : ' is'} below reorder level
             </div>
           )}
