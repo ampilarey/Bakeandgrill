@@ -410,7 +410,7 @@ export function RecipientsTab() {
                         ) : (
                           <button onClick={() => setPhoneModal(m)} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 12, color: '#EF4444', background: '#fee2e2',
+                            fontSize: 12, color: 'var(--color-danger)', background: '#fee2e2',
                             border: '1px solid #fca5a5', borderRadius: 6, padding: '2px 8px',
                             cursor: 'pointer', fontFamily: 'inherit',
                           }}>
