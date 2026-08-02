@@ -11,7 +11,7 @@ function StarRating({ rating }: { rating: number }) {
   return (
     <span style={{ display: 'inline-flex', gap: 2 }}>
       {[1, 2, 3, 4, 5].map(n => (
-        <Star key={n} size={13} style={{ color: n <= rating ? '#f59e0b' : '#E8E0D8', fill: n <= rating ? '#f59e0b' : 'none' }} />
+        <Star key={n} size={13} style={{ color: n <= rating ? 'var(--color-warning)' : 'var(--color-border)', fill: n <= rating ? 'var(--color-warning)' : 'none' }} />
       ))}
     </span>
   );
@@ -66,12 +66,12 @@ export default function ReviewsPage() {
     <PageShell>
     <div>
       <PageHeader section="Customers & Marketing" title="Reviews & Ratings" />
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 20 }}>
-        <StatCard label="Total (page)" value={String(meta.total)} accent="#D4813A" />
-        <StatCard label="Avg (this page)" value={reviews.length ? `${avgRating.toFixed(1)} ★` : '—'} accent="#f59e0b" />
-        <StatCard label="Pending" value={String(pending)} accent={pending > 0 ? '#f59e0b' : '#22c55e'} />
+        <StatCard label="Total (page)" value={String(meta.total)} accent="var(--color-primary)" />
+        <StatCard label="Avg (this page)" value={reviews.length ? `${avgRating.toFixed(1)} ★` : '—'} accent="var(--color-warning)" />
+        <StatCard label="Pending" value={String(pending)} accent={pending > 0 ? 'var(--color-warning)' : 'var(--color-success)'} />
       </div>
 
       {pending > 0 && (
@@ -84,7 +84,7 @@ export default function ReviewsPage() {
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          style={{ height: 36, padding: '0 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: '#1C1408', cursor: 'pointer' }}
+          style={{ height: 36, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer' }}
         >
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -101,7 +101,7 @@ export default function ReviewsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : reviews.length === 0 ? (
               <tr><td colSpan={7}><EmptyState message="No reviews found." /></td></tr>
             ) : reviews.map(review => (
@@ -117,28 +117,28 @@ export default function ReviewsPage() {
                       {review.comment.length > 100 && (
                         <button
                           onClick={() => setExpandedId(expandedId === review.id ? null : review.id)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#D4813A', fontSize: 12, padding: 0, fontFamily: 'inherit' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontSize: 12, padding: 0, fontFamily: 'inherit' }}
                         >
                           {expandedId === review.id ? <><ChevronUp size={12} /> Show less</> : <><ChevronDown size={12} /> Read more</>}
                         </button>
                       )}
                     </div>
-                  ) : <span style={{ color: '#9C8E7E', fontSize: 12 }}>No comment</span>}
+                  ) : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>No comment</span>}
                 </td>
                 <td style={{ ...TD, fontSize: 12 }}>
-                  {review.item ? <span style={{ fontWeight: 600, color: '#1C1408' }}>{review.item.name}</span> : null}
+                  {review.item ? <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{review.item.name}</span> : null}
                   {review.order ? (
                     <Link
                       to={`/orders?order=${review.order.id}`}
-                      style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none', display: 'block', marginTop: 2, fontSize: 12 }}
+                      style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', display: 'block', marginTop: 2, fontSize: 12 }}
                     >
                       Order #{review.order.order_number}
                     </Link>
                   ) : null}
-                  {!review.item && !review.order && <span style={{ color: '#9C8E7E' }}>—</span>}
+                  {!review.item && !review.order && <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
                 </td>
                 <td style={TD}><Badge color={STATUS_COLOR[review.status] ?? 'gray'}>{review.status}</Badge></td>
-                <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(review.created_at).toLocaleDateString()}</td>
+                <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{new Date(review.created_at).toLocaleDateString()}</td>
                 <td style={TD}>
                   {review.status !== 'approved' && (
                     <Btn small onClick={() => handleModerate(review.id, 'approved')} disabled={acting === review.id} style={{ marginRight: 6 }}>
