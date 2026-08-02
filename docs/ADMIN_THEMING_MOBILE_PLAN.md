@@ -231,6 +231,51 @@ Two consequences:
 Order: `content-editors/` first (bulk, same inline-style shape as everything
 migrated so far), then `ui/`, then `ErrorBoundary.tsx`.
 
+### Stage 2d — Preview components must NOT follow the admin theme (regression)
+
+A class of site the mechanical substitution gets wrong, found in the top-25
+page batch. Some components render a **mock of an external surface** — the
+customer-facing site, a Google search result. Their colours are preview
+fidelity, not admin chrome, and must stay fixed literals.
+
+The substitution is invisible to every check in the Stage 2 prompt: it passes
+`tsc`, tests and eslint, and is pixel-identical in admin *light* mode, because
+`--color-text` resolves to exactly the literal it replaced. It only breaks in
+dark mode.
+
+**`ContentHub/BrandKitCards.tsx` — confirmed broken.** Renders `header-light`
+and `header-dark` previews of the customer site:
+
+```jsx
+const dark = kind === 'header-dark';
+background: dark ? 'var(--color-text)' : '#FFFDF9',   // was '#1C1408'
+color:      dark ? '#f5e6cc' : 'var(--color-text)',   // was '#1C1408'
+```
+
+In admin dark mode `--color-text` is `#F0EAE0`, so the dark-header preview
+renders near-white and the light-header preview gets near-white text on
+`#FFFDF9` — invisible. Neighbouring literals (`#2a1a0a`, `#F0EBE4`) were left
+alone because they fall outside the ten, so the preview is now half
+theme-locked and half theme-following.
+
+**`content-editors/SeoSnippetPreview.tsx` — confirmed broken.** A Google SERP
+mock. `background: var(--color-bg)` goes near-black in dark mode while the
+Google link blue `#1a0dab` and URL green `#006621` stay hardcoded, destroying
+both contrast and the point of the mock (a real SERP is always white).
+
+**`content-editors/VisualBlockPreview.tsx` — review, likely acceptable.** Uses
+`background: var(--color-text); color: var(--color-bg)` as a deliberate
+inversion. It flips from a dark panel to a light one in dark mode, but stays
+internally consistent and readable in both. Judgement call, not a defect.
+
+**Fix:** revert the substitution at preview sites in the first two files back
+to fixed literals, and add a comment marking them as preview fidelity so a
+later sweep does not re-migrate them.
+
+**Rule for the remaining work:** before migrating a file, ask whether it
+renders a mock of something outside the admin. If so, its colours are content,
+not theme. Grep for `preview`, `Preview`, `mock`, `snippet`, `BrandKit`.
+
 ### Stage 3 — Long tail and verification
 
 1. Sweep remaining ~988 one-off literals; convert what maps cleanly, leave
