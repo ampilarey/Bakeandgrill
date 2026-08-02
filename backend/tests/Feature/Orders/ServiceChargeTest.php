@@ -454,4 +454,63 @@ class ServiceChargeTest extends TestCase
         $this->assertSame($expectedTaxLaar, (int) $summary['output_tax_before_adjustments_laar']);
         $this->assertGreaterThan($merchTax, (int) $summary['gst_on_standard_sales_laar']);
     }
+
+    /**
+     * Pin backend SC tax to the same multi-line numbers as
+     * posCartTotals "multi-line SC tax matches backend grouped buckets".
+     * Lines 33.33+33.33+33.34+20+15 = 135.00; SC 10% = 1350 laar.
+     * Grouped (by tax code) SC tax: exclusive 108, inclusive 100.
+     */
+    public function test_multi_line_service_charge_tax_matches_grouped_frontend_parity(): void
+    {
+        $prices = [33.33, 33.33, 33.34, 20.0, 15.0];
+        $lineLaars = array_map(fn (float $p): int => (int) round($p * 100), $prices);
+        $this->assertSame([3333, 3333, 3334, 2000, 1500], $lineLaars);
+
+        $this->configureServiceCharge([
+            'enabled' => true,
+            'value' => '10',
+            'apply_dine_in' => true,
+            'taxable' => true,
+        ]);
+
+        foreach ([false, true] as $inclusive) {
+            $this->configureGst($inclusive);
+
+            $order = Order::factory()->create([
+                'type' => 'dine_in',
+                'status' => 'pending',
+            ]);
+            foreach ($prices as $i => $price) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'item_id' => $this->item->id,
+                    'item_name' => $this->item->name.' '.$i,
+                    'quantity' => 1,
+                    'unit_price' => $price,
+                    'total_price' => $price,
+                    'tax_rate' => 8,
+                    'tax_code' => 'standard_8',
+                ]);
+            }
+
+            app(OrderTotalsCalculator::class)->recalculateAndPersist($order->fresh());
+            $order->refresh();
+
+            $this->assertSame(13500, (int) $order->subtotal_laar);
+            $this->assertSame(1350, (int) $order->service_charge_amount_laar);
+
+            if ($inclusive) {
+                $merchTax = 1000;
+                $scTax = 100;
+                $this->assertSame($merchTax + $scTax, (int) $order->tax_laar);
+                $this->assertSame(13500 + 1350, (int) $order->total_laar);
+            } else {
+                $merchTax = 1081;
+                $scTax = 108;
+                $this->assertSame($merchTax + $scTax, (int) $order->tax_laar);
+                $this->assertSame(13500 + 1350 + $merchTax + $scTax, (int) $order->total_laar);
+            }
+        }
+    }
 }

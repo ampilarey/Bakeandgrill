@@ -532,7 +532,9 @@ export function useCheckout() {
   );
   const serviceChargeLaar = serviceChargePreview.amountLaar;
   const discountRatio = subtotalLaar > 0 ? discountedSubtotalLaar / subtotalLaar : 0;
-  const taxBuckets: Array<{ ratePercent: number; laar: number }> = [];
+  // Group SC buckets by rate (matches backend) — per-line buckets accumulate
+  // Math.round drift vs the server's tax-code grouping.
+  const taxBucketMap = new Map<number, number>();
   let itemTaxLaar = 0;
   for (const item of cart) {
     const rate = effectiveCheckoutTaxRatePercent(item.taxCode, item.taxRate, defaultTaxRatePercent);
@@ -548,8 +550,9 @@ export function useCheckout() {
     } else {
       itemTaxLaar += Math.round((effectiveLaar * rate) / 100);
     }
-    taxBuckets.push({ ratePercent: rate, laar: effectiveLaar });
+    taxBucketMap.set(rate, (taxBucketMap.get(rate) ?? 0) + effectiveLaar);
   }
+  const taxBuckets = Array.from(taxBucketMap, ([ratePercent, laar]) => ({ ratePercent, laar }));
   // Inclusive: extract embedded SC GST into tax_laar only (grand total unchanged).
   const scTaxLaar = serviceChargeTaxLaarByBuckets(
     serviceChargeConfig,
