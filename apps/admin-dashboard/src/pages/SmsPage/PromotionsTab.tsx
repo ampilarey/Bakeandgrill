@@ -128,21 +128,21 @@ export function PromotionsTab() {
 
       {showForm && (
         <Card style={{ padding: 24, marginBottom: 20 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#1C1408' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>
             New SMS Blast
           </h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }} className="form-grid-2">
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Name / Label (optional)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Name / Label (optional)</label>
               <Input value={form.name} onChange={(val) => setForm({ ...form, name: val })} placeholder="e.g. Weekend special" />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Audience</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Audience</label>
               <select
                 value={form.segment}
                 onChange={(e) => { setForm({ ...form, segment: e.target.value }); setPreview(null); }}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)' }}
               >
                 {SEGMENT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
@@ -150,20 +150,20 @@ export function PromotionsTab() {
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Message *</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Message *</label>
             <textarea
               value={form.message}
               onChange={(e) => { setForm({ ...form, message: e.target.value }); setPreview(null); }}
               rows={4}
               maxLength={480}
               placeholder="Hi, here's an exclusive offer from Bake & Grill…"
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
             />
-            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
+            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
               <span>{form.message.length} chars</span>
               <span>{msgInfo.segments} segment{msgInfo.segments !== 1 ? 's' : ''} ({msgInfo.charsPerSeg} chars/seg)</span>
               <span>{msgInfo.remaining} remaining</span>
-              {msgInfo.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600 }}>Unicode (70/seg)</span>}
+              {msgInfo.isUnicode && <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>Unicode (70/seg)</span>}
             </div>
           </div>
 
@@ -172,7 +172,7 @@ export function PromotionsTab() {
               {previewing ? 'Estimating…' : 'Estimate Reach & Cost'}
             </Btn>
             {preview && (
-              <div style={{ marginTop: 10, padding: '10px 14px', background: '#F8F6F3', borderRadius: 8, fontSize: 13 }}>
+              <div style={{ marginTop: 10, padding: '10px 14px', background: 'var(--color-bg)', borderRadius: 8, fontSize: 13 }}>
                 <strong>{(preview.recipient_count ?? 0).toLocaleString()}</strong> recipient{(preview.recipient_count ?? 0) !== 1 ? 's' : ''}
                 {totalCostMvr(preview) && <> · Est. cost: <strong>MVR {totalCostMvr(preview)}</strong></>}
               </div>
@@ -188,7 +188,7 @@ export function PromotionsTab() {
         </Card>
       )}
 
-      <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: '#6B5D4F' }}>Past Blasts</h4>
+      <h4 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Past Blasts</h4>
       {loading ? (
         <Card><EmptyState message="Loading history…" /></Card>
       ) : history.length === 0 ? (
@@ -206,10 +206,10 @@ export function PromotionsTab() {
             </thead>
             <tbody>
               {history.map((p) => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                <tr key={p.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={TD}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1C1408' }}>{p.name ?? '—'}</div>
-                    <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.message}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)' }}>{p.name ?? '—'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.message}</div>
                   </td>
                   <td style={TD}>
                     <Badge
@@ -218,7 +218,7 @@ export function PromotionsTab() {
                     />
                   </td>
                   <td style={TD}><span style={{ fontSize: 13 }}>{(p.total_sent ?? 0).toLocaleString()}</span></td>
-                  <td style={TD}><span style={{ fontSize: 12, color: '#9C8E7E' }}>{new Date(p.created_at).toLocaleDateString()}</span></td>
+                  <td style={TD}><span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{new Date(p.created_at).toLocaleDateString()}</span></td>
                 </tr>
               ))}
             </tbody>
