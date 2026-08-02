@@ -42,10 +42,10 @@ function thumbNode(asset: MediaAsset) {
     );
   }
   const icons: Record<MediaType, React.ReactNode> = {
-    image:    <Image size={28} style={{ color: '#9C8E7E' }} />,
-    video:    <Film size={28} style={{ color: '#9C8E7E' }} />,
-    audio:    <Music size={28} style={{ color: '#9C8E7E' }} />,
-    document: <FileText size={28} style={{ color: '#9C8E7E' }} />,
+    image:    <Image size={28} style={{ color: 'var(--color-text-muted)' }} />,
+    video:    <Film size={28} style={{ color: 'var(--color-text-muted)' }} />,
+    audio:    <Music size={28} style={{ color: 'var(--color-text-muted)' }} />,
+    document: <FileText size={28} style={{ color: 'var(--color-text-muted)' }} />,
   };
   return icons[asset.media_type] ?? icons.document;
 }
@@ -127,17 +127,17 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
       <div
         style={{
           width: 'min(860px, 100%)', maxHeight: '90vh', overflow: 'hidden',
-          background: '#fff', borderRadius: 16, border: '1px solid #E8E0D8',
+          background: '#fff', borderRadius: 16, border: '1px solid var(--color-border)',
           display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(28,20,8,0.18)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #E8E0D8', flexShrink: 0 }}>
-          <span style={{ fontWeight: 700, fontSize: 16, color: '#1C1408', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>
+          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Images size={18} /> {title}
           </span>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: 4 }} aria-label="Close">
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4 }} aria-label="Close">
             <X size={20} />
           </button>
         </div>
@@ -154,8 +154,8 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
                 style={{
                   height: 32, padding: '0 12px', borderRadius: 9, cursor: 'pointer',
                   fontFamily: 'inherit', fontSize: 12, fontWeight: activeType === value ? 700 : 500,
-                  border: activeType === value ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
-                  background: activeType === value ? '#FFF7ED' : '#F8F6F3', color: '#1C1408',
+                  border: activeType === value ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  background: activeType === value ? '#FFF7ED' : 'var(--color-bg)', color: 'var(--color-text)',
                   display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
                 }}
               >
@@ -164,12 +164,12 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
             ))}
           </div>
           <div style={{ marginLeft: 'auto', position: 'relative', minWidth: 180 }}>
-            <Search size={13} style={{ position: 'absolute', left: 8, top: 10, color: '#9C8E7E' }} />
+            <Search size={13} style={{ position: 'absolute', left: 8, top: 10, color: 'var(--color-text-muted)' }} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search…"
-              style={{ width: '100%', height: 34, paddingLeft: 26, borderRadius: 9, border: '1px solid #E8E0D8', fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box' }}
+              style={{ width: '100%', height: 34, paddingLeft: 26, borderRadius: 9, border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
           </div>
         </div>
@@ -180,18 +180,18 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
           {/* Collections sidebar */}
           {collections.length > 0 && (
             <aside style={{ width: 160, flexShrink: 0, borderRight: '1px solid #F0EBE4', padding: '10px 8px', overflowY: 'auto' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Folder size={12} /> Collections
               </div>
               <button type="button" onClick={() => setActiveCollection('')}
-                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: activeCollection === '' ? 700 : 400, background: activeCollection === '' ? '#F5E6D3' : 'transparent', color: activeCollection === '' ? '#1C1408' : '#6B5D4F', marginBottom: 1 }}>
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: activeCollection === '' ? 700 : 400, background: activeCollection === '' ? '#F5E6D3' : 'transparent', color: activeCollection === '' ? 'var(--color-text)' : 'var(--color-text-secondary)', marginBottom: 1 }}>
                 All
               </button>
               {collections.map((col) => (
                 <button key={col.id} type="button"
                   onClick={() => setActiveCollection(col.slug)}
                   data-testid={`picker-collection-${col.slug}`}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: activeCollection === col.slug ? 700 : 400, background: activeCollection === col.slug ? '#F5E6D3' : 'transparent', color: activeCollection === col.slug ? '#1C1408' : '#6B5D4F', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: activeCollection === col.slug ? 700 : 400, background: activeCollection === col.slug ? '#F5E6D3' : 'transparent', color: activeCollection === col.slug ? 'var(--color-text)' : 'var(--color-text-secondary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {col.name}
                 </button>
               ))}
@@ -202,7 +202,7 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
           <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px' }}>
             {loading && <Spinner />}
             {!loading && assets.length === 0 && (
-              <p style={{ textAlign: 'center', color: '#9C8E7E', padding: '2rem 0', fontSize: 13 }}>
+              <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem 0', fontSize: 13 }}>
                 No media found.
               </p>
             )}
@@ -216,8 +216,8 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
                     onClick={() => setHighlighted((prev) => (prev?.id === asset.id ? null : asset))}
                     onDoubleClick={() => { onPick(asset); onClose(); }}
                     style={{
-                      border: highlighted?.id === asset.id ? '2px solid #D4813A' : '1px solid #E8E0D8',
-                      borderRadius: 9, padding: 0, background: highlighted?.id === asset.id ? '#FFF7ED' : '#F8F6F3',
+                      border: highlighted?.id === asset.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                      borderRadius: 9, padding: 0, background: highlighted?.id === asset.id ? '#FFF7ED' : 'var(--color-bg)',
                       cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', overflow: 'hidden',
                     }}
                   >
@@ -235,17 +235,17 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
         </div>
 
         {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid #E8E0D8', flexShrink: 0, gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--color-border)', flexShrink: 0, gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {meta.last_page > 1 && (
               <>
                 <button type="button" onClick={() => setPage((p) => p - 1)} disabled={page <= 1}
-                  style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8', background: '#F8F6F3', cursor: page <= 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 12, opacity: page <= 1 ? 0.5 : 1, display: 'inline-flex', alignItems: 'center' }}>
+                  style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: page <= 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 12, opacity: page <= 1 ? 0.5 : 1, display: 'inline-flex', alignItems: 'center' }}>
                   <ChevronLeft size={14} /> Prev
                 </button>
-                <span style={{ fontSize: 12, color: '#6B5D4F' }}>{meta.current_page} / {meta.last_page}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{meta.current_page} / {meta.last_page}</span>
                 <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page >= meta.last_page}
-                  style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8', background: '#F8F6F3', cursor: page >= meta.last_page ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 12, opacity: page >= meta.last_page ? 0.5 : 1, display: 'inline-flex', alignItems: 'center' }}>
+                  style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: page >= meta.last_page ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 12, opacity: page >= meta.last_page ? 0.5 : 1, display: 'inline-flex', alignItems: 'center' }}>
                   Next <ChevronRight size={14} />
                 </button>
               </>
@@ -254,12 +254,12 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {highlighted && (
-              <span style={{ fontSize: 12, color: '#6B5D4F', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 Selected: {highlighted.title || highlighted.url.split('/').pop()}
               </span>
             )}
             <button type="button" onClick={onClose}
-              style={{ height: 38, padding: '0 16px', borderRadius: 10, border: '1px solid #E8E0D8', background: '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#6B5D4F' }}>
+              style={{ height: 38, padding: '0 16px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
               Cancel
             </button>
             <button
@@ -267,7 +267,7 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
               onClick={handlePick}
               disabled={!highlighted}
               data-testid="media-picker-confirm"
-              style={{ height: 38, padding: '0 20px', borderRadius: 10, background: highlighted ? '#D4813A' : '#E8E0D8', color: highlighted ? '#fff' : '#9C8E7E', border: 'none', cursor: highlighted ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: 13, fontWeight: 700 }}
+              style={{ height: 38, padding: '0 20px', borderRadius: 10, background: highlighted ? 'var(--color-primary)' : 'var(--color-border)', color: highlighted ? '#fff' : 'var(--color-text-muted)', border: 'none', cursor: highlighted ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: 13, fontWeight: 700 }}
             >
               Use this file
             </button>
