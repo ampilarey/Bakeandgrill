@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
             <button
               onClick={() => this.setState({ hasError: false, message: '', chunkError: false })}
-              style={{ background: '#F59E0B', color: '#fff', border: 'none', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
+              style={{ background: 'var(--color-warning)', color: '#fff', border: 'none', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
             >
               Try again
             </button>
