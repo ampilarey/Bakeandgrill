@@ -170,37 +170,37 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
         <Card style={{ marginBottom: 24 }}>
           <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>New SMS Campaign</h3>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Campaign Name</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Campaign Name</label>
             <Input value={name} onChange={setName} placeholder="e.g. Eid Special Offer" />
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Audience</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Audience</label>
             <select
               value={audience}
               onChange={(e) => { setAudience(e.target.value as AudiencePreset); setPreview(null); }}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 9, border: '1px solid #E8E0D8', fontSize: 14, fontFamily: 'inherit' }}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--color-border)', fontSize: 14, fontFamily: 'inherit' }}
             >
               {AUDIENCE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '6px 0 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0' }}>
               VIP uses the CRM spend segment (not loyalty Gold). Opted-out numbers are always excluded.
             </p>
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#1C1408' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
             <input type="checkbox" checked={abEnabled} onChange={(e) => { setAbEnabled(e.target.checked); setPreview(null); }} />
             A/B test two message variants
           </label>
 
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>{abEnabled ? 'Variant A' : 'Message'}</label>
-              <span style={{ fontSize: 11, color: segA.segments > 1 ? '#ef4444' : '#9C8E7E' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{abEnabled ? 'Variant A' : 'Message'}</label>
+              <span style={{ fontSize: 11, color: segA.segments > 1 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
                 {segA.chars} chars · {segA.segments} segment{segA.segments > 1 ? 's' : ''}
-                {segA.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
+                {segA.isUnicode && <span style={{ color: 'var(--color-warning)', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
               </span>
             </div>
             <textarea
@@ -208,7 +208,7 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your SMS message here…"
               rows={4}
-              style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
+              style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
             />
           </div>
 
@@ -216,10 +216,10 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
             <>
               <div style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Variant B</label>
-                  <span style={{ fontSize: 11, color: segB.segments > 1 ? '#ef4444' : '#9C8E7E' }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Variant B</label>
+                  <span style={{ fontSize: 11, color: segB.segments > 1 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
                     {segB.chars} chars · {segB.segments} segment{segB.segments > 1 ? 's' : ''}
-                    {segB.isUnicode && <span style={{ color: '#F59E0B', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
+                    {segB.isUnicode && <span style={{ color: 'var(--color-warning)', fontWeight: 600, marginLeft: 6 }}>Unicode</span>}
                   </span>
                 </div>
                 <textarea
@@ -227,11 +227,11 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
                   onChange={(e) => setMessageB(e.target.value)}
                   placeholder="Alternative message to test…"
                   rows={4}
-                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
+                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
                 />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>
                   Split: {abSplit}% Variant A / {100 - abSplit}% Variant B
                 </label>
                 <input
@@ -290,15 +290,15 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
                   <td style={TD}>
                     {c.ab_test_enabled
                       ? <Badge label={`${c.ab_split_percent ?? 50}/${100 - (c.ab_split_percent ?? 50)}`} color="#8b5cf6" />
-                      : <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>}
+                      : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>}
                   </td>
                   <td style={TD}><Badge label={c.status} color={statColor(c.status)} /></td>
-                  <td style={{ ...TD, color: '#6B5D4F' }}>{c.total_recipients}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{c.total_recipients}</td>
                   <td style={TD}>
-                    <span style={{ color: '#22c55e', fontWeight: 600 }}>{c.sent_count}</span>
-                    {c.failed_count > 0 && <span style={{ color: '#ef4444', marginLeft: 4 }}>/ {c.failed_count} failed</span>}
+                    <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{c.sent_count}</span>
+                    {c.failed_count > 0 && <span style={{ color: 'var(--color-danger)', marginLeft: 4 }}>/ {c.failed_count} failed</span>}
                   </td>
-                  <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>
+                  <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>
                     {c.ab_test_enabled && c.ab_stats ? (
                       <div>
                         <div>A: {c.ab_stats.a.sent} sent ({c.ab_stats.a.delivery_rate}%)</div>
@@ -306,8 +306,8 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
                       </div>
                     ) : '—'}
                   </td>
-                  <td style={{ ...TD, color: '#D4813A', fontWeight: 600 }}>MVR {c.total_cost_mvr ?? '—'}</td>
-                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(c.created_at).toLocaleDateString()}</td>
+                  <td style={{ ...TD, color: 'var(--color-primary)', fontWeight: 600 }}>MVR {c.total_cost_mvr ?? '—'}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{new Date(c.created_at).toLocaleDateString()}</td>
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       {c.status === 'draft' && (
