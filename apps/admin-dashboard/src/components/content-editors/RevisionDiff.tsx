@@ -22,7 +22,7 @@ export function RevisionDiff({ before, after }: Props) {
   }
 
   if (rows.length === 0) {
-    return <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>No differences.</p>;
+    return <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>No differences.</p>;
   }
 
   return (
@@ -31,7 +31,7 @@ export function RevisionDiff({ before, after }: Props) {
       style={{
         margin: 0, fontSize: 11, lineHeight: 1.45, fontFamily: 'ui-monospace, monospace',
         maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-        borderRadius: 8, border: '1px solid #E8E0D8', background: '#fff', padding: 8,
+        borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: 8,
       }}
     >
       {rows.map((r, i) => (
@@ -39,7 +39,7 @@ export function RevisionDiff({ before, after }: Props) {
           key={i}
           style={{
             background: r.type === 'del' ? '#FEE2E2' : r.type === 'add' ? '#DCFCE7' : 'transparent',
-            color: r.type === 'del' ? '#991B1B' : r.type === 'add' ? '#166534' : '#1C1408',
+            color: r.type === 'del' ? '#991B1B' : r.type === 'add' ? '#166534' : 'var(--color-text)',
             padding: '1px 4px',
           }}
         >
