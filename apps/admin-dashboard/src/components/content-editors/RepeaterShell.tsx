@@ -68,7 +68,7 @@ export function RepeaterShell<T extends Record<string, unknown>>({
           data-testid="repeater-row"
           style={{
             background: '#fff',
-            border: overIdx === idx ? '1.5px solid #D4813A' : '1.5px solid #E8E0D8',
+            border: overIdx === idx ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
             borderRadius: 12,
             padding: 14,
             display: 'flex',
@@ -81,11 +81,11 @@ export function RepeaterShell<T extends Record<string, unknown>>({
             <span
               aria-hidden
               title="Drag to reorder"
-              style={{ cursor: 'grab', color: '#9C8E7E', display: 'inline-flex', padding: 2 }}
+              style={{ cursor: 'grab', color: 'var(--color-text-muted)', display: 'inline-flex', padding: 2 }}
             >
               <GripVertical size={16} />
             </span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1 }}>
               {itemLabel} {idx + 1}
             </span>
             <button
@@ -133,7 +133,7 @@ export function RepeaterShell<T extends Record<string, unknown>>({
         onClick={() => onChange([...items, createItem()])}
         style={{
           alignSelf: 'flex-start', height: 36, padding: '0 12px', borderRadius: 10,
-          border: '1px dashed #D4813A', background: '#FFF7ED', color: '#D4813A',
+          border: '1px dashed var(--color-primary)', background: '#FFF7ED', color: 'var(--color-primary)',
           fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
           display: 'inline-flex', alignItems: 'center', gap: 6,
         }}
@@ -146,9 +146,9 @@ export function RepeaterShell<T extends Record<string, unknown>>({
 
 function iconBtnStyle(disabled: boolean): CSSProperties {
   return {
-    height: 28, width: 28, borderRadius: 8, border: '1px solid #E8E0D8',
+    height: 28, width: 28, borderRadius: 8, border: '1px solid var(--color-border)',
     background: '#fff', cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.4 : 1, display: 'inline-flex', alignItems: 'center',
-    justifyContent: 'center', color: '#6B5D4F', padding: 0,
+    justifyContent: 'center', color: 'var(--color-text-secondary)', padding: 0,
   };
 }
