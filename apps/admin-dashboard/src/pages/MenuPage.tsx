@@ -28,7 +28,7 @@ function BannerLivePreview({
   const pad = compact ? '8px 10px' : '10px 12px';
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>
         {label}
       </div>
       <div
@@ -40,9 +40,9 @@ function BannerLivePreview({
           width: '100%',
           position: 'relative',
           background: imageUrl
-            ? '#1C1408'
+            ? 'var(--color-text)'
             : 'linear-gradient(135deg, #c2410c 0%, #7c2d12 100%)',
-          border: '1px solid #E8E0D8',
+          border: '1px solid var(--color-border)',
         }}
       >
         {imageUrl ? (
@@ -106,7 +106,7 @@ function CategoryFormModal({
   };
 
   const selectStyle: React.CSSProperties = {
-    width: '100%', border: '1px solid #E8E0D8', borderRadius: 9,
+    width: '100%', border: '1px solid var(--color-border)', borderRadius: 9,
     padding: '9px 12px', fontSize: 14, fontFamily: 'inherit',
     background: '#fff', cursor: 'pointer', boxSizing: 'border-box',
   };
@@ -144,14 +144,14 @@ function CategoryFormModal({
           style={{
             padding: 12,
             borderRadius: 12,
-            border: '1px solid #E8E0D8',
-            background: '#F8F6F3',
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-bg)',
           }}
         >
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#1C1408', marginBottom: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
             Order-app menu banner
           </div>
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6B5D4F', lineHeight: 1.4 }}>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
             Wide 7:3 image shown above this category’s items on mobile and desktop.
             Leave empty for a branded gradient.
           </p>
@@ -191,7 +191,7 @@ function CategoryFormModal({
               imageUrl={form.image_url}
             />
           </div>
-          <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9C8E7E' }}>
+          <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
             Live preview — 7:3 crop, height-capped on phone (140px) and desktop (220px).
           </p>
         </div>
@@ -238,13 +238,13 @@ export function MenuPage() {
 
       {m.error && <ErrorMsg message={m.error} />}
 
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid #E8E0D8' }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid var(--color-border)' }}>
         {(['categories', 'items'] as View[]).map((t) => (
           <button key={t} onClick={() => m.setView(t)} style={{
             padding: '10px 22px', fontSize: 14, fontWeight: m.view === t ? 700 : 400,
-            color: m.view === t ? '#D4813A' : '#9C8E7E',
+            color: m.view === t ? 'var(--color-primary)' : 'var(--color-text-muted)',
             background: 'none', border: 'none', cursor: 'pointer', textTransform: 'capitalize',
-            borderBottom: m.view === t ? '2px solid #D4813A' : '2px solid transparent',
+            borderBottom: m.view === t ? '2px solid var(--color-primary)' : '2px solid transparent',
             marginBottom: -2, fontFamily: 'inherit',
           }}>
             {t === 'categories' ? `Categories (${m.categories.length})` : 'Items'}
@@ -274,7 +274,7 @@ export function MenuPage() {
                         <Badge label={cat.is_active ? 'Active' : 'Hidden'} color={cat.is_active ? 'green' : 'gray'} />
                       </div>
                       {cat.description && (
-                        <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {cat.description}
                         </p>
                       )}
@@ -297,7 +297,7 @@ export function MenuPage() {
                 </Card>
                 {m.categories.filter((c) => c.parent_id === cat.id).map((sub) => (
                   <div className="menu-subcat-card">
-                  <Card key={sub.id} style={{ padding: '12px 18px', marginTop: 6, marginLeft: 28, borderLeft: '3px solid #E8E0D8' }}>
+                  <Card key={sub.id} style={{ padding: '12px 18px', marginTop: 6, marginLeft: 28, borderLeft: '3px solid var(--color-border)' }}>
                     <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <span style={{ fontSize: 16, color: '#94a3b8', flexShrink: 0 }}>↳</span>
                       {sub.image_url && (
@@ -422,18 +422,18 @@ export function MenuPage() {
           <div style={{ background: '#fff', borderRadius: 16, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Recipe — {m.recipeItem.name}</h3>
-              <button onClick={() => m.setRecipeItem(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9C8E7E' }}>×</button>
+              <button onClick={() => m.setRecipeItem(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
             </div>
             {!m.recipeItem.recipe ? (
-              <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No recipe defined for this item.</p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No recipe defined for this item.</p>
             ) : (m.recipeItem.recipe.recipe_items ?? []).length === 0 ? (
-              <p style={{ color: '#9C8E7E', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Recipe exists but has no ingredients.</p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Recipe exists but has no ingredients.</p>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr>
-                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>Ingredient</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>Qty</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>Unit</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3' }}>Ingredient</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3' }}>Qty</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3' }}>Unit</th>
                 </tr></thead>
                 <tbody>
                   {(m.recipeItem.recipe.recipe_items ?? []).map((ri) => (
@@ -442,7 +442,7 @@ export function MenuPage() {
                         {ri.inventory_item?.name ?? '—'}
                       </td>
                       <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0' }}>{ri.quantity}</td>
-                      <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0', color: '#9C8E7E' }}>
+                      <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0', color: 'var(--color-text-muted)' }}>
                         {ri.unit ?? ri.inventory_item?.unit ?? '—'}
                       </td>
                     </tr>
@@ -458,26 +458,26 @@ export function MenuPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: 32, maxWidth: 360, width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 800 }}>Barcode Label</h3>
-            <div style={{ border: '2px solid #E8E0D8', borderRadius: 12, padding: 20, marginBottom: 20 }}>
+            <div style={{ border: '2px solid var(--color-border)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
               <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 16 }}>{m.barcodeLabel.name}</p>
               {m.barcodeLabel.barcode && (
-                <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 18, letterSpacing: 3, color: '#1C1408' }}>{m.barcodeLabel.barcode}</p>
+                <p style={{ margin: '0 0 4px', fontFamily: 'monospace', fontSize: 18, letterSpacing: 3, color: 'var(--color-text)' }}>{m.barcodeLabel.barcode}</p>
               )}
-              {m.barcodeLabel.sku && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#9C8E7E' }}>SKU: {m.barcodeLabel.sku}</p>}
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 20, color: '#D4813A' }}>
+              {m.barcodeLabel.sku && <p style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--color-text-muted)' }}>SKU: {m.barcodeLabel.sku}</p>}
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 20, color: 'var(--color-primary)' }}>
                 MVR {Number(m.barcodeLabel.price).toFixed(2)}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button
                 onClick={() => { window.print(); }}
-                style={{ padding: '10px 20px', background: '#D4813A', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '10px 20px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 🖨 Print
               </button>
               <button
                 onClick={() => m.setBarcodeLabel(null)}
-                style={{ padding: '10px 20px', background: 'transparent', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '10px 20px', background: 'transparent', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Close
               </button>
