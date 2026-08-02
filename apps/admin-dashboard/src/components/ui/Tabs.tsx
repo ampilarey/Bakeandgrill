@@ -33,7 +33,7 @@ export function TabList({ children, className = '' }: TabListProps) {
       className={className}
       style={{
         display: 'flex',
-        borderBottom: '2px solid #E8E0D8',
+        borderBottom: '2px solid var(--color-border)',
         overflowX: 'auto',
         flexWrap: 'nowrap',
         gap: 0,
@@ -59,10 +59,10 @@ export function Tab({ id, children }: TabProps) {
         padding: '10px 20px',
         fontSize: 14,
         fontWeight: isActive ? 700 : 500,
-        color: isActive ? '#D4813A' : '#9C8E7E',
+        color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
         background: 'none',
         border: 'none',
-        borderBottom: `2px solid ${isActive ? '#D4813A' : 'transparent'}`,
+        borderBottom: `2px solid ${isActive ? 'var(--color-primary)' : 'transparent'}`,
         marginBottom: -2,
         cursor: 'pointer',
         fontFamily: 'inherit',
