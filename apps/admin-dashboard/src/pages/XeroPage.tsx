@@ -37,16 +37,16 @@ function StatusCard({ status }: { status: XeroStatus | null }) {
               : <XCircle size={28} style={{ color: '#DC2626' }} />}
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: '#1C1408' }}>
+            <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--color-text)' }}>
               {isConnected ? 'Connected to Xero' : 'Not connected'}
             </div>
             {isConnected && status.tenant_name && (
-              <div style={{ color: '#6B5D4F', fontSize: 14 }}>{status.tenant_name}</div>
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>{status.tenant_name}</div>
             )}
             {isConnected && status.connected_at && (
-              <div style={{ color: '#9C8E7E', fontSize: 12, marginTop: 2 }}>
+              <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2 }}>
                 Connected {new Date(status.connected_at).toLocaleDateString()}
-                {status.token_expired && <span style={{ color: '#EF4444', marginLeft: 8 }}>· Token expired</span>}
+                {status.token_expired && <span style={{ color: 'var(--color-danger)', marginLeft: 8 }}>· Token expired</span>}
               </div>
             )}
           </div>
@@ -143,8 +143,8 @@ export default function XeroPage() {
   };
 
   const logEntityIcon = (type: string) => {
-    if (type === 'invoice') return <FileText size={13} style={{ color: '#6B5D4F', marginRight: 4, verticalAlign: 'middle' }} />;
-    if (type === 'expense') return <Receipt size={13} style={{ color: '#6B5D4F', marginRight: 4, verticalAlign: 'middle' }} />;
+    if (type === 'invoice') return <FileText size={13} style={{ color: 'var(--color-text-secondary)', marginRight: 4, verticalAlign: 'middle' }} />;
+    if (type === 'expense') return <Receipt size={13} style={{ color: 'var(--color-text-secondary)', marginRight: 4, verticalAlign: 'middle' }} />;
     return null;
   };
 
@@ -178,13 +178,13 @@ export default function XeroPage() {
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }} className="stat-grid">
             <StatCard label="Total Syncs"       value={String(logMeta.total)} />
-            <StatCard label="Successful (page)" value={String(logs.filter((l) => l.status === 'success').length)} accent="#22C55E" />
-            <StatCard label="Failed (page)"     value={String(logs.filter((l) => l.status === 'failed').length)}  accent="#EF4444" />
+            <StatCard label="Successful (page)" value={String(logs.filter((l) => l.status === 'success').length)} accent="var(--color-success)" />
+            <StatCard label="Failed (page)"     value={String(logs.filter((l) => l.status === 'failed').length)}  accent="var(--color-danger)" />
           </div>
 
           {/* Connect / Disconnect actions */}
           <Card style={{ padding: 24, marginBottom: 24 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#1C1408' }}>Connection</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>Connection</h3>
             {status?.connected ? (
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <Btn variant="danger" onClick={handleDisconnect} disabled={disconnecting}>
@@ -195,14 +195,14 @@ export default function XeroPage() {
                   href="https://go.xero.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#F8F6F3', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, color: '#6B5D4F', cursor: 'pointer', textDecoration: 'none', fontWeight: 500 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, color: 'var(--color-text-secondary)', cursor: 'pointer', textDecoration: 'none', fontWeight: 500 }}
                 >
                   <ExternalLink size={13} />Open Xero
                 </a>
               </div>
             ) : (
               <div>
-                <p style={{ margin: '0 0 16px', fontSize: 14, color: '#6B5D4F' }}>
+                <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-secondary)' }}>
                   Connect your Xero account to automatically sync invoices and expenses for accounting purposes.
                 </p>
                 <Btn onClick={handleConnect} disabled={connectingUrl}>
@@ -215,9 +215,9 @@ export default function XeroPage() {
 
           {/* How to use */}
           {status?.connected && (
-            <Card style={{ padding: 24, marginBottom: 24, background: '#F8F6F3', border: '1px solid #E8E0D8' }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: '#1C1408' }}>How to Sync</h3>
-              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14, color: '#6B5D4F', lineHeight: 1.8 }}>
+            <Card style={{ padding: 24, marginBottom: 24, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>How to Sync</h3>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.8 }}>
                 <li>Go to <strong>Invoices</strong> page → open any invoice → click <em>"Push to Xero"</em></li>
                 <li>Go to <strong>Expenses</strong> page → open any expense → click <em>"Push to Xero"</em></li>
                 <li>Synced items appear in your Xero organisation under the matching account</li>
@@ -226,7 +226,7 @@ export default function XeroPage() {
           )}
 
           {/* Sync log */}
-          <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#1C1408' }}>Sync Log</h3>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>Sync Log</h3>
           {logsLoading ? (
             <Card><EmptyState message="Loading logs…" /></Card>
           ) : logs.length === 0 ? (
@@ -245,14 +245,14 @@ export default function XeroPage() {
                 </thead>
                 <tbody>
                   {logs.map((log) => (
-                    <tr key={log.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                    <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                       <td style={TD}>
-                        <span style={{ fontSize: 12, color: '#6B5D4F' }}>
+                        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                           {new Date(log.created_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })}
                         </span>
                       </td>
                       <td style={TD}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
                           {log.action.replace(/_/g, ' ')}
                         </span>
                       </td>
@@ -264,7 +264,7 @@ export default function XeroPage() {
                             const label = `${log.entity_type}${log.entity_id ? ` #${log.entity_id}` : ''}`;
                             if (!path) {
                               return (
-                                <span style={{ fontSize: 13, color: '#6B5D4F', textTransform: 'capitalize' }}>
+                                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', textTransform: 'capitalize' }}>
                                   {label}
                                 </span>
                               );
@@ -272,7 +272,7 @@ export default function XeroPage() {
                             return (
                               <RouterLink
                                 to={path}
-                                style={{ fontSize: 13, color: '#D4813A', fontWeight: 600, textDecoration: 'none', textTransform: 'capitalize' }}
+                                style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', textTransform: 'capitalize' }}
                               >
                                 {label}
                               </RouterLink>
@@ -284,7 +284,7 @@ export default function XeroPage() {
                         <Badge label={log.status} color={logStatusColor(log.status)} />
                       </td>
                       <td style={{ ...TD, maxWidth: 280 }}>
-                        <span style={{ fontSize: 12, color: log.status === 'failed' ? '#EF4444' : '#6B5D4F', wordBreak: 'break-word' }}>
+                        <span style={{ fontSize: 12, color: log.status === 'failed' ? 'var(--color-danger)' : 'var(--color-text-secondary)', wordBreak: 'break-word' }}>
                           {log.message ?? '—'}
                         </span>
                       </td>
@@ -296,7 +296,7 @@ export default function XeroPage() {
               {logMeta.last_page > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0' }}>
                   <Btn small variant="secondary" disabled={logPage === 1} onClick={() => setLogPage(logPage - 1)}>← Prev</Btn>
-                  <span style={{ fontSize: 13, color: '#6B5D4F', padding: '6px 12px' }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', padding: '6px 12px' }}>
                     Page {logMeta.current_page} of {logMeta.last_page}
                   </span>
                   <Btn small variant="secondary" disabled={logPage === logMeta.last_page} onClick={() => setLogPage(logPage + 1)}>Next →</Btn>
