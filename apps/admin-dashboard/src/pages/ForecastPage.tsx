@@ -1420,7 +1420,7 @@ export function ForecastPage() {
                       onClick={() => void saveSelectedOrderQtys()}
                       style={{
                         marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: '1px solid #FED7AA',
-                        background: 'var(--color-surface)', color: '#c2410c', fontSize: 11, fontWeight: 700,
+                        background: '#fff', color: '#c2410c', fontSize: 11, fontWeight: 700,
                         cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
@@ -1569,7 +1569,7 @@ export function ForecastPage() {
                                   onClick={() => void setRestockExcluded(item, false)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #D1D5DB', background: 'var(--color-surface)', color: '#374151',
+                                    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1595,7 +1595,7 @@ export function ForecastPage() {
                                   onClick={() => void clearRestockSnooze(item)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #D1D5DB', background: 'var(--color-surface)', color: '#374151',
+                                    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1671,7 +1671,7 @@ export function ForecastPage() {
                                   onClick={() => void dismissReorderAlert(item)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #fecaca', background: 'var(--color-surface)', color: '#991b1b',
+                                    border: '1px solid #fecaca', background: '#fff', color: '#991b1b',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
