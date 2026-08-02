@@ -163,6 +163,34 @@ Per page:
 **Do not migrate all pages in one commit.** One commit per page, or per small
 group, so a regression bisects cleanly.
 
+### Stage 2b — Shared components (do this BEFORE the rest of Stage 2)
+
+Discovered while migrating `OrdersPage`. `src/components/` holds **495 hex
+literals, 366 of them canonical** — and it is outside both the ESLint guard's
+`src/pages/**` scope and the page-by-page migration order, so nothing in the
+original plan ever reaches it.
+
+These are shared components used by all 55 pages. `Badge` is the clearest case:
+
+```js
+// SharedUI.tsx — gray variant is three of the ten canonical values
+gray: { bg: '#F8F6F3', text: '#6B5D4F', border: '#E8E0D8' },
+```
+
+Until this is migrated, every badge in the admin stays light in dark mode
+regardless of how many pages are done.
+
+Highest leverage in the whole migration — `SharedUI.tsx` is 49 literals and
+fixes badges everywhere at once. Do it first, in this order:
+
+1. `SharedUI.tsx` (49)
+2. `CustomerCreditSection.tsx` (33)
+3. `MediaPicker.tsx` (29), `CustomerDepositSection.tsx` (29)
+4. `Customer360Drawer.tsx` (26), then descending
+
+Also widen the ESLint guard's `files` glob from `src/pages/**` to include
+`src/components/**`, and regenerate the baseline, so the ratchet covers them.
+
 ### Stage 3 — Long tail and verification
 
 1. Sweep remaining ~988 one-off literals; convert what maps cleanly, leave
