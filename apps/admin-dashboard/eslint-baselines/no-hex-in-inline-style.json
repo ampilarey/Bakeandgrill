@@ -8,7 +8,7 @@
   "src/pages/ContentHub/LivePreviewFrame.tsx": 10,
   "src/pages/CustomerGrowthPage.tsx": 34,
   "src/pages/CustomersPage.tsx": 50,
-  "src/pages/DashboardPage.tsx": 113,
+  "src/pages/DashboardPage.tsx": 38,
   "src/pages/DeliveryPage.tsx": 60,
   "src/pages/DeliverySettingsPage.tsx": 34,
   "src/pages/DevicesPage.tsx": 32,
