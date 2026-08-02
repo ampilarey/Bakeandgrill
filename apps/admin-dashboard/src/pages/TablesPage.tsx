@@ -11,11 +11,11 @@ import {
 import { LayoutGrid, Map } from 'lucide-react';
 
 const S = {
-  input: { width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
-  label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: '#6B5D4F', marginBottom: 4 },
+  input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
+  label: { display: 'block' as const, fontSize: 13, fontWeight: 600 as const, color: 'var(--color-text-secondary)', marginBottom: 4 },
   card: (): React.CSSProperties => ({
     background: '#fff',
-    border: '1.5px solid #E8E0D8',
+    border: '1.5px solid var(--color-border)',
     borderRadius: 14,
     padding: '18px 16px',
     position: 'relative',
@@ -57,13 +57,13 @@ const STATUS_TEXT: Record<string, string> = {
 function OrderPeek({ table }: { table: RestaurantTable }) {
   if (table.status !== 'occupied' || !table.current_order_id) return null;
   return (
-    <div style={{ marginTop: 8, fontSize: 12, color: '#6B5D4F', lineHeight: 1.4 }}>
+    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
       {table.current_order_number != null && (
         <div>
           Order{' '}
           <Link
             to={`/orders?order=${table.current_order_id}`}
-            style={{ color: '#D4813A', fontWeight: 700, textDecoration: 'none' }}
+            style={{ color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'none' }}
           >
             #{table.current_order_number}
           </Link>
@@ -148,7 +148,7 @@ export default function TablesPage() {
         title="Table Management"
         action={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ display: 'flex', border: '1.5px solid #E8E0D8', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', border: '1.5px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
               {([['cards', LayoutGrid, 'Cards'], ['floorplan', Map, 'Floor Plan']] as const).map(([mode, Icon, label]) => (
                 <button
                   key={mode}
@@ -157,8 +157,8 @@ export default function TablesPage() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '7px 14px', fontSize: 13, fontWeight: viewMode === mode ? 700 : 500,
-                    background: viewMode === mode ? '#D4813A' : '#fff',
-                    color: viewMode === mode ? '#fff' : '#6B5D4F',
+                    background: viewMode === mode ? 'var(--color-primary)' : '#fff',
+                    color: viewMode === mode ? '#fff' : 'var(--color-text-secondary)',
                     border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                     transition: 'background 0.15s, color 0.15s',
                   }}
@@ -173,21 +173,21 @@ export default function TablesPage() {
         }
       />
 
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.45 }}>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
         Configure seating layout here. Open, close, merge, and split run on the{' '}
-        <strong style={{ color: '#1C1408' }}>POS</strong>.
+        <strong style={{ color: 'var(--color-text)' }}>POS</strong>.
       </p>
 
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard label="Total Tables" value={String(tables.length)} accent="#D4813A" />
+        <StatCard label="Total Tables" value={String(tables.length)} accent="var(--color-primary)" />
         <StatCard label="Available" value={String(available)} accent="#16a34a" />
-        <StatCard label="Occupied" value={String(occupied)} accent="#f59e0b" />
+        <StatCard label="Occupied" value={String(occupied)} accent="var(--color-warning)" />
       </div>
 
       {loading ? (
-        <p style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</p>
+        <p style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : tables.length === 0 ? (
         <EmptyState message="No tables configured yet." />
       ) : viewMode === 'cards' ? (
@@ -196,8 +196,8 @@ export default function TablesPage() {
             <div key={t.id} style={S.card()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                 <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#1C1408' }}>T{t.name}</div>
-                  <div style={{ fontSize: 12, color: '#9C8E7E' }}>Cap: {t.capacity ?? '—'}{t.location ? ` · ${t.location}` : ''}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)' }}>T{t.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Cap: {t.capacity ?? '—'}{t.location ? ` · ${t.location}` : ''}</div>
                 </div>
                 <Badge color={STATUS_COLOR[t.status] ?? 'gray'}>{t.status}</Badge>
               </div>
@@ -210,28 +210,28 @@ export default function TablesPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '12px 16px', background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12 }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '12px 16px', background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12 }}>
             {Object.entries(STATUS_BG).map(([status, bg]) => (
               <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 14, height: 14, borderRadius: 4, background: bg, border: `2px solid ${STATUS_BORDER[status]}` }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', textTransform: 'capitalize' }}>{status}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'capitalize' }}>{status}</span>
               </div>
             ))}
-            <span style={{ fontSize: 12, color: '#9C8E7E', marginLeft: 'auto' }}>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
               Floor service runs on POS
             </span>
           </div>
 
           {zones.map(([zone, zoneTables]) => (
-            <div key={zone} style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 16, overflow: 'hidden' }}>
+            <div key={zone} style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 16, overflow: 'hidden' }}>
               <div style={{
                 padding: '12px 20px',
                 borderBottom: '1px solid #F0EAE3',
                 display: 'flex', alignItems: 'center', gap: 12,
                 background: '#FAFAF8',
               }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>{zone}</span>
-                <span style={{ fontSize: 12, color: '#9C8E7E' }}>{zoneTables.length} table{zoneTables.length !== 1 ? 's' : ''}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{zone}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{zoneTables.length} table{zoneTables.length !== 1 ? 's' : ''}</span>
                 <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
                   {zoneTables.filter(t => t.status === 'available').length} available
                 </span>
@@ -261,10 +261,10 @@ export default function TablesPage() {
                         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                       }}
                     >
-                      <div style={{ fontSize: 20, fontWeight: 800, color: '#1C1408', lineHeight: 1 }}>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                         {t.name}
                       </div>
-                      <div style={{ fontSize: 11, color: '#9C8E7E' }}>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                         {t.capacity ?? '—'} seats
                       </div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: textColor, textTransform: 'capitalize' }}>
@@ -273,7 +273,7 @@ export default function TablesPage() {
                       {t.current_order_number != null && t.current_order_id != null && (
                         <Link
                           to={`/orders?order=${t.current_order_id}`}
-                          style={{ fontSize: 10, color: '#D4813A', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}
+                          style={{ fontSize: 10, color: 'var(--color-primary)', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}
                           onClick={(e) => e.stopPropagation()}
                         >
                           #{t.current_order_number}
@@ -282,7 +282,7 @@ export default function TablesPage() {
                       <button
                         type="button"
                         onClick={() => openModal(t)}
-                        style={{ fontSize: 10, padding: '2px 7px', marginTop: 4, border: '1px solid #E8E0D8', borderRadius: 6, background: '#fff', color: '#6B5D4F', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
+                        style={{ fontSize: 10, padding: '2px 7px', marginTop: 4, border: '1px solid var(--color-border)', borderRadius: 6, background: '#fff', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
                       >
                         Edit
                       </button>
@@ -297,7 +297,7 @@ export default function TablesPage() {
 
       {modal && (
         <Modal title={editTable ? `Edit Table T${editTable.name}` : 'Add Table'} onClose={() => setModal(false)} maxWidth={400}>
-          {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
+          {formError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{formError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
               <span style={S.label}>Table Name *</span>
