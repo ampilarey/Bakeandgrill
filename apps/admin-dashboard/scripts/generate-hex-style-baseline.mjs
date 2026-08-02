@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Walk src/pages/** and count hex colour literals inside style={{…}} objects.
+ * Walk src/pages/** and src/components/** and count hex colour literals
+ * inside style={{…}} objects.
  * Writes eslint-baselines/no-hex-in-inline-style.json (path → count).
  *
  * Re-run after Stage 2 migrations to prune the baseline as counts drop.
@@ -13,7 +14,10 @@ import { collectHexNodes, relativeToCwd } from '../eslint-plugin-local/no-hex-in
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, '..');
-const pagesRoot = path.join(appRoot, 'src/pages');
+const roots = [
+  path.join(appRoot, 'src/pages'),
+  path.join(appRoot, 'src/components'),
+];
 const outFile = path.join(appRoot, 'eslint-baselines/no-hex-in-inline-style.json');
 
 function walk(dir) {
@@ -61,7 +65,8 @@ function countInFile(filename) {
 
 const baseline = {};
 let total = 0;
-for (const file of walk(pagesRoot).sort()) {
+const files = roots.flatMap((root) => (fs.existsSync(root) ? walk(root) : [])).sort();
+for (const file of files) {
   const n = countInFile(file);
   if (n <= 0) continue;
   const rel = relativeToCwd(appRoot, file);

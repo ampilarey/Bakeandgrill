@@ -17,8 +17,8 @@ export function Spinner({ size = 24 }: { size?: number }) {
         fill="none"
         style={{ animation: 'spin 0.8s linear infinite' }}
       >
-        <circle cx="12" cy="12" r="10" stroke="#E8E0D8" strokeWidth="3" />
-        <path d="M12 2a10 10 0 0110 10" stroke="#D4813A" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="12" cy="12" r="10" stroke="var(--color-border)" strokeWidth="3" />
+        <path d="M12 2a10 10 0 0110 10" stroke="var(--color-primary)" strokeWidth="3" strokeLinecap="round" />
       </svg>
     </div>
   );
@@ -33,7 +33,7 @@ export function Card({
       className={className}
       style={{
         background: '#fff',
-        border: '1px solid #E8E0D8',
+        border: '1px solid var(--color-border)',
         borderRadius: 14,
         padding: '1.25rem',
         boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
@@ -58,7 +58,7 @@ export function Badge({
     blue:   { bg: '#dbeafe', text: '#1d4ed8', border: '#93c5fd' },
     purple: { bg: '#f3e8ff', text: '#7e22ce', border: '#d8b4fe' },
     teal:   { bg: '#ccfbf1', text: '#0f766e', border: '#5eead4' },
-    gray:   { bg: '#F8F6F3', text: '#6B5D4F', border: '#E8E0D8' },
+    gray:   { bg: 'var(--color-bg)', text: 'var(--color-text-secondary)', border: 'var(--color-border)' },
     orange: { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
   };
   const s = colorMap[color] ?? colorMap.gray;
@@ -93,7 +93,7 @@ export function EmptyState({ message, children }: { message?: string; children?:
   return (
     <div style={{
       textAlign: 'center', padding: '3rem 1.5rem',
-      color: '#9C8E7E', fontSize: '0.9375rem',
+      color: 'var(--color-text-muted)', fontSize: '0.9375rem',
     }}>
       {message ?? children ?? 'Nothing to show.'}
     </div>
@@ -240,10 +240,10 @@ export function Toolbar({
 type BtnVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const BTN_STYLES: Record<BtnVariant, React.CSSProperties> = {
-  primary:   { background: '#D4813A', color: '#fff', border: 'none' },
-  secondary: { background: '#F8F6F3', color: '#1C1408', border: '1px solid #E8E0D8' },
-  danger:    { background: '#ef4444', color: '#fff', border: 'none' },
-  ghost:     { background: 'transparent', color: '#6B5D4F', border: 'none' },
+  primary:   { background: 'var(--color-primary)', color: '#fff', border: 'none' },
+  secondary: { background: 'var(--color-bg)', color: 'var(--color-text)', border: '1px solid var(--color-border)' },
+  danger:    { background: 'var(--color-danger)', color: '#fff', border: 'none' },
+  ghost:     { background: 'transparent', color: 'var(--color-text-secondary)', border: 'none' },
 };
 
 interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -285,16 +285,16 @@ export function Input({ label, id, style, onChange, ...rest }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-');
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-      {label && <label htmlFor={inputId} style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1C1408' }}>{label}</label>}
+      {label && <label htmlFor={inputId} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>{label}</label>}
       <input
         id={inputId}
         {...rest}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         style={{
           minHeight: 44, height: 44, padding: '0 0.75rem',
-          border: '1.5px solid #E8E0D8', borderRadius: 10,
+          border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: '0.9rem', fontFamily: 'inherit',
-          background: '#fff', color: '#1C1408',
+          background: '#fff', color: 'var(--color-text)',
           outline: 'none',
           ...style,
         }}
@@ -314,16 +314,16 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onC
 export function Select({ options, value, onChange, label, style, ...rest }: SelectProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-      {label && <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1C1408' }}>{label}</label>}
+      {label && <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>{label}</label>}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         {...rest}
         style={{
           minHeight: 44, height: 44, padding: '0 0.75rem',
-          border: '1.5px solid #E8E0D8', borderRadius: 10,
+          border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: '0.875rem', fontFamily: 'inherit',
-          background: '#fff', color: '#1C1408',
+          background: '#fff', color: 'var(--color-text)',
           cursor: 'pointer', outline: 'none',
           ...style,
         }}
@@ -419,14 +419,14 @@ export function Modal({
         style={{ width: '100%', maxWidth }}
       >
         <div className="modal-header">
-          <h3 id={titleId} style={{ fontWeight: 800, fontSize: 17, color: '#1C1408', margin: 0 }}>{title}</h3>
+          <h3 id={titleId} style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-text)', margin: 0 }}>{title}</h3>
           <button
             onClick={onClose}
             aria-label="Close"
             className="icon-button"
             style={{
-              background: '#F8F6F3', border: 'none', borderRadius: 8,
-              width: 40, height: 40, minHeight: 40, cursor: 'pointer', color: '#6B5D4F',
+              background: 'var(--color-bg)', border: 'none', borderRadius: 8,
+              width: 40, height: 40, minHeight: 40, cursor: 'pointer', color: 'var(--color-text-secondary)',
               fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >✕</button>
@@ -446,7 +446,7 @@ export function Modal({
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 export function StatCard({
-  label, value, sub, accent = '#D4813A', icon: Icon, trend,
+  label, value, sub, accent = 'var(--color-primary)', icon: Icon, trend,
 }: {
   label: string;
   value: string;
@@ -458,7 +458,7 @@ export function StatCard({
   return (
     <div style={{
       background: '#fff',
-      border: '1px solid #E8E0D8',
+      border: '1px solid var(--color-border)',
       borderRadius: 14,
       padding: '16px 20px',
       boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
@@ -469,7 +469,7 @@ export function StatCard({
     }}>
       {/* Label row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{ fontSize: 11, color: '#9C8E7E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>{label}</p>
+        <p style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>{label}</p>
         {Icon && (
           <div style={{
             width: 30, height: 30, borderRadius: 8,
@@ -483,14 +483,14 @@ export function StatCard({
       </div>
       {/* Value row */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
-        <p style={{ fontSize: 22, fontWeight: 800, color: '#1C1408', margin: 0, lineHeight: 1 }}>{value}</p>
+        <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1 }}>{value}</p>
         {trend && (
           <span style={{
             fontSize: 11,
             fontWeight: 700,
-            color: trend.positive === true ? '#15803d' : trend.positive === false ? '#b91c1c' : '#6B5D4F',
-            background: trend.positive === true ? '#dcfce7' : trend.positive === false ? '#fee2e2' : '#F8F6F3',
-            border: `1px solid ${trend.positive === true ? '#86efac' : trend.positive === false ? '#fca5a5' : '#E8E0D8'}`,
+            color: trend.positive === true ? '#15803d' : trend.positive === false ? '#b91c1c' : 'var(--color-text-secondary)',
+            background: trend.positive === true ? '#dcfce7' : trend.positive === false ? '#fee2e2' : 'var(--color-bg)',
+            border: `1px solid ${trend.positive === true ? '#86efac' : trend.positive === false ? '#fca5a5' : 'var(--color-border)'}`,
             borderRadius: 9999,
             padding: '2px 7px',
             whiteSpace: 'nowrap',
@@ -499,7 +499,7 @@ export function StatCard({
           </span>
         )}
       </div>
-      {sub && <p style={{ fontSize: 12, color: '#9C8E7E', margin: 0 }}>{sub}</p>}
+      {sub && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{sub}</p>}
     </div>
   );
 }
@@ -508,7 +508,7 @@ export function StatCard({
 export function TableCard({ children, stickyHead }: { children: ReactNode; stickyHead?: boolean }) {
   return (
     <div style={{
-      background: '#fff', border: '1px solid #E8E0D8',
+      background: '#fff', border: '1px solid var(--color-border)',
       borderRadius: 14, overflow: 'hidden',
       boxShadow: '0 1px 2px rgba(28,20,8,0.05)',
     }}>
@@ -522,13 +522,13 @@ export function TableCard({ children, stickyHead }: { children: ReactNode; stick
 // ─── Th / Td helpers ─────────────────────────────────────────────────────────
 export const TH: React.CSSProperties = {
   padding: '11px 16px', textAlign: 'left', fontWeight: 700,
-  color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase',
-  background: '#F8F6F3', borderBottom: '1px solid #E8E0D8',
+  color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase',
+  background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)',
   whiteSpace: 'nowrap',
 };
 export const TD: React.CSSProperties = {
-  padding: '12px 16px', fontSize: 14, color: '#1C1408',
-  borderBottom: '1px solid #F0EBE5', verticalAlign: 'middle',
+  padding: '12px 16px', fontSize: 14, color: 'var(--color-text)',
+  borderBottom: '1px solid var(--color-border-light)', verticalAlign: 'middle',
 };
 
 // ─── DateInput ────────────────────────────────────────────────────────────────
@@ -537,7 +537,7 @@ export function DateInput({ value, onChange, label, max }: {
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {label && <label style={{ fontSize: 11, fontWeight: 700, color: '#6B5D4F', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>}
+      {label && <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>}
       <input
         type="date"
         value={value}
@@ -545,9 +545,9 @@ export function DateInput({ value, onChange, label, max }: {
         onChange={(e) => onChange(e.target.value)}
         style={{
           height: 36, padding: '0 10px',
-          border: '1.5px solid #E8E0D8', borderRadius: 10,
+          border: '1.5px solid var(--color-border)', borderRadius: 10,
           fontSize: 13, fontFamily: 'inherit',
-          background: '#fff', color: '#1C1408', outline: 'none',
+          background: '#fff', color: 'var(--color-text)', outline: 'none',
         }}
       />
     </div>
@@ -557,7 +557,7 @@ export function DateInput({ value, onChange, label, max }: {
 // ─── SectionLabel ─────────────────────────────────────────────────────────────
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <h2 style={{ fontSize: 13, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
+    <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
       {children}
     </h2>
   );
@@ -571,7 +571,7 @@ export function Pagination({ page, totalPages, onChange }: {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: '16px 0' }}>
       <Btn small variant="secondary" disabled={page <= 1} onClick={() => onChange(page - 1)}>← Prev</Btn>
-      <span style={{ fontSize: 13, color: '#6B5D4F' }}>Page {page} of {totalPages}</span>
+      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Page {page} of {totalPages}</span>
       <Btn small variant="secondary" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>Next →</Btn>
     </div>
   );
@@ -664,7 +664,7 @@ export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; clo
         <h3 id={titleId} style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
           {state.title ?? 'Confirm'}
         </h3>
-        <p style={{ fontSize: 14, color: '#6B5D4F', marginBottom: 24, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
           {state.message}
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

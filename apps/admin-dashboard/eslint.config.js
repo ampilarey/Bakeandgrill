@@ -3,9 +3,10 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import local from './eslint-plugin-local/index.js';
 
 /**
- * Stage 1 admin theming guard (docs/ADMIN_THEMING_MOBILE_PLAN.md).
- * Hex literals in style={{…}} under src/pages are warn-level; existing
- * counts are baselined so only regressions / new violations surface.
+ * Admin theming guard (docs/ADMIN_THEMING_MOBILE_PLAN.md).
+ * Hex literals in style={{…}} under src/pages and src/components are
+ * warn-level; existing counts are baselined so only regressions / new
+ * violations surface.
  */
 export default [
   {
@@ -39,7 +40,7 @@ export default [
     },
   },
   {
-    files: ['src/pages/**/*.{ts,tsx}'],
+    files: ['src/pages/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}'],
     plugins: { local },
     rules: {
       'local/no-hex-in-inline-style': ['warn', {
