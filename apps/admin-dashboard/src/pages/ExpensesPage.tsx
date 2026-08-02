@@ -432,7 +432,7 @@ export function ExpensesPage() {
             <StatCard label="Total Expenses" value={`MVR ${parseFloat(String(totalAmount ?? 0)).toFixed(2)}`} accent="var(--color-danger)" />
 
             {bulkSelected.size > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 10, marginBottom: 10, background: 'var(--color-text)', color: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 10, marginBottom: 10, background: '#1C1408', color: '#fff' }}>
                 <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{bulkSelected.size} selected</span>
                 <Btn small onClick={bulkApprove} disabled={bulkLoading}>✓ Approve</Btn>
                 <button onClick={() => setBulkSelected(new Set())} style={{ background: 'none', border: 'none', color: '#C4B5A3', cursor: 'pointer', fontSize: 18 }}>×</button>
