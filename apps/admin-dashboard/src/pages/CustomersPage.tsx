@@ -274,9 +274,9 @@ export function CustomersPage() {
   };
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8',
+    width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)',
     borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none',
-    background: '#fff', color: '#1C1408', boxSizing: 'border-box',
+    background: '#fff', color: 'var(--color-text)', boxSizing: 'border-box',
   };
 
   return (
@@ -288,7 +288,7 @@ export function CustomersPage() {
         title="Customers"
         subtitle={`${meta.total} registered customers`}
         action={
-          <Link to="/customers/growth" style={{ fontSize: 14, color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+          <Link to="/customers/growth" style={{ fontSize: 14, color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
             Growth dashboard →
           </Link>
         }
@@ -361,14 +361,14 @@ export function CustomersPage() {
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ''; }}
               >
                 <td style={TD}>
-                  <div style={{ fontWeight: 600, color: '#1C1408' }}>{c.name ?? '—'}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{c.name ?? '—'}</div>
                   {c.email && <div style={{ fontSize: 11, color: '#8B7355' }}>{c.email}</div>}
                 </td>
                 <td style={TD}>{c.phone}</td>
                 <td style={TD}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {(c.badges ?? []).length === 0 ? (
-                      <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>
                     ) : (c.badges ?? []).map((b) => {
                       const meta = BADGE_MAP[b];
                       return meta
@@ -380,7 +380,7 @@ export function CustomersPage() {
                 <td style={TD}>
                   {c.tier
                     ? <Badge color={TIER_COLOR[c.tier] ?? 'gray'}>{c.tier}</Badge>
-                    : <span style={{ color: '#9C8E7E', fontSize: 12 }}>—</span>}
+                    : <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>}
                 </td>
                 <td style={TD}>{c.orders_count}</td>
                 <td style={TD}>{fmtDate(c.last_order_at)}</td>
@@ -397,7 +397,7 @@ export function CustomersPage() {
         {!loading && meta.last_page > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0', borderTop: '1px solid #F0EBE3' }}>
             <Btn small variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>← Prev</Btn>
-            <span style={{ fontSize: 13, color: '#6B5D4F', alignSelf: 'center' }}>Page {page} of {meta.last_page}</span>
+            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', alignSelf: 'center' }}>Page {page} of {meta.last_page}</span>
             <Btn small variant="secondary" onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))} disabled={page >= meta.last_page}>Next →</Btn>
           </div>
         )}
@@ -420,16 +420,16 @@ export function CustomersPage() {
           }}>
             {/* Header */}
             <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0EAE3', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(212,129,58,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 17, color: '#D4813A', flexShrink: 0 }}>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(212,129,58,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 17, color: 'var(--color-primary)', flexShrink: 0 }}>
                 {(detail?.customer.name ?? selected.name ?? '?').charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#1C1408', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {detail?.customer.name ?? selected.name ?? selected.phone}
                 </p>
-                <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>{selected.phone}</p>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{selected.phone}</p>
               </div>
-              <button onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: 4, borderRadius: 8, display: 'flex' }}>
+              <button onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, display: 'flex' }}>
                 ✕
               </button>
             </div>
@@ -447,8 +447,8 @@ export function CustomersPage() {
                     { label: 'Total Spend', value: paidSpend != null ? `MVR ${paidSpend.toFixed(2)}` : '…' },
                   ].map(({ label, value }) => (
                     <div key={label} style={{ background: '#FAF7F3', border: '1px solid #F0EAE3', borderRadius: 12, padding: '12px 10px', textAlign: 'center' }}>
-                      <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#D4813A' }}>{value}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9C8E7E', fontWeight: 600 }}>{label}</p>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--color-primary)' }}>{value}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600 }}>{label}</p>
                     </div>
                   ))}
                 </div>
@@ -470,8 +470,8 @@ export function CustomersPage() {
                         ['GST Registered', detail.customer.is_gst_registered ? 'Yes' : 'No'],
                       ] as [string, string][]).map(([label, value]) => (
                         <div key={label} style={{ background: '#FAF7F3', borderRadius: 8, padding: '8px 10px' }}>
-                          <p style={{ color: '#9C8E7E', margin: '0 0 2px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
-                          <p style={{ color: '#1C1408', margin: 0, fontWeight: 600, fontSize: 13 }}>{value}</p>
+                          <p style={{ color: 'var(--color-text-muted)', margin: '0 0 2px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+                          <p style={{ color: 'var(--color-text)', margin: 0, fontWeight: 600, fontSize: 13 }}>{value}</p>
                         </div>
                       ))}
                     </div>
@@ -487,7 +487,7 @@ export function CustomersPage() {
                     {saveError && <ErrorMsg message={saveError} />}
                     {(['name', 'email', 'tin', 'billing_address'] as const).map((key) => (
                       <div key={key}>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4, textTransform: key === 'tin' ? 'uppercase' : 'capitalize' }}>{key === 'billing_address' ? 'Billing address' : key === 'tin' ? 'TIN' : key}</label>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4, textTransform: key === 'tin' ? 'uppercase' : 'capitalize' }}>{key === 'billing_address' ? 'Billing address' : key === 'tin' ? 'TIN' : key}</label>
                         {key === 'billing_address' ? (
                           <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={form.billing_address} onChange={(e) => setForm((f) => ({ ...f, billing_address: e.target.value }))} />
                         ) : (
@@ -500,7 +500,7 @@ export function CustomersPage() {
                       GST registered (B2B tax invoices)
                     </label>
                     <div>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Internal Notes</label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Internal Notes</label>
                       <textarea style={{ ...inputStyle, height: 80, resize: 'vertical' }} value={form.internal_notes} onChange={(e) => setForm((f) => ({ ...f, internal_notes: e.target.value }))} />
                     </div>
                     <div style={{ display: 'flex', gap: 20 }}>
@@ -536,15 +536,15 @@ export function CustomersPage() {
                 {/* Order history */}
                 {(detail.orders ?? []).length > 0 && (
                   <div>
-                    <p style={{ fontWeight: 700, fontSize: 11, color: '#9C8E7E', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Order History</p>
+                    <p style={{ fontWeight: 700, fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Order History</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {(detail.orders ?? []).map((o) => (
                         <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '10px 12px', background: '#FAF7F3', borderRadius: 10, border: '1px solid #F0EAE3' }}>
-                          <Link to={`/orders?order=${o.id}`} style={{ fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>#{o.order_number}</Link>
+                          <Link to={`/orders?order=${o.id}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>#{o.order_number}</Link>
                           <span style={{ color: '#8B7355', fontSize: 12 }}>{o.type?.replace('_', ' ')}</span>
                           <Badge color={['completed', 'paid'].includes(o.status) ? 'green' : o.status === 'cancelled' ? 'red' : 'gray'}>{o.status}</Badge>
-                          <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(o.total)).toFixed(2)}</span>
-                          <span style={{ color: '#9C8E7E', fontSize: 11 }}>{fmtDate(o.created_at)}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(o.total)).toFixed(2)}</span>
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{fmtDate(o.created_at)}</span>
                         </div>
                       ))}
                     </div>
@@ -580,7 +580,7 @@ export function CustomersPage() {
 
       {phoneModalOpen && (
       <Modal onClose={() => setPhoneModalOpen(false)} title="Change Phone Number">
-        <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
           Current: <strong>{detail?.customer.phone}</strong>. The customer will need to log in again with the new number.
         </p>
         {phoneError && <ErrorMsg message={phoneError} />}
@@ -596,7 +596,7 @@ export function CustomersPage() {
 
       {mergeModalOpen && (
       <Modal onClose={() => setMergeModalOpen(false)} title="Merge Accounts Into This Customer">
-        <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
           Primary account: <strong>{detail?.customer.name ?? detail?.customer.phone}</strong> (#{detail?.customer.id}).
           Search for duplicate accounts to absorb their orders, loyalty, and history.
         </p>
@@ -607,7 +607,7 @@ export function CustomersPage() {
           value={mergeSearch}
           onChange={(v) => void searchMergeCandidates(v)}
         />
-        {mergeSearching && <p style={{ fontSize: 12, color: '#9C8E7E', margin: '8px 0' }}>Searching…</p>}
+        {mergeSearching && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '8px 0' }}>Searching…</p>}
         {mergeResults.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto', marginTop: 8 }}>
             {mergeResults.map((c) => {
@@ -620,7 +620,7 @@ export function CustomersPage() {
                   style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                    border: picked ? '2px solid #D4813A' : '1px solid #F0EAE3',
+                    border: picked ? '2px solid var(--color-primary)' : '1px solid #F0EAE3',
                     background: picked ? '#FFF7ED' : '#FAF7F3',
                   }}
                 >
@@ -628,7 +628,7 @@ export function CustomersPage() {
                     <strong>{c.name ?? '—'}</strong>
                     <span style={{ display: 'block', fontSize: 12, color: '#8B7355' }}>{c.phone}</span>
                   </span>
-                  <span style={{ fontSize: 12, color: '#9C8E7E' }}>{c.orders_count} orders</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{c.orders_count} orders</span>
                 </button>
               );
             })}
