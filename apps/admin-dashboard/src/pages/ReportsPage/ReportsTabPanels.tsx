@@ -71,7 +71,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             {(summary.payment_commission?.totals.gross_commissionable ?? 0) > 0 && (
               <>
                 <StatCard label="Card/Gateway Gross" value={mvr(summary.payment_commission!.totals.gross_commissionable)} accent="#6366f1" />
-                <StatCard label="BML Commission" value={mvr(summary.payment_commission!.totals.commission_total)} sub="Processing fees" accent="#dc2626" />
+                <StatCard label="BML Commission" value={mvr(summary.payment_commission!.totals.commission_total)} sub="Processing fees" accent="var(--color-danger-strong)" />
                 <StatCard label="Net Settlement" value={mvr(summary.payment_commission!.totals.net_settlement)} sub="After fees" accent="#16a34a" />
               </>
             )}
@@ -1128,8 +1128,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={S.td}>
                       <span style={{
                         fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                        background: row.velocity === 'fast' ? '#DCFCE7' : row.velocity === 'slow' ? '#FEE2E2' : '#F3F4F6',
-                        color: row.velocity === 'fast' ? '#166534' : row.velocity === 'slow' ? '#991B1B' : '#6B7280',
+                        background: row.velocity === 'fast' ? '#DCFCE7' : row.velocity === 'slow' ? 'var(--color-danger-bg)' : '#F3F4F6',
+                        color: row.velocity === 'fast' ? '#166534' : row.velocity === 'slow' ? 'var(--color-danger-strong)' : '#6B7280',
                       }}>{row.velocity}</span>
                     </td>
                   </tr>

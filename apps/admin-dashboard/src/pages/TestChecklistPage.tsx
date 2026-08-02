@@ -669,7 +669,7 @@ export default function TestChecklistPage() {
         </div>
         <button
           onClick={resetAll}
-          style={{ background: '#FEE2E2', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: '#DC2626', cursor: 'pointer' }}
+          style={{ background: 'var(--color-danger-bg)', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: 'var(--color-danger-strong)', cursor: 'pointer' }}
         >
           Reset all
         </button>

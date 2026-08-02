@@ -75,8 +75,8 @@ export function MyAccountPage() {
 
       {error && (
         <p style={{
-          color: '#dc2626', fontSize: 13, margin: '0 0 16px',
-          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px',
+          color: 'var(--color-danger-strong)', fontSize: 13, margin: '0 0 16px',
+          background: 'var(--color-danger-bg)', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px',
         }}>
           {error}
         </p>

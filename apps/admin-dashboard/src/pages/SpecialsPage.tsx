@@ -819,8 +819,8 @@ export default function SpecialsPage() {
             </div>
           )}
           {formError && (
-            <div ref={errorRef} data-testid="specials-form-error" style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#FEF2F2', border: '1px solid rgba(239,68,68,0.35)' }}>
-              <p style={{ color: '#B91C1C', margin: 0 }} role="alert">{formError}</p>
+            <div ref={errorRef} data-testid="specials-form-error" style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--color-danger-bg)', border: '1px solid rgba(239,68,68,0.35)' }}>
+              <p style={{ color: 'var(--color-danger-strong)', margin: 0 }} role="alert">{formError}</p>
               {conflictSpecialId && (
                 <Btn small variant="secondary" onClick={() => void openEditFromConflict()} style={{ marginTop: 8 }}>
                   Add variant to existing discount

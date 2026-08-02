@@ -186,7 +186,7 @@ function LogsDrawer({
           </button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {logsError && <p style={{ color: '#dc2626', fontSize: 13 }}>{logsError}</p>}
+          {logsError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{logsError}</p>}
           {loading ? <Spinner /> : logs.length === 0 ? (
             <EmptyState message="No delivery attempts yet." />
           ) : logs.map((log) => (

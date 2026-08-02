@@ -216,7 +216,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
             )}
 
             {loginError && (
-              <div style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
+              <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
                 {loginError}
               </div>
             )}
@@ -266,7 +266,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
               style={INPUT}
             />
             {resetMsg && (
-              <div style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
+              <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
                 {resetMsg}
               </div>
             )}
@@ -315,7 +315,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
             </div>
 
             {otpError && (
-              <div style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
+              <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
                 {otpError}
               </div>
             )}

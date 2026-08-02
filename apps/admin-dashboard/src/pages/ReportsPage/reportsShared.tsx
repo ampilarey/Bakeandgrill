@@ -47,7 +47,7 @@ export function PaymentCommissionBlock({ commission }: { commission?: PaymentCom
                 <td style={td}>{row.label}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{mvr(row.gross)}</td>
                 <td style={{ ...td, textAlign: 'right', color: 'var(--color-text-muted)' }}>{row.rate_percent}%</td>
-                <td style={{ ...td, textAlign: 'right', color: '#dc2626' }}>{mvr(row.commission)}</td>
+                <td style={{ ...td, textAlign: 'right', color: 'var(--color-danger-strong)' }}>{mvr(row.commission)}</td>
                 <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.net)}</td>
               </tr>
             ))}
@@ -55,7 +55,7 @@ export function PaymentCommissionBlock({ commission }: { commission?: PaymentCom
               <td style={{ ...td, fontWeight: 700 }}>Total</td>
               <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(commission.totals.gross_commissionable)}</td>
               <td style={td} />
-              <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{mvr(commission.totals.commission_total)}</td>
+              <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: 'var(--color-danger-strong)' }}>{mvr(commission.totals.commission_total)}</td>
               <td style={{ ...td, textAlign: 'right', fontWeight: 700 }}>{mvr(commission.totals.net_settlement)}</td>
             </tr>
           </tbody>

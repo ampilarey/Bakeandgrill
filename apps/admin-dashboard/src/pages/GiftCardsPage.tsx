@@ -537,7 +537,7 @@ export default function GiftCardsPage() {
                   <tr key={row.id}>
                     <td style={TD}>{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
                     <td style={TD}>{row.type}</td>
-                    <td style={{ ...TD, color: row.amount < 0 ? '#b91c1c' : '#166534', fontWeight: 600 }}>
+                    <td style={{ ...TD, color: row.amount < 0 ? 'var(--color-danger-strong)' : '#166534', fontWeight: 600 }}>
                       {row.amount < 0 ? '−' : '+'}MVR {Math.abs(row.amount).toFixed(2)}
                     </td>
                     <td style={TD}>MVR {row.balance_after.toFixed(2)}</td>
@@ -582,7 +582,7 @@ export default function GiftCardsPage() {
                 <p style={{
                   margin: '12px 0 0',
                   fontSize: 13,
-                  color: issueSms.ok ? '#166534' : '#b91c1c',
+                  color: issueSms.ok ? '#166534' : 'var(--color-danger-strong)',
                   fontWeight: 600,
                 }}>
                   {issueSms.ok
@@ -594,7 +594,7 @@ export default function GiftCardsPage() {
                 <p style={{
                   margin: '8px 0 0',
                   fontSize: 13,
-                  color: issueEmail.ok ? '#166534' : '#b91c1c',
+                  color: issueEmail.ok ? '#166534' : 'var(--color-danger-strong)',
                   fontWeight: 600,
                 }}>
                   {issueEmail.ok

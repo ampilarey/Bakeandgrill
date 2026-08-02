@@ -79,7 +79,7 @@ export function CateringPage() {
         <Btn onClick={() => load()}>Refresh</Btn>
       </div>
 
-      {error && <p style={{ color: '#b91c1c', fontSize: 13 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</p>}
       {loading ? (
         <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (

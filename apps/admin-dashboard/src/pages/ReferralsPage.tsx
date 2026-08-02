@@ -143,10 +143,10 @@ export default function ReferralsPage() {
           {checkResult && (
             <div style={{
               padding: '12px 16px', borderRadius: 10, marginBottom: 16,
-              background: checkResult.valid ? '#f0fdf4' : '#fef2f2',
+              background: checkResult.valid ? '#f0fdf4' : 'var(--color-danger-bg)',
               border: `1px solid ${checkResult.valid ? '#bbf7d0' : '#fecaca'}`,
             }}>
-              <p style={{ fontWeight: 700, color: checkResult.valid ? '#15803d' : '#dc2626', margin: '0 0 4px', fontSize: 14 }}>
+              <p style={{ fontWeight: 700, color: checkResult.valid ? '#15803d' : 'var(--color-danger-strong)', margin: '0 0 4px', fontSize: 14 }}>
                 {checkResult.valid ? '✓ Valid Code' : '✗ Invalid Code'}
               </p>
               {checkResult.valid && checkResult.referee_discount_mvr != null && (

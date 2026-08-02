@@ -93,12 +93,12 @@ export function ProfitLossPage() {
                     { label: 'Cost of Goods (COGS)', value: -pnl.cogs,               color: 'var(--color-danger)' },
                     { label: 'Operating Expenses',   value: -pnl.expenses.total,     color: '#f97316' },
                     { label: 'Waste Cost',           value: -pnl.waste_cost,         color: 'var(--color-warning)' },
-                    { label: 'Net Profit',           value: pnl.operating_profit,    color: pnl.operating_profit >= 0 ? 'var(--color-primary)' : '#dc2626' },
+                    { label: 'Net Profit',           value: pnl.operating_profit,    color: pnl.operating_profit >= 0 ? 'var(--color-primary)' : 'var(--color-danger-strong)' },
                   ].map((row) => (
                     <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                       <div style={{ width: 150, fontSize: 12, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{row.label}</div>
                       <ProgressBar pct={pnl.revenue.gross !== 0 ? Math.abs(row.value) / pnl.revenue.gross * 100 : 0} color={row.color} />
-                      <div style={{ width: 100, textAlign: 'right', fontWeight: 700, color: row.value >= 0 ? '#16a34a' : '#dc2626', fontSize: 13, flexShrink: 0 }}>
+                      <div style={{ width: 100, textAlign: 'right', fontWeight: 700, color: row.value >= 0 ? '#16a34a' : 'var(--color-danger-strong)', fontSize: 13, flexShrink: 0 }}>
                         {row.value < 0 ? '−' : ''}MVR {parseFloat(String(Math.abs(row.value) ?? 0)).toFixed(2)}
                       </div>
                     </div>
@@ -145,8 +145,8 @@ export function ProfitLossPage() {
                       <tr key={d.date}>
                         <td style={{ ...TD, textAlign: 'left', color: 'var(--color-text-secondary)' }}>{d.date}</td>
                         <td style={{ ...TD, textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>+{parseFloat(String(d.inflow ?? 0)).toFixed(2)}</td>
-                        <td style={{ ...TD, textAlign: 'right', color: '#dc2626', fontWeight: 600 }}>-{parseFloat(String(d.outflow ?? 0)).toFixed(2)}</td>
-                        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: d.net >= 0 ? '#16a34a' : '#dc2626' }}>{parseFloat(String(d.net ?? 0)).toFixed(2)}</td>
+                        <td style={{ ...TD, textAlign: 'right', color: 'var(--color-danger-strong)', fontWeight: 600 }}>-{parseFloat(String(d.outflow ?? 0)).toFixed(2)}</td>
+                        <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: d.net >= 0 ? '#16a34a' : 'var(--color-danger-strong)' }}>{parseFloat(String(d.net ?? 0)).toFixed(2)}</td>
                         <td style={{ ...TD, textAlign: 'right', fontWeight: 700, color: 'var(--color-text)' }}>{parseFloat(String(d.running_balance ?? 0)).toFixed(2)}</td>
                       </tr>
                     ))}

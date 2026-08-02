@@ -34,6 +34,14 @@
   --color-danger:        #EF4444;
   --color-info:          #3B82F6;
 
+  /* Status chips (bg + strong text). Light = dominant literal; dark pair ≥4.5:1 */
+  --color-danger-bg:     #FEE2E2;
+  --color-danger-strong: #DC2626;
+  --color-success-bg:    #DCFCE7;
+  --color-success-strong:#16A34A;
+  --color-warning-bg:    #FFF7ED;
+  --color-warning-strong:#92400E;
+
   /* Radius */
   --radius-sm:  6px;
   --radius-md:  10px;
@@ -850,6 +858,14 @@ a { text-decoration: none; color: inherit; }
   --color-sidebar-text:  #A09080;
   --color-sidebar-active:#D4813A;
   --color-sidebar-hover: rgba(212, 129, 58, 0.15);
+
+  /* Status chips — tinted surfaces + light strong text (pair ≥4.5:1) */
+  --color-danger-bg:     #3F1518;
+  --color-danger-strong: #FCA5A5;
+  --color-success-bg:    #052E16;
+  --color-success-strong:#86EFAC;
+  --color-warning-bg:    #422006;
+  --color-warning-strong:#FCD34D;
 }
 
 [data-theme="dark"] body {
@@ -1556,7 +1572,7 @@ a { text-decoration: none; color: inherit; }
 
 .admin-shell-sheet-logout {
   border-color: #fca5a5;
-  color: #dc2626;
+  color: var(--color-danger-strong);
 }
 
 /* Page layout primitives */
@@ -2785,7 +2801,7 @@ a { text-decoration: none; color: inherit; }
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #B91C1C;
+  color: var(--color-danger-strong);
   line-height: 1.4;
 }
 

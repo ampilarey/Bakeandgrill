@@ -111,12 +111,12 @@ export function SystemHealthPage() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
             padding: '12px 16px', borderRadius: 12,
-            background: degraded ? '#FEF2F2' : '#F0FDF4',
+            background: degraded ? 'var(--color-danger-bg)' : '#F0FDF4',
             border: `1px solid ${degraded ? '#FECACA' : '#BBF7D0'}`,
           }}>
-            {degraded ? <AlertTriangle size={20} color="#DC2626" /> : <CheckCircle2 size={20} color="#16A34A" />}
+            {degraded ? <AlertTriangle size={20} color="var(--color-danger-strong)" /> : <CheckCircle2 size={20} color="#16A34A" />}
             <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: degraded ? '#991B1B' : '#166534' }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: degraded ? 'var(--color-danger-strong)' : '#166534' }}>
                 {degraded ? 'Issues detected in the last 24 hours' : 'All systems nominal'}
               </p>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
@@ -312,8 +312,8 @@ export function SystemHealthPage() {
                           onClick={() => void handleForget(j.uuid)}
                           style={{
                             padding: '5px 10px', borderRadius: 8, border: '1px solid #FECACA',
-                            background: '#FEF2F2', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                            color: '#B91C1C', fontFamily: 'inherit',
+                            background: 'var(--color-danger-bg)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                            color: 'var(--color-danger-strong)', fontFamily: 'inherit',
                           }}
                         >
                           Discard
@@ -334,7 +334,7 @@ export function SystemHealthPage() {
                   {(data.scheduler_last_runs ?? []).map((row) => (
                     <div key={row.command} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{row.command}</span>
-                      <span style={{ color: row.stale ? '#DC2626' : '#16A34A' }}>
+                      <span style={{ color: row.stale ? 'var(--color-danger-strong)' : '#16A34A' }}>
                         {row.last_run ? fmtTime(row.last_run) : 'Never recorded'}
                         {row.stale && row.last_run ? ' · stale' : ''}
                       </span>

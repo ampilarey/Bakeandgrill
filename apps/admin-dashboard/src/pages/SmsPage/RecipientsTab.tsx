@@ -68,7 +68,7 @@ function StaffPrefsModal({
 
   return (
     <Modal title={`SMS Notifications — ${member.name}`} onClose={onClose}>
-      {error && <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#991b1b', marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
       {prefs && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!member.phone && (
@@ -151,7 +151,7 @@ function PhoneModal({ member, onClose, onSaved }: { member: StaffMember; onClose
 
   return (
     <Modal title={`Set Phone — ${member.name}`} onClose={onClose}>
-      {error && <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#991b1b', marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
       <div style={{ marginBottom: 16 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Mobile Phone Number</label>
         <Input placeholder="e.g. 7972434" value={phone} onChange={setPhone} />
@@ -219,7 +219,7 @@ function ExternalContactModal({
 
   return (
     <Modal title={contact ? 'Edit External Contact' : 'Add External Contact'} onClose={onClose}>
-      {error && <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#991b1b', marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
@@ -410,7 +410,7 @@ export function RecipientsTab() {
                         ) : (
                           <button onClick={() => setPhoneModal(m)} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 12, color: 'var(--color-danger)', background: '#fee2e2',
+                            fontSize: 12, color: 'var(--color-danger)', background: 'var(--color-danger-bg)',
                             border: '1px solid #fca5a5', borderRadius: 6, padding: '2px 8px',
                             cursor: 'pointer', fontFamily: 'inherit',
                           }}>

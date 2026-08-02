@@ -215,7 +215,7 @@ function ImageCropModalBody({
         </div>
 
         {error && (
-          <p style={{ margin: '10px 0 0', color: '#dc2626', fontSize: 13 }}>{error}</p>
+          <p style={{ margin: '10px 0 0', color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</p>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>

@@ -138,9 +138,9 @@ export function SmsControlCenterPage() {
           padding: '12px 14px',
           marginBottom: 16,
           borderRadius: 10,
-          background: '#FEF2F2',
+          background: 'var(--color-danger-bg)',
           border: '1px solid #FECACA',
-          color: '#991B1B',
+          color: 'var(--color-danger-strong)',
           fontSize: 13,
         }}>
           <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -151,7 +151,7 @@ export function SmsControlCenterPage() {
       )}
 
       {error && (
-        <p style={{ color: '#B91C1C', marginBottom: 12 }}>{error}</p>
+        <p style={{ color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</p>
       )}
 
       {loading ? (
@@ -421,7 +421,7 @@ function InlineTemplateEditor({
           </button>
         </div>
       </div>
-      {err && <p style={{ color: '#B91C1C', fontSize: 12, margin: '8px 0 0' }}>{err}</p>}
+      {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: '8px 0 0' }}>{err}</p>}
       {preview && (
         <div style={{
           marginTop: 10,

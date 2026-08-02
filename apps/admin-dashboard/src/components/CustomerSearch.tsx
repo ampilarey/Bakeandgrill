@@ -50,7 +50,7 @@ export function CustomerSearch({
           <button
             type="button"
             onClick={() => { onChange(null, ''); setLabel(''); }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: 16, lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger-strong)', fontSize: 16, lineHeight: 1 }}
             aria-label="Clear customer"
           >
             ×

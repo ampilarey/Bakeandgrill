@@ -13,7 +13,7 @@ const DESC_SOFT = 160;
 function Counter({ value, soft }: { value: number; soft: number }) {
   const over = value > soft;
   return (
-    <span style={{ fontSize: 11, fontWeight: 600, color: over ? '#B91C1C' : 'var(--color-text-muted)' }}>
+    <span style={{ fontSize: 11, fontWeight: 600, color: over ? 'var(--color-danger-strong)' : 'var(--color-text-muted)' }}>
       {value}/{soft}
     </span>
   );

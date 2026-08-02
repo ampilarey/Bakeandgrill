@@ -175,7 +175,7 @@ export function ItemSearch(props: Props) {
           type="button"
           onClick={() => onChange(null as never)}
           style={{
-            background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626',
+            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger-strong)',
             fontSize: 22, lineHeight: 1, minHeight: 40, minWidth: 40,
           }}
           aria-label="Clear selection"

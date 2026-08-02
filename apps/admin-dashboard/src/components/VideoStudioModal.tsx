@@ -126,7 +126,7 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
         </p>
 
         {ffmpeg === false ? (
-          <p style={{ margin: 0, fontSize: 13, color: '#B91C1C', background: '#FEF2F2', padding: 10, borderRadius: 8 }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-danger-strong)', background: 'var(--color-danger-bg)', padding: 10, borderRadius: 8 }}>
             FFmpeg is not installed on this server. Ask hosting to install <code>ffmpeg</code> and <code>ffprobe</code>.
           </p>
         ) : null}
@@ -237,7 +237,7 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
         </div>
 
         {error ? (
-          <p style={{ margin: 0, fontSize: 12, color: '#B91C1C' }}>{error}</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-danger-strong)' }}>{error}</p>
         ) : null}
       </div>
     </Modal>

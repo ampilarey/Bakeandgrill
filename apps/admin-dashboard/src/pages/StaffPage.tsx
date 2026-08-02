@@ -123,7 +123,7 @@ function RowActionMenu({ items }: { items: MenuItem[] }) {
                 display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px',
                 border: 'none', background: 'none', cursor: 'pointer', borderRadius: 8,
                 fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-                color: item.danger ? '#DC2626' : 'var(--color-text)', minHeight: 44,
+                color: item.danger ? 'var(--color-danger-strong)' : 'var(--color-text)', minHeight: 44,
               }}
             >
               {item.label}

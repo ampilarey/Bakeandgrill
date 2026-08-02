@@ -139,7 +139,7 @@ const S = {
   btnDanger: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 10, border: 'none',
-    background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 600,
+    background: 'var(--color-danger)', color: '#fff', fontSize: 13, fontWeight: 600,
     cursor: 'pointer',
   } as React.CSSProperties,
   statusOpen: {
@@ -150,7 +150,7 @@ const S = {
   } as React.CSSProperties,
   statusClosed: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: '#FEE2E2', color: '#991B1B',
+    background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)',
     border: '1px solid #FECACA',
     borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 700,
   } as React.CSSProperties,
@@ -652,8 +652,8 @@ export default function OnlineOrderingPage() {
   const toastBanner = toast ? (
     <div style={{
       marginBottom: '1rem', padding: '10px 16px', borderRadius: 10,
-      background: toast.type === 'ok' ? '#D1FAE5' : '#FEE2E2',
-      color: toast.type === 'ok' ? '#065F46' : '#991B1B',
+      background: toast.type === 'ok' ? '#D1FAE5' : 'var(--color-danger-bg)',
+      color: toast.type === 'ok' ? '#065F46' : 'var(--color-danger-strong)',
       fontSize: 13, fontWeight: 600,
       display: 'flex', alignItems: 'center', gap: 8,
     }}>
@@ -957,7 +957,7 @@ export default function OnlineOrderingPage() {
         <div style={{ padding: '2rem' }}>
           <PageHeader section="Manage" title="Ordering Control" />
           <OrderingControlTabs />
-          <p style={{ color: '#DC2626', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
+          <p style={{ color: 'var(--color-danger-strong)', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
         </div>
       </PageShell>
     );

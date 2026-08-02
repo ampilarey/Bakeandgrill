@@ -68,7 +68,7 @@ export function ServiceChargeSettings() {
   return (
     <div style={{ maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 20 }}>
       {error && (
-        <p style={{ color: '#dc2626', fontSize: 13, margin: 0, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>
+        <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0, background: 'var(--color-danger-bg)', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>
           {error}
         </p>
       )}

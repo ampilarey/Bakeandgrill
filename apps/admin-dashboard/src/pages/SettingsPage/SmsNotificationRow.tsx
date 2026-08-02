@@ -148,7 +148,7 @@ export function SmsNotificationRow({
           {preview}
         </div>
       )}
-      {bodyError && <p style={{ margin: '8px 0 0', fontSize: 12, color: '#dc2626' }}>{bodyError}</p>}
+      {bodyError && <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-danger-strong)' }}>{bodyError}</p>}
     </div>
   ) : null;
 

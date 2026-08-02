@@ -176,7 +176,7 @@ export default function GstPage() {
             <StatCard label="Output tax" value={mvr(summary.gst_on_standard_sales_laar)} accent="#8B4513" />
             <StatCard label="Input tax (claimable)" value={mvr(summary.claimable_input_revenue_laar + summary.claimable_input_capital_laar)} accent="#059669" />
             <StatCard label="Sales ex-GST" value={mvr(summary.standard_rated_sales_ex_gst_laar)} accent="var(--color-text-secondary)" />
-            <StatCard label="Credit notes / refunds" value={mvr(Math.abs(summary.credit_note_refund_adjustments_laar))} accent="#DC2626" />
+            <StatCard label="Credit notes / refunds" value={mvr(Math.abs(summary.credit_note_refund_adjustments_laar))} accent="var(--color-danger-strong)" />
           </div>
 
           {warnings.length > 0 && (

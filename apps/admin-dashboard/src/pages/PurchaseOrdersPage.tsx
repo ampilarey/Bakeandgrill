@@ -546,7 +546,7 @@ export function PurchaseOrdersPage() {
       {/* Receipt upload modal */}
       {receiptUploadId !== null && (
         <Modal title="Upload Receipt" onClose={() => setReceiptUploadId(null)} maxWidth={400}>
-          {receiptError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{receiptError}</p>}
+          {receiptError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{receiptError}</p>}
           <input ref={receiptInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }}
             onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
           <div
@@ -574,7 +574,7 @@ export function PurchaseOrdersPage() {
       {/* CSV import modal */}
       {showImport && (
         <Modal title="Import Purchase from CSV" onClose={() => setShowImport(false)} maxWidth={480}>
-          {importError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{importError}</p>}
+          {importError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{importError}</p>}
           <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
             CSV must have columns: <strong>name</strong>, <strong>quantity</strong>, <strong>unit_cost</strong>. Optional: <strong>inventory_item_id</strong>.
           </p>
@@ -617,7 +617,7 @@ export function PurchaseOrdersPage() {
       {/* Manual PO modal */}
       {showManualPo && (
         <Modal title="Create Manual Purchase Order" onClose={() => setShowManualPo(false)} maxWidth={560}>
-          {manualPoError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{manualPoError}</p>}
+          {manualPoError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{manualPoError}</p>}
           <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Supplier *</label>
           <select value={manualPoForm.supplier_id} onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_id: e.target.value }))}
             style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12 }}>

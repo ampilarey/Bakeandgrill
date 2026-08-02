@@ -423,7 +423,7 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
 
   return (
     <div style={{ marginTop: 8 }}>
-      {err && <p style={{ color: '#dc2626', fontSize: 12, marginBottom: 4 }}>{err}</p>}
+      {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 4 }}>{err}</p>}
       <select
         disabled={saving}
         defaultValue=""
@@ -475,7 +475,7 @@ function AssignDriverInline({
   return (
     <div style={{ marginTop: 16, background: 'var(--color-bg)', borderRadius: 10, padding: 14, border: '1.5px solid #e5e7eb' }}>
       <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Assign Driver</p>
-      {err && <p style={{ color: '#dc2626', fontSize: 12, marginBottom: 6 }}>{err}</p>}
+      {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 6 }}>{err}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
         <select
           value={driverId}

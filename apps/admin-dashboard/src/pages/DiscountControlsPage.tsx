@@ -282,7 +282,7 @@ export function DiscountControlsPage() {
         }
       />
 
-      {error && <p style={{ color: '#B91C1C', marginBottom: 12 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</p>}
       {savedMsg && <p style={{ color: '#166534', marginBottom: 12 }}>{savedMsg}</p>}
 
       {loading ? (

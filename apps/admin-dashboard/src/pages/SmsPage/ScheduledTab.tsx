@@ -199,7 +199,7 @@ export function ScheduledTab() {
       {modal && (
         <Modal title={editMsg ? 'Edit Scheduled Message' : 'New Scheduled Message'} onClose={() => setModal(false)}>
           <div style={{ display: 'grid', gap: 12 }}>
-            {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
+            {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
 
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Name *</label>

@@ -29,12 +29,12 @@ function StatusCard({ status }: { status: XeroStatus | null }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{
             width: 56, height: 56, borderRadius: 14,
-            background: isConnected ? '#DCFCE7' : '#FEE2E2',
+            background: isConnected ? '#DCFCE7' : 'var(--color-danger-bg)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {isConnected
               ? <CheckCircle size={28} style={{ color: '#16A34A' }} />
-              : <XCircle size={28} style={{ color: '#DC2626' }} />}
+              : <XCircle size={28} style={{ color: 'var(--color-danger-strong)' }} />}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--color-text)' }}>

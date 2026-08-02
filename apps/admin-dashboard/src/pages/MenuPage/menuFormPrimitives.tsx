@@ -224,7 +224,7 @@ export function ImageUploadField({
         {cfg.help}
         {originalValue.trim() ? ' Master saved ✓' : ''}
       </p>
-      {uploadError && <p style={{ color: '#dc2626', fontSize: 12, margin: 0 }}>{uploadError}</p>}
+      {uploadError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: 0 }}>{uploadError}</p>}
       {previewSrc && (
         <img
           key={previewKey}

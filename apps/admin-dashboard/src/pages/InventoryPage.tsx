@@ -516,7 +516,7 @@ export default function InventoryPage() {
             Sales deduct prepared qty when stock tracking is on; recipe ingredients still deduct from raw inventory via recipes.
             COGS uses recipe cost at sale time — baking ahead does not double-count ingredient cost when both paths are configured correctly.
           </p>
-          {preparedError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{preparedError}</p>}
+          {preparedError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 12 }}>{preparedError}</p>}
           <TableCard stickyHead>
             {preparedLoading ? (
               <TableSkeleton rows={6} cols={4} />
@@ -857,7 +857,7 @@ export default function InventoryPage() {
                     {countResult.map((r) => (
                       <tr key={r.item_id}>
                         <td style={TD}>{countItems.find(i => i.id === r.item_id)?.name ?? `#${r.item_id}`}</td>
-                        <td style={{ ...TD, color: r.difference > 0 ? '#15803D' : r.difference < 0 ? '#991B1B' : 'var(--color-text-muted)', fontWeight: 700 }}>
+                        <td style={{ ...TD, color: r.difference > 0 ? '#15803D' : r.difference < 0 ? 'var(--color-danger-strong)' : 'var(--color-text-muted)', fontWeight: 700 }}>
                           {r.difference > 0 ? '+' : ''}{r.difference}
                         </td>
                         <td style={TD}>{r.balance_after}</td>
@@ -915,7 +915,7 @@ export default function InventoryPage() {
       {/* ── Prepared stock adjust modal ── */}
       {prepAdjust && (
         <Modal title={`Adjust Prepared Stock — ${prepAdjust.name}`} onClose={() => setPrepAdjust(null)}>
-          {prepAdjError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{prepAdjError}</p>}
+          {prepAdjError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{prepAdjError}</p>}
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
             Current on hand: <strong>{prepAdjust.stock}</strong>. Use positive to add, negative to remove.
           </p>
@@ -933,7 +933,7 @@ export default function InventoryPage() {
       {/* ── Price History Modal ── */}
       {priceHistoryItem && (
         <Modal title={`Price History — ${priceHistoryItem.name}`} onClose={() => setPriceHistoryItem(null)} maxWidth={560}>
-          {historyError && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{historyError}</p>}
+          {historyError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{historyError}</p>}
           {historyLoading ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Loading…</p> : (
             <>
               {cheapestSupplier && (

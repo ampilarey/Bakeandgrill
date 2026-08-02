@@ -256,7 +256,7 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
               <div>
                 <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Send SMS</p>
                 {summary.sms.opt_out && (
-                  <p style={{ color: '#dc2626', fontSize: 13, margin: '0 0 8px' }}>
+                  <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: '0 0 8px' }}>
                     Customer has opted out of SMS — sending is blocked.
                   </p>
                 )}

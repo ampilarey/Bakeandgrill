@@ -12,7 +12,7 @@ const REASONS = ['spoilage', 'over_prep', 'drop', 'expired', 'quality', 'other']
 type Reason = typeof REASONS[number];
 const REASON_LABELS: Record<Reason, string> = { spoilage: 'Spoilage', over_prep: 'Over Prep', drop: 'Dropped', expired: 'Expired', quality: 'Quality Issue', other: 'Other' };
 const REASON_COLOR: Record<Reason, string> = { spoilage: 'red', over_prep: 'orange', drop: 'orange', expired: 'red', quality: 'orange', other: 'gray' };
-const REASON_HEX: Record<Reason, string> = { spoilage: 'var(--color-danger)', over_prep: 'var(--color-warning)', drop: '#f97316', expired: '#dc2626', quality: '#eab308', other: 'var(--color-text-muted)' };
+const REASON_HEX: Record<Reason, string> = { spoilage: 'var(--color-danger)', over_prep: 'var(--color-warning)', drop: '#f97316', expired: 'var(--color-danger-strong)', quality: '#eab308', other: 'var(--color-text-muted)' };
 
 type Tab = 'logs' | 'summary';
 

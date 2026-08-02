@@ -270,7 +270,7 @@ export function CateringDetailPage() {
   ];
 
   if (loading) return <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>;
-  if (!row) return <p style={{ color: '#b91c1c' }}>{error || 'Not found'}</p>;
+  if (!row) return <p style={{ color: 'var(--color-danger-strong)' }}>{error || 'Not found'}</p>;
 
   return (
     <PageShell>
@@ -286,7 +286,7 @@ export function CateringDetailPage() {
         <Btn onClick={() => void saveLines()} disabled={saving} variant="secondary">Save lines</Btn>
       </div>
 
-      {error && <p style={{ color: '#b91c1c', fontSize: 13 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</p>}
 
       <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -319,7 +319,7 @@ export function CateringDetailPage() {
                   <button
                     type="button"
                     onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
-                    style={{ border: 'none', background: 'none', color: '#b91c1c', cursor: 'pointer', fontWeight: 700 }}
+                    style={{ border: 'none', background: 'none', color: 'var(--color-danger-strong)', cursor: 'pointer', fontWeight: 700 }}
                   >
                     Remove
                   </button>

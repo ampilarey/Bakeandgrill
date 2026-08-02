@@ -38,8 +38,8 @@ export function RevisionDiff({ before, after }: Props) {
         <div
           key={i}
           style={{
-            background: r.type === 'del' ? '#FEE2E2' : r.type === 'add' ? '#DCFCE7' : 'transparent',
-            color: r.type === 'del' ? '#991B1B' : r.type === 'add' ? '#166534' : 'var(--color-text)',
+            background: r.type === 'del' ? 'var(--color-danger-bg)' : r.type === 'add' ? '#DCFCE7' : 'transparent',
+            color: r.type === 'del' ? 'var(--color-danger-strong)' : r.type === 'add' ? '#166534' : 'var(--color-text)',
             padding: '1px 4px',
           }}
         >

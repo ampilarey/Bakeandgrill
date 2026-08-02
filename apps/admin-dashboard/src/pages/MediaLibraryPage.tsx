@@ -885,7 +885,7 @@ export function MediaLibraryPage() {
           />
 
           {uploadError && (
-            <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 14px', color: '#b91c1c', fontSize: 13, marginBottom: 12 }}>
+            <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 14px', color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 12 }}>
               {uploadError}
             </div>
           )}
@@ -904,7 +904,7 @@ export function MediaLibraryPage() {
           {/* Grid */}
           {loading && <Spinner />}
           {!loading && error && (
-            <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 14px', color: '#b91c1c', fontSize: 13 }}>{error}</div>
+            <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 14px', color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</div>
           )}
           {!loading && !error && assets.length === 0 && (
             <EmptyState message="No assets found. Upload some files to get started." />
@@ -1035,7 +1035,7 @@ export function MediaLibraryPage() {
             )}
 
             {detailError && (
-              <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', color: '#b91c1c', fontSize: 12, marginBottom: 10 }}>{detailError}</div>
+              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 8, padding: '8px 12px', color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 10 }}>{detailError}</div>
             )}
 
             {/* Edit form */}
@@ -1177,7 +1177,7 @@ export function MediaLibraryPage() {
                 {editOp && (
                   <div style={{ background: 'var(--color-bg)', borderRadius: 10, padding: 12, border: '1px solid var(--color-border)' }}>
                     <EditOpPanel op={editOp} params={editParams} onChange={setEditParams} />
-                    {editError && <p style={{ color: '#b91c1c', fontSize: 12, margin: '8px 0 0' }}>{editError}</p>}
+                    {editError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: '8px 0 0' }}>{editError}</p>}
                     <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
                       <Btn
                         onClick={() => setShowSaveModeModal(true)}
@@ -1275,7 +1275,7 @@ export function MediaLibraryPage() {
           <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
             Delete <strong>{deleteTarget.title || deleteTarget.url.split('/').pop()}</strong>?
             {deleteTarget.usage_count > 0 && (
-              <span style={{ color: '#b91c1c' }}> This asset is used in {deleteTarget.usage_count} place{deleteTarget.usage_count === 1 ? '' : 's'}.</span>
+              <span style={{ color: 'var(--color-danger-strong)' }}> This asset is used in {deleteTarget.usage_count} place{deleteTarget.usage_count === 1 ? '' : 's'}.</span>
             )}
           </p>
           {deleteTarget.usage_count > 0 && (
@@ -1284,7 +1284,7 @@ export function MediaLibraryPage() {
               Force delete (removes despite active references)
             </label>
           )}
-          {deleteError && <p style={{ color: '#b91c1c', fontSize: 13, marginBottom: 10 }}>{deleteError}</p>}
+          {deleteError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{deleteError}</p>}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <Btn variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Btn>
             <Btn

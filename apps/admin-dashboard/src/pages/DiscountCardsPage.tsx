@@ -197,7 +197,7 @@ export default function DiscountCardsPage() {
         )}
       />
 
-      {error && <p style={{ color: '#dc2626', fontSize: 13 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</p>}
 
       <TableCard>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -269,7 +269,7 @@ export default function DiscountCardsPage() {
             </div>
             <Input label="Min order MVR (optional)" type="number" value={minOrderMvr} onChange={setMinOrderMvr} placeholder="0" />
             <Input label="Note (optional)" value={note} onChange={setNote} placeholder="Staff meal · VIP weekend…" />
-            {issueError && <p style={{ margin: 0, color: '#dc2626', fontSize: 13 }}>{issueError}</p>}
+            {issueError && <p style={{ margin: 0, color: 'var(--color-danger-strong)', fontSize: 13 }}>{issueError}</p>}
           </div>
           <ModalActions>
             <Btn variant="secondary" onClick={() => setIssueOpen(false)}>Cancel</Btn>

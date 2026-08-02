@@ -59,7 +59,7 @@ export function OrderSearch({
         <button
           type="button"
           onClick={() => onChange(null)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', fontSize: 18, lineHeight: 1 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger-strong)', fontSize: 18, lineHeight: 1 }}
           aria-label="Clear selection"
         >
           ×

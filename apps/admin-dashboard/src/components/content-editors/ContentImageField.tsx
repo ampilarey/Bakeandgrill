@@ -138,7 +138,7 @@ export function ContentImageField({
           style={{ width: 64, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontFamily: 'inherit' }}
         />
       </div>
-      {error ? <p style={{ margin: 0, fontSize: 12, color: '#B91C1C' }}>{error}</p> : null}
+      {error ? <p style={{ margin: 0, fontSize: 12, color: 'var(--color-danger-strong)' }}>{error}</p> : null}
       {cropSrc ? (
         <ImageCropModal
           imageSrc={cropSrc}

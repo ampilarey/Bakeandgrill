@@ -115,8 +115,8 @@ function ReservationsList() {
       {error && <ErrorMsg message={error} />}
 
       {confirmAction && (
-        <div style={{ background: '#FEF2F2', border: '1.5px solid var(--color-danger)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', marginBottom: 10 }}>
+        <div style={{ background: 'var(--color-danger-bg)', border: '1.5px solid var(--color-danger)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-danger-strong)', marginBottom: 10 }}>
             Mark reservation as <strong>{confirmAction.status.split('_').join(' ')}</strong>? This cannot be reversed.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>

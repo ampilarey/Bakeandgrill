@@ -59,7 +59,7 @@ function LedgerModal({ customerId, name, onClose }: {
 
   return (
     <Modal title={`Ledger — ${name}`} onClose={onClose} maxWidth={520}>
-      {ledgerError && <p style={{ color: '#dc2626', fontSize: 13, padding: 8 }}>{ledgerError}</p>}
+      {ledgerError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, padding: 8 }}>{ledgerError}</p>}
       {loading ? <Spinner /> : entries.length === 0 ? (
         <EmptyState message="No transactions yet." />
       ) : (

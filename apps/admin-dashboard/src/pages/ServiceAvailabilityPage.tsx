@@ -395,7 +395,7 @@ export default function ServiceAvailabilityPage() {
             bottom: 24,
             right: 24,
             zIndex: 'var(--z-toast)' as unknown as number,
-            background: toast.type === 'ok' ? '#166534' : '#991b1b',
+            background: toast.type === 'ok' ? '#166534' : 'var(--color-danger)',
             color: '#fff',
             padding: '12px 16px',
             borderRadius: 12,
@@ -484,7 +484,7 @@ export default function ServiceAvailabilityPage() {
                         padding: '12px 14px',
                         borderRadius: 12,
                         border: preset.danger ? '1.5px solid #fca5a5' : '1.5px solid var(--color-border)',
-                        background: preset.danger ? '#fef2f2' : 'var(--color-bg)',
+                        background: preset.danger ? 'var(--color-danger-bg)' : 'var(--color-bg)',
                         cursor: presetBusy ? 'not-allowed' : 'pointer',
                         fontFamily: 'inherit',
                         minHeight: 44,
@@ -493,7 +493,7 @@ export default function ServiceAvailabilityPage() {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                         {preset.danger ? (
-                          <ShieldAlert size={16} color="#b91c1c" />
+                          <ShieldAlert size={16} color="var(--color-danger-strong)" />
                         ) : (
                           <Pause size={16} color="var(--color-primary)" />
                         )}
@@ -501,7 +501,7 @@ export default function ServiceAvailabilityPage() {
                           style={{
                             fontWeight: 700,
                             fontSize: 14,
-                            color: preset.danger ? '#991b1b' : 'var(--color-text)',
+                            color: preset.danger ? 'var(--color-danger-strong)' : 'var(--color-text)',
                           }}
                         >
                           {preset.label}
@@ -786,7 +786,7 @@ function ServiceCard({
 function chipStyle(tone: 'green' | 'red' | 'orange' | 'blue'): CSSProperties {
   const map = {
     green: { bg: '#dcfce7', fg: '#166534' },
-    red: { bg: '#fee2e2', fg: '#991b1b' },
+    red: { bg: 'var(--color-danger-bg)', fg: 'var(--color-danger-strong)' },
     orange: { bg: '#ffedd5', fg: '#c2410c' },
     blue: { bg: '#dbeafe', fg: '#1e40af' },
   }[tone];
@@ -995,11 +995,11 @@ function EditServiceModal({
                 marginBottom: 12,
                 padding: 12,
                 borderRadius: 10,
-                background: '#fef2f2',
+                background: 'var(--color-danger-bg)',
                 border: '1px solid #fecaca',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: '#991b1b', fontWeight: 700, fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: 'var(--color-danger-strong)', fontWeight: 700, fontSize: 13 }}>
                 <AlertTriangle size={16} /> High-impact change
               </div>
               <Input

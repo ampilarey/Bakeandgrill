@@ -215,7 +215,7 @@ function NotificationsSettings() {
 
   return (
     <div style={{ maxWidth: 720 }}>
-      {error && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
       {renderSection(
         'Payment & Receipt SMS',

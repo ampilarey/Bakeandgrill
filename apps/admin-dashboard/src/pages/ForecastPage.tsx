@@ -24,7 +24,7 @@ type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts' | 'snoozed' | 'e
 function priceChangeBadge(item: RestockPlanItem): { label: string; color: string; bg: string } | null {
   if (item.price_change == null || item.price_change_pct == null) return null;
   if (item.price_change === 'up') {
-    return { label: `↑ ${item.price_change_pct}%`, color: '#b91c1c', bg: '#fee2e2' };
+    return { label: `↑ ${item.price_change_pct}%`, color: 'var(--color-danger-strong)', bg: 'var(--color-danger-bg)' };
   }
   if (item.price_change === 'down') {
     return { label: `↓ ${Math.abs(item.price_change_pct)}%`, color: '#15803d', bg: '#dcfce7' };
@@ -43,14 +43,14 @@ const STATUS_COLOR: Record<string, string> = {
   warning:      'var(--color-warning)',
   low:          '#f97316',
   critical:     'var(--color-danger)',
-  out_of_stock: '#dc2626',
+  out_of_stock: 'var(--color-danger-strong)',
 };
 
 const STATUS_BG: Record<string, string> = {
   ok:           '#dcfce7',
   warning:      '#fef3c7',
   low:          '#ffedd5',
-  critical:     '#fee2e2',
+  critical:     'var(--color-danger-bg)',
   out_of_stock: '#fecaca',
 };
 
@@ -1132,7 +1132,7 @@ export function ForecastPage() {
               <div style={{ fontWeight: 700, marginBottom: 4 }}>Revenue Forecast (Next 4 Weeks)</div>
               <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
                 Weighted Moving Avg: MVR {parseFloat(String(forecast.weighted_moving_avg ?? 0)).toFixed(2)}/wk ·
-                Growth Rate: <span style={{ color: forecast.growth_rate_pct >= 0 ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
+                Growth Rate: <span style={{ color: forecast.growth_rate_pct >= 0 ? '#16a34a' : 'var(--color-danger-strong)', fontWeight: 700 }}>
                   {forecast.growth_rate_pct >= 0 ? '+' : ''}{parseFloat(String(forecast.growth_rate_pct ?? 0)).toFixed(2)}%/wk
                 </span>
               </div>
@@ -1408,7 +1408,7 @@ export function ForecastPage() {
                     <> · <strong>{selectedRopItems.length}</strong> with ROP change</>
                   )}
                   {selectedWithAlerts.length > 0 && (
-                    <> · <strong style={{ color: '#991b1b' }}>{selectedWithAlerts.length} with open alert</strong></>
+                    <> · <strong style={{ color: 'var(--color-danger-strong)' }}>{selectedWithAlerts.length} with open alert</strong></>
                   )}
                   {selectedQtyEdited > 0 && (
                     <> · <strong>{selectedQtyEdited} qty edited</strong></>
@@ -1461,10 +1461,10 @@ export function ForecastPage() {
                   <StatCard label="Already on PO" value={String(restock.totals.with_open_po)} accent="#b45309" />
                 )}
                 {(restock.totals.price_up ?? 0) > 0 && (
-                  <StatCard label="Price up vs last" value={String(restock.totals.price_up)} accent="#b91c1c" />
+                  <StatCard label="Price up vs last" value={String(restock.totals.price_up)} accent="var(--color-danger-strong)" />
                 )}
                 {(restock.totals.open_alerts ?? 0) > 0 && (
-                  <StatCard label="Open alerts" value={String(restock.totals.open_alerts)} accent="#dc2626" />
+                  <StatCard label="Open alerts" value={String(restock.totals.open_alerts)} accent="var(--color-danger-strong)" />
                 )}
                 {(restock.totals.snoozed ?? 0) > 0 && (
                   <StatCard label="Snoozed" value={String(restock.totals.snoozed)} accent="var(--color-text-secondary)" />
@@ -1533,7 +1533,7 @@ export function ForecastPage() {
                             : item.snoozed
                               ? '#F3F4F6'
                               : item.price_change === 'up'
-                                ? '#FEF2F2'
+                                ? 'var(--color-danger-bg)'
                                 : item.due_soon
                                   ? '#FFFBEB'
                                   : undefined,
@@ -1658,8 +1658,8 @@ export function ForecastPage() {
                                   ? `Alert since ${new Date(item.open_alert.created_at).toLocaleString()}`
                                   : 'Open reorder alert'}
                                 style={{
-                                  fontSize: 11, fontWeight: 700, color: '#991b1b',
-                                  background: '#fee2e2', padding: '2px 6px', borderRadius: 6,
+                                  fontSize: 11, fontWeight: 700, color: 'var(--color-danger-strong)',
+                                  background: 'var(--color-danger-bg)', padding: '2px 6px', borderRadius: 6,
                                 }}
                               >
                                 Reorder alert
@@ -1671,7 +1671,7 @@ export function ForecastPage() {
                                   onClick={() => void dismissReorderAlert(item)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #fecaca', background: '#fff', color: '#991b1b',
+                                    border: '1px solid #fecaca', background: 'var(--color-surface)', color: 'var(--color-danger-strong)',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1696,7 +1696,7 @@ export function ForecastPage() {
                           {item.high_waste ? (
                             <span style={{
                               marginLeft: 6, padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-                              background: '#FEE2E2', color: '#B91C1C',
+                              background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)',
                             }}>
                               High waste
                             </span>

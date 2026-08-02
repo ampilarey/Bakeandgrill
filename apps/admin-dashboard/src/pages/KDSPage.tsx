@@ -293,7 +293,7 @@ function TicketHeader({
         <div>
           <Link to={`/orders?order=${ticket.id}`} style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-primary)', textDecoration: 'none' }}>#{ticket.order_number}</Link>
           {overdue && (
-            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: 'var(--color-danger)', background: '#FEE2E2', padding: '2px 6px', borderRadius: 999 }}>
+            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-danger-bg)', padding: '2px 6px', borderRadius: 999 }}>
               OVERDUE
             </span>
           )}

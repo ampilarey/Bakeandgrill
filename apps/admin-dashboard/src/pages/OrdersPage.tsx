@@ -310,7 +310,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
           <div style={{ background: '#DCFCE7', color: '#166534', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{toast}</div>
         )}
         {actionErr && (
-          <div style={{ background: '#FEE2E2', color: '#991B1B', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{actionErr}</div>
+          <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{actionErr}</div>
         )}
 
         {loading && <Spinner />}
@@ -431,8 +431,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
 
             {showCancel && (
-              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: 12, marginBottom: 16 }}>
-                <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#991B1B' }}>Void / cancel this order</p>
+              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #FECACA', borderRadius: 10, padding: 12, marginBottom: 16 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-danger-strong)' }}>Void / cancel this order</p>
                 <input
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
@@ -620,10 +620,10 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
 
             {showRefund && (
-              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#991B1B', marginBottom: 12 }}>Process Refund</div>
+              <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #FECACA', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>Process Refund</div>
                 {refundError && (
-                  <p style={{ color: '#991B1B', fontSize: 12, marginBottom: 10 }}>{refundError}</p>
+                  <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 10 }}>{refundError}</p>
                 )}
                 <label style={{ display: 'block', marginBottom: 10 }}>
                   <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Amount (MVR) *</span>
@@ -937,9 +937,9 @@ export function OrdersPage() {
           title="Show only cooking-but-unpaid orders"
           style={{
             padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-            border: unpaidOnly ? '1.5px solid #B91C1C' : '1.5px solid var(--color-border)',
-            background: unpaidOnly ? '#FEF2F2' : 'var(--color-surface)',
-            color: unpaidOnly ? '#B91C1C' : 'var(--color-text-secondary)',
+            border: unpaidOnly ? '1.5px solid var(--color-danger-strong)' : '1.5px solid var(--color-border)',
+            background: unpaidOnly ? 'var(--color-danger-bg)' : 'var(--color-surface)',
+            color: unpaidOnly ? 'var(--color-danger-strong)' : 'var(--color-text-secondary)',
             cursor: 'pointer', whiteSpace: 'nowrap',
           }}
         >
@@ -1031,7 +1031,7 @@ export function OrdersPage() {
                           title={o.payment_status === 'partial' ? 'Partially paid' : 'Not paid yet'}
                           style={{
                             fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-                            color: '#B91C1C', background: '#FEF2F2',
+                            color: 'var(--color-danger-strong)', background: 'var(--color-danger-bg)',
                             padding: '2px 5px', borderRadius: 4,
                             border: '1px solid #FECACA',
                           }}

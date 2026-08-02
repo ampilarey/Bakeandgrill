@@ -53,7 +53,7 @@ export function Badge({
 }: { label?: string; color?: string; children?: ReactNode }) {
   const colorMap: Record<string, { bg: string; text: string; border: string }> = {
     green:  { bg: '#dcfce7', text: '#15803d', border: '#86efac' },
-    red:    { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5' },
+    red:    { bg: 'var(--color-danger-bg)', text: 'var(--color-danger-strong)', border: '#fca5a5' },
     yellow: { bg: '#fef9c3', text: '#a16207', border: '#fde047' },
     blue:   { bg: '#dbeafe', text: '#1d4ed8', border: '#93c5fd' },
     purple: { bg: '#f3e8ff', text: '#7e22ce', border: '#d8b4fe' },
@@ -80,8 +80,8 @@ export function Badge({
 export function ErrorMsg({ message }: { message: string }) {
   return (
     <div style={{
-      background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 10,
-      padding: '0.75rem 1rem', color: '#b91c1c', fontSize: '0.875rem', marginBottom: '1rem',
+      background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 10,
+      padding: '0.75rem 1rem', color: 'var(--color-danger-strong)', fontSize: '0.875rem', marginBottom: '1rem',
     }}>
       {message}
     </div>
@@ -488,8 +488,8 @@ export function StatCard({
           <span style={{
             fontSize: 11,
             fontWeight: 700,
-            color: trend.positive === true ? '#15803d' : trend.positive === false ? '#b91c1c' : 'var(--color-text-secondary)',
-            background: trend.positive === true ? '#dcfce7' : trend.positive === false ? '#fee2e2' : 'var(--color-bg)',
+            color: trend.positive === true ? '#15803d' : trend.positive === false ? 'var(--color-danger-strong)' : 'var(--color-text-secondary)',
+            background: trend.positive === true ? '#dcfce7' : trend.positive === false ? 'var(--color-danger-bg)' : 'var(--color-bg)',
             border: `1px solid ${trend.positive === true ? '#86efac' : trend.positive === false ? '#fca5a5' : 'var(--color-border)'}`,
             borderRadius: 9999,
             padding: '2px 7px',

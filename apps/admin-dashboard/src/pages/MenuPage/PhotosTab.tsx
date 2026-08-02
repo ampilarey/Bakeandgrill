@@ -163,7 +163,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
+      {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
 
       <button
         type="button"
@@ -314,9 +314,9 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                   type="button"
                   title="Delete"
                   onClick={() => void remove(ph.id)}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer' }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-danger-bg)', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer' }}
                 >
-                  <Trash2 size={13} color="#dc2626" />
+                  <Trash2 size={13} color="var(--color-danger-strong)" />
                 </button>
               </div>
             </div>

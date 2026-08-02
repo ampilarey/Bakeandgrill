@@ -242,7 +242,7 @@ export function ContactsTab() {
       {contactModal && (
         <Modal title={editContact ? 'Edit Contact' : 'Add Contact'} onClose={() => setContactModal(false)}>
           <div style={{ display: 'grid', gap: 12 }}>
-            {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
+            {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Name *</label>

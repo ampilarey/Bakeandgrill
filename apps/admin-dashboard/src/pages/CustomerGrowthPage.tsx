@@ -313,7 +313,7 @@ export function CustomerGrowthPage() {
         <Card>
           <p style={{ margin: '0 0 12px', fontWeight: 700 }}>Automated campaigns</p>
           {automationMsg && (
-            <p style={{ fontSize: 13, color: automationMsg.includes('saved') ? '#15803D' : '#B91C1C', marginBottom: 12 }}>{automationMsg}</p>
+            <p style={{ fontSize: 13, color: automationMsg.includes('saved') ? '#15803D' : 'var(--color-danger-strong)', marginBottom: 12 }}>{automationMsg}</p>
           )}
           {!automation ? (
             <Spinner />
@@ -401,7 +401,7 @@ export function CustomerGrowthPage() {
                   {vipSyncing ? 'Syncing…' : 'Sync VIP tags now'}
                 </Btn>
               </div>
-              {vipMsg && <p style={{ fontSize: 13, color: vipMsg.includes('saved') || vipMsg.includes('Synced') ? '#15803d' : '#b91c1c', margin: 0 }}>{vipMsg}</p>}
+              {vipMsg && <p style={{ fontSize: 13, color: vipMsg.includes('saved') || vipMsg.includes('Synced') ? '#15803d' : 'var(--color-danger-strong)', margin: 0 }}>{vipMsg}</p>}
             </div>
           ) : (
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{vipMsg || 'Loading VIP settings…'}</p>

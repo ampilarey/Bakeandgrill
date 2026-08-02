@@ -74,7 +74,7 @@ const STATUS_BG: Record<string, string> = {
   delivering: '#E0F2FE',
   delivered:  '#D1FAE5',
   completed:  'var(--color-bg)',
-  cancelled:  '#FEE2E2',
+  cancelled:  'var(--color-danger-bg)',
 };
 
 // ── sub-components ────────────────────────────────────────────────────────────
@@ -959,7 +959,7 @@ export function DashboardPage() {
                     label="Reorder Alerts"
                     value={String(spendRestock.openAlerts)}
                     sub="Open below-ROP alerts"
-                    accent="#dc2626"
+                    accent="var(--color-danger-strong)"
                     icon={AlertTriangle}
                   />
                 )}
@@ -1189,7 +1189,7 @@ export function DashboardPage() {
                 background: health.status === 'ok' ? 'var(--color-success)' : 'var(--color-danger)',
                 display: 'inline-block',
               }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: health.status === 'ok' ? '#15803D' : '#991B1B', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: health.status === 'ok' ? '#15803D' : 'var(--color-danger-strong)', textTransform: 'uppercase' }}>
                 {health.status}
               </span>
               </div>
@@ -1198,7 +1198,7 @@ export function DashboardPage() {
           {health.env_mismatch && (
             <div style={{
               marginBottom: 12, padding: '10px 14px', borderRadius: 10,
-              background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B',
+              background: 'var(--color-danger-bg)', border: '1px solid #FECACA', color: 'var(--color-danger-strong)',
               fontSize: 13, fontWeight: 600,
             }}>
               Staging host ({health.host}) but APP_ENV is &quot;{health.environment}&quot; — set APP_ENV=staging on this server.

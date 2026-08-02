@@ -32,7 +32,7 @@ export function LogsTab() {
   return (
     <>
       {loadError && (
-        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>
+        <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>
           {loadError}
         </div>
       )}
