@@ -288,9 +288,9 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
     }
   };
 
-  const panel: CSSProperties = { padding: 14, borderRadius: 12, background: 'var(--color-surface)', border: '1px solid #E8E0D8' };
-  const label: CSSProperties = { fontSize: 11, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 4 };
-  const input: CSSProperties = { minHeight: 40, width: '100%', borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' };
+  const panel: CSSProperties = { padding: 14, borderRadius: 12, background: 'var(--color-surface)', border: '1px solid var(--color-border)' };
+  const label: CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 };
+  const input: CSSProperties = { minHeight: 40, width: '100%', borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' };
 
   return (
     <div data-testid="signage-designer" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -316,7 +316,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Add</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {ELEMENT_TYPES.map((t) => (
-              <button key={t} type="button" onClick={() => addElement(t)} style={{ minHeight: 36, borderRadius: 8, border: '1px solid #E8E0D8', background: '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>
+              <button key={t} type="button" onClick={() => addElement(t)} style={{ minHeight: 36, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>
                 {t}
               </button>
             ))}
@@ -329,7 +329,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                 type="button"
                 onClick={() => setSelected([el.id])}
                 style={{
-                  minHeight: 32, textAlign: 'left', borderRadius: 8, border: selected.includes(el.id) ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+                  minHeight: 32, textAlign: 'left', borderRadius: 8, border: selected.includes(el.id) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                   background: selected.includes(el.id) ? '#FFF7ED' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, padding: '0 8px',
                   display: 'flex', alignItems: 'center', gap: 6,
                 }}
@@ -385,7 +385,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                   height: `${el.h}%`,
                   zIndex: 1000 + (el.z ?? 1),
                   transform: `rotate(${el.rotation ?? 0}deg)`,
-                  outline: selected.includes(el.id) ? '2px solid #D4813A' : el.hidden ? '1px dashed rgba(255,255,255,.35)' : '1px solid transparent',
+                  outline: selected.includes(el.id) ? '2px solid var(--color-primary)' : el.hidden ? '1px dashed rgba(255,255,255,.35)' : '1px solid transparent',
                   cursor: el.locked ? 'not-allowed' : 'move',
                   background: el.hidden && !selected.includes(el.id) ? 'rgba(255,255,255,.04)' : 'transparent',
                   boxSizing: 'border-box',
@@ -398,7 +398,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                       e.stopPropagation();
                       setResize({ id: el.id, startX: e.clientX, startY: e.clientY, ow: el.w, oh: el.h });
                     }}
-                    style={{ position: 'absolute', right: -4, bottom: -4, width: 12, height: 12, background: '#D4813A', borderRadius: 2, cursor: 'nwse-resize' }}
+                    style={{ position: 'absolute', right: -4, bottom: -4, width: 12, height: 12, background: 'var(--color-primary)', borderRadius: 2, cursor: 'nwse-resize' }}
                   />
                 )}
               </div>
