@@ -101,7 +101,7 @@ export function SmsControlCenterPage() {
     return (
       <PageShell>
         <PageHeader title="SMS Control Center" section="Customers & Marketing" />
-        <p style={{ color: '#9C8E7E' }}>You need SMS log or settings permission to view this page.</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>You need SMS log or settings permission to view this page.</p>
       </PageShell>
     );
   }
@@ -155,7 +155,7 @@ export function SmsControlCenterPage() {
       )}
 
       {loading ? (
-        <p style={{ color: '#9C8E7E' }}>Loading…</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : (
         grouped.map((group) => (
           <section key={group.category} style={{ marginBottom: 28 }}>
@@ -241,7 +241,7 @@ function TypeRow({
   return (
     <div style={{
       background: 'var(--color-surface)',
-      border: '1px solid #E8E0D8',
+      border: '1px solid var(--color-border)',
       borderRadius: 10,
       padding: '12px 16px',
     }}>
@@ -251,13 +251,13 @@ function TypeRow({
             <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#3D2B1F' }}>{row.label}</p>
             {row.always_on && <span style={badgeStyle('#EEF2FF', '#3730A3')}>Always on</span>}
           </div>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
             Who can send: {row.send_permission_label}
             {row.roles_with_permission.length > 0 && (
               <> · {row.roles_with_permission.join(', ')}</>
             )}
             {' · '}
-            <Link to="/settings?tab=permissions" style={{ color: '#D4813A' }}>Roles & Permissions</Link>
+            <Link to="/settings?tab=permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6B5A4E' }}>
             Last 30 days: {row.last_30_days.count} · MVR {row.last_30_days.cost_mvr.toFixed(2)}
@@ -283,7 +283,7 @@ function TypeRow({
                 borderRadius: 12,
                 border: 'none',
                 cursor: !canToggle || saving ? 'not-allowed' : 'pointer',
-                background: row.enabled ? '#D4813A' : '#D1D5DB',
+                background: row.enabled ? 'var(--color-primary)' : '#D1D5DB',
                 position: 'relative',
                 opacity: !canToggle ? 0.55 : 1,
               }}
@@ -374,7 +374,7 @@ function InlineTemplateEditor({
         style={{
           width: '100%',
           boxSizing: 'border-box',
-          border: '1px solid #E8E0D8',
+          border: '1px solid var(--color-border)',
           borderRadius: 8,
           padding: '10px 12px',
           fontSize: 13,
@@ -411,7 +411,7 @@ function InlineTemplateEditor({
         gap: 8,
         flexWrap: 'wrap',
       }}>
-        <span style={{ fontSize: 11, color: '#9C8E7E' }}>
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
           {count.encoding} · {count.chars} chars · {count.segments} segment{count.segments === 1 ? '' : 's'}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -452,7 +452,7 @@ function badgeStyle(bg: string, color: string): CSSProperties {
 const linkBtn: CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#D4813A',
+  color: 'var(--color-primary)',
   fontSize: 12,
   fontWeight: 600,
   cursor: 'pointer',
@@ -463,7 +463,7 @@ const linkBtn: CSSProperties = {
 const secondaryBtn: CSSProperties = {
   padding: '6px 12px',
   borderRadius: 8,
-  border: '1px solid #E8E0D8',
+  border: '1px solid var(--color-border)',
   background: 'var(--color-surface)',
   fontSize: 12,
   cursor: 'pointer',
@@ -472,8 +472,8 @@ const secondaryBtn: CSSProperties = {
 
 const primaryBtn: CSSProperties = {
   ...secondaryBtn,
-  background: '#D4813A',
-  borderColor: '#D4813A',
+  background: 'var(--color-primary)',
+  borderColor: 'var(--color-primary)',
   color: '#fff',
   fontWeight: 600,
 };
