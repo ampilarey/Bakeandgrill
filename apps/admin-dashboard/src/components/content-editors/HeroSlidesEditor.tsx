@@ -66,7 +66,7 @@ const btnStyle: CSSProperties = {
   height: 32,
   padding: '0 10px',
   borderRadius: 8,
-  border: '1px solid #E8E0D8',
+  border: '1px solid var(--color-border)',
   background: '#fff',
   fontSize: 12,
   cursor: 'pointer',
@@ -181,8 +181,8 @@ export function HeroSlidesEditor({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div>
-        <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: 0 }}>{label}</p>
-        {description && <p style={{ fontSize: 12, color: '#9C8E7E', margin: '3px 0 0' }}>{description}</p>}
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{label}</p>
+        {description && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '3px 0 0' }}>{description}</p>}
       </div>
       <input
         ref={fileRef}
@@ -192,7 +192,7 @@ export function HeroSlidesEditor({
         onChange={onFileChange}
       />
       {status ? (
-        <p style={{ margin: 0, fontSize: 12, color: busy ? '#9C8E7E' : '#6B5D4F' }} role="status">{status}</p>
+        <p style={{ margin: 0, fontSize: 12, color: busy ? 'var(--color-text-muted)' : 'var(--color-text-secondary)' }} role="status">{status}</p>
       ) : null}
       <RepeaterShell
         items={items}
@@ -219,7 +219,7 @@ export function HeroSlidesEditor({
               )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0' }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#6B5D4F' }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                   Dim overlay — {dim}%
                 </label>
                 <input
@@ -228,10 +228,10 @@ export function HeroSlidesEditor({
                   max={100}
                   value={dim}
                   onChange={(e) => update({ dim: Number(e.target.value) })}
-                  style={{ width: '100%', maxWidth: 320, accentColor: '#D4813A' }}
+                  style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
                   aria-label="Hero dim overlay"
                 />
-                <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
                   0 = bright media · 100 = dark wash (default). Applies to website + order app.
                 </p>
               </div>
@@ -249,9 +249,9 @@ export function HeroSlidesEditor({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <Clapperboard size={16} color="#D4813A" />
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Video editor</p>
-                  <span style={{ fontSize: 11, color: '#9C8E7E' }}>
+                  <Clapperboard size={16} color="var(--color-primary)" />
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Video editor</p>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                     Trim · crop · poster · export
                   </span>
                 </div>
@@ -265,9 +265,9 @@ export function HeroSlidesEditor({
                         height: 68,
                         borderRadius: 8,
                         overflow: 'hidden',
-                        background: '#1C1408',
+                        background: 'var(--color-text)',
                         flexShrink: 0,
-                        border: '1px solid #E8E0D8',
+                        border: '1px solid var(--color-border)',
                       }}
                     >
                       {(slide.video_poster || slide.image) ? (
@@ -300,12 +300,12 @@ export function HeroSlidesEditor({
                       </span>
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#1C1408' }}>Video attached</p>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>Video attached</p>
                       <p
                         style={{
                           margin: '3px 0 0',
                           fontSize: 11,
-                          color: '#6B5D4F',
+                          color: 'var(--color-text-secondary)',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
@@ -317,7 +317,7 @@ export function HeroSlidesEditor({
                     </div>
                   </div>
                 ) : (
-                  <p style={{ margin: 0, fontSize: 12, color: '#6B5D4F' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
                     1) Upload or pick a video below · 2) Click <strong>Open video editor</strong> to trim, crop, and set a poster.
                   </p>
                 )}
@@ -396,12 +396,12 @@ export function HeroSlidesEditor({
               <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {FIELDS.map((f) => (
                   <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: f.col === 'full' ? '1 / -1' : undefined }}>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: '#6B5D4F' }}>{f.label}</label>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{f.label}</label>
                     <input
                       value={String(slide[f.key] ?? '')}
                       onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
                       placeholder={f.placeholder}
-                      style={{ height: 32, borderRadius: 8, border: '1px solid #E8E0D8', background: '#fff', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: '#1C1408' }}
+                      style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: '#fff', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }}
                     />
                   </div>
                 ))}
