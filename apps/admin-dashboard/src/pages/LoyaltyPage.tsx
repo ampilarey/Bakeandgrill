@@ -20,13 +20,13 @@ const TIER_COLOR: Record<string, string> = {
 const TAB_STYLE = (active: boolean): React.CSSProperties => ({
   padding: '8px 20px', border: 'none', borderRadius: 8, cursor: 'pointer',
   fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
-  background: active ? '#D4813A' : 'transparent',
-  color: active ? '#fff' : '#6B5D4F',
+  background: active ? 'var(--color-primary)' : 'transparent',
+  color: active ? '#fff' : 'var(--color-text-secondary)',
 });
 
 const FIELD = {
-  label: { display: 'block' as const, fontSize: 12, fontWeight: 700, color: '#6B5D4F', marginBottom: 4 },
-  hint: { fontSize: 11, color: '#9C8E7E', margin: '4px 0 0' },
+  label: { display: 'block' as const, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 },
+  hint: { fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 },
 };
 
@@ -65,22 +65,22 @@ function LedgerModal({ customerId, name, onClose }: {
       ) : (
         <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
           {entries.map((e) => (
-            <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F0EBE5' }}>
+            <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--color-border-light)' }}>
               <div>
-                <p style={{ fontSize: 14, color: '#1C1408', margin: 0 }}>{e.reason}</p>
-                <p style={{ fontSize: 11, color: '#9C8E7E', margin: '2px 0 0' }}>
+                <p style={{ fontSize: 14, color: 'var(--color-text)', margin: 0 }}>{e.reason}</p>
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
                   {new Date(e.created_at).toLocaleString()}
                   {e.order_id ? (
                     <>
                       {' · '}
-                      <Link to={`/orders?order=${e.order_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                      <Link to={`/orders?order=${e.order_id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                         Order #{e.order_number ?? e.order_id}
                       </Link>
                     </>
                   ) : null}
                 </p>
               </div>
-              <span style={{ fontWeight: 800, fontSize: 15, color: e.delta >= 0 ? '#22c55e' : '#ef4444' }}>
+              <span style={{ fontWeight: 800, fontSize: 15, color: e.delta >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                 {e.delta >= 0 ? '+' : ''}{e.delta} pts
               </span>
             </div>
@@ -118,8 +118,8 @@ function AdjustModal({ account, onClose, onDone }: {
 
   return (
     <Modal title="Adjust Points" onClose={onClose} maxWidth={400}>
-      <p style={{ color: '#6B5D4F', fontSize: 14, marginBottom: 16 }}>
-        {account.customer_name ?? account.customer_phone} — balance: <strong style={{ color: '#D4813A' }}>{account.points_balance} pts</strong>
+      <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, marginBottom: 16 }}>
+        {account.customer_name ?? account.customer_phone} — balance: <strong style={{ color: 'var(--color-primary)' }}>{account.points_balance} pts</strong>
       </p>
       {error && <ErrorMsg message={error} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -215,13 +215,13 @@ function ProgramSettingsPanel() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <p style={{ fontWeight: 700, color: '#1C1408', margin: 0 }}>Loyalty program</p>
-          <p style={{ fontSize: 13, color: '#6B5D4F', margin: '4px 0 0' }}>Turn earn/redeem on or off for all channels.</p>
+          <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Loyalty program</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>Turn earn/redeem on or off for all channels.</p>
         </div>
         <Toggle checked={settings.enabled} onChange={(v) => patch('enabled', v)} label={settings.enabled ? 'Enabled' : 'Disabled'} />
       </div>
 
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: '0 0 12px' }}>Earn rules</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px' }}>Earn rules</h3>
       <div style={{ ...FIELD.grid, marginBottom: 20 }}>
         <div>
           <label style={FIELD.label}>Points per MVR 1 (food)</label>
@@ -238,7 +238,7 @@ function ProgramSettingsPanel() {
         </div>
       </div>
 
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: '0 0 12px' }}>Redeem rules</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px' }}>Redeem rules</h3>
       <div style={{ ...FIELD.grid, marginBottom: 20 }}>
         <div>
           <label style={FIELD.label}>Points per MVR 1 discount</label>
@@ -264,7 +264,7 @@ function ProgramSettingsPanel() {
         </div>
       </div>
 
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: '0 0 12px' }}>Program window</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px' }}>Program window</h3>
       <div style={{ ...FIELD.grid, marginBottom: 20 }}>
         <div>
           <label style={FIELD.label}>Starts (optional)</label>
@@ -272,7 +272,7 @@ function ProgramSettingsPanel() {
             type="datetime-local"
             value={toDatetimeLocal(settings.program_starts_at)}
             onChange={(e) => patch('program_starts_at', e.target.value ? new Date(e.target.value).toISOString() : null)}
-            style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }}
           />
         </div>
         <div>
@@ -281,7 +281,7 @@ function ProgramSettingsPanel() {
             type="datetime-local"
             value={toDatetimeLocal(settings.program_ends_at)}
             onChange={(e) => patch('program_ends_at', e.target.value ? new Date(e.target.value).toISOString() : null)}
-            style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }}
           />
         </div>
       </div>
@@ -289,8 +289,8 @@ function ProgramSettingsPanel() {
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div>
-            <p style={{ fontWeight: 700, color: '#1C1408', margin: 0 }}>Tier multipliers</p>
-            <p style={{ fontSize: 13, color: '#6B5D4F', margin: '4px 0 0' }}>Apply earn multipliers by lifetime tier (configure tiers in the Tiers tab).</p>
+            <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Tier multipliers</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>Apply earn multipliers by lifetime tier (configure tiers in the Tiers tab).</p>
           </div>
           <Toggle checked={settings.tiers_enabled} onChange={(v) => patch('tiers_enabled', v)} label={settings.tiers_enabled ? 'On' : 'Off'} />
         </div>
@@ -300,7 +300,7 @@ function ProgramSettingsPanel() {
           onChange={(e) => patch('customer_message', e.target.value)}
           placeholder="Optional note shown to customers about the loyalty program"
           rows={3}
-          style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }}
+          style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }}
         />
       </div>
 
@@ -352,7 +352,7 @@ function TiersPanel() {
     <Card>
       {error && <ErrorMsg message={error} />}
       {saved && <p style={{ color: '#16a34a', fontSize: 13, margin: '0 0 12px' }}>{saved}</p>}
-      <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 16px' }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 16px' }}>
         Customers are placed in the highest tier whose minimum lifetime points they have reached. Earn multiplier applies when tier multipliers are enabled in Program Settings.
       </p>
       <TableCard>
@@ -443,15 +443,15 @@ function AccountsPanel() {
               {accounts.map((a) => (
                 <tr key={a.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>
-                    <Link to={`/customers?customer=${a.customer_id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                    <Link to={`/customers?customer=${a.customer_id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
                       {a.customer_name ?? `Customer #${a.customer_id}`}
                     </Link>
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F' }}>{a.customer_phone}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{a.customer_phone}</td>
                   <td style={TD}><Badge label={a.tier} color={TIER_COLOR[a.tier] ?? 'gray'} /></td>
-                  <td style={{ ...TD, fontWeight: 700, color: '#D4813A' }}>{a.points_balance.toLocaleString()} pts</td>
-                  <td style={{ ...TD, color: '#9C8E7E' }}>{a.points_held > 0 ? `${a.points_held} held` : '—'}</td>
-                  <td style={{ ...TD, color: '#6B5D4F' }}>{a.lifetime_points.toLocaleString()}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)' }}>{a.points_balance.toLocaleString()} pts</td>
+                  <td style={{ ...TD, color: 'var(--color-text-muted)' }}>{a.points_held > 0 ? `${a.points_held} held` : '—'}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{a.lifetime_points.toLocaleString()}</td>
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <Btn small variant="ghost" onClick={() => setViewingLedger(a)}>Ledger</Btn>
