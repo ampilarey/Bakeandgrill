@@ -392,7 +392,7 @@ export function InvoicesPage() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '10px 16px', borderRadius: 10, marginBottom: 12,
-          background: 'var(--color-text)', color: '#fff',
+          background: '#1C1408', color: '#fff',
         }}>
           <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{bulkSelected.size} selected</span>
           <Btn small onClick={bulkMarkSent} disabled={bulkLoading}>Mark Sent</Btn>
