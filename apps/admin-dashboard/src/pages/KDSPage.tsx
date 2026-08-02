@@ -20,11 +20,11 @@ function elapsed(iso: string): string {
 
 function urgencyColor(iso: string): { solid: string; faint: string } {
   const t = Date.parse(iso);
-  if (!Number.isFinite(t)) return { solid: '#22c55e', faint: 'rgba(34,197,94,0.13)' };
+  if (!Number.isFinite(t)) return { solid: 'var(--color-success)', faint: 'rgba(34,197,94,0.13)' };
   const m = Math.floor((Date.now() - t) / 60000);
-  if (m >= 15) return { solid: '#ef4444', faint: 'rgba(239,68,68,0.13)' };
+  if (m >= 15) return { solid: 'var(--color-danger)', faint: 'rgba(239,68,68,0.13)' };
   if (m >= 8)  return { solid: '#f97316', faint: 'rgba(249,115,22,0.13)' };
-  return        { solid: '#22c55e', faint: 'rgba(34,197,94,0.13)' };
+  return        { solid: 'var(--color-success)', faint: 'rgba(34,197,94,0.13)' };
 }
 
 function minutesSince(iso: string): number {
@@ -160,20 +160,20 @@ export function KDSPage() {
         transition: 'background 0.3s',
         animation: flash ? 'kds-pulse 0.5s ease-in-out 4' : 'none',
       }}>
-        <div style={{ width: 10, height: 10, borderRadius: '50%', background: flash ? '#f59e0b' : color, boxShadow: flash ? '0 0 6px #f59e0b' : 'none', transition: 'box-shadow 0.3s' }} />
-        <span style={{ fontWeight: 700, fontSize: 14, color: flash ? '#92400E' : '#1C1408', transition: 'color 0.3s' }}>{title}</span>
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: flash ? 'var(--color-warning)' : color, boxShadow: flash ? '0 0 6px var(--color-warning)' : 'none', transition: 'box-shadow 0.3s' }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: flash ? '#92400E' : 'var(--color-text)', transition: 'color 0.3s' }}>{title}</span>
         <span style={{
-          background: flash ? '#f59e0b' : '#F8F6F3',
-          color: flash ? '#fff' : '#6B5D4F', borderRadius: 999,
+          background: flash ? 'var(--color-warning)' : 'var(--color-bg)',
+          color: flash ? '#fff' : 'var(--color-text-secondary)', borderRadius: 999,
           padding: '1px 8px', fontSize: 12, fontWeight: 700,
-          border: `1px solid ${flash ? '#f59e0b' : '#E8E0D8'}`,
+          border: `1px solid ${flash ? 'var(--color-warning)' : 'var(--color-border)'}`,
           transition: 'all 0.3s',
         }}>{items.length}</span>
         {flash && <span style={{ fontSize: 11, fontWeight: 700, color: '#92400E', marginLeft: 2 }}>NEW!</span>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {items.length === 0
-          ? <div style={{ color: '#9C8E7E', fontSize: 13, padding: '20px 0' }}>Nothing here</div>
+          ? <div style={{ color: 'var(--color-text-muted)', fontSize: 13, padding: '20px 0' }}>Nothing here</div>
           : items.map((t) => (
             <div key={t.id} style={{
               background: '#fff', borderRadius: 14, padding: '16px',
@@ -190,7 +190,7 @@ export function KDSPage() {
 
   return (
     <PageShell>
-    <div ref={kdsRef} style={isFullscreen ? { background: '#F8F6F3', padding: 20, minHeight: '100vh' } : undefined}>
+    <div ref={kdsRef} style={isFullscreen ? { background: 'var(--color-bg)', padding: 20, minHeight: '100vh' } : undefined}>
       <PageHeader section="Monitor"
         title="Kitchen Display"
         subtitle={sseConnected ? '● Live monitor' : '○ Polling every 15s'}
@@ -203,18 +203,18 @@ export function KDSPage() {
           </div>
         }
       />
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.45 }}>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
         Kitchen staff run tickets on the <strong>KDS app</strong> (<code style={{ fontSize: 12 }}>/kds</code>) — this screen is a live monitor for managers.
       </p>
       {error && <ErrorMsg message={error} />}
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <label style={{ fontSize: 13, color: '#6B5D4F', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <label style={{ fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
           Station
           <select
             value={stationFilter === 'all' ? 'all' : String(stationFilter)}
             onChange={(e) => setStationFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E8E0D8', fontFamily: 'inherit' }}
+            style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit' }}
           >
             <option value="all">All stations</option>
             {menuGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -223,17 +223,17 @@ export function KDSPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <StatCard label="Pending avg wait" value={`${avgWait(pending)}m`} accent="#f59e0b" />
+        <StatCard label="Pending avg wait" value={`${avgWait(pending)}m`} accent="var(--color-warning)" />
         <StatCard label="Cooking avg wait" value={`${avgWait(cooking)}m`} accent="#3b82f6" />
-        <StatCard label="Ready queue" value={String(ready.length)} accent="#22c55e" />
-        <StatCard label="Over prep target" value={String([...pending, ...cooking].filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t, itemPrepMap)).length)} accent="#ef4444" />
+        <StatCard label="Ready queue" value={String(ready.length)} accent="var(--color-success)" />
+        <StatCard label="Over prep target" value={String([...pending, ...cooking].filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t, itemPrepMap)).length)} accent="var(--color-danger)" />
       </div>
 
       {loading && tickets.length === 0 ? (
         <Card style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></Card>
       ) : (
         <div className="kds-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-          <Column title="Pending" items={pending} color="#f59e0b" flash={newTicketFlash}>
+          <Column title="Pending" items={pending} color="var(--color-warning)" flash={newTicketFlash}>
             {(t) => (
               <TicketHeader ticket={t} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
             )}
@@ -264,7 +264,7 @@ export function KDSPage() {
             )}
           </Column>
 
-          <Column title="Ready" items={ready} color="#22c55e">
+          <Column title="Ready" items={ready} color="var(--color-success)">
             {(t) => (
               <TicketHeader ticket={t} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />
             )}
@@ -291,17 +291,17 @@ function TicketHeader({
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
-          <Link to={`/orders?order=${ticket.id}`} style={{ fontWeight: 800, fontSize: 16, color: '#D4813A', textDecoration: 'none' }}>#{ticket.order_number}</Link>
+          <Link to={`/orders?order=${ticket.id}`} style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-primary)', textDecoration: 'none' }}>#{ticket.order_number}</Link>
           {overdue && (
-            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: '#ef4444', background: '#FEE2E2', padding: '2px 6px', borderRadius: 999 }}>
+            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: 'var(--color-danger)', background: '#FEE2E2', padding: '2px 6px', borderRadius: 999 }}>
               OVERDUE
             </span>
           )}
           {ticket.table_number && (
-            <span style={{ marginLeft: 8, fontSize: 12, color: '#9C8E7E' }}>Table {ticket.table_number}</span>
+            <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>Table {ticket.table_number}</span>
           )}
           {ticket.delivery_island && (
-            <span style={{ marginLeft: 8, fontSize: 12, color: '#D4813A' }}>🛵 {ticket.delivery_island}</span>
+            <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-primary)' }}>🛵 {ticket.delivery_island}</span>
           )}
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -313,8 +313,8 @@ function TicketHeader({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {(ticket.items ?? []).map((item, i) => (
-          <div key={i} style={{ fontSize: 13, color: '#6B5D4F' }}>
-            <span style={{ fontWeight: 700, color: '#1C1408' }}>{item.quantity}×</span> {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}
+          <div key={i} style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.quantity}×</span> {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}
             {item.modifiers && item.modifiers.length > 0 && (
               <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
                 + {item.modifiers.map((m) => m.modifier_name).join(', ')}
