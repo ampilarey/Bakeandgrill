@@ -112,6 +112,7 @@ const queueFixture: api.SmsCampaignQueueHealth = {
 };
 
 const permissionOptions = [
+  { slug: '__system__', name: 'System-initiated — no manual sending' },
   { slug: 'sms.campaigns.send', name: 'Send SMS campaigns' },
   { slug: 'sms.transactional.manage', name: 'Manage transactional SMS' },
   { slug: 'orders.send_sms_bill', name: 'Send SMS bill' },
@@ -168,7 +169,7 @@ describe('SmsControlCenterPage', () => {
       template: {
         id: 2,
         slug: 'giftcard_delivery',
-        body: 'Gift card {{amount}} — shop now',
+        body: 'Gift card {{amount}} - shop now',
         variables: [{ name: 'amount' }],
       },
       estimate: { encoding: 'gsm7', length: 28, segments: 1, cost_mvr: 0.25 },
@@ -178,7 +179,7 @@ describe('SmsControlCenterPage', () => {
     vi.spyOn(api, 'updateSmsGlobalKillSwitch').mockResolvedValue({ global_kill_switch: true });
     vi.spyOn(api, 'updateSmsBudget').mockResolvedValue({ budget: budgetFixture });
     vi.spyOn(api, 'previewSmsType').mockResolvedValue({
-      preview: 'Gift card MVR 100.00 — shop now',
+      preview: 'Gift card MVR 100.00 - shop now',
       estimate: { encoding: 'gsm7', length: 32, segments: 2, cost_mvr: 0.5 },
       sample_variables: { amount: 'MVR 100.00' },
     });
@@ -229,14 +230,25 @@ describe('SmsControlCenterPage', () => {
     renderWithRouter(<SmsControlCenterPage />);
     await expandType('Gift card delivery');
     const textarea = screen.getByRole('textbox');
-    fireEvent.change(textarea, { target: { value: 'Gift card {{amount}} — shop now' } });
+    fireEvent.change(textarea, { target: { value: 'Gift card {{amount}} - shop now' } });
     fireEvent.click(screen.getByRole('button', { name: /Save message/i }));
 
     await waitFor(() => {
       expect(api.updateSmsType).toHaveBeenCalledWith('giftcard_delivery', {
-        body: 'Gift card {{amount}} — shop now',
+        body: 'Gift card {{amount}} - shop now',
       });
     });
+  });
+
+  it('warns when wording forces Unicode/UCS-2 encoding', async () => {
+    renderWithRouter(<SmsControlCenterPage />);
+    await expandType('Gift card delivery');
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: 'Gift card {{amount}} — shop now' } });
+
+    expect(await screen.findByText(/Unicode encoding \(UCS-2\)/i)).toBeTruthy();
+    expect(screen.getByText(/em dash/i)).toBeTruthy();
+    expect(screen.getByText(/roughly double SMS cost/i)).toBeTruthy();
   });
 
   it('updates segment/cost preview from the API after Preview', async () => {
@@ -253,16 +265,16 @@ describe('SmsControlCenterPage', () => {
     // Client-side counter: "gsm7 · 200 chars · 2 segments · ~MVR 0.50"
     expect(screen.getByText(/200 chars · 2 segments/i)).toBeTruthy();
 
-    fireEvent.change(textarea, { target: { value: 'Gift card {{amount}} — shop now' } });
+    fireEvent.change(textarea, { target: { value: 'Gift card {{amount}} - shop now' } });
     fireEvent.click(screen.getByRole('button', { name: /^Preview$/i }));
 
     await waitFor(() => {
       expect(api.previewSmsType).toHaveBeenCalledWith(
         'giftcard_delivery',
-        'Gift card {{amount}} — shop now',
+        'Gift card {{amount}} - shop now',
       );
     });
-    expect(await screen.findByText('Gift card MVR 100.00 — shop now')).toBeTruthy();
+    expect(await screen.findByText('Gift card MVR 100.00 - shop now')).toBeTruthy();
     // Matches mocked API estimate (gsm7 · 2 segments · MVR 0.50) — no "~"
     expect(screen.getByText(/gsm7 · 2 segments · MVR 0\.50/i)).toBeTruthy();
   });
@@ -273,8 +285,11 @@ describe('SmsControlCenterPage', () => {
     const select = screen.getByLabelText(/Who can send/i) as HTMLSelectElement;
 
     const optionLabels = Array.from(select.options).map((o) => o.textContent ?? '');
+    expect(optionLabels.some((t) => t.includes('System-initiated'))).toBe(true);
     expect(optionLabels.some((t) => t.includes('Send SMS campaigns'))).toBe(true);
     expect(optionLabels.some((t) => t.includes('orders.send_sms_bill'))).toBe(true);
+    expect(optionLabels.some((t) => t.includes('sms.templates.edit'))).toBe(false);
+    expect(optionLabels.some((t) => t.includes('sms.settings.manage'))).toBe(false);
 
     fireEvent.change(select, { target: { value: 'orders.send_sms_bill' } });
 

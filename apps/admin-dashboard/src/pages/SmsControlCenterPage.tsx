@@ -14,7 +14,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, PageShell, Btn, Modal } from '../components/SharedUI';
-import { smsCharCount } from '../utils/smsCharCount';
+import { nonGsm7Characters, smsCharCount } from '../utils/smsCharCount';
 
 const CATEGORY_ORDER = ['auth', 'transactional', 'staff', 'marketing', 'system'] as const;
 const CATEGORY_LABELS: Record<string, string> = {
@@ -450,6 +450,7 @@ function TypeEditor({
 
   const displayBody = body;
   const count = smsCharCount(displayBody || ' ');
+  const unicodeOffenders = count.isUnicode ? nonGsm7Characters(displayBody) : [];
   const variables = row.template?.variables ?? [];
   const hasTemplate = !!row.template;
 
@@ -518,9 +519,10 @@ function TypeEditor({
           onChange={(e) => void savePermission(e.target.value)}
           style={inputStyle}
         >
-          <option value="__system__">System-initiated — no manual sending</option>
           {permissionOptions.map((p) => (
-            <option key={p.slug} value={p.slug}>{p.name} ({p.slug})</option>
+            <option key={p.slug} value={p.slug}>
+              {p.slug === '__system__' ? p.name : `${p.name} (${p.slug})`}
+            </option>
           ))}
         </select>
       </label>
@@ -549,6 +551,29 @@ function TypeEditor({
           />
           {row.code_fallback_note && displayBody.trim() === '' && (
             <p style={{ margin: '8px 0 0', fontSize: 12, color: '#92400E' }}>{row.code_fallback_note}</p>
+          )}
+          {unicodeOffenders.length > 0 && (
+            <p
+              role="status"
+              style={{
+                margin: '8px 0 0',
+                fontSize: 12,
+                lineHeight: 1.45,
+                color: '#92400E',
+                background: '#FFFBEB',
+                border: '1px solid #FDE68A',
+                borderRadius: 8,
+                padding: '8px 10px',
+              }}
+            >
+              Unicode encoding (UCS-2): non-GSM-7 characters cut each segment from 160 to 70 chars
+              and roughly double SMS cost.
+              {' '}
+              Offending character{unicodeOffenders.length === 1 ? '' : 's'}:{' '}
+              {unicodeOffenders.map((o) => o.label).join(', ')}.
+              {' '}
+              Dhivehi and other Unicode text is allowed when needed — just be aware of the cost.
+            </p>
           )}
           {variables.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>

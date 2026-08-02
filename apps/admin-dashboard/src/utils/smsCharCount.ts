@@ -1,1 +1,5 @@
-export { smsCharCount, type SmsCharCount } from '@shared/utils/smsCharCount';
+export {
+  smsCharCount,
+  nonGsm7Characters,
+  type SmsCharCount,
+} from '@shared/utils/smsCharCount';

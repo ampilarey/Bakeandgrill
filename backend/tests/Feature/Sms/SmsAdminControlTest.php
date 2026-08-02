@@ -135,7 +135,7 @@ class SmsAdminControlTest extends TestCase
         Sanctum::actingAs($this->owner, ['staff']);
         $this->patchJson('/api/admin/sms/types/pos_send_bill', ['body' => ''])->assertOk();
 
-        $fallback = 'Bill #X — MVR 1.00. View: https://x.test';
+        $fallback = 'Bill #X - MVR 1.00. View: https://x.test';
         $body = app(CustomerSmsMessageBuilder::class)->build(
             CustomerSmsMessageBuilder::SLUG_SEND_BILL,
             ['invoice_number' => 'X', 'total' => '1.00', 'invoice_url' => 'https://x.test'],

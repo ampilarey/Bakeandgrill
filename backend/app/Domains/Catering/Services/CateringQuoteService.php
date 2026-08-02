@@ -596,7 +596,7 @@ class CateringQuoteService
         $payMvr = number_format(((int) $request->quote_payment_laar) / 100, 2);
         $depositBit = $request->quote_is_deposit ? ' (deposit)' : '';
 
-        $customerMsg = "Quote {$ref} ready — pay MVR {$payMvr}{$depositBit}: {$link}";
+        $customerMsg = "Quote {$ref} ready - pay MVR {$payMvr}{$depositBit}: {$link}";
         if (trim((string) $request->phone) !== '') {
             $this->sms->send(new SmsMessage(
                 to: (string) $request->phone,

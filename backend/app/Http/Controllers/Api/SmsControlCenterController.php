@@ -164,13 +164,19 @@ class SmsControlCenterController extends Controller
             ];
         }
 
-        $permissionOptions = collect(SmsTypeRegistry::ASSIGNABLE_SEND_PERMISSIONS)
-            ->map(fn (string $slug) => [
-                'slug' => $slug,
-                'name' => $permissionMeta->get($slug)?->name ?? $slug,
-            ])
-            ->values()
-            ->all();
+        $permissionOptions = array_merge(
+            [[
+                'slug' => SmsTypeRegistry::SYSTEM_SEND_PERMISSION,
+                'name' => 'System-initiated — no manual sending',
+            ]],
+            collect(SmsTypeRegistry::ASSIGNABLE_SEND_PERMISSIONS)
+                ->map(fn (string $slug) => [
+                    'slug' => $slug,
+                    'name' => $permissionMeta->get($slug)?->name ?? $slug,
+                ])
+                ->values()
+                ->all(),
+        );
 
         return response()->json([
             'global_kill_switch' => SmsTypeRegistry::isGlobalKillSwitchOn(),
@@ -201,7 +207,11 @@ class SmsControlCenterController extends Controller
                 'sometimes',
                 'nullable',
                 'string',
-                Rule::in([...SmsTypeRegistry::ASSIGNABLE_SEND_PERMISSIONS, '__system__', '']),
+                Rule::in([
+                    ...SmsTypeRegistry::ASSIGNABLE_SEND_PERMISSIONS,
+                    SmsTypeRegistry::SYSTEM_SEND_PERMISSION,
+                    '',
+                ]),
             ],
         ]);
 
@@ -287,7 +297,9 @@ class SmsControlCenterController extends Controller
         if (array_key_exists('send_permission', $validated)) {
             $oldPerm = SmsTypeRegistry::effectiveSendPermission($entry);
             $raw = $validated['send_permission'];
-            $newPerm = ($raw === null || $raw === '' || $raw === '__system__') ? null : (string) $raw;
+            $newPerm = ($raw === null || $raw === '' || $raw === SmsTypeRegistry::SYSTEM_SEND_PERMISSION)
+                ? null
+                : (string) $raw;
             SmsTypeRegistry::setSendPermissionOverride($key, $newPerm);
 
             $this->audit->log(
