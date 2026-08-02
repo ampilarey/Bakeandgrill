@@ -27,6 +27,8 @@ class SmsTypeRegistryTest extends TestCase
             $this->assertIsBool($entry['always_on']);
             $this->assertIsBool($entry['suppressible']);
             $this->assertIsBool($entry['default_enabled']);
+            $this->assertIsBool($entry['user_initiated']);
+            $this->assertNotEmpty($entry['recipients'], $entry['key'] . ' missing recipients descriptor');
         }
 
         $this->assertNotEmpty($keys);

@@ -174,10 +174,11 @@ class ReceiptController extends Controller
             $log = app(SmsService::class)->send(new SmsMessage(
                 to: $recipient,
                 message: $body,
-                type: 'transactional',
+                type: 'pos_receipt_resend',
                 customerId: $receipt->customer_id ?? $receipt->order?->customer_id,
                 referenceType: 'receipt',
                 referenceId: (string) $receipt->id,
+                actingUserId: auth()->id(),
             ));
             $sent = in_array($log->status, ['sent', 'demo'], true);
         } else {

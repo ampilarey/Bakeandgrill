@@ -129,11 +129,12 @@ class OrderPaymentController extends Controller
             app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
                 message: $message,
-                type: 'transactional',
+                type: 'pos_send_pay_link',
                 customerId: $order->customer_id,
                 referenceType: 'order',
                 referenceId: (string) $order->id,
                 idempotencyKey: 'order:' . $idempotencyKey,
+                actingUserId: $request->user()?->id,
             ));
         } catch (\Throwable $e) {
             Log::error('sendPayLink: SMS failed', [
@@ -337,10 +338,11 @@ class OrderPaymentController extends Controller
             $smsLog = app(SmsService::class)->send(new SmsMessage(
                 to: $phone,
                 message: $message,
-                type: 'transactional',
+                type: 'pos_send_bill',
                 referenceType: 'invoice',
                 referenceId: (string) $invoice->id,
                 idempotencyKey: $idempotencyKey,
+                actingUserId: $request->user()?->id,
             ));
 
             $invoice->update([

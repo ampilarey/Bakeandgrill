@@ -37,6 +37,7 @@ final class CustomerSmsActionService
             referenceType: Customer::class,
             referenceId: (string) $customer->id,
             idempotencyKey: 'admin-direct:' . $customer->id . ':' . md5($message . now()->format('Y-m-d-H-i')),
+            actingUserId: $staff->id,
         ));
     }
 }

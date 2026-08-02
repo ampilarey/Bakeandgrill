@@ -95,6 +95,16 @@ class BulkSmsService
             throw new \RuntimeException('No eligible recipients found for this campaign.');
         }
 
+        // Pre-flight spend ceiling (SmsService also enforces per-message).
+        $estimate = $this->sms->estimateBulk((string) $campaign->message, $customers->count());
+        $budgetBlock = \App\Domains\Notifications\Support\SmsBudgetGate::wouldExceedForBulk(
+            (int) $estimate['total_segments'],
+            $campaign->id,
+        );
+        if ($budgetBlock !== null) {
+            throw new \RuntimeException($budgetBlock);
+        }
+
         DB::transaction(function () use ($campaign, $customers): void {
             $split = $campaign->ab_test_enabled
                 ? max(1, min(99, (int) ($campaign->ab_split_percent ?? 50)))

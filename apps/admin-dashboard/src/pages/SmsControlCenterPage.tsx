@@ -5,10 +5,11 @@ import {
   getSmsControlCenter,
   updateSmsGlobalKillSwitch,
   updateSmsType,
-  updateSmsTemplate,
-  previewSmsTemplateById,
+  updateSmsBudget,
+  previewSmsType,
+  type SmsBudgetSnapshot,
+  type SmsCampaignQueueHealth,
   type SmsControlCenterType,
-  type SmsTemplate,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -31,19 +32,24 @@ export function SmsControlCenterPage() {
   usePageTitle('SMS Control Center');
   const { can, user } = useCurrentUserPermissions();
   const canManageSettings = can('sms.settings.manage') || can('integrations.sms');
-  const canEditTemplates = can('sms.templates.edit') || can('integrations.sms');
+  const canEditTemplates = can('sms.templates.edit') || can('integrations.sms') || canManageSettings;
   const canView = canManageSettings || can('sms.logs.view') || can('integrations.sms');
   const isOwner = user?.role === 'owner';
 
   const [types, setTypes] = useState<SmsControlCenterType[]>([]);
   const [killSwitch, setKillSwitch] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [budget, setBudget] = useState<SmsBudgetSnapshot | null>(null);
+  const [queue, setQueue] = useState<SmsCampaignQueueHealth | null>(null);
+  const [permissionOptions, setPermissionOptions] = useState<Array<{ slug: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [killModalOpen, setKillModalOpen] = useState(false);
   const [killPending, setKillPending] = useState(false);
+  const [budgetDraft, setBudgetDraft] = useState({ monthly: '', campaign: '' });
+  const [budgetSaving, setBudgetSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +59,13 @@ export function SmsControlCenterPage() {
       setTypes(res.types);
       setKillSwitch(res.global_kill_switch);
       setDemoMode(res.demo_mode);
+      setBudget(res.budget);
+      setQueue(res.campaign_queue);
+      setPermissionOptions(res.permission_options ?? []);
+      setBudgetDraft({
+        monthly: res.budget?.monthly_segment_ceiling != null ? String(res.budget.monthly_segment_ceiling) : '',
+        campaign: res.budget?.per_campaign_segment_ceiling != null ? String(res.budget.per_campaign_segment_ceiling) : '',
+      });
     } catch (e: unknown) {
       setError((e as Error).message || 'Failed to load Control Center');
     } finally {
@@ -68,8 +81,8 @@ export function SmsControlCenterPage() {
     if (!canManageSettings || row.always_on) return;
     setSavingKey(row.key);
     try {
-      const res = await updateSmsType(row.key, !row.enabled);
-      setTypes((prev) => prev.map((t) => (t.key === row.key ? { ...t, enabled: res.enabled } : t)));
+      const res = await updateSmsType(row.key, { enabled: !row.enabled });
+      setTypes((prev) => prev.map((t) => (t.key === row.key ? { ...t, enabled: !!res.enabled } : t)));
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -88,6 +101,23 @@ export function SmsControlCenterPage() {
       setError((e as Error).message);
     } finally {
       setKillPending(false);
+    }
+  };
+
+  const saveBudget = async () => {
+    if (!canManageSettings) return;
+    setBudgetSaving(true);
+    setError('');
+    try {
+      const res = await updateSmsBudget({
+        monthly_segment_ceiling: budgetDraft.monthly.trim() === '' ? null : Number(budgetDraft.monthly),
+        per_campaign_segment_ceiling: budgetDraft.campaign.trim() === '' ? null : Number(budgetDraft.campaign),
+      });
+      setBudget(res.budget);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setBudgetSaving(false);
     }
   };
 
@@ -154,6 +184,82 @@ export function SmsControlCenterPage() {
         <p style={{ color: 'var(--color-danger-strong)', marginBottom: 12 }}>{error}</p>
       )}
 
+      {!loading && budget && (
+        <section style={panelStyle}>
+          <h2 style={sectionTitle}>Spend ceiling</h2>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5A4E' }}>
+            This month: {budget.period_segments_used} segments · MVR {budget.period_cost_mvr.toFixed(2)}
+            {budget.monthly_segment_ceiling != null && (
+              <> · Cap {budget.monthly_segment_ceiling} ({budget.monthly_remaining ?? 0} left)</>
+            )}
+            {budget.monthly_exhausted && (
+              <span style={{ color: 'var(--color-danger-strong)', fontWeight: 600 }}> · Cap reached</span>
+            )}
+            {budget.period_blocked_count > 0 && (
+              <> · {budget.period_blocked_count} blocked</>
+            )}
+          </p>
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+            OTP / always-on auth types are never blocked by budget, but still count toward usage.
+          </p>
+          {canManageSettings && (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <label style={fieldLabel}>
+                Monthly segments
+                <input
+                  type="number"
+                  min={0}
+                  value={budgetDraft.monthly}
+                  onChange={(e) => setBudgetDraft((d) => ({ ...d, monthly: e.target.value }))}
+                  placeholder="Unlimited"
+                  style={inputStyle}
+                />
+              </label>
+              <label style={fieldLabel}>
+                Per-campaign segments
+                <input
+                  type="number"
+                  min={0}
+                  value={budgetDraft.campaign}
+                  onChange={(e) => setBudgetDraft((d) => ({ ...d, campaign: e.target.value }))}
+                  placeholder="Unlimited"
+                  style={inputStyle}
+                />
+              </label>
+              <Btn variant="secondary" onClick={() => void saveBudget()} disabled={budgetSaving}>
+                {budgetSaving ? 'Saving…' : 'Save ceilings'}
+              </Btn>
+            </div>
+          )}
+        </section>
+      )}
+
+      {!loading && queue && (
+        <section style={panelStyle}>
+          <h2 style={sectionTitle}>Campaign queue health</h2>
+          <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6B5A4E' }}>
+            Running: {queue.running_campaigns}
+            {' · '}Pending recipients: {queue.pending_recipients}
+            {' · '}Failed recipients (24h): {queue.failed_recipients_24h}
+            {' · '}Failed queue jobs (24h): {queue.failed_queue_jobs}
+          </p>
+          {(queue.pending_recipients > 0 || queue.failed_queue_jobs > 0) && (
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-warning-strong)' }}>
+              Stalled sends usually mean the Redis/database queue worker is down — check System Health.
+            </p>
+          )}
+          {queue.campaigns.length > 0 && (
+            <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: '#6B5A4E' }}>
+              {queue.campaigns.map((c) => (
+                <li key={c.id}>
+                  #{c.id} {c.name} — pending {c.pending}/{c.total}, failed {c.failed}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {loading ? (
         <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : (
@@ -172,20 +278,12 @@ export function SmsControlCenterPage() {
                   onToggle={() => void handleToggle(row)}
                   saving={savingKey === row.key}
                   canToggle={canManageSettings && !row.always_on}
-                  canEditTemplate={canEditTemplates}
-                  onTemplateSaved={(tpl) => {
-                    setTypes((prev) => prev.map((t) => {
-                      if (t.key !== row.key || !t.template) return t;
-                      return {
-                        ...t,
-                        template: {
-                          ...t.template,
-                          body: tpl.body,
-                          variables: (tpl.variables ?? t.template.variables) as { name: string; description?: string }[],
-                        },
-                      };
-                    }));
+                  canEdit={canEditTemplates && canManageSettings}
+                  permissionOptions={permissionOptions}
+                  onUpdated={(patch) => {
+                    setTypes((prev) => prev.map((t) => (t.key === row.key ? { ...t, ...patch } : t)));
                   }}
+                  onError={setError}
                 />
               ))}
             </div>
@@ -226,8 +324,10 @@ function TypeRow({
   onToggle,
   saving,
   canToggle,
-  canEditTemplate,
-  onTemplateSaved,
+  canEdit,
+  permissionOptions,
+  onUpdated,
+  onError,
 }: {
   row: SmsControlCenterType;
   expanded: boolean;
@@ -235,9 +335,13 @@ function TypeRow({
   onToggle: () => void;
   saving: boolean;
   canToggle: boolean;
-  canEditTemplate: boolean;
-  onTemplateSaved: (tpl: SmsTemplate) => void;
+  canEdit: boolean;
+  permissionOptions: Array<{ slug: string; name: string }>;
+  onUpdated: (patch: Partial<SmsControlCenterType>) => void;
+  onError: (msg: string) => void;
 }) {
+  const systemOnly = row.send_permission == null;
+
   return (
     <div style={{
       background: 'var(--color-surface)',
@@ -251,9 +355,12 @@ function TypeRow({
             <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#3D2B1F' }}>{row.label}</p>
             {row.always_on && <span style={badgeStyle('#EEF2FF', '#3730A3')}>Always on</span>}
           </div>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6B5A4E' }}>
+            Recipients: {row.recipients || '—'}
+          </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
             Who can send: {row.send_permission_label}
-            {row.roles_with_permission.length > 0 && (
+            {!systemOnly && row.roles_with_permission.length > 0 && (
               <> · {row.roles_with_permission.join(', ')}</>
             )}
             {' · '}
@@ -264,11 +371,9 @@ function TypeRow({
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {row.template && (
-            <button type="button" onClick={onExpand} style={linkBtn}>
-              {expanded ? 'Hide wording' : 'Edit wording'}
-            </button>
-          )}
+          <button type="button" onClick={onExpand} style={linkBtn}>
+            {expanded ? 'Hide controls' : 'Edit'}
+          </button>
           {row.always_on ? (
             <span style={badgeStyle('#F3F4F6', '#6B7280')}>Always on</span>
           ) : (
@@ -303,50 +408,90 @@ function TypeRow({
         </div>
       </div>
 
-      {expanded && row.template && (
-        <InlineTemplateEditor
-          template={row.template}
-          disabled={!canEditTemplate}
-          onSaved={onTemplateSaved}
+      {expanded && (
+        <TypeEditor
+          row={row}
+          disabled={!canEdit}
+          permissionOptions={permissionOptions}
+          onUpdated={onUpdated}
+          onError={onError}
         />
       )}
     </div>
   );
 }
 
-function InlineTemplateEditor({
-  template,
+function TypeEditor({
+  row,
   disabled,
-  onSaved,
+  permissionOptions,
+  onUpdated,
+  onError,
 }: {
-  template: NonNullable<SmsControlCenterType['template']>;
+  row: SmsControlCenterType;
   disabled: boolean;
-  onSaved: (tpl: SmsTemplate) => void;
+  permissionOptions: Array<{ slug: string; name: string }>;
+  onUpdated: (patch: Partial<SmsControlCenterType>) => void;
+  onError: (msg: string) => void;
 }) {
-  const [body, setBody] = useState(template.body ?? '');
+  const [body, setBody] = useState(row.template?.body ?? '');
+  const [perm, setPerm] = useState(row.send_permission ?? '__system__');
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [estimate, setEstimate] = useState<{ encoding: string; segments: number; cost_mvr: number } | null>(null);
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    setBody(template.body ?? '');
+    setBody(row.template?.body ?? '');
+    setPerm(row.send_permission ?? '__system__');
     setPreview(null);
-  }, [template.id, template.body]);
+    setEstimate(null);
+  }, [row.key, row.template?.body, row.send_permission]);
 
-  const displayBody = body || template.body || '';
-  const count = smsCharCount(displayBody);
-  const variables = template.variables ?? [];
+  const displayBody = body;
+  const count = smsCharCount(displayBody || ' ');
+  const variables = row.template?.variables ?? [];
+  const hasTemplate = !!row.template;
 
-  const save = async () => {
-    if (disabled) return;
+  const saveWording = async () => {
+    if (disabled || !hasTemplate) return;
     setSaving(true);
     setErr('');
     try {
-      const res = await updateSmsTemplate(template.id, { body: displayBody });
-      onSaved(res.template);
-      setBody(res.template.body);
+      const res = await updateSmsType(row.key, { body: displayBody });
+      if (res.template) {
+        onUpdated({ template: res.template });
+        setBody(res.template.body);
+      }
+      if (res.estimate) setEstimate(res.estimate);
     } catch (e: unknown) {
-      setErr((e as Error).message);
+      const msg = (e as Error).message;
+      setErr(msg);
+      onError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const savePermission = async (next: string) => {
+    if (disabled) return;
+    setPerm(next);
+    setSaving(true);
+    setErr('');
+    try {
+      const res = await updateSmsType(row.key, {
+        send_permission: next === '__system__' ? '__system__' : next,
+      });
+      onUpdated({
+        send_permission: res.send_permission ?? null,
+        send_permission_label: res.send_permission_label
+          ?? (res.send_permission == null ? 'System-initiated — no manual sending' : res.send_permission),
+        roles_with_permission: res.send_permission == null ? ['System'] : row.roles_with_permission,
+      });
+    } catch (e: unknown) {
+      const msg = (e as Error).message;
+      setErr(msg);
+      onError(msg);
     } finally {
       setSaving(false);
     }
@@ -354,73 +499,104 @@ function InlineTemplateEditor({
 
   const doPreview = async () => {
     try {
-      const res = await previewSmsTemplateById(template.id);
+      const res = await previewSmsType(row.key, displayBody);
       setPreview(res.preview);
+      setEstimate(res.estimate);
     } catch {
       setPreview(displayBody);
+      setEstimate(null);
     }
   };
 
   return (
     <div style={{ borderTop: '1px solid #F3EDE6', marginTop: 12, paddingTop: 12 }}>
-      <textarea
-        value={displayBody}
-        onChange={(e) => {
-          setBody(e.target.value);
-          setPreview(null);
-        }}
-        disabled={disabled}
-        rows={4}
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          border: '1px solid var(--color-border)',
-          borderRadius: 8,
-          padding: '10px 12px',
-          fontSize: 13,
-          fontFamily: 'inherit',
-          resize: 'vertical',
-          opacity: disabled ? 0.65 : 1,
-        }}
-      />
-      {variables.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-          {variables.map((v) => (
-            <span
-              key={v.name}
-              title={v.description}
-              style={{
-                fontSize: 11,
-                padding: '2px 8px',
-                borderRadius: 99,
-                background: '#F5F0EB',
-                color: '#6B5A4E',
-                fontFamily: 'monospace',
-              }}
-            >
-              {`{{${v.name}}}`}
-            </span>
+      <label style={{ ...fieldLabel, marginBottom: 12 }}>
+        Who can send
+        <select
+          value={perm}
+          disabled={disabled || saving}
+          onChange={(e) => void savePermission(e.target.value)}
+          style={inputStyle}
+        >
+          <option value="__system__">System-initiated — no manual sending</option>
+          {permissionOptions.map((p) => (
+            <option key={p.slug} value={p.slug}>{p.name} ({p.slug})</option>
           ))}
-        </div>
+        </select>
+      </label>
+
+      {hasTemplate ? (
+        <>
+          <textarea
+            value={displayBody}
+            onChange={(e) => {
+              setBody(e.target.value);
+              setPreview(null);
+            }}
+            disabled={disabled}
+            rows={4}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              fontSize: 13,
+              fontFamily: 'inherit',
+              resize: 'vertical',
+              opacity: disabled ? 0.65 : 1,
+            }}
+          />
+          {row.code_fallback_note && displayBody.trim() === '' && (
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-warning-strong)' }}>{row.code_fallback_note}</p>
+          )}
+          {variables.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+              {variables.map((v) => (
+                <span
+                  key={v.name}
+                  title={v.description}
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 99,
+                    background: '#F5F0EB',
+                    color: '#6B5A4E',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {`{{${v.name}}}`}
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 8,
+            gap: 8,
+            flexWrap: 'wrap',
+          }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+              {estimate
+                ? `${estimate.encoding} · ${estimate.segments} segment${estimate.segments === 1 ? '' : 's'} · MVR ${estimate.cost_mvr.toFixed(2)}`
+                : `${count.encoding} · ${count.chars} chars · ${count.segments} segment${count.segments === 1 ? '' : 's'} · ~MVR ${(count.segments * 0.25).toFixed(2)}`}
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => void doPreview()} style={secondaryBtn}>Preview</button>
+              <button type="button" onClick={() => void saveWording()} disabled={disabled || saving} style={primaryBtn}>
+                {saving ? 'Saving…' : 'Save message'}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Message body is set per campaign / send — no type-level template.
+        </p>
       )}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 8,
-        gap: 8,
-        flexWrap: 'wrap',
-      }}>
-        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-          {count.encoding} · {count.chars} chars · {count.segments} segment{count.segments === 1 ? '' : 's'}
-        </span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" onClick={() => void doPreview()} style={secondaryBtn}>Preview</button>
-          <button type="button" onClick={() => void save()} disabled={disabled || saving} style={primaryBtn}>
-            {saving ? 'Saving…' : 'Save message'}
-          </button>
-        </div>
-      </div>
+
       {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: '8px 0 0' }}>{err}</p>}
       {preview && (
         <div style={{
@@ -448,6 +624,39 @@ function badgeStyle(bg: string, color: string): CSSProperties {
     color,
   };
 }
+
+const panelStyle: CSSProperties = {
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 10,
+  padding: '14px 16px',
+  marginBottom: 18,
+};
+
+const sectionTitle: CSSProperties = {
+  margin: '0 0 8px',
+  fontSize: 14,
+  fontWeight: 700,
+  color: '#3D2B1F',
+};
+
+const fieldLabel: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  fontSize: 12,
+  color: '#6B5A4E',
+  minWidth: 160,
+};
+
+const inputStyle: CSSProperties = {
+  minHeight: 44,
+  border: '1px solid var(--color-border)',
+  borderRadius: 8,
+  padding: '8px 10px',
+  fontSize: 13,
+  fontFamily: 'inherit',
+};
 
 const linkBtn: CSSProperties = {
   background: 'none',

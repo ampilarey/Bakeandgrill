@@ -114,6 +114,7 @@ final class DiscountApprovalService
                 referenceType: 'discount_approval',
                 referenceId: (string) $approval->id,
                 idempotencyKey: 'discount_approval:' . $approval->id . ':approver:' . $i,
+                actingUserId: $actor->id,
             ));
             $sentTo[] = [
                 'phone' => $approver['phone'],

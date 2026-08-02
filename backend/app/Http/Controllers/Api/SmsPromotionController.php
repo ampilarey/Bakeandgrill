@@ -71,6 +71,15 @@ class SmsPromotionController extends Controller
             return response()->json(['message' => 'Too many recipients. Refine filters.'], 422);
         }
 
+        $bulkEstimate = app(\App\Domains\Notifications\Services\SmsService::class)
+            ->estimateBulk((string) $validated['message'], $recipientCount);
+        $budgetBlock = \App\Domains\Notifications\Support\SmsBudgetGate::wouldExceedForBulk(
+            (int) $bulkEstimate['total_segments'],
+        );
+        if ($budgetBlock !== null) {
+            return response()->json(['message' => $budgetBlock], 422);
+        }
+
         // Bug-019: daily SMS-blast safety net. Counts every recipient
         // queued or sent in the last 24 hours, including by other
         // staff members, and refuses if adding this campaign would
