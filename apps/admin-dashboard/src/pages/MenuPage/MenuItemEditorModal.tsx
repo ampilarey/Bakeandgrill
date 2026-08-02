@@ -30,14 +30,14 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
         width: 148,
         padding: '12px 10px 14px',
         borderRadius: 14,
-        border: '1px solid #E8E0D8',
+        border: '1px solid var(--color-border)',
         background: 'radial-gradient(120% 90% at 50% 0%, #F8E8D4 0%, #fff 55%)',
         textAlign: 'center',
         position: 'sticky',
         top: 8,
       }}
     >
-      <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, color: '#9C8E7E', letterSpacing: '0.04em' }}>
+      <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', letterSpacing: '0.04em' }}>
         LIVE CARD
       </p>
       <div
@@ -60,7 +60,7 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
-          <span style={{ fontWeight: 800, color: '#D4813A', fontSize: 22 }}>
+          <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: 22 }}>
             {(previewName[0] || 'B').toUpperCase()}
           </span>
         )}
@@ -86,7 +86,7 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
         style={{
           margin: '0 0 6px',
           fontSize: 11,
-          color: '#9C8E7E',
+          color: 'var(--color-text-muted)',
           lineHeight: 1.3,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -96,7 +96,7 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
         {previewDetail}
       </p>
       <p data-testid="menu-card-preview-price" style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#3D2B1F' }}>
-        {note ? <span style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', marginRight: 4 }}>{note}</span> : null}
+        {note ? <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', marginRight: 4 }}>{note}</span> : null}
         {priceLabel}
       </p>
     </div>
@@ -157,7 +157,7 @@ function TaxCodeField({
         ))}
       </select>
       {value === 'standard_8' && (
-        <span style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4, display: 'block' }}>
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
           Rate from GST settings: {displayRate}% (read-only)
         </span>
       )}
@@ -183,7 +183,7 @@ function VariantsEditor({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Variants</label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Variants</label>
         <Btn variant="ghost" onClick={addRow} style={{ fontSize: 12, padding: '3px 10px' }}>+ Add variant</Btn>
       </div>
       {rows.length === 0 ? (
@@ -194,7 +194,7 @@ function VariantsEditor({
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #E8E0D8' }}>
+              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 100 }}>Name *</th>
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Price *</th>
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Cost</th>
@@ -208,13 +208,13 @@ function VariantsEditor({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row._key} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                <tr key={row._key} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={cellStyle}>
                     <input
                       value={row.name}
                       onChange={(e) => update(row._key, 'name', e.target.value)}
                       placeholder="e.g. Large"
-                      style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 8px', fontSize: 12 }}
+                      style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 8px', fontSize: 12 }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -222,7 +222,7 @@ function VariantsEditor({
                       type="number" min="0" step="0.01"
                       value={row.price}
                       onChange={(e) => update(row._key, 'price', parseFloat(e.target.value) || 0)}
-                      style={{ width: 68, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                      style={{ width: 68, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -231,7 +231,7 @@ function VariantsEditor({
                       value={row.cost ?? ''}
                       onChange={(e) => update(row._key, 'cost', e.target.value !== '' ? parseFloat(e.target.value) : null)}
                       placeholder="—"
-                      style={{ width: 68, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                      style={{ width: 68, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -239,7 +239,7 @@ function VariantsEditor({
                       value={row.sku ?? ''}
                       onChange={(e) => update(row._key, 'sku', e.target.value || null)}
                       placeholder="optional"
-                      style={{ width: 86, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12 }}
+                      style={{ width: 86, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12 }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -248,7 +248,7 @@ function VariantsEditor({
                       value={row.stock_qty ?? 0}
                       onChange={(e) => update(row._key, 'stock_qty', parseInt(e.target.value) || 0)}
                       disabled={!row.track_stock}
-                      style={{ width: 52, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                      style={{ width: 52, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
                     />
                   </td>
                   <td style={{ ...cellStyle, paddingLeft: 4 }}>
@@ -258,7 +258,7 @@ function VariantsEditor({
                       onChange={(e) => update(row._key, 'low_stock_threshold', parseInt(e.target.value) || 0)}
                       disabled={!row.track_stock}
                       title="Low-stock alert threshold"
-                      style={{ width: 52, border: '1px solid #E8E0D8', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
+                      style={{ width: 52, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 }}
                     />
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'center' }}>
@@ -281,7 +281,7 @@ function VariantsEditor({
                     <button
                       type="button"
                       onClick={() => remove(row._key)}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
+                      style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
                       title="Remove variant"
                     >×</button>
                   </td>
@@ -337,16 +337,16 @@ export function MenuItemEditorModal({
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '7px 16px', fontSize: 13, fontWeight: 600, border: 'none',
-    borderBottom: active ? '2px solid #D4813A' : '2px solid transparent',
+    borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
     background: 'none', cursor: 'pointer',
-    color: active ? '#D4813A' : '#9C8E7E',
+    color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
   });
 
   return (
     <Modal title={title} onClose={onClose} maxWidth={640}>
 
       {itemId && (
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E8E0D8', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 20 }}>
           <button type="button" style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
           <button type="button" style={tabStyle(activeTab === 'photos')} onClick={() => setActiveTab('photos')}>Photos</button>
         </div>
@@ -370,7 +370,7 @@ export function MenuItemEditorModal({
               style={{ padding: '14px 16px', background: '#F7FBFF', borderRadius: 12, border: '1px solid #D7E6F5' }}
             >
               <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Menu card display</p>
-              <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
                 Controls the compact mobile menu card (circular image + name / little detail / price).
                 Leave blank to fall back to the full name and truncated description.
               </p>
@@ -408,7 +408,7 @@ export function MenuItemEditorModal({
                       rows={2}
                     />
                   </Field>
-                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '-4px 0 0' }}>
+                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '-4px 0 0' }}>
                     {form.short_description.length}/140 · little detail line on the mobile menu card
                   </p>
                   <Field label="Short description (Dhivehi)">
@@ -419,7 +419,7 @@ export function MenuItemEditorModal({
                       rows={2}
                     />
                   </Field>
-                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '-4px 0 0' }}>
+                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '-4px 0 0' }}>
                     {form.short_description_dv.length}/140
                   </p>
                   <Field label="Price note">
@@ -429,7 +429,7 @@ export function MenuItemEditorModal({
                       placeholder='e.g. "from" / "per box"'
                     />
                   </Field>
-                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '-4px 0 0' }}>
+                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '-4px 0 0' }}>
                     {form.price_note.length}/40 · shown beside the price on the card
                   </p>
                 </div>
@@ -439,7 +439,7 @@ export function MenuItemEditorModal({
 
             <div style={{ padding: '14px 16px', background: '#FFFAF5', borderRadius: 12, border: '1px solid #F0E0D0' }}>
               <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Customer-facing details</p>
-              <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
                 Full description shown on the item detail sheet when customers tap an item.
               </p>
               <Field label="Description">
@@ -453,7 +453,7 @@ export function MenuItemEditorModal({
               {(() => {
                 const lines = form.description.replace(/\r\n/g, '\n').split('\n').filter((l) => l.trim()).length;
                 return (
-                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 12px' }}>
+                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 12px' }}>
                     {form.description.trim().length} characters · {lines} line{lines === 1 ? '' : 's'} ·
                     used as the card detail fallback when short description is empty
                   </p>
@@ -467,7 +467,7 @@ export function MenuItemEditorModal({
                   placeholder="Custom dietary tag…"
                 />
               </Field>
-              <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 12px' }}>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 12px' }}>
                 Filter chips on the menu · also listed on the item detail sheet
               </p>
               <Field label="Allergens">
@@ -478,7 +478,7 @@ export function MenuItemEditorModal({
                   placeholder="Custom allergen…"
                 />
               </Field>
-              <p style={{ fontSize: 11, color: '#9C8E7E', margin: '4px 0 12px' }}>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 12px' }}>
                 Shown as “Contains …” on the item detail sheet (not on the menu card)
               </p>
               <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
@@ -486,7 +486,7 @@ export function MenuItemEditorModal({
                   <select
                     value={form.spice_level}
                     onChange={(e) => set('spice_level', e.target.value as ItemForm['spice_level'])}
-                    style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 14 }}
+                    style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 14 }}
                   >
                     <option value="none">None / not spicy</option>
                     <option value="mild">Mild</option>
@@ -513,7 +513,7 @@ export function MenuItemEditorModal({
                 </Field>
               </div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: '#F8F6F3', borderRadius: 8, border: '1px solid #E8E0D8' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: 'var(--color-bg)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
               <input
                 type="checkbox"
                 checked={form.has_variants}
@@ -550,14 +550,14 @@ export function MenuItemEditorModal({
               </div>
             )}
 
-            <div style={{ padding: '12px 14px', background: '#F8F6F3', borderRadius: 10, border: '1px solid #E8E0D8' }}>
+            <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
               <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Packaging</p>
               <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <Field label="Charge mode">
                   <select
                     value={form.packaging_fee_mode}
                     onChange={(e) => set('packaging_fee_mode', e.target.value as 'per_unit' | 'per_line')}
-                    style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontSize: 14 }}
+                    style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 14 }}
                   >
                     <option value="per_unit">Per unit (× qty)</option>
                     <option value="per_line">Per line (once)</option>
@@ -567,7 +567,7 @@ export function MenuItemEditorModal({
                   <Input value={form.packaging_fee} onChange={(v) => set('packaging_fee', v)} type="number" placeholder="0.00" />
                 </Field>
               </div>
-              <p style={{ margin: '0 0 10px', fontSize: 12, color: '#9C8E7E' }}>
+              <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>
                 Fallback applies when this item has no packaging options. Dine-in is never charged.
               </p>
               <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: '#6B5B4F' }}>Options (optional)</p>
@@ -621,8 +621,8 @@ export function MenuItemEditorModal({
                       set('packaging_options', next);
                     }}
                     style={{
-                      minHeight: 44, border: '1px solid #E8E0D8', borderRadius: 8,
-                      background: '#fff', cursor: 'pointer', fontSize: 16, color: '#9C8E7E',
+                      minHeight: 44, border: '1px solid var(--color-border)', borderRadius: 8,
+                      background: '#fff', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-muted)',
                     }}
                     aria-label="Remove packaging option"
                   >
@@ -650,7 +650,7 @@ export function MenuItemEditorModal({
             </div>
 
             {!form.has_variants && (
-              <div style={{ padding: '12px 14px', background: '#F8F6F3', borderRadius: 10, border: '1px solid #E8E0D8' }}>
+              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: form.is_combo ? 12 : 0 }}>
                   <input
                     type="checkbox"
@@ -669,11 +669,11 @@ export function MenuItemEditorModal({
                     <Field label="Bundle discount (%)">
                       <Input value={form.combo_discount_pct} onChange={(v) => set('combo_discount_pct', v)} type="number" placeholder="Optional" />
                     </Field>
-                    <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', fontWeight: 600 }}>Included items</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>Included items</p>
                     {form.combo_items.map((row, idx) => (
-                      <div key={idx} style={{ border: '1px solid #E8E0D8', borderRadius: 10, padding: 10, background: '#fff' }}>
+                      <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: '#fff' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Component {idx + 1}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Component {idx + 1}</span>
                           <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>Remove</Btn>
                         </div>
                         <ItemSearch
@@ -722,7 +722,7 @@ export function MenuItemEditorModal({
                 <select
                   value={form.category_id}
                   onChange={(e) => set('category_id', e.target.value)}
-                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
                 >
                   <option value="">— No category —</option>
                   {categories.filter((c) => !c.parent_id).map((parent) => (
@@ -739,7 +739,7 @@ export function MenuItemEditorModal({
                 <select
                   value={form.menu_group_id}
                   onChange={(e) => set('menu_group_id', e.target.value)}
-                  style={{ width: '100%', border: '1px solid #E8E0D8', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
+                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
                 >
                   {menuGroups.map((g) => (
                     <option key={g.id} value={String(g.id)}>{g.name}</option>
@@ -751,7 +751,7 @@ export function MenuItemEditorModal({
               <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
             </Field>
             <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
                   Where can this be ordered? (channel matrix)
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px' }}>
@@ -787,7 +787,7 @@ export function MenuItemEditorModal({
               />
             </Field>
             {!form.has_variants && (
-              <div style={{ border: '1px solid #E8E0D8', borderRadius: 10, padding: '14px 16px', background: '#FAFAF8' }}>
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px', background: '#FAFAF8' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: form.track_stock ? 12 : 0 }}>
                   <input
                     type="checkbox"
