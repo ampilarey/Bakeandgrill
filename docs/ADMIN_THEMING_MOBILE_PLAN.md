@@ -191,6 +191,46 @@ fixes badges everywhere at once. Do it first, in this order:
 Also widen the ESLint guard's `files` glob from `src/pages/**` to include
 `src/components/**`, and regenerate the baseline, so the ratchet covers them.
 
+### Stage 2c — Component subdirectories (missed by Stage 2b's file list)
+
+The Stage 2b file list was built from a non-recursive `src/components/*.tsx`
+glob while quoting a recursive total, so two subdirectories were never listed.
+**184 canonical literals remain** after the eleven leaf components:
+
+| Location | Canonical hexes | Files |
+|---|---|---|
+| `src/components/content-editors/` | ~110 | 14 |
+| `src/components/ui/` | ~30 | 9 |
+| `src/components/ErrorBoundary.tsx` | 1 | 1 |
+
+Both directories **are** covered by the widened ESLint guard, so they are
+protected against regression — they simply have not been migrated.
+
+**`src/components/ui/` is a different shape and needs care.** It is the design
+system (Button, Card, Input, Modal, Badge, Tabs…) and it styles via **Tailwind
+v4 arbitrary-value classes**, not inline style objects:
+
+```jsx
+primary: 'bg-[#D4813A] hover:bg-[#B5692E] text-white shadow-sm',
+```
+
+Two consequences:
+
+1. **The ESLint guard is blind to these.** It scans `style={{…}}` objects only,
+   so `ui/` shows 3 baselined violations against ~30 actual literals. New
+   Tailwind-class hexes can land here unnoticed. Extending the rule to cover
+   `bg-[#…]` / `text-[#…]` class strings is worth doing, but is its own task.
+2. **The mechanical replacement still works**, verified against Tailwind v4.2:
+   `bg-[#D4813A]` → `bg-[var(--color-primary)]` compiles to
+   `background-color: var(--color-primary)`, and opacity modifiers survive —
+   `ring-[var(--color-primary)]/20` emits
+   `color-mix(in oklab, var(--color-primary) 20%, transparent)`.
+   The brackets are already present, so the same ten-pair substitution applies
+   unchanged.
+
+Order: `content-editors/` first (bulk, same inline-style shape as everything
+migrated so far), then `ui/`, then `ErrorBoundary.tsx`.
+
 ### Stage 3 — Long tail and verification
 
 1. Sweep remaining ~988 one-off literals; convert what maps cleanly, leave
