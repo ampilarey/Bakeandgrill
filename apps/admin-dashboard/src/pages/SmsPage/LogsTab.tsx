@@ -38,9 +38,9 @@ export function LogsTab() {
       )}
       {stats && (
         <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-          <StatCard label="Total SMS" value={stats.total.toLocaleString()} accent="#D4813A" />
-          <StatCard label="Sent"      value={stats.sent.toLocaleString()}  accent="#22c55e" />
-          <StatCard label="Failed"    value={stats.failed.toLocaleString()} accent="#ef4444" />
+          <StatCard label="Total SMS" value={stats.total.toLocaleString()} accent="var(--color-primary)" />
+          <StatCard label="Sent"      value={stats.sent.toLocaleString()}  accent="var(--color-success)" />
+          <StatCard label="Failed"    value={stats.failed.toLocaleString()} accent="var(--color-danger)" />
         </div>
       )}
 
@@ -79,15 +79,15 @@ export function LogsTab() {
                   <td style={{ ...TD, fontWeight: 600 }}>{l.to}</td>
                   <td style={TD}><Badge label={l.type} color="blue" /></td>
                   <td style={TD}><Badge label={l.status} color={statColor(l.status)} /></td>
-                  <td style={{ ...TD, color: '#6B5D4F', maxWidth: 200 }}>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', maxWidth: 200 }}>
                     <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {l.message}
                     </span>
-                    {l.error_message && <span style={{ color: '#ef4444', fontSize: 11 }}>{l.error_message}</span>}
+                    {l.error_message && <span style={{ color: 'var(--color-danger)', fontSize: 11 }}>{l.error_message}</span>}
                   </td>
-                  <td style={{ ...TD, color: '#6B5D4F', textAlign: 'center' }}>{l.segments}</td>
-                  <td style={{ ...TD, color: '#D4813A', fontWeight: 600 }}>MVR {l.cost_estimate_mvr}</td>
-                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 11, whiteSpace: 'nowrap' }}>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', textAlign: 'center' }}>{l.segments}</td>
+                  <td style={{ ...TD, color: 'var(--color-primary)', fontWeight: 600 }}>MVR {l.cost_estimate_mvr}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 11, whiteSpace: 'nowrap' }}>
                     {l.sent_at ? new Date(l.sent_at).toLocaleString() : '—'}
                   </td>
                 </tr>
