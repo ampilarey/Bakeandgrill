@@ -436,7 +436,7 @@ export default function ServiceAvailabilityPage() {
               label="Blocked"
               value={String(summary.blocked)}
               sub={summary.blocked ? 'Banner may show' : 'All clear'}
-              accent={summary.blocked ? '#d97706' : '#9C8E7E'}
+              accent={summary.blocked ? '#d97706' : 'var(--color-text-muted)'}
               icon={Pause}
             />
             <StatCard
@@ -450,7 +450,7 @@ export default function ServiceAvailabilityPage() {
               label="SMS queue"
               value={String(summary.waiting)}
               sub="Waiting to notify"
-              accent={summary.waiting ? '#D4813A' : '#9C8E7E'}
+              accent={summary.waiting ? 'var(--color-primary)' : 'var(--color-text-muted)'}
               icon={Bell}
             />
           </div>
@@ -483,8 +483,8 @@ export default function ServiceAvailabilityPage() {
                         textAlign: 'left',
                         padding: '12px 14px',
                         borderRadius: 12,
-                        border: preset.danger ? '1.5px solid #fca5a5' : '1.5px solid #E8E0D8',
-                        background: preset.danger ? '#fef2f2' : '#F8F6F3',
+                        border: preset.danger ? '1.5px solid #fca5a5' : '1.5px solid var(--color-border)',
+                        background: preset.danger ? '#fef2f2' : 'var(--color-bg)',
                         cursor: presetBusy ? 'not-allowed' : 'pointer',
                         fontFamily: 'inherit',
                         minHeight: 44,
@@ -495,13 +495,13 @@ export default function ServiceAvailabilityPage() {
                         {preset.danger ? (
                           <ShieldAlert size={16} color="#b91c1c" />
                         ) : (
-                          <Pause size={16} color="#D4813A" />
+                          <Pause size={16} color="var(--color-primary)" />
                         )}
                         <span
                           style={{
                             fontWeight: 700,
                             fontSize: 14,
-                            color: preset.danger ? '#991b1b' : '#1C1408',
+                            color: preset.danger ? '#991b1b' : 'var(--color-text)',
                           }}
                         >
                           {preset.label}
@@ -509,7 +509,7 @@ export default function ServiceAvailabilityPage() {
                       </div>
                       <div
                         className="svc-avail-preset-desc"
-                        style={{ fontSize: 12.5, color: '#6B5D4F', lineHeight: 1.4 }}
+                        style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}
                       >
                         {preset.description}
                       </div>
@@ -551,14 +551,14 @@ export default function ServiceAvailabilityPage() {
           onClose={() => !presetBusy && setPresetPreview(null)}
           maxWidth={520}
         >
-          <p style={{ margin: '0 0 12px', fontSize: 14, color: '#6B5D4F' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--color-text-secondary)' }}>
             These services will change if you apply this preset:
           </p>
           <ul style={{ margin: '0 0 16px', paddingInlineStart: 18, fontSize: 14 }}>
             {presetPreview.changes.map((c) => (
               <li key={c.service_key} style={{ marginBottom: 6 }}>
                 <strong>{metaFor(c.service_key).label}</strong>
-                <span style={{ color: '#9C8E7E' }}> ({c.service_key})</span>
+                <span style={{ color: 'var(--color-text-muted)' }}> ({c.service_key})</span>
                 {' → '}
                 <Badge label={STATUS_LABEL[c.target_status]} color={STATUS_BADGE[c.target_status]} />
               </li>
@@ -705,7 +705,7 @@ function ServiceCard({
       className="svc-avail-card"
       style={{
         background: '#fff',
-        border: `1.5px solid ${down ? '#fecaca' : '#E8E0D8'}`,
+        border: `1.5px solid ${down ? '#fecaca' : 'var(--color-border)'}`,
         borderRadius: 12,
         padding: 14,
         display: 'flex',
@@ -716,22 +716,22 @@ function ServiceCard({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#1C1408' }}>{meta.label}</div>
-          <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{meta.affects}</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>{meta.label}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{meta.affects}</div>
         </div>
         <Badge label={STATUS_LABEL[row.status]} color={STATUS_BADGE[row.status]} />
       </div>
 
       <p
         className="svc-avail-card-blurb"
-        style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.4 }}
+        style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}
       >
         {row.public_message?.trim() || meta.blurb}
       </p>
 
       <div
         className="svc-avail-chips"
-        style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: '#6B5D4F' }}
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}
       >
         <span style={chipStyle(down ? 'red' : 'green')}>
           {down ? `Blocked · ${row.resolved_source}` : 'Open'}
@@ -888,7 +888,7 @@ function EditServiceModal({
 
   return (
     <Modal title={`Edit · ${meta.label}`} onClose={onClose} maxWidth={640}>
-      <p style={{ margin: '0 0 14px', fontSize: 13, color: '#6B5D4F' }}>
+      <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
         {meta.blurb} Affects: <strong>{meta.affects}</strong>
       </p>
 
@@ -928,7 +928,7 @@ function EditServiceModal({
               placeholder={defaultPauseMessage(row.service_key)}
               style={textareaStyle}
             />
-            <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
               {publicMessage.length}/500 · shown on the order app banner / website
             </div>
           </div>
@@ -942,10 +942,10 @@ function EditServiceModal({
               border: `1px solid ${status === 'available' ? '#bbf7d0' : '#fde68a'}`,
             }}
           >
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#6B5D4F', marginBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
               CUSTOMER PREVIEW
             </div>
-            <div style={{ fontSize: 13.5, color: '#1C1408', fontWeight: 600 }}>{previewMessage}</div>
+            <div style={{ fontSize: 13.5, color: 'var(--color-text)', fontWeight: 600 }}>{previewMessage}</div>
           </div>
 
           <div style={{ marginBottom: 12 }}>
@@ -974,7 +974,7 @@ function EditServiceModal({
               onChange={setEndsAt}
             />
           </div>
-          <p style={{ margin: '0 0 12px', fontSize: 12, color: '#9C8E7E' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
             Scheduled windows activate/restore via the minute cron. Auto-restore never sends SMS —
             use “Send N SMS” after restore if needed.
           </p>
@@ -1049,9 +1049,9 @@ function TabBtn({
         minHeight: 40,
         padding: '0 12px',
         borderRadius: 10,
-        border: active ? '1.5px solid #D4813A' : '1.5px solid #E8E0D8',
+        border: active ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
         background: active ? '#fff7ed' : '#fff',
-        color: active ? '#c2410c' : '#6B5D4F',
+        color: active ? '#c2410c' : 'var(--color-text-secondary)',
         fontWeight: 700,
         fontSize: 13,
         cursor: 'pointer',
@@ -1072,14 +1072,14 @@ function HistoryPanel({
   history: ServiceHistoryResponse | null;
 }) {
   if (loading) return <Spinner size={20} />;
-  if (!history) return <p style={{ color: '#9C8E7E', fontSize: 14 }}>No history loaded.</p>;
+  if (!history) return <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No history loaded.</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Incidents</h4>
+        <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Incidents</h4>
         {history.incidents.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>No incidents yet.</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>No incidents yet.</p>
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
             {history.incidents.slice(0, 8).map((inc) => (
@@ -1096,16 +1096,16 @@ function HistoryPanel({
                     label={inc.status === 'open' ? 'Open' : 'Restored'}
                     color={inc.status === 'open' ? 'red' : 'green'}
                   />
-                  <span style={{ color: '#9C8E7E' }}>#{inc.id}</span>
+                  <span style={{ color: 'var(--color-text-muted)' }}>#{inc.id}</span>
                 </div>
-                <div style={{ marginTop: 4, color: '#6B5D4F' }}>
+                <div style={{ marginTop: 4, color: 'var(--color-text-secondary)' }}>
                   {formatWhen(inc.started_at)}
                   {inc.restored_at ? ` → ${formatWhen(inc.restored_at)}` : ' · ongoing'}
                 </div>
                 {inc.public_message && (
-                  <div style={{ marginTop: 4, color: '#1C1408' }}>{inc.public_message}</div>
+                  <div style={{ marginTop: 4, color: 'var(--color-text)' }}>{inc.public_message}</div>
                 )}
-                <div style={{ marginTop: 2, fontSize: 12, color: '#9C8E7E' }}>
+                <div style={{ marginTop: 2, fontSize: 12, color: 'var(--color-text-muted)' }}>
                   Notified: {inc.notified_count}
                 </div>
               </li>
@@ -1115,9 +1115,9 @@ function HistoryPanel({
       </div>
 
       <div>
-        <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Audit log</h4>
+        <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Audit log</h4>
         {history.audits.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>No audit rows yet.</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>No audit rows yet.</p>
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
             {history.audits.slice(0, 12).map((a) => (
@@ -1127,10 +1127,10 @@ function HistoryPanel({
                   padding: '8px 0',
                   borderBottom: '1px solid #F1EDE8',
                   fontSize: 12.5,
-                  color: '#6B5D4F',
+                  color: 'var(--color-text-secondary)',
                 }}
               >
-                <div style={{ fontWeight: 600, color: '#1C1408' }}>{a.action}</div>
+                <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{a.action}</div>
                 <div>{formatWhen(a.created_at)} · user #{a.user_id ?? '—'}</div>
               </li>
             ))}
@@ -1174,7 +1174,7 @@ function NotifyConfirmModal({
 
   return (
     <Modal title="Send restoration SMS" onClose={onClose} maxWidth={460}>
-      <p style={{ margin: '0 0 12px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.45 }}>
+      <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
         Queue <strong>{row.waiting_notify_count}</strong> one-time SMS for{' '}
         <strong>{meta.label}</strong>. Messages go out via the queue (never synchronous) and
         numbers are not added to marketing lists.
@@ -1212,20 +1212,20 @@ const sectionTitle: CSSProperties = {
   margin: 0,
   fontSize: 16,
   fontWeight: 800,
-  color: '#1C1408',
+  color: 'var(--color-text)',
 };
 
 const sectionSub: CSSProperties = {
   margin: '4px 0 0',
   fontSize: 13,
-  color: '#9C8E7E',
+  color: 'var(--color-text-muted)',
 };
 
 const labelStyle: CSSProperties = {
   display: 'block',
   fontSize: 12,
   fontWeight: 600,
-  color: '#1C1408',
+  color: 'var(--color-text)',
   marginBottom: 4,
 };
 
@@ -1233,12 +1233,12 @@ const textareaStyle: CSSProperties = {
   width: '100%',
   minHeight: 72,
   padding: '10px 12px',
-  border: '1.5px solid #E8E0D8',
+  border: '1.5px solid var(--color-border)',
   borderRadius: 10,
   fontSize: 14,
   fontFamily: 'inherit',
   resize: 'vertical',
   boxSizing: 'border-box',
-  color: '#1C1408',
+  color: 'var(--color-text)',
   background: '#fff',
 };
