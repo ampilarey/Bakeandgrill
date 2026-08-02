@@ -62,8 +62,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Summary' && summary && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-            <StatCard label="Completed Revenue" value={mvr(summary.total_revenue)} sub="Finished orders only" accent="#22c55e" />
-            <StatCard label="Completed Orders" value={summary.order_count.toLocaleString()} accent="#D4813A" />
+            <StatCard label="Completed Revenue" value={mvr(summary.total_revenue)} sub="Finished orders only" accent="var(--color-success)" />
+            <StatCard label="Completed Orders" value={summary.order_count.toLocaleString()} accent="var(--color-primary)" />
             <StatCard label="Avg Order Value"  value={mvr(summary.average_order_value ?? 0)} accent="#8b5cf6" />
             {(summary.service_charge_total ?? 0) > 0 && (
               <StatCard label="Service Charge" value={mvr(summary.service_charge_total ?? 0)} sub="Collected on completed orders" accent="#0ea5e9" />
@@ -77,13 +77,13 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             )}
           </div>
           <Card>
-            <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
-              Period: <strong style={{ color: '#1C1408' }}>{summary.period}</strong>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+              Period: <strong style={{ color: 'var(--color-text)' }}>{summary.period}</strong>
               {' · '}Counts only orders marked <strong>completed</strong> in this date range.
             </p>
             {summary.payments && Object.keys(summary.payments).length > 0 && (
               <>
-                <p style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', margin: '0 0 8px' }}>Payments by method</p>
+                <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', margin: '0 0 8px' }}>Payments by method</p>
                                 <ResponsiveTable>
 <table style={S.table}>
                   <thead>
@@ -96,7 +96,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     {Object.entries(summary.payments).map(([method, amount]) => {
                       const isCredit = method === 'house_account';
                       return (
-                        <tr key={method} style={isCredit ? { color: '#9C8E7E', fontStyle: 'italic' } : undefined}>
+                        <tr key={method} style={isCredit ? { color: 'var(--color-text-muted)', fontStyle: 'italic' } : undefined}>
                           <td style={S.td}>
                             {paymentMethodLabel(method)}
                             {isCredit && <span style={{ marginLeft: 6, fontSize: 11 }}>(receivable)</span>}
@@ -109,12 +109,12 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 </table>
                 </ResponsiveTable>
                 {(summary.collected != null || summary.on_credit != null) && (
-                  <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
+                  <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Collected</span>
-                      <strong style={{ color: '#1C1408' }}>{mvr(summary.collected ?? 0)}</strong>
+                      <strong style={{ color: 'var(--color-text)' }}>{mvr(summary.collected ?? 0)}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9C8E7E', fontStyle: 'italic' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
                       <span>On credit (receivable)</span>
                       <span>{mvr(summary.on_credit ?? 0)}</span>
                     </div>
@@ -133,7 +133,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
           {/* Top Items */}
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Top Items</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>Top Items</p>
                         <ResponsiveTable>
 <table style={S.table}>
               <thead><tr>
@@ -147,7 +147,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   return (
                     <tr key={item.id}>
                       <td style={S.td}>{item.name}</td>
-                      <td style={{ ...S.td, color: '#9C8E7E' }}>{item.qty}</td>
+                      <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{item.qty}</td>
                       <td style={S.td}><BarCell value={item.revenue} max={max} /></td>
                     </tr>
                   );
@@ -159,7 +159,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
           {/* By Category */}
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Revenue by Category</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>Revenue by Category</p>
                         <ResponsiveTable>
 <table style={S.table}>
               <thead><tr>
@@ -173,7 +173,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   return (
                     <tr key={cat.category}>
                       <td style={S.td}>{cat.category}</td>
-                      <td style={{ ...S.td, color: '#9C8E7E' }}>{cat.orders}</td>
+                      <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{cat.orders}</td>
                       <td style={S.td}><BarCell value={cat.revenue} max={max} /></td>
                     </tr>
                   );
@@ -185,7 +185,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
           {/* By Order Type */}
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Revenue by Order Type</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>Revenue by Order Type</p>
                         <ResponsiveTable>
 <table style={S.table}>
               <thead><tr>
@@ -199,7 +199,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   return (
                     <tr key={t.type}>
                       <td style={S.td}>{ORDER_TYPE_LABELS[t.type] ?? t.type}</td>
-                      <td style={{ ...S.td, color: '#9C8E7E' }}>{t.orders}</td>
+                      <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{t.orders}</td>
                       <td style={S.td}><BarCell value={t.revenue} max={max} /></td>
                     </tr>
                   );
@@ -211,7 +211,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
           {/* By Hour */}
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Revenue by Hour</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>Revenue by Hour</p>
                         <ResponsiveTable>
 <table style={S.table}>
               <thead><tr>
@@ -226,7 +226,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   return (
                     <tr key={h.hour}>
                       <td style={{ ...S.td, fontFamily: 'monospace' }}>{label}</td>
-                      <td style={{ ...S.td, color: '#9C8E7E' }}>{h.orders}</td>
+                      <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{h.orders}</td>
                       <td style={S.td}><BarCell value={h.revenue} max={max} /></td>
                     </tr>
                   );
@@ -243,15 +243,15 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
             <StatCard label="Delivery Orders" value={String(deliveryZones.totals.orders_count)} accent="#0ea5e9" />
-            <StatCard label="Order Revenue" value={mvr(deliveryZones.totals.order_total)} accent="#D4813A" />
-            <StatCard label="Delivery Fees" value={mvr(deliveryZones.totals.fees_total)} accent="#22c55e" />
+            <StatCard label="Order Revenue" value={mvr(deliveryZones.totals.order_total)} accent="var(--color-primary)" />
+            <StatCard label="Delivery Fees" value={mvr(deliveryZones.totals.fees_total)} accent="var(--color-success)" />
           </div>
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>
               Performance by zone ({deliveryZones.from} – {deliveryZones.to})
             </p>
             {(deliveryZones.zones ?? []).length === 0 ? (
-              <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed delivery orders in this period.</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No completed delivery orders in this period.</p>
             ) : (
                             <ResponsiveTable>
 <table style={S.table}>
@@ -268,7 +268,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   {deliveryZones.zones.map((row) => (
                     <tr key={row.zone}>
                       <td style={S.td}>{row.zone}</td>
-                      <td style={{ ...S.td, color: '#9C8E7E' }}>{row.orders_count}</td>
+                      <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{row.orders_count}</td>
                       <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{mvr(row.order_total)}</td>
                       <td style={{ ...S.td, textAlign: 'right' }}>{mvr(row.fees_total)}</td>
                       <td style={{ ...S.td, textAlign: 'right' }}>{mvr(row.avg_fee)}</td>
@@ -285,27 +285,27 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {/* ── Spend Hub ── */}
       {!loading && tab === 'Spend Hub' && spendHub && (
         <>
-          <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 16px', lineHeight: 1.45 }}>{spendHub.note}</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 16px', lineHeight: 1.45 }}>{spendHub.note}</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Purchases (COGS)" value={mvr(spendHub.totals.purchases)} accent="#D4813A" />
-            <StatCard label="Expenses approved" value={mvr(spendHub.totals.expenses_approved)} accent="#ef4444" />
-            <StatCard label="Expenses pending" value={mvr(spendHub.totals.expenses_pending)} accent="#f59e0b" />
+            <StatCard label="Purchases (COGS)" value={mvr(spendHub.totals.purchases)} accent="var(--color-primary)" />
+            <StatCard label="Expenses approved" value={mvr(spendHub.totals.expenses_approved)} accent="var(--color-danger)" />
+            <StatCard label="Expenses pending" value={mvr(spendHub.totals.expenses_pending)} accent="var(--color-warning)" />
             <StatCard label="Waste (shrinkage)" value={mvr(spendHub.totals.waste_cost ?? 0)} accent="#b45309" />
-            <StatCard label="Combined outflow" value={mvr(spendHub.totals.combined_outflow)} accent="#1C1408" />
+            <StatCard label="Combined outflow" value={mvr(spendHub.totals.combined_outflow)} accent="var(--color-text)" />
             <StatCard label="With waste" value={mvr(spendHub.totals.total_with_waste ?? spendHub.totals.combined_outflow)} accent="#7c2d12" />
-            <StatCard label="POs received" value={String(spendHub.totals.po_count)} accent="#6B5D4F" />
-            <StatCard label="Waste logs" value={String(spendHub.totals.waste_count ?? 0)} accent="#9C8E7E" />
+            <StatCard label="POs received" value={String(spendHub.totals.po_count)} accent="var(--color-text-secondary)" />
+            <StatCard label="Waste logs" value={String(spendHub.totals.waste_count ?? 0)} accent="var(--color-text-muted)" />
           </div>
           <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
-            <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>Purchase Orders →</Link>
-            <Link to="/expenses" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>Expenses →</Link>
-            <Link to="/waste-logs" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>Waste Tracking →</Link>
+            <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Purchase Orders →</Link>
+            <Link to="/expenses" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Expenses →</Link>
+            <Link to="/waste-logs" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Waste Tracking →</Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
             <Card>
               <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Purchases by supplier</p>
               {spendHub.purchases.by_supplier.length === 0 ? (
-                <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No received purchases in range.</p>
+                <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>No received purchases in range.</p>
               ) : (
                                 <ResponsiveTable>
 <table style={S.table}>
@@ -326,7 +326,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <Card>
               <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Expenses by category</p>
               {spendHub.expenses.by_category.length === 0 ? (
-                <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No approved expenses in range.</p>
+                <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>No approved expenses in range.</p>
               ) : (
                                 <ResponsiveTable>
 <table style={S.table}>
@@ -347,7 +347,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <Card>
               <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Waste by reason</p>
               {(spendHub.waste?.by_reason ?? []).length === 0 ? (
-                <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No waste logged in range.</p>
+                <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>No waste logged in range.</p>
               ) : (
                                 <ResponsiveTable>
 <table style={S.table}>
@@ -368,11 +368,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           </div>
           <Card style={{ marginBottom: 20 }}>
             <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 8px' }}>Top purchase items</p>
-            <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
               For full cheapest/last cost detail see Inventory → Spend by Item.
             </p>
             {spendHub.purchases.top_items.length === 0 ? (
-              <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No received line items.</p>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>No received line items.</p>
             ) : (
                             <ResponsiveTable>
 <table style={S.table}>
@@ -382,7 +382,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <tr key={row.inventory_item_id ?? row.item_name}>
                       <td style={S.td}>
                         {row.inventory_item_id ? (
-                          <Link to={`/inventory?item=${row.inventory_item_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>{row.item_name}</Link>
+                          <Link to={`/inventory?item=${row.inventory_item_id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>{row.item_name}</Link>
                         ) : row.item_name}
                       </td>
                       <td style={S.td}>{row.qty} {row.unit}</td>
@@ -397,7 +397,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           <Card>
             <p style={{ fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>Daily outflow + waste</p>
             {spendHub.daily.every((d) => (d.total_with_waste ?? d.total) === 0) ? (
-              <p style={{ margin: 0, color: '#9C8E7E', fontSize: 13 }}>No outflow or waste in this range.</p>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>No outflow or waste in this range.</p>
             ) : (
               <div style={{ maxHeight: 320, overflow: 'auto' }}>
                                 <ResponsiveTable>
@@ -436,7 +436,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'X / Z Report' && (
         <>
           {!xReport && !zReport && (
-            <Card><p style={{ margin: 0, color: '#6B5D4F' }}>No shift or report data available for this period.</p></Card>
+            <Card><p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>No shift or report data available for this period.</p></Card>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
             {[
@@ -444,12 +444,12 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               { label: 'Z-Report (date range)', data: zReport, empty: 'No Z-Report data for the selected period.' },
             ].map(({ label, data, empty }) => (
               <Card key={label}>
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 4px' }}>{label}</p>
+                <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 4px' }}>{label}</p>
                 {!data ? (
-                  <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>{empty}</p>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>{empty}</p>
                 ) : (
                   <>
-                    <p style={{ fontSize: 11, color: '#9C8E7E', margin: '0 0 16px' }}>
+                    <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
                       {data.from} → {data.to}
                     </p>
                     <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
@@ -460,14 +460,14 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                         { l: 'Discounts', v: mvr(data.totals.discount_amount ?? 0) },
                       ].map(({ l, v }) => (
                         <div key={l} style={{ background: '#FAF7F4', borderRadius: 8, padding: '10px 14px' }}>
-                          <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 4 }}>{l}</div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: '#1C1408' }}>{v}</div>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4 }}>{l}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>{v}</div>
                         </div>
                       ))}
                     </div>
                     {Object.keys(data.payments ?? {}).length > 0 && (
                       <>
-                        <p style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', margin: '0 0 8px' }}>By Payment Method</p>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', margin: '0 0 8px' }}>By Payment Method</p>
                                                 <ResponsiveTable>
 <table style={S.table}>
                           <thead><tr><th style={S.th}>Method</th><th style={S.th}>Total</th></tr></thead>
@@ -475,7 +475,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                             {Object.entries(data.payments ?? {}).map(([method, total]) => {
                               const isCredit = method === 'house_account';
                               return (
-                                <tr key={method} style={isCredit ? { color: '#9C8E7E', fontStyle: 'italic' } : undefined}>
+                                <tr key={method} style={isCredit ? { color: 'var(--color-text-muted)', fontStyle: 'italic' } : undefined}>
                                   <td style={S.td}>
                                     {paymentMethodLabel(method)}
                                     {isCredit && <span style={{ marginLeft: 6, fontSize: 11 }}>(receivable)</span>}
@@ -488,12 +488,12 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                         </table>
                         </ResponsiveTable>
                         {(data.collected != null || data.on_credit != null) && (
-                          <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: '#6B5D4F' }}>
+                          <div style={{ marginTop: 8, padding: 8, background: '#FAF7F4', borderRadius: 6, fontSize: 12, color: 'var(--color-text-secondary)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>Collected</span>
-                              <strong style={{ color: '#1C1408' }}>{mvr(data.collected ?? 0)}</strong>
+                              <strong style={{ color: 'var(--color-text)' }}>{mvr(data.collected ?? 0)}</strong>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9C8E7E', fontStyle: 'italic' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
                               <span>On credit (receivable)</span>
                               <span>{mvr(data.on_credit ?? 0)}</span>
                             </div>
@@ -519,11 +519,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Tax' && taxReport && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Tax Collected" value={mvr(taxReport.total_tax_collected)} accent="#D4813A" />
-            <StatCard label="Period" value={`${taxReport.from} → ${taxReport.to}`} accent="#6B5D4F" />
+            <StatCard label="Total Tax Collected" value={mvr(taxReport.total_tax_collected)} accent="var(--color-primary)" />
+            <StatCard label="Period" value={`${taxReport.from} → ${taxReport.to}`} accent="var(--color-text-secondary)" />
           </div>
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 16px' }}>Tax by Rate</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>Tax by Rate</p>
                         <ResponsiveTable>
 <table style={S.table}>
               <thead><tr>
@@ -538,7 +538,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={{ ...S.td, fontWeight: 600 }}>{r.rate_pct}%</td>
                     <td style={S.td}>{mvr(r.net_sales)}</td>
                     <td style={S.td}>{mvr(r.tax_amount)}</td>
-                    <td style={{ ...S.td, color: '#9C8E7E' }}>{pct(r.tax_amount, taxReport.total_tax_collected)}</td>
+                    <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{pct(r.tax_amount, taxReport.total_tax_collected)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -552,23 +552,23 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Inventory' && inventory && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Inventory Value" value={mvr(inventory.total_value)} accent="#22c55e" />
-            <StatCard label="Total Units On Hand" value={inventory.total_quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} accent="#6B5D4F" />
+            <StatCard label="Total Inventory Value" value={mvr(inventory.total_value)} accent="var(--color-success)" />
+            <StatCard label="Total Units On Hand" value={inventory.total_quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} accent="var(--color-text-secondary)" />
             {inventory.negative_stock_count > 0 && (
               <StatCard
                 label="Negative stock SKUs"
                 value={String(inventory.negative_stock_count)}
-                accent="#ef4444"
+                accent="var(--color-danger)"
               />
             )}
           </div>
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 8px' }}>How this is calculated</p>
-            <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 8px' }}>How this is calculated</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
               Positive on-hand only: <code>SUM(current_stock × unit_cost)</code>. Negative stock is excluded from totals and listed below.
             </p>
             {(inventory.items?.length ?? 0) === 0 ? (
-              <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>No active inventory items.</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>No active inventory items.</p>
             ) : (
               <div style={{ maxHeight: 360, overflow: 'auto' }}>
                                 <ResponsiveTable>
@@ -585,11 +585,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     {inventory.items.slice(0, 100).map((row) => (
                       <tr key={row.id}>
                         <td style={S.td}>{row.name}</td>
-                        <td style={{ ...S.td, color: row.quantity < 0 ? '#ef4444' : undefined }}>
+                        <td style={{ ...S.td, color: row.quantity < 0 ? 'var(--color-danger)' : undefined }}>
                           {row.quantity} {row.unit}
                         </td>
                         <td style={S.td}>{mvr(row.cost_per_unit)}</td>
-                        <td style={{ ...S.td, fontWeight: 600, color: row.total_value < 0 ? '#ef4444' : undefined }}>
+                        <td style={{ ...S.td, fontWeight: 600, color: row.total_value < 0 ? 'var(--color-danger)' : undefined }}>
                           {mvr(row.total_value)}
                         </td>
                       </tr>
@@ -607,17 +607,17 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Spend by Item' && spendByItem && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Items purchased" value={String(spendByItem.totals.items_count)} accent="#D4813A" />
-            <StatCard label="Qty received" value={spendByItem.totals.qty_received.toLocaleString(undefined, { maximumFractionDigits: 2 })} accent="#6B5D4F" />
-            <StatCard label="Total spend" value={mvr(spendByItem.totals.total_spend)} accent="#ef4444" />
+            <StatCard label="Items purchased" value={String(spendByItem.totals.items_count)} accent="var(--color-primary)" />
+            <StatCard label="Qty received" value={spendByItem.totals.qty_received.toLocaleString(undefined, { maximumFractionDigits: 2 })} accent="var(--color-text-secondary)" />
+            <StatCard label="Total spend" value={mvr(spendByItem.totals.total_spend)} accent="var(--color-danger)" />
           </div>
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 8px' }}>Purchase spend by inventory item</p>
-            <p style={{ fontSize: 13, color: '#6B5D4F', margin: '0 0 12px' }}>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 8px' }}>Purchase spend by inventory item</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
               From received / partially received purchase orders in the selected dates. Compare last vs cheapest unit cost to shop smarter.
             </p>
             {spendByItem.rows.length === 0 ? (
-              <p style={{ fontSize: 13, color: '#9C8E7E', margin: 0 }}>No received purchase lines in this range.</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>No received purchase lines in this range.</p>
             ) : (
               <div style={{ maxHeight: 420, overflow: 'auto' }}>
                                 <ResponsiveTable>
@@ -636,7 +636,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     {spendByItem.rows.map((row) => (
                       <tr key={row.inventory_item_id}>
                         <td style={S.td}>
-                          <Link to={`/inventory?item=${row.inventory_item_id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                          <Link to={`/inventory?item=${row.inventory_item_id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                             {row.item_name}
                           </Link>
                         </td>
@@ -645,11 +645,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                         <td style={S.td}>{mvr(row.avg_unit_cost)}</td>
                         <td style={S.td}>
                           {mvr(row.last_unit_cost)}
-                          {row.last_supplier ? <span style={{ display: 'block', fontSize: 11, color: '#9C8E7E' }}>{row.last_supplier}</span> : null}
+                          {row.last_supplier ? <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>{row.last_supplier}</span> : null}
                         </td>
                         <td style={S.td}>
                           {row.cheapest_unit_cost != null ? mvr(row.cheapest_unit_cost) : '—'}
-                          {row.cheapest_supplier ? <span style={{ display: 'block', fontSize: 11, color: '#9C8E7E' }}>{row.cheapest_supplier}</span> : null}
+                          {row.cheapest_supplier ? <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>{row.cheapest_supplier}</span> : null}
                         </td>
                       </tr>
                     ))}
@@ -667,16 +667,16 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Suppliers Owed"      value={String(ap.length)}                                                                accent="#f97316" />
-            <StatCard label="Total Outstanding"   value={mvr(ap.reduce((s, x) => s + x.outstanding_amount, 0))}                           accent="#ef4444" />
+            <StatCard label="Total Outstanding"   value={mvr(ap.reduce((s, x) => s + x.outstanding_amount, 0))}                           accent="var(--color-danger)" />
             <StatCard label="Open Invoices"       value={String(ap.reduce((s, x) => s + x.invoices.length, 0))}                           accent="#6366f1" />
           </div>
           {ap.length === 0 ? (
-            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No outstanding payables.</p></Card>
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No outstanding payables.</p></Card>
           ) : ap.map(supplier => (
             <Card key={supplier.supplier_id} style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{supplier.supplier_name}</span>
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#ef4444' }}>{mvr(supplier.outstanding_amount)}</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{supplier.supplier_name}</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-danger)' }}>{mvr(supplier.outstanding_amount)}</span>
               </div>
                             <ResponsiveTable>
 <table style={S.table}>
@@ -689,14 +689,14 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   {supplier.invoices.map(inv => (
                     <tr key={inv.id}>
                       <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>
-                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                           {inv.invoice_number}
                         </Link>
                       </td>
                       <td style={S.td}>{mvr(inv.amount)}</td>
-                      <td style={{ ...S.td, color: inv.due_date && inv.due_date < today() ? '#ef4444' : '#6B5D4F' }}>
+                      <td style={{ ...S.td, color: inv.due_date && inv.due_date < today() ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
                         {inv.due_date ?? '—'}
-                        {inv.due_date && inv.due_date < today() && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#ef4444' }}>OVERDUE</span>}
+                        {inv.due_date && inv.due_date < today() && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: 'var(--color-danger)' }}>OVERDUE</span>}
                       </td>
                     </tr>
                   ))}
@@ -713,22 +713,22 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Customers with Balance" value={String(ar.length)}                                                             accent="#8b5cf6" />
-            <StatCard label="Total Outstanding"      value={mvr(ar.reduce((s, x) => s + x.outstanding_amount, 0))}                        accent="#D4813A" />
-            <StatCard label="Open Invoices"          value={String(ar.reduce((s, x) => s + x.invoices.length, 0))}                        accent="#f59e0b" />
+            <StatCard label="Total Outstanding"      value={mvr(ar.reduce((s, x) => s + x.outstanding_amount, 0))}                        accent="var(--color-primary)" />
+            <StatCard label="Open Invoices"          value={String(ar.reduce((s, x) => s + x.invoices.length, 0))}                        accent="var(--color-warning)" />
           </div>
           {ar.length === 0 ? (
-            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No outstanding receivables.</p></Card>
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No outstanding receivables.</p></Card>
           ) : ar.map((customer, i) => (
             <Card key={customer.customer_id ?? i} style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 {customer.customer_id ? (
-                  <Link to={`/customers?customer=${customer.customer_id}`} style={{ fontWeight: 700, fontSize: 14, color: '#D4813A', textDecoration: 'none' }}>
+                  <Link to={`/customers?customer=${customer.customer_id}`} style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-primary)', textDecoration: 'none' }}>
                     {customer.customer_name ?? 'Unknown Customer'}
                   </Link>
                 ) : (
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>{customer.customer_name ?? 'Unknown Customer'}</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{customer.customer_name ?? 'Unknown Customer'}</span>
                 )}
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#D4813A' }}>{mvr(customer.outstanding_amount)}</span>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-primary)' }}>{mvr(customer.outstanding_amount)}</span>
               </div>
                             <ResponsiveTable>
 <table style={S.table}>
@@ -741,14 +741,14 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   {customer.invoices.map(inv => (
                     <tr key={inv.id}>
                       <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>
-                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                        <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                           {inv.invoice_number}
                         </Link>
                       </td>
                       <td style={S.td}>{mvr(inv.amount)}</td>
-                      <td style={{ ...S.td, color: inv.due_date && inv.due_date < today() ? '#ef4444' : '#6B5D4F' }}>
+                      <td style={{ ...S.td, color: inv.due_date && inv.due_date < today() ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
                         {inv.due_date ?? '—'}
-                        {inv.due_date && inv.due_date < today() && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#ef4444' }}>OVERDUE</span>}
+                        {inv.due_date && inv.due_date < today() && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: 'var(--color-danger)' }}>OVERDUE</span>}
                       </td>
                     </tr>
                   ))}
@@ -764,12 +764,12 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Promotions' && promoReport && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Promotions"  value={String(promoReport.length)}                                                            accent="#D4813A" />
+            <StatCard label="Total Promotions"  value={String(promoReport.length)}                                                            accent="var(--color-primary)" />
             <StatCard label="Total Redemptions" value={String(promoReport.reduce((s, p) => s + p.redemptions_count, 0))}                      accent="#8b5cf6" />
-            <StatCard label="Total Discounts"   value={mvr(promoReport.reduce((s, p) => s + (p.total_discount_laar ?? 0), 0) / 100)}          accent="#ef4444" />
+            <StatCard label="Total Discounts"   value={mvr(promoReport.reduce((s, p) => s + (p.total_discount_laar ?? 0), 0) / 100)}          accent="var(--color-danger)" />
           </div>
           {promoReport.length === 0 ? (
-            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No promotion data.</p></Card>
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No promotion data.</p></Card>
           ) : (
             <Card>
                             <ResponsiveTable>
@@ -803,23 +803,23 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Loyalty' && loyaltyReport && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Members"         value={loyaltyReport.total_accounts.toLocaleString()}           accent="#D4813A" />
-            <StatCard label="Outstanding Points"    value={loyaltyReport.total_outstanding_points.toLocaleString()} accent="#ef4444" />
+            <StatCard label="Total Members"         value={loyaltyReport.total_accounts.toLocaleString()}           accent="var(--color-primary)" />
+            <StatCard label="Outstanding Points"    value={loyaltyReport.total_outstanding_points.toLocaleString()} accent="var(--color-danger)" />
             <StatCard label="Lifetime Points Issued" value={loyaltyReport.total_earned_lifetime.toLocaleString()}   accent="#8b5cf6" />
           </div>
           <Card>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: '0 0 16px' }}>Members by Tier</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 16px' }}>Members by Tier</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
               {[
                 { tier: 'Bronze',   count: loyaltyReport.bronze_count,   color: '#B45309', bg: '#FEF3E2' },
-                { tier: 'Silver',   count: loyaltyReport.silver_count,   color: '#6B5D4F', bg: '#F0EBE5' },
+                { tier: 'Silver',   count: loyaltyReport.silver_count,   color: 'var(--color-text-secondary)', bg: 'var(--color-border-light)' },
                 { tier: 'Gold',     count: loyaltyReport.gold_count,     color: '#92400E', bg: '#FFFBEB' },
                 { tier: 'Platinum', count: loyaltyReport.platinum_count, color: '#1D4ED8', bg: '#EFF6FF' },
               ].map(({ tier, count, color, bg }) => (
                 <div key={tier} style={{ background: bg, borderRadius: 10, padding: '16px', textAlign: 'center' }}>
                   <p style={{ fontSize: 22, fontWeight: 800, color, margin: 0 }}>{count}</p>
                   <p style={{ fontSize: 12, color, opacity: 0.8, margin: '4px 0 0', textTransform: 'capitalize' }}>{tier}</p>
-                  <p style={{ fontSize: 11, color: '#9C8E7E', margin: '2px 0 0' }}>
+                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
                     {loyaltyReport.total_accounts > 0 ? `${((count / loyaltyReport.total_accounts) * 100).toFixed(1)}%` : '0%'}
                   </p>
                 </div>
@@ -833,8 +833,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Discounts' && discountsReport && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Discounts" value={mvr((discountsReport.rows ?? []).reduce((s, r) => s + r.amount, 0))} accent="#ef4444" />
-            <StatCard label="Discount Types" value={String((discountsReport.rows ?? []).filter(r => r.amount > 0).length)} accent="#D4813A" />
+            <StatCard label="Total Discounts" value={mvr((discountsReport.rows ?? []).reduce((s, r) => s + r.amount, 0))} accent="var(--color-danger)" />
+            <StatCard label="Discount Types" value={String((discountsReport.rows ?? []).filter(r => r.amount > 0).length)} accent="var(--color-primary)" />
           </div>
           <Card>
                         <ResponsiveTable>
@@ -863,16 +863,16 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Voids' && voidsReport && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Voids" value={String((voidsReport.rows ?? []).reduce((s, r) => s + r.voids_count, 0))} accent="#ef4444" />
-            <StatCard label="Staff Involved" value={String((voidsReport.rows ?? []).length)} accent="#6B5D4F" />
-            <StatCard label="Reasons" value={String((voidsByReason?.rows ?? []).length)} accent="#D4813A" />
+            <StatCard label="Total Voids" value={String((voidsReport.rows ?? []).reduce((s, r) => s + r.voids_count, 0))} accent="var(--color-danger)" />
+            <StatCard label="Staff Involved" value={String((voidsReport.rows ?? []).length)} accent="var(--color-text-secondary)" />
+            <StatCard label="Reasons" value={String((voidsByReason?.rows ?? []).length)} accent="var(--color-primary)" />
           </div>
           {(voidsReport.rows ?? []).length === 0 ? (
-            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No voids in this period.</p></Card>
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No voids in this period.</p></Card>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
               <Card>
-                <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: '#1C1408' }}>By staff</p>
+                <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>By staff</p>
                                 <ResponsiveTable>
 <table style={S.table}>
                   <thead><tr>
@@ -883,7 +883,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     {(voidsReport.rows ?? []).map((row, i) => (
                       <tr key={row.user_id ?? `sys-${i}`}>
                         <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
-                        <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{row.voids_count}</td>
+                        <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: 'var(--color-danger)' }}>{row.voids_count}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -891,9 +891,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 </ResponsiveTable>
               </Card>
               <Card>
-                <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: '#1C1408' }}>By reason</p>
+                <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>By reason</p>
                 {(voidsByReason?.rows ?? []).length === 0 ? (
-                  <p style={{ textAlign: 'center', padding: '24px 0', color: '#9C8E7E', fontSize: 13 }}>No reason data.</p>
+                  <p style={{ textAlign: 'center', padding: '24px 0', color: 'var(--color-text-muted)', fontSize: 13 }}>No reason data.</p>
                 ) : (
                                     <ResponsiveTable>
 <table style={S.table}>
@@ -905,7 +905,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                       {(voidsByReason?.rows ?? []).map((row) => (
                         <tr key={row.reason}>
                           <td style={{ ...S.td, fontWeight: 600 }}>{row.reason}</td>
-                          <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{row.voids_count}</td>
+                          <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: 'var(--color-danger)' }}>{row.voids_count}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -922,11 +922,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       {!loading && tab === 'Refunds' && refundsReport && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Refunded" value={mvr((refundsReport.rows ?? []).reduce((s, r) => s + r.amount, 0))} accent="#ef4444" />
-            <StatCard label="Refund Count" value={String((refundsReport.rows ?? []).reduce((s, r) => s + r.refunds_count, 0))} accent="#D4813A" />
+            <StatCard label="Total Refunded" value={mvr((refundsReport.rows ?? []).reduce((s, r) => s + r.amount, 0))} accent="var(--color-danger)" />
+            <StatCard label="Refund Count" value={String((refundsReport.rows ?? []).reduce((s, r) => s + r.refunds_count, 0))} accent="var(--color-primary)" />
           </div>
           {(refundsReport.rows ?? []).length === 0 ? (
-            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No refunds in this period.</p></Card>
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No refunds in this period.</p></Card>
           ) : (
             <Card>
                             <ResponsiveTable>
@@ -960,10 +960,10 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <StatCard label="Customers with Balance" value={String(depositExposure.customers_count)} accent="#8b5cf6" />
           </div>
           {(depositExposure.top_customers ?? []).length === 0 ? (
-            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No outstanding deposit balances.</p></Card>
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No outstanding deposit balances.</p></Card>
           ) : (
             <Card>
-              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Top customers by deposit balance</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>Top customers by deposit balance</p>
                             <ResponsiveTable>
 <table style={S.table}>
                 <thead><tr>
@@ -975,7 +975,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   {(depositExposure.top_customers ?? []).map((c) => (
                     <tr key={c.id}>
                       <td style={{ ...S.td, fontWeight: 600 }}>
-                        <Link to={`/customers?customer=${c.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>{c.name}</Link>
+                        <Link to={`/customers?customer=${c.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>{c.name}</Link>
                       </td>
                       <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#047857' }}>{mvr(c.balance)}</td>
                       <td style={S.td}>{c.status}</td>
@@ -994,13 +994,13 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
             <StatCard label="Received (top-ups)" value={mvr(depositActivity.received)} accent="#047857" />
-            <StatCard label="Used on orders" value={mvr(depositActivity.used)} accent="#f59e0b" />
-            <StatCard label="Cash payouts" value={mvr(depositActivity.payouts)} accent="#ef4444" />
+            <StatCard label="Used on orders" value={mvr(depositActivity.used)} accent="var(--color-warning)" />
+            <StatCard label="Cash payouts" value={mvr(depositActivity.payouts)} accent="var(--color-danger)" />
             <StatCard label="Transferred to credit" value={mvr(depositActivity.transfers)} accent="#8b5cf6" />
           </div>
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 8px' }}>Deposit ledger activity</p>
-            <p style={{ margin: 0, fontSize: 13, color: '#9C8E7E' }}>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 8px' }}>Deposit ledger activity</p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>
               Period {depositActivity.from} — {depositActivity.to}. These figures are customer liability movements, not café revenue.
             </p>
           </Card>
@@ -1016,22 +1016,22 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                padding: '8px 14px', borderRadius: 8, border: '1px solid #D4813A',
-                color: '#D4813A', textDecoration: 'none', fontWeight: 700, fontSize: 13,
+                padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-primary)',
+                color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 700, fontSize: 13,
               }}
             >
               ↓ Export CSV
             </a>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <StatCard label="Total Outstanding" value={mvr(creditExposure.total_balance)} accent="#ef4444" />
+            <StatCard label="Total Outstanding" value={mvr(creditExposure.total_balance)} accent="var(--color-danger)" />
             <StatCard label="Customers with Balance" value={String(creditExposure.customers_count)} accent="#8b5cf6" />
           </div>
           {(creditExposure.top_customers ?? []).length === 0 ? (
-            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: '#9C8E7E', fontSize: 14 }}>No outstanding credit balances.</p></Card>
+            <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No outstanding credit balances.</p></Card>
           ) : (
             <Card>
-              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Top customers by balance</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>Top customers by balance</p>
                             <ResponsiveTable>
 <table style={S.table}>
                 <thead><tr>
@@ -1046,9 +1046,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                   {(creditExposure.top_customers ?? []).map((c) => (
                     <tr key={c.id}>
                       <td style={{ ...S.td, fontWeight: 600 }}>
-                        <Link to={`/customers?customer=${c.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>{c.name}</Link>
+                        <Link to={`/customers?customer=${c.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>{c.name}</Link>
                       </td>
-                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{mvr(c.balance)}</td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: 'var(--color-danger)' }}>{mvr(c.balance)}</td>
                       <td style={{ ...S.td, textAlign: 'right' }}>{mvr(c.limit)}</td>
                       <td style={{ ...S.td, textAlign: 'right' }}>{mvr(c.available)}</td>
                       <td style={S.td}>{c.credit_enabled ? c.status : `${c.status} (disabled)`}</td>
@@ -1065,11 +1065,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Overrides' && overridesReport && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>
             Manager overrides ({overridesReport.from} – {overridesReport.to})
           </p>
           {(overridesReport.rows ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No override actions in this period.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No override actions in this period.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1082,15 +1082,15 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
               <tbody>
                 {overridesReport.rows.map((row) => (
                   <tr key={row.id}>
-                    <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{new Date(row.created_at).toLocaleString()}</td>
+                    <td style={{ ...S.td, fontSize: 12, color: 'var(--color-text-muted)' }}>{new Date(row.created_at).toLocaleString()}</td>
                     <td style={S.td}>{row.user_name}</td>
                     <td style={S.td}>{row.action}</td>
-                    <td style={{ ...S.td, color: '#6B5D4F' }}>
+                    <td style={{ ...S.td, color: 'var(--color-text-secondary)' }}>
                       {(() => {
                         const path = auditTargetPath(row.model_type, row.model_id);
                         if (!path) return <>{row.model_type} #{row.model_id ?? '—'}</>;
                         return (
-                          <Link to={path} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                          <Link to={path} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                             {row.model_type} #{row.model_id}
                           </Link>
                         );
@@ -1107,11 +1107,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Stock Velocity' && velocityReport && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>
             Menu item velocity ({velocityReport.from} – {velocityReport.to})
           </p>
           {(velocityReport.rows ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed sales in this period.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No completed sales in this period.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1143,11 +1143,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Shift Variances' && shiftVariances && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>
             Cash drawer variances ({shiftVariances.from} – {shiftVariances.to})
           </p>
           {(shiftVariances.rows ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No closed shifts in this period.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No closed shifts in this period.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1162,14 +1162,14 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 {shiftVariances.rows.map((row) => (
                   <tr key={row.id}>
                     <td style={S.td}>
-                      <Link to={`/shifts?shift=${row.id}`} style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}>
+                      <Link to={`/shifts?shift=${row.id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
                         {row.user_name}
                       </Link>
                     </td>
-                    <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{row.closed_at ? new Date(row.closed_at).toLocaleString() : '—'}</td>
+                    <td style={{ ...S.td, fontSize: 12, color: 'var(--color-text-muted)' }}>{row.closed_at ? new Date(row.closed_at).toLocaleString() : '—'}</td>
                     <td style={S.td}>{row.expected_cash != null ? mvr(row.expected_cash) : '—'}</td>
                     <td style={S.td}>{row.closing_cash != null ? mvr(row.closing_cash) : '—'}</td>
-                    <td style={{ ...S.td, fontWeight: 700, color: row.variance != null && Math.abs(row.variance) >= 0.01 ? '#ef4444' : '#16a34a' }}>
+                    <td style={{ ...S.td, fontWeight: 700, color: row.variance != null && Math.abs(row.variance) >= 0.01 ? 'var(--color-danger)' : '#16a34a' }}>
                       {row.variance != null ? mvr(row.variance) : '—'}
                     </td>
                   </tr>
@@ -1183,11 +1183,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Customer LTV' && customerLtv && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>
             Top customers by spend{customerLtv.from && customerLtv.to ? ` (${customerLtv.from} – ${customerLtv.to})` : ''}
           </p>
           {(customerLtv.rows ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No customer orders yet.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No customer orders yet.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1201,11 +1201,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 {customerLtv.rows.map((row) => (
                   <tr key={row.id}>
                     <td style={{ ...S.td, fontWeight: 600 }}>
-                      <Link to={`/customers?customer=${row.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>{row.name}</Link>
+                      <Link to={`/customers?customer=${row.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>{row.name}</Link>
                     </td>
                     <td style={S.td}>{row.order_count}</td>
                     <td style={{ ...S.td, fontWeight: 700 }}>{mvr(row.total_spent)}</td>
-                    <td style={{ ...S.td, fontSize: 12, color: '#9C8E7E' }}>{row.last_order ? new Date(row.last_order).toLocaleDateString() : '—'}</td>
+                    <td style={{ ...S.td, fontSize: 12, color: 'var(--color-text-muted)' }}>{row.last_order ? new Date(row.last_order).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1217,11 +1217,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Customer Cohorts' && customerCohorts && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>
             New vs returning customers by first-order month ({customerCohorts.from} – {customerCohorts.to})
           </p>
           {(customerCohorts.cohorts ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No first-time customers in this period.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No first-time customers in this period.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1249,11 +1249,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Cashier Performance' && cashierPerf && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>
             Cashier performance ({cashierPerf.from} – {cashierPerf.to})
           </p>
           {(cashierPerf.rows ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed orders in this period.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No completed orders in this period.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1271,7 +1271,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={S.td}>{row.orders_count}</td>
                     <td style={S.td}>{mvr(row.total)}</td>
                     <td style={S.td}>{mvr(row.avg_order)}</td>
-                    <td style={{ ...S.td, color: row.voids_count > 0 ? '#ef4444' : '#1C1408' }}>{row.voids_count}</td>
+                    <td style={{ ...S.td, color: row.voids_count > 0 ? 'var(--color-danger)' : 'var(--color-text)' }}>{row.voids_count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1283,9 +1283,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Product Margins' && productMargins && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Menu item margins</p>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>Menu item margins</p>
           {(productMargins.rows ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No menu items found.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No menu items found.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1303,7 +1303,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <td style={S.td}>{row.category ?? '—'}</td>
                     <td style={S.td}>{mvr(row.price)}</td>
                     <td style={S.td}>{row.cost != null ? mvr(row.cost) : '—'}</td>
-                    <td style={{ ...S.td, fontWeight: 700, color: row.margin_pct != null && row.margin_pct < 30 ? '#ef4444' : '#16a34a' }}>
+                    <td style={{ ...S.td, fontWeight: 700, color: row.margin_pct != null && row.margin_pct < 30 ? 'var(--color-danger)' : '#16a34a' }}>
                       {row.margin_pct != null ? `${row.margin_pct}%` : '—'}
                     </td>
                   </tr>
@@ -1317,9 +1317,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Stock Discrepancy' && stockDiscrepancy && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>Stock anomalies</p>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>Stock anomalies</p>
           {(stockDiscrepancy.rows ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No discrepancies detected.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No discrepancies detected.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1345,11 +1345,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Hourly Sales' && hourlySales && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>
             Hourly sales ({hourlySales.from} – {hourlySales.to})
           </p>
           {(hourlySales.hours ?? []).every((h) => h.count === 0) ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No orders in this period.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No orders in this period.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
@@ -1388,11 +1388,11 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
       {!loading && tab === 'Station Performance' && stationPerf && (
         <Card>
-          <p style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', margin: '0 0 12px' }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 12px' }}>
             Kitchen station performance ({stationPerf.from} – {stationPerf.to})
           </p>
           {(stationPerf.rows ?? []).length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9C8E7E' }}>No completed order lines in this period.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No completed order lines in this period.</p>
           ) : (
                         <ResponsiveTable>
 <table style={S.table}>
