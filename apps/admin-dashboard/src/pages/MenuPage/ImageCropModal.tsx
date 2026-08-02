@@ -114,22 +114,22 @@ function ImageCropModalBody({
         overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ margin: 0, fontWeight: 800, fontSize: 17, color: '#1C1408' }}>{title}</h3>
+          <h3 style={{ margin: 0, fontWeight: 800, fontSize: 17, color: 'var(--color-text)' }}>{title}</h3>
           <button
             type="button"
             onClick={onCancel}
             disabled={busy}
             aria-label="Close"
             style={{
-              background: '#F8F6F3', border: 'none', borderRadius: 8,
-              width: 40, height: 40, cursor: busy ? 'not-allowed' : 'pointer', color: '#6B5D4F',
+              background: 'var(--color-bg)', border: 'none', borderRadius: 8,
+              width: 40, height: 40, cursor: busy ? 'not-allowed' : 'pointer', color: 'var(--color-text-secondary)',
             }}
           >
             ✕
           </button>
         </div>
 
-        <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.45 }}>
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
           {hint}
         </p>
 
@@ -137,7 +137,7 @@ function ImageCropModalBody({
           position: 'relative',
           width: '100%',
           height: cropperHeight,
-          background: '#1C1408',
+          background: 'var(--color-text)',
           borderRadius: 12,
           overflow: 'hidden',
         }}>
@@ -171,7 +171,7 @@ function ImageCropModalBody({
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 14 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#6B5D4F', flex: 1, minWidth: 180 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--color-text-secondary)', flex: 1, minWidth: 180 }}>
             <span style={{ flexShrink: 0, fontWeight: 600 }}>Zoom</span>
             <input
               type="range"
@@ -191,8 +191,8 @@ function ImageCropModalBody({
               disabled={busy || !mediaReady}
               onClick={() => setRotation((r) => r - 90)}
               style={{
-                minHeight: 40, minWidth: 40, borderRadius: 8, border: '1px solid #E8E0D8',
-                background: '#F8F6F3', cursor: mediaReady && !busy ? 'pointer' : 'not-allowed', display: 'flex',
+                minHeight: 40, minWidth: 40, borderRadius: 8, border: '1px solid var(--color-border)',
+                background: 'var(--color-bg)', cursor: mediaReady && !busy ? 'pointer' : 'not-allowed', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -204,8 +204,8 @@ function ImageCropModalBody({
               disabled={busy || !mediaReady}
               onClick={() => setRotation((r) => r + 90)}
               style={{
-                minHeight: 40, minWidth: 40, borderRadius: 8, border: '1px solid #E8E0D8',
-                background: '#F8F6F3', cursor: mediaReady && !busy ? 'pointer' : 'not-allowed', display: 'flex',
+                minHeight: 40, minWidth: 40, borderRadius: 8, border: '1px solid var(--color-border)',
+                background: 'var(--color-bg)', cursor: mediaReady && !busy ? 'pointer' : 'not-allowed', display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
