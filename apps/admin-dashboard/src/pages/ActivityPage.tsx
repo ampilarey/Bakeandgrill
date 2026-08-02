@@ -135,11 +135,11 @@ export default function ActivityPage() {
         <Btn onClick={handleSearch}>Filter</Btn>
       </div>
 
-      {error && <p style={{ color: '#ef4444', marginBottom: 12 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{error}</p>}
 
       <TableCard>
         {loading && logs.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#9C8E7E' }}>Loading…</div>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>
         ) : logs.length === 0 ? (
           <EmptyState message="No activity found for these filters." />
         ) : (
@@ -155,7 +155,7 @@ export default function ActivityPage() {
             </thead>
             <tbody>
               {logs.map((row) => (
-                <tr key={row.id} style={{ borderBottom: '1px solid #F0EBE5' }}>
+                <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={TD}>{new Date(row.created_at).toLocaleString()}</td>
                   <td style={TD}>{row.user?.name ?? '—'}</td>
                   <td style={{ ...TD, fontWeight: 600 }}>{formatAuditAction(row.action)}</td>
@@ -168,14 +168,14 @@ export default function ActivityPage() {
                         <button
                           type="button"
                           onClick={() => navigate(path)}
-                          style={{ marginLeft: 8, fontSize: 11, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                          style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                           View
                         </button>
                       );
                     })()}
                   </td>
-                  <td style={{ ...TD, fontSize: 11, color: '#6B5D4F', maxWidth: 280 }}>
+                  <td style={{ ...TD, fontSize: 11, color: 'var(--color-text-secondary)', maxWidth: 280 }}>
                     {detailSnippet(row)}
                   </td>
                 </tr>
@@ -187,7 +187,7 @@ export default function ActivityPage() {
 
       {lastPage > 1 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-          <span style={{ fontSize: 13, color: '#9C8E7E' }}>{total} events · page {page} of {lastPage}</span>
+          <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{total} events · page {page} of {lastPage}</span>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant="secondary" disabled={page <= 1} onClick={() => void load(page - 1)}>Previous</Btn>
             <Btn variant="secondary" disabled={page >= lastPage} onClick={() => void load(page + 1)}>Next</Btn>
@@ -203,7 +203,7 @@ export default function ActivityPage() {
 const selectStyle: React.CSSProperties = {
   padding: '8px 12px',
   borderRadius: 10,
-  border: '1.5px solid #E8E0D8',
+  border: '1.5px solid var(--color-border)',
   fontSize: 13,
   fontFamily: 'inherit',
   background: 'var(--color-surface)',
