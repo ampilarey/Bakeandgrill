@@ -32,13 +32,13 @@ export function WebsiteSettings() {
         data-testid="dinein-menu-card"
         style={{
           padding: 24, borderRadius: 14, background: 'var(--color-surface)',
-          border: '1px solid #E8E0D8', display: 'flex', flexDirection: 'column', gap: 12,
+          border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 12,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#1C1408', fontWeight: 700, fontSize: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--color-text)', fontWeight: 700, fontSize: 16 }}>
           <QrCode size={18} /> Dine-in menu
         </div>
-        <p style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
           View-only digital menu for QR codes and print — no login or ordering.
         </p>
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -46,7 +46,7 @@ export function WebsiteSettings() {
             data-testid="dinein-menu-qr"
             style={{
               padding: 10, borderRadius: 12, background: 'var(--color-surface)',
-              border: '1px solid #E8E0D8', lineHeight: 0,
+              border: '1px solid var(--color-border)', lineHeight: 0,
             }}
           >
             <QRCodeSVG value={dineInUrl} size={128} level="M" includeMargin={false} />
@@ -56,8 +56,8 @@ export function WebsiteSettings() {
               data-testid="dinein-menu-url"
               style={{
                 display: 'block', padding: '10px 12px', borderRadius: 10,
-                background: '#F8F6F3', border: '1px solid #E8E0D8',
-                fontSize: 12, wordBreak: 'break-all', color: '#1C1408',
+                background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                fontSize: 12, wordBreak: 'break-all', color: 'var(--color-text)',
               }}
             >
               {dineInUrl}
@@ -96,12 +96,12 @@ export function WebsiteSettings() {
 
       <div style={{
         padding: 24, borderRadius: 14, background: 'var(--color-surface)',
-        border: '1px solid #E8E0D8', display: 'flex', flexDirection: 'column', gap: 12,
+        border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 12,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#1C1408', fontWeight: 700, fontSize: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--color-text)', fontWeight: 700, fontSize: 16 }}>
           <LayoutTemplate size={18} /> Content &amp; Branding
         </div>
-        <p style={{ margin: 0, fontSize: 14, color: '#6B5D4F', lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
           Logo, default item photo, new-items window, hero slides, and all marketing copy
           are edited in Content &amp; Branding.
         </p>
@@ -110,7 +110,7 @@ export function WebsiteSettings() {
             to="/content?group=Branding"
             style={{
               height: 44, padding: '0 16px', borderRadius: 10,
-              background: '#D4813A', color: '#fff', fontWeight: 700, fontSize: 14,
+              background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 14,
               display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', fontFamily: 'inherit',
             }}
           >
