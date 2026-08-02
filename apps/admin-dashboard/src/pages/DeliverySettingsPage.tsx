@@ -73,7 +73,7 @@ function hydrateSchedule(raw: unknown): Schedule {
 const S = {
   card: {
     background: '#FDFAF7',
-    border: '1px solid #E8E0D8',
+    border: '1px solid var(--color-border)',
     borderRadius: 16,
     padding: '1.5rem',
     marginBottom: '1.25rem',
@@ -81,7 +81,7 @@ const S = {
   sectionTitle: {
     fontSize: 14,
     fontWeight: 700,
-    color: '#6B5D4F',
+    color: 'var(--color-text-secondary)',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.05em',
     marginBottom: '1rem',
@@ -89,7 +89,7 @@ const S = {
   input: {
     width: '100%',
     padding: '9px 12px',
-    border: '1.5px solid #E8E0D8',
+    border: '1.5px solid var(--color-border)',
     borderRadius: 10,
     fontSize: 13,
     fontFamily: 'inherit',
@@ -99,19 +99,19 @@ const S = {
     display: 'block' as const,
     fontSize: 13,
     fontWeight: 600 as const,
-    color: '#6B5D4F',
+    color: 'var(--color-text-secondary)',
     marginBottom: 4,
   },
   btnPrimary: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 10, border: 'none',
-    background: '#D4813A', color: '#fff', fontSize: 13, fontWeight: 600,
+    background: 'var(--color-primary)', color: '#fff', fontSize: 13, fontWeight: 600,
     cursor: 'pointer',
   } as React.CSSProperties,
   btnSecondary: {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 10,
-    border: '1.5px solid #E8E0D8', background: 'var(--color-surface)',
+    border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
     color: '#4A3728', fontSize: 13, fontWeight: 600,
     cursor: 'pointer',
   } as React.CSSProperties,
@@ -139,7 +139,7 @@ const S = {
   toggleTrack: (on: boolean): React.CSSProperties => ({
     display: 'inline-block', position: 'relative',
     width: 48, height: 26, borderRadius: 13,
-    background: on ? '#D4813A' : '#D1C9BE',
+    background: on ? 'var(--color-primary)' : '#D1C9BE',
     transition: 'background 0.2s',
     cursor: 'pointer', flexShrink: 0,
   }),
@@ -513,7 +513,7 @@ export default function DeliverySettingsPage() {
               <p style={S.reasonNote}>Reason: {status.message}</p>
             )}
             {overrideActive && status.override_until && (
-              <p style={{ ...S.reasonNote, color: '#D4813A', fontWeight: 600 }}>
+              <p style={{ ...S.reasonNote, color: 'var(--color-primary)', fontWeight: 600 }}>
                 ⚡ Force-open override active until {new Date(status.override_until).toLocaleString()}
               </p>
             )}
@@ -533,7 +533,7 @@ export default function DeliverySettingsPage() {
       {/* Capacity */}
       <div style={S.card}>
         <p style={S.sectionTitle}>Capacity</p>
-        <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
           Limit concurrent open delivery tickets (pending through out for delivery).
           Set <strong>0</strong> for unlimited. Staff phone-in delivery still bypasses this gate.
         </p>
@@ -605,7 +605,7 @@ export default function DeliverySettingsPage() {
       {/* Force-open override */}
       <div style={S.card}>
         <p style={S.sectionTitle}>Force-open Override</p>
-        <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
           Force delivery <strong>open</strong> until a specific time, ignoring the master switch and schedule.
           Useful for special delivery windows outside normal hours. Leave blank to deactivate.
         </p>
@@ -648,7 +648,7 @@ export default function DeliverySettingsPage() {
             >
               <span style={S.toggleThumb(scheduleEnabled)} />
             </button>
-            <span style={{ fontSize: 12, color: '#6B5D4F' }}>{scheduleEnabled ? 'Schedule on' : 'No schedule (all day)'}</span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{scheduleEnabled ? 'Schedule on' : 'No schedule (all day)'}</span>
           </div>
         </div>
 
@@ -669,7 +669,7 @@ export default function DeliverySettingsPage() {
                   <div key={key} style={{
                     padding: '10px 14px', borderRadius: 10,
                     background: day.enabled ? '#FDFAF7' : '#F5F0EB',
-                    border: `1px solid ${day.enabled ? '#E8E0D8' : '#DDD5CB'}`,
+                    border: `1px solid ${day.enabled ? 'var(--color-border)' : '#DDD5CB'}`,
                     opacity: day.enabled ? 1 : 0.65,
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
