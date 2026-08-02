@@ -34,7 +34,7 @@
   "src/pages/MenuPage/menuFormPrimitives.tsx": 13,
   "src/pages/MyAccountPage.tsx": 10,
   "src/pages/OnlineOrderingPage.tsx": 40,
-  "src/pages/OrdersPage.tsx": 115,
+  "src/pages/OrdersPage.tsx": 39,
   "src/pages/PrintJobsPage.tsx": 21,
   "src/pages/ProcurementReportPage.tsx": 26,
   "src/pages/ProfitLossPage.tsx": 19,

@@ -300,10 +300,10 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
         overflowY: 'auto', padding: 24, boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
       }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontWeight: 800, fontSize: 18, color: '#1C1408' }}>
+          <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--color-text)' }}>
             {order ? `#${order.order_number}` : 'Order Details'}
           </h2>
-          <button onClick={onClose} aria-label="Close order details" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9C8E7E' }}>✕</button>
+          <button onClick={onClose} aria-label="Close order details" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
         </div>
 
         {toast && (
@@ -487,7 +487,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               </div>
             )}
 
-            <div style={{ background: '#F8F6F3', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ background: 'var(--color-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <Row label="Order #" value={order.order_number} />
               <Row label="Type" value={typeLabel(order.type)} />
               <Row label="Time" value={new Date(order.created_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })} />
@@ -496,7 +496,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 <Row
                   label="Customer"
                   value={order.customer?.id ? (
-                    <Link to={`/customers?customer=${order.customer.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                    <Link to={`/customers?customer=${order.customer.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
                       {order.customer.name ?? order.customer_name}
                     </Link>
                   ) : (order.customer?.name ?? order.customer_name)!}
@@ -510,7 +510,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 <Row
                   label="Cashier"
                   value={order.user.id ? (
-                    <Link to={`/staff?staff=${order.user.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                    <Link to={`/staff?staff=${order.user.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
                       {order.user.name}
                     </Link>
                   ) : order.user.name}
@@ -521,7 +521,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 <Row
                   label="Shift"
                   value={
-                    <Link to={`/shifts?shift=${order.shift.id}`} style={{ color: '#D4813A', textDecoration: 'none' }}>
+                    <Link to={`/shifts?shift=${order.shift.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
                       #{order.shift.id}
                     </Link>
                   }
@@ -533,9 +533,9 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
               <div style={{ background: '#eff6ff', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                 <p style={{ fontWeight: 700, fontSize: 13, color: '#1e40af', marginBottom: 8 }}>Delivery Address</p>
                 <p style={{ fontSize: 14 }}>{order.delivery_address_line1}</p>
-                {order.delivery_island && <p style={{ fontSize: 13, color: '#6B5D4F' }}>{order.delivery_island}</p>}
+                {order.delivery_island && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{order.delivery_island}</p>}
                 {order.delivery_contact_name && (
-                  <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 4 }}>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                     {order.delivery_contact_name} · {order.delivery_contact_phone}
                   </p>
                 )}
@@ -544,7 +544,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
 
             {order.type === 'delivery' && canManage && (
               <div style={{ marginBottom: 16 }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: '#6B5D4F', marginBottom: 8 }}>
+                <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
                   🚗 Driver
                   {order.driver && <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 12, color: '#16a34a' }}>✓ {order.driver.name}</span>}
                 </p>
@@ -554,32 +554,32 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                       defaultValue={order.driver?.id ?? ''}
                       onChange={(e) => { if (e.target.value) void handleAssignDriver(Number(e.target.value)); }}
                       disabled={driverAssigning}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', background: '#FAF7F3', color: '#1C1408', cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: '#FAF7F3', color: 'var(--color-text)', cursor: 'pointer' }}
                     >
                       <option value="">— select driver —</option>
                       {drivers.map((d) => (
                         <option key={d.id} value={d.id}>{d.name}{d.phone ? ` (${d.phone})` : ''}</option>
                       ))}
                     </select>
-                    {driverAssigning && <span style={{ fontSize: 12, color: '#9C8E7E' }}>Assigning…</span>}
+                    {driverAssigning && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Assigning…</span>}
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: '#9C8E7E' }}>No drivers registered.</p>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No drivers registered.</p>
                 )}
               </div>
             )}
 
             {order.items && order.items.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: '#6B5D4F', marginBottom: 8 }}>Items</p>
+                <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Items</p>
                 {order.items.map((item) => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F0EBE5' }}>
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid var(--color-border-light)' }}>
                     <span>{item.quantity}× {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}</span>
-                    <span style={{ color: '#D4813A', fontWeight: 600 }}>MVR {parseFloat(String(item.total_price ?? 0)).toFixed(2)}</span>
+                    <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>MVR {parseFloat(String(item.total_price ?? 0)).toFixed(2)}</span>
                   </div>
                 ))}
                 {(Number(order.subtotal ?? 0) > 0 || Number(order.service_charge_amount ?? 0) > 0 || Number(order.tax_amount ?? 0) > 0 || Number(order.discount_amount ?? 0) > 0) && (
-                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #F0EBE5', fontSize: 13, color: '#6B5D4F', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-border-light)', fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {Number(order.subtotal ?? 0) > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Subtotal</span>
@@ -626,25 +626,25 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   <p style={{ color: '#991B1B', fontSize: 12, marginBottom: 10 }}>{refundError}</p>
                 )}
                 <label style={{ display: 'block', marginBottom: 10 }}>
-                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Amount (MVR) *</span>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Amount (MVR) *</span>
                   <input
                     type="number" min="0.01" step="0.01"
                     value={refundAmount}
                     onChange={(e) => setRefundAmount(e.target.value)}
-                    style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
                   />
                 </label>
                 <label style={{ display: 'block', marginBottom: 12 }}>
-                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Reason *</span>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Reason *</span>
                   <textarea
                     rows={3}
                     placeholder="Why is this being refunded?"
                     value={refundReason}
                     onChange={(e) => setRefundReason(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                   />
                 </label>
-                <p style={{ fontSize: 11, color: '#9C8E7E', margin: '0 0 12px' }}>
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
                   Requires an open shift. Amount is capped at what was paid minus prior refunds.
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -657,14 +657,14 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
 
             {showPayment && (
-              <div style={{ background: '#F9F5F0', border: '1px solid #E8E0D8', borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#1C1408', marginBottom: 12 }}>Record Payment</div>
+              <div style={{ background: '#F9F5F0', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', marginBottom: 12 }}>Record Payment</div>
                 {payRows.map((row, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
                     <select
                       value={row.method}
                       onChange={(e) => setPayRows((rs) => rs.map((r, j) => j === i ? { ...r, method: e.target.value } : r))}
-                      style={{ height: 34, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: '#fff', flex: '0 0 110px' }}
+                      style={{ height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: '#fff', flex: '0 0 110px' }}
                     >
                       {ADMIN_ORDER_PAYMENT_METHODS.map((m) => (
                         <option key={m.value} value={m.value}>{m.label}</option>
@@ -675,28 +675,28 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                       placeholder="0.00"
                       value={row.amount}
                       onChange={(e) => setPayRows((rs) => rs.map((r, j) => j === i ? { ...r, amount: e.target.value } : r))}
-                      style={{ flex: 1, height: 34, padding: '0 8px', border: '1.5px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}
+                      style={{ flex: 1, height: 34, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}
                     />
                     {payRows.length > 1 && (
                       <button onClick={() => setPayRows((rs) => rs.filter((_, j) => j !== i))}
-                        style={{ background: 'none', border: 'none', fontSize: 16, color: '#9C8E7E', cursor: 'pointer', padding: '0 4px' }}>✕</button>
+                        style={{ background: 'none', border: 'none', fontSize: 16, color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0 4px' }}>✕</button>
                     )}
                   </div>
                 ))}
                 <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                   <button
                     onClick={() => setPayRows((rs) => [...rs, { method: 'cash', amount: '' }])}
-                    style={{ fontSize: 12, color: '#D4813A', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+                    style={{ fontSize: 12, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}
                   >
                     + Split payment
                   </button>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                     <button onClick={() => { setShowPayment(false); setPayRows([{ method: 'cash', amount: '' }]); }}
-                      style={{ fontSize: 12, color: '#9C8E7E', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                      style={{ fontSize: 12, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
                     <button
                       onClick={() => void handleAddPayment()}
                       disabled={paymentSaving}
-                      style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#D4813A', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', opacity: paymentSaving ? 0.6 : 1 }}
+                      style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--color-primary)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', opacity: paymentSaving ? 0.6 : 1 }}
                     >
                       {paymentSaving ? '…' : 'Confirm'}
                     </button>
@@ -721,8 +721,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
 function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-      <span style={{ color: '#9C8E7E' }}>{label}</span>
-      <span style={{ fontWeight: 600, color: '#1C1408' }}>{value}</span>
+      <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{value}</span>
     </div>
   );
 }
@@ -895,7 +895,7 @@ export function OrdersPage() {
         }
       />
 
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B5D4F', lineHeight: 1.45 }}>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
         Kitchen prep and register actions run on the <strong>POS</strong> and <strong>KDS</strong> apps — this page is for monitoring and manager overrides.
       </p>
 
@@ -910,14 +910,14 @@ export function OrdersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search order # or customer…"
-          style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280, padding: '7px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#1C1408', outline: 'none' }}
+          style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280, padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', color: 'var(--color-text)', outline: 'none' }}
         />
         <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ width: 160 }} />
         <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ width: 160 }} />
         <select
           value={cashierFilter}
           onChange={(e) => { setCashierFilter(e.target.value); setPage(1); }}
-          style={{ padding: '7px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', minWidth: 140 }}
+          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', minWidth: 140 }}
         >
           <option value="">All cashiers</option>
           {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -925,7 +925,7 @@ export function OrdersPage() {
         <select
           value={deviceFilter}
           onChange={(e) => { setDeviceFilter(e.target.value); setPage(1); }}
-          style={{ padding: '7px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', minWidth: 140 }}
+          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: '#fff', minWidth: 140 }}
         >
           <option value="">All stations</option>
           {deviceOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -937,20 +937,20 @@ export function OrdersPage() {
           title="Show only cooking-but-unpaid orders"
           style={{
             padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-            border: unpaidOnly ? '1.5px solid #B91C1C' : '1.5px solid #E8E0D8',
+            border: unpaidOnly ? '1.5px solid #B91C1C' : '1.5px solid var(--color-border)',
             background: unpaidOnly ? '#FEF2F2' : '#fff',
-            color: unpaidOnly ? '#B91C1C' : '#6B5D4F',
+            color: unpaidOnly ? '#B91C1C' : 'var(--color-text-secondary)',
             cursor: 'pointer', whiteSpace: 'nowrap',
           }}
         >
           {unpaidOnly ? '● ' : '○ '}Unpaid only
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B5D4F' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-secondary)' }}>
           Per page:
           <select
             value={perPage}
             onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
-            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
           >
             {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -967,33 +967,33 @@ export function OrdersPage() {
           <div className="table-scroll" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
-              <tr style={{ background: '#F8F6F3', borderBottom: '1px solid #E8E0D8' }}>
+              <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                 <th
                   onClick={() => handleSort('order_number')}
-                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: '#F8F6F3' }}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'var(--color-bg)' }}
                 >Order # <SortArrow col="order_number" /></th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Type</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Status</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Customer</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Cashier</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: '#F8F6F3' }}>Station</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Type</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Customer</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Cashier</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Station</th>
                 <th
                   onClick={() => handleSort('total')}
-                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: '#F8F6F3' }}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'var(--color-bg)' }}
                 >Total <SortArrow col="total" /></th>
                 <th
                   onClick={() => handleSort('created_at')}
-                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#9C8E7E', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: '#F8F6F3' }}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'var(--color-bg)' }}
                 >Time <SortArrow col="created_at" /></th>
-                <th style={{ padding: '12px 16px', position: 'sticky', top: 0, background: '#F8F6F3' }} />
+                <th style={{ padding: '12px 16px', position: 'sticky', top: 0, background: 'var(--color-bg)' }} />
               </tr>
             </thead>
             <tbody>
               {sortedOrders.map((o) => (
-                <tr key={o.id} style={{ borderBottom: '1px solid #F0EBE5', transition: 'background 0.1s' }}
+                <tr key={o.id} style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.1s' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#FDF8F4'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1C1408' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text)' }}>
                     #{o.order_number}
                     {o.type === 'delivery' && <span style={{ marginLeft: 6, fontSize: 12 }}>🛵</span>}
                   </td>
@@ -1054,19 +1054,19 @@ export function OrdersPage() {
                       )}
                     </div>
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#6B5D4F' }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>
                     {o.customer?.name ?? o.customer_name ?? o.table_number ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#6B5D4F', fontSize: 13 }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)', fontSize: 13 }}>
                     {o.user?.name ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#9C8E7E', fontSize: 12 }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: 12 }}>
                     {o.device?.name ?? '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#D4813A' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-primary)' }}>
                     MVR {parseFloat(String(o.total ?? 0)).toFixed(2)}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#9C8E7E', fontSize: 12 }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: 12 }}>
                     {timeAgo(o.created_at)}
                   </td>
                   <td style={{ padding: '8px 12px' }}>
@@ -1079,9 +1079,9 @@ export function OrdersPage() {
                           title="Advance order to next status"
                           style={{
                             fontSize: 11, fontWeight: 700, padding: '4px 8px',
-                            borderRadius: 7, border: '1px solid #D4813A',
-                            background: quickActing === o.id ? '#F8F6F3' : 'rgba(212,129,58,0.1)',
-                            color: '#D4813A', cursor: 'pointer', whiteSpace: 'nowrap',
+                            borderRadius: 7, border: '1px solid var(--color-primary)',
+                            background: quickActing === o.id ? 'var(--color-bg)' : 'rgba(212,129,58,0.1)',
+                            color: 'var(--color-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
                             opacity: quickActing === o.id ? 0.6 : 1,
                           }}
                         >
@@ -1097,8 +1097,8 @@ export function OrdersPage() {
                           style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             width: 28, height: 28, borderRadius: 7,
-                            border: '1px solid #E8E0D8', background: '#F8F6F3',
-                            cursor: 'pointer', color: rowToast?.id === o.id ? '#22c55e' : '#9C8E7E',
+                            border: '1px solid var(--color-border)', background: 'var(--color-bg)',
+                            cursor: 'pointer', color: rowToast?.id === o.id ? 'var(--color-success)' : 'var(--color-text-muted)',
                             fontSize: 11, fontWeight: 700,
                             opacity: smsBusy === o.id ? 0.5 : 1,
                           }}
@@ -1119,7 +1119,7 @@ export function OrdersPage() {
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px' }}>
               <Btn small variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</Btn>
-              <span style={{ lineHeight: '30px', fontSize: 13, color: '#6B5D4F' }}>Page {page} of {totalPages}</span>
+              <span style={{ lineHeight: '30px', fontSize: 13, color: 'var(--color-text-secondary)' }}>Page {page} of {totalPages}</span>
               <Btn small variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</Btn>
             </div>
           )}
