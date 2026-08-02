@@ -26,11 +26,11 @@ export function VisualBlockPreview({ editor, value, appLabel }: PreviewProps) {
     <div
       data-testid="content-live-preview"
       style={{
-        marginTop: 12, padding: 12, borderRadius: 12, background: '#1C1408', color: '#F8F6F3',
+        marginTop: 12, padding: 12, borderRadius: 12, background: 'var(--color-text)', color: 'var(--color-bg)',
         fontSize: 13, lineHeight: 1.4,
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#9C8E7E', marginBottom: 10 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 10 }}>
         Live preview · {appLabel}
       </div>
       {renderPreview(editor, debounced)}
@@ -54,13 +54,13 @@ function renderPreview(editor: string, value: string) {
             <img src={slide.image} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45 }} />
           ) : null}
           <div style={{ position: 'relative', padding: 16 }}>
-            <div style={{ fontSize: 10, color: '#9C8E7E', marginBottom: 6 }}>{slides.length} slide{slides.length === 1 ? '' : 's'}</div>
-            {slide.eyebrow ? <div style={{ fontSize: 11, color: '#D4813A', fontWeight: 600, marginBottom: 4 }}>{slide.eyebrow}</div> : null}
+            <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 6 }}>{slides.length} slide{slides.length === 1 ? '' : 's'}</div>
+            {slide.eyebrow ? <div style={{ fontSize: 11, color: 'var(--color-primary)', fontWeight: 600, marginBottom: 4 }}>{slide.eyebrow}</div> : null}
             <div style={{ fontSize: 18, fontWeight: 700 }} dangerouslySetInnerHTML={{ __html: slide.title || 'Hero title' }} />
-            {slide.subtitle ? <p style={{ margin: '6px 0 0', color: '#E8E0D8', fontSize: 12 }}>{slide.subtitle}</p> : null}
+            {slide.subtitle ? <p style={{ margin: '6px 0 0', color: 'var(--color-border)', fontSize: 12 }}>{slide.subtitle}</p> : null}
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              {slide.cta_text ? <span style={{ background: '#D4813A', color: '#fff', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>{slide.cta_text}</span> : null}
-              {slide.cta2_text ? <span style={{ border: '1px solid #E8E0D8', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>{slide.cta2_text}</span> : null}
+              {slide.cta_text ? <span style={{ background: 'var(--color-primary)', color: '#fff', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>{slide.cta_text}</span> : null}
+              {slide.cta2_text ? <span style={{ border: '1px solid var(--color-border)', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>{slide.cta2_text}</span> : null}
             </div>
           </div>
         </div>
@@ -74,7 +74,7 @@ function renderPreview(editor: string, value: string) {
             <div key={i} style={{ background: '#2a2118', borderRadius: 8, padding: 10 }}>
               <div style={{ fontSize: 16 }}>{item.icon || '·'}</div>
               <div style={{ fontWeight: 700, marginTop: 4 }}>{item.heading || '—'}</div>
-              <div style={{ color: '#9C8E7E', fontSize: 11 }}>{item.subtext}</div>
+              <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.subtext}</div>
             </div>
           ))}
         </div>
@@ -93,7 +93,7 @@ function renderPreview(editor: string, value: string) {
               )}
               <div style={{ padding: 8 }}>
                 <div style={{ fontWeight: 700 }}>{item.name || 'Category'}</div>
-                <div style={{ color: '#9C8E7E', fontSize: 11 }}>{item.hook}</div>
+                <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.hook}</div>
               </div>
             </div>
           ))}
@@ -106,8 +106,8 @@ function renderPreview(editor: string, value: string) {
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           {items.map((item, i) => (
             <div key={i} style={{ textAlign: 'center', minWidth: 72 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#D4813A' }}>{item.value || '—'}</div>
-              <div style={{ fontSize: 11, color: '#9C8E7E' }}>{item.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-primary)' }}>{item.value || '—'}</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.label}</div>
             </div>
           ))}
         </div>
@@ -119,10 +119,10 @@ function renderPreview(editor: string, value: string) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {items.map((item, i) => (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: '#D4813A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{item.initial || '?'}</div>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{item.initial || '?'}</div>
               <div>
                 <div style={{ fontWeight: 700 }}>{item.title || '—'}</div>
-                <div style={{ color: '#9C8E7E', fontSize: 11 }}>{item.description}</div>
+                <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.description}</div>
               </div>
             </div>
           ))}
@@ -144,7 +144,7 @@ function renderPreview(editor: string, value: string) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {items.map((item, i) => (
-            <div key={i} style={{ color: '#D4813A' }}>{item.label || 'Link'} <span style={{ color: '#9C8E7E' }}>{item.url}</span></div>
+            <div key={i} style={{ color: 'var(--color-primary)' }}>{item.label || 'Link'} <span style={{ color: 'var(--color-text-muted)' }}>{item.url}</span></div>
           ))}
         </div>
       );
@@ -155,7 +155,7 @@ function renderPreview(editor: string, value: string) {
         <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px 10px', fontSize: 12 }}>
           {Object.entries(parsed).map(([day, hours]) => (
             <div key={day} style={{ display: 'contents' }}>
-              <span style={{ color: '#9C8E7E', textTransform: 'capitalize' }}>{day}</span>
+              <span style={{ color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>{day}</span>
               <span>{hours}</span>
             </div>
           ))}
@@ -163,6 +163,6 @@ function renderPreview(editor: string, value: string) {
       );
     }
     default:
-      return <div style={{ color: '#9C8E7E' }}>No preview for this block.</div>;
+      return <div style={{ color: 'var(--color-text-muted)' }}>No preview for this block.</div>;
   }
 }
