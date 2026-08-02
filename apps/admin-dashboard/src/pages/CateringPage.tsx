@@ -54,13 +54,13 @@ export function CateringPage() {
               setSearch(q.trim());
             }
           }}
-          style={{ minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 12px', minWidth: 200 }}
+          style={{ minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 12px', minWidth: 200 }}
         />
         <Btn onClick={() => { setPage(1); setSearch(q.trim()); }}>Search</Btn>
         <select
           value={status}
           onChange={(e) => { setPage(1); setStatus(e.target.value); }}
-          style={{ minHeight: 44, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 12px' }}
+          style={{ minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 12px' }}
         >
           <option value="all">All statuses</option>
           {CATERING_STATUSES.map((s) => (
@@ -81,7 +81,7 @@ export function CateringPage() {
 
       {error && <p style={{ color: '#b91c1c', fontSize: 13 }}>{error}</p>}
       {loading ? (
-        <p style={{ color: '#9C8E7E' }}>Loading…</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
         <EmptyState message="No event / catering requests yet." />
       ) : (
@@ -93,7 +93,7 @@ export function CateringPage() {
               data-testid={`catering-row-${row.id}`}
               style={{
                 background: 'var(--color-surface)',
-                border: '1px solid #E8E0D8',
+                border: '1px solid var(--color-border)',
                 borderRadius: 12,
                 padding: 16,
                 textDecoration: 'none',
@@ -107,7 +107,7 @@ export function CateringPage() {
                     {row.contact_name}
                     {row.company ? ` · ${row.company}` : ''}
                   </div>
-                  <div style={{ fontSize: 13, color: '#9C8E7E', marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
                     {row.phone}
                     {row.email ? ` · ${row.email}` : ''}
                     {' · '}
@@ -156,7 +156,7 @@ export function CateringPage() {
       {lastPage > 1 && (
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <Btn disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</Btn>
-          <span style={{ alignSelf: 'center', fontSize: 13, color: '#9C8E7E' }}>Page {page} / {lastPage}</span>
+          <span style={{ alignSelf: 'center', fontSize: 13, color: 'var(--color-text-muted)' }}>Page {page} / {lastPage}</span>
           <Btn disabled={page >= lastPage} onClick={() => setPage((p) => p + 1)}>Next</Btn>
         </div>
       )}
