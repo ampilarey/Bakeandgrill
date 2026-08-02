@@ -67,7 +67,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_BG: Record<string, string> = {
-  pending:    '#FEF3C7',
+  pending:    'var(--color-warning-bg)',
   confirmed:  '#DBEAFE',
   preparing:  '#EDE9FE',
   ready:      'var(--color-success-bg)',
@@ -124,11 +124,11 @@ function OrderCard({ order, now }: { order: Order; now: number }) {
 function ShiftBanner({ shift }: { shift: Shift | null }) {
   if (!shift) return (
     <div style={{
-      background: '#FEF3C7', border: '1.5px solid #fbbf24', borderRadius: 12,
+      background: 'var(--color-warning-bg)', border: '1.5px solid #fbbf24', borderRadius: 12,
       padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
     }}>
       <AlertTriangle size={16} color="#d97706" />
-      <span style={{ color: '#92400e', fontWeight: 600 }}>No shift open — cash drawer is untracked.</span>
+      <span style={{ color: 'var(--color-warning-strong)', fontWeight: 600 }}>No shift open — cash drawer is untracked.</span>
     </div>
   );
   // Shift model exposes open/closed via `closed_at` (no `status`
@@ -149,30 +149,30 @@ function ShiftBanner({ shift }: { shift: Shift | null }) {
   const stale = hrs >= 24;
   return (
     <div style={{
-      background: stale ? '#FEF3C7' : '#F0FDF4',
+      background: stale ? 'var(--color-warning-bg)' : '#F0FDF4',
       border: `1.5px solid ${stale ? '#fbbf24' : '#86efac'}`,
       borderRadius: 12,
       padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {stale ? <AlertTriangle size={16} color="#d97706" /> : <CheckCircle2 size={16} color="var(--color-success)" />}
-        <span style={{ fontWeight: 700, fontSize: 13, color: stale ? '#92400e' : 'var(--color-success-strong)' }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: stale ? 'var(--color-warning-strong)' : 'var(--color-success-strong)' }}>
           Shift Open{stale ? ' — close this shift' : ''}
         </span>
-        <span style={{ fontSize: 12, color: stale ? '#92400e' : 'var(--color-success-strong)' }}>
+        <span style={{ fontSize: 12, color: stale ? 'var(--color-warning-strong)' : 'var(--color-success-strong)' }}>
           {hrs > 0 ? `${hrs}h ` : ''}{mins}m · by {shift.opened_by ?? 'Unknown'}
         </span>
         {stale && (
-          <span style={{ fontSize: 12, color: '#92400e' }}>
+          <span style={{ fontSize: 12, color: 'var(--color-warning-strong)' }}>
             Left open too long — close from Shifts so cash totals stay accurate.
           </span>
         )}
       </div>
       <div style={{ display: 'flex', gap: 16, marginLeft: 'auto', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: stale ? '#92400e' : 'var(--color-success-strong)' }}>
+        <span style={{ fontSize: 12, color: stale ? 'var(--color-warning-strong)' : 'var(--color-success-strong)' }}>
           <strong>Opening: </strong>{fmt(shift.opening_cash)}
         </span>
-        <span style={{ fontSize: 12, color: stale ? '#92400e' : 'var(--color-success-strong)' }}>
+        <span style={{ fontSize: 12, color: stale ? 'var(--color-warning-strong)' : 'var(--color-success-strong)' }}>
           <strong>Expected: </strong>{fmt(shift.expected_cash ?? shift.opening_cash)}
         </span>
         {(shift.cash_movements?.length ?? 0) > 0 && (
@@ -256,7 +256,7 @@ function MaintenancePanel({ onDone }: { onDone: () => void }) {
           {preview.stale_shifts_count > 0 && (
             <div style={{
               marginBottom: 12, padding: '10px 14px', borderRadius: 10,
-              background: '#FEF3C7', border: '1px solid #fbbf24', fontSize: 13, color: '#92400e',
+              background: 'var(--color-warning-bg)', border: '1px solid #fbbf24', fontSize: 13, color: 'var(--color-warning-strong)',
             }}>
               <strong>{preview.stale_shifts_count} shift(s)</strong> open more than 24 hours.
               {' '}
@@ -707,15 +707,15 @@ export function DashboardPage() {
                             to={`/shifts?shift=${s.id}`}
                             style={{
                               display: 'flex', justifyContent: 'space-between', fontSize: 13,
-                              color: stale ? '#92400e' : undefined,
+                              color: stale ? 'var(--color-warning-strong)' : undefined,
                               textDecoration: 'none',
                             }}
                           >
-                            <span style={{ fontWeight: 600, color: stale ? '#92400e' : 'var(--color-primary)' }}>
+                            <span style={{ fontWeight: 600, color: stale ? 'var(--color-warning-strong)' : 'var(--color-primary)' }}>
                               {stale && <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
                               {s.user_name ?? 'Unknown'}
                             </span>
-                            <span style={{ color: stale ? '#92400e' : 'var(--color-text-muted)' }}>
+                            <span style={{ color: stale ? 'var(--color-warning-strong)' : 'var(--color-text-muted)' }}>
                               {s.device_name ?? 'No device'} · {elapsed(s.opened_at)}
                             </span>
                           </Link>
@@ -810,7 +810,7 @@ export function DashboardPage() {
           {/* Status quick-counts */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             {[
-              { label: 'Pending',   count: pendingCount,   color: 'var(--color-warning)', bg: '#FEF3C7', icon: <Clock size={12} /> },
+              { label: 'Pending',   count: pendingCount,   color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', icon: <Clock size={12} /> },
               { label: 'Preparing', count: preparingCount, color: '#8b5cf6', bg: '#EDE9FE', icon: <ChefHat size={12} /> },
               { label: 'Ready',     count: readyCount,     color: 'var(--color-success)', bg: 'var(--color-success-bg)', icon: <CheckCircle2 size={12} /> },
             ].map(({ label, count, color, bg, icon }) => (
@@ -951,7 +951,7 @@ export function DashboardPage() {
                   label="Already on PO"
                   value={String(spendRestock.withOpenPo)}
                   sub="Open draft/ordered"
-                  accent="#b45309"
+                  accent="var(--color-warning-strong)"
                   icon={ShoppingBag}
                 />
                 {(spendRestock.openAlerts ?? 0) > 0 && (
@@ -1006,7 +1006,7 @@ export function DashboardPage() {
                           {' · '}
                           <Link
                             to={`/purchase-orders?search=${encodeURIComponent(item.open_purchase)}`}
-                            style={{ color: '#b45309', fontWeight: 700, textDecoration: 'none' }}
+                            style={{ color: 'var(--color-warning-strong)', fontWeight: 700, textDecoration: 'none' }}
                           >
                             On {item.open_purchase}
                           </Link>
@@ -1033,7 +1033,7 @@ export function DashboardPage() {
 
           {stockRunway.length > 0 && (
             <Card style={{ marginBottom: 12, padding: 14 }}>
-              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#92400E' }}>Stock-out runway (consumption rate)</p>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--color-warning-strong)' }}>Stock-out runway (consumption rate)</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {stockRunway.map((item) => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>

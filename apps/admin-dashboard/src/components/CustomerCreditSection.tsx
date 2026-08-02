@@ -256,7 +256,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={approveNotes} onChange={(e) => setApproveNotes(e.target.value)} placeholder="Credit notes (optional)" />
               {credit.limit_max_mvr != null && parseFloat(approveLimit) > credit.limit_max_mvr && (
                 <>
-                  <p style={{ margin: 0, fontSize: 11, color: '#B45309' }}>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--color-warning-strong)' }}>
                     Above max — owner audit override. Reason (5+ chars) required.
                   </p>
                   <input
@@ -326,7 +326,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                 Override (allow limit below current balance)
               </label>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                Reason for change <span style={{ color: '#B45309' }}>(required, 5+ chars)</span>
+                Reason for change <span style={{ color: 'var(--color-warning-strong)' }}>(required, 5+ chars)</span>
               </label>
               <input
                 style={inputStyle}
@@ -397,10 +397,10 @@ export function CustomerCreditSection({ customerId }: Props) {
                     <Link to={`/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
                       {inv.invoice_number}
                     </Link>
-                    <span style={{ color: isOverdue(inv.due_date) ? '#B45309' : 'var(--color-text-secondary)' }}>
+                    <span style={{ color: isOverdue(inv.due_date) ? 'var(--color-warning-strong)' : 'var(--color-text-secondary)' }}>
                       Due {formatDueDate(inv.due_date)}
                     </span>
-                    <span style={{ fontWeight: 700, color: '#B45309' }}>MVR {(inv.balance_due_laar / 100).toFixed(2)}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-warning-strong)' }}>MVR {(inv.balance_due_laar / 100).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -506,7 +506,7 @@ export function CustomerCreditSection({ customerId }: Props) {
                   <div key={row.id} style={{ fontSize: 12, padding: '6px 8px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid #F0EAE3' }}>
                     <span style={{ fontWeight: 700, textTransform: 'capitalize' }}>{row.type.replace('_', ' ')}</span>
                     {' · '}
-                    <span style={{ color: row.amount_mvr >= 0 ? '#B45309' : '#059669' }}>
+                    <span style={{ color: row.amount_mvr >= 0 ? 'var(--color-warning-strong)' : '#059669' }}>
                       {row.amount_mvr >= 0 ? '+' : ''}MVR {row.amount_mvr.toFixed(2)}
                     </span>
                     {' · bal MVR '}{row.balance_after_mvr.toFixed(2)}

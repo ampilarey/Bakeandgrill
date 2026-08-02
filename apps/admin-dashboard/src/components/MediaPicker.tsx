@@ -155,7 +155,7 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
                   height: 32, padding: '0 12px', borderRadius: 9, cursor: 'pointer',
                   fontFamily: 'inherit', fontSize: 12, fontWeight: activeType === value ? 700 : 500,
                   border: activeType === value ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: activeType === value ? '#FFF7ED' : 'var(--color-bg)', color: 'var(--color-text)',
+                  background: activeType === value ? 'var(--color-warning-bg)' : 'var(--color-bg)', color: 'var(--color-text)',
                   display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
                 }}
               >
@@ -217,7 +217,7 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
                     onDoubleClick={() => { onPick(asset); onClose(); }}
                     style={{
                       border: highlighted?.id === asset.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      borderRadius: 9, padding: 0, background: highlighted?.id === asset.id ? '#FFF7ED' : 'var(--color-bg)',
+                      borderRadius: 9, padding: 0, background: highlighted?.id === asset.id ? 'var(--color-warning-bg)' : 'var(--color-bg)',
                       cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', overflow: 'hidden',
                     }}
                   >

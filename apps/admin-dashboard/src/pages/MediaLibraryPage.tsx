@@ -149,7 +149,7 @@ const tabStyle = (active: boolean, mobile = false): CSSProperties => ({
   height: mobile ? 44 : 36, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
   fontWeight: active ? 700 : 500, fontSize: 13,
   border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-  background: active ? '#FFF7ED' : 'var(--color-surface)', color: 'var(--color-text)', whiteSpace: 'nowrap',
+  background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)', color: 'var(--color-text)', whiteSpace: 'nowrap',
   display: 'inline-flex', alignItems: 'center', gap: 6,
 });
 
@@ -194,7 +194,7 @@ function AssetCard({
       data-testid={`asset-card-${asset.id}`}
       style={{
         border: selected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-        borderRadius: 10, padding: 0, background: selected ? '#FFF7ED' : 'var(--color-bg)',
+        borderRadius: 10, padding: 0, background: selected ? 'var(--color-warning-bg)' : 'var(--color-bg)',
         cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', overflow: 'hidden',
         position: 'relative',
         boxShadow: selected ? '0 0 0 2px rgba(212,129,58,0.2)' : 'none',
@@ -289,7 +289,7 @@ function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditPa
                   key={d}
                   type="button"
                   onClick={() => set('degrees', d)}
-                  style={{ height: 36, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', background: (params.degrees as number) === d ? '#FFF7ED' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                  style={{ height: 36, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', background: (params.degrees as number) === d ? 'var(--color-warning-bg)' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
                 >
                   {d}°
                 </button>
@@ -847,7 +847,7 @@ export function MediaLibraryPage() {
               style={{
                 border: `2px dashed ${dragOver ? 'var(--color-primary)' : '#C4B5A5'}`,
                 borderRadius: 12, padding: isMobile ? '28px 16px' : '20px 16px', textAlign: 'center', cursor: 'pointer',
-                background: dragOver ? '#FFF7ED' : 'var(--color-bg)', marginBottom: 16,
+                background: dragOver ? 'var(--color-warning-bg)' : 'var(--color-bg)', marginBottom: 16,
                 transition: 'border-color 0.15s, background 0.15s',
                 minHeight: isMobile ? 88 : undefined,
               }}
@@ -1164,7 +1164,7 @@ export function MediaLibraryPage() {
                       onClick={() => { setEditOp(editOp === op ? null : op); setEditParams({}); setEditError(''); }}
                       style={{
                         height: 32, padding: '0 10px', borderRadius: 8, border: editOp === op ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                        background: editOp === op ? '#FFF7ED' : 'var(--color-bg)', cursor: 'pointer',
+                        background: editOp === op ? 'var(--color-warning-bg)' : 'var(--color-bg)', cursor: 'pointer',
                         fontFamily: 'inherit', fontSize: 11, fontWeight: 600, color: editOp === op ? '#3D2B1F' : 'var(--color-text-secondary)',
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                       }}
@@ -1237,7 +1237,7 @@ export function MediaLibraryPage() {
             <button
               type="button"
               onClick={() => void applyEditOp('replace')}
-              style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 10, border: '2px solid var(--color-primary)', background: '#FFF7ED', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 10, border: '2px solid var(--color-primary)', background: 'var(--color-warning-bg)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 4 }}>Replace everywhere</div>
               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Update the file in place. All {selected?.usage_count ?? 0} references will show the new version. You can restore the previous version afterwards.</div>

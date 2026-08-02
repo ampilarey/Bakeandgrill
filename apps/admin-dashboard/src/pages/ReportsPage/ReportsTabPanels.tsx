@@ -290,7 +290,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <StatCard label="Purchases (COGS)" value={mvr(spendHub.totals.purchases)} accent="var(--color-primary)" />
             <StatCard label="Expenses approved" value={mvr(spendHub.totals.expenses_approved)} accent="var(--color-danger)" />
             <StatCard label="Expenses pending" value={mvr(spendHub.totals.expenses_pending)} accent="var(--color-warning)" />
-            <StatCard label="Waste (shrinkage)" value={mvr(spendHub.totals.waste_cost ?? 0)} accent="#b45309" />
+            <StatCard label="Waste (shrinkage)" value={mvr(spendHub.totals.waste_cost ?? 0)} accent="var(--color-warning-strong)" />
             <StatCard label="Combined outflow" value={mvr(spendHub.totals.combined_outflow)} accent="var(--color-text)" />
             <StatCard label="With waste" value={mvr(spendHub.totals.total_with_waste ?? spendHub.totals.combined_outflow)} accent="#7c2d12" />
             <StatCard label="POs received" value={String(spendHub.totals.po_count)} accent="var(--color-text-secondary)" />
@@ -811,9 +811,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 16px' }}>Members by Tier</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
               {[
-                { tier: 'Bronze',   count: loyaltyReport.bronze_count,   color: '#B45309', bg: '#FEF3E2' },
+                { tier: 'Bronze',   count: loyaltyReport.bronze_count,   color: 'var(--color-warning-strong)', bg: '#FEF3E2' },
                 { tier: 'Silver',   count: loyaltyReport.silver_count,   color: 'var(--color-text-secondary)', bg: 'var(--color-border-light)' },
-                { tier: 'Gold',     count: loyaltyReport.gold_count,     color: '#92400E', bg: '#FFFBEB' },
+                { tier: 'Gold',     count: loyaltyReport.gold_count,     color: 'var(--color-warning-strong)', bg: '#FFFBEB' },
                 { tier: 'Platinum', count: loyaltyReport.platinum_count, color: '#1D4ED8', bg: '#EFF6FF' },
               ].map(({ tier, count, color, bg }) => (
                 <div key={tier} style={{ background: bg, borderRadius: 10, padding: '16px', textAlign: 'center' }}>

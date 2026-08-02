@@ -59,7 +59,7 @@ export function Badge({
     purple: { bg: '#f3e8ff', text: '#7e22ce', border: '#d8b4fe' },
     teal:   { bg: '#ccfbf1', text: '#0f766e', border: '#5eead4' },
     gray:   { bg: 'var(--color-bg)', text: 'var(--color-text-secondary)', border: 'var(--color-border)' },
-    orange: { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
+    orange: { bg: 'var(--color-warning-bg)', text: '#c2410c', border: '#fed7aa' },
   };
   const s = colorMap[color] ?? colorMap.gray;
   return (

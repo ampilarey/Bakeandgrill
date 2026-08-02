@@ -305,7 +305,7 @@ export function PhotosTab({ itemId }: { itemId: number }) {
                     type="button"
                     title="Set as primary"
                     onClick={() => void setPrimary(ph.id)}
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 6, cursor: 'pointer' }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', background: 'var(--color-warning-bg)', border: '1px solid #fcd34d', borderRadius: 6, cursor: 'pointer' }}
                   >
                     <Star size={13} color="#d97706" />
                   </button>

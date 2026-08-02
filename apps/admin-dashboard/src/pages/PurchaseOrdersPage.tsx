@@ -341,7 +341,7 @@ export function PurchaseOrdersPage() {
       {suggestions && (
         <Card style={{ marginBottom: 20, background: '#fffbeb', border: '1px solid #fef08a' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <p style={{ fontWeight: 700, color: '#92400e', margin: 0, fontSize: 14 }}>
+            <p style={{ fontWeight: 700, color: 'var(--color-warning-strong)', margin: 0, fontSize: 14 }}>
               Low-Stock Suggestions — {(suggestions.items ?? []).length} items below reorder point
               <span style={{ display: 'block', fontWeight: 500, fontSize: 12, color: '#a16207', marginTop: 4 }}>
                 Qty uses usage cover when higher than the reorder formula. Preferred supplier wins over cheapest price.
@@ -375,7 +375,7 @@ export function PurchaseOrdersPage() {
                       <span style={{ color: 'var(--color-danger)', margin: '0 6px' }}>Stock: {parseFloat(String(item.current_stock ?? 0)).toFixed(2)}</span>
                       <span style={{ color: 'var(--color-success-strong)' }}>Order: {item.suggested_quantity} {item.unit}</span>
                       {item.suggestion_reason && (
-                        <span style={{ color: '#92400e', marginLeft: 6, fontSize: 11 }}>
+                        <span style={{ color: 'var(--color-warning-strong)', marginLeft: 6, fontSize: 11 }}>
                           ({item.suggestion_reason === 'usage_cover' ? 'usage' : item.suggestion_reason === 'reorder_quantity' ? 'reorder qty' : 'ROP'})
                         </span>
                       )}

@@ -464,7 +464,7 @@ export function InvoicesPage() {
                     {(inv as { balance_due?: number }).balance_due != null
                       && (inv as { balance_due?: number }).balance_due! > 0
                       && inv.status !== 'paid' && (
-                      <div style={{ fontSize: 11, color: '#B45309', fontWeight: 600 }}>
+                      <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', fontWeight: 600 }}>
                         MVR {(inv as { balance_due?: number }).balance_due!.toFixed(2)} due
                       </div>
                     )}
@@ -551,7 +551,7 @@ export function InvoicesPage() {
             {selected.invoice_number} · <strong style={{ color: 'var(--color-primary)' }}>MVR {parseFloat(String(selected.total ?? 0)).toFixed(2)}</strong>
           </p>
           {(selected as { on_credit_account?: boolean }).on_credit_account && (
-            <p style={{ color: '#B45309', fontSize: 12, marginBottom: 16 }}>
+            <p style={{ color: 'var(--color-warning-strong)', fontSize: 12, marginBottom: 16 }}>
               This invoice is on the customer's credit account. Confirming will
               record a repayment against their credit balance (not flip the
               invoice status directly).

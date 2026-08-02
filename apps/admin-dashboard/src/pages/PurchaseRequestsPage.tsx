@@ -1031,7 +1031,7 @@ function QuotesExpander({
             <div key={q.id} style={{
               display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
               marginBottom: 6, padding: '6px 8px', borderRadius: 8,
-              background: q.is_cheapest ? '#FFF7ED' : 'var(--color-surface)',
+              background: q.is_cheapest ? 'var(--color-warning-bg)' : 'var(--color-surface)',
               border: q.is_cheapest ? '1px solid #F5D0A9' : '1px solid var(--color-border)',
             }}>
               <span style={{ fontWeight: 600, flex: 1, minWidth: 80 }}>

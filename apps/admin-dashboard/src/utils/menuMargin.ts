@@ -25,6 +25,6 @@ export function menuItemMarginLabel(price: number, cost: number | null | undefin
 
 export const MENU_MARGIN_COLORS: Record<Exclude<MenuMarginLevel, 'unknown'>, { color: string; bg: string; border: string }> = {
   ok: { color: '#047857', bg: '#ECFDF5', border: '#A7F3D0' },
-  warn: { color: '#C2410C', bg: '#FFF7ED', border: '#FDBA74' },
+  warn: { color: '#C2410C', bg: 'var(--color-warning-bg)', border: '#FDBA74' },
   critical: { color: 'var(--color-danger-strong)', bg: 'var(--color-danger-bg)', border: '#FECACA' },
 };

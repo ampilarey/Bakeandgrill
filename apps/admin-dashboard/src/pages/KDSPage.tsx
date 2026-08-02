@@ -161,7 +161,7 @@ export function KDSPage() {
         animation: flash ? 'kds-pulse 0.5s ease-in-out 4' : 'none',
       }}>
         <div style={{ width: 10, height: 10, borderRadius: '50%', background: flash ? 'var(--color-warning)' : color, boxShadow: flash ? '0 0 6px var(--color-warning)' : 'none', transition: 'box-shadow 0.3s' }} />
-        <span style={{ fontWeight: 700, fontSize: 14, color: flash ? '#92400E' : 'var(--color-text)', transition: 'color 0.3s' }}>{title}</span>
+        <span style={{ fontWeight: 700, fontSize: 14, color: flash ? 'var(--color-warning-strong)' : 'var(--color-text)', transition: 'color 0.3s' }}>{title}</span>
         <span style={{
           background: flash ? 'var(--color-warning)' : 'var(--color-bg)',
           color: flash ? '#fff' : 'var(--color-text-secondary)', borderRadius: 999,
@@ -169,7 +169,7 @@ export function KDSPage() {
           border: `1px solid ${flash ? 'var(--color-warning)' : 'var(--color-border)'}`,
           transition: 'all 0.3s',
         }}>{items.length}</span>
-        {flash && <span style={{ fontSize: 11, fontWeight: 700, color: '#92400E', marginLeft: 2 }}>NEW!</span>}
+        {flash && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-warning-strong)', marginLeft: 2 }}>NEW!</span>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {items.length === 0

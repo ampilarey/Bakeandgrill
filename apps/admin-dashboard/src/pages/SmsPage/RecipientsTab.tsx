@@ -72,7 +72,7 @@ function StaffPrefsModal({
       {prefs && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!member.phone && (
-            <div style={{ background: '#fef3c7', border: '1px solid var(--color-warning)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-warning-strong)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <AlertCircle size={14} style={{ marginTop: 1, flexShrink: 0 }} />
               <span>No phone number set. Go to <strong>Staff</strong> page → Edit this member to add a phone number first.</span>
             </div>

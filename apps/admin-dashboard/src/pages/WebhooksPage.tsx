@@ -36,8 +36,8 @@ function RevealSecretModal({
   const [revealed, setRevealed] = useState(false);
   return (
     <Modal title={`New Secret — ${name}`} onClose={onClose} maxWidth={480}>
-      <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4, margin: '0 0 4px' }}>
+      <div style={{ background: 'var(--color-warning-bg)', border: '1px solid #fed7aa', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-warning-strong)', marginBottom: 4, margin: '0 0 4px' }}>
           Save this secret now — it will NOT be shown again.
         </p>
         <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>

@@ -559,7 +559,7 @@ export default function GiftCardsPage() {
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
               <Gift size={40} style={{ color: 'var(--color-primary)', marginBottom: 16 }} />
               <p style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 8 }}>Gift card issued!</p>
-              <p style={{ color: '#b45309', fontSize: 12, marginBottom: 10 }}>
+              <p style={{ color: 'var(--color-warning-strong)', fontSize: 12, marginBottom: 10 }}>
                 Full code is shown once — copy, print, or SMS it now.
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>

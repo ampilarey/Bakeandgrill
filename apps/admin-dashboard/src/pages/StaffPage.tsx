@@ -316,7 +316,7 @@ function NotificationPrefsModal({ member, onClose }: { member: StaffMember; onCl
       {prefs && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!member.phone && (
-            <div style={{ background: '#fef3c7', border: '1px solid var(--color-warning)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#92400e' }}>
+            <div style={{ background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--color-warning-strong)' }}>
               No phone number set. Add a phone in Edit to enable SMS notifications.
             </div>
           )}
@@ -546,8 +546,8 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
                           {' '}
                           <span style={{
                             fontSize: 11, padding: '1px 6px', borderRadius: 99,
-                            background: modified ? '#fef3c7' : '#f1ece6',
-                            color: modified ? '#92400e' : 'var(--color-text-muted)',
+                            background: modified ? 'var(--color-warning-bg)' : '#f1ece6',
+                            color: modified ? 'var(--color-warning-strong)' : 'var(--color-text-muted)',
                             fontWeight: 600,
                           }}>
                             {modified ? 'override' : p.source}
@@ -558,7 +558,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
                             type="button"
                             onClick={() => reset(p.slug)}
                             style={{
-                              fontSize: 12, color: '#B45309', background: 'none',
+                              fontSize: 12, color: 'var(--color-warning-strong)', background: 'none',
                               border: 'none', cursor: 'pointer', padding: '6px 8px',
                               textDecoration: 'underline', minHeight: 36,
                             }}

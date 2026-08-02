@@ -63,7 +63,7 @@ export function ProfitLossPage() {
           {/* End-date daily snapshot */}
           {daily && (
             <div style={{ background: '#fffbeb', border: '1px solid #fef08a', borderRadius: 14, padding: 20 }}>
-              <p style={{ fontWeight: 700, marginBottom: 16, color: '#92400e', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
+              <p style={{ fontWeight: 700, marginBottom: 16, color: 'var(--color-warning-strong)', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px' }}>
                 {to === today() ? "Today's Snapshot" : `Snapshot — ${to}`}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>

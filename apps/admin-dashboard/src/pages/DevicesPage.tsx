@@ -186,7 +186,7 @@ export default function DevicesPage() {
         <div style={{ background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <span style={{ fontSize: 20 }}>🔔</span>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: '#92400e' }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--color-warning-strong)' }}>
               {pending.length} device{pending.length > 1 ? 's' : ''} waiting for approval
             </p>
           </div>

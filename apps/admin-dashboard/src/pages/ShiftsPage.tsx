@@ -65,7 +65,7 @@ function AdminShiftTable({
               key={s.id}
               id={highlighted ? `shift-${s.id}` : undefined}
               style={{
-                background: highlighted ? '#FEF8F2' : stale ? '#FEF3C7' : undefined,
+                background: highlighted ? '#FEF8F2' : stale ? 'var(--color-warning-bg)' : undefined,
                 outline: highlighted ? '2px solid var(--color-primary)' : undefined,
                 outlineOffset: -2,
               }}
@@ -73,10 +73,10 @@ function AdminShiftTable({
               <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: highlighted ? 'var(--color-primary)' : 'var(--color-text)' }}>
                 #{s.id}
               </td>
-              <td style={{ ...TD, fontWeight: 600, color: stale ? '#92400e' : undefined }}>
+              <td style={{ ...TD, fontWeight: 600, color: stale ? 'var(--color-warning-strong)' : undefined }}>
                 {stale && <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />}
                 {s.user_id ? (
-                  <Link to={`/staff?staff=${s.user_id}`} style={{ color: stale ? '#92400e' : 'var(--color-primary)', textDecoration: 'none' }}>
+                  <Link to={`/staff?staff=${s.user_id}`} style={{ color: stale ? 'var(--color-warning-strong)' : 'var(--color-primary)', textDecoration: 'none' }}>
                     {s.user?.name ?? `#${s.user_id}`}
                   </Link>
                 ) : (
@@ -84,7 +84,7 @@ function AdminShiftTable({
                 )}
               </td>
               <td style={TD}>{s.device?.name ?? '—'}</td>
-              <td style={{ ...TD, fontSize: 12, color: stale ? '#92400e' : 'var(--color-text-muted)' }}>{new Date(s.opened_at).toLocaleString()}</td>
+              <td style={{ ...TD, fontSize: 12, color: stale ? 'var(--color-warning-strong)' : 'var(--color-text-muted)' }}>{new Date(s.opened_at).toLocaleString()}</td>
               <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-muted)' }}>
                 {s.closed_at ? new Date(s.closed_at).toLocaleString() : stale ? 'Still open — close shift' : '—'}
               </td>

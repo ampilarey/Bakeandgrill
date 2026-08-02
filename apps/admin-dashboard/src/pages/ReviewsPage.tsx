@@ -75,7 +75,7 @@ export default function ReviewsPage() {
       </div>
 
       {pending > 0 && (
-        <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400e' }}>
+        <div style={{ background: 'var(--color-warning-bg)', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: 'var(--color-warning-strong)' }}>
           <strong>{pending}</strong> review{pending > 1 ? 's' : ''} pending moderation on this page.
         </div>
       )}

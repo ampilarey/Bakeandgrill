@@ -477,7 +477,7 @@ export function CustomersPage() {
                     </div>
                     {detail.customer.internal_notes && (
                       <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 10, padding: '10px 14px' }}>
-                        <p style={{ color: '#92400E', margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>📝 Internal Notes</p>
+                        <p style={{ color: 'var(--color-warning-strong)', margin: '0 0 4px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>📝 Internal Notes</p>
                         <p style={{ color: '#78350F', margin: 0, fontSize: 13 }}>{detail.customer.internal_notes}</p>
                       </div>
                     )}
@@ -520,7 +520,7 @@ export function CustomersPage() {
 
                 {!editing && detail && (
                   <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 12, padding: '14px 16px' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--color-warning-strong)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Account Identity
                     </p>
                     <p style={{ margin: '0 0 12px', fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>
@@ -621,7 +621,7 @@ export function CustomersPage() {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                     border: picked ? '2px solid var(--color-primary)' : '1px solid #F0EAE3',
-                    background: picked ? '#FFF7ED' : '#FAF7F3',
+                    background: picked ? 'var(--color-warning-bg)' : '#FAF7F3',
                   }}
                 >
                   <span>
@@ -635,7 +635,7 @@ export function CustomersPage() {
           </div>
         )}
         {mergeSelected.length > 0 && (
-          <p style={{ margin: '12px 0 0', fontSize: 12, color: '#92400E' }}>
+          <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--color-warning-strong)' }}>
             Selected: {mergeSelected.map((c) => `#${c.id}`).join(', ')}
           </p>
         )}

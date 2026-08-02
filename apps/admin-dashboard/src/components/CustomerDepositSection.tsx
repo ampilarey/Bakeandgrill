@@ -329,10 +329,10 @@ export function CustomerDepositSection({ customerId }: Props) {
 
           {canTransfer && creditBalance > 0 && deposit.balance_laar > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 8, background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#92400E' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-warning-strong)' }}>
                 Transfer to credit (credit owed: MVR {creditBalance.toFixed(2)})
               </p>
-              <p style={{ margin: 0, fontSize: 11, color: '#B45309' }}>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-warning-strong)' }}>
                 One-way: deposit is applied to reduce credit balance. Not a sale.
               </p>
               <input

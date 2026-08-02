@@ -48,7 +48,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 const STATUS_BG: Record<string, string> = {
   ok:           'var(--color-success-bg)',
-  warning:      '#fef3c7',
+  warning:      'var(--color-warning-bg)',
   low:          '#ffedd5',
   critical:     'var(--color-danger-bg)',
   out_of_stock: '#fecaca',
@@ -1395,14 +1395,14 @@ export function ForecastPage() {
               {selectedRestockItems.length > 0 && (
                 <div style={{
                   marginBottom: 12, padding: '10px 12px', borderRadius: 8,
-                  background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: 13, color: '#9a3412',
+                  background: 'var(--color-warning-bg)', border: '1px solid #FED7AA', fontSize: 13, color: 'var(--color-warning-strong)',
                 }}>
                   <strong>{selectedRestockItems.length}</strong> for draft POs ·{' '}
                   <strong>{restockPreviewBySupplier.length}</strong> draft PO
                   {restockPreviewBySupplier.length === 1 ? '' : 's'} · est.{' '}
                   <strong>MVR {restockPreviewTotal.toFixed(2)}</strong>
                   {selectedWithOpenPo.length > 0 && (
-                    <> · <strong style={{ color: '#b45309' }}>{selectedWithOpenPo.length} already on open PO</strong></>
+                    <> · <strong style={{ color: 'var(--color-warning-strong)' }}>{selectedWithOpenPo.length} already on open PO</strong></>
                   )}
                   {selectedRopItems.length > 0 && (
                     <> · <strong>{selectedRopItems.length}</strong> with ROP change</>
@@ -1458,7 +1458,7 @@ export function ForecastPage() {
                 <StatCard label="Below ROP" value={String(restock.totals.below_rop)} accent="var(--color-danger)" />
                 <StatCard label="Ready for PO" value={String(readyRestock.length)} accent="var(--color-success-strong)" />
                 {(restock.totals.with_open_po ?? 0) > 0 && (
-                  <StatCard label="Already on PO" value={String(restock.totals.with_open_po)} accent="#b45309" />
+                  <StatCard label="Already on PO" value={String(restock.totals.with_open_po)} accent="var(--color-warning-strong)" />
                 )}
                 {(restock.totals.price_up ?? 0) > 0 && (
                   <StatCard label="Price up vs last" value={String(restock.totals.price_up)} accent="var(--color-danger-strong)" />
@@ -1493,7 +1493,7 @@ export function ForecastPage() {
                       padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
                       cursor: 'pointer',
                       border: restockFilter === f.id ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      background: restockFilter === f.id ? '#FFF7ED' : 'var(--color-bg)',
+                      background: restockFilter === f.id ? 'var(--color-warning-bg)' : 'var(--color-bg)',
                       color: restockFilter === f.id ? '#c2410c' : 'var(--color-text-secondary)',
                     }}
                   >
@@ -1642,8 +1642,8 @@ export function ForecastPage() {
                               <Link
                                 to={`/purchase-orders?search=${encodeURIComponent(item.open_purchase.purchase_number)}`}
                                 style={{
-                                  fontSize: 11, fontWeight: 700, color: '#b45309', textDecoration: 'none',
-                                  background: '#FEF3C7', padding: '2px 6px', borderRadius: 6,
+                                  fontSize: 11, fontWeight: 700, color: 'var(--color-warning-strong)', textDecoration: 'none',
+                                  background: 'var(--color-warning-bg)', padding: '2px 6px', borderRadius: 6,
                                 }}
                                 title={`${item.open_purchase.status} · qty ${item.open_purchase.quantity}`}
                               >
@@ -1818,7 +1818,7 @@ export function ForecastPage() {
                                 border: qtyIsEdited(item) || qtyHasSavedPack(item) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                                 fontSize: 12, fontFamily: 'inherit', fontWeight: 700,
                                 color: 'var(--color-success-strong)',
-                                background: qtyIsEdited(item) ? '#FFF7ED' : qtyHasSavedPack(item) ? '#FFFBEB' : 'var(--color-surface)',
+                                background: qtyIsEdited(item) ? 'var(--color-warning-bg)' : qtyHasSavedPack(item) ? '#FFFBEB' : 'var(--color-surface)',
                               }}
                             />
                             <span style={{ color: 'var(--color-text-muted)' }}>{item.unit}</span>

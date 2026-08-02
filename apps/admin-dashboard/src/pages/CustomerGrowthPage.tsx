@@ -331,9 +331,9 @@ export function CustomerGrowthPage() {
                 <div style={{
                   padding: '12px 14px',
                   borderRadius: 10,
-                  background: '#FEF3C7',
+                  background: 'var(--color-warning-bg)',
                   border: '1px solid var(--color-warning)',
-                  color: '#92400E',
+                  color: 'var(--color-warning-strong)',
                   fontSize: 13,
                   lineHeight: 1.45,
                 }}>

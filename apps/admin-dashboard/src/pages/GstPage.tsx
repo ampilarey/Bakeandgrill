@@ -156,7 +156,7 @@ export default function GstPage() {
           Period{' '}
           <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 6, border: '1px solid #E8DDD0' }} />
         </label>
-        {summary?.locked && <span style={{ color: '#B45309', fontSize: 13, fontWeight: 600 }}>Period locked</span>}
+        {summary?.locked && <span style={{ color: 'var(--color-warning-strong)', fontSize: 13, fontWeight: 600 }}>Period locked</span>}
       </div>
 
       <Tabs active={tab} onChange={setTab}>

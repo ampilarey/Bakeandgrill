@@ -748,7 +748,7 @@ export default function DeliverySettingsPage() {
       </div>
 
       <div style={{
-        padding: '12px 16px', background: '#FFF7ED',
+        padding: '12px 16px', background: 'var(--color-warning-bg)',
         border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10,
         marginBottom: '1.25rem',
       }}>
@@ -820,7 +820,7 @@ export default function DeliverySettingsPage() {
       </div>
 
       <div style={{
-        padding: '12px 16px', background: '#FFF7ED',
+        padding: '12px 16px', background: 'var(--color-warning-bg)',
         border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10,
       }}>
         <p style={{ margin: 0, fontSize: 12, color: '#9C8575', lineHeight: 1.6 }}>

@@ -385,7 +385,7 @@ export function HeroSlidesEditor({
                         update({ video: '', video_poster: '' });
                         setStatus('');
                       }}
-                      style={{ ...btnStyle, background: '#FFF7ED' }}
+                      style={{ ...btnStyle, background: 'var(--color-warning-bg)' }}
                     >
                       Clear video
                     </button>

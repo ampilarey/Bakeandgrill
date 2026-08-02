@@ -21,7 +21,7 @@ function JobTypeIcon({ type }: { type: string }) {
 function RetryCountBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
-    <span style={{ fontSize: 11, color: count >= 3 ? 'var(--color-danger-strong)' : 'var(--color-warning)', background: count >= 3 ? 'var(--color-danger-bg)' : '#FEF3C7', padding: '2px 7px', borderRadius: 4, fontWeight: 600, marginLeft: 6 }}>
+    <span style={{ fontSize: 11, color: count >= 3 ? 'var(--color-danger-strong)' : 'var(--color-warning)', background: count >= 3 ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)', padding: '2px 7px', borderRadius: 4, fontWeight: 600, marginLeft: 6 }}>
       {count}x retried
     </span>
   );

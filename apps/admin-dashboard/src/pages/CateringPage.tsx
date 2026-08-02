@@ -134,7 +134,7 @@ export function CateringPage() {
                     {row.status.replace('_', ' ')}
                   </span>
                   {row.has_live_quote && (
-                    <div style={{ fontSize: 11, color: '#B45309', marginTop: 6, fontWeight: 700 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 6, fontWeight: 700 }}>
                       Quote v{row.quote_version ?? 1}
                       {row.quote_expires_at
                         ? ` · exp ${new Date(row.quote_expires_at).toLocaleDateString()}`
@@ -144,7 +144,7 @@ export function CateringPage() {
                 </div>
               </div>
               {row.dietary_notes && (
-                <p style={{ margin: '10px 0 0', fontSize: 12, color: '#92400E', background: '#FFFBEB', padding: 8, borderRadius: 8 }}>
+                <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--color-warning-strong)', background: 'var(--color-warning-bg)', padding: 8, borderRadius: 8 }}>
                   Dietary: {row.dietary_notes}
                 </p>
               )}

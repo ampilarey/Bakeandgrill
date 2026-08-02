@@ -133,7 +133,7 @@ export function RepeaterShell<T extends Record<string, unknown>>({
         onClick={() => onChange([...items, createItem()])}
         style={{
           alignSelf: 'flex-start', height: 36, padding: '0 12px', borderRadius: 10,
-          border: '1px dashed var(--color-primary)', background: '#FFF7ED', color: '#D4813A',
+          border: '1px dashed var(--color-primary)', background: 'var(--color-warning-bg)', color: '#D4813A',
           fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
           display: 'inline-flex', alignItems: 'center', gap: 6,
         }}

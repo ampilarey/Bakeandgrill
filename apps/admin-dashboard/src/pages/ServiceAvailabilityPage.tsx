@@ -395,7 +395,7 @@ export default function ServiceAvailabilityPage() {
             bottom: 24,
             right: 24,
             zIndex: 'var(--z-toast)' as unknown as number,
-background: toast.type === 'ok' ? 'var(--color-success)' : 'var(--color-danger)',
+            background: toast.type === 'ok' ? 'var(--color-success)' : 'var(--color-danger)',
             color: '#fff',
             padding: '12px 16px',
             borderRadius: 12,
@@ -1050,7 +1050,7 @@ function TabBtn({
         padding: '0 12px',
         borderRadius: 10,
         border: active ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
-        background: active ? '#fff7ed' : 'var(--color-surface)',
+        background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
         color: active ? '#c2410c' : 'var(--color-text-secondary)',
         fontWeight: 700,
         fontSize: 13,
@@ -1185,10 +1185,10 @@ function NotifyConfirmModal({
             marginBottom: 12,
             padding: 10,
             borderRadius: 10,
-            background: '#fef3c7',
+            background: 'var(--color-warning-bg)',
             border: '1px solid #fde68a',
             fontSize: 13,
-            color: '#92400e',
+            color: 'var(--color-warning-strong)',
           }}
         >
           This service still looks blocked. Restore it first, then send notifications once you

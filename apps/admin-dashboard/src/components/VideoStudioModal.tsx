@@ -222,7 +222,7 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
                   padding: '0 12px',
                   borderRadius: 8,
                   border: aspect === a.value ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: aspect === a.value ? '#FFF7ED' : 'var(--color-surface)',
+                  background: aspect === a.value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',

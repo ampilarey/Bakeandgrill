@@ -47,7 +47,7 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
           margin: '0 auto 10px',
           borderRadius: '50%',
           overflow: 'hidden',
-          background: 'linear-gradient(145deg, #F3E6D4, #FFF7ED)',
+          background: 'linear-gradient(145deg, #F3E6D4, var(--color-warning-bg))',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

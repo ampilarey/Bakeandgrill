@@ -235,7 +235,7 @@ function NotificationsSettings() {
         LIFECYCLE_SMS_CONFIG,
       )}
 
-      <div style={{ padding: '12px 16px', background: '#FFF7ED', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10 }}>
+      <div style={{ padding: '12px 16px', background: 'var(--color-warning-bg)', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10 }}>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
           Staff SMS templates (new order alerts, shift reminders, etc.) are under{' '}
           <strong>SMS → Templates</strong> and <strong>SMS → Automations</strong>.

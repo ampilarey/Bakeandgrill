@@ -37,7 +37,7 @@ type ViewMode = 'cards' | 'floorplan';
 
 const STATUS_BG: Record<string, string> = {
   available: 'var(--color-success-bg)',
-  occupied:  '#FEF3C7',
+  occupied:  'var(--color-warning-bg)',
   reserved:  '#DBEAFE',
   closed:    '#F3F4F6',
 };
@@ -49,7 +49,7 @@ const STATUS_BORDER: Record<string, string> = {
 };
 const STATUS_TEXT: Record<string, string> = {
   available: 'var(--color-success-strong)',
-  occupied:  '#b45309',
+  occupied:  'var(--color-warning-strong)',
   reserved:  '#1d4ed8',
   closed:    '#6b7280',
 };

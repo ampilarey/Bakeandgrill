@@ -288,7 +288,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
                 </ul>
               )}
               {role.cannot.length > 0 && (
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#b45309', lineHeight: 1.5 }}>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--color-warning-strong)', lineHeight: 1.5 }}>
                   {role.cannot.map((line) => <li key={line}>{line}</li>)}
                 </ul>
               )}

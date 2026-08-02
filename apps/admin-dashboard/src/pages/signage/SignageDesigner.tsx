@@ -330,7 +330,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                 onClick={() => setSelected([el.id])}
                 style={{
                   minHeight: 32, textAlign: 'left', borderRadius: 8, border: selected.includes(el.id) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  background: selected.includes(el.id) ? '#FFF7ED' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, padding: '0 8px',
+                  background: selected.includes(el.id) ? 'var(--color-warning-bg)' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, padding: '0 8px',
                   display: 'flex', alignItems: 'center', gap: 6,
                 }}
               >

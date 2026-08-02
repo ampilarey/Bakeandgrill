@@ -281,7 +281,7 @@ export function CateringDetailPage() {
       />
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <Link to="/catering" style={{ fontSize: 13, color: '#B45309', fontWeight: 700 }}>← Pipeline</Link>
+        <Link to="/catering" style={{ fontSize: 13, color: 'var(--color-warning-strong)', fontWeight: 700 }}>← Pipeline</Link>
         <Btn onClick={() => void onDuplicate()} disabled={saving}>Duplicate event</Btn>
         <Btn onClick={() => void saveLines()} disabled={saving} variant="secondary">Save lines</Btn>
       </div>
@@ -306,8 +306,8 @@ export function CateringDetailPage() {
                           marginLeft: 8,
                           fontSize: 11,
                           fontWeight: 700,
-                          color: '#92400E',
-                          background: '#FEF3C7',
+                          color: 'var(--color-warning-strong)',
+                          background: 'var(--color-warning-bg)',
                           padding: '2px 8px',
                           borderRadius: 6,
                         }}
@@ -450,7 +450,7 @@ export function CateringDetailPage() {
                 On-site phone
                 <input style={fieldStyle} value={row.onsite_contact_phone ?? ''} onChange={(e) => setRow({ ...row, onsite_contact_phone: e.target.value })} onBlur={(e) => void patchField({ onsite_contact_phone: e.target.value || null })} />
               </label>
-              <label style={{ ...labelStyle, gridColumn: '1 / -1', color: '#92400E', background: '#FFFBEB', padding: 10, borderRadius: 8 }}>
+              <label style={{ ...labelStyle, gridColumn: '1 / -1', color: 'var(--color-warning-strong)', background: 'var(--color-warning-bg)', padding: 10, borderRadius: 8 }}>
                 Dietary notes (prominent)
                 <textarea
                   data-testid="dietary-notes"

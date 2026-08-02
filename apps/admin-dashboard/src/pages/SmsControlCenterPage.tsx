@@ -114,7 +114,7 @@ export function SmsControlCenterPage() {
         action={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {demoMode && (
-              <span style={badgeStyle('#FEF3C7', '#92400E')}>Demo mode</span>
+              <span style={badgeStyle('var(--color-warning-bg)', 'var(--color-warning-strong)')}>Demo mode</span>
             )}
             {isOwner && (
               <Btn
