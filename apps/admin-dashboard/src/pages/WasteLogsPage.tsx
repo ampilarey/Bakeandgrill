@@ -12,7 +12,7 @@ const REASONS = ['spoilage', 'over_prep', 'drop', 'expired', 'quality', 'other']
 type Reason = typeof REASONS[number];
 const REASON_LABELS: Record<Reason, string> = { spoilage: 'Spoilage', over_prep: 'Over Prep', drop: 'Dropped', expired: 'Expired', quality: 'Quality Issue', other: 'Other' };
 const REASON_COLOR: Record<Reason, string> = { spoilage: 'red', over_prep: 'orange', drop: 'orange', expired: 'red', quality: 'orange', other: 'gray' };
-const REASON_HEX: Record<Reason, string> = { spoilage: '#ef4444', over_prep: '#f59e0b', drop: '#f97316', expired: '#dc2626', quality: '#eab308', other: '#9C8E7E' };
+const REASON_HEX: Record<Reason, string> = { spoilage: 'var(--color-danger)', over_prep: 'var(--color-warning)', drop: '#f97316', expired: '#dc2626', quality: '#eab308', other: 'var(--color-text-muted)' };
 
 type Tab = 'logs' | 'summary';
 
@@ -148,17 +148,17 @@ export default function WasteLogsPage() {
           </div>
         }
       />
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #E8E0D8', marginBottom: 24 }}>
+      <div style={{ display: 'flex', borderBottom: '2px solid var(--color-border)', marginBottom: 24 }}>
         {(['logs', 'summary'] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding: '10px 20px', fontSize: 14,
             fontWeight: tab === t ? 700 : 500,
-            color: tab === t ? '#D4813A' : '#9C8E7E',
+            color: tab === t ? 'var(--color-primary)' : 'var(--color-text-muted)',
             background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            borderBottom: tab === t ? '2px solid #D4813A' : '2px solid transparent',
+            borderBottom: tab === t ? '2px solid var(--color-primary)' : '2px solid transparent',
             marginBottom: -2, transition: 'color 0.15s',
           }}>
             {t === 'logs' ? 'Log Entries' : 'Summary'}
@@ -173,7 +173,7 @@ export default function WasteLogsPage() {
         <div style={{ display: 'flex', gap: 6 }}>
           {[7, 30, 90].map(d => (
             <button key={d} onClick={() => { setFrom(daysAgo(d - 1)); setTo(today); setPage(1); }}
-              style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, border: '1.5px solid #E8E0D8', borderRadius: 8, background: '#fff', color: '#6B5D4F', cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, border: '1.5px solid var(--color-border)', borderRadius: 8, background: '#fff', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit' }}>
               {d}d
             </button>
           ))}
@@ -184,8 +184,8 @@ export default function WasteLogsPage() {
       {tab === 'logs' && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
-            <StatCard label="Total Entries" value={String(meta.total)} accent="#D4813A" />
-            <StatCard label={`Waste Cost (${from} – ${to})`} value={mvr(totalCost)} accent="#ef4444" />
+            <StatCard label="Total Entries" value={String(meta.total)} accent="var(--color-primary)" />
+            <StatCard label={`Waste Cost (${from} – ${to})`} value={mvr(totalCost)} accent="var(--color-danger)" />
           </div>
 
           <TableCard>
@@ -199,18 +199,18 @@ export default function WasteLogsPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
                 ) : logs.length === 0 ? (
                   <tr><td colSpan={7}><EmptyState message="No waste logs for this period." /></td></tr>
                 ) : logs.map(log => (
                   <tr key={log.id}>
-                    <td style={{ ...TD, fontWeight: 600 }}>{log.item?.name ?? log.inventory_item?.name ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
+                    <td style={{ ...TD, fontWeight: 600 }}>{log.item?.name ?? log.inventory_item?.name ?? <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
                     <td style={TD}>{log.quantity}{log.unit ? ` ${log.unit}` : ''}</td>
                     <td style={TD}><Badge color={REASON_COLOR[log.reason as Reason] ?? 'gray'}>{REASON_LABELS[log.reason as Reason] ?? log.reason}</Badge></td>
-                    <td style={TD}>{log.cost_estimate != null ? mvr(log.cost_estimate) : <span style={{ color: '#9C8E7E' }}>—</span>}</td>
-                    <td style={{ ...TD, fontSize: 12, color: '#6B5D4F', maxWidth: 200 }}>{log.notes ?? <span style={{ color: '#9C8E7E' }}>—</span>}</td>
-                    <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{log.logged_by ?? '—'}</td>
-                    <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{new Date(log.created_at).toLocaleString()}</td>
+                    <td style={TD}>{log.cost_estimate != null ? mvr(log.cost_estimate) : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
+                    <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)', maxWidth: 200 }}>{log.notes ?? <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
+                    <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{log.logged_by ?? '—'}</td>
+                    <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{new Date(log.created_at).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -223,28 +223,28 @@ export default function WasteLogsPage() {
       {/* ── SUMMARY TAB ─────────────────────────────────────────────────────── */}
       {tab === 'summary' && (
         summaryLoading ? (
-          <p style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading summary…</p>
+          <p style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading summary…</p>
         ) : !summary || summaryEntryCount === 0 ? (
           <EmptyState message="No waste logs for this period." />
         ) : (
           <>
             {/* KPI row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
-              <StatCard label="Total Entries" value={String(summaryEntryCount)} accent="#D4813A" />
-              <StatCard label="Total Waste Cost" value={mvr(totalSummaryCost)} accent="#ef4444" />
-              <StatCard label="Avg Cost / Entry" value={summaryEntryCount > 0 ? mvr(totalSummaryCost / summaryEntryCount) : 'MVR 0.00'} accent="#f59e0b" />
-              <StatCard label="Reason Types" value={String(byReason.length)} accent="#6B5D4F" />
+              <StatCard label="Total Entries" value={String(summaryEntryCount)} accent="var(--color-primary)" />
+              <StatCard label="Total Waste Cost" value={mvr(totalSummaryCost)} accent="var(--color-danger)" />
+              <StatCard label="Avg Cost / Entry" value={summaryEntryCount > 0 ? mvr(totalSummaryCost / summaryEntryCount) : 'MVR 0.00'} accent="var(--color-warning)" />
+              <StatCard label="Reason Types" value={String(byReason.length)} accent="var(--color-text-secondary)" />
             </div>
 
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
 
               {/* Daily waste trend */}
-              <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', margin: '0 0 16px' }}>
+              <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 16px' }}>
                   Waste Cost Trend
                 </h3>
                 {wasteTrend.length === 0 ? (
-                  <p style={{ fontSize: 13, color: '#9C8E7E' }}>No data in this range.</p>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No data in this range.</p>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, minHeight: 120, overflowX: 'auto', paddingBottom: 4 }}>
                     {wasteTrend.map(({ date, cost }) => (
@@ -255,12 +255,12 @@ export default function WasteLogsPage() {
                             width: '100%',
                             maxWidth: 36,
                             height: `${Math.max(8, (cost / maxTrendCost) * 100)}px`,
-                            background: '#ef4444',
+                            background: 'var(--color-danger)',
                             borderRadius: '6px 6px 2px 2px',
                             transition: 'height 0.3s ease',
                           }}
                         />
-                        <span style={{ fontSize: 10, color: '#9C8E7E', transform: 'rotate(-45deg)', transformOrigin: 'top left', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 10, color: 'var(--color-text-muted)', transform: 'rotate(-45deg)', transformOrigin: 'top left', whiteSpace: 'nowrap' }}>
                           {date.slice(5)}
                         </span>
                       </div>
@@ -270,27 +270,27 @@ export default function WasteLogsPage() {
               </div>
 
               {/* Breakdown by reason */}
-              <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 20 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', marginBottom: 16, margin: '0 0 16px' }}>
+              <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16, margin: '0 0 16px' }}>
                   By Reason
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {byReason.map(({ reason, count, cost }) => {
                     const pct = totalSummaryCost > 0 ? (cost / totalSummaryCost) * 100 : 0;
-                    const hex = REASON_HEX[reason] ?? '#9C8E7E';
+                    const hex = REASON_HEX[reason] ?? 'var(--color-text-muted)';
                     return (
                       <div key={reason}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ width: 10, height: 10, borderRadius: '50%', background: hex, display: 'inline-block', flexShrink: 0 }} />
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
                               {REASON_LABELS[reason] ?? reason}
                             </span>
-                            <span style={{ fontSize: 12, color: '#9C8E7E' }}>{count}×</span>
+                            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{count}×</span>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>{mvr(cost)}</span>
-                            <span style={{ fontSize: 11, color: '#9C8E7E', marginLeft: 6 }}>{pct.toFixed(1)}%</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{mvr(cost)}</span>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 6 }}>{pct.toFixed(1)}%</span>
                           </div>
                         </div>
                         {/* bar */}
@@ -309,25 +309,25 @@ export default function WasteLogsPage() {
               </div>
 
               {/* Top wasted items */}
-              <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 20 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C1408', marginBottom: 16, margin: '0 0 16px' }}>
+              <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16, margin: '0 0 16px' }}>
                   Top Items by Cost
                 </h3>
                 {topItems.length === 0 ? (
-                  <p style={{ fontSize: 13, color: '#9C8E7E' }}>No data.</p>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No data.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {topItems.map((item, i) => (
                       <div key={item.key}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', width: 16 }}>#{i + 1}</span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1408', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', width: 16 }}>#{i + 1}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {item.name}
                             </span>
-                            <span style={{ fontSize: 12, color: '#9C8E7E' }}>{item.entries}×</span>
+                            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{item.entries}×</span>
                           </div>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>{mvr(item.cost)}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-danger)' }}>{mvr(item.cost)}</span>
                         </div>
                         {/* bar */}
                         <div style={{ height: 6, background: '#F0EAE3', borderRadius: 999, overflow: 'hidden' }}>
@@ -362,17 +362,17 @@ export default function WasteLogsPage() {
                         <Badge color={REASON_COLOR[reason] ?? 'gray'}>{REASON_LABELS[reason] ?? reason}</Badge>
                       </td>
                       <td style={{ ...TD, fontWeight: 600 }}>{count}</td>
-                      <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>{mvr(cost)}</td>
+                      <td style={{ ...TD, fontWeight: 700, color: 'var(--color-danger)' }}>{mvr(cost)}</td>
                       <td style={TD}>{totalSummaryCost > 0 ? `${((cost / totalSummaryCost) * 100).toFixed(1)}%` : '—'}</td>
-                      <td style={{ ...TD, color: '#6B5D4F' }}>{count > 0 ? mvr(cost / count) : '—'}</td>
+                      <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{count > 0 ? mvr(cost / count) : '—'}</td>
                     </tr>
                   ))}
-                  <tr style={{ background: '#F8F6F3' }}>
+                  <tr style={{ background: 'var(--color-bg)' }}>
                     <td style={{ ...TD, fontWeight: 700 }}>Total</td>
                     <td style={{ ...TD, fontWeight: 700 }}>{summaryEntryCount}</td>
-                    <td style={{ ...TD, fontWeight: 700, color: '#ef4444' }}>{mvr(totalSummaryCost)}</td>
+                    <td style={{ ...TD, fontWeight: 700, color: 'var(--color-danger)' }}>{mvr(totalSummaryCost)}</td>
                     <td style={{ ...TD, fontWeight: 700 }}>100%</td>
-                    <td style={{ ...TD, fontWeight: 700, color: '#6B5D4F' }}>
+                    <td style={{ ...TD, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                       {summaryEntryCount > 0 ? mvr(totalSummaryCost / summaryEntryCount) : '—'}
                     </td>
                   </tr>
@@ -386,9 +386,9 @@ export default function WasteLogsPage() {
       {/* ── Log Waste Modal ──────────────────────────────────────────────────── */}
       {logOpen && (
         <Modal title="Log Waste" onClose={() => { setLogOpen(false); resetLogForm(); }}>
-          {formError && <p style={{ color: '#ef4444', marginBottom: 12 }}>{formError}</p>}
+          {formError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{formError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', gap: 0, border: '1px solid #E8E0D8', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', gap: 0, border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
               {(['menu', 'inventory'] as const).map(t => (
                 <button
                   key={t}
@@ -399,14 +399,14 @@ export default function WasteLogsPage() {
                     setInvSelection(null);
                     setFormError('');
                   }}
-                  style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: itemType === t ? 700 : 500, background: itemType === t ? '#D4813A' : '#fff', color: itemType === t ? '#fff' : '#6B5D4F', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: itemType === t ? 700 : 500, background: itemType === t ? 'var(--color-primary)' : '#fff', color: itemType === t ? '#fff' : 'var(--color-text-secondary)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {t === 'menu' ? 'Menu Item' : 'Inventory Item'}
                 </button>
               ))}
             </div>
             <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
                 {itemType === 'menu' ? 'Menu Item' : 'Inventory Item'} *
               </span>
               {itemType === 'menu' ? (
@@ -434,27 +434,27 @@ export default function WasteLogsPage() {
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
               <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Quantity *</span>
-                <input type="number" min="0.001" step="any" placeholder="1" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Quantity *</span>
+                <input type="number" min="0.001" step="any" placeholder="1" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </label>
               <label>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Unit</span>
-                <input type="text" placeholder="pcs" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Unit</span>
+                <input type="text" placeholder="pcs" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </label>
             </div>
             <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Reason *</span>
-              <select value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value as Reason }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Reason *</span>
+              <select value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value as Reason }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' }}>
                 {REASONS.map(r => <option key={r} value={r}>{REASON_LABELS[r]}</option>)}
               </select>
             </label>
             <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Cost Estimate (MVR)</span>
-              <input type="number" min="0" step="0.01" placeholder="Optional" value={form.cost_estimate} onChange={e => setForm(f => ({ ...f, cost_estimate: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Cost Estimate (MVR)</span>
+              <input type="number" min="0" step="0.01" placeholder="Optional" value={form.cost_estimate} onChange={e => setForm(f => ({ ...f, cost_estimate: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </label>
             <label>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Notes</span>
-              <textarea placeholder="Any additional details…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E8E0D8', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Notes</span>
+              <textarea placeholder="Any additional details…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
             </label>
           </div>
           <ModalActions>
