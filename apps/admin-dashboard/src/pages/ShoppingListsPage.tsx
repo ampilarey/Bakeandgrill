@@ -48,7 +48,7 @@ export default function ShoppingListsPage() {
         title="Recurring shopping lists"
         action={<Btn onClick={() => setShowCreate(true)}>New list</Btn>}
       />
-      <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: -8, marginBottom: 16 }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: -8, marginBottom: 16 }}>
         Enable “Recurring lists” on Purchase Requests, then the daily scheduler creates a PR when a list is due.
       </p>
       <TableCard stickyHead>
@@ -93,12 +93,12 @@ export default function ShoppingListsPage() {
       {showCreate && (
         <Modal title="New shopping list" onClose={() => setShowCreate(false)} maxWidth={420}>
           <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>List name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }} />
+          <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }} />
           <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>First item</label>
-          <input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Cooking oil" style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }} />
+          <input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Cooking oil" style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min="0.001" step="any" style={{ padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', minHeight: 44 }} />
-            <input value={unit} onChange={(e) => setUnit(e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', minHeight: 44 }} />
+            <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min="0.001" step="any" style={{ padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', minHeight: 44 }} />
+            <input value={unit} onChange={(e) => setUnit(e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', minHeight: 44 }} />
           </div>
           <ModalActions>
             <Btn variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Btn>
