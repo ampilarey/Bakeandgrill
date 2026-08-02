@@ -36,9 +36,9 @@
 
   /* Status chips (bg + strong text). Light = dominant literal; dark pair ≥4.5:1 */
   --color-danger-bg:     #FEE2E2;
-  --color-danger-strong: #DC2626;
+  --color-danger-strong: #B91C1C;
   --color-success-bg:    #DCFCE7;
-  --color-success-strong:#16A34A;
+  --color-success-strong:#15803D;
   --color-warning-bg:    #FFF7ED;
   --color-warning-strong:#92400E;
 

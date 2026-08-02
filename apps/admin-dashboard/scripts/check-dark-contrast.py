@@ -3,8 +3,8 @@ LIGHT={'--color-text':'#1C1408','--color-bg':'#F8F6F3','--color-surface':'#FFFFF
  '--color-surface-hover':'#FDF8F4','--color-text-secondary':'#6B5D4F','--color-text-muted':'#9C8E7E',
  '--color-border':'#E8E0D8','--color-border-light':'#F0EBE5','--color-primary':'#D4813A',
  '--color-danger':'#EF4444','--color-success':'#22C55E','--color-warning':'#F59E0B',
- '--color-danger-bg':'#FEE2E2','--color-danger-strong':'#DC2626',
- '--color-success-bg':'#DCFCE7','--color-success-strong':'#16A34A',
+ '--color-danger-bg':'#FEE2E2','--color-danger-strong':'#B91C1C',
+ '--color-success-bg':'#DCFCE7','--color-success-strong':'#15803D',
  '--color-warning-bg':'#FFF7ED','--color-warning-strong':'#92400E'}
 DARK={'--color-text':'#F0EAE0','--color-bg':'#0F0D0A','--color-surface':'#1C1910',
  '--color-surface-hover':'#252118','--color-text-secondary':'#C4B5A3','--color-text-muted':'#8A7D6D',
