@@ -23,7 +23,7 @@ export function Toggle({ checked, onChange, label, disabled = false, size = 'md'
         className={[
           'relative rounded-full transition-colors duration-200',
           trackCls,
-          checked ? 'bg-[#D4813A]' : 'bg-[#E8E0D8]',
+          checked ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]',
         ].join(' ')}
         onClick={() => !disabled && onChange(!checked)}
         role="switch"
@@ -39,7 +39,7 @@ export function Toggle({ checked, onChange, label, disabled = false, size = 'md'
           ].join(' ')}
         />
       </div>
-      {label && <span className="text-sm text-[#1C1408]">{label}</span>}
+      {label && <span className="text-sm text-[var(--color-text)]">{label}</span>}
     </label>
   );
 }
