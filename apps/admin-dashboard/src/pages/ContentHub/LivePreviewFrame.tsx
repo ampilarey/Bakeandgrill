@@ -24,11 +24,11 @@ export function LivePreviewFrame({ url, loading }: Props) {
 
   return (
     <div data-testid="live-preview-frame" style={{
-      background: '#1C1408', borderRadius: 14, border: '1px solid #E8E0D8', overflow: 'hidden',
+      background: 'var(--color-text)', borderRadius: 14, border: '1px solid var(--color-border)', overflow: 'hidden',
       display: 'flex', flexDirection: 'column', minHeight: 420,
     }}>
       <div style={{ display: 'flex', gap: 8, padding: 10, alignItems: 'center', borderBottom: '1px solid #3a2f24' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#9C8E7E', textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1 }}>
           Live preview
         </span>
         {(['desktop', 'mobile'] as const).map((d) => (
@@ -39,7 +39,7 @@ export function LivePreviewFrame({ url, loading }: Props) {
             onClick={() => setDevice(d)}
             style={{
               height: 32, padding: '0 10px', borderRadius: 8,
-              background: device === d ? '#D4813A' : '#2a2118', color: '#fff',
+              background: device === d ? 'var(--color-primary)' : '#2a2118', color: '#fff',
               cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
               display: 'inline-flex', alignItems: 'center', gap: 6,
             }}
@@ -54,7 +54,7 @@ export function LivePreviewFrame({ url, loading }: Props) {
         padding: 12, background: '#2a2118', overflow: 'auto',
       }}>
         {loading || !url ? (
-          <p style={{ color: '#9C8E7E', fontSize: 13, alignSelf: 'center' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13, alignSelf: 'center' }}>
             {loading ? 'Refreshing preview…' : 'Publish or save a draft to preview.'}
           </p>
         ) : (
