@@ -37,10 +37,10 @@ function fmtBytes(bytes: number): string {
 
 function mediaTypeIcon(type: MediaType, size = 32) {
   switch (type) {
-    case 'image': return <Image size={size} style={{ color: '#9C8E7E' }} />;
-    case 'video': return <Film size={size} style={{ color: '#9C8E7E' }} />;
-    case 'audio': return <Music size={size} style={{ color: '#9C8E7E' }} />;
-    default:      return <FileText size={size} style={{ color: '#9C8E7E' }} />;
+    case 'image': return <Image size={size} style={{ color: 'var(--color-text-muted)' }} />;
+    case 'video': return <Film size={size} style={{ color: 'var(--color-text-muted)' }} />;
+    case 'audio': return <Music size={size} style={{ color: 'var(--color-text-muted)' }} />;
+    default:      return <FileText size={size} style={{ color: 'var(--color-text-muted)' }} />;
   }
 }
 
@@ -136,7 +136,7 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
     return (
       <div style={{ textAlign: 'center', padding: 16 }}>
         {mediaTypeIcon('document', 40)}
-        <a href={asset.url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 10, color: '#D4813A', fontWeight: 600, fontSize: 13 }}>
+        <a href={asset.url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 10, color: 'var(--color-primary)', fontWeight: 600, fontSize: 13 }}>
           Open
         </a>
       </div>
@@ -148,8 +148,8 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
 const tabStyle = (active: boolean, mobile = false): CSSProperties => ({
   height: mobile ? 44 : 36, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
   fontWeight: active ? 700 : 500, fontSize: 13,
-  border: active ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
-  background: active ? '#FFF7ED' : '#fff', color: '#1C1408', whiteSpace: 'nowrap',
+  border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+  background: active ? '#FFF7ED' : '#fff', color: 'var(--color-text)', whiteSpace: 'nowrap',
   display: 'inline-flex', alignItems: 'center', gap: 6,
 });
 
@@ -163,11 +163,11 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
     setInput('');
   };
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '6px 8px', border: '1px solid #E8E0D8', borderRadius: 8, minHeight: 44, alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '6px 8px', border: '1px solid var(--color-border)', borderRadius: 8, minHeight: 44, alignItems: 'center' }}>
       {value.map((t) => (
         <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, background: '#F5E6D3', color: '#3D2B1F', fontSize: 12, fontWeight: 600 }}>
           {t}
-          <button type="button" onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#6B5D4F', lineHeight: 1 }}>×</button>
+          <button type="button" onClick={() => onChange(value.filter((x) => x !== t))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-text-secondary)', lineHeight: 1 }}>×</button>
         </span>
       ))}
       <input
@@ -193,8 +193,8 @@ function AssetCard({
       onClick={onClick}
       data-testid={`asset-card-${asset.id}`}
       style={{
-        border: selected ? '2px solid #D4813A' : '1px solid #E8E0D8',
-        borderRadius: 10, padding: 0, background: selected ? '#FFF7ED' : '#F8F6F3',
+        border: selected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+        borderRadius: 10, padding: 0, background: selected ? '#FFF7ED' : 'var(--color-bg)',
         cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', overflow: 'hidden',
         position: 'relative',
         boxShadow: selected ? '0 0 0 2px rgba(212,129,58,0.2)' : 'none',
@@ -207,10 +207,10 @@ function AssetCard({
         <div style={{ fontSize: 11, fontWeight: 600, color: '#3D2B1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {asset.title || asset.url.split('/').pop() || `#${asset.id}`}
         </div>
-        <div style={{ fontSize: 10, color: '#9C8E7E', marginTop: 2 }}>{fmtBytes(asset.file_size)}</div>
+        <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{fmtBytes(asset.file_size)}</div>
       </div>
       {selected && (
-        <div style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: '#D4813A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Check size={12} style={{ color: '#fff' }} />
         </div>
       )}
@@ -224,8 +224,8 @@ type EditParams = Record<string, unknown>;
 
 function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditParams; onChange: (p: EditParams) => void }) {
   const set = (k: string, v: unknown) => onChange({ ...params, [k]: v });
-  const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 };
-  const inputStyle: CSSProperties = { width: '100%', height: 38, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 };
+  const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 };
+  const inputStyle: CSSProperties = { width: '100%', height: 38, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 };
 
   switch (op) {
     case 'convert':
@@ -289,12 +289,12 @@ function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditPa
                   key={d}
                   type="button"
                   onClick={() => set('degrees', d)}
-                  style={{ height: 36, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid #D4813A' : '1px solid #E8E0D8', background: (params.degrees as number) === d ? '#FFF7ED' : '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                  style={{ height: 36, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', background: (params.degrees as number) === d ? '#FFF7ED' : '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
                 >
                   {d}°
                 </button>
               ))}
-              <input type="number" min={1} max={359} value={![90, 180, 270].includes(params.degrees as number) ? (params.degrees as number) ?? '' : ''} onChange={(e) => set('degrees', e.target.value ? Number(e.target.value) : 90)} placeholder="Custom" style={{ flex: 1, minWidth: 60, height: 36, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 }} />
+              <input type="number" min={1} max={359} value={![90, 180, 270].includes(params.degrees as number) ? (params.degrees as number) ?? '' : ''} onChange={(e) => set('degrees', e.target.value ? Number(e.target.value) : 90)} placeholder="Custom" style={{ flex: 1, minWidth: 60, height: 36, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 }} />
             </div>
           </label>
         </div>
@@ -713,12 +713,12 @@ export function MediaLibraryPage() {
           ))}
         </div>
         <div style={{ marginLeft: isMobile ? 0 : 'auto', position: 'relative', minWidth: isMobile ? '100%' : 220, flex: isMobile ? '1 1 100%' : undefined }}>
-          <Search size={14} style={{ position: 'absolute', left: 10, top: isMobile ? 15 : 12, color: '#9C8E7E' }} />
+          <Search size={14} style={{ position: 'absolute', left: 10, top: isMobile ? 15 : 12, color: 'var(--color-text-muted)' }} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search media…"
-            style={{ width: '100%', height: isMobile ? 44 : 38, paddingLeft: 30, borderRadius: 10, border: '1px solid #E8E0D8', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+            style={{ width: '100%', height: isMobile ? 44 : 38, paddingLeft: 30, borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
           />
         </div>
       </div>
@@ -731,12 +731,12 @@ export function MediaLibraryPage() {
           data-testid="collections-sidebar"
           data-layout={isMobile ? 'chips' : 'sidebar'}
           style={isMobile ? {
-            width: '100%', flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 12,
+            width: '100%', flexShrink: 0, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 12,
           } : {
-            width: 200, flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 12, position: 'sticky', top: 12,
+            width: 200, flexShrink: 0, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 12, position: 'sticky', top: 12,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, color: '#1C1408', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, color: 'var(--color-text)', marginBottom: 10 }}>
             <Folder size={15} /> Collections
           </div>
 
@@ -755,12 +755,12 @@ export function MediaLibraryPage() {
               textAlign: 'left',
               padding: isMobile ? '10px 14px' : '7px 9px',
               minHeight: 44,
-              border: isMobile ? (activeCollection === '' ? '1.5px solid #D4813A' : '1px solid #E8E0D8') : 'none',
+              border: isMobile ? (activeCollection === '' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)') : 'none',
               borderRadius: isMobile ? 9999 : 8,
               cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 13, fontWeight: activeCollection === '' ? 700 : 400,
-              background: activeCollection === '' ? '#F5E6D3' : (isMobile ? '#F8F6F3' : 'transparent'),
-              color: activeCollection === '' ? '#1C1408' : '#6B5D4F',
+              background: activeCollection === '' ? '#F5E6D3' : (isMobile ? 'var(--color-bg)' : 'transparent'),
+              color: activeCollection === '' ? 'var(--color-text)' : 'var(--color-text-secondary)',
               marginBottom: isMobile ? 0 : 2,
               flexShrink: 0,
               alignItems: 'center',
@@ -780,10 +780,10 @@ export function MediaLibraryPage() {
                     autoFocus
                     value={renamingName}
                     onChange={(e) => setRenamingName(e.target.value)}
-                    style={{ flex: 1, minWidth: 0, height: 44, border: '1px solid #D4813A', borderRadius: 6, padding: '0 6px', fontSize: 12, fontFamily: 'inherit' }}
+                    style={{ flex: 1, minWidth: 0, height: 44, border: '1px solid var(--color-primary)', borderRadius: 6, padding: '0 6px', fontSize: 12, fontFamily: 'inherit' }}
                   />
-                  <button type="submit" disabled={colSaving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D4813A', padding: '0 2px', minWidth: 44, minHeight: 44 }}><Check size={14} /></button>
-                  <button type="button" onClick={() => setRenamingId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: '0 2px', minWidth: 44, minHeight: 44 }}><X size={14} /></button>
+                  <button type="submit" disabled={colSaving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: '0 2px', minWidth: 44, minHeight: 44 }}><Check size={14} /></button>
+                  <button type="button" onClick={() => setRenamingId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '0 2px', minWidth: 44, minHeight: 44 }}><X size={14} /></button>
                 </form>
               ) : (
                 <>
@@ -795,12 +795,12 @@ export function MediaLibraryPage() {
                       textAlign: 'left',
                       padding: isMobile ? '10px 14px' : '7px 9px',
                       minHeight: 44,
-                      border: isMobile ? (activeCollection === col.slug ? '1.5px solid #D4813A' : '1px solid #E8E0D8') : 'none',
+                      border: isMobile ? (activeCollection === col.slug ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)') : 'none',
                       borderRadius: isMobile ? 9999 : 8,
                       cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
                       fontWeight: activeCollection === col.slug ? 700 : 400,
-                      background: activeCollection === col.slug ? '#F5E6D3' : (isMobile ? '#F8F6F3' : 'transparent'),
-                      color: activeCollection === col.slug ? '#1C1408' : '#6B5D4F',
+                      background: activeCollection === col.slug ? '#F5E6D3' : (isMobile ? 'var(--color-bg)' : 'transparent'),
+                      color: activeCollection === col.slug ? 'var(--color-text)' : 'var(--color-text-secondary)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}
                     data-testid={`collection-btn-${col.slug}`}
@@ -809,8 +809,8 @@ export function MediaLibraryPage() {
                   </button>
                   {canManage && !isMobile && (
                     <>
-                      <button type="button" onClick={() => { setRenamingId(col.id); setRenamingName(col.name); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: 2, flexShrink: 0 }} aria-label={`Rename ${col.name}`}><Pencil size={12} /></button>
-                      <button type="button" onClick={() => void removeCollection(col.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2, flexShrink: 0 }} aria-label={`Delete ${col.name}`}><Trash2 size={12} /></button>
+                      <button type="button" onClick={() => { setRenamingId(col.id); setRenamingName(col.name); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 2, flexShrink: 0 }} aria-label={`Rename ${col.name}`}><Pencil size={12} /></button>
+                      <button type="button" onClick={() => void removeCollection(col.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: 2, flexShrink: 0 }} aria-label={`Delete ${col.name}`}><Trash2 size={12} /></button>
                     </>
                   )}
                 </>
@@ -825,9 +825,9 @@ export function MediaLibraryPage() {
                 value={newCollectionName}
                 onChange={(e) => setNewCollectionName(e.target.value)}
                 placeholder="New collection…"
-                style={{ flex: 1, minWidth: 0, height: 32, border: '1px solid #E8E0D8', borderRadius: 6, padding: '0 8px', fontSize: 12, fontFamily: 'inherit' }}
+                style={{ flex: 1, minWidth: 0, height: 32, border: '1px solid var(--color-border)', borderRadius: 6, padding: '0 8px', fontSize: 12, fontFamily: 'inherit' }}
               />
-              <button type="submit" disabled={!newCollectionName.trim() || colSaving} style={{ height: 32, width: 32, border: '1px solid #D4813A', borderRadius: 6, background: '#D4813A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <button type="submit" disabled={!newCollectionName.trim() || colSaving} style={{ height: 32, width: 32, border: '1px solid var(--color-primary)', borderRadius: 6, background: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Plus size={14} style={{ color: '#fff' }} />
               </button>
             </form>
@@ -845,25 +845,25 @@ export function MediaLibraryPage() {
               onDrop={onDrop}
               onClick={() => fileInputRef.current?.click()}
               style={{
-                border: `2px dashed ${dragOver ? '#D4813A' : '#C4B5A5'}`,
+                border: `2px dashed ${dragOver ? 'var(--color-primary)' : '#C4B5A5'}`,
                 borderRadius: 12, padding: isMobile ? '28px 16px' : '20px 16px', textAlign: 'center', cursor: 'pointer',
-                background: dragOver ? '#FFF7ED' : '#F8F6F3', marginBottom: 16,
+                background: dragOver ? '#FFF7ED' : 'var(--color-bg)', marginBottom: 16,
                 transition: 'border-color 0.15s, background 0.15s',
                 minHeight: isMobile ? 88 : undefined,
               }}
             >
-              <Upload size={22} style={{ color: '#9C8E7E', marginBottom: 6 }} />
+              <Upload size={22} style={{ color: 'var(--color-text-muted)', marginBottom: 6 }} />
               <div style={{ fontSize: 14, fontWeight: 600, color: '#3D2B1F' }}>
                 {uploading ? 'Uploading…' : 'Drop files here or click to browse'}
               </div>
-              <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Images, video, audio, documents — multi-select supported</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Images, video, audio, documents — multi-select supported</div>
               {collections.length > 0 && (
                 <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
-                  <label style={{ fontSize: 12, color: '#6B5D4F', fontWeight: 600 }}>Collection:</label>
+                  <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600 }}>Collection:</label>
                   <select
                     value={uploadCollectionId}
                     onChange={(e) => setUploadCollectionId(e.target.value ? Number(e.target.value) : '')}
-                    style={{ height: 30, borderRadius: 6, border: '1px solid #E8E0D8', padding: '0 8px', fontSize: 12, fontFamily: 'inherit' }}
+                    style={{ height: 30, borderRadius: 6, border: '1px solid var(--color-border)', padding: '0 8px', fontSize: 12, fontFamily: 'inherit' }}
                   >
                     <option value="">None</option>
                     {collections.map((c) => (
@@ -894,7 +894,7 @@ export function MediaLibraryPage() {
             <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>
               <strong>{uploadResults.length} file{uploadResults.length === 1 ? '' : 's'} uploaded</strong>
               {uploadResults.some((r) => r.deduped) && (
-                <span style={{ marginLeft: 8, color: '#6B5D4F' }}>
+                <span style={{ marginLeft: 8, color: 'var(--color-text-secondary)' }}>
                   · {uploadResults.filter((r) => r.deduped).length} duplicate{uploadResults.filter((r) => r.deduped).length === 1 ? '' : 's'} detected (existing asset returned)
                 </span>
               )}
@@ -931,7 +931,7 @@ export function MediaLibraryPage() {
               <Btn variant="secondary" small disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                 <ChevronLeft size={14} /> Prev
               </Btn>
-              <span style={{ fontSize: 13, color: '#6B5D4F' }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                 Page {meta.current_page} of {meta.last_page} · {meta.total} files
               </span>
               <Btn variant="secondary" small disabled={page >= meta.last_page} onClick={() => setPage((p) => p + 1)}>
@@ -959,12 +959,12 @@ export function MediaLibraryPage() {
               width: '100%', maxWidth: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
               background: '#fff', border: 'none', borderRadius: 0, padding: 16, paddingBottom: 96,
             } : {
-              width: 300, flexShrink: 0, background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16, position: 'sticky', top: 12,
+              width: 300, flexShrink: 0, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16, position: 'sticky', top: 12,
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <span style={{ fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Asset details</span>
-              <button type="button" onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9C8E7E', padding: 4, minWidth: 44, minHeight: 44 }} aria-label="Close drawer">
+              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>Asset details</span>
+              <button type="button" onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4, minWidth: 44, minHeight: 44 }} aria-label="Close drawer">
                 <X size={18} />
               </button>
             </div>
@@ -975,7 +975,7 @@ export function MediaLibraryPage() {
             </div>
 
             {/* Meta */}
-            <div style={{ fontSize: 11, color: '#9C8E7E', marginBottom: 12, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 12, lineHeight: 1.6 }}>
               <div>{selected.mime_type} · {fmtBytes(selected.file_size)}</div>
               {selected.width && selected.height && <div>{selected.width} × {selected.height} px</div>}
               <div>Source: {selected.source}</div>
@@ -986,7 +986,7 @@ export function MediaLibraryPage() {
             <button
               type="button"
               onClick={() => void copyUrl()}
-              style={{ width: '100%', height: 36, borderRadius: 8, border: '1px solid #E8E0D8', background: copiedUrl ? '#f0fdf4' : '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: copiedUrl ? '#15803d' : '#6B5D4F', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}
+              style={{ width: '100%', height: 36, borderRadius: 8, border: '1px solid var(--color-border)', background: copiedUrl ? '#f0fdf4' : 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: copiedUrl ? '#15803d' : 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}
             >
               {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
               {copiedUrl ? 'Copied!' : 'Copy URL'}
@@ -994,13 +994,13 @@ export function MediaLibraryPage() {
 
             {selected.media_type === 'image' && canUseAs && (
               <div data-testid="media-use-as" style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 6 }}>Use as</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Use as</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <select
                     value={useAsKey}
                     onChange={(e) => setUseAsKey(e.target.value as MediaUseAsKey)}
                     style={{
-                      flex: 1, height: 38, borderRadius: 8, border: '1px solid #E8E0D8',
+                      flex: 1, height: 38, borderRadius: 8, border: '1px solid var(--color-border)',
                       padding: '0 10px', fontFamily: 'inherit', fontSize: 13, background: '#fff',
                     }}
                   >
@@ -1040,24 +1040,24 @@ export function MediaLibraryPage() {
 
             {/* Edit form */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Title
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Title
                 <input
                   value={detailTitle}
                   onChange={(e) => setDetailTitle(e.target.value)}
                   placeholder="Descriptive title"
-                  style={{ display: 'block', width: '100%', marginTop: 4, height: 38, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' }}
+                  style={{ display: 'block', width: '100%', marginTop: 4, height: 38, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' }}
                 />
               </label>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>Alt text
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Alt text
                 <input
                   value={detailAlt}
                   onChange={(e) => setDetailAlt(e.target.value)}
                   placeholder="Describe for screen readers"
-                  style={{ display: 'block', width: '100%', marginTop: 4, height: 38, border: '1px solid #E8E0D8', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' }}
+                  style={{ display: 'block', width: '100%', marginTop: 4, height: 38, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box' }}
                 />
               </label>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', display: 'block', marginBottom: 4 }}>Tags</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Tags</label>
                 <TagInput value={detailTags} onChange={setDetailTags} />
               </div>
             </div>
@@ -1065,7 +1065,7 @@ export function MediaLibraryPage() {
             {/* Collections */}
             {collections.length > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 6 }}>Collections</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Collections</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {collections.map((col) => {
                     const active = selected.collections.some((c) => c.id === col.id);
@@ -1077,9 +1077,9 @@ export function MediaLibraryPage() {
                         disabled={!canManage}
                         style={{
                           padding: '3px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, cursor: canManage ? 'pointer' : 'default',
-                          background: active ? '#F5E6D3' : '#F8F6F3',
-                          color: active ? '#3D2B1F' : '#6B5D4F',
-                          border: active ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+                          background: active ? '#F5E6D3' : 'var(--color-bg)',
+                          color: active ? '#3D2B1F' : 'var(--color-text-secondary)',
+                          border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                         }}
                       >
                         {col.name}
@@ -1095,14 +1095,14 @@ export function MediaLibraryPage() {
               <button
                 type="button"
                 onClick={() => { if (!usageOpen) void loadUsage(selected.id); else setUsageOpen(false); }}
-                style={{ width: '100%', height: 34, borderRadius: 8, border: '1px solid #E8E0D8', background: '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}
+                style={{ width: '100%', height: 34, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}
               >
                 {usageLoading ? 'Loading usage…' : usageOpen ? 'Hide usage' : 'Show usage'}
               </button>
               {usageOpen && (
-                <div style={{ marginTop: 8, fontSize: 12, color: '#6B5D4F' }}>
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-secondary)' }}>
                   {usageItems.length === 0 ? (
-                    <p style={{ margin: 0, color: '#9C8E7E' }}>Not referenced anywhere.</p>
+                    <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>Not referenced anywhere.</p>
                   ) : (
                     <ul style={{ margin: 0, paddingLeft: 16 }}>
                       {usageItems.map((u, i) => (
@@ -1127,10 +1127,10 @@ export function MediaLibraryPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Clapperboard size={16} color="#D4813A" />
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Video editor</div>
+                  <Clapperboard size={16} color="var(--color-primary)" />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Video editor</div>
                 </div>
-                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#6B5D4F' }}>
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                   Trim, crop aspect, pick a poster frame, export muted MP4.
                 </p>
                 <button
@@ -1139,15 +1139,15 @@ export function MediaLibraryPage() {
                   disabled={!canManage}
                   style={{
                     height: 40, padding: '0 14px', borderRadius: 8, border: 'none',
-                    background: canManage ? '#D4813A' : '#E8E0D8', cursor: canManage ? 'pointer' : 'not-allowed',
+                    background: canManage ? 'var(--color-primary)' : 'var(--color-border)', cursor: canManage ? 'pointer' : 'not-allowed',
                     fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
-                    color: canManage ? '#fff' : '#9C8E7E', display: 'inline-flex', alignItems: 'center', gap: 8,
+                    color: canManage ? '#fff' : 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 8,
                   }}
                 >
                   <Clapperboard size={16} /> Open video editor
                 </button>
                 {!canManage ? (
-                  <p style={{ margin: '8px 0 0', fontSize: 11, color: '#9C8E7E' }}>Needs media.manage permission.</p>
+                  <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>Needs media.manage permission.</p>
                 ) : null}
               </div>
             )}
@@ -1155,7 +1155,7 @@ export function MediaLibraryPage() {
             {/* Edit tools (images only) */}
             {selected.media_type === 'image' && canManage && (
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 8 }}>Edit tools</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Edit tools</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                   {EDIT_OPS.map(({ op, label, icon }) => (
                     <button
@@ -1163,9 +1163,9 @@ export function MediaLibraryPage() {
                       type="button"
                       onClick={() => { setEditOp(editOp === op ? null : op); setEditParams({}); setEditError(''); }}
                       style={{
-                        height: 32, padding: '0 10px', borderRadius: 8, border: editOp === op ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
-                        background: editOp === op ? '#FFF7ED' : '#F8F6F3', cursor: 'pointer',
-                        fontFamily: 'inherit', fontSize: 11, fontWeight: 600, color: editOp === op ? '#3D2B1F' : '#6B5D4F',
+                        height: 32, padding: '0 10px', borderRadius: 8, border: editOp === op ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: editOp === op ? '#FFF7ED' : 'var(--color-bg)', cursor: 'pointer',
+                        fontFamily: 'inherit', fontSize: 11, fontWeight: 600, color: editOp === op ? '#3D2B1F' : 'var(--color-text-secondary)',
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                       }}
                     >
@@ -1175,7 +1175,7 @@ export function MediaLibraryPage() {
                 </div>
 
                 {editOp && (
-                  <div style={{ background: '#F8F6F3', borderRadius: 10, padding: 12, border: '1px solid #E8E0D8' }}>
+                  <div style={{ background: 'var(--color-bg)', borderRadius: 10, padding: 12, border: '1px solid var(--color-border)' }}>
                     <EditOpPanel op={editOp} params={editParams} onChange={setEditParams} />
                     {editError && <p style={{ color: '#b91c1c', fontSize: 12, margin: '8px 0 0' }}>{editError}</p>}
                     <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
@@ -1201,7 +1201,7 @@ export function MediaLibraryPage() {
                         type="button"
                         onClick={() => void handleRestore()}
                         disabled={editSaving}
-                        style={{ display: 'block', marginTop: 6, background: 'none', border: 'none', color: '#D4813A', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: 0 }}
+                        style={{ display: 'block', marginTop: 6, background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, padding: 0 }}
                       >
                         Restore previous version
                       </button>
@@ -1230,25 +1230,25 @@ export function MediaLibraryPage() {
       {/* Save mode modal */}
       {showSaveModeModal && (
         <Modal title="How to save the edit?" onClose={() => setShowSaveModeModal(false)} maxWidth={440}>
-          <p style={{ fontSize: 14, color: '#6B5D4F', marginBottom: 16, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
             Choose whether to update the existing asset (all references will show the new version) or create a new copy.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
             <button
               type="button"
               onClick={() => void applyEditOp('replace')}
-              style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 10, border: '2px solid #D4813A', background: '#FFF7ED', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 10, border: '2px solid var(--color-primary)', background: '#FFF7ED', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 4 }}>Replace everywhere</div>
-              <div style={{ fontSize: 12, color: '#6B5D4F' }}>Update the file in place. All {selected?.usage_count ?? 0} references will show the new version. You can restore the previous version afterwards.</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 4 }}>Replace everywhere</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Update the file in place. All {selected?.usage_count ?? 0} references will show the new version. You can restore the previous version afterwards.</div>
             </button>
             <button
               type="button"
               onClick={() => void applyEditOp('copy')}
-              style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 10, border: '1px solid #E8E0D8', background: '#F8F6F3', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#1C1408', marginBottom: 4 }}>Save as new copy</div>
-              <div style={{ fontSize: 12, color: '#6B5D4F' }}>Keep the original unchanged and create a new asset. Existing references are not updated.</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 4 }}>Save as new copy</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Keep the original unchanged and create a new asset. Existing references are not updated.</div>
             </button>
           </div>
           <Btn variant="ghost" onClick={() => setShowSaveModeModal(false)}>Cancel</Btn>
@@ -1272,7 +1272,7 @@ export function MediaLibraryPage() {
       {/* Delete confirm modal */}
       {deleteTarget && (
         <Modal title="Delete asset?" onClose={() => setDeleteTarget(null)} maxWidth={400}>
-          <p style={{ fontSize: 14, color: '#6B5D4F', marginBottom: 12 }}>
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
             Delete <strong>{deleteTarget.title || deleteTarget.url.split('/').pop()}</strong>?
             {deleteTarget.usage_count > 0 && (
               <span style={{ color: '#b91c1c' }}> This asset is used in {deleteTarget.usage_count} place{deleteTarget.usage_count === 1 ? '' : 's'}.</span>
