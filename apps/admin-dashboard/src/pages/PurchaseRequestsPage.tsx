@@ -312,7 +312,7 @@ export default function PurchaseRequestsPage() {
             padding: '12px 14px',
             background: '#Faf7f2',
             borderRadius: 10,
-            border: '1px solid #E8E0D8',
+            border: '1px solid var(--color-border)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -325,7 +325,7 @@ export default function PurchaseRequestsPage() {
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 220px' }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', whiteSpace: 'nowrap' }}>Default category</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>Default category</label>
             <select
               value={defaultExpenseCategoryId ?? ''}
               disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
@@ -333,7 +333,7 @@ export default function PurchaseRequestsPage() {
                 const val = e.target.value ? Number(e.target.value) : null;
                 void saveAutoExpenseSettings({ default_expense_category_id: val });
               }}
-              style={{ flex: 1, minHeight: 44, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8' }}
+              style={{ flex: 1, minHeight: 44, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)' }}
             >
               <option value="">First category (fallback)</option>
               {expenseCategories.map((c) => (
@@ -341,7 +341,7 @@ export default function PurchaseRequestsPage() {
               ))}
             </select>
           </div>
-          <span style={{ fontSize: 12, color: '#6B5D4F' }}>
+          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
             Creates a pending expense only — never auto-posts to GST/ledger.
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -372,7 +372,7 @@ export default function PurchaseRequestsPage() {
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F' }}>Auto-approve under MVR</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Auto-approve under MVR</label>
             <input
               type="number"
               min="0"
@@ -381,7 +381,7 @@ export default function PurchaseRequestsPage() {
               disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
               onBlur={() => void saveAutoExpenseSettings({ auto_approve_under_mvr: Number(autoApproveMvr) || 0 })}
               onChange={(e) => setAutoApproveMvr(e.target.value)}
-              style={{ width: 96, minHeight: 44, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8' }}
+              style={{ width: 96, minHeight: 44, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)' }}
             />
           </div>
           <Btn
@@ -393,7 +393,7 @@ export default function PurchaseRequestsPage() {
           >
             Buyer reconciliation
           </Btn>
-          <Link to="/shopping-lists" style={{ fontSize: 13, fontWeight: 700, color: '#D4813A', textDecoration: 'none' }}>
+          <Link to="/shopping-lists" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
             Shopping lists →
           </Link>
         </div>
@@ -431,13 +431,13 @@ export default function PurchaseRequestsPage() {
                   )}
                   <td style={TD}>
                     <div style={{ fontWeight: 700 }}>{r.request_no}</div>
-                    {r.title && <div style={{ fontSize: 12, color: '#9C8E7E' }}>{r.title}</div>}
+                    {r.title && <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.title}</div>}
                   </td>
                   <td style={TD}>{r.requester?.name ?? '—'}</td>
                   <td style={TD}><Badge color={PRIORITY_COLOR[r.priority] ?? 'gray'}>{r.priority}</Badge></td>
                   <td style={TD}><Badge color={STATUS_COLOR[r.status] ?? 'gray'}>{r.status.replace(/_/g, ' ')}</Badge></td>
                   <td style={TD}>{r.items?.length ?? 0}</td>
-                  <td style={{ ...TD, fontSize: 12, color: '#9C8E7E' }}>
+                  <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-muted)' }}>
                     {r.needed_by ? new Date(r.needed_by).toLocaleDateString() : '—'}
                   </td>
                   <td style={TD}>
@@ -461,16 +461,16 @@ export default function PurchaseRequestsPage() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                 <Badge color={STATUS_COLOR[detail.status] ?? 'gray'}>{detail.status.replace(/_/g, ' ')}</Badge>
                 <Badge color={PRIORITY_COLOR[detail.priority] ?? 'gray'}>{detail.priority}</Badge>
-                <span style={{ fontSize: 13, color: '#6B5D4F' }}>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                   By {detail.requester?.name ?? '—'}
                   {detail.assignee ? ` · Buyer: ${detail.assignee.name}` : ''}
                 </span>
               </div>
               {detail.notes && (
-                <p style={{ fontSize: 13, color: '#6B5D4F', marginBottom: 12 }}>{detail.notes}</p>
+                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12 }}>{detail.notes}</p>
               )}
               {detail.rejection_reason && (
-                <p style={{ fontSize: 13, color: '#ef4444', marginBottom: 12 }}>Rejected: {detail.rejection_reason}</p>
+                <p style={{ fontSize: 13, color: 'var(--color-danger)', marginBottom: 12 }}>Rejected: {detail.rejection_reason}</p>
               )}
 
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
@@ -489,7 +489,7 @@ export default function PurchaseRequestsPage() {
                           <div>
                             <div>{item.name}</div>
                             {item.price_hint && (
-                              <div style={{ fontSize: 11, color: '#6B5D4F', marginTop: 2 }}>
+                              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
                                 {item.price_hint.last_paid != null && <>Last MVR {item.price_hint.last_paid.toFixed(2)} </>}
                                 {item.price_hint.cheapest && (
                                   <>· Cheapest {item.price_hint.cheapest.supplier_name ?? '—'} @ MVR {item.price_hint.cheapest.unit_price.toFixed(2)}</>
@@ -562,7 +562,7 @@ export default function PurchaseRequestsPage() {
                     <select
                       value={assignTo}
                       onChange={(e) => setAssignTo(e.target.value)}
-                      style={{ height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid #E8E0D8' }}
+                      style={{ height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)' }}
                     >
                       <option value="">Select buyer…</option>
                       {staffOptions.map((s) => (
@@ -662,7 +662,7 @@ export default function PurchaseRequestsPage() {
               </div>
 
               {can('purchase_requests.approve') && detail.status === 'requested' && (
-                <div style={{ borderTop: '1px solid #E8E0D8', paddingTop: 12 }}>
+                <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Edit approved quantities before approving</p>
                   {detail.items.map((item) => (
                     <label key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, fontSize: 13 }}>
@@ -673,7 +673,7 @@ export default function PurchaseRequestsPage() {
                         step="0.001"
                         defaultValue={item.approved_qty ?? item.requested_qty}
                         id={`approve-qty-${item.id}`}
-                        style={{ width: 80, padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E0D8' }}
+                        style={{ width: 80, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--color-border)' }}
                       />
                       <span>{item.requested_unit}</span>
                     </label>
@@ -700,13 +700,13 @@ export default function PurchaseRequestsPage() {
               )}
 
               {(detail.purchase_id || detail.expense_id) && (
-                <p style={{ fontSize: 12, color: '#9C8E7E', marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                   {detail.purchase_id ? (
                     <span>
                       Linked PO:{' '}
                       <Link
                         to={`/purchase-orders?search=${encodeURIComponent(detail.purchase?.purchase_number || String(detail.purchase_id))}`}
-                        style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                        style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}
                       >
                         {detail.purchase?.purchase_number || `PO #${detail.purchase_id}`}
                       </Link>
@@ -718,7 +718,7 @@ export default function PurchaseRequestsPage() {
                       Linked expense:{' '}
                       <Link
                         to={`/expenses?search=${encodeURIComponent(detail.expense?.expense_number || String(detail.expense_id))}`}
-                        style={{ color: '#D4813A', fontWeight: 600, textDecoration: 'none' }}
+                        style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}
                       >
                         {detail.expense?.expense_number || `Expense #${detail.expense_id}`}
                       </Link>
@@ -741,7 +741,7 @@ export default function PurchaseRequestsPage() {
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="Reason (optional)"
             rows={3}
-            style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box' }}
           />
           <ModalActions>
             <Btn variant="secondary" onClick={() => setShowReject(false)}>Cancel</Btn>
@@ -765,10 +765,10 @@ export default function PurchaseRequestsPage() {
       {showRecon && (
         <Modal title="Buyer reconciliation" onClose={() => setShowRecon(false)} maxWidth={640}>
           {!recon ? (
-            <p style={{ color: '#6B5D4F' }}>Loading…</p>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Loading…</p>
           ) : (
             <>
-              <p style={{ fontSize: 13, color: '#6B5D4F' }}>
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                 {recon.from} → {recon.to}. Cash uses category <code>buying_float</code> on cash-out movements.
               </p>
               <p style={{ fontSize: 13 }}>
@@ -808,39 +808,39 @@ export default function PurchaseRequestsPage() {
 
       {promoteItem && detail && (
         <Modal title="Add to inventory catalog" onClose={() => setPromoteItem(null)} maxWidth={420}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Name</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Name</label>
           <input
             value={promoteName}
             onChange={(e) => setPromoteName(e.target.value)}
-            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }}
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }}
           />
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Unit</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Unit</label>
           <input
             value={promoteUnit}
             onChange={(e) => setPromoteUnit(e.target.value)}
-            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }}
+            style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }}
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Reorder point (optional)</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Reorder point (optional)</label>
               <input
                 value={promoteRop}
                 onChange={(e) => setPromoteRop(e.target.value)}
                 type="number"
                 min="0"
                 step="any"
-                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }}
+                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Reorder qty (optional)</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Reorder qty (optional)</label>
               <input
                 value={promoteRoq}
                 onChange={(e) => setPromoteRoq(e.target.value)}
                 type="number"
                 min="0"
                 step="any"
-                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box', minHeight: 44 }}
+                style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }}
               />
             </div>
           </div>
@@ -869,22 +869,22 @@ export default function PurchaseRequestsPage() {
 
       {showCreate && (
         <Modal title="New purchase request" onClose={() => setShowCreate(false)} maxWidth={480}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Title (optional)</label>
-          <input value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }} />
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Item name</label>
-          <input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Cooking oil 5L" style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }} />
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Title (optional)</label>
+          <input value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box' }} />
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Item name</label>
+          <input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Cooking oil 5L" style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box' }} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Qty</label>
-              <input value={createQty} onChange={(e) => setCreateQty(e.target.value)} type="number" min="0.001" step="any" style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Qty</label>
+              <input value={createQty} onChange={(e) => setCreateQty(e.target.value)} type="number" min="0.001" step="any" style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Unit</label>
-              <input value={createUnit} onChange={(e) => setCreateUnit(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8', boxSizing: 'border-box' }} />
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Unit</label>
+              <input value={createUnit} onChange={(e) => setCreateUnit(e.target.value)} style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#6B5D4F', display: 'block', marginBottom: 6 }}>Priority</label>
-              <select value={createPriority} onChange={(e) => setCreatePriority(e.target.value as 'low' | 'normal' | 'urgent')} style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #E8E0D8' }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Priority</label>
+              <select value={createPriority} onChange={(e) => setCreatePriority(e.target.value as 'low' | 'normal' | 'urgent')} style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)' }}>
                 <option value="low">Low</option>
                 <option value="normal">Normal</option>
                 <option value="urgent">Urgent</option>
@@ -1013,26 +1013,26 @@ function QuotesExpander({
         onClick={() => setOpen((v) => !v)}
         style={{
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-          fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: '#D4813A',
+          fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: 'var(--color-primary)',
         }}
       >
         {open ? '▾' : '▸'} Quotes{quotes.length ? ` (${quotes.length})` : ''}
       </button>
       {open && (
         <div style={{
-          marginTop: 8, padding: 10, borderRadius: 10, background: '#F8F6F3',
-          border: '1px solid #E8E0D8', fontSize: 12,
+          marginTop: 8, padding: 10, borderRadius: 10, background: 'var(--color-bg)',
+          border: '1px solid var(--color-border)', fontSize: 12,
         }}>
-          {loading ? <p style={{ margin: 0, color: '#9C8E7E' }}>Loading quotes…</p> : null}
+          {loading ? <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>Loading quotes…</p> : null}
           {!loading && quotes.length === 0 ? (
-            <p style={{ margin: '0 0 8px', color: '#9C8E7E' }}>No quotes yet — optional before buying.</p>
+            <p style={{ margin: '0 0 8px', color: 'var(--color-text-muted)' }}>No quotes yet — optional before buying.</p>
           ) : null}
           {quotes.map((q) => (
             <div key={q.id} style={{
               display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
               marginBottom: 6, padding: '6px 8px', borderRadius: 8,
               background: q.is_cheapest ? '#FFF7ED' : '#fff',
-              border: q.is_cheapest ? '1px solid #F5D0A9' : '1px solid #E8E0D8',
+              border: q.is_cheapest ? '1px solid #F5D0A9' : '1px solid var(--color-border)',
             }}>
               <span style={{ fontWeight: 600, flex: 1, minWidth: 80 }}>
                 {q.supplier_name || q.supplier_name_text || 'Shop'}
@@ -1044,7 +1044,7 @@ function QuotesExpander({
                   type="button"
                   disabled={busy}
                   onClick={() => void removeQuote(q.id)}
-                  style={{ background: 'none', border: 'none', color: '#9C8E7E', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11 }}
                 >
                   Remove
                 </button>
@@ -1057,7 +1057,7 @@ function QuotesExpander({
                 value={shop}
                 onChange={(e) => setShop(e.target.value)}
                 placeholder="Shop name"
-                style={{ flex: 1, minWidth: 100, height: 36, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 8px', fontFamily: 'inherit' }}
+                style={{ flex: 1, minWidth: 100, height: 36, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontFamily: 'inherit' }}
               />
               <input
                 value={priceMvr}
@@ -1066,7 +1066,7 @@ function QuotesExpander({
                 type="number"
                 min="0"
                 step="0.01"
-                style={{ width: 110, height: 36, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 8px', fontFamily: 'inherit' }}
+                style={{ width: 110, height: 36, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontFamily: 'inherit' }}
               />
               <Btn small variant="secondary" disabled={busy} onClick={() => void addQuote()}>Add quote</Btn>
               <Btn small disabled={busy || quotes.length === 0} onClick={() => void buyFromCheapest()}>
