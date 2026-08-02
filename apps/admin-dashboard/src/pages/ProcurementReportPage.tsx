@@ -13,13 +13,13 @@ function BarRow({ label, value, max, suffix }: { label: string; value: number; m
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-      <div style={{ width: 140, fontSize: 13, color: '#1C1408', fontWeight: 600, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label}>
+      <div style={{ width: 140, fontSize: 13, color: 'var(--color-text)', fontWeight: 600, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label}>
         {label}
       </div>
-      <div style={{ flex: 1, height: 10, background: '#F0EBE5', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#D4813A', borderRadius: 4 }} />
+      <div style={{ flex: 1, height: 10, background: 'var(--color-border-light)', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--color-primary)', borderRadius: 4 }} />
       </div>
-      <div style={{ width: 110, textAlign: 'right', fontSize: 12, color: '#6B5D4F', flexShrink: 0 }}>{suffix}</div>
+      <div style={{ width: 110, textAlign: 'right', fontSize: 12, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{suffix}</div>
     </div>
   );
 }
@@ -36,7 +36,7 @@ function PriceTrendChart({ points }: { points: ProcurementReport['price_trend'] 
   }, [points]);
 
   if (byItem.length === 0) {
-    return <p style={{ color: '#9C8E7E', fontSize: 13, margin: 0 }}>No price history in this range.</p>;
+    return <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: 0 }}>No price history in this range.</p>;
   }
 
   return (
@@ -57,11 +57,11 @@ function PriceTrendChart({ points }: { points: ProcurementReport['price_trend'] 
 
         return (
           <div key={name}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1408', marginBottom: 6 }}>{name}</div>
-            <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ maxWidth: 360, height: 72, background: '#FAFAF8', borderRadius: 8, border: '1px solid #E8E0D8' }}>
-              <path d={path} fill="none" stroke="#D4813A" strokeWidth="2" />
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>{name}</div>
+            <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ maxWidth: 360, height: 72, background: '#FAFAF8', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+              <path d={path} fill="none" stroke="var(--color-primary)" strokeWidth="2" />
             </svg>
-            <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
               {sorted[0]?.date} → {sorted[sorted.length - 1]?.date} · MVR {min.toFixed(2)}–{max.toFixed(2)}
             </div>
           </div>
@@ -145,21 +145,21 @@ export default function ProcurementReportPage() {
       />
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
           From
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ height: 40, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontFamily: 'inherit' }} />
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ height: 40, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontFamily: 'inherit' }} />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#6B5D4F' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
           To
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ height: 40, borderRadius: 8, border: '1px solid #E8E0D8', padding: '0 10px', fontFamily: 'inherit' }} />
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ height: 40, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontFamily: 'inherit' }} />
         </label>
         {[7, 30, 90].map((d) => (
           <Btn key={d} small variant="secondary" onClick={() => { setFrom(daysAgo(d)); setTo(today()); }}>{d}d</Btn>
         ))}
       </div>
 
-      {error ? <p style={{ color: '#ef4444' }}>{error}</p> : null}
-      {loading ? <p style={{ color: '#9C8E7E' }}>Loading…</p> : null}
+      {error ? <p style={{ color: 'var(--color-danger)' }}>{error}</p> : null}
+      {loading ? <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p> : null}
 
       {!loading && data ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -171,28 +171,28 @@ export default function ProcurementReportPage() {
           </div>
 
           <div className="form-grid-2" data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16 }}>
+            <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Spend by category</h3>
-              {data.spend_by_category.length === 0 ? <p style={{ color: '#9C8E7E', fontSize: 13 }}>No expenses.</p> : null}
+              {data.spend_by_category.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No expenses.</p> : null}
               {data.spend_by_category.map((r) => (
                 <BarRow key={r.category} label={r.category} value={r.amount_laar} max={maxCat} suffix={`MVR ${mvr(r.amount_laar)}`} />
               ))}
             </section>
-            <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16 }}>
+            <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Spend by supplier</h3>
-              {data.spend_by_supplier.length === 0 ? <p style={{ color: '#9C8E7E', fontSize: 13 }}>No supplier spend.</p> : null}
+              {data.spend_by_supplier.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No supplier spend.</p> : null}
               {data.spend_by_supplier.map((r) => (
                 <BarRow key={`${r.supplier_id}-${r.supplier}`} label={r.supplier} value={r.expense_laar} max={maxSup} suffix={`MVR ${mvr(r.expense_laar)}`} />
               ))}
             </section>
-            <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16 }}>
+            <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Spend by buyer</h3>
-              {data.spend_by_buyer.length === 0 ? <p style={{ color: '#9C8E7E', fontSize: 13 }}>No buyer totals.</p> : null}
+              {data.spend_by_buyer.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No buyer totals.</p> : null}
               {data.spend_by_buyer.map((r) => (
                 <BarRow key={`${r.buyer_id}`} label={r.buyer} value={r.bought_laar} max={maxBuyer} suffix={`MVR ${mvr(r.bought_laar)} · ${r.request_count} PR`} />
               ))}
             </section>
-            <section style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 14, padding: 16 }}>
+            <section style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Item price trend</h3>
               <PriceTrendChart points={data.price_trend} />
             </section>
