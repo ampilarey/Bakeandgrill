@@ -41,7 +41,7 @@ const VARIANT_CONFIG: Record<Variant, {
     previewAlt: 'Item thumbnail preview',
     previewStyle: {
       width: 160, height: 120, objectFit: 'cover', borderRadius: 8,
-      border: '1px solid #E8E0D8', background: '#F8F6F3',
+      border: '1px solid var(--color-border)', background: 'var(--color-bg)',
     },
   },
   banner: {
@@ -55,7 +55,7 @@ const VARIANT_CONFIG: Record<Variant, {
     previewAlt: 'Category banner preview',
     previewStyle: {
       width: '100%', maxWidth: 520, aspectRatio: '7 / 3', height: 'auto',
-      objectFit: 'cover', borderRadius: 12, border: '1px solid #E8E0D8', background: '#F8F6F3',
+      objectFit: 'cover', borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-bg)',
       display: 'block',
     },
   },
@@ -169,9 +169,9 @@ export function ImageUploadField({
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
           style={{
-            flexShrink: 0, padding: '8px 14px', background: '#F8F6F3',
-            border: '1px solid #E8E0D8', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
-            fontSize: 13, fontWeight: 600, color: '#6B5D4F', whiteSpace: 'nowrap',
+            flexShrink: 0, padding: '8px 14px', background: 'var(--color-bg)',
+            border: '1px solid var(--color-border)', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
+            fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap',
             display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44,
           }}
         >
@@ -220,7 +220,7 @@ export function ImageUploadField({
           }}
         />
       </div>
-      <p style={{ margin: 0, fontSize: 11, color: '#9C8E7E' }}>
+      <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
         {cfg.help}
         {originalValue.trim() ? ' Master saved ✓' : ''}
       </p>
@@ -265,7 +265,7 @@ export function ImageUploadField({
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
         {label}
       </label>
       {children}
@@ -283,7 +283,7 @@ export function FormTextarea({ value, onChange, placeholder, rows = 3 }: {
       placeholder={placeholder}
       rows={rows}
       style={{
-        width: '100%', border: '1px solid #E8E0D8', borderRadius: 9,
+        width: '100%', border: '1px solid var(--color-border)', borderRadius: 9,
         padding: '9px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical',
         boxSizing: 'border-box',
       }}
