@@ -110,8 +110,8 @@ export function DeliveryPage() {
             onClick={() => setTab(t)}
             style={{
               padding: '8px 20px', borderRadius: 10, border: '1.5px solid',
-              borderColor: tab === t ? '#D4813A' : '#e5e7eb',
-              background: tab === t ? '#D4813A' : 'white',
+              borderColor: tab === t ? 'var(--color-primary)' : '#e5e7eb',
+              background: tab === t ? 'var(--color-primary)' : 'white',
               color: tab === t ? 'white' : '#374151',
               fontWeight: 600, fontSize: 14, cursor: 'pointer',
               fontFamily: 'inherit',
@@ -133,7 +133,7 @@ export function DeliveryPage() {
           <>
             {active.length > 0 && (
               <>
-                <h2 style={{ fontSize: 14, fontWeight: 700, color: '#6B5D4F', marginBottom: 12 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
                   ACTIVE ({active.length})
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, marginBottom: 28 }}>
@@ -146,7 +146,7 @@ export function DeliveryPage() {
 
             {finished.length > 0 && (
               <>
-                <h2 style={{ fontSize: 14, fontWeight: 700, color: '#9C8E7E', marginBottom: 12 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 12 }}>
                   COMPLETED ({finished.length})
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
@@ -176,15 +176,15 @@ export function DeliveryPage() {
         <>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 20, flexWrap: 'wrap' }}>
             <label>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>From</span>
-              <input type="date" value={settlementFrom} onChange={(e) => setSettlementFrom(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8' }} />
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>From</span>
+              <input type="date" value={settlementFrom} onChange={(e) => setSettlementFrom(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)' }} />
             </label>
             <label>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>To</span>
-              <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E8E0D8' }} />
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>To</span>
+              <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)' }} />
             </label>
             {settlementLoading && (
-              <span style={{ fontSize: 13, color: '#9C8E7E', paddingBottom: 8 }}>Loading…</span>
+              <span style={{ fontSize: 13, color: 'var(--color-text-muted)', paddingBottom: 8 }}>Loading…</span>
             )}
           </div>
           {settlementLoading && !settlement ? (
@@ -194,7 +194,7 @@ export function DeliveryPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
                 <StatCard label="Delivery Orders" value={String(settlement.totals.orders_count)} accent="#0ea5e9" />
                 <StatCard label="Cash Collected" value={`MVR ${settlement.totals.cash_collected.toFixed(2)}`} accent="#16a34a" />
-                <StatCard label="Delivery Fees" value={`MVR ${settlement.totals.delivery_fees.toFixed(2)}`} accent="#D4813A" />
+                <StatCard label="Delivery Fees" value={`MVR ${settlement.totals.delivery_fees.toFixed(2)}`} accent="var(--color-primary)" />
               </div>
               <Card>
                 {(settlement.rows ?? []).length === 0 ? (
@@ -205,7 +205,7 @@ export function DeliveryPage() {
                     <thead>
                       <tr>
                         {['Driver', 'Orders', 'Completed', 'Revenue', 'Fees', 'Cash', 'Card', 'QR', 'Transfer', 'Other', 'Prepaid'].map((h) => (
-                          <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, color: '#9C8E7E', borderBottom: '1px solid #F0EAE3' }}>{h}</th>
+                          <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -245,19 +245,19 @@ export function DeliveryPage() {
             <div onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                 <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>
-                  <Link to={`/orders?order=${selected.id}`} style={{ color: '#D4813A', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>
+                  <Link to={`/orders?order=${selected.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>
                     #{selected.order_number}
                   </Link>
                 </h2>
-                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9C8E7E' }}>✕</button>
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
               </div>
               <Badge label={selected.status} color={statColor(selected.status)} />
               <div style={{ background: '#FFF8F3', borderRadius: 10, padding: 16, marginTop: 16, border: '1px solid #F0DCC8' }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: '#D4813A', marginBottom: 8 }}>Delivery Details</p>
-                <p style={{ fontSize: 14, color: '#1C1408' }}>{selected.delivery_address_line1 ?? 'N/A'}</p>
-                {selected.delivery_island && <p style={{ fontSize: 13, color: '#6B5D4F' }}>{selected.delivery_island}</p>}
+                <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-primary)', marginBottom: 8 }}>Delivery Details</p>
+                <p style={{ fontSize: 14, color: 'var(--color-text)' }}>{selected.delivery_address_line1 ?? 'N/A'}</p>
+                {selected.delivery_island && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{selected.delivery_island}</p>}
                 {selected.delivery_contact_name && (
-                  <p style={{ fontSize: 13, color: '#6B5D4F', marginTop: 6 }}>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 6 }}>
                     👤 {selected.delivery_contact_name} · {selected.delivery_contact_phone}
                   </p>
                 )}
@@ -271,7 +271,7 @@ export function DeliveryPage() {
               )}
               {selected.proof_of_delivery_path && (
                 <div style={{ marginTop: 16 }}>
-                  <p style={{ fontWeight: 700, fontSize: 13, color: '#D4813A', marginBottom: 8 }}>Proof of delivery</p>
+                  <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-primary)', marginBottom: 8 }}>Proof of delivery</p>
                   <a
                     href={`/storage/${selected.proof_of_delivery_path}`}
                     target="_blank"
@@ -284,7 +284,7 @@ export function DeliveryPage() {
               )}
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18 }}>
                 <span>Total</span>
-                <span style={{ color: '#D4813A' }}>MVR {parseFloat(String(selected.total ?? 0)).toFixed(2)}</span>
+                <span style={{ color: 'var(--color-primary)' }}>MVR {parseFloat(String(selected.total ?? 0)).toFixed(2)}</span>
               </div>
             </div>
           </Card>
@@ -313,12 +313,12 @@ function DeliveryCard({
   const isActiveDelivery = ['out_for_delivery', 'picked_up', 'on_the_way'].includes(order.status);
 
   return (
-    <Card style={{ border: urgent ? '2px solid #ef4444' : undefined }}>
+    <Card style={{ border: urgent ? '2px solid var(--color-danger)' : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <Link
           to={`/orders?order=${order.id}`}
           onClick={(e) => e.stopPropagation()}
-          style={{ fontWeight: 800, fontSize: 15, color: '#D4813A', textDecoration: 'none' }}
+          style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-primary)', textDecoration: 'none' }}
         >
           #{order.order_number}
         </Link>
@@ -328,10 +328,10 @@ function DeliveryCard({
         {order.delivery_address_line1 ?? '—'}
       </p>
       {order.delivery_island && (
-        <p style={{ fontSize: 13, color: '#6B5D4F' }}>📍 {order.delivery_island}</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>📍 {order.delivery_island}</p>
       )}
       {order.delivery_contact_name && (
-        <p style={{ fontSize: 13, color: '#6B5D4F' }}>👤 {order.delivery_contact_name}</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>👤 {order.delivery_contact_name}</p>
       )}
 
       {/* Driver badge or quick assign */}
@@ -347,9 +347,9 @@ function DeliveryCard({
       ) : null}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-        <span style={{ fontSize: 12, color: '#9C8E7E' }}>{timeAgo(order.created_at)}</span>
+        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{timeAgo(order.created_at)}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 700, color: '#D4813A' }}>MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}</span>
+          <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(order.total ?? 0)).toFixed(2)}</span>
           <Btn small variant="ghost" onClick={() => onSelect(order)}>Details</Btn>
         </div>
       </div>
@@ -380,8 +380,8 @@ function DriverLocationBadge({ orderId }: { orderId: number }) {
     return () => clearInterval(id);
   }, [load]);
 
-  if (loading) return <p style={{ fontSize: 11, color: '#9C8E7E', marginTop: 2 }}>Loading location…</p>;
-  if (!location) return <p style={{ fontSize: 11, color: '#9C8E7E', marginTop: 2 }}>📍 Location not available</p>;
+  if (loading) return <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Loading location…</p>;
+  if (!location) return <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>📍 Location not available</p>;
 
   const mapsUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
   const updatedMins = Math.floor((Date.now() - new Date(location.recorded_at).getTime()) / 60000);
@@ -391,7 +391,7 @@ function DriverLocationBadge({ orderId }: { orderId: number }) {
       href={mapsUrl}
       target="_blank"
       rel="noopener noreferrer"
-      style={{ fontSize: 12, color: '#D4813A', fontWeight: 600, textDecoration: 'none', display: 'block', marginTop: 2 }}
+      style={{ fontSize: 12, color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', display: 'block', marginTop: 2 }}
     >
       📍 Track live · {updatedMins < 1 ? 'just now' : `${updatedMins}m ago`}
     </a>
@@ -473,8 +473,8 @@ function AssignDriverInline({
   };
 
   return (
-    <div style={{ marginTop: 16, background: '#F8F6F3', borderRadius: 10, padding: 14, border: '1.5px solid #e5e7eb' }}>
-      <p style={{ fontSize: 13, fontWeight: 700, color: '#6B5D4F', marginBottom: 8 }}>Assign Driver</p>
+    <div style={{ marginTop: 16, background: 'var(--color-bg)', borderRadius: 10, padding: 14, border: '1.5px solid #e5e7eb' }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Assign Driver</p>
       {err && <p style={{ color: '#dc2626', fontSize: 12, marginBottom: 6 }}>{err}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
         <select
@@ -589,7 +589,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
           <select
             value={form.vehicle_type}
             onChange={(e) => setForm((f) => ({ ...f, vehicle_type: e.target.value }))}
-            style={{ ...inputStyle, color: form.vehicle_type ? '#374151' : '#9C8E7E' }}
+            style={{ ...inputStyle, color: form.vehicle_type ? '#374151' : 'var(--color-text-muted)' }}
           >
             <option value="">Vehicle type…</option>
             <option value="bike">🚲 Bike</option>
@@ -633,12 +633,12 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px' }}>{d.name}</p>
-                  {d.phone && <p style={{ fontSize: 13, color: '#6B5D4F', margin: 0 }}>📞 {d.phone}</p>}
-                  {d.vehicle_type && <p style={{ fontSize: 12, color: '#6B5D4F', margin: '2px 0 0' }}>🚗 {d.vehicle_type}</p>}
+                  {d.phone && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>📞 {d.phone}</p>}
+                  {d.vehicle_type && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>🚗 {d.vehicle_type}</p>}
                   <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                     <span style={{
-                      padding: '2px 8px', background: d.is_active ? '#dcfce7' : '#F0EBE5',
-                      color: d.is_active ? '#16a34a' : '#6B5D4F',
+                      padding: '2px 8px', background: d.is_active ? '#dcfce7' : 'var(--color-border-light)',
+                      color: d.is_active ? '#16a34a' : 'var(--color-text-secondary)',
                       borderRadius: 99, fontSize: 11, fontWeight: 600,
                     }}>
                       {d.is_active ? 'Active' : 'Inactive'}
@@ -653,7 +653,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
                     </span>
                   </div>
                   {d.last_login_at && (
-                    <p style={{ fontSize: 11, color: '#9C8E7E', marginTop: 4 }}>
+                    <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
                       Last login: {new Date(d.last_login_at).toLocaleString()}
                     </p>
                   )}
