@@ -71,11 +71,11 @@ export function OrderSearch({
   return (
     <div style={{ position: 'relative' }}>
       <Input value={q} onChange={search} placeholder={placeholder} />
-      {searching && <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>Searching…</div>}
+      {searching && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Searching…</div>}
       {results.length > 0 && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff',
-          border: '1px solid #E8E0D8', borderRadius: 8, zIndex: 50,
+          border: '1px solid var(--color-border)', borderRadius: 8, zIndex: 50,
           boxShadow: '0 4px 16px rgba(0,0,0,0.1)', marginTop: 2, maxHeight: 240, overflowY: 'auto',
         }}>
           {results.map((r) => (
@@ -98,8 +98,8 @@ export function OrderSearch({
                 borderBottom: '1px solid #F5F0EB', fontFamily: 'inherit',
               }}
             >
-              <div style={{ fontWeight: 700, color: '#1C1408' }}>{r.label}</div>
-              <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 2 }}>{r.sub}</div>
+              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{r.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{r.sub}</div>
             </button>
           ))}
         </div>
