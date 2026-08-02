@@ -64,9 +64,9 @@ const PRAYER_OPTIONS = [
 
 const TRANSITIONS = ['fade', 'slide', 'zoom', 'dissolve', 'flip', 'push', 'cube', 'wipe'];
 
-const cardTitle: CSSProperties = { fontSize: 15, fontWeight: 700, color: '#1C1408', margin: '0 0 12px' };
-const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 6, display: 'block' };
-const fieldStyle: CSSProperties = { minHeight: 44, width: '100%', borderRadius: 10, border: '1px solid #E8E0D8', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' };
+const cardTitle: CSSProperties = { fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px' };
+const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'block' };
+const fieldStyle: CSSProperties = { minHeight: 44, width: '100%', borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' };
 const tabBtn = (active: boolean): CSSProperties => ({
   height: 44,
   minHeight: 44,
@@ -76,9 +76,9 @@ const tabBtn = (active: boolean): CSSProperties => ({
   fontFamily: 'inherit',
   fontWeight: active ? 700 : 500,
   fontSize: 13,
-  border: active ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+  border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
   background: active ? '#FFF7ED' : '#fff',
-  color: active ? '#9A3412' : '#6B5D4F',
+  color: active ? '#9A3412' : 'var(--color-text-secondary)',
 });
 
 function tvUrl(slug: string): string {
@@ -374,11 +374,11 @@ export function SignagePage() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 280px' }}>
             <h3 style={cardTitle}>{screen.name}{screen.is_default ? ' (default)' : ''}</h3>
-            <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6B5D4F' }}>
+            <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>
               Slug: <code style={{ fontSize: 12 }}>{screen.slug}</code>
               {screen.group?.name ? ` · Group: ${screen.group.name}` : ''}
             </p>
-            <p style={{ margin: '0 0 12px', fontSize: 13, wordBreak: 'break-all', color: '#1C1408' }}>{url}</p>
+            <p style={{ margin: '0 0 12px', fontSize: 13, wordBreak: 'break-all', color: 'var(--color-text)' }}>{url}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <Btn variant="secondary" onClick={() => void copyUrl(url)} style={{ minHeight: 44 }}>
                 <Copy size={16} /> Copy URL
@@ -390,10 +390,10 @@ export function SignagePage() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <QRCodeSVG value={url} size={120} level="M" />
-            <span style={{ fontSize: 11, color: '#9C8E7E' }}>Scan to open on TV</span>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Scan to open on TV</span>
           </div>
         </div>
-        <div style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden', border: '1px solid #E8E0D8', background: '#111' }}>
+        <div style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--color-border)', background: '#111' }}>
           <iframe title={`Preview ${screen.name}`} src={url} style={{ width: '100%', height: 240, border: 'none', display: 'block' }} />
         </div>
       </Card>
@@ -439,7 +439,7 @@ export function SignagePage() {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
                       <div style={{ flex: '1 1 200px' }}>
                         <strong style={{ display: 'block', marginBottom: 4 }}>{group.name}</strong>
-                        <span style={{ fontSize: 12, color: '#9C8E7E' }}>{group.orientation} · refresh {group.refresh_seconds}s</span>
+                        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{group.orientation} · refresh {group.refresh_seconds}s</span>
                       </div>
                       <div style={{ flex: '2 1 260px' }}>
                         <label style={labelStyle}>Playlist</label>
@@ -525,7 +525,7 @@ export function SignagePage() {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
                       <div>
                         <strong>{slideLabel(slide)}</strong>
-                        <div style={{ fontSize: 12, color: '#9C8E7E', marginTop: 4 }}>ID: {slide.id}</div>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>ID: {slide.id}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <Btn variant="secondary" onClick={() => setDesignIndex(index)} style={{ minHeight: 44 }} data-testid={`signage-design-${index}`}>
@@ -636,7 +636,7 @@ export function SignagePage() {
                   return (
                   <Card key={c.id} style={{ marginBottom: 10 }}>
                     <strong>{c.name}</strong>
-                    <div style={{ fontSize: 13, color: '#6B5D4F', marginTop: 6 }}>
+                    <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 6 }}>
                       Priority {c.priority}
                       {playlistName ? ` · ${playlistName}` : ''}
                       {c.date_start ? ` · ${c.date_start}` : ''}
@@ -654,7 +654,7 @@ export function SignagePage() {
             <div data-testid="signage-emergency-panel">
             <Card>
               <h3 style={cardTitle}>Emergency override</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B5D4F', maxWidth: 560 }}>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 560 }}>
                 Instantly replaces all TV slides with a full-screen emergency message. Clears automatically when set back to None.
               </p>
               <label style={labelStyle}>Mode</label>
@@ -678,7 +678,7 @@ export function SignagePage() {
           {tab === 'prayer' && (
             <Card data-testid="signage-prayer-panel">
               <h3 style={cardTitle}>Prayer break</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B5D4F', maxWidth: 560 }}>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 560 }}>
                 During configured prayer times, TVs show a prayer-break slide for the break duration.
               </p>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 16, cursor: 'pointer' }}>
@@ -688,7 +688,7 @@ export function SignagePage() {
                   onChange={(e) => setPrayerEnabled(e.target.checked)}
                   style={{ width: 18, height: 18 }}
                 />
-                <span style={{ fontWeight: 600, color: '#1C1408' }}>Enable prayer break slides</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Enable prayer break slides</span>
               </label>
               <div style={{ maxWidth: 200, marginBottom: 16 }}>
                 <Input
@@ -742,11 +742,11 @@ export function SignagePage() {
                       <div
                         key={d.id}
                         data-testid={`signage-pending-${d.id}`}
-                        style={{ display: 'grid', gridTemplateColumns: '1fr 200px auto', gap: 12, alignItems: 'end', padding: 12, border: '1px solid #E8E0D8', borderRadius: 12 }}
+                        style={{ display: 'grid', gridTemplateColumns: '1fr 200px auto', gap: 12, alignItems: 'end', padding: 12, border: '1px solid var(--color-border)', borderRadius: 12 }}
                       >
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.12em' }}>{d.pairing_code || '······'}</div>
-                          <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 4 }}>
+                          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                             {d.online ? 'Online now' : 'Seen'} · {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'never'}
                           </div>
                           <div style={{ fontSize: 11, color: '#9A8B7A', marginTop: 2, wordBreak: 'break-all' }}>{d.device_id}</div>
@@ -797,11 +797,11 @@ export function SignagePage() {
                         <div
                           key={d.id}
                           data-testid={`signage-device-${d.id}`}
-                          style={{ border: '1px solid #E8E0D8', borderRadius: 12, padding: 14 }}
+                          style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 14 }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                             <div>
-                              <div style={{ fontWeight: 700, color: '#1C1408' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>
                                 {d.screen?.name || 'Unassigned screen'}
                                 <span
                                   style={{
@@ -817,10 +817,10 @@ export function SignagePage() {
                                   {d.online ? 'Online' : 'Offline'}
                                 </span>
                               </div>
-                              <div style={{ fontSize: 12, color: '#6B5D4F', marginTop: 4 }}>
+                              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                                 Playlist {String(meta.playlist_version || '—')} · Slide {String(meta.current_slide || '—')} · Build {String(meta.build_version || '—')}
                               </div>
-                              <div style={{ fontSize: 12, color: '#6B5D4F' }}>
+                              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                                 {String(meta.resolution || '—')} · Last sync {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'never'} · Cache {String(meta.cache_status || '—')}
                               </div>
                             </div>
