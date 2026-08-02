@@ -28,12 +28,12 @@ const NEXT_STATUSES: Record<string, string[]> = {
 const inputStyle: React.CSSProperties = {
   height: 36,
   padding: '0 10px',
-  border: '1.5px solid #E8E0D8',
+  border: '1.5px solid var(--color-border)',
   borderRadius: 10,
   fontSize: 13,
   fontFamily: 'inherit',
   background: 'var(--color-surface)',
-  color: '#1C1408',
+  color: 'var(--color-text)',
   outline: 'none',
   width: '100%',
   boxSizing: 'border-box',
@@ -42,7 +42,7 @@ const inputStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 700,
-  color: '#6B5D4F',
+  color: 'var(--color-text-secondary)',
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   marginBottom: 4,
@@ -57,7 +57,7 @@ const fieldStyle: React.CSSProperties = {
 
 const cardStyle: React.CSSProperties = {
   background: 'var(--color-surface)',
-  border: '1px solid #E8E0D8',
+  border: '1px solid var(--color-border)',
   borderRadius: 16,
   padding: '24px',
   marginBottom: 20,
@@ -115,7 +115,7 @@ function ReservationsList() {
       {error && <ErrorMsg message={error} />}
 
       {confirmAction && (
-        <div style={{ background: '#FEF2F2', border: '1.5px solid #ef4444', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+        <div style={{ background: '#FEF2F2', border: '1.5px solid var(--color-danger)', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', marginBottom: 10 }}>
             Mark reservation as <strong>{confirmAction.status.split('_').join(' ')}</strong>? This cannot be reversed.
           </p>
@@ -133,7 +133,7 @@ function ReservationsList() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            style={{ height: 36, padding: '0 10px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: '#1C1408', outline: 'none', cursor: 'pointer' }}
+            style={{ height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
           >
             <option value="">All Statuses</option>
             {['pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no_show'].map((s) => (
@@ -146,7 +146,7 @@ function ReservationsList() {
             Clear
           </Btn>
         )}
-        <div style={{ marginLeft: 'auto', fontSize: 13, color: '#9C8E7E', alignSelf: 'center' }}>
+        <div style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-text-muted)', alignSelf: 'center' }}>
           {total} reservation{total !== 1 ? 's' : ''}
         </div>
       </div>
@@ -168,12 +168,12 @@ function ReservationsList() {
             <tbody>
               {reservations.map((r) => (
                 <tr key={r.id}>
-                  <td style={{ ...TD, color: '#9C8E7E', fontSize: 12 }}>{r.id}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{r.id}</td>
                   <td style={TD}>
-                    <div style={{ fontWeight: 600, color: '#1C1408' }}>{r.customer_name}</div>
-                    <div style={{ fontSize: 12, color: '#9C8E7E' }}>{r.customer_phone}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{r.customer_name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.customer_phone}</div>
                     {r.notes && (
-                      <div style={{ fontSize: 11, color: '#9C8E7E', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
                         {r.notes}
                       </div>
                     )}
@@ -303,7 +303,7 @@ function ReservationSettingsTab() {
       {loading ? <Spinner /> : null}
 
       <div style={cardStyle}>
-        <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: '#1C1408' }}>Booking Rules</h3>
+        <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>Booking Rules</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }} data-responsive-grid>
           <div style={fieldStyle}>
             <label style={labelStyle}>Max Party Size</label>
@@ -336,7 +336,7 @@ function ReservationSettingsTab() {
       </div>
 
       <div style={cardStyle}>
-        <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: '#1C1408' }}>Time Slots</h3>
+        <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>Time Slots</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }} data-responsive-grid>
           <div style={fieldStyle}>
             <label style={labelStyle}>Opening Time</label>
@@ -402,7 +402,7 @@ export function ReservationsPage() {
     background: 'transparent',
     fontSize: 14,
     fontWeight: active ? 700 : 500,
-    color: active ? '#D4783A' : '#6B5D4F',
+    color: active ? '#D4783A' : 'var(--color-text-secondary)',
     cursor: 'pointer',
     fontFamily: 'inherit',
     transition: 'color 0.15s',
@@ -413,7 +413,7 @@ export function ReservationsPage() {
     <>
       <PageHeader section="Manage" title="Reservations" />
 
-      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E8E0D8', marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 24 }}>
         <button style={tabBtnStyle(tab === 'list')}     onClick={() => setTab('list')}>Reservations</button>
         <button style={tabBtnStyle(tab === 'settings')} onClick={() => setTab('settings')}>Settings</button>
       </div>
