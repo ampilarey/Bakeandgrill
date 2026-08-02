@@ -34,7 +34,7 @@ function CardFace({ data, size }: { data: PrintCardData; size: CardSize }) {
   const h = size.heightMm * MM_TO_PX;
   const isGift = data.type === 'gift_card';
   const isDiscountCard = data.type === 'discount_card';
-  const accent = isGift ? '#D4813A' : isDiscountCard ? '#2A1E0C' : '#1C5F3A';
+  const accent = isGift ? 'var(--color-primary)' : isDiscountCard ? '#2A1E0C' : '#1C5F3A';
   const qrSize = Math.min(h * 0.45, 72);
   const expiry = data.expiry ? new Date(data.expiry).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
 
@@ -72,17 +72,17 @@ function CardFace({ data, size }: { data: PrintCardData; size: CardSize }) {
             </div>
           )}
           <div style={{ background: '#F5F0EB', borderRadius: 4, padding: '3px 7px', display: 'inline-block', width: 'fit-content' }}>
-            <span style={{ fontSize: Math.max(8, h * 0.11), fontWeight: 700, letterSpacing: 2, color: '#1C1408', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: Math.max(8, h * 0.11), fontWeight: 700, letterSpacing: 2, color: 'var(--color-text)', fontFamily: 'monospace' }}>
               {data.code}
             </span>
           </div>
           {data.note && (
-            <div style={{ fontSize: Math.max(6, h * 0.09), color: '#9C8E7E', lineHeight: 1.2 }}>
+            <div style={{ fontSize: Math.max(6, h * 0.09), color: 'var(--color-text-muted)', lineHeight: 1.2 }}>
               {data.note}
             </div>
           )}
           {expiry && (
-            <div style={{ fontSize: Math.max(6, h * 0.09), color: '#9C8E7E' }}>
+            <div style={{ fontSize: Math.max(6, h * 0.09), color: 'var(--color-text-muted)' }}>
               Expires: {expiry}
             </div>
           )}
@@ -90,7 +90,7 @@ function CardFace({ data, size }: { data: PrintCardData; size: CardSize }) {
 
         {/* Right: QR code */}
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <div style={{ background: '#fff', padding: 3, borderRadius: 4, border: '1px solid #E8E0D8' }}>
+          <div style={{ background: '#fff', padding: 3, borderRadius: 4, border: '1px solid var(--color-border)' }}>
             <QRCodeSVG value={data.code} size={qrSize} level="M" />
           </div>
           <div style={{ fontSize: Math.max(5, h * 0.08), color: '#C0B4A8' }}>Scan or enter code</div>
@@ -161,7 +161,7 @@ export function PrintCardModal({
               onChange={(v) => setSizeIdx(Number(v))}
               options={SIZES.map((s, i) => ({ value: String(i), label: `${s.label} (${s.widthMm}×${s.heightMm}mm)` }))}
             />
-            <div style={{ fontSize: 11, color: '#9C8E7E', marginTop: 3 }}>{size.description}</div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>{size.description}</div>
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Copies</label>
@@ -191,7 +191,7 @@ export function PrintCardModal({
               <CardFace data={data} size={size} />
             </div>
           </div>
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#9C8E7E', marginTop: 6 }}>
+          <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 6 }}>
             {size.widthMm} × {size.heightMm} mm — actual print size
           </div>
         </div>
