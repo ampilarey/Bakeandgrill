@@ -333,7 +333,9 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
     const discountedLaar = Math.round(discountedSubtotal * 100);
     const discountRatio = subtotalLaar > 0 ? discountedLaar / subtotalLaar : 0;
     let taxLaar = 0;
-    const buckets: Array<{ ratePercent: number; laar: number }> = [];
+    // Group SC buckets by rate (matches backend tax-code grouping when rates
+    // coincide) so per-line Math.round drift does not diverge from the server.
+    const bucketMap = new Map<number, number>();
     for (const item of cartItems) {
       const rate = effectiveLineTaxRate(item);
       if (rate <= 0) continue;
@@ -346,18 +348,21 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       } else {
         taxLaar += Math.round((effectiveLaar * rate) / 100);
       }
-      buckets.push({ ratePercent: rate, laar: effectiveLaar });
+      bucketMap.set(rate, (bucketMap.get(rate) ?? 0) + effectiveLaar);
     }
-    if (serviceChargeConfig && !taxInclusive) {
+    if (serviceChargeConfig) {
       const scPreview = previewServiceCharge(
         serviceChargeConfig,
         backendOrderType,
         discountedLaar,
       );
+      const buckets = Array.from(bucketMap, ([ratePercent, laar]) => ({ ratePercent, laar }));
+      // Inclusive: extract embedded SC GST into tax display only (grand total unchanged).
       taxLaar += serviceChargeTaxLaarByBuckets(
         serviceChargeConfig,
         scPreview.amountLaar,
         buckets,
+        taxInclusive,
       );
     }
     // Packaging GST is computed after cartPackagingFee — folded in below.

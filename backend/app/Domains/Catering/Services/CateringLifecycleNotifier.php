@@ -25,10 +25,10 @@ class CateringLifecycleNotifier
         $ref = $request->reference ?? ('#' . $request->id);
         $version = (int) $request->quote_version;
         $baseKey = 'event:' . $request->id . ':' . $version . ':quote_expired';
-        $customerMsg = "Your quote {$ref} expired — contact us to renew";
+        $customerMsg = "Your quote {$ref} expired - contact us to renew";
         $staffMsg = "Quote expired for {$ref}";
 
-        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Quote expired {$ref} — Bake & Grill");
+        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Quote expired {$ref} - Bake & Grill");
     }
 
     public function notifyCancelled(CateringRequest $request): void
@@ -39,7 +39,7 @@ class CateringLifecycleNotifier
         $customerMsg = "Event {$ref} was cancelled. Contact us if you have questions.";
         $staffMsg = "Event cancelled: {$ref}";
 
-        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Event cancelled {$ref} — Bake & Grill");
+        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Event cancelled {$ref} - Bake & Grill");
     }
 
     public function notifyReminder(CateringRequest $request): void
@@ -52,10 +52,10 @@ class CateringLifecycleNotifier
             ? \Illuminate\Support\Carbon::parse($request->fulfillment_time)->format('g:ia')
             : '';
         $venue = $request->venue_name ?: (($request->fulfillment_method ?? '') === 'delivery' ? 'delivery' : 'pickup');
-        $customerMsg = "Reminder: event {$ref} is tomorrow ({$date}" . ($time ? " {$time}" : '') . ") — {$venue}";
-        $staffMsg = "Tomorrow: event {$ref} ({$date}" . ($time ? " {$time}" : '') . ") — {$venue}";
+        $customerMsg = "Reminder: event {$ref} is tomorrow ({$date}" . ($time ? " {$time}" : '') . ") - {$venue}";
+        $staffMsg = "Tomorrow: event {$ref} ({$date}" . ($time ? " {$time}" : '') . ") - {$venue}";
 
-        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Event reminder {$ref} — Bake & Grill");
+        $this->fanOut($request, $customerMsg, $staffMsg, $baseKey, "Event reminder {$ref} - Bake & Grill");
     }
 
     private function fanOut(

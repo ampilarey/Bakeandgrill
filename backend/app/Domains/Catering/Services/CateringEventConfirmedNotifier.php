@@ -46,7 +46,7 @@ class CateringEventConfirmedNotifier
             'contact_name' => (string) ($request->contact_name ?? ''),
         ];
 
-        $customerFallback = "Event confirmed — ref {$ref}, paid MVR {$paidMvr}{$balanceBit}. {$when}{$venue}";
+        $customerFallback = "Event confirmed - ref {$ref}, paid MVR {$paidMvr}{$balanceBit}. {$when}{$venue}";
         $customerMsg = $this->messages->build('catering_confirmed_customer', $vars, $customerFallback);
         $this->notifyCustomer($request, $customerMsg, $baseKey, $paidLaar, $balanceLaar);
 

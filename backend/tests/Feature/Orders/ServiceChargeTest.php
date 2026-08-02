@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Orders;
 
+use App\Domains\Gst\Services\GstLedgerPoster;
+use App\Domains\Gst\Services\GstReportService;
+use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Orders\Services\OrderTotalsCalculator;
+use App\Domains\Orders\Services\ServiceChargeCalculator;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Reporting\Services\ReportsService;
 use App\Models\Category;
 use App\Models\Device;
+use App\Models\GstSetting;
 use App\Models\Item;
 use App\Models\MenuGroup;
 use App\Models\Order;
@@ -42,6 +47,7 @@ class ServiceChargeTest extends TestCase
             'is_active' => true,
             'is_available' => true,
             'tax_rate' => 8,
+            'tax_code' => 'standard_8',
         ]);
 
         PermissionCatalogSync::sync();
@@ -323,5 +329,188 @@ class ServiceChargeTest extends TestCase
             'show_on_receipts' => true,
         ])->assertOk()
             ->assertJsonPath('settings.value', 12);
+    }
+
+    public function test_current_settings_defaults_match_calculate_engine(): void
+    {
+        // Seeded migration values aside — when keys are absent, defaults must
+        // match calculate() (0 / false), not invent a 10% dine-in charge.
+        SiteSetting::query()->where('key', 'like', 'service_charge%')->delete();
+        SiteSetting::query()->where('key', 'show_service_charge_on_receipts')->delete();
+        SiteSetting::bust();
+
+        $settings = app(ServiceChargeCalculator::class)->currentSettings();
+        $this->assertSame(0.0, (float) $settings['value']);
+        $this->assertFalse((bool) $settings['apply_dine_in']);
+        $this->assertFalse((bool) $settings['enabled']);
+    }
+
+    private function configureGst(bool $taxInclusive): void
+    {
+        GstSetting::query()->updateOrCreate(['id' => 1], [
+            'gst_registered' => true,
+            'default_tax_rate_bp' => 800,
+            'tax_inclusive' => $taxInclusive,
+            'currency' => 'MVR',
+            'sector' => 'general',
+            // Hybrid so GstLedgerPoster::postOrderOnPayment will write output tax.
+            'accounting_basis' => 'hybrid',
+            'seller_tin' => 'TIN-SC-TEST',
+            'taxable_activity_no' => 'TA-SC-001',
+            'seller_name' => 'SC Test Seller',
+        ]);
+        app(GstSettingsService::class)->bust();
+    }
+
+    public function test_inclusive_taxable_service_charge_adds_gst_to_tax_laar_not_total(): void
+    {
+        $this->configureGst(true);
+        $this->configureServiceCharge([
+            'enabled' => true,
+            'value' => '10',
+            'apply_dine_in' => true,
+            'taxable' => true,
+        ]);
+
+        $order = $this->createStaffOrder('dine_in');
+        $order->refresh();
+
+        $merchTax = (int) round(10000 * 800 / 10800); // 741
+        $scTax = (int) round(1000 * 800 / 10800); // 74
+        // Before fix: tax_laar was merch-only (741). After: includes SC GST.
+        $this->assertSame(1000, (int) $order->service_charge_amount_laar);
+        $this->assertSame($merchTax + $scTax, (int) $order->tax_laar);
+        // Customer total unchanged — tax is embedded, not added on top.
+        $this->assertSame(10000 + 1000, (int) $order->total_laar);
+    }
+
+    public function test_inclusive_non_taxable_service_charge_excludes_sc_from_tax_laar(): void
+    {
+        $this->configureGst(true);
+        $this->configureServiceCharge([
+            'enabled' => true,
+            'value' => '10',
+            'apply_dine_in' => true,
+            'taxable' => false,
+        ]);
+
+        $order = $this->createStaffOrder('dine_in');
+        $order->refresh();
+
+        $merchTax = (int) round(10000 * 800 / 10800);
+        $this->assertSame(1000, (int) $order->service_charge_amount_laar);
+        $this->assertSame($merchTax, (int) $order->tax_laar);
+        $this->assertSame(10000 + 1000, (int) $order->total_laar);
+    }
+
+    public function test_exclusive_taxable_service_charge_still_adds_sc_tax_to_total(): void
+    {
+        $this->configureGst(false);
+        $this->configureServiceCharge([
+            'enabled' => true,
+            'value' => '10',
+            'apply_dine_in' => true,
+            'taxable' => true,
+        ]);
+
+        $order = $this->createStaffOrder('dine_in');
+        $order->refresh();
+
+        // Merch 800 + SC 80 = 880; total = 100 + 10 + 8.80
+        $this->assertSame(1000, (int) $order->service_charge_amount_laar);
+        $this->assertSame(880, (int) $order->tax_laar);
+        $this->assertSame(10000 + 1000 + 880, (int) $order->total_laar);
+    }
+
+    public function test_gst_report_output_tax_includes_inclusive_service_charge_gst(): void
+    {
+        $this->configureGst(true);
+        $this->configureServiceCharge([
+            'enabled' => true,
+            'value' => '10',
+            'apply_dine_in' => true,
+            'taxable' => true,
+        ]);
+
+        $order = $this->createStaffOrder('dine_in');
+        $order->refresh();
+        $expectedTaxLaar = (int) $order->tax_laar;
+        $merchTax = (int) round(10000 * 800 / 10800);
+        $scTax = (int) round(1000 * 800 / 10800);
+        $this->assertSame($merchTax + $scTax, $expectedTaxLaar);
+
+        // Query builder — Eloquent $order->update() can bounce status in this suite.
+        Order::whereKey($order->id)->update([
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+        $entry = app(GstLedgerPoster::class)->postOrderOnPayment($order->fresh());
+        $this->assertNotNull($entry, 'Expected GST ledger output entry for paid order');
+        $this->assertSame($expectedTaxLaar, (int) $entry->tax_laar);
+
+        $summary = app(GstReportService::class)->summary(now()->format('Y-m'));
+        $this->assertSame($expectedTaxLaar, (int) $summary['gst_on_standard_sales_laar']);
+        $this->assertSame($expectedTaxLaar, (int) $summary['output_tax_before_adjustments_laar']);
+        $this->assertGreaterThan($merchTax, (int) $summary['gst_on_standard_sales_laar']);
+    }
+
+    /**
+     * Pin backend SC tax to the same multi-line numbers as
+     * posCartTotals "multi-line SC tax matches backend grouped buckets".
+     * Lines 33.33+33.33+33.34+20+15 = 135.00; SC 10% = 1350 laar.
+     * Grouped (by tax code) SC tax: exclusive 108, inclusive 100.
+     */
+    public function test_multi_line_service_charge_tax_matches_grouped_frontend_parity(): void
+    {
+        $prices = [33.33, 33.33, 33.34, 20.0, 15.0];
+        $lineLaars = array_map(fn (float $p): int => (int) round($p * 100), $prices);
+        $this->assertSame([3333, 3333, 3334, 2000, 1500], $lineLaars);
+
+        $this->configureServiceCharge([
+            'enabled' => true,
+            'value' => '10',
+            'apply_dine_in' => true,
+            'taxable' => true,
+        ]);
+
+        foreach ([false, true] as $inclusive) {
+            $this->configureGst($inclusive);
+
+            $order = Order::factory()->create([
+                'type' => 'dine_in',
+                'status' => 'pending',
+            ]);
+            foreach ($prices as $i => $price) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'item_id' => $this->item->id,
+                    'item_name' => $this->item->name.' '.$i,
+                    'quantity' => 1,
+                    'unit_price' => $price,
+                    'total_price' => $price,
+                    'tax_rate' => 8,
+                    'tax_code' => 'standard_8',
+                ]);
+            }
+
+            app(OrderTotalsCalculator::class)->recalculateAndPersist($order->fresh());
+            $order->refresh();
+
+            $this->assertSame(13500, (int) $order->subtotal_laar);
+            $this->assertSame(1350, (int) $order->service_charge_amount_laar);
+
+            if ($inclusive) {
+                $merchTax = 1000;
+                $scTax = 100;
+                $this->assertSame($merchTax + $scTax, (int) $order->tax_laar);
+                $this->assertSame(13500 + 1350, (int) $order->total_laar);
+            } else {
+                $merchTax = 1081;
+                $scTax = 108;
+                $this->assertSame($merchTax + $scTax, (int) $order->tax_laar);
+                $this->assertSame(13500 + 1350 + $merchTax + $scTax, (int) $order->total_laar);
+            }
+        }
     }
 }

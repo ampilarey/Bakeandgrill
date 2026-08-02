@@ -90,7 +90,9 @@ export function cartTaxMvr(
   const discountedLaar = Math.round(discountedSubtotal * 100);
   const discountRatio = subtotalLaar > 0 ? discountedLaar / subtotalLaar : 0;
   let taxLaar = 0;
-  const buckets: Array<{ ratePercent: number; laar: number }> = [];
+  // Group SC buckets by rate — matches backend OrderTotalsCalculator which
+  // merges lines by tax code (same rate collapses to one round).
+  const bucketMap = new Map<number, number>();
   for (const item of items) {
     const rate = effectiveLineTaxRatePercent(item, defaultTaxRatePercent);
     if (rate <= 0) continue;
@@ -102,18 +104,21 @@ export function cartTaxMvr(
     } else {
       taxLaar += Math.round((effectiveLaar * rate) / 100);
     }
-    buckets.push({ ratePercent: rate, laar: effectiveLaar });
+    bucketMap.set(rate, (bucketMap.get(rate) ?? 0) + effectiveLaar);
   }
-  if (options.serviceChargeConfig && !taxInclusive) {
+  if (options.serviceChargeConfig) {
     const scPreview = previewServiceCharge(
       options.serviceChargeConfig,
       options.orderType ?? "dine_in",
       discountedLaar,
     );
+    const buckets = Array.from(bucketMap, ([ratePercent, laar]) => ({ ratePercent, laar }));
+    // Inclusive: extract embedded SC GST into tax only (grand total unchanged).
     taxLaar += serviceChargeTaxLaarByBuckets(
       options.serviceChargeConfig,
       scPreview.amountLaar,
       buckets,
+      taxInclusive,
     );
   }
   const packagingFeeMvr = options.packagingFeeMvr ?? 0;

@@ -131,4 +131,97 @@ describe('SignagePage', () => {
     expect(health.textContent).toMatch(/Online/);
     expect(health.textContent).toMatch(/1920x1080/);
   });
+
+  it('creates a screen from the screens tab form', async () => {
+    const create = vi.spyOn(api, 'createSignageScreen').mockResolvedValue({
+      data: {
+        id: 101,
+        name: 'Patio TV',
+        slug: 'patio-tv',
+        group_id: null,
+        playlist_id: null,
+        orientation: 'landscape',
+        resolution: null,
+        refresh_seconds: null,
+        is_default: false,
+      },
+    });
+
+    renderWithRouter(<SignagePage />);
+    expect(await screen.findByTestId('signage-new-screen')).toBeTruthy();
+    fireEvent.change(document.getElementById('signage-screen-name') as HTMLInputElement, { target: { value: 'Patio TV' } });
+    fireEvent.click(screen.getByTestId('signage-create-screen'));
+
+    await waitFor(() => {
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'Patio TV',
+        orientation: 'landscape',
+      }));
+    });
+    expect(await screen.findByTestId('signage-screen-patio-tv')).toBeTruthy();
+    expect(toastSuccess).toHaveBeenCalledWith('Screen created.');
+  });
+
+  it('creates a playlist and a group from their forms', async () => {
+    const createPlaylist = vi.spyOn(api, 'createSignagePlaylist').mockResolvedValue({
+      data: {
+        id: 2,
+        name: 'Lunch Board',
+        slides: [],
+        theme: null,
+        is_active: true,
+      },
+    });
+    const createGroup = vi.spyOn(api, 'createSignageGroup').mockResolvedValue({
+      data: {
+        id: 11,
+        name: 'Patio Group',
+        playlist_id: 2,
+        theme: null,
+        orientation: 'landscape',
+        refresh_seconds: 120,
+      },
+    });
+
+    renderWithRouter(<SignagePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Playlists' }));
+    expect(await screen.findByTestId('signage-new-playlist')).toBeTruthy();
+    fireEvent.change(document.getElementById('signage-playlist-name') as HTMLInputElement, { target: { value: 'Lunch Board' } });
+    fireEvent.click(screen.getByTestId('signage-create-playlist'));
+
+    await waitFor(() => {
+      expect(createPlaylist).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'Lunch Board',
+        slides: [],
+        is_active: true,
+      }));
+    });
+    expect(toastSuccess).toHaveBeenCalledWith('Playlist created.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Screens & Groups' }));
+    expect(await screen.findByTestId('signage-new-group')).toBeTruthy();
+    fireEvent.change(document.getElementById('signage-group-name') as HTMLInputElement, { target: { value: 'Patio Group' } });
+    fireEvent.click(screen.getByTestId('signage-create-group'));
+
+    await waitFor(() => {
+      expect(createGroup).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'Patio Group',
+        orientation: 'landscape',
+        refresh_seconds: 120,
+      }));
+    });
+    expect(toastSuccess).toHaveBeenCalledWith('Group created.');
+  });
+
+  it('requires a name before creating a screen', async () => {
+    const create = vi.spyOn(api, 'createSignageScreen');
+    renderWithRouter(<SignagePage />);
+    expect(await screen.findByTestId('signage-create-screen')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('signage-create-screen'));
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('Screen name is required.');
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
 });

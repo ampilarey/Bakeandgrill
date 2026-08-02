@@ -33,21 +33,24 @@ final class SmsTypeRegistry
     public const SEND_PERMISSION_SETTING_PREFIX = 'sms_type_send_permission.';
 
     /**
-     * Permissions an admin may assign as a type's send_permission.
+     * Permissions that actually govern sending an SMS type.
+     * Used for Control Center "who can send" options and PATCH validation.
+     * Do not include management-only perms (templates.edit, settings.manage).
      *
      * @var list<string>
      */
     public const ASSIGNABLE_SEND_PERMISSIONS = [
         'sms.campaigns.send',
         'sms.transactional.manage',
-        'sms.templates.edit',
-        'sms.settings.manage',
         'orders.send_sms_bill',
         'orders.send_payment_link',
         'promotions.discounts',
         'promotions.discount_override',
         'service_availability.notify',
     ];
+
+    /** Sentinel for system-initiated types (no manual staff send). */
+    public const SYSTEM_SEND_PERMISSION = '__system__';
 
     /** @var array<string, string> Legacy SmsMessage.type → registry key */
     private const TYPE_ALIASES = [
@@ -208,7 +211,7 @@ final class SmsTypeRegistry
             return $perm !== null && $perm !== '' ? (string) $perm : null;
         }
 
-        if ($override === '__system__' || $override === 'system') {
+        if ($override === self::SYSTEM_SEND_PERMISSION || $override === 'system') {
             return null;
         }
 
@@ -219,7 +222,7 @@ final class SmsTypeRegistry
     {
         $settingKey = self::SEND_PERMISSION_SETTING_PREFIX . $typeKey;
         if ($permissionSlug === null || $permissionSlug === '') {
-            SiteSetting::set($settingKey, '__system__');
+            SiteSetting::set($settingKey, self::SYSTEM_SEND_PERMISSION);
 
             return;
         }

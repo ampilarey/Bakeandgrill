@@ -99,8 +99,9 @@ class ServiceChargeCalculator
             'enabled' => $this->boolSetting('service_charge_enabled', false),
             'label' => $this->stringSetting('service_charge_label', 'Service charge'),
             'type' => $this->stringSetting('service_charge_type', 'percent'),
-            'value' => (float) $this->stringSetting('service_charge_value', '10'),
-            'apply_dine_in' => $this->boolSetting('service_charge_apply_dine_in', true),
+            // Defaults must match calculate() — engine is source of truth.
+            'value' => (float) $this->stringSetting('service_charge_value', '0'),
+            'apply_dine_in' => $this->boolSetting('service_charge_apply_dine_in', false),
             'apply_takeaway' => $this->boolSetting('service_charge_apply_takeaway', false),
             'apply_online_pickup' => $this->boolSetting('service_charge_apply_online_pickup', false),
             'apply_delivery' => $this->boolSetting('service_charge_apply_delivery', false),

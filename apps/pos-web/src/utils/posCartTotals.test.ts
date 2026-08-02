@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ServiceChargePublicConfig } from "@shared/utils/serviceCharge";
+import { serviceChargeTaxLaarByBuckets } from "@shared/utils/serviceCharge";
 import {
   cartGrandTotalMvr,
   cartPackagingFeeMvr,
@@ -113,7 +114,7 @@ describe("posCartTotals", () => {
     expect(cartPackagingFeeMvr(items, "dine_in")).toBe(0);
   });
 
-  it("inclusive: total = discountedSubtotal + SC + packaging; tax extracted; no SC tax", () => {
+  it("inclusive: total = discountedSubtotal + SC + packaging; tax extracted; SC GST extracted", () => {
     const items = [{ price: 100, quantity: 1, packaging_fee: 5 }];
     const sub = cartSubtotalFromLines(items);
     const discounted = sub;
@@ -124,8 +125,8 @@ describe("posCartTotals", () => {
     });
     const sc = cartServiceChargeMvr(taxableSc, "takeaway", discounted);
     const packaging = cartPackagingFeeMvr(items, "takeaway");
-    // Embedded tax: round(10000 * 8 / 108) = 741 laar = 7.41; no SC tax
-    expect(tax).toBe(7.41);
+    // Embedded tax: merch round(10000 * 8 / 108) = 741 + SC round(1000 * 8 / 108) = 74 → 8.15
+    expect(tax).toBe(8.15);
     expect(sc).toBe(10);
     expect(packaging).toBe(5);
     // Grand total must NOT add tax again
@@ -168,5 +169,56 @@ describe("posCartTotals", () => {
     // Extract: round(4800*8/108) + round(3200*8/108) = 356 + 237 = 593 → 5.93
     expect(taxInclusive).toBe(5.93);
     expect(cartGrandTotalMvr(discounted, taxInclusive, 0, 0, true)).toBe(80);
+  });
+
+  /**
+   * Multi-line same-rate cart where per-item SC buckets drift from grouped
+   * (backend) buckets. Lines: 33.33 + 33.33 + 33.34 + 20 + 15 = 135.00.
+   * SC 10% = 1350 laar. Grouped SC tax: exclusive 108, inclusive 100.
+   * Per-line buckets would yield 109 / 101 — the parity bug.
+   */
+  it("multi-line SC tax matches backend grouped buckets (exclusive + inclusive)", () => {
+    const items = [
+      { price: 33.33, quantity: 1 },
+      { price: 33.33, quantity: 1 },
+      { price: 33.34, quantity: 1 },
+      { price: 20, quantity: 1 },
+      { price: 15, quantity: 1 },
+    ];
+    const lineLaars = items.map((i) => Math.round(i.price * 100));
+    expect(lineLaars).toEqual([3333, 3333, 3334, 2000, 1500]);
+    const sub = cartSubtotalFromLines(items);
+    expect(sub).toBe(135);
+    const scLaar = 1350; // 10% of 13500 laar — previewServiceCharge percent path
+    expect(cartServiceChargeMvr(taxableSc, "takeaway", sub)).toBe(13.5);
+
+    const perLineBuckets = lineLaars.map((laar) => ({ ratePercent: 8, laar }));
+    const groupedBuckets = [{ ratePercent: 8, laar: lineLaars.reduce((a, b) => a + b, 0) }];
+
+    // Prove the shapes disagree — why grouping is required.
+    expect(serviceChargeTaxLaarByBuckets(taxableSc, scLaar, perLineBuckets, false)).toBe(109);
+    expect(serviceChargeTaxLaarByBuckets(taxableSc, scLaar, groupedBuckets, false)).toBe(108);
+    expect(serviceChargeTaxLaarByBuckets(taxableSc, scLaar, perLineBuckets, true)).toBe(101);
+    expect(serviceChargeTaxLaarByBuckets(taxableSc, scLaar, groupedBuckets, true)).toBe(100);
+
+    const merchExclusive = lineLaars.reduce((s, l) => s + Math.round((l * 8) / 100), 0);
+    const merchInclusive = lineLaars.reduce((s, l) => s + Math.round((l * 8) / 108), 0);
+    expect(merchExclusive).toBe(1081);
+    expect(merchInclusive).toBe(1000);
+
+    // cartTaxMvr must use grouped buckets (backend-aligned).
+    const taxExclusive = cartTaxMvr(items, sub, sub, 8, {
+      taxInclusive: false,
+      serviceChargeConfig: taxableSc,
+      orderType: "takeaway",
+    });
+    expect(taxExclusive).toBe((1081 + 108) / 100); // 11.89
+
+    const taxInclusive = cartTaxMvr(items, sub, sub, 8, {
+      taxInclusive: true,
+      serviceChargeConfig: taxableSc,
+      orderType: "takeaway",
+    });
+    expect(taxInclusive).toBe((1000 + 100) / 100); // 11.00
   });
 });

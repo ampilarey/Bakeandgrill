@@ -114,7 +114,7 @@ class OrderPaymentController extends Controller
                 "Amount: MVR {$amount}",
                 "Order: {$orderNum}",
                 "View your order & pay: {$payPageUrl}",
-                'Thanks — see you soon!',
+                'Thanks - see you soon!',
             ]);
             $message = app(CustomerSmsMessageBuilder::class)->build(
                 CustomerSmsMessageBuilder::SLUG_SEND_PAY_LINK,
@@ -317,7 +317,7 @@ class OrderPaymentController extends Controller
                 return response()->json(['message' => SmsNotificationSettings::DISABLED_MESSAGE], 422);
             }
 
-            $fallback = 'Bill #' . $invoice->invoice_number . ' — MVR ' . number_format($billTotal, 2) . '. View: ' . $link;
+            $fallback = 'Bill #' . $invoice->invoice_number . ' - MVR ' . number_format($billTotal, 2) . '. View: ' . $link;
             $message = app(CustomerSmsMessageBuilder::class)->build(
                 CustomerSmsMessageBuilder::SLUG_SEND_BILL,
                 [

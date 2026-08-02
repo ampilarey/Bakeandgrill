@@ -67,14 +67,14 @@ class SendCreditPaymentReminders extends Command
 
                     $message = match ($kind) {
                         'upcoming' => sprintf(
-                            'Bake & Grill: Credit invoice %s — MVR %.2f due on %s. View: %s',
+                            'Bake & Grill: Credit invoice %s - MVR %.2f due on %s. View: %s',
                             $invoice->invoice_number,
                             $balanceMvr,
                             $dueLabel,
                             $link,
                         ),
                         'due_today' => sprintf(
-                            'Bake & Grill: Credit payment due today — invoice %s, MVR %.2f. View: %s',
+                            'Bake & Grill: Credit payment due today - invoice %s, MVR %.2f. View: %s',
                             $invoice->invoice_number,
                             $balanceMvr,
                             $link,

@@ -6,6 +6,9 @@ import {
   buildSignageTemplate,
   commandSignageDevice,
   createSignageCampaign,
+  createSignageGroup,
+  createSignagePlaylist,
+  createSignageScreen,
   fetchSignageDevices,
   getSignageOverview,
   setSignageEmergency,
@@ -16,6 +19,7 @@ import {
   type SignageDevice,
   type SignageGroup,
   type SignageOverview,
+  type SignagePlaylist,
   type SignageScreen,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -139,6 +143,26 @@ export function SignagePage() {
     date_end: '',
   });
   const [campaignSaving, setCampaignSaving] = useState(false);
+
+  const [screenForm, setScreenForm] = useState({
+    name: '',
+    slug: '',
+    group_id: '',
+    playlist_id: '',
+    orientation: 'landscape',
+  });
+  const [screenSaving, setScreenSaving] = useState(false);
+
+  const [playlistForm, setPlaylistForm] = useState({ name: '' });
+  const [playlistCreating, setPlaylistCreating] = useState(false);
+
+  const [groupForm, setGroupForm] = useState({
+    name: '',
+    playlist_id: '',
+    orientation: 'landscape',
+    refresh_seconds: '120',
+  });
+  const [groupCreating, setGroupCreating] = useState(false);
 
   const [devices, setDevices] = useState<SignageDevice[]>([]);
   const [devicesLoading, setDevicesLoading] = useState(false);
@@ -357,6 +381,86 @@ export function SignagePage() {
     }
   };
 
+  const onCreateScreen = async () => {
+    const name = screenForm.name.trim();
+    if (!name) {
+      toast.error('Screen name is required.');
+      return;
+    }
+    setScreenSaving(true);
+    try {
+      const body: Partial<SignageScreen> & { name: string } = {
+        name,
+        orientation: screenForm.orientation || 'landscape',
+      };
+      const slug = screenForm.slug.trim();
+      if (slug) body.slug = slug;
+      if (screenForm.group_id) body.group_id = Number(screenForm.group_id);
+      if (screenForm.playlist_id) body.playlist_id = Number(screenForm.playlist_id);
+      const res = await createSignageScreen(body);
+      setOverview((prev) => (prev ? { ...prev, screens: [res.data, ...prev.screens] } : prev));
+      setScreenForm({ name: '', slug: '', group_id: '', playlist_id: '', orientation: 'landscape' });
+      toast.success('Screen created.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Screen create failed');
+    } finally {
+      setScreenSaving(false);
+    }
+  };
+
+  const onCreatePlaylist = async () => {
+    const name = playlistForm.name.trim();
+    if (!name) {
+      toast.error('Playlist name is required.');
+      return;
+    }
+    setPlaylistCreating(true);
+    try {
+      const body: Partial<SignagePlaylist> & { name: string } = { name, slides: [], is_active: true };
+      const res = await createSignagePlaylist(body);
+      setOverview((prev) => (prev ? { ...prev, playlists: [res.data, ...prev.playlists] } : prev));
+      setPlaylistForm({ name: '' });
+      setSelectedPlaylistId(res.data.id);
+      setSlides(asSlides(res.data.slides));
+      toast.success('Playlist created.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Playlist create failed');
+    } finally {
+      setPlaylistCreating(false);
+    }
+  };
+
+  const onCreateGroup = async () => {
+    const name = groupForm.name.trim();
+    if (!name) {
+      toast.error('Group name is required.');
+      return;
+    }
+    const refreshSeconds = Number.parseInt(groupForm.refresh_seconds, 10);
+    if (!Number.isFinite(refreshSeconds) || refreshSeconds < 15 || refreshSeconds > 3600) {
+      toast.error('Refresh seconds must be between 15 and 3600.');
+      return;
+    }
+    setGroupCreating(true);
+    try {
+      const body: Partial<SignageGroup> & { name: string } = {
+        name,
+        orientation: groupForm.orientation || 'landscape',
+        refresh_seconds: refreshSeconds,
+      };
+      if (groupForm.playlist_id) body.playlist_id = Number(groupForm.playlist_id);
+      const res = await createSignageGroup(body);
+      setOverview((prev) => (prev ? { ...prev, groups: [res.data, ...prev.groups] } : prev));
+      setGroupDrafts((prev) => ({ ...prev, [res.data.id]: res.data.playlist_id ?? '' }));
+      setGroupForm({ name: '', playlist_id: '', orientation: 'landscape', refresh_seconds: '120' });
+      toast.success('Group created.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Group create failed');
+    } finally {
+      setGroupCreating(false);
+    }
+  };
+
   const copyUrl = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url);
@@ -423,14 +527,103 @@ export function SignagePage() {
         <>
           {tab === 'screens' && (
             <div>
+              <div data-testid="signage-new-screen">
+              <Card style={{ marginBottom: 20 }}>
+                <h3 style={cardTitle}>New screen</h3>
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                  <Input
+                    id="signage-screen-name"
+                    label="Name"
+                    value={screenForm.name}
+                    onChange={(val) => setScreenForm((f) => ({ ...f, name: val }))}
+                  />
+                  <Input
+                    id="signage-screen-slug"
+                    label="Slug (optional)"
+                    value={screenForm.slug}
+                    onChange={(val) => setScreenForm((f) => ({ ...f, slug: val }))}
+                    placeholder="auto from name"
+                  />
+                  <Select
+                    label="Group"
+                    value={screenForm.group_id}
+                    onChange={(val) => setScreenForm((f) => ({ ...f, group_id: val }))}
+                    options={[
+                      { value: '', label: '— optional —' },
+                      ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+                    ]}
+                  />
+                  <Select
+                    label="Playlist"
+                    value={screenForm.playlist_id}
+                    onChange={(val) => setScreenForm((f) => ({ ...f, playlist_id: val }))}
+                    options={[{ value: '', label: '— optional —' }, ...playlistOptions]}
+                  />
+                  <Select
+                    label="Orientation"
+                    value={screenForm.orientation}
+                    onChange={(val) => setScreenForm((f) => ({ ...f, orientation: val }))}
+                    options={[
+                      { value: 'landscape', label: 'Landscape' },
+                      { value: 'portrait', label: 'Portrait' },
+                    ]}
+                  />
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <Btn onClick={() => void onCreateScreen()} disabled={screenSaving} style={{ minHeight: 44 }} data-testid="signage-create-screen">
+                    {screenSaving ? 'Creating…' : 'Create screen'}
+                  </Btn>
+                </div>
+              </Card>
+              </div>
+
               <h2 style={{ ...cardTitle, fontSize: 17, marginBottom: 16 }}>Screens</h2>
               {screens.length === 0 ? (
-                <EmptyState message="No screens yet. Add a screen from the API or database seed." />
+                <EmptyState message="No screens yet. Create one above to get a TV URL and QR code." />
               ) : (
                 screens.map(renderScreenCard)
               )}
 
               <h2 style={{ ...cardTitle, fontSize: 17, margin: '24px 0 16px' }}>Groups</h2>
+              <div data-testid="signage-new-group">
+              <Card style={{ marginBottom: 16 }}>
+                <h3 style={cardTitle}>New group</h3>
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                  <Input
+                    id="signage-group-name"
+                    label="Name"
+                    value={groupForm.name}
+                    onChange={(val) => setGroupForm((f) => ({ ...f, name: val }))}
+                  />
+                  <Select
+                    label="Playlist"
+                    value={groupForm.playlist_id}
+                    onChange={(val) => setGroupForm((f) => ({ ...f, playlist_id: val }))}
+                    options={[{ value: '', label: '— optional —' }, ...playlistOptions]}
+                  />
+                  <Select
+                    label="Orientation"
+                    value={groupForm.orientation}
+                    onChange={(val) => setGroupForm((f) => ({ ...f, orientation: val }))}
+                    options={[
+                      { value: 'landscape', label: 'Landscape' },
+                      { value: 'portrait', label: 'Portrait' },
+                    ]}
+                  />
+                  <Input
+                    label="Refresh seconds"
+                    type="number"
+                    value={groupForm.refresh_seconds}
+                    onChange={(val) => setGroupForm((f) => ({ ...f, refresh_seconds: val }))}
+                  />
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <Btn onClick={() => void onCreateGroup()} disabled={groupCreating} style={{ minHeight: 44 }} data-testid="signage-create-group">
+                    {groupCreating ? 'Creating…' : 'Create group'}
+                  </Btn>
+                </div>
+              </Card>
+              </div>
               {groups.length === 0 ? (
                 <EmptyState message="No groups yet. Groups bundle screens with a shared playlist." />
               ) : (
@@ -483,6 +676,25 @@ export function SignagePage() {
                 </Card>
               )}
 
+              <div data-testid="signage-new-playlist">
+              <Card style={{ marginBottom: 16 }}>
+                <h3 style={cardTitle}>New playlist</h3>
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                  <Input
+                    id="signage-playlist-name"
+                    label="Name"
+                    value={playlistForm.name}
+                    onChange={(val) => setPlaylistForm((f) => ({ ...f, name: val }))}
+                  />
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <Btn onClick={() => void onCreatePlaylist()} disabled={playlistCreating} style={{ minHeight: 44 }} data-testid="signage-create-playlist">
+                    {playlistCreating ? 'Creating…' : 'Create playlist'}
+                  </Btn>
+                </div>
+              </Card>
+              </div>
+
               <Card style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
                   <div style={{ flex: '1 1 220px' }}>
@@ -490,7 +702,7 @@ export function SignagePage() {
                       label="Playlist"
                       value={selectedPlaylistId ? String(selectedPlaylistId) : ''}
                       onChange={(val) => onSelectPlaylist(Number(val))}
-                      options={playlistOptions}
+                      options={playlistOptions.length > 0 ? playlistOptions : [{ value: '', label: '— create a playlist first —' }]}
                     />
                   </div>
                   <Btn onClick={() => void onSavePlaylist()} disabled={!selectedPlaylistId || playlistSaving} style={{ minHeight: 44 }}>
