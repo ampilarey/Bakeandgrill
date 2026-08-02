@@ -18,14 +18,14 @@ const INPUT: React.CSSProperties = {
 
 const BTN_PRIMARY: React.CSSProperties = {
   width: '100%', height: 50, borderRadius: 12, border: 'none',
-  background: '#D4813A', color: '#fff',
+  background: 'var(--color-primary)', color: '#fff',
   fontSize: 15, fontWeight: 700, cursor: 'pointer',
   transition: 'background 0.15s', fontFamily: 'inherit',
 };
 
 const BTN_GHOST: React.CSSProperties = {
   background: 'none', border: 'none', cursor: 'pointer',
-  color: '#D4813A', fontSize: 13, fontWeight: 600,
+  color: 'var(--color-primary)', fontSize: 13, fontWeight: 600,
   fontFamily: 'inherit', padding: 0,
 };
 
@@ -117,7 +117,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
   };
 
   const wrap: React.CSSProperties = {
-    minHeight: '100vh', background: '#1C1408',
+    minHeight: '100vh', background: 'var(--color-text)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
   };
 
@@ -133,7 +133,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
       <div style={wrap}>
         <div style={card}>
           {logo}
-          <h2 style={{ textAlign: 'center', margin: '0 0 24px', fontSize: 20, color: '#1C1408', fontWeight: 700 }}>
+          <h2 style={{ textAlign: 'center', margin: '0 0 24px', fontSize: 20, color: 'var(--color-text)', fontWeight: 700 }}>
             Admin Sign In
           </h2>
 
@@ -145,7 +145,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
                 onClick={() => { setLoginMode(mode); setLoginError(''); }}
                 style={{
                   flex: 1, height: 40, borderRadius: 10, cursor: 'pointer', fontWeight: 700,
-                  border: `1px solid ${loginMode === mode ? '#D4813A' : '#EDE4D4'}`,
+                  border: `1px solid ${loginMode === mode ? 'var(--color-primary)' : '#EDE4D4'}`,
                   background: loginMode === mode ? '#FEF3E8' : '#FFFDF9',
                   color: loginMode === mode ? '#9A3412' : '#8B7355',
                 }}
@@ -191,7 +191,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
                   style={{
                     position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
                     background: 'none', border: 'none', cursor: 'pointer',
-                    color: '#9C8E7E', fontSize: 13, fontFamily: 'inherit',
+                    color: 'var(--color-text-muted)', fontSize: 13, fontFamily: 'inherit',
                   }}
                 >
                   {showPass ? 'Hide' : 'Show'}
@@ -249,7 +249,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
       <div style={wrap}>
         <div style={card}>
           {logo}
-          <h2 style={{ textAlign: 'center', margin: '0 0 8px', fontSize: 20, color: '#1C1408', fontWeight: 700 }}>
+          <h2 style={{ textAlign: 'center', margin: '0 0 8px', fontSize: 20, color: 'var(--color-text)', fontWeight: 700 }}>
             Reset Password
           </h2>
           <p style={{ textAlign: 'center', color: '#8B7355', fontSize: 14, margin: '0 0 24px' }}>
@@ -288,7 +288,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
     <div style={wrap}>
       <div style={card}>
         {logo}
-        <h2 style={{ textAlign: 'center', margin: '0 0 8px', fontSize: 20, color: '#1C1408', fontWeight: 700 }}>
+        <h2 style={{ textAlign: 'center', margin: '0 0 8px', fontSize: 20, color: 'var(--color-text)', fontWeight: 700 }}>
           Set New Password
         </h2>
         <p style={{ textAlign: 'center', color: '#8B7355', fontSize: 14, margin: '0 0 24px' }}>
