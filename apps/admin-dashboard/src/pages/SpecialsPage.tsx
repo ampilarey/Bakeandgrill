@@ -99,16 +99,16 @@ function VariantOverrideLines({ overrides, mode }: { overrides: DailySpecialVari
       {overrides.map(vo => (
         <div key={vo.variant_id} style={{ fontSize: 12, lineHeight: 1.4 }}>
           {mode === 'names' ? (
-            <span style={{ color: '#6B5D4F', fontWeight: 600 }}>{vo.variant_name ?? `Variant #${vo.variant_id}`}</span>
+            <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{vo.variant_name ?? `Variant #${vo.variant_id}`}</span>
           ) : (
             <>
-              <span style={{ fontWeight: 700, color: '#D4813A' }}>{variantPriceLabel(vo)}</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{variantPriceLabel(vo)}</span>
               {(() => {
                 const catalog = money(vo.catalog_price);
                 const effective = money(vo.effective_price);
                 if (catalog == null || effective == null || effective >= catalog) return null;
                 return (
-                  <span style={{ color: '#9C8E7E', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
+                  <span style={{ color: 'var(--color-text-muted)', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
                     {formatMvr(catalog)}
                   </span>
                 );
@@ -611,11 +611,11 @@ export default function SpecialsPage() {
   const emptyMessage = listFilter === 'all' ? 'No discounts yet. Add one to get started.' : 'No discounts match this filter.';
   const dateFieldStyle: CSSProperties = {
     width: '100%', minHeight: 44, height: 44, padding: '0 12px', boxSizing: 'border-box',
-    border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14, fontFamily: 'inherit',
-    background: '#fff', color: '#1C1408',
+    border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit',
+    background: '#fff', color: 'var(--color-text)',
   };
   const fieldLabel: CSSProperties = {
-    display: 'block', fontSize: 13, fontWeight: 600, color: '#6B5D4F', marginBottom: 4,
+    display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4,
   };
 
   const renderSpecialPrice = (s: DailySpecial) => {
@@ -627,9 +627,9 @@ export default function SpecialsPage() {
       const original = money(s.original_price);
       return (
         <>
-          <span style={{ fontWeight: 700, color: '#D4813A' }}>{formatMvr(effective)}</span>
+          <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{formatMvr(effective)}</span>
           {original != null && effective < original && (
-            <span style={{ color: '#9C8E7E', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
+            <span style={{ color: 'var(--color-text-muted)', textDecoration: 'line-through', fontSize: 11, marginLeft: 4 }}>
               {formatMvr(original)}
             </span>
           )}
@@ -643,20 +643,20 @@ export default function SpecialsPage() {
     <PageShell className="specials-page">
       <ConfirmDialog state={dlg} close={closeDlg} />
       <PageHeader section="Manage" title="Daily Specials" action={<Btn onClick={openCreate}>+ Add Discount</Btn>} />
-      <p className="specials-intro" style={{ margin: '-8px 0 20px', fontSize: 14, color: '#6B5D4F', lineHeight: 1.55, maxWidth: 720 }}>
+      <p className="specials-intro" style={{ margin: '-8px 0 20px', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.55, maxWidth: 720 }}>
         Schedule a <strong>discount %</strong> or fixed sale price on specific menu items for any date range.
         Active discounts show on the order app menu (badge + sale price), POS, and optionally in Today&apos;s Specials on the homepage.
       </p>
-      {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       <div className="page-stat-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: '16px 20px' }}>
-          <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 4px', fontWeight: 600 }}>TOTAL SPECIALS</p>
-          <p style={{ fontSize: 22, fontWeight: 800, color: '#1C1408', margin: 0 }}>{meta.total}</p>
+        <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px' }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 4px', fontWeight: 600 }}>TOTAL SPECIALS</p>
+          <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{meta.total}</p>
         </div>
-        <div style={{ background: '#fff', border: '1px solid #E8E0D8', borderRadius: 12, padding: '16px 20px' }}>
-          <p style={{ fontSize: 12, color: '#9C8E7E', margin: '0 0 4px', fontWeight: 600 }}>ACTIVE TODAY</p>
-          <p style={{ fontSize: 22, fontWeight: 800, color: '#22c55e', margin: 0 }}>{activeCount}</p>
+        <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 20px' }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 4px', fontWeight: 600 }}>ACTIVE TODAY</p>
+          <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-success)', margin: 0 }}>{activeCount}</p>
         </div>
       </div>
 
@@ -685,7 +685,7 @@ export default function SpecialsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#9C8E7E' }}>Loading…</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
               ) : specials.length === 0 ? (
                 <tr><td colSpan={9}><EmptyState message={emptyMessage} /></td></tr>
               ) : specials.map(s => (
@@ -705,12 +705,12 @@ export default function SpecialsPage() {
                   <td style={TD}>
                     {s.badge_label?.trim()
                       ? <Badge color="orange">{s.badge_label.trim()}</Badge>
-                      : <span style={{ color: '#9C8E7E' }}>—</span>}
+                      : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
                   </td>
                   <td style={{ ...TD, fontSize: 13 }}>{renderSpecialPrice(s)}</td>
-                  <td style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>{s.start_date} → {s.end_date}</td>
+                  <td style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>{s.start_date} → {s.end_date}</td>
                   <td style={{ ...TD, fontSize: 12 }}>
-                    {s.days_of_week?.length ? s.days_of_week.map(d => DAY_NAMES[d]).join(', ') : <span style={{ color: '#9C8E7E' }}>All days</span>}
+                    {s.days_of_week?.length ? s.days_of_week.map(d => DAY_NAMES[d]).join(', ') : <span style={{ color: 'var(--color-text-muted)' }}>All days</span>}
                   </td>
                   <td style={TD}><Badge color={s.is_active ? 'green' : 'gray'}>{s.is_active ? 'Active' : 'Inactive'}</Badge></td>
                   <td style={TD}>{s.sold_count}</td>
@@ -857,10 +857,10 @@ export default function SpecialsPage() {
                   <span style={fieldLabel}>Default discount % (all variants)</span>
                   <Input type="number" min="1" max="100" placeholder="Optional — applies to variants without their own %" value={form.discount_pct} onChange={v => setForm(f => ({ ...f, discount_pct: v }))} />
                 </label>
-                <div className="specials-variant-block" style={{ border: '1px solid #E8E0D8', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 12px', background: '#FAF7F4', borderBottom: '1px solid #E8E0D8' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1C1408' }}>Per-variant pricing</span>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>
+                <div className="specials-variant-block" style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 12px', background: '#FAF7F4', borderBottom: '1px solid var(--color-border)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Per-variant pricing</span>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
                       Set a discount on one or more variants. Leave a row blank if that size should stay full price.
                     </p>
                   </div>
@@ -878,7 +878,7 @@ export default function SpecialsPage() {
                         return (
                           <tr key={v.id}>
                             <td data-label="Variant" style={{ ...TD, fontWeight: 600, fontSize: 12 }}>{v.name}</td>
-                            <td data-label="Catalog" style={{ ...TD, fontSize: 12, color: '#6B5D4F' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
+                            <td data-label="Catalog" style={{ ...TD, fontSize: 12, color: 'var(--color-text-secondary)' }}>MVR {parseFloat(String(v.price)).toFixed(2)}</td>
                             <td data-label="Discount %" style={{ ...TD, padding: '6px 8px' }}>
                               <Input type="number" min="1" max="100" placeholder="%" value={row.discount_pct} onChange={val => setVariantField(v.id, 'discount_pct', val, Number(v.price))} />
                             </td>
@@ -893,7 +893,7 @@ export default function SpecialsPage() {
                 </div>
               </>
             )}
-            <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E', lineHeight: 1.5 }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
               {hasVariants
                 ? 'One discount per item per date range. Variant rows save on the same discount.'
                 : catalogPrice > 0
@@ -903,7 +903,7 @@ export default function SpecialsPage() {
             <label>
               <span style={fieldLabel}>Badge Label (optional)</span>
               <Input placeholder="e.g. Chef's Special" value={form.badge_label} onChange={v => setForm(f => ({ ...f, badge_label: v }))} />
-              <span style={{ display: 'block', marginTop: 4, fontSize: 11, color: '#9C8E7E' }}>
+              <span style={{ display: 'block', marginTop: 4, fontSize: 11, color: 'var(--color-text-muted)' }}>
                 Leave blank for no custom badge. The Type column still shows the discount.
               </span>
             </label>
@@ -929,7 +929,7 @@ export default function SpecialsPage() {
             </div>
             <div>
               <span style={{ ...fieldLabel, marginBottom: 8 }}>
-                Active Days <span style={{ color: '#9C8E7E', fontWeight: 400 }}>(empty = all days)</span>
+                Active Days <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(empty = all days)</span>
               </span>
               <div className="specials-day-row">
                 {DAY_NAMES.map((name, i) => {
@@ -956,7 +956,7 @@ export default function SpecialsPage() {
               <div className="specials-active-toggle">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minHeight: 44 }}>
                   <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} style={{ width: 16, height: 16 }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#6B5D4F' }}>Active</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Active</span>
                 </label>
               </div>
             </div>
@@ -967,7 +967,7 @@ export default function SpecialsPage() {
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 rows={2}
-                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E8E0D8', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
               />
             </label>
           </div>
