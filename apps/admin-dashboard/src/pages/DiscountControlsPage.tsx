@@ -27,7 +27,7 @@ type ApproverRow = {
 
 const sectionStyle: CSSProperties = {
   background: '#FDFAF7',
-  border: '1px solid #E8E0D8',
+  border: '1px solid var(--color-border)',
   borderRadius: 16,
   padding: '1.25rem 1.5rem',
   marginBottom: '1.25rem',
@@ -43,7 +43,7 @@ const sectionTitleStyle: CSSProperties = {
 const sectionHintStyle: CSSProperties = {
   margin: '0 0 14px',
   fontSize: 13,
-  color: '#9C8E7E',
+  color: 'var(--color-text-muted)',
   lineHeight: 1.45,
 };
 
@@ -261,7 +261,7 @@ export function DiscountControlsPage() {
     return (
       <PageShell>
         <PageHeader title="Discount Controls" section="Customers & Marketing" />
-        <p style={{ color: '#9C8E7E' }}>
+        <p style={{ color: 'var(--color-text-muted)' }}>
           You need the <code>discounts.settings.manage</code> permission to view this page.
         </p>
       </PageShell>
@@ -286,7 +286,7 @@ export function DiscountControlsPage() {
       {savedMsg && <p style={{ color: '#166534', marginBottom: 12 }}>{savedMsg}</p>}
 
       {loading ? (
-        <p style={{ color: '#9C8E7E' }}>Loading…</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : (
         <>
           {/* Global switch */}
@@ -346,7 +346,7 @@ export function DiscountControlsPage() {
                   value={maxPercent}
                   onChange={(e) => setMaxPercent(Number(e.target.value))}
                   aria-label="Max discount percent"
-                  style={{ width: '100%', accentColor: '#D4813A' }}
+                  style={{ width: '100%', accentColor: 'var(--color-primary)' }}
                 />
                 <Input
                   label="Or type percent"
@@ -377,7 +377,7 @@ export function DiscountControlsPage() {
               Empty list = global max applies to everyone.
             </p>
             {roleRows.length === 0 && (
-              <p style={{ fontSize: 13, color: '#9C8E7E', marginBottom: 10 }}>No per-role overrides.</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 10 }}>No per-role overrides.</p>
             )}
             {roleRows.map((row, i) => (
               <div key={i} style={rowStyle}>
@@ -521,9 +521,9 @@ export function DiscountControlsPage() {
                 onChange={(v) => setMaxAttempts(Number(v) || 1)}
               />
             </div>
-            <h3 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#6B5D4F' }}>Approvers</h3>
+            <h3 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Approvers</h3>
             {approverRows.length === 0 && (
-              <p style={{ fontSize: 13, color: '#9C8E7E', marginBottom: 10 }}>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 10 }}>
                 No approvers yet. Add at least one phone before turning approval on.
               </p>
             )}
@@ -576,7 +576,7 @@ export function DiscountControlsPage() {
             <h2 id="dc-perm-note" style={sectionTitleStyle}>Who can discount</h2>
             <p style={sectionHintStyle}>
               Read-only from Roles & Permissions. Change grants under{' '}
-              <Link to="/settings?tab=permissions" style={{ color: '#D4813A' }}>Roles & Permissions</Link>.
+              <Link to="/settings?tab=permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>.
             </p>
             <p style={{ margin: '0 0 8px', fontSize: 13, color: '#3D2B1F' }}>
               <strong>promotions.discounts:</strong>{' '}
