@@ -57,7 +57,7 @@ export function ServiceChargeSettings() {
   };
 
   if (loading || !form) {
-    return <p style={{ color: '#9C8E7E', fontSize: 14 }}>Loading…</p>;
+    return <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Loading…</p>;
   }
 
   const exampleSubtotal = 100;
@@ -73,15 +73,15 @@ export function ServiceChargeSettings() {
         </p>
       )}
 
-      <p style={{ margin: 0, fontSize: 13, color: '#6B5D4F', lineHeight: 1.5 }}>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
         Service charge is calculated by the backend and applied only to eligible orders. Paid orders are never changed when you update these settings.
       </p>
 
       <Card>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Enable service charge</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>When off, no service charge is added to any order.</p>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>Enable service charge</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>When off, no service charge is added to any order.</p>
           </div>
           <Toggle on={form.enabled} onClick={() => setForm({ ...form, enabled: !form.enabled })} />
         </div>
@@ -90,28 +90,28 @@ export function ServiceChargeSettings() {
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Label</label>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Label</label>
           <input
             value={form.label}
             onChange={(e) => setForm({ ...form, label: e.target.value })}
             maxLength={50}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8E0D8', fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontFamily: 'inherit' }}
           />
         </div>
         <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>Charge type</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Charge type</label>
             <select
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value as 'percent' | 'fixed' })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8E0D8', fontFamily: 'inherit' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontFamily: 'inherit' }}
             >
               <option value="percent">Percentage</option>
               <option value="fixed">Fixed amount (MVR)</option>
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6B5D4F', marginBottom: 4 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
               {form.type === 'percent' ? 'Value (%)' : 'Value (MVR)'}
             </label>
             <input
@@ -121,18 +121,18 @@ export function ServiceChargeSettings() {
               step={form.type === 'percent' ? 0.1 : 1}
               value={form.value}
               onChange={(e) => setForm({ ...form, value: parseFloat(e.target.value) || 0 })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E8E0D8', fontFamily: 'inherit' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontFamily: 'inherit' }}
             />
           </div>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: '#9C8E7E' }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
           Example: {form.type === 'percent' ? `${form.value}% on MVR ${exampleSubtotal} = MVR ${exampleSc.toFixed(2)}` : `Fixed MVR ${form.value} per eligible order`}
         </p>
         </div>
       </Card>
 
       <Card>
-        <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 14, color: '#1C1408' }}>Apply service charge to</p>
+        <p style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>Apply service charge to</p>
         {([
           ['apply_dine_in', 'Dine-in'],
           ['apply_takeaway', 'Takeaway'],
@@ -155,14 +155,14 @@ export function ServiceChargeSettings() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>Taxable</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>Include service charge in GST calculation.</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>Include service charge in GST calculation.</p>
           </div>
           <Toggle on={form.taxable} onClick={() => setForm({ ...form, taxable: !form.taxable })} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>Show on receipts</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9C8E7E' }}>Display as a separate line on printed and digital receipts.</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>Display as a separate line on printed and digital receipts.</p>
           </div>
           <Toggle on={form.show_on_receipts} onClick={() => setForm({ ...form, show_on_receipts: !form.show_on_receipts })} />
         </div>
