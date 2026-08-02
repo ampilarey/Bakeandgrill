@@ -120,7 +120,7 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
       )}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ margin: 0, fontSize: 12, color: '#6B5D4F' }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
           Trim, crop to hero aspect, pick a poster frame, then export. Output is muted H.264 for the banner.
           {metaLabel ? ` · Source: ${metaLabel}` : ''}
         </p>
@@ -133,7 +133,7 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
 
         <div
           style={{
-            background: '#1C1408',
+            background: 'var(--color-text)',
             borderRadius: 12,
             overflow: 'hidden',
             aspectRatio: aspect === 'original' ? '16 / 9' : aspect.replace(':', ' / '),
@@ -153,12 +153,12 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           ) : (
-            <Film size={40} color="#9C8E7E" />
+            <Film size={40} color="var(--color-text-muted)" />
           )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: '#6B5D4F', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
             Trim start ({fmt(trimStart)})
             <input
               type="range"
@@ -171,10 +171,10 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
                 setTrimStart(Math.min(v, trimEnd - 0.2));
                 seekTo(v);
               }}
-              style={{ accentColor: '#D4813A' }}
+              style={{ accentColor: 'var(--color-primary)' }}
             />
           </label>
-          <label style={{ fontSize: 11, fontWeight: 600, color: '#6B5D4F', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
             Trim end ({fmt(trimEnd)})
             <input
               type="range"
@@ -187,12 +187,12 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
                 setTrimEnd(Math.max(v, trimStart + 0.2));
                 seekTo(v);
               }}
-              style={{ accentColor: '#D4813A' }}
+              style={{ accentColor: 'var(--color-primary)' }}
             />
           </label>
         </div>
 
-        <label style={{ fontSize: 11, fontWeight: 600, color: '#6B5D4F', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
           Poster frame ({fmt(posterAt)})
           <input
             type="range"
@@ -205,12 +205,12 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
               setPosterAt(v);
               seekTo(v);
             }}
-            style={{ accentColor: '#D4813A' }}
+            style={{ accentColor: 'var(--color-primary)' }}
           />
         </label>
 
         <div>
-          <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: '#6B5D4F' }}>Crop aspect</p>
+          <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Crop aspect</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {ASPECTS.map((a) => (
               <button
@@ -221,13 +221,13 @@ export function VideoStudioModal({ open, onClose, sourceUrl, mediaId, onExported
                   height: 32,
                   padding: '0 12px',
                   borderRadius: 8,
-                  border: aspect === a.value ? '1.5px solid #D4813A' : '1px solid #E8E0D8',
+                  border: aspect === a.value ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                   background: aspect === a.value ? '#FFF7ED' : '#fff',
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
-                  color: '#1C1408',
+                  color: 'var(--color-text)',
                 }}
               >
                 {a.label}
