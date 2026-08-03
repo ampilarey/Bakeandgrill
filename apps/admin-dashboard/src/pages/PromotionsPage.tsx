@@ -29,7 +29,7 @@ const EMPTY: PromotionPayload = {
   name: '', code: '', type: 'fixed', discount_value: 0,
   scope: 'order', min_order_laar: null, max_uses: null,
   stackable: false, is_active: true, auto_apply: false,
-  first_order_only: false, waive_delivery: false, budget_laar: null,
+  first_order_only: false, registered_only: false, waive_delivery: false, budget_laar: null,
   metadata: {},
   starts_at: null, expires_at: null,
   days_of_week: null, starts_time: null, ends_time: null,
@@ -484,6 +484,13 @@ function PromotionForm({
           <input type="checkbox" checked={!!form.first_order_only} onChange={(e) => set('first_order_only', e.target.checked)} />
           First order only
         </label>
+        <label
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}
+          title="Guests without an account will not receive this offer."
+        >
+          <input type="checkbox" checked={!!form.registered_only} onChange={(e) => set('registered_only', e.target.checked)} />
+          Registered customers only
+        </label>
         {form.type !== 'free_delivery' && (
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
             <input type="checkbox" checked={!!form.waive_delivery} onChange={(e) => set('waive_delivery', e.target.checked)} />
@@ -491,6 +498,11 @@ function PromotionForm({
           </label>
         )}
       </div>
+      {!!form.registered_only && (
+        <p style={{ margin: '-4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Guests must sign in or create an account to use this offer.
+        </p>
+      )}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
         <Btn variant="ghost" onClick={onCancel}>Cancel</Btn>
         <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Promo'}</Btn>
@@ -541,6 +553,7 @@ function toFormPayload(p: Promotion): PromotionPayload {
     is_active: p.is_active,
     auto_apply: !!p.auto_apply,
     first_order_only: !!p.first_order_only,
+    registered_only: !!p.registered_only,
     waive_delivery: !!p.waive_delivery || type === 'free_delivery',
     budget_laar: p.budget_laar ?? null,
     metadata: p.metadata ?? {},
@@ -768,6 +781,11 @@ export function PromotionsPage() {
                     {p.first_order_only && (
                       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>
                         First order only
+                      </div>
+                    )}
+                    {p.registered_only && (
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>
+                        Registered customers only
                       </div>
                     )}
                     {p.restricted_customer_id && (

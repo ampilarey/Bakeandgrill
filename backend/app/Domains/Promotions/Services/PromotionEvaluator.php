@@ -237,6 +237,11 @@ class PromotionEvaluator
             }
         }
 
+        $registeredCheck = $this->registeredOnlyGate($promotion, $customerId);
+        if ($registeredCheck !== null) {
+            return $this->reject($registeredCheck);
+        }
+
         $firstOrderCheck = $this->firstOrderGate($promotion, $customerId, $excludeOrderId);
         if ($firstOrderCheck !== null) {
             return $this->reject($firstOrderCheck);
@@ -343,6 +348,11 @@ class PromotionEvaluator
             if ($confirmedUsage + $pendingQuery->count() >= $promotion->max_uses_per_customer) {
                 return $this->reject('You have already used this promo code the maximum number of times.');
             }
+        }
+
+        $registeredCheck = $this->registeredOnlyGate($promotion, $customerId);
+        if ($registeredCheck !== null) {
+            return $this->reject($registeredCheck);
         }
 
         $firstOrderCheck = $this->firstOrderGate($promotion, $customerId, $excludeOrderId);
@@ -456,13 +466,33 @@ class PromotionEvaluator
         return null;
     }
 
+    /**
+     * Opt-in: reject guests when the promotion requires a registered account.
+     * Default (registered_only=false) keeps guest-eligible behaviour unchanged.
+     *
+     * @return string|null rejection message
+     */
+    private function registeredOnlyGate(Promotion $promotion, ?int $customerId): ?string
+    {
+        if (!$promotion->registered_only) {
+            return null;
+        }
+
+        if ($customerId === null) {
+            return 'Sign in or create an account to use this offer.';
+        }
+
+        return null;
+    }
+
     /** @return string|null rejection message */
     private function firstOrderGate(Promotion $promotion, ?int $customerId, ?int $excludeOrderId = null): ?string
     {
         if (!$promotion->first_order_only) {
             return null;
         }
-        // Guests (no linked customer) count as first-order eligible.
+        // Guests (no linked customer) count as first-order eligible unless
+        // registered_only is set (handled by registeredOnlyGate above).
         if ($customerId === null) {
             return null;
         }

@@ -51,6 +51,7 @@ export type Promotion = {
   is_active: boolean;
   auto_apply?: boolean;
   first_order_only?: boolean;
+  registered_only?: boolean;
   waive_delivery?: boolean;
   metadata?: PromotionMetadata | null;
   starts_at?: string | null;
@@ -76,6 +77,7 @@ export type PromotionPayload = {
   is_active?: boolean;
   auto_apply?: boolean;
   first_order_only?: boolean;
+  registered_only?: boolean;
   waive_delivery?: boolean;
   budget_laar?: number | null;
   metadata?: PromotionMetadata | null;
