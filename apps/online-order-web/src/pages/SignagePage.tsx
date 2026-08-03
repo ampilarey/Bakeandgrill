@@ -2,7 +2,7 @@
  * Fullscreen TV signage board — standalone, non-interactive.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { API_ORIGIN, fetchCategories, fetchItems, fetchOffers } from '../api';
 import type { Item } from '../api';
 import type { Category } from '@shared/types';
@@ -81,15 +81,12 @@ function writeCache(screen: string, blob: CacheBlob) {
   } catch { /* quota */ }
 }
 
-/** True inside an iframe (or when ?embed=1 forces preview mode). */
-function detectEmbedded(): boolean {
+/** True when running inside an iframe. Cross-origin access to top can throw. */
+function detectIframeEmbedded(): boolean {
   try {
     if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('embed') === '1') return true;
     return window.self !== window.top;
   } catch {
-    // Cross-origin access to window.top can throw — treat as embedded.
     return true;
   }
 }
@@ -105,6 +102,7 @@ export function SignagePage() {
   const { screen: screenParam } = useParams();
   const screen = screenParam || 'default';
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { settings } = useSiteSettingsContext();
   const logoUrl = settings.logo || '/logo.png';
 
@@ -121,7 +119,12 @@ export function SignagePage() {
   const [black, setBlack] = useState(false);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [deviceApproved, setDeviceApproved] = useState(false);
-  const [embedded] = useState(detectEmbedded);
+  const [inIframe] = useState(detectIframeEmbedded);
+  // Honour ?embed=1 via the router (and window.location as a belt-and-braces for
+  // non-router entry points) so admin preview can force embed layout in tests too.
+  const forceEmbed = searchParams.get('embed') === '1'
+    || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === '1');
+  const embedded = forceEmbed || inIframe;
 
   const versionRef = useRef<string>('');
   const advanceTimer = useRef<number | null>(null);
