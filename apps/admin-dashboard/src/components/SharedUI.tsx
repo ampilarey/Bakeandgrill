@@ -26,11 +26,12 @@ export function Spinner({ size = 24 }: { size?: number }) {
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
 export function Card({
-  children, style, className,
-}: { children: ReactNode; style?: React.CSSProperties; className?: string }) {
+  children, style, className, ...rest
+}: { children: ReactNode; style?: React.CSSProperties; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={className}
+      {...rest}
       style={{
         background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
