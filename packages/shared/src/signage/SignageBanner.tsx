@@ -222,7 +222,7 @@ export function resolveBannerScrollMode(
   if (mode === 'ticker' || mode === 'seamless' || mode === 'static') return mode;
   if ('scroll' in item && (item as { scroll?: boolean }).scroll === false) return 'static';
   if ('scroll' in item && (item as { scroll?: boolean }).scroll === true) return 'seamless';
-  return 'ticker';
+  return BANNER_APPEARANCE_DEFAULTS.scroll_mode;
 }
 
 export function resolveBannerDirection(

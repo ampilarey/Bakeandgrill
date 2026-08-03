@@ -63,7 +63,7 @@ final class SignageBannerNormalizerTest extends TestCase
         $this->assertSame('#fff8f0', $item['text_color']);
         $this->assertSame('rgba(12, 8, 4, 0.78)', $item['background_color']);
         $this->assertSame('left', $item['align']);
-        $this->assertSame('ticker', $item['scroll_mode']);
+        $this->assertSame(SignageBannerNormalizer::DEFAULT_SCROLL_MODE, $item['scroll_mode']);
         $this->assertSame('ltr', $item['direction']);
         $this->assertSame(1, $item['repeat_count']);
         $this->assertSame('full', $item['date_format']);
@@ -75,11 +75,14 @@ final class SignageBannerNormalizerTest extends TestCase
     {
         $seamless = SignageBannerNormalizer::normalizeItem(['scroll' => true], 0);
         $static = SignageBannerNormalizer::normalizeItem(['scroll' => false], 0);
-        $ticker = SignageBannerNormalizer::normalizeItem(['scroll_mode' => 'ticker'], 0);
+        $defaultMode = SignageBannerNormalizer::normalizeItem(['scroll_mode' => SignageBannerNormalizer::DEFAULT_SCROLL_MODE], 0);
+        $absent = SignageBannerNormalizer::normalizeItem(['id' => 'no-motion-key'], 0);
 
         $this->assertSame('seamless', $seamless['scroll_mode']);
         $this->assertSame('static', $static['scroll_mode']);
-        $this->assertSame('ticker', $ticker['scroll_mode']);
+        $this->assertSame(SignageBannerNormalizer::DEFAULT_SCROLL_MODE, $defaultMode['scroll_mode']);
+        $this->assertSame(SignageBannerNormalizer::DEFAULT_SCROLL_MODE, $absent['scroll_mode']);
+        $this->assertSame('ticker', SignageBannerNormalizer::DEFAULT_SCROLL_MODE);
     }
 
     public function test_appearance_fields_round_trip_through_normalize(): void

@@ -56,6 +56,9 @@ final class SignageBannerNormalizer
 
     private const DEFAULT_BG_COLOR = 'rgba(12, 8, 4, 0.78)';
 
+    /** Product default when neither scroll_mode nor scroll is present. Must match BANNER_APPEARANCE_DEFAULTS.scroll_mode. */
+    public const DEFAULT_SCROLL_MODE = 'ticker';
+
     /**
      * @param  mixed  $raw
      * @return BannerSettings
@@ -83,7 +86,7 @@ final class SignageBannerNormalizer
                     'fields' => self::ALLOWED_FIELDS,
                     'speed_seconds' => 40,
                     'duration_seconds' => 30,
-                    'scroll_mode' => 'ticker',
+                    'scroll_mode' => self::DEFAULT_SCROLL_MODE,
                     'repeat_count' => 1,
                 ], 0);
             }
@@ -127,7 +130,7 @@ final class SignageBannerNormalizer
                 'fields' => self::ALLOWED_FIELDS,
                 'speed_seconds' => 40,
                 'duration_seconds' => 30,
-                'scroll_mode' => 'ticker',
+                'scroll_mode' => self::DEFAULT_SCROLL_MODE,
                 'repeat_count' => 1,
             ], 0)],
         ];
@@ -243,8 +246,8 @@ final class SignageBannerNormalizer
             return ($raw['scroll'] ?? true) === false ? 'static' : 'seamless';
         }
 
-        // No scroll_mode / scroll key → product default (ticker).
-        return 'ticker';
+        // No scroll_mode / scroll key → product default.
+        return self::DEFAULT_SCROLL_MODE;
     }
 
     /**

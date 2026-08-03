@@ -1552,7 +1552,7 @@ export function SignagePage() {
                                 onClick={() => moveBanner(idx, -1)}
                                 disabled={idx === 0}
                                 style={{ minHeight: 40 }}
-                                data-testid={`signage-banner-move-up-${b.id}`}
+                                data-testid={`signage-banner-up-${idx}`}
                                 aria-label={`Move banner ${idx + 1} up`}
                               >
                                 ↑
@@ -1563,7 +1563,7 @@ export function SignagePage() {
                                 onClick={() => moveBanner(idx, 1)}
                                 disabled={idx === bannerItems.length - 1}
                                 style={{ minHeight: 40 }}
-                                data-testid={`signage-banner-move-down-${b.id}`}
+                                data-testid={`signage-banner-down-${idx}`}
                                 aria-label={`Move banner ${idx + 1} down`}
                               >
                                 ↓

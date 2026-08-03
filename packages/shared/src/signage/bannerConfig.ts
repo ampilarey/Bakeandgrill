@@ -111,7 +111,7 @@ function normalizeSchedule(raw: unknown): SignageSchedule | null {
 /**
  * Resolve scroll_mode. Explicit scroll_mode always wins.
  * Legacy scroll:false → static; scroll:true → seamless (pre-migration look).
- * Absent → ticker (product default after the seamless→ticker migration).
+ * Absent → BANNER_APPEARANCE_DEFAULTS.scroll_mode.
  */
 export function normalizeScrollMode(raw: Record<string, unknown>): SignageBannerScrollMode {
   const mode = String(raw.scroll_mode || '');
@@ -121,7 +121,7 @@ export function normalizeScrollMode(raw: Record<string, unknown>): SignageBanner
   if ('scroll' in raw) {
     return raw.scroll === false ? 'static' : 'seamless';
   }
-  return 'ticker';
+  return BANNER_APPEARANCE_DEFAULTS.scroll_mode;
 }
 
 function normalizeItem(raw: Record<string, unknown>, fallbackIndex = 0): SignageBannerItem {
@@ -177,7 +177,7 @@ export function normalizeBannerSettings(raw: unknown): SignageBannerSettings {
         fields: ['date', 'time', 'next_prayer', 'countdown'],
         speed_seconds: 40,
         duration_seconds: 30,
-        scroll_mode: 'ticker',
+        scroll_mode: BANNER_APPEARANCE_DEFAULTS.scroll_mode,
         repeat_count: 1,
       })],
     };
@@ -211,7 +211,7 @@ export function normalizeBannerSettings(raw: unknown): SignageBannerSettings {
       fields: ['date', 'time', 'next_prayer', 'countdown'],
       speed_seconds: 40,
       duration_seconds: 30,
-      scroll_mode: 'ticker',
+      scroll_mode: BANNER_APPEARANCE_DEFAULTS.scroll_mode,
       repeat_count: 1,
     })],
   };
@@ -237,8 +237,8 @@ export function newBannerItem(partial: Partial<SignageBannerItem> = {}): Signage
     fields: ['date', 'time', 'next_prayer', 'countdown'],
     speed_seconds: 40,
     duration_seconds: 30,
-    scroll_mode: 'ticker',
-    direction: 'ltr',
+    scroll_mode: BANNER_APPEARANCE_DEFAULTS.scroll_mode,
+    direction: BANNER_APPEARANCE_DEFAULTS.direction,
     repeat_count: 1,
     ...partial,
   });

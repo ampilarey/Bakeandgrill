@@ -563,12 +563,13 @@ describe('SignagePage', () => {
     await screen.findByTestId('signage-banner-item-main');
 
     // Single banner — no move controls (same as remove).
-    expect(screen.queryByTestId('signage-banner-move-up-main')).toBeNull();
-    expect(screen.queryByTestId('signage-banner-move-down-main')).toBeNull();
+    expect(screen.queryByTestId('signage-banner-up-0')).toBeNull();
+    expect(screen.queryByTestId('signage-banner-down-0')).toBeNull();
 
     fireEvent.click(screen.getByTestId('signage-banner-add'));
     await waitFor(() => {
-      expect(screen.getByTestId('signage-banner-move-down-main')).toBeTruthy();
+      expect(screen.getByTestId('signage-banner-down-0')).toBeTruthy();
+      expect(screen.getByTestId('signage-banner-up-1')).toBeTruthy();
     });
 
     const panel = screen.getByTestId('signage-banner-panel');
@@ -576,7 +577,7 @@ describe('SignagePage', () => {
       .map((el) => el.getAttribute('data-testid'));
     expect(itemsBefore[0]).toBe('signage-banner-item-main');
 
-    fireEvent.click(screen.getByTestId('signage-banner-move-down-main'));
+    fireEvent.click(screen.getByTestId('signage-banner-down-0'));
     await waitFor(() => {
       const items = Array.from(panel.querySelectorAll('[data-testid^="signage-banner-item-"]'))
         .map((el) => el.getAttribute('data-testid'));
@@ -584,7 +585,7 @@ describe('SignagePage', () => {
       expect(items[1]).toBe('signage-banner-item-main');
     });
 
-    fireEvent.click(screen.getByTestId('signage-banner-move-up-main'));
+    fireEvent.click(screen.getByTestId('signage-banner-up-1'));
     await waitFor(() => {
       const items = Array.from(panel.querySelectorAll('[data-testid^="signage-banner-item-"]'))
         .map((el) => el.getAttribute('data-testid'));
@@ -592,7 +593,7 @@ describe('SignagePage', () => {
     });
 
     // Move down again and save — payload order must match UI.
-    fireEvent.click(screen.getByTestId('signage-banner-move-down-main'));
+    fireEvent.click(screen.getByTestId('signage-banner-down-0'));
     fireEvent.click(screen.getByTestId('signage-banner-save'));
     await waitFor(() => expect(saveSpy).toHaveBeenCalled());
     const payload = saveSpy.mock.calls[0][0];

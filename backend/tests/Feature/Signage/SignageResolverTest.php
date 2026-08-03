@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Signage;
 
 use App\Domains\Permissions\PermissionCatalogSync;
+use App\Domains\Signage\Services\SignageBannerNormalizer;
 use App\Domains\Signage\Services\SignageResolver;
 use App\Domains\Signage\Services\WeightedRotation;
 use App\Models\Role;
@@ -326,9 +327,9 @@ final class SignageResolverTest extends TestCase
         $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-multi');
         $this->assertCount(2, $cfg['banner']['banners']);
         $this->assertSame('wifi', $cfg['banner']['banners'][1]['id']);
-        // Pre-enhancement banners still get appearance defaults after save.
+        // Banners posted with no scroll_mode / scroll get current appearance defaults.
         $this->assertSame(1.0, $cfg['banner']['banners'][0]['font_scale']);
-        $this->assertSame('seamless', $cfg['banner']['banners'][0]['scroll_mode']);
+        $this->assertSame(SignageBannerNormalizer::DEFAULT_SCROLL_MODE, $cfg['banner']['banners'][0]['scroll_mode']);
         $this->assertSame('full', $cfg['banner']['banners'][0]['date_format']);
     }
 
@@ -381,7 +382,7 @@ final class SignageResolverTest extends TestCase
         $this->assertSame(3.0, $cfg['banner']['banners'][0]['inset_percent']);
     }
 
-    public function test_banner_legacy_scroll_false_migrates_on_save(): void
+    public function test_banner_legacy_scroll_boolean_preserves_look_on_save(): void
     {
         $owner = User::create([
             'name' => 'Owner Banner Migrate',
@@ -392,11 +393,12 @@ final class SignageResolverTest extends TestCase
         ]);
         Sanctum::actingAs($owner, ['staff']);
 
+        // scroll:false → static (pre-enhancement non-scrolling banners).
         $this->putJson('/api/admin/signage/banner', [
             'enabled' => true,
             'banners' => [[
-                'id' => 'legacy-scroll',
-                'label' => 'Legacy',
+                'id' => 'legacy-scroll-false',
+                'label' => 'Legacy static',
                 'enabled' => true,
                 'position' => 'bottom',
                 'fields' => ['date'],
@@ -406,6 +408,27 @@ final class SignageResolverTest extends TestCase
             ]],
         ])->assertOk()
             ->assertJsonPath('banner.banners.0.scroll_mode', 'static');
+
+        // scroll:true → seamless (pre-enhancement scrolling look must be preserved).
+        $this->putJson('/api/admin/signage/banner', [
+            'enabled' => true,
+            'banners' => [[
+                'id' => 'legacy-scroll-true',
+                'label' => 'Legacy seamless',
+                'enabled' => true,
+                'position' => 'bottom',
+                'fields' => ['date'],
+                'speed_seconds' => 40,
+                'duration_seconds' => 30,
+                'scroll' => true,
+            ]],
+        ])->assertOk()
+            ->assertJsonPath('banner.banners.0.scroll_mode', 'seamless');
+
+        /** @var SignageResolver $resolver */
+        $resolver = app(SignageResolver::class);
+        $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-legacy-scroll');
+        $this->assertSame('seamless', $cfg['banner']['banners'][0]['scroll_mode']);
     }
 
     public function test_prayer_island_setting_drives_schedule_and_admin_round_trip(): void

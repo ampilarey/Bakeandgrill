@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  BANNER_APPEARANCE_DEFAULTS,
   bannerStyleVars,
   buildBannerSegments,
   fireSignageBannerIteration,
@@ -15,6 +16,8 @@ import {
   type SignageBannerSettings,
   type SignagePrayerEntry,
 } from '@shared/signage';
+// Vite raw import — asserts source consolidation without Node fs typings.
+import bannerConfigSrc from '../../../../packages/shared/src/signage/bannerConfig.ts?raw';
 
 const schedule: SignagePrayerEntry[] = [
   { name: 'Fajr', at: '2026-08-02T05:12:00+05:00' },
@@ -155,7 +158,7 @@ describe('SignageBanner helpers', () => {
     expect(screen.getByTestId('signage-banner').textContent).toMatch(/Wi-Fi: BG-Guest · secret/);
   });
 
-  it('normalises absent appearance fields to legacy defaults', () => {
+  it('normalises absent appearance fields to product defaults', () => {
     const item = normalizeBannerSettings({
       enabled: true,
       position: 'bottom',
@@ -167,7 +170,7 @@ describe('SignageBanner helpers', () => {
     expect(item.text_color).toBe('#fff8f0');
     expect(item.background_color).toBe('rgba(12, 8, 4, 0.78)');
     expect(item.align).toBe('left');
-    expect(item.scroll_mode).toBe('ticker'); // absent scroll_mode → ticker
+    expect(item.scroll_mode).toBe(BANNER_APPEARANCE_DEFAULTS.scroll_mode);
     expect(item.date_format).toBe('full');
     expect(item.inset_percent).toBe(0);
   });
@@ -188,16 +191,26 @@ describe('SignageBanner helpers', () => {
     expect(normalizeScrollMode({ scroll: true, scroll_mode: 'ticker' })).toBe('ticker');
   });
 
-  it('absent scroll_mode defaults to ticker', () => {
-    expect(normalizeScrollMode({})).toBe('ticker');
+  it('absent scroll_mode defaults to BANNER_APPEARANCE_DEFAULTS.scroll_mode', () => {
+    expect(normalizeScrollMode({})).toBe(BANNER_APPEARANCE_DEFAULTS.scroll_mode);
     expect(normalizeBannerSettings({
       enabled: true,
       banners: [{ id: 'legacy-absent' }],
-    }).banners[0].scroll_mode).toBe('ticker');
+    }).banners[0].scroll_mode).toBe(BANNER_APPEARANCE_DEFAULTS.scroll_mode);
   });
 
-  it('new banners default to ticker', () => {
-    expect(newBannerItem().scroll_mode).toBe('ticker');
+  it('new banners default to BANNER_APPEARANCE_DEFAULTS.scroll_mode', () => {
+    expect(newBannerItem().scroll_mode).toBe(BANNER_APPEARANCE_DEFAULTS.scroll_mode);
+  });
+
+  it('bannerConfig.ts has no scroll_mode default literal outside BANNER_APPEARANCE_DEFAULTS', () => {
+    const withoutDefaults = bannerConfigSrc.replace(
+      /export const BANNER_APPEARANCE_DEFAULTS = \{[\s\S]*?\n\};/,
+      'export const BANNER_APPEARANCE_DEFAULTS = {};',
+    );
+    expect(withoutDefaults).not.toMatch(/scroll_mode:\s*'ticker'/);
+    expect(withoutDefaults).not.toMatch(/return\s+'ticker'/);
+    expect(BANNER_APPEARANCE_DEFAULTS.scroll_mode).toBe('ticker');
   });
 
   it('emits CSS custom properties from font/height scale', () => {
