@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SignageDesigner } from '../pages/signage/SignageDesigner';
+import { setViewportWidth } from './viewport';
 
 vi.mock('../components/ui', () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn() }),
@@ -16,6 +17,10 @@ vi.mock('../api', async () => {
     ...actual,
     saveSignageCustomTemplate: vi.fn().mockResolvedValue({ templates: [] }),
   };
+});
+
+beforeEach(() => {
+  setViewportWidth(1024);
 });
 
 const slide = {
@@ -84,7 +89,8 @@ describe('SignageDesigner', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'menu_list' }));
     expect(screen.getAllByText('menu_list').length).toBeGreaterThan(0);
-    expect(screen.getByTestId(/designer-el-/)).toBeTruthy();
+    const overlays = screen.getAllByTestId(/^designer-el-/);
+    expect(overlays.length).toBe(1);
     expect(screen.getByTestId('signage-slide-canvas')).toBeTruthy();
   });
 

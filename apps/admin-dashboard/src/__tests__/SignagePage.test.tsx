@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { boardPixelSize, SignagePage } from '../pages/SignagePage';
 import { renderWithRouter } from './testUtils';
 import * as api from '../api';
+import { injectSignageMobileCss, setViewportWidth } from './viewport';
 
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
@@ -149,6 +150,27 @@ describe('SignagePage', () => {
     expect(health).toBeTruthy();
     expect(health.textContent).toMatch(/Online/);
     expect(health.textContent).toMatch(/1920x1080/);
+  });
+
+  it('pending pairing row and tab strip do not overflow at 390px', async () => {
+    setViewportWidth(390);
+    const style = injectSignageMobileCss();
+    renderWithRouter(<SignagePage />);
+
+    const tabRow = await screen.findByTestId('signage-tab-row');
+    expect(getComputedStyle(tabRow).flexWrap).toBe('nowrap');
+    expect(getComputedStyle(tabRow).overflowX).toBe('auto');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Devices' }));
+    const pending = await screen.findByTestId('signage-pending-1');
+    expect(pending.className).toMatch(/\bform-grid-3\b/);
+    expect(pending.style.gridTemplateColumns).toMatch(/auto-fit/);
+    pending.style.width = '390px';
+    expect(getComputedStyle(pending).gridTemplateColumns.replace(/\s+/g, ' ').trim()).toBe('1fr');
+    expect(pending.scrollWidth).toBeLessThanOrEqual(pending.clientWidth + 1);
+
+    style.remove();
+    setViewportWidth(1024);
   });
 
   it('creates a screen from the screens tab form', async () => {

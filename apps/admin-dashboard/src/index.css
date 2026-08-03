@@ -42,6 +42,10 @@
   --color-warning-bg:    #FFF7ED;
   --color-warning-strong:#92400E;
 
+  /* TV Signage designer preview chrome */
+  --color-signage-canvas-bg:     #2A2118;
+  --color-signage-canvas-border: #5C4A3A;
+
   /* Radius */
   --radius-sm:  6px;
   --radius-md:  10px;
@@ -456,6 +460,18 @@ a { text-decoration: none; color: inherit; }
   .no-print { display: none !important; }
 }
 
+/* ── TV Signage designer (desktop chrome; mobile overrides below) ─ */
+.signage-designer-canvas-wrap {
+  background: var(--color-signage-canvas-bg);
+}
+.signage-designer-canvas {
+  border: 1px solid var(--color-signage-canvas-border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+.signage-designer-sticky-actions {
+  display: none;
+}
+
 /* ── Mobile & Responsive Breakpoints ───────────────────────── */
 
 /* Tablet: 768px–1023px */
@@ -616,6 +632,52 @@ a { text-decoration: none; color: inherit; }
   .form-grid-2,
   .form-grid-3 {
     grid-template-columns: 1fr !important;
+  }
+
+  /* TV Signage designer — single-column stack (toolbar is outside the grid) */
+  .signage-designer-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .signage-designer-canvas-wrap {
+    order: 1 !important;
+    min-height: auto !important;
+  }
+  .signage-designer-props {
+    order: 2 !important;
+  }
+  .signage-designer-palette {
+    order: 3 !important;
+  }
+  .signage-designer-preview-size {
+    display: none !important;
+  }
+  .signage-designer-sticky-actions {
+    display: flex !important;
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-overlay);
+    gap: 8px;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+  }
+  .signage-designer-sticky-actions > button {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+  .signage-tab-row {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .signage-tab-row::-webkit-scrollbar {
+    display: none;
+  }
+  .signage-tab-row > button {
+    flex-shrink: 0;
+    scroll-snap-align: start;
   }
 
   /* Modal: full-width bottom sheet on mobile (scoped to SharedUI Modal only) */
