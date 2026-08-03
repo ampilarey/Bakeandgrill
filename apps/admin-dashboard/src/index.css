@@ -386,7 +386,7 @@ a { text-decoration: none; color: inherit; }
 }
 
 .admin-mobile-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-bg);
   display: flex;
   flex-direction: column;
@@ -1118,7 +1118,9 @@ a { text-decoration: none; color: inherit; }
   left: 0;
   right: 0;
   z-index: var(--z-overlay);
-  height: 56px;
+  /* min-height so safe-area padding grows the bar instead of squeezing icons */
+  min-height: 56px;
+  height: auto;
   padding-bottom: env(safe-area-inset-bottom, 0);
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
@@ -1129,7 +1131,7 @@ a { text-decoration: none; color: inherit; }
 /* ── Two-level AppShell ─────────────────────────────────────── */
 .admin-shell-root--desktop {
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .admin-shell-topbar {
@@ -1313,7 +1315,8 @@ a { text-decoration: none; color: inherit; }
 
 .admin-shell-main--mobile {
   padding: 16px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0));
+  /* Tab bar (56) + gap + iOS browser chrome buffer beyond env(safe-area). */
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
 }
 
 .admin-shell-icon-btn {

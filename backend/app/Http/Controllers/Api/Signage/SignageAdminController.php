@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Signage;
 
+use App\Domains\PrayerTimes\Actions\GetIslandCollection;
 use App\Domains\Signage\Services\SignageBannerNormalizer;
 use App\Domains\Signage\Services\SignageCache;
 use App\Domains\Signage\Services\SignageTemplateFactory;
@@ -14,6 +15,7 @@ use App\Models\SignagePlaylist;
 use App\Models\SignageScreen;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
+use App\Support\PrayerTimeHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -21,7 +23,10 @@ use Illuminate\Validation\Rule;
 
 final class SignageAdminController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly GetIslandCollection $islands,
+    ) {}
 
     public function overview(): JsonResponse
     {
@@ -32,6 +37,7 @@ final class SignageAdminController extends Controller
             'campaigns' => SignageCampaign::query()->with('playlist:id,name')->orderByDesc('priority')->get(),
             'emergency' => (string) SiteSetting::get('signage_emergency', 'none'),
             'prayer' => $this->prayerConfig(),
+            'prayer_islands' => $this->prayerIslandOptions(),
             'banner' => $this->bannerConfig(),
             'templates' => SignageTemplateFactory::templateCatalog(),
             'custom_templates' => $this->customTemplates(),
@@ -278,14 +284,23 @@ final class SignageAdminController extends Controller
             'prayers' => 'nullable|array',
             'prayers.*' => 'string|in:fajr,dhuhr,asr,maghrib,isha',
             'break_minutes' => 'nullable|integer|min:1|max:60',
+            'island_id' => 'nullable|integer|min:1|exists:prayer_islands,id',
         ]);
         $old = $this->prayerConfig();
         $cfg = [
             'enabled' => (bool) $data['enabled'],
             'prayers' => $data['prayers'] ?? $old['prayers'],
             'break_minutes' => (int) ($data['break_minutes'] ?? $old['break_minutes']),
+            'island_id' => isset($data['island_id'])
+                ? (int) $data['island_id']
+                : (int) ($old['island_id'] ?? PrayerTimeHelper::MALE_ISLAND_FALLBACK_ID),
         ];
-        SiteSetting::set('signage_prayer', $cfg);
+        SiteSetting::set('signage_prayer', [
+            'enabled' => $cfg['enabled'],
+            'prayers' => $cfg['prayers'],
+            'break_minutes' => $cfg['break_minutes'],
+        ]);
+        SiteSetting::set('signage_prayer_island_id', (string) $cfg['island_id']);
         SiteSetting::bust();
         $this->touch($request, 'signage.prayer.updated', null, $old, $cfg);
         SignageCache::bust();
@@ -380,17 +395,48 @@ final class SignageAdminController extends Controller
         return response()->json(['slide' => $slide]);
     }
 
-    /** @return array{enabled: bool, prayers: list<string>, break_minutes: int} */
+    /**
+     * @return array{enabled: bool, prayers: list<string>, break_minutes: int, island_id: int}
+     */
     private function prayerConfig(): array
     {
         $raw = SiteSetting::get('signage_prayer', '{}');
         $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+        $islandId = (int) SiteSetting::get(
+            'signage_prayer_island_id',
+            (string) PrayerTimeHelper::MALE_ISLAND_FALLBACK_ID
+        );
+        if ($islandId <= 0) {
+            $islandId = PrayerTimeHelper::MALE_ISLAND_FALLBACK_ID;
+        }
 
         return [
             'enabled' => (bool) ($cfg['enabled'] ?? true),
             'prayers' => array_values($cfg['prayers'] ?? ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']),
             'break_minutes' => (int) ($cfg['break_minutes'] ?? 15),
+            'island_id' => $islandId,
         ];
+    }
+
+    /**
+     * @return list<array{id: int, label: string, atoll: string}>
+     */
+    private function prayerIslandOptions(): array
+    {
+        try {
+            return $this->islands->execute()
+                ->map(fn ($island) => [
+                    'id' => $island->id,
+                    'label' => $island->nameLatin
+                        ? trim($island->atollLatin ? "{$island->atollLatin} · {$island->nameLatin}" : (string) $island->nameLatin)
+                        : $island->displayName(),
+                    'atoll' => (string) ($island->atollLatin ?: $island->atoll),
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /** @return array{enabled: bool, banners: list<array<string, mixed>>} */

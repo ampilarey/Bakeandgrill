@@ -226,6 +226,7 @@ export function SignagePage() {
   const [prayerEnabled, setPrayerEnabled] = useState(true);
   const [prayerBreak, setPrayerBreak] = useState('15');
   const [prayerSelected, setPrayerSelected] = useState<string[]>([]);
+  const [prayerIslandId, setPrayerIslandId] = useState('');
   const [prayerSaving, setPrayerSaving] = useState(false);
 
   const [bannerEnabled, setBannerEnabled] = useState(false);
@@ -272,6 +273,7 @@ export function SignagePage() {
     setPrayerEnabled(data.prayer?.enabled ?? true);
     setPrayerBreak(String(data.prayer?.break_minutes ?? 15));
     setPrayerSelected(data.prayer?.prayers ?? []);
+    setPrayerIslandId(data.prayer?.island_id ? String(data.prayer.island_id) : '');
     const normalizedBanner = normalizeBannerSettings(data.banner ?? {});
     setBannerEnabled(normalizedBanner.enabled);
     setBannerItems(normalizedBanner.banners);
@@ -458,12 +460,15 @@ export function SignagePage() {
     }
     setPrayerSaving(true);
     try {
+      const islandId = Number.parseInt(prayerIslandId, 10);
       const res = await setSignagePrayer({
         enabled: prayerEnabled,
         prayers: prayerSelected,
         break_minutes: breakMinutes,
+        ...(Number.isFinite(islandId) && islandId > 0 ? { island_id: islandId } : {}),
       });
       setOverview((prev) => (prev ? { ...prev, prayer: res.prayer } : prev));
+      if (res.prayer?.island_id) setPrayerIslandId(String(res.prayer.island_id));
       toast.success('Prayer break settings saved.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Prayer settings failed');
@@ -653,8 +658,13 @@ export function SignagePage() {
     );
   };
 
+  const prayerIslandOptions = (overview?.prayer_islands ?? []).map((i) => ({
+    value: String(i.id),
+    label: i.label,
+  }));
+
   return (
-    <div data-testid="signage-studio">
+    <div data-testid="signage-studio" className="signage-studio">
     <PageShell>
       <PageHeader
         title="TV Signage"
@@ -776,7 +786,8 @@ export function SignagePage() {
                 <EmptyState message="No groups yet. Groups bundle screens with a shared playlist." />
               ) : (
                 groups.map((group) => (
-                  <Card key={group.id} style={{ marginBottom: 12 }}>
+                  <div key={group.id} data-testid={`signage-group-card-${group.id}`}>
+                  <Card style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
                       <div style={{ flex: '1 1 200px' }}>
                         <strong style={{ display: 'block', marginBottom: 4 }}>{group.name}</strong>
@@ -788,6 +799,7 @@ export function SignagePage() {
                           value={String(groupDrafts[group.id] ?? '')}
                           onChange={(e) => setGroupDrafts((prev) => ({ ...prev, [group.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
                           style={fieldStyle}
+                          data-testid={`signage-group-playlist-${group.id}`}
                         >
                           <option value="">— inherit / none —</option>
                           {playlists.map((p) => (
@@ -799,11 +811,13 @@ export function SignagePage() {
                         onClick={() => void onSaveGroup(group)}
                         disabled={groupSaving === group.id}
                         style={{ minHeight: 44 }}
+                        data-testid={`signage-group-save-${group.id}`}
                       >
                         <Save size={16} /> {groupSaving === group.id ? 'Saving…' : 'Save'}
                       </Btn>
                     </div>
                   </Card>
+                  </div>
                 ))
               )}
             </div>
@@ -1057,7 +1071,7 @@ export function SignagePage() {
                 />
                 <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Enable prayer break slides</span>
               </label>
-              <div style={{ maxWidth: 200, marginBottom: 16 }}>
+              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
                 <Input
                   label="Break minutes"
                   type="number"
@@ -1066,7 +1080,21 @@ export function SignagePage() {
                   value={prayerBreak}
                   onChange={(val) => setPrayerBreak(val)}
                 />
+                <Select
+                  label="Prayer location"
+                  value={prayerIslandId}
+                  onChange={(val) => setPrayerIslandId(val)}
+                  options={
+                    prayerIslandOptions.length > 0
+                      ? prayerIslandOptions
+                      : [{ value: '', label: 'Malé (default)' }]
+                  }
+                  data-testid="signage-prayer-island"
+                />
               </div>
+              <p style={{ margin: '-4px 0 16px', fontSize: 12, color: 'var(--color-text-secondary)', maxWidth: 560 }}>
+                Banner countdown and automatic prayer-break slides use this island’s times.
+              </p>
               <div style={{ marginBottom: 16 }}>
                 <span style={labelStyle}>Prayers</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>

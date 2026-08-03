@@ -14,8 +14,10 @@ use App\Models\SignagePlaylist;
 use App\Models\SignageScreen;
 use App\Models\SiteSetting;
 use App\Models\User;
+use App\Support\PrayerTimeHelper;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -324,5 +326,90 @@ final class SignageResolverTest extends TestCase
         $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-multi');
         $this->assertCount(2, $cfg['banner']['banners']);
         $this->assertSame('wifi', $cfg['banner']['banners'][1]['id']);
+    }
+
+    public function test_prayer_island_setting_drives_schedule_and_admin_round_trip(): void
+    {
+        DB::table('prayer_categories')->insert(['id' => 1]);
+        DB::table('prayer_islands')->insert([
+            [
+                'id' => 102,
+                'category_id' => 1,
+                'atoll' => 'ކ',
+                'atoll_latin' => 'Kaafu',
+                'name' => PrayerTimeHelper::MALE_ISLAND_DV_NAME,
+                'name_latin' => 'Malé',
+                'offset_minutes' => 0,
+                'latitude' => 4.1754,
+                'longitude' => 73.5093,
+                'is_active' => true,
+            ],
+            [
+                'id' => 201,
+                'category_id' => 1,
+                'atoll' => 'އ',
+                'atoll_latin' => 'Addu',
+                'name' => 'Hithadhoo',
+                'name_latin' => 'Hithadhoo',
+                'offset_minutes' => 5,
+                'latitude' => -0.6,
+                'longitude' => 73.1,
+                'is_active' => true,
+            ],
+        ]);
+        $now = Carbon::now(PrayerTimeHelper::MVT_TIMEZONE);
+        $doy = (int) $now->dayOfYear;
+        // PrayerTimeResolver shifts non-leap Mar–Dec lookups by +1 to match leap-year source rows.
+        if (! $now->isLeapYear() && $doy >= 60) {
+            $doy++;
+        }
+        DB::table('prayer_times')->insert([
+            'category_id' => 1,
+            'day_of_year' => $doy,
+            'fajr' => 270,
+            'sunrise' => 330,
+            'dhuhr' => 720,
+            'asr' => 930,
+            'maghrib' => 1080,
+            'isha' => 1140,
+        ]);
+
+        SiteSetting::set('signage_prayer_island_id', '102');
+        /** @var SignageResolver $resolver */
+        $resolver = app(SignageResolver::class);
+        $male = $resolver->resolveFresh('default', Carbon::now(PrayerTimeHelper::MVT_TIMEZONE), null, 'v-isle-male');
+        $this->assertNotEmpty($male['prayer_schedule']);
+
+        SiteSetting::set('signage_prayer_island_id', '201');
+        $other = $resolver->resolveFresh('default', Carbon::now(PrayerTimeHelper::MVT_TIMEZONE), null, 'v-isle-other');
+        $this->assertNotEmpty($other['prayer_schedule']);
+        // Same category times + different island offset → schedule timestamps must differ.
+        $this->assertNotSame(
+            $male['prayer_schedule'][0]['at'] ?? null,
+            $other['prayer_schedule'][0]['at'] ?? null
+        );
+
+        $owner = User::create([
+            'name' => 'Owner Prayer Island',
+            'email' => 'owner-prayer-island@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->putJson('/api/admin/signage/prayer', [
+            'enabled' => true,
+            'prayers' => ['dhuhr', 'asr'],
+            'break_minutes' => 12,
+            'island_id' => 201,
+        ])->assertOk()
+            ->assertJsonPath('prayer.island_id', 201)
+            ->assertJsonPath('prayer.break_minutes', 12);
+
+        $this->assertSame('201', (string) SiteSetting::get('signage_prayer_island_id'));
+        $overview = $this->getJson('/api/admin/signage')->assertOk();
+        $overview->assertJsonPath('prayer.island_id', 201);
+        $this->assertNotEmpty($overview->json('prayer_islands'));
     }
 }

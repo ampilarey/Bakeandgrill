@@ -20,13 +20,20 @@ export type SignageBannerSettings = {
   speed_seconds?: number;
 };
 
+export type SignagePrayerIsland = {
+  id: number;
+  label: string;
+  atoll: string;
+};
+
 export type SignageOverview = {
   playlists: SignagePlaylist[];
   groups: SignageGroup[];
   screens: SignageScreen[];
   campaigns: SignageCampaign[];
   emergency: string;
-  prayer: { enabled: boolean; prayers: string[]; break_minutes: number };
+  prayer: { enabled: boolean; prayers: string[]; break_minutes: number; island_id?: number };
+  prayer_islands?: SignagePrayerIsland[];
   banner?: SignageBannerSettings;
   templates: Array<{ key: string; label: string }>;
   custom_templates: Array<{ key: string; label: string; slide: Record<string, unknown> }> | Record<string, unknown>;
@@ -147,7 +154,12 @@ export async function setSignageEmergency(mode: string) {
   });
 }
 
-export async function setSignagePrayer(body: { enabled: boolean; prayers?: string[]; break_minutes?: number }) {
+export async function setSignagePrayer(body: {
+  enabled: boolean;
+  prayers?: string[];
+  break_minutes?: number;
+  island_id?: number;
+}) {
   return req<{ prayer: SignageOverview['prayer'] }>('/admin/signage/prayer', {
     method: 'PUT',
     body: JSON.stringify(body),

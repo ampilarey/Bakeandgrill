@@ -219,7 +219,7 @@ final class SignageResolver
         $breakMinutes = max(1, (int) ($cfg['break_minutes'] ?? 15));
         $prayers = array_values(array_filter(array_map('strval', $cfg['prayers'] ?? ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'])));
 
-        $island = $this->maleIsland();
+        $island = $this->resolvePrayerIsland();
         if (! $island instanceof IslandData) {
             return false;
         }
@@ -248,12 +248,25 @@ final class SignageResolver
         return false;
     }
 
-    private function maleIsland(): ?IslandData
+    /**
+     * Island for banner countdown + automatic prayer-break windows.
+     * Uses signage_prayer_island_id when set; otherwise Malé.
+     */
+    private function resolvePrayerIsland(): ?IslandData
     {
         try {
+            $configuredId = (int) SiteSetting::get('signage_prayer_island_id', 0);
+            if ($configuredId > 0) {
+                $byId = $this->islands->findById($configuredId);
+                if ($byId instanceof IslandData) {
+                    return $byId;
+                }
+            }
+
             $collection = $this->islands->execute();
 
-            return PrayerTimeHelper::findMaleIsland($collection);
+            return PrayerTimeHelper::findMaleIsland($collection)
+                ?? $this->islands->findById(PrayerTimeHelper::MALE_ISLAND_FALLBACK_ID);
         } catch (\Throwable) {
             return null;
         }
@@ -266,7 +279,7 @@ final class SignageResolver
     {
         $schedule = [];
         $nextPrayer = '';
-        $island = $this->maleIsland();
+        $island = $this->resolvePrayerIsland();
         if (! $island instanceof IslandData) {
             return ['next_prayer' => '', 'schedule' => []];
         }
