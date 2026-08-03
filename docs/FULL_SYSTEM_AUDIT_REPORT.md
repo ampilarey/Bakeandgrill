@@ -194,3 +194,40 @@ Read-only review of migrations + money paths. No migrate/seed run.
 - Query-log N+1 counts on warm TEST dataset (>20 queries threshold).
 - p95 latency on production-sized data.
 
+
+---
+
+## Part E — Code health
+
+### Findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| MAJOR | Permission aliases | FE reverse-aliases `devices.manage` ← `devices.approve`; BE only allows `devices.approve` ← `devices.manage` | `navConfig.ts` `PERM_ALIASES`; `PermissionCatalog::SATISFIED_BY` | Same class of bug as prior SMS/webhooks drift. `can('devices.manage')` true for approve-only on FE; API still exact for manage. |
+| MINOR | Duplicated money math | POS client `toLaar` via `Number*100` vs server `LaariConverter` | `useOrderCreation.ts`, `useCart.ts`, `ChargeOverlay.tsx` vs backend Money/Laari | Soft UI can disagree with server before recalc (ties to Part C). |
+| MINOR | God files | Several files ≫800 lines mixing many jobs | Admin: `ForecastPage.tsx` (~2100), `SignagePage.tsx` (~1966), `ContentHubPage.tsx` (~1588), `finance.ts` (~1547); POS: `useOrderCreation.ts` (~1826), `OrderCart.tsx` (~1672); BE: `ReportsService.php` (~1581), `GiftCardController.php` (~1227) | Split on next touch. |
+| INFO | Dead code | `online-order-web/src/App.tsx` unused stub (entry is `main.tsx`) | order app | Covered only by legacy test. |
+| INFO | Stale skipped test | KDS bump status-machine test kept as archaeology | `OrderStatusMachineTest` | Rewrite or delete (see Part F). |
+
+### What was checked
+
+- FE vs BE permission alias direction for devices (post–permission-drift cleanup).
+- Money conversion duplication.
+- Line-count offenders; dead entry stub; TODO/FIXME sample (few actionable app TODOs).
+
+### What passed
+
+- Admin `api.ts` barrel is intentional re-export, not dead weight.
+- Recent settings/nav cleanup already removed dead Website Settings tab (excluded).
+
+### Findings by severity (Part E)
+
+- BLOCKER: 0  
+- MAJOR: 1  
+- MINOR: 2  
+- INFO: 2  
+
+### Untested (Part E)
+
+- Exhaustive dead-export graph (knip/ts-prune not run).
+
