@@ -118,3 +118,42 @@ Verified with ephemeral staff user `audit-empty@local` (role with **zero** permi
 - Receipt send with a real phone (would hit SMS — skipped).
 - Cross-store multi-tenancy (single-tenant app).
 
+
+---
+
+## Part C — Data integrity
+
+Read-only review of migrations + money paths. No migrate/seed run.
+
+### Findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| MAJOR | Migration / destructive | Gift-card hash migration **deletes all gift cards + transactions** before altering schema | `database/migrations/2026_05_24_100000_hash_gift_card_codes.php:25-26` | Comment assumes empty test data. Already-applied envs OK; catastrophic if replayed or applied late on a DB that still has cards. |
+| MAJOR | Money dual-store | Decimal MVR columns + nullable `*_laar` coexist; many paths still `(float)*100` / JS `Math.round(n*100)` | Orders schema; `OrderSettlement.php`; POS `useOrderCreation.ts`, `useCart.ts`, `ChargeOverlay.tsx` | Classic binary float drift (e.g. 19.99). Server has `LaariConverter` but clients and some PHP paths still convert via float. |
+| MINOR | Migration / unique | `users.phone` unique added without dedupe | `2026_05_01_000001_add_unique_phone_to_users_table.php` | Fails on duplicate non-null phones. |
+| MINOR | Migration / unique | `customers.email` and `daily_specials (item_id,start,end)` unique without collapse | `2026_03_17_000001_add_missing_db_constraints.php` | Contrast: site_settings scope migration cleans dupes first. |
+| MINOR | Indexes | Polymorphic `stock_movements.reference_type/id` — no composite index, no FK | create stock_movements migration; `StockManagementService` lookups | Orphan + slow reverse lookups. Core FKs on `orders.customer_id`, `order_items.order_id`, `sms_logs.customer_id` are present. |
+| INFO | Orphans | `nullOnDelete` on stock/sms/order customer links | various | Intentional audit retention; reports must nullsafe. |
+
+### What was checked
+
+- Destructive / unique migrations spot-check; money float grep across backend + POS; FK/index presence on high-traffic tables; stock_movements / sms_logs schema.
+
+### What passed
+
+- Primary order/item/customer FKs and common lookup indexes exist.
+- No new migrate attempted (per rules).
+
+### Findings by severity (Part C)
+
+- BLOCKER: 0  
+- MAJOR: 2  
+- MINOR: 3  
+- INFO: 1  
+
+### Untested (Part C)
+
+- Live orphan row counts on TEST DB (no production DB access).
+- Full migration dry-run against a prod dump.
+
