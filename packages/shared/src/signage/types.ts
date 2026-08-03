@@ -51,11 +51,26 @@ export type SignagePrayerEntry = {
   at: string;
 };
 
-export type SignageBannerSettings = {
+export type SignageBannerItem = {
+  id: string;
+  label: string;
   enabled: boolean;
   position: 'top' | 'bottom' | string;
   fields: Array<'date' | 'time' | 'next_prayer' | 'countdown' | string>;
+  /** When set, replaces the fields marquee (supports {{variables}}). */
+  custom_text?: string;
   speed_seconds: number;
+  /** How long this banner stays before rotating to the next enabled one. */
+  duration_seconds: number;
+};
+
+export type SignageBannerSettings = {
+  enabled: boolean;
+  banners: SignageBannerItem[];
+  /** @deprecated Stage-3 single-banner fields — still accepted on read. */
+  position?: 'top' | 'bottom' | string;
+  fields?: Array<'date' | 'time' | 'next_prayer' | 'countdown' | string>;
+  speed_seconds?: number;
 };
 
 export type SignageConfig = {

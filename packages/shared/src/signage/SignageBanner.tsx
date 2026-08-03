@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import type { SignageBannerSettings, SignagePrayerEntry } from './types';
+import { activeBanners, normalizeBannerSettings } from './bannerConfig';
+import { interpolate } from './interpolate';
+import type { SignageBannerItem, SignageBannerSettings, SignagePrayerEntry } from './types';
 
 export type SignageBannerProps = {
   banner: SignageBannerSettings;
@@ -11,6 +13,8 @@ export type SignageBannerProps = {
   /** Override date/time labels (tests / designer). */
   dateLabel?: string;
   timeLabel?: string;
+  /** For custom_text interpolation (wifi, phone, etc.). */
+  variables?: Record<string, string>;
 };
 
 export function pickNextPrayer(
@@ -43,10 +47,11 @@ export function formatCountdown(remainingMs: number): string {
 }
 
 export function shouldShowBanner(banner: SignageBannerSettings | null | undefined, mode?: string): boolean {
-  if (!banner?.enabled) return false;
+  const normalized = normalizeBannerSettings(banner ?? {});
+  if (!normalized.enabled) return false;
   const m = mode ?? 'normal';
   if (m === 'prayer_break' || m.startsWith('emergency:')) return false;
-  return true;
+  return activeBanners(normalized).length > 0;
 }
 
 function defaultDateLabel(now: Date): string {
@@ -94,6 +99,38 @@ export function buildBannerSegments(opts: {
   return parts.filter(Boolean);
 }
 
+function bannerText(
+  item: SignageBannerItem,
+  opts: {
+    dateLabel: string;
+    timeLabel: string;
+    next: SignagePrayerEntry | null;
+    nowMs: number;
+    variables: Record<string, string>;
+  },
+): string {
+  const custom = (item.custom_text || '').trim();
+  if (custom) {
+    return interpolate(custom, {
+      ...opts.variables,
+      date: opts.dateLabel,
+      time: opts.timeLabel,
+      today: opts.dateLabel,
+      current_time: opts.timeLabel,
+      next_prayer: opts.next ? opts.next.name : '',
+    });
+  }
+  const segments = buildBannerSegments({
+    fields: item.fields ?? [],
+    dateLabel: opts.dateLabel,
+    timeLabel: opts.timeLabel,
+    next: opts.next,
+    nowMs: opts.nowMs,
+  });
+  if (segments.length > 0) return segments.join('   ·   ');
+  return `${opts.dateLabel}   ·   ${opts.timeLabel}`;
+}
+
 export function SignageBanner({
   banner,
   schedule,
@@ -102,8 +139,13 @@ export function SignageBanner({
   burnInOffset,
   dateLabel,
   timeLabel,
+  variables = {},
 }: SignageBannerProps) {
   const [tick, setTick] = useState(() => Date.now());
+  const [bannerIndex, setBannerIndex] = useState(0);
+
+  const normalized = useMemo(() => normalizeBannerSettings(banner), [banner]);
+  const enabledList = useMemo(() => activeBanners(normalized), [normalized]);
 
   useEffect(() => {
     if (nowMsProp != null) return;
@@ -111,43 +153,53 @@ export function SignageBanner({
     return () => window.clearInterval(id);
   }, [nowMsProp]);
 
+  useEffect(() => {
+    setBannerIndex(0);
+  }, [enabledList.map((b) => b.id).join('|')]);
+
+  useEffect(() => {
+    if (enabledList.length <= 1) return;
+    const current = enabledList[bannerIndex % enabledList.length];
+    const ms = Math.max(5, current?.duration_seconds ?? 30) * 1000;
+    const id = window.setTimeout(() => {
+      setBannerIndex((i) => (i + 1) % enabledList.length);
+    }, ms);
+    return () => window.clearTimeout(id);
+  }, [enabledList, bannerIndex]);
+
   const nowMs = nowMsProp ?? tick;
   const now = useMemo(() => new Date(nowMs), [nowMs]);
 
-  if (!shouldShowBanner(banner, mode)) return null;
+  if (!shouldShowBanner(normalized, mode) || enabledList.length === 0) return null;
 
+  const active = enabledList[bannerIndex % enabledList.length];
   const next = pickNextPrayer(schedule, nowMs);
-  const segments = buildBannerSegments({
-    fields: banner.fields ?? [],
-    dateLabel: dateLabel ?? defaultDateLabel(now),
-    timeLabel: timeLabel ?? defaultTimeLabel(now),
+  const dLabel = dateLabel ?? defaultDateLabel(now);
+  const tLabel = timeLabel ?? defaultTimeLabel(now);
+  const text = bannerText(active, {
+    dateLabel: dLabel,
+    timeLabel: tLabel,
     next,
     nowMs,
+    variables,
   });
 
-  // Never render an empty strip — fall back to date/time when schedule is empty
-  // or fields only requested prayer info.
-  const display = segments.length > 0
-    ? segments
-    : [dateLabel ?? defaultDateLabel(now), timeLabel ?? defaultTimeLabel(now)];
-
-  const speed = Math.max(10, Math.min(180, Number(banner.speed_seconds) || 40));
-  const position = banner.position === 'top' ? 'top' : 'bottom';
+  const speed = Math.max(10, Math.min(180, Number(active.speed_seconds) || 40));
+  const position = active.position === 'top' ? 'top' : 'bottom';
   const drift: CSSProperties = burnInOffset
     ? { transform: `translate(${burnInOffset.x}px, ${burnInOffset.y}px)` }
     : {};
 
-  const text = display.join('   ·   ');
-  // Duplicate for seamless marquee loop
   const marquee = `${text}   ·   ${text}`;
 
   return (
     <div
       className={`signage-banner signage-banner-${position}`}
       data-testid="signage-banner"
+      data-banner-id={active.id}
+      data-banner-label={active.label}
       style={{
         ...drift,
-        // CSS custom property drives animation duration without rewrite for static mode
         ['--signage-banner-speed' as string]: `${speed}s`,
       }}
     >

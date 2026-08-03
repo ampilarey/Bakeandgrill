@@ -100,7 +100,10 @@ describe('SignageDesigner mobile layout (390px)', () => {
 
     expect(screen.queryByTestId('designer-el-e1')).toBeNull();
     expect(screen.queryByTestId('designer-resize-e1')).toBeNull();
-    expect(screen.getByTestId('signage-designer-sticky-actions')).toBeTruthy();
+    const sticky = screen.getByTestId('signage-designer-sticky-actions');
+    expect(sticky).toBeTruthy();
+    // Clears MobileTabBar (56px) — must not sit at bottom: 0 under the tab bar.
+    expect(getComputedStyle(sticky).bottom).toMatch(/56px/);
     expect(getComputedStyle(screen.getByTestId('signage-designer-preview-size')).display).toBe('none');
 
     fireEvent.click(screen.getByTestId('signage-layer-e1'));

@@ -23,6 +23,8 @@ export interface SiteSettings {
   default_item_image?: string;
   favicon?: string;
   business_phone?: string;
+  /** Public website URL (TV brand card, contact). */
+  business_website?: string;
   business_email?: string;
   business_address?: string;
   business_landmark?: string;
@@ -163,6 +165,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   logo:             '/logo.png',
   menu_new_days:    '30',
   business_phone:   '+960 912 0011',
+  business_website: 'https://bakeandgrill.mv',
   business_email:   'admin@bakeandgrill.mv',
   business_address: 'Kalaafaanu Hingun, Malé, Maldives',
   business_landmark:'Near H. Sahara',

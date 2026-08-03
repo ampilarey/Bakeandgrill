@@ -1,0 +1,68 @@
+import type { SignageSlide } from './types';
+
+/** Client-side twin of SignageTemplateFactory::template('brand_card'). */
+export function brandCardSlide(overrides: Partial<SignageSlide> = {}): SignageSlide {
+  return {
+    id: overrides.id ?? 'brand-idle',
+    name: overrides.name ?? 'Brand card',
+    seconds: overrides.seconds ?? 12,
+    weight: overrides.weight ?? 1,
+    transition: overrides.transition ?? 'fade',
+    transition_ms: overrides.transition_ms ?? 700,
+    template_origin: 'brand_card',
+    background: overrides.background ?? { type: 'solid', value: '#0d0a07', opacity: 1 },
+    elements: overrides.elements ?? [
+      {
+        id: 'brand-logo',
+        type: 'logo',
+        x: 30,
+        y: 14,
+        w: 40,
+        h: 26,
+        z: 2,
+        style: { objectFit: 'contain' },
+        animation: { entrance: 'fade', duration: 700 },
+        binding: {},
+      },
+      {
+        id: 'brand-name',
+        type: 'text',
+        x: 8,
+        y: 46,
+        w: 84,
+        h: 12,
+        z: 3,
+        text: '{{branch_name}}',
+        style: { fontSize: 6, fontWeight: 800, color: '#FFF8F0', textAlign: 'center', fontFamily: 'display' },
+        animation: { entrance: 'fade', duration: 700, delay: 80 },
+        binding: {},
+      },
+      {
+        id: 'brand-phone',
+        type: 'text',
+        x: 8,
+        y: 60,
+        w: 84,
+        h: 8,
+        z: 3,
+        text: '{{business_phone}}',
+        style: { fontSize: 3.2, fontWeight: 600, color: '#C4B5A5', textAlign: 'center' },
+        animation: { entrance: 'fade', duration: 700, delay: 140 },
+        binding: {},
+      },
+      {
+        id: 'brand-web',
+        type: 'text',
+        x: 8,
+        y: 70,
+        w: 84,
+        h: 8,
+        z: 3,
+        text: '{{business_website}}',
+        style: { fontSize: 2.8, fontWeight: 500, color: '#D4813A', textAlign: 'center' },
+        animation: { entrance: 'fade', duration: 700, delay: 200 },
+        binding: {},
+      },
+    ],
+  };
+}

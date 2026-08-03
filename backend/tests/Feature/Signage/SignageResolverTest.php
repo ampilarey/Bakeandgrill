@@ -181,6 +181,8 @@ final class SignageResolverTest extends TestCase
         $this->assertSame('Bake & Grill', $cfg['variables']['branch_name']);
         $this->assertSame('BG-Guest', $cfg['variables']['wifi_name']);
         $this->assertArrayHasKey('promotion_name', $cfg['variables']);
+        $this->assertArrayHasKey('business_phone', $cfg['variables']);
+        $this->assertArrayHasKey('business_website', $cfg['variables']);
     }
 
     public function test_admin_writes_are_permission_gated(): void
@@ -234,7 +236,8 @@ final class SignageResolverTest extends TestCase
         }
         $this->assertArrayHasKey('banner', $cfg);
         $this->assertFalse((bool) $cfg['banner']['enabled']);
-        $this->assertSame('bottom', $cfg['banner']['position']);
+        $this->assertIsArray($cfg['banner']['banners'] ?? null);
+        $this->assertSame('bottom', $cfg['banner']['banners'][0]['position']);
     }
 
     public function test_banner_settings_round_trip_and_bust_cache(): void
@@ -248,29 +251,78 @@ final class SignageResolverTest extends TestCase
         ]);
         Sanctum::actingAs($owner, ['staff']);
 
+        // Legacy Stage-3 shape still accepted and normalized into banners[].
         $this->putJson('/api/admin/signage/banner', [
             'enabled' => true,
             'position' => 'top',
             'fields' => ['date', 'time', 'next_prayer', 'countdown'],
             'speed_seconds' => 55,
         ])->assertOk()->assertJsonPath('banner.enabled', true)
-            ->assertJsonPath('banner.position', 'top')
-            ->assertJsonPath('banner.speed_seconds', 55);
+            ->assertJsonPath('banner.banners.0.position', 'top')
+            ->assertJsonPath('banner.banners.0.speed_seconds', 55);
 
         $raw = SiteSetting::get('signage_banner');
         $stored = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
         $this->assertIsArray($stored);
         $this->assertTrue((bool) ($stored['enabled'] ?? false));
+        $this->assertIsArray($stored['banners'] ?? null);
 
         $overview = $this->getJson('/api/admin/signage')->assertOk();
         $overview->assertJsonPath('banner.enabled', true);
-        $overview->assertJsonPath('banner.position', 'top');
+        $overview->assertJsonPath('banner.banners.0.position', 'top');
 
         /** @var SignageResolver $resolver */
         $resolver = app(SignageResolver::class);
         $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-2');
         $this->assertTrue((bool) $cfg['banner']['enabled']);
-        $this->assertSame('top', $cfg['banner']['position']);
-        $this->assertSame(55, $cfg['banner']['speed_seconds']);
+        $this->assertSame('top', $cfg['banner']['banners'][0]['position']);
+        $this->assertSame(55, $cfg['banner']['banners'][0]['speed_seconds']);
+    }
+
+    public function test_multi_banner_list_round_trip(): void
+    {
+        $owner = User::create([
+            'name' => 'Owner Multi Banner',
+            'email' => 'owner-multi-banner@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->putJson('/api/admin/signage/banner', [
+            'enabled' => true,
+            'banners' => [
+                [
+                    'id' => 'prayer',
+                    'label' => 'Prayer',
+                    'enabled' => true,
+                    'position' => 'bottom',
+                    'fields' => ['date', 'time', 'next_prayer', 'countdown'],
+                    'speed_seconds' => 40,
+                    'duration_seconds' => 30,
+                ],
+                [
+                    'id' => 'wifi',
+                    'label' => 'Wi-Fi',
+                    'enabled' => true,
+                    'position' => 'bottom',
+                    'custom_text' => 'Wi-Fi: {{wifi_name}} · {{wifi_password}}',
+                    'fields' => ['date'],
+                    'speed_seconds' => 40,
+                    'duration_seconds' => 20,
+                ],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('banner.enabled', true)
+            ->assertJsonPath('banner.banners.1.label', 'Wi-Fi')
+            ->assertJsonPath('banner.banners.1.custom_text', 'Wi-Fi: {{wifi_name}} · {{wifi_password}}')
+            ->assertJsonPath('banner.banners.1.duration_seconds', 20);
+
+        /** @var SignageResolver $resolver */
+        $resolver = app(SignageResolver::class);
+        $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-multi');
+        $this->assertCount(2, $cfg['banner']['banners']);
+        $this->assertSame('wifi', $cfg['banner']['banners'][1]['id']);
     }
 }

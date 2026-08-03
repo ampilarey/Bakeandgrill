@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Signage;
 
+use App\Domains\Signage\Services\SignageBannerNormalizer;
 use App\Domains\Signage\Services\SignageCache;
 use App\Domains\Signage\Services\SignageTemplateFactory;
 use App\Http\Controllers\Controller;
@@ -296,18 +297,38 @@ final class SignageAdminController extends Controller
     {
         $data = $request->validate([
             'enabled' => 'required|boolean',
+            'banners' => 'nullable|array',
+            'banners.*.id' => 'nullable|string|max:80',
+            'banners.*.label' => 'nullable|string|max:120',
+            'banners.*.enabled' => 'nullable|boolean',
+            'banners.*.position' => 'nullable|string|in:top,bottom',
+            'banners.*.fields' => 'nullable|array',
+            'banners.*.fields.*' => 'string|in:date,time,next_prayer,countdown',
+            'banners.*.custom_text' => 'nullable|string|max:500',
+            'banners.*.speed_seconds' => 'nullable|integer|min:10|max:180',
+            'banners.*.duration_seconds' => 'nullable|integer|min:5|max:600',
+            // Legacy Stage-3 single-banner fields still accepted.
             'position' => 'nullable|string|in:top,bottom',
             'fields' => 'nullable|array',
             'fields.*' => 'string|in:date,time,next_prayer,countdown',
             'speed_seconds' => 'nullable|integer|min:10|max:180',
         ]);
         $old = $this->bannerConfig();
-        $cfg = [
-            'enabled' => (bool) $data['enabled'],
-            'position' => $data['position'] ?? $old['position'],
-            'fields' => array_values($data['fields'] ?? $old['fields']),
-            'speed_seconds' => (int) ($data['speed_seconds'] ?? $old['speed_seconds']),
-        ];
+
+        if (isset($data['banners']) && is_array($data['banners'])) {
+            $cfg = SignageBannerNormalizer::normalize([
+                'enabled' => (bool) $data['enabled'],
+                'banners' => $data['banners'],
+            ]);
+        } else {
+            $cfg = SignageBannerNormalizer::normalize([
+                'enabled' => (bool) $data['enabled'],
+                'position' => $data['position'] ?? ($old['banners'][0]['position'] ?? 'bottom'),
+                'fields' => $data['fields'] ?? ($old['banners'][0]['fields'] ?? ['date', 'time', 'next_prayer', 'countdown']),
+                'speed_seconds' => $data['speed_seconds'] ?? ($old['banners'][0]['speed_seconds'] ?? 40),
+            ]);
+        }
+
         SiteSetting::set('signage_banner', $cfg);
         SiteSetting::bust();
         $this->touch($request, 'signage.banner.updated', null, $old, $cfg);
@@ -372,26 +393,10 @@ final class SignageAdminController extends Controller
         ];
     }
 
-    /** @return array{enabled: bool, position: string, fields: list<string>, speed_seconds: int} */
+    /** @return array{enabled: bool, banners: list<array<string, mixed>>} */
     private function bannerConfig(): array
     {
-        $raw = SiteSetting::get('signage_banner', '{}');
-        $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
-        $fields = $cfg['fields'] ?? ['date', 'time', 'next_prayer', 'countdown'];
-        if (! is_array($fields) || $fields === []) {
-            $fields = ['date', 'time', 'next_prayer', 'countdown'];
-        }
-        $position = (string) ($cfg['position'] ?? 'bottom');
-        if (! in_array($position, ['top', 'bottom'], true)) {
-            $position = 'bottom';
-        }
-
-        return [
-            'enabled' => (bool) ($cfg['enabled'] ?? false),
-            'position' => $position,
-            'fields' => array_values(array_map('strval', $fields)),
-            'speed_seconds' => max(10, min(180, (int) ($cfg['speed_seconds'] ?? 40))),
-        ];
+        return SignageBannerNormalizer::normalize(SiteSetting::get('signage_banner', '{}'));
     }
 
     /** @return array<string, array<string, mixed>> */

@@ -117,4 +117,28 @@ class SignageItemFlagsTest extends TestCase
 
         $this->assertContains('auto_menu', $keys);
     }
+
+    public function test_brand_card_template_and_catalog(): void
+    {
+        $slide = \App\Domains\Signage\Services\SignageTemplateFactory::template('brand_card');
+        $this->assertSame('brand_card', $slide['template_origin']);
+        $this->assertSame('#0d0a07', $slide['background']['value'] ?? null);
+
+        $types = array_column($slide['elements'], 'type');
+        $this->assertContains('logo', $types);
+        $texts = array_values(array_filter(
+            $slide['elements'],
+            fn ($el) => ($el['type'] ?? '') === 'text'
+        ));
+        $joined = implode(' ', array_map(fn ($el) => (string) ($el['text'] ?? ''), $texts));
+        $this->assertStringContainsString('{{branch_name}}', $joined);
+        $this->assertStringContainsString('{{business_phone}}', $joined);
+        $this->assertStringContainsString('{{business_website}}', $joined);
+
+        $keys = array_column(
+            \App\Domains\Signage\Services\SignageTemplateFactory::templateCatalog(),
+            'key'
+        );
+        $this->assertContains('brand_card', $keys);
+    }
 }

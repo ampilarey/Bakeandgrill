@@ -69,7 +69,11 @@ final class SignageTemplateFactory
             'weight' => (int) ($opts['weight'] ?? 1),
             'transition' => (string) ($opts['transition'] ?? 'fade'),
             'transition_ms' => (int) ($opts['transition_ms'] ?? 700),
-            'background' => $opts['background'] ?? ['type' => 'solid', 'value' => '#1C1408', 'opacity' => 1],
+            'background' => $opts['background'] ?? [
+                'type' => 'solid',
+                'value' => $key === 'brand_card' ? '#0d0a07' : '#1C1408',
+                'opacity' => 1,
+            ],
             'template_origin' => $key,
             'elements' => [],
         ];
@@ -193,6 +197,44 @@ final class SignageTemplateFactory
                     ],
                 ]),
             ],
+            // Idle / brand card — also the empty-playlist fallback on the TV player.
+            'brand_card' => [
+                self::el('logo', 30, 14, 40, 26, [
+                    'style' => ['objectFit' => 'contain'],
+                    'animation' => ['entrance' => 'fade', 'duration' => 700],
+                ]),
+                self::el('text', 8, 46, 84, 12, [
+                    'text' => (string) ($fields['title'] ?? '{{branch_name}}'),
+                    'style' => [
+                        'fontSize' => 6,
+                        'fontWeight' => 800,
+                        'color' => '#FFF8F0',
+                        'textAlign' => 'center',
+                        'fontFamily' => 'display',
+                    ],
+                    'animation' => ['entrance' => 'fade', 'duration' => 700, 'delay' => 80],
+                ]),
+                self::el('text', 8, 60, 84, 8, [
+                    'text' => (string) ($fields['phone'] ?? '{{business_phone}}'),
+                    'style' => [
+                        'fontSize' => 3.2,
+                        'fontWeight' => 600,
+                        'color' => '#C4B5A5',
+                        'textAlign' => 'center',
+                    ],
+                    'animation' => ['entrance' => 'fade', 'duration' => 700, 'delay' => 140],
+                ]),
+                self::el('text', 8, 70, 84, 8, [
+                    'text' => (string) ($fields['website'] ?? '{{business_website}}'),
+                    'style' => [
+                        'fontSize' => 2.8,
+                        'fontWeight' => 500,
+                        'color' => '#D4813A',
+                        'textAlign' => 'center',
+                    ],
+                    'animation' => ['entrance' => 'fade', 'duration' => 700, 'delay' => 200],
+                ]),
+            ],
             'blank' => [],
             default => [],
         };
@@ -260,6 +302,7 @@ final class SignageTemplateFactory
             ['key' => 'split', 'label' => 'Split'],
             ['key' => 'full_screen', 'label' => 'Full screen'],
             ['key' => 'auto_menu', 'label' => 'Auto · Full menu'],
+            ['key' => 'brand_card', 'label' => 'Brand card'],
             ['key' => 'blank', 'label' => 'Blank'],
             ['key' => 'smart:offers', 'label' => 'Smart · Offers'],
             ['key' => 'smart:todays_special', 'label' => "Smart · Today's special"],

@@ -1,10 +1,23 @@
 import { req } from './client';
 
-export type SignageBannerSettings = {
+export type SignageBannerItem = {
+  id: string;
+  label: string;
   enabled: boolean;
   position: 'top' | 'bottom' | string;
   fields: string[];
+  custom_text?: string;
   speed_seconds: number;
+  duration_seconds: number;
+};
+
+export type SignageBannerSettings = {
+  enabled: boolean;
+  banners: SignageBannerItem[];
+  /** @deprecated Stage-3 single-banner fields — still accepted on read. */
+  position?: 'top' | 'bottom' | string;
+  fields?: string[];
+  speed_seconds?: number;
 };
 
 export type SignageOverview = {
@@ -141,7 +154,14 @@ export async function setSignagePrayer(body: { enabled: boolean; prayers?: strin
   });
 }
 
-export async function setSignageBanner(body: Partial<SignageBannerSettings> & { enabled: boolean }) {
+export async function setSignageBanner(body: {
+  enabled: boolean;
+  banners?: SignageBannerItem[];
+  /** Legacy Stage-3 fields still accepted by the API. */
+  position?: 'top' | 'bottom' | string;
+  fields?: string[];
+  speed_seconds?: number;
+}) {
   return req<{ banner: SignageBannerSettings }>('/admin/signage/banner', {
     method: 'PUT',
     body: JSON.stringify(body),

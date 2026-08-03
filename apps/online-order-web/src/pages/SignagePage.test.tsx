@@ -88,7 +88,13 @@ vi.mock('../api', async () => {
 
 vi.mock('../context/SiteSettingsContext', () => ({
   useSiteSettingsContext: () => ({
-    settings: { site_name: 'Bake & Grill', logo: '/logo.png' },
+    settings: {
+      site_name: 'Bake & Grill',
+      logo: '/logo-light.png',
+      logo_dark: '/logo-dark.png',
+      business_phone: '+960 912 0011',
+      business_website: 'https://bakeandgrill.mv',
+    },
     text: (_k: string, d: string) => d,
   }),
 }));
@@ -233,15 +239,97 @@ describe('SignagePage', () => {
     });
   });
 
+  it('shows a quiet loading state before config arrives', async () => {
+    let resolveConfig: ((v: typeof config) => void) | undefined;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: null,
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: () => new Promise((resolve) => { resolveConfig = resolve; }),
+      };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('signage-loading')).toBeTruthy();
+    expect(screen.queryByTestId('signage-idle-brand')).toBeNull();
+    resolveConfig?.(config);
+    expect(await screen.findByTestId('signage-slide-canvas')).toBeTruthy();
+  });
+
+  it('renders brand_card idle slide when playlist has no slides', async () => {
+    const empty = {
+      ...config,
+      slides: [],
+      rotation: [],
+      variables: {
+        ...config.variables,
+        business_phone: '+960 912 0011',
+        business_website: 'https://bakeandgrill.mv',
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: null,
+          }),
+        };
+      }
+      return { ok: true, json: async () => empty };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('signage-idle-brand')).toBeTruthy();
+    expect(screen.queryByTestId('signage-loading')).toBeNull();
+    expect(screen.getByText('Bake & Grill')).toBeTruthy();
+    expect(screen.getByText('+960 912 0011')).toBeTruthy();
+    expect(screen.getByText('https://bakeandgrill.mv')).toBeTruthy();
+    const logos = document.querySelectorAll('img');
+    const srcs = Array.from(logos).map((img) => img.getAttribute('src') || '');
+    expect(srcs.some((s) => s.includes('logo-dark'))).toBe(true);
+  });
+
   it('shows info banner under normal mode when enabled', async () => {
     const withBanner = {
       ...config,
       mode: 'normal',
       banner: {
         enabled: true,
-        position: 'bottom',
-        fields: ['date', 'time', 'next_prayer', 'countdown'],
-        speed_seconds: 40,
+        banners: [{
+          id: 'info',
+          label: 'Info',
+          enabled: true,
+          position: 'bottom',
+          fields: ['date', 'time', 'next_prayer', 'countdown'],
+          speed_seconds: 40,
+          duration_seconds: 30,
+        }],
       },
       prayer_schedule: [
         { name: 'Dhuhr', at: new Date(Date.now() + 90 * 60_000).toISOString() },
@@ -279,9 +367,15 @@ describe('SignagePage', () => {
         mode,
         banner: {
           enabled: true,
-          position: 'bottom',
-          fields: ['date', 'time'],
-          speed_seconds: 40,
+          banners: [{
+            id: 'info',
+            label: 'Info',
+            enabled: true,
+            position: 'bottom',
+            fields: ['date', 'time'],
+            speed_seconds: 40,
+            duration_seconds: 30,
+          }],
         },
         prayer_schedule: [],
       };

@@ -16,6 +16,7 @@ import {
   setSignagePrayer,
   updateSignageGroup,
   updateSignagePlaylist,
+  type SignageBannerItem,
   type SignageCampaign,
   type SignageDevice,
   type SignageGroup,
@@ -23,10 +24,18 @@ import {
   type SignagePlaylist,
   type SignageScreen,
 } from '../api';
+import { normalizeBannerSettings, newBannerItem } from '@shared/signage';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
 import { Btn, Card, EmptyState, Input, PageHeader, PageShell, Select, Spinner } from '../components/SharedUI';
 import { SignageDesigner, type DesignerSlide } from './signage/SignageDesigner';
+
+const BANNER_FIELD_OPTS = [
+  { value: 'date', label: 'Date' },
+  { value: 'time', label: 'Time' },
+  { value: 'next_prayer', label: 'Next prayer' },
+  { value: 'countdown', label: 'Countdown' },
+] as const;
 
 type Tab = 'screens' | 'playlists' | 'campaigns' | 'emergency' | 'prayer' | 'banner' | 'devices';
 
@@ -220,8 +229,7 @@ export function SignagePage() {
   const [prayerSaving, setPrayerSaving] = useState(false);
 
   const [bannerEnabled, setBannerEnabled] = useState(false);
-  const [bannerPosition, setBannerPosition] = useState<'top' | 'bottom'>('bottom');
-  const [bannerSpeed, setBannerSpeed] = useState('40');
+  const [bannerItems, setBannerItems] = useState<SignageBannerItem[]>(() => normalizeBannerSettings({}).banners);
   const [bannerSaving, setBannerSaving] = useState(false);
 
   const [campaignForm, setCampaignForm] = useState({
@@ -264,9 +272,9 @@ export function SignagePage() {
     setPrayerEnabled(data.prayer?.enabled ?? true);
     setPrayerBreak(String(data.prayer?.break_minutes ?? 15));
     setPrayerSelected(data.prayer?.prayers ?? []);
-    setBannerEnabled(data.banner?.enabled ?? false);
-    setBannerPosition(data.banner?.position === 'top' ? 'top' : 'bottom');
-    setBannerSpeed(String(data.banner?.speed_seconds ?? 40));
+    const normalizedBanner = normalizeBannerSettings(data.banner ?? {});
+    setBannerEnabled(normalizedBanner.enabled);
+    setBannerItems(normalizedBanner.banners);
     const drafts: Record<number, number | ''> = {};
     for (const g of data.groups) drafts[g.id] = g.playlist_id ?? '';
     setGroupDrafts(drafts);
@@ -464,21 +472,31 @@ export function SignagePage() {
     }
   };
 
+  const patchBannerItem = (id: string, patch: Partial<SignageBannerItem>) => {
+    setBannerItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  };
+
   const onSaveBanner = async () => {
-    const speed = Number.parseInt(bannerSpeed, 10);
-    if (!Number.isFinite(speed) || speed < 10 || speed > 180) {
-      toast.error('Banner speed must be between 10 and 180 seconds.');
-      return;
+    for (const b of bannerItems) {
+      if (b.speed_seconds < 10 || b.speed_seconds > 180) {
+        toast.error(`“${b.label}” speed must be between 10 and 180 seconds.`);
+        return;
+      }
+      if (b.duration_seconds < 5 || b.duration_seconds > 600) {
+        toast.error(`“${b.label}” duration must be between 5 and 600 seconds.`);
+        return;
+      }
     }
     setBannerSaving(true);
     try {
       const res = await setSignageBanner({
         enabled: bannerEnabled,
-        position: bannerPosition,
-        fields: ['date', 'time', 'next_prayer', 'countdown'],
-        speed_seconds: speed,
+        banners: bannerItems,
       });
-      setOverview((prev) => (prev ? { ...prev, banner: res.banner } : prev));
+      const normalized = normalizeBannerSettings(res.banner);
+      setBannerEnabled(normalized.enabled);
+      setBannerItems(normalized.banners);
+      setOverview((prev) => (prev ? { ...prev, banner: normalized } : prev));
       toast.success('Banner settings saved.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Banner settings failed');
@@ -1076,10 +1094,10 @@ export function SignagePage() {
 
           {tab === 'banner' && (
             <Card data-testid="signage-banner-panel">
-              <h3 style={cardTitle}>Info banner</h3>
-              <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 560 }}>
-                Persistent scrolling strip on every slide: date, time, next prayer, and countdown.
-                Hidden automatically during emergency and prayer-break modes.
+              <h3 style={cardTitle}>Info banners</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 640 }}>
+                Rotating scrolling strips on every slide. Use field chips (date, time, prayer) or custom text with
+                {' '}{'{{variables}}'} (e.g. Wi‑Fi). Hidden during emergency and prayer-break modes.
               </p>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 16, cursor: 'pointer' }}>
                 <input
@@ -1089,30 +1107,130 @@ export function SignagePage() {
                   style={{ width: 18, height: 18 }}
                   data-testid="signage-banner-enabled"
                 />
-                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Enable info banner</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Enable info banners</span>
               </label>
-              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <Select
-                  label="Position"
-                  value={bannerPosition}
-                  onChange={(val) => setBannerPosition(val === 'top' ? 'top' : 'bottom')}
-                  options={[
-                    { value: 'bottom', label: 'Bottom' },
-                    { value: 'top', label: 'Top' },
-                  ]}
-                />
-                <Input
-                  label="Scroll speed (seconds)"
-                  type="number"
-                  min={10}
-                  max={180}
-                  value={bannerSpeed}
-                  onChange={(val) => setBannerSpeed(val)}
-                />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
+                {bannerItems.map((b, idx) => {
+                  const usingCustom = Boolean((b.custom_text || '').trim());
+                  return (
+                    <div
+                      key={b.id}
+                      data-testid={`signage-banner-item-${b.id}`}
+                      style={{ padding: 14, border: '1px solid var(--color-border)', borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 12 }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <strong style={{ color: 'var(--color-text)' }}>Banner {idx + 1}</strong>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40, cursor: 'pointer', fontSize: 13 }}>
+                            <input
+                              type="checkbox"
+                              checked={b.enabled}
+                              onChange={(e) => patchBannerItem(b.id, { enabled: e.target.checked })}
+                              style={{ width: 18, height: 18 }}
+                            />
+                            On
+                          </label>
+                          {bannerItems.length > 1 && (
+                            <Btn
+                              type="button"
+                              variant="secondary"
+                              onClick={() => setBannerItems((prev) => prev.filter((x) => x.id !== b.id))}
+                              style={{ minHeight: 40 }}
+                              data-testid={`signage-banner-remove-${b.id}`}
+                            >
+                              <Trash2 size={14} /> Remove
+                            </Btn>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                        <Input
+                          label="Label"
+                          value={b.label}
+                          onChange={(val) => patchBannerItem(b.id, { label: val })}
+                        />
+                        <Select
+                          label="Position"
+                          value={b.position === 'top' ? 'top' : 'bottom'}
+                          onChange={(val) => patchBannerItem(b.id, { position: val === 'top' ? 'top' : 'bottom' })}
+                          options={[
+                            { value: 'bottom', label: 'Bottom' },
+                            { value: 'top', label: 'Top' },
+                          ]}
+                        />
+                        <Input
+                          label="Scroll speed (sec)"
+                          type="number"
+                          min={10}
+                          max={180}
+                          value={String(b.speed_seconds)}
+                          onChange={(val) => patchBannerItem(b.id, { speed_seconds: Number.parseInt(val, 10) || 40 })}
+                        />
+                        <Input
+                          label="Show for (sec)"
+                          type="number"
+                          min={5}
+                          max={600}
+                          value={String(b.duration_seconds)}
+                          onChange={(val) => patchBannerItem(b.id, { duration_seconds: Number.parseInt(val, 10) || 30 })}
+                        />
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+                          Fields {usingCustom ? '(ignored while custom text is set)' : ''}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                          {BANNER_FIELD_OPTS.map((f) => {
+                            const checked = (b.fields ?? []).includes(f.value);
+                            return (
+                              <label key={f.value} style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36, cursor: 'pointer', fontSize: 13 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={usingCustom}
+                                  onChange={(e) => {
+                                    const next = e.target.checked
+                                      ? [...new Set([...(b.fields ?? []), f.value])]
+                                      : (b.fields ?? []).filter((x) => x !== f.value);
+                                    patchBannerItem(b.id, { fields: next.length ? next : ['date', 'time'] });
+                                  }}
+                                  style={{ width: 16, height: 16 }}
+                                />
+                                {f.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <Input
+                        label="Custom text (optional)"
+                        value={b.custom_text ?? ''}
+                        onChange={(val) => patchBannerItem(b.id, { custom_text: val })}
+                        placeholder="Wi-Fi: {{wifi_name}} · {{wifi_password}}"
+                      />
+                    </div>
+                  );
+                })}
               </div>
-              <Btn onClick={() => void onSaveBanner()} disabled={bannerSaving} style={{ minHeight: 44 }} data-testid="signage-banner-save">
-                <Save size={16} /> {bannerSaving ? 'Saving…' : 'Save banner settings'}
-              </Btn>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                <Btn
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setBannerItems((prev) => [...prev, newBannerItem({ label: `Banner ${prev.length + 1}` })])}
+                  style={{ minHeight: 44 }}
+                  data-testid="signage-banner-add"
+                >
+                  Add banner
+                </Btn>
+                <Btn onClick={() => void onSaveBanner()} disabled={bannerSaving} style={{ minHeight: 44 }} data-testid="signage-banner-save">
+                  <Save size={16} /> {bannerSaving ? 'Saving…' : 'Save banner settings'}
+                </Btn>
+              </div>
             </Card>
           )}
 

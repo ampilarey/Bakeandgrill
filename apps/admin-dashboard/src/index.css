@@ -651,13 +651,17 @@ a { text-decoration: none; color: inherit; }
   .signage-designer-preview-size {
     display: none !important;
   }
+  /* Clear MobileTabBar (56px) + safe area — sticky bar must not sit under the tabs. */
+  .signage-designer {
+    padding-bottom: calc(72px + 56px + env(safe-area-inset-bottom, 0px));
+  }
   .signage-designer-sticky-actions {
     display: flex !important;
     position: sticky;
-    bottom: 0;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
     z-index: var(--z-overlay);
     gap: 8px;
-    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 0;
     background: var(--color-bg);
     border-top: 1px solid var(--color-border);
   }
