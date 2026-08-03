@@ -10,7 +10,7 @@ import {
   AUTO_MENU_ORIGIN,
   buildWeightedRotation,
   expandPlaylist,
-  interpolate,
+  brandCardSlide,
   SignageBanner,
   shouldShowBanner,
   SlideCanvas,
@@ -104,7 +104,9 @@ export function SignagePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { settings } = useSiteSettingsContext();
-  const logoUrl = settings.logo || '/logo.png';
+  // Dark board (#0d0a07) — prefer the dark-surface logo so a light mark doesn't wash out.
+  const logoUrl = settings.logo_dark || settings.logo || '/logo.png';
+  const idleSlide = useMemo(() => brandCardSlide(), []);
 
   const [config, setConfig] = useState<SignageConfig | null>(null);
   const [items, setItems] = useState<MenuItemLite[]>([]);
@@ -380,6 +382,8 @@ export function SignagePage() {
     && !black
     && shouldShowBanner(config.banner, config.mode),
   );
+  const isLoading = !config && !offline;
+  const showIdleBrand = Boolean(config && !currentSlide && !black);
 
   return (
     <div
@@ -411,6 +415,24 @@ export function SignagePage() {
           />
         </div>
       )}
+      {showIdleBrand && config && (
+        <div className="signage-stage" data-testid="signage-idle-brand">
+          <SlideCanvas
+            slide={idleSlide}
+            theme={config.theme}
+            variables={{
+              ...liveVars,
+              branch_name: liveVars.branch_name || settings.site_name || 'Bake & Grill',
+              business_phone: liveVars.business_phone || settings.business_phone || '',
+              business_website: liveVars.business_website || settings.business_website || '',
+            }}
+            items={items}
+            config={config}
+            logoUrl={logoUrl}
+            burnInOffset={burnIn}
+          />
+        </div>
+      )}
       {showBanner && config?.banner && (
         <SignageBanner
           banner={config.banner}
@@ -419,11 +441,12 @@ export function SignagePage() {
           burnInOffset={burnIn}
           dateLabel={liveVars.today || undefined}
           timeLabel={liveVars.current_time || undefined}
+          variables={liveVars}
         />
       )}
-      {!currentSlide && !black && (
-        <div className="signage-empty" data-testid="signage-loading">
-          {interpolate('{{branch_name}}', { branch_name: settings.site_name || 'Bake & Grill' })}
+      {isLoading && !black && (
+        <div className="signage-loading" data-testid="signage-loading">
+          Loading board…
         </div>
       )}
       {showPairing && (

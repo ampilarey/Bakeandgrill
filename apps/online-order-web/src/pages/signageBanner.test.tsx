@@ -20,7 +20,20 @@ const schedule: SignagePrayerEntry[] = [
 
 const enabledBanner: SignageBannerSettings = {
   enabled: true,
-  position: 'bottom',
+  banners: [{
+    id: 'legacy',
+    label: 'Info',
+    enabled: true,
+    position: 'bottom',
+    fields: ['date', 'time', 'next_prayer', 'countdown'],
+    speed_seconds: 40,
+    duration_seconds: 30,
+  }],
+};
+
+const legacyShape = {
+  enabled: true,
+  position: 'bottom' as const,
   fields: ['date', 'time', 'next_prayer', 'countdown'],
   speed_seconds: 40,
 };
@@ -89,5 +102,44 @@ describe('SignageBanner helpers', () => {
     expect(el.textContent).toMatch(/Dhuhr/);
     expect(el.textContent).toMatch(/in 1h 10m/);
     expect(el.textContent).toMatch(/Saturday, 2 Aug 2026/);
+  });
+
+  it('accepts the Stage-3 single-object banner shape', () => {
+    render(
+      <SignageBanner
+        banner={legacyShape as SignageBannerSettings}
+        schedule={schedule}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+        dateLabel="Saturday, 2 Aug 2026"
+        timeLabel="11:00 AM"
+      />,
+    );
+    expect(screen.getByTestId('signage-banner').textContent).toMatch(/Dhuhr/);
+  });
+
+  it('renders custom_text with variables', () => {
+    render(
+      <SignageBanner
+        banner={{
+          enabled: true,
+          banners: [{
+            id: 'wifi',
+            label: 'Wi-Fi',
+            enabled: true,
+            position: 'bottom',
+            fields: ['date'],
+            custom_text: 'Wi-Fi: {{wifi_name}} · {{wifi_password}}',
+            speed_seconds: 40,
+            duration_seconds: 20,
+          }],
+        }}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+        variables={{ wifi_name: 'BG-Guest', wifi_password: 'secret' }}
+      />,
+    );
+    expect(screen.getByTestId('signage-banner').textContent).toMatch(/Wi-Fi: BG-Guest · secret/);
   });
 });

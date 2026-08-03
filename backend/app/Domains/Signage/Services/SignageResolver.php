@@ -310,38 +310,11 @@ final class SignageResolver
     }
 
     /**
-     * @return array{enabled: bool, position: string, fields: list<string>, speed_seconds: int}
+     * @return array{enabled: bool, banners: list<array<string, mixed>>}
      */
     private function bannerConfig(): array
     {
-        $raw = SiteSetting::get('signage_banner', '{}');
-        $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
-        $fields = $cfg['fields'] ?? ['date', 'time', 'next_prayer', 'countdown'];
-        if (! is_array($fields)) {
-            $fields = ['date', 'time', 'next_prayer', 'countdown'];
-        }
-        $fields = array_values(array_filter(array_map('strval', $fields), fn (string $f) => in_array($f, ['date', 'time', 'next_prayer', 'countdown'], true)));
-        if ($fields === []) {
-            $fields = ['date', 'time', 'next_prayer', 'countdown'];
-        }
-        $position = (string) ($cfg['position'] ?? 'bottom');
-        if (! in_array($position, ['top', 'bottom'], true)) {
-            $position = 'bottom';
-        }
-        $speed = (int) ($cfg['speed_seconds'] ?? 40);
-        if ($speed < 10) {
-            $speed = 10;
-        }
-        if ($speed > 180) {
-            $speed = 180;
-        }
-
-        return [
-            'enabled' => (bool) ($cfg['enabled'] ?? false),
-            'position' => $position,
-            'fields' => $fields,
-            'speed_seconds' => $speed,
-        ];
+        return SignageBannerNormalizer::normalize(SiteSetting::get('signage_banner', '{}'));
     }
 
     /**
@@ -356,6 +329,8 @@ final class SignageResolver
             'next_prayer' => $nextPrayer,
             'wifi_name' => (string) SiteSetting::get('signage_wifi_name', ''),
             'wifi_password' => (string) SiteSetting::get('signage_wifi_password', ''),
+            'business_phone' => (string) SiteSetting::get('business_phone', ''),
+            'business_website' => (string) SiteSetting::get('business_website', ''),
             'promotion_name' => '',
         ];
     }

@@ -1,5 +1,6 @@
 export type {
   MenuItemLite,
+  SignageBannerItem,
   SignageBannerSettings,
   SignageCategoryLite,
   SignageConfig,
@@ -30,6 +31,12 @@ export {
   buildBannerSegments,
 } from './SignageBanner';
 export type { SignageBannerProps } from './SignageBanner';
+export {
+  normalizeBannerSettings,
+  activeBanners,
+  newBannerItem,
+} from './bannerConfig';
+export { brandCardSlide } from './brandCard';
 export {
   PARITY_THEME,
   PARITY_VARIABLES,

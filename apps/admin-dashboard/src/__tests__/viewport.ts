@@ -59,10 +59,13 @@ export function injectSignageMobileCss(): HTMLStyleElement {
     .signage-designer-props { order: 2 !important; }
     .signage-designer-palette { order: 3 !important; }
     .signage-designer-preview-size { display: none !important; }
+    .signage-designer {
+      padding-bottom: calc(72px + 56px + env(safe-area-inset-bottom, 0px));
+    }
     .signage-designer-sticky-actions {
       display: flex !important;
       position: sticky;
-      bottom: 0;
+      bottom: calc(56px + env(safe-area-inset-bottom, 0px));
     }
     .signage-tab-row {
       flex-wrap: nowrap !important;

@@ -143,6 +143,17 @@ return [
             'validate' => 'nullable|string|max:5000',
             'default' => '+960 912 0011',
         ],
+        'business_website' => [
+            'label' => 'Business Website',
+            'group' => 'Contact',
+            'type' => 'text',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'validate' => 'nullable|string|max:5000',
+            'default' => 'https://bakeandgrill.mv',
+        ],
         'business_viber' => [
             'label' => 'Viber Link',
             'group' => 'Contact',
