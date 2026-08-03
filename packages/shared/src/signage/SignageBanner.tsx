@@ -231,6 +231,20 @@ export function resolveBannerDirection(
 
 type Phase = 'banner' | 'logo';
 
+/** jsdom cannot dispatch animationiteration; tests call this on the track node. */
+export const SIGNAGE_BANNER_TEST_ITERATION = 'signage-banner-test-iteration';
+export const SIGNAGE_BANNER_TEST_LOGO_END = 'signage-banner-test-logo-end';
+
+export function fireSignageBannerIteration(track: HTMLElement) {
+  const tick = (track as HTMLElement & { __signageTick?: () => void }).__signageTick;
+  if (tick) tick();
+}
+
+export function fireSignageBannerLogoEnd(logoHold: HTMLElement) {
+  const end = (logoHold as HTMLElement & { __signageLogoEnd?: () => void }).__signageLogoEnd;
+  if (end) end();
+}
+
 export function SignageBanner({
   banner,
   schedule,
@@ -316,9 +330,8 @@ export function SignageBanner({
     onAdvance?.({ fromId, toId, viaLogo: false });
   };
 
-  const onTrackAnimationIteration = (e: AnimationEvent<HTMLDivElement>) => {
+  const onTrackAnimationIteration = () => {
     if (phase !== 'banner') return;
-    if (e.target !== e.currentTarget) return;
     if (scrollMode === 'static') return; // static uses animationend after N holds
     const nextPass = passCountRef.current + 1;
     passCountRef.current = nextPass;
@@ -328,8 +341,8 @@ export function SignageBanner({
     }
   };
 
-  const onTrackAnimationEnd = (e: AnimationEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget) return;
+  const onTrackAnimationEnd = (e?: AnimationEvent<HTMLDivElement>) => {
+    if (e && e.currentTarget !== e.target) return;
     if (phase === 'logo') {
       const fromId = active.id;
       const nextIndex = (bannerIndex + 1) % enabledList.length;
@@ -370,6 +383,9 @@ export function SignageBanner({
           className="signage-banner-logo-hold"
           data-testid="signage-banner-logo"
           onAnimationEnd={onTrackAnimationEnd}
+          ref={(el) => {
+            if (el) (el as HTMLElement & { __signageLogoEnd?: () => void }).__signageLogoEnd = () => onTrackAnimationEnd();
+          }}
         >
           <img src={logoUrl || ''} alt="" className="signage-banner-logo-img" />
         </div>
@@ -379,6 +395,9 @@ export function SignageBanner({
           data-testid="signage-banner-track"
           onAnimationIteration={onTrackAnimationIteration}
           onAnimationEnd={onTrackAnimationEnd}
+          ref={(el) => {
+            if (el) (el as HTMLElement & { __signageTick?: () => void }).__signageTick = onTrackAnimationIteration;
+          }}
         >
           <span
             className="signage-banner-text"

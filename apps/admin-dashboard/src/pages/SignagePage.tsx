@@ -337,8 +337,11 @@ export function SignagePage() {
 
   const applyOverview = useCallback((data: SignageOverview) => {
     setOverview(data);
-    setEmergencyMode(data.emergency || 'none');
-    setEmergencyEntries(data.emergency_config?.entries ?? []);
+    const emergencyCfg = typeof data.emergency === 'string'
+      ? { manual: data.emergency, entries: [] as SignageEmergencyEntry[] }
+      : data.emergency;
+    setEmergencyMode(emergencyCfg?.manual || 'none');
+    setEmergencyEntries(emergencyCfg?.entries ?? []);
     setPrayerEnabled(data.prayer?.enabled ?? true);
     setPrayerBreak(String(data.prayer?.break_minutes ?? 15));
     setPrayerSelected(data.prayer?.prayers ?? []);
@@ -523,8 +526,9 @@ export function SignagePage() {
     setEmergencySaving(true);
     try {
       const res = await setSignageEmergency(emergencyMode);
-      setEmergencyMode(res.mode);
-      setOverview((prev) => (prev ? { ...prev, emergency: res.mode } : prev));
+      setEmergencyMode(res.manual);
+      setEmergencyEntries(res.entries ?? []);
+      setOverview((prev) => (prev ? { ...prev, emergency: res } : prev));
       toast.success('Emergency mode updated.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Emergency update failed');
@@ -541,11 +545,8 @@ export function SignagePage() {
     setEmergencyConfigSaving(true);
     try {
       const res = await setSignageEmergencyConfig({ entries: emergencyEntries });
-      setEmergencyEntries(res.emergency_config?.entries ?? emergencyEntries);
-      setOverview((prev) => (prev ? {
-        ...prev,
-        emergency_config: res.emergency_config,
-      } : prev));
+      setEmergencyEntries(res.entries ?? emergencyEntries);
+      setOverview((prev) => (prev ? { ...prev, emergency: res } : prev));
       toast.success('Scheduled emergencies saved.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Scheduled emergencies failed');

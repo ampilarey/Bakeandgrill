@@ -76,8 +76,7 @@ export type SignageOverview = {
   groups: SignageGroup[];
   screens: SignageScreen[];
   campaigns: SignageCampaign[];
-  emergency: string;
-  emergency_config?: SignageEmergencyConfig;
+  emergency: SignageEmergencyConfig | string;
   prayer: { enabled: boolean; prayers: string[]; break_minutes: number; island_id?: number };
   prayer_islands?: SignagePrayerIsland[];
   banner?: SignageBannerSettings;
@@ -194,7 +193,7 @@ export async function updateSignageCampaign(id: number, body: Partial<SignageCam
 }
 
 export async function setSignageEmergency(mode: string) {
-  return req<{ mode: string }>('/admin/signage/emergency', {
+  return req<SignageEmergencyConfig>('/admin/signage/emergency', {
     method: 'PUT',
     body: JSON.stringify({ mode }),
   });
@@ -204,7 +203,7 @@ export async function setSignageEmergencyConfig(body: {
   mode?: string;
   entries?: SignageEmergencyEntry[];
 }) {
-  return req<{ mode: string; emergency_config: SignageEmergencyConfig }>('/admin/signage/emergency', {
+  return req<SignageEmergencyConfig>('/admin/signage/emergency', {
     method: 'PUT',
     body: JSON.stringify(body),
   });

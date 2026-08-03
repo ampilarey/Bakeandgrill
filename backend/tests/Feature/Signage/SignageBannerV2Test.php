@@ -7,8 +7,6 @@ namespace Tests\Feature\Signage;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Signage\Services\SignageResolver;
 use App\Models\Role;
-use App\Models\SignagePlaylist;
-use App\Models\SignageCampaign;
 use App\Models\SiteSetting;
 use App\Models\User;
 use Carbon\Carbon;

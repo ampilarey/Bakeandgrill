@@ -43,6 +43,8 @@ export {
   resolveBannerDirection,
   SIGNAGE_BANNER_LOCALE,
   SIGNAGE_BANNER_THAANA_FONT,
+  fireSignageBannerIteration,
+  fireSignageBannerLogoEnd,
 } from './SignageBanner';
 export type { SignageBannerProps } from './SignageBanner';
 export {
