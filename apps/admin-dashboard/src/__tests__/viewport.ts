@@ -1,8 +1,6 @@
-/**
- * Drive the admin mobile band for tests.
- * Matches AppShell / index.css: (max-width: 767px).
- */
-export const MOBILE_MEDIA_QUERY = '(max-width: 767px)';
+import { MOBILE_MEDIA_QUERY } from '../hooks/useIsMobile';
+
+export { MOBILE_MEDIA_QUERY };
 
 function matchesQuery(query: string, width: number): boolean {
   const max = /max-width:\s*(\d+)px/.exec(query);

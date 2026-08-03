@@ -185,6 +185,40 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
 
   const selEl = selected.length === 1 ? elements.find((e) => e.id === selected[0]) : null;
 
+  const autoBinding = useMemo(
+    () => ((local.elements?.[0]?.binding ?? {}) as Record<string, unknown>),
+    [local.elements],
+  );
+
+  const patchAutoBinding = (patch: Record<string, unknown>) => {
+    updateElements((els) => {
+      if (els.length === 0) {
+        return [{
+          id: uid(),
+          type: 'text',
+          x: 8,
+          y: 40,
+          w: 84,
+          h: 14,
+          text: 'Our menu',
+          style: { fontSize: 6, fontWeight: 800, color: '#FFF8F0', textAlign: 'center' },
+          animation: { entrance: 'fade' },
+          binding: {
+            showcase_cap: 12,
+            rows_per_slide: 14,
+            showcase_seconds: 10,
+            category_seconds: 14,
+            show_thumbs: false,
+            ...patch,
+          },
+        }];
+      }
+      return els.map((el, i) => (
+        i === 0 ? { ...el, binding: { ...el.binding, ...patch } } : el
+      ));
+    });
+  };
+
   const patchSelected = (patch: Partial<DesignerElement>) => {
     if (!selEl) return;
     updateElements((els) => els.map((e) => (e.id === selEl.id ? { ...e, ...patch, style: { ...e.style, ...patch.style }, animation: { ...e.animation, ...patch.animation }, binding: { ...e.binding, ...patch.binding } } : e)));
@@ -478,7 +512,76 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           <label style={label}>Background</label>
           <input style={input} value={local.background?.value || '#1C1408'} onChange={(e) => setLocal({ ...local, background: { type: 'solid', value: e.target.value, opacity: 1 } })} />
 
-          {selEl && (
+          {isAuto && (
+            <div data-testid="signage-auto-menu-controls" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+              <div style={{ fontWeight: 700 }}>Auto menu</div>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
+                Generated from the live menu. These knobs live on the slide binding — no deploy needed to retune the board.
+              </p>
+              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={label}>Showcase cap</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    data-testid="auto-showcase-cap"
+                    style={input}
+                    value={Number(autoBinding.showcase_cap ?? 12)}
+                    onChange={(e) => patchAutoBinding({ showcase_cap: Math.max(1, Number(e.target.value) || 1) })}
+                  />
+                </div>
+                <div>
+                  <label style={label}>Rows per slide</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={40}
+                    data-testid="auto-rows-per-slide"
+                    style={input}
+                    value={Number(autoBinding.rows_per_slide ?? 14)}
+                    onChange={(e) => patchAutoBinding({ rows_per_slide: Math.max(1, Number(e.target.value) || 1) })}
+                  />
+                </div>
+                <div>
+                  <label style={label}>Showcase seconds</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    data-testid="auto-showcase-seconds"
+                    style={input}
+                    value={Number(autoBinding.showcase_seconds ?? 10)}
+                    onChange={(e) => patchAutoBinding({ showcase_seconds: Math.max(1, Number(e.target.value) || 1) })}
+                  />
+                </div>
+                <div>
+                  <label style={label}>Category seconds</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    data-testid="auto-category-seconds"
+                    style={input}
+                    value={Number(autoBinding.category_seconds ?? 14)}
+                    onChange={(e) => patchAutoBinding({ category_seconds: Math.max(1, Number(e.target.value) || 1) })}
+                  />
+                </div>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  data-testid="auto-show-thumbs"
+                  checked={autoBinding.show_thumbs === true}
+                  onChange={(e) => patchAutoBinding({ show_thumbs: e.target.checked })}
+                  style={{ width: 18, height: 18 }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Show thumbs on category lists</span>
+              </label>
+            </div>
+          )}
+
+          {selEl && !isAuto && (
             <>
               <div style={{ fontWeight: 700, marginTop: 8 }}>Element · {selEl.type}</div>
               <div style={{ display: 'flex', gap: 6 }}>

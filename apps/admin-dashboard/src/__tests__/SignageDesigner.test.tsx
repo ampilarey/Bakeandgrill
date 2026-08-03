@@ -102,4 +102,63 @@ describe('SignageDesigner', () => {
     expect(screen.getByText('Hello Bake & Grill')).toBeTruthy();
     expect(screen.getByText('Chicken Wrap')).toBeTruthy();
   });
+
+  it('exposes auto-menu binding controls and persists them on apply', () => {
+    const onChange = vi.fn();
+    const autoSlide = {
+      id: 'auto-1',
+      name: 'Full menu',
+      seconds: 12,
+      weight: 1,
+      transition: 'fade',
+      template_origin: 'auto_menu',
+      background: { type: 'solid', value: '#1C1408' },
+      elements: [{
+        id: 'placeholder',
+        type: 'text',
+        x: 8,
+        y: 40,
+        w: 84,
+        h: 14,
+        text: 'Our menu',
+        style: {},
+        animation: {},
+        binding: {
+          showcase_cap: 12,
+          rows_per_slide: 14,
+          showcase_seconds: 10,
+          category_seconds: 14,
+          show_thumbs: false,
+        },
+      }],
+    };
+
+    render(<SignageDesigner slide={autoSlide} onChange={onChange} onClose={vi.fn()} />);
+
+    expect(screen.getByTestId('signage-auto-menu-controls')).toBeTruthy();
+    expect(screen.getByTestId('signage-auto-preview-note')).toBeTruthy();
+    expect(screen.queryByTestId('designer-el-placeholder')).toBeNull();
+
+    fireEvent.change(screen.getByTestId('auto-showcase-cap'), { target: { value: '8' } });
+    fireEvent.change(screen.getByTestId('auto-rows-per-slide'), { target: { value: '10' } });
+    fireEvent.change(screen.getByTestId('auto-showcase-seconds'), { target: { value: '12' } });
+    fireEvent.change(screen.getByTestId('auto-category-seconds'), { target: { value: '16' } });
+    fireEvent.click(screen.getByTestId('auto-show-thumbs'));
+    fireEvent.click(screen.getByTestId('signage-designer-apply'));
+
+    expect(onChange).toHaveBeenCalled();
+    const saved = onChange.mock.calls[0][0];
+    expect(saved.elements[0].binding).toMatchObject({
+      showcase_cap: 8,
+      rows_per_slide: 10,
+      showcase_seconds: 12,
+      category_seconds: 16,
+      show_thumbs: true,
+    });
+  });
+
+  it('does not show auto-menu controls on hand-authored slides', () => {
+    render(<SignageDesigner slide={slide} onChange={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.queryByTestId('signage-auto-menu-controls')).toBeNull();
+  });
 });

@@ -19,18 +19,26 @@ if (typeof localStorage === 'undefined' || typeof localStorage.setItem !== 'func
     Object.defineProperty(globalThis, 'sessionStorage', { value: polyfill, configurable: true });
 }
 
-// jsdom has no matchMedia. Layout's useViewportBand reads window.innerWidth for
-// the current band and only uses matchMedia for change notifications, so a
-// static stub is sufficient — tests drive the viewport via innerWidth before render.
+// jsdom has no matchMedia. Resolve max/min-width against window.innerWidth so
+// useIsMobile (AppShell's `(max-width: 767px)` band) and layout tests agree.
 if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
-    window.matchMedia = (query: string): MediaQueryList => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: () => {},
-        removeListener: () => {},
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        dispatchEvent: () => false,
-    } as MediaQueryList);
+    window.matchMedia = (query: string): MediaQueryList => {
+        const width = window.innerWidth;
+        const max = /max-width:\s*(\d+)px/.exec(query);
+        const min = /min-width:\s*(\d+)px/.exec(query);
+        let matches = false;
+        if (max && min) matches = width <= Number(max[1]) && width >= Number(min[1]);
+        else if (max) matches = width <= Number(max[1]);
+        else if (min) matches = width >= Number(min[1]);
+        return {
+            matches,
+            media: query,
+            onchange: null,
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => false,
+        } as MediaQueryList;
+    };
 }
