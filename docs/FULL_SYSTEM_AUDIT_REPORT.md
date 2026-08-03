@@ -157,3 +157,40 @@ Read-only review of migrations + money paths. No migrate/seed run.
 - Live orphan row counts on TEST DB (no production DB access).
 - Full migration dry-run against a prod dump.
 
+
+---
+
+## Part D — Performance
+
+### Findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| MAJOR | Client bundles | Chunks over 500KB in shipped public assets | `backend/public/admin/assets/prepareUpload-_v4Ix60h.js` **~1.3MB**; `backend/public/pos/assets/prepareUpload-BkPcRPyB.js` **~1.3MB**; `backend/public/pos/assets/index-C7Uo8-Yg.js` **~632KB** | `prepareUpload` is lazy-imported (mitigation) but still heavy HEIC/image stack. POS main chunk exceeds budget on first load. |
+| MINOR | N+1 | Per-supplier query inside `map` | `SupplierIntelligenceController::priceComparison` | One latest-price query per supplier. |
+| MINOR | N+1 | AB stats = multiple COUNTs per campaign on list | `SmsCampaignController::index` → `SmsCampaign::computeAbStats()` | Paginated (20) but can approach ~100+ queries/page with AB. |
+| MINOR | Unbounded lists | Full `get()` without hard cap | `SupplierIntelligenceController::allPerformance`; `KdsController::index` (open statuses — product-shaped); `PosEventController` date window; `ScheduleController::index` | KDS open-board is intentional; supplier/perf + long windows can grow. |
+
+### What was checked
+
+- `find` for `*.js` >500KB under `backend/public` and app `dist`.
+- Controller patterns for N+1 / unbounded lists.
+- Spot GET latency not systematically measured (owner probes were sub-second for list endpoints on sparse local data — not reported as passes/fails).
+
+### What passed
+
+- Most admin list endpoints use pagination.
+- Heavy upload chunk is code-split from admin initial bundle.
+
+### Findings by severity (Part D)
+
+- BLOCKER: 0  
+- MAJOR: 1  
+- MINOR: 3  
+- INFO: 0  
+
+### Untested (Part D)
+
+- Query-log N+1 counts on warm TEST dataset (>20 queries threshold).
+- p95 latency on production-sized data.
+
