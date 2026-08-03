@@ -57,6 +57,27 @@ const mockOverview: api.SignageOverview = {
   templates: [{ key: 'hero', label: 'Hero' }],
   custom_templates: [],
   wifi: { name: '', password: '' },
+  banner: {
+    enabled: true,
+    banners: [{
+      id: 'main',
+      label: 'Prayer',
+      enabled: true,
+      position: 'bottom',
+      fields: ['date', 'time', 'next_prayer', 'countdown'],
+      custom_text: '',
+      speed_seconds: 40,
+      duration_seconds: 30,
+      font_scale: 1.15,
+      height_scale: 1,
+      text_color: '#fff8f0',
+      background_color: 'rgba(12, 8, 4, 0.78)',
+      align: 'left',
+      scroll: true,
+      date_format: 'full',
+      inset_percent: 0,
+    }],
+  },
 };
 
 describe('SignagePage', () => {
@@ -403,6 +424,70 @@ describe('SignagePage', () => {
 
     fireEvent.click(screen.getByTestId('signage-banner-goto-prayer'));
     expect(await screen.findByTestId('signage-prayer-island')).toBeTruthy();
+  });
+
+  it('Banner appearance UX: swatches, sizes, align visibility, edge checkbox, live preview', async () => {
+    const saveSpy = vi.spyOn(api, 'setSignageBanner').mockResolvedValue({
+      banner: mockOverview.banner!,
+    });
+
+    renderWithRouter(<SignagePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Banner' }));
+
+    expect(await screen.findByTestId('signage-banner-preview')).toBeTruthy();
+    expect(screen.getByTestId('signage-banner')).toBeTruthy();
+
+    const appearance = await screen.findByTestId('signage-banner-appearance-main');
+    fireEvent.click(appearance.querySelector('summary')!);
+
+    // Off-preset 1.15 shows nearest Medium without rewriting until change.
+    const fontSelect = screen.getByTestId('signage-banner-font-scale-main') as HTMLSelectElement;
+    expect(fontSelect.value).toBe('1');
+
+    // Align hidden while scroll is on.
+    const advanced = screen.getByTestId('signage-banner-advanced-main');
+    fireEvent.click(advanced.querySelector('summary')!);
+    expect(screen.queryByTestId('signage-banner-align-main')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('signage-banner-scroll-main'));
+    expect(await screen.findByTestId('signage-banner-align-main')).toBeTruthy();
+
+    // Edge checkbox stores 3 when checked.
+    fireEvent.click(screen.getByTestId('signage-banner-inset-main'));
+
+    // Swatch sets text colour; preview updates without save.
+    fireEvent.click(screen.getByTestId('signage-banner-text-swatch-main-white'));
+    await waitFor(() => {
+      const bannerEl = screen.getByTestId('signage-banner');
+      expect(bannerEl.style.getPropertyValue('--signage-banner-color').toLowerCase()).toBe('#ffffff');
+    });
+    expect(saveSpy).not.toHaveBeenCalled();
+
+    // Native picker can set an arbitrary colour.
+    fireEvent.change(screen.getByTestId('signage-banner-text-color-main-picker'), {
+      target: { value: '#112233' },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('signage-banner').style.getPropertyValue('--signage-banner-color').toLowerCase()).toBe('#112233');
+    });
+
+    // Transparency slider composes rgba on background.
+    fireEvent.change(screen.getByTestId('signage-banner-bg-color-main-transparency'), {
+      target: { value: '0' },
+    });
+    await waitFor(() => {
+      const bg = screen.getByTestId('signage-banner').style.getPropertyValue('--signage-banner-bg').toLowerCase();
+      expect(bg === '#0c0804' || bg === 'rgba(12, 8, 4, 1)').toBe(true);
+    });
+
+    // Choosing a named font size stores the multiplier; saving keeps off-preset until edited.
+    fireEvent.change(fontSelect, { target: { value: '1.3' } });
+    fireEvent.click(screen.getByTestId('signage-banner-save'));
+    await waitFor(() => expect(saveSpy).toHaveBeenCalled());
+    const payload = saveSpy.mock.calls[0][0];
+    expect(payload.banners?.[0]?.font_scale).toBe(1.3);
+    expect(payload.banners?.[0]?.inset_percent).toBe(3);
+    expect(payload.banners?.[0]?.scroll).toBe(false);
   });
 });
 

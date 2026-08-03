@@ -24,10 +24,12 @@ import {
   type SignagePlaylist,
   type SignageScreen,
 } from '../api';
-import { normalizeBannerSettings, newBannerItem, BANNER_APPEARANCE_DEFAULTS } from '@shared/signage';
+import { normalizeBannerSettings, newBannerItem } from '@shared/signage';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
 import { Btn, Card, EmptyState, Input, PageHeader, PageShell, Select, Spinner } from '../components/SharedUI';
+import { BannerAppearanceEditor } from './signage/BannerAppearanceEditor';
+import { BannerLivePreview } from './signage/BannerLivePreview';
 import { SignageDesigner, type DesignerSlide } from './signage/SignageDesigner';
 
 const BANNER_FIELD_OPTS = [
@@ -667,6 +669,19 @@ export function SignagePage() {
     || prayerIslandOptions[0]?.label
     || 'Malé';
 
+  const boardTheme = useMemo(() => {
+    const pl = overview?.playlists.find((p) => p.id === selectedPlaylistId)
+      ?? overview?.playlists[0];
+    const t = (pl?.theme && typeof pl.theme === 'object' ? pl.theme : {}) as Record<string, unknown>;
+    return {
+      background: typeof t.background === 'string' ? t.background : '#1C1408',
+      surface: typeof t.surface === 'string' ? t.surface : '#2A2118',
+      primary: typeof t.primary === 'string' ? t.primary : '#D4813A',
+      text: typeof t.text === 'string' ? t.text : '#FFF8F0',
+      muted: typeof t.muted === 'string' ? t.muted : '#C4B5A5',
+    };
+  }, [overview?.playlists, selectedPlaylistId]);
+
   return (
     <div data-testid="signage-studio" className="signage-studio">
     <PageShell>
@@ -1131,6 +1146,11 @@ export function SignagePage() {
                 Rotating scrolling strips on every slide. Use field chips (date, time, prayer) or custom text with
                 {' '}{'{{variables}}'} (e.g. Wi‑Fi). Hidden during emergency and prayer-break modes.
               </p>
+              <BannerLivePreview
+                enabled={bannerEnabled}
+                banners={bannerItems}
+                boardBackground={boardTheme.background}
+              />
               <div
                 data-testid="signage-banner-prayer-island-summary"
                 style={{
@@ -1184,18 +1204,6 @@ export function SignagePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
                 {bannerItems.map((b, idx) => {
                   const usingCustom = Boolean((b.custom_text || '').trim());
-                  const fontScale = b.font_scale ?? BANNER_APPEARANCE_DEFAULTS.font_scale;
-                  const heightScale = b.height_scale ?? BANNER_APPEARANCE_DEFAULTS.height_scale;
-                  const textColor = b.text_color || BANNER_APPEARANCE_DEFAULTS.text_color;
-                  const bgColor = b.background_color || BANNER_APPEARANCE_DEFAULTS.background_color;
-                  const align = b.align === 'center' || b.align === 'right' ? b.align : 'left';
-                  const dateFormat = (['full', 'short', 'numeric', 'weekday', 'hijri'] as const).includes(
-                    b.date_format as 'full',
-                  )
-                    ? String(b.date_format)
-                    : BANNER_APPEARANCE_DEFAULTS.date_format;
-                  const inset = b.inset_percent ?? BANNER_APPEARANCE_DEFAULTS.inset_percent;
-                  const scrolling = b.scroll !== false;
                   return (
                     <div
                       key={b.id}
@@ -1296,97 +1304,11 @@ export function SignagePage() {
                         placeholder="Wi-Fi: {{wifi_name}} · {{wifi_password}}"
                       />
 
-                      <details data-testid={`signage-banner-appearance-${b.id}`} style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10 }}>
-                        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13, color: 'var(--color-text)', minHeight: 36, display: 'flex', alignItems: 'center' }}>
-                          Appearance
-                        </summary>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-                          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-                            <Input
-                              label="Font scale"
-                              type="number"
-                              min={0.5}
-                              max={3}
-                              step={0.1}
-                              value={String(fontScale)}
-                              onChange={(val) => patchBannerItem(b.id, { font_scale: Number.parseFloat(val) || 1 })}
-                              data-testid={`signage-banner-font-scale-${b.id}`}
-                            />
-                            <Input
-                              label="Height scale"
-                              type="number"
-                              min={0.5}
-                              max={3}
-                              step={0.1}
-                              value={String(heightScale)}
-                              onChange={(val) => patchBannerItem(b.id, { height_scale: Number.parseFloat(val) || 1 })}
-                              data-testid={`signage-banner-height-scale-${b.id}`}
-                            />
-                            <Input
-                              label="Text colour"
-                              value={textColor}
-                              onChange={(val) => patchBannerItem(b.id, { text_color: val })}
-                              placeholder="#fff8f0"
-                              data-testid={`signage-banner-text-color-${b.id}`}
-                            />
-                            <Input
-                              label="Background"
-                              value={bgColor}
-                              onChange={(val) => patchBannerItem(b.id, { background_color: val })}
-                              placeholder="rgba(12, 8, 4, 0.78)"
-                              data-testid={`signage-banner-bg-color-${b.id}`}
-                            />
-                            <Select
-                              label="Align (static)"
-                              value={align}
-                              onChange={(val) => patchBannerItem(b.id, { align: val })}
-                              options={[
-                                { value: 'left', label: 'Left' },
-                                { value: 'center', label: 'Center' },
-                                { value: 'right', label: 'Right' },
-                              ]}
-                              data-testid={`signage-banner-align-${b.id}`}
-                            />
-                            <Select
-                              label="Date format"
-                              value={dateFormat}
-                              onChange={(val) => patchBannerItem(b.id, { date_format: val })}
-                              options={[
-                                { value: 'full', label: 'Full (Mon, 3 Aug 2026)' },
-                                { value: 'short', label: 'Short (Mon, 3 Aug)' },
-                                { value: 'numeric', label: 'Numeric (03/08/2026)' },
-                                { value: 'weekday', label: 'Weekday only' },
-                                { value: 'hijri', label: 'Hijri (approx.)' },
-                              ]}
-                              data-testid={`signage-banner-date-format-${b.id}`}
-                            />
-                            <Input
-                              label="Edge inset (%)"
-                              type="number"
-                              min={0}
-                              max={5}
-                              step={0.5}
-                              value={String(inset)}
-                              onChange={(val) => patchBannerItem(b.id, { inset_percent: Number.parseFloat(val) || 0 })}
-                              data-testid={`signage-banner-inset-${b.id}`}
-                            />
-                          </div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40, cursor: 'pointer', fontSize: 13 }}>
-                            <input
-                              type="checkbox"
-                              checked={scrolling}
-                              onChange={(e) => patchBannerItem(b.id, { scroll: e.target.checked })}
-                              style={{ width: 18, height: 18 }}
-                              data-testid={`signage-banner-scroll-${b.id}`}
-                            />
-                            Scroll (marquee). Turn off for a static bar — better for short text.
-                          </label>
-                          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', maxWidth: 560 }}>
-                            Scales multiply the board’s vmin sizes so 1080p and 4K stay consistent.
-                            Hijri uses the Umm al-Qura calendar and can differ by a day from locally observed dates.
-                          </p>
-                        </div>
-                      </details>
+                      <BannerAppearanceEditor
+                        banner={b}
+                        theme={boardTheme}
+                        onPatch={(patch) => patchBannerItem(b.id, patch)}
+                      />
                     </div>
                   );
                 })}
