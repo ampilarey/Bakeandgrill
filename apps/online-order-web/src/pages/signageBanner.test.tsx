@@ -1,12 +1,14 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import {
   bannerStyleVars,
   buildBannerSegments,
+  fireSignageBannerIteration,
   formatBannerDate,
   formatCountdown,
   newBannerItem,
   normalizeBannerSettings,
+  normalizeScrollMode,
   pickNextPrayer,
   shouldShowBanner,
   SignageBanner,
@@ -41,6 +43,12 @@ const legacyShape = {
   fields: ['date', 'time', 'next_prayer', 'countdown'],
   speed_seconds: 40,
 };
+
+function fireBannerIteration(track: HTMLElement) {
+  act(() => {
+    fireSignageBannerIteration(track);
+  });
+}
 
 describe('SignageBanner helpers', () => {
   it('picks the next prayer from the schedule', () => {
@@ -159,7 +167,7 @@ describe('SignageBanner helpers', () => {
     expect(item.text_color).toBe('#fff8f0');
     expect(item.background_color).toBe('rgba(12, 8, 4, 0.78)');
     expect(item.align).toBe('left');
-    expect(item.scroll_mode).toBe('seamless'); // legacy scroll:true migration
+    expect(item.scroll_mode).toBe('seamless'); // absent scroll → seamless
     expect(item.date_format).toBe('full');
     expect(item.inset_percent).toBe(0);
   });
@@ -173,6 +181,19 @@ describe('SignageBanner helpers', () => {
       enabled: true,
       banners: [{ id: 'b', scroll: false }],
     }).banners[0].scroll_mode).toBe('static');
+  });
+
+  it('normalizeScrollMode keeps explicit ticker after migration', () => {
+    expect(normalizeScrollMode({ scroll_mode: 'ticker' })).toBe('ticker');
+    expect(normalizeScrollMode({ scroll: true, scroll_mode: 'ticker' })).toBe('ticker');
+  });
+
+  it('absent scroll defaults to seamless', () => {
+    expect(normalizeScrollMode({})).toBe('seamless');
+    expect(normalizeBannerSettings({
+      enabled: true,
+      banners: [{ id: 'legacy-absent' }],
+    }).banners[0].scroll_mode).toBe('seamless');
   });
 
   it('new banners default to ticker', () => {
@@ -220,6 +241,7 @@ describe('SignageBanner helpers', () => {
     const tickerEl = ticker.getByTestId('signage-banner');
     expect(tickerEl.getAttribute('data-scroll-mode')).toBe('ticker');
     expect(tickerEl.className).toMatch(/signage-banner--ticker/);
+    expect(tickerEl.className).toMatch(/signage-banner--ltr/);
     expect(tickerEl.textContent).toBe(text);
     expect(tickerEl.textContent?.split(text).length - 1).toBe(1);
     ticker.unmount();
@@ -314,5 +336,220 @@ describe('SignageBanner helpers', () => {
     const el = screen.getByTestId('signage-banner');
     expect(el.getAttribute('data-date-format')).toBe('weekday');
     expect(el.textContent).toMatch(/Monday/);
+  });
+
+  it('advances after repeat_count animation iterations without setTimeout rotation', () => {
+    const timeoutSpy = vi.spyOn(window, 'setTimeout');
+    const advances: Array<{ fromId: string; toId: string; viaLogo: boolean }> = [];
+    render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [
+            {
+              id: 'a',
+              enabled: true,
+              custom_text: 'Banner A',
+              scroll_mode: 'ticker',
+              repeat_count: 3,
+              speed_seconds: 40,
+              duration_seconds: 30,
+            },
+            {
+              id: 'b',
+              enabled: true,
+              custom_text: 'Banner B',
+              scroll_mode: 'ticker',
+              repeat_count: 1,
+              speed_seconds: 40,
+              duration_seconds: 30,
+            },
+          ],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+        onAdvance={(info) => advances.push(info)}
+      />,
+    );
+    const track = screen.getByTestId('signage-banner-track');
+    expect(screen.getByTestId('signage-banner').getAttribute('data-banner-id')).toBe('a');
+    fireBannerIteration(track);
+    fireBannerIteration(track);
+    expect(screen.getByTestId('signage-banner').getAttribute('data-banner-id')).toBe('a');
+    fireBannerIteration(track);
+    expect(screen.getByTestId('signage-banner').getAttribute('data-banner-id')).toBe('b');
+    expect(advances).toHaveLength(1);
+    expect(advances[0]).toEqual({ fromId: 'a', toId: 'b', viaLogo: false });
+    const rotationTimeouts = timeoutSpy.mock.calls.filter(
+      ([, delay]) => typeof delay === 'number' && delay >= 5000,
+    );
+    expect(rotationTimeouts).toHaveLength(0);
+    timeoutSpy.mockRestore();
+  });
+
+  it('RTL sets dir and lang; only one direction visible after advance', async () => {
+    render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [
+            {
+              id: 'en',
+              enabled: true,
+              custom_text: 'English',
+              direction: 'ltr',
+              scroll_mode: 'ticker',
+              repeat_count: 1,
+              speed_seconds: 40,
+              duration_seconds: 30,
+            },
+            {
+              id: 'dv',
+              enabled: true,
+              custom_text: 'ދިވެހި',
+              direction: 'rtl',
+              scroll_mode: 'ticker',
+              repeat_count: 1,
+              speed_seconds: 40,
+              duration_seconds: 30,
+            },
+          ],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+      />,
+    );
+    const text = screen.getByTestId('signage-banner-text');
+    expect(text.getAttribute('dir')).toBe('ltr');
+    expect(text.getAttribute('lang')).toBeNull();
+    expect(screen.getByTestId('signage-banner').getAttribute('data-direction')).toBe('ltr');
+    fireBannerIteration(screen.getByTestId('signage-banner-track'));
+    await waitFor(() => {
+      expect(screen.getByTestId('signage-banner-text').getAttribute('dir')).toBe('rtl');
+    });
+    const rtlText = screen.getByTestId('signage-banner-text');
+    expect(rtlText.getAttribute('dir')).toBe('rtl');
+    expect(rtlText.getAttribute('lang')).toBe('dv');
+    expect(screen.getByTestId('signage-banner').getAttribute('data-direction')).toBe('rtl');
+    expect(screen.queryAllByTestId('signage-banner-text')).toHaveLength(1);
+  });
+
+  it('shows logo phase between banners when configured', async () => {
+    render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          show_logo_between: true,
+          banners: [
+            {
+              id: 'a',
+              enabled: true,
+              custom_text: 'A',
+              scroll_mode: 'ticker',
+              repeat_count: 1,
+              speed_seconds: 40,
+              duration_seconds: 30,
+            },
+            {
+              id: 'b',
+              enabled: true,
+              custom_text: 'B',
+              scroll_mode: 'ticker',
+              repeat_count: 1,
+              speed_seconds: 40,
+              duration_seconds: 30,
+            },
+          ],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+        logoUrl="/logo.png"
+      />,
+    );
+    fireBannerIteration(screen.getByTestId('signage-banner-track'));
+    await waitFor(() => {
+      expect(screen.getByTestId('signage-banner').getAttribute('data-phase')).toBe('logo');
+    });
+    expect(screen.getByTestId('signage-banner-logo')).toBeTruthy();
+  });
+
+  it('skips logo phase with a single enabled banner', () => {
+    render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          show_logo_between: true,
+          banners: [{
+            id: 'solo',
+            enabled: true,
+            custom_text: 'Only one',
+            scroll_mode: 'ticker',
+            repeat_count: 1,
+            speed_seconds: 40,
+            duration_seconds: 30,
+          }],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+        logoUrl="/logo.png"
+      />,
+    );
+    fireBannerIteration(screen.getByTestId('signage-banner-track'));
+    expect(screen.queryByTestId('signage-banner-logo')).toBeNull();
+    expect(screen.getByTestId('signage-banner').getAttribute('data-phase')).toBe('banner');
+  });
+
+  it('hides banner outside its schedule window', () => {
+    const { container } = render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [{
+            id: 'weekday-only',
+            enabled: true,
+            fields: ['date'],
+            scroll_mode: 'static',
+            speed_seconds: 40,
+            duration_seconds: 30,
+            schedule: {
+              days: [1], // Monday only
+              windows: [{ start: '00:00', end: '23:59' }],
+            },
+          }],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-03T12:00:00+05:00')} // Monday in +05
+      />,
+    );
+    expect(container.querySelector('[data-testid="signage-banner"]')).toBeTruthy();
+
+    const { container: offDay } = render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [{
+            id: 'weekday-only',
+            enabled: true,
+            fields: ['date'],
+            scroll_mode: 'static',
+            speed_seconds: 40,
+            duration_seconds: 30,
+            schedule: {
+              days: [2], // Tuesday only
+              windows: [{ start: '00:00', end: '23:59' }],
+            },
+          }],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-03T12:00:00+05:00')} // Monday
+      />,
+    );
+    expect(offDay.querySelector('[data-testid="signage-banner"]')).toBeNull();
   });
 });

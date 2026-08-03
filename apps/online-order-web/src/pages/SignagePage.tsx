@@ -441,6 +441,7 @@ export function SignagePage() {
           burnInOffset={burnIn}
           timeLabel={liveVars.current_time || undefined}
           variables={liveVars}
+          logoUrl={logoUrl}
         />
       )}
       {isLoading && !black && (

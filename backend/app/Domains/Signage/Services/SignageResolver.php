@@ -84,10 +84,10 @@ final class SignageResolver
         }
 
         $mode = 'normal';
-        $emergency = (string) SiteSetting::get('signage_emergency', 'none');
-        if ($emergency !== '' && $emergency !== 'none') {
-            $slides = [SignageTemplateFactory::emergencySlide($emergency)];
-            $mode = 'emergency:' . $emergency;
+        $emergency = $this->resolveEmergency($now);
+        if ($emergency !== null) {
+            $slides = [$emergency['slide']];
+            $mode = $emergency['mode'];
             $source = 'emergency';
         } elseif ($this->inPrayerBreak($now)) {
             $slides = [SignageTemplateFactory::emergencySlide('prayer_break')];
@@ -168,45 +168,65 @@ final class SignageResolver
 
     private function campaignMatches(SignageCampaign $campaign, Carbon $now): bool
     {
-        if ($campaign->date_start && $now->toDateString() < $campaign->date_start->toDateString()) {
-            return false;
+        return SignageScheduleMatcher::matches([
+            'date_start' => $campaign->date_start?->toDateString(),
+            'date_end' => $campaign->date_end?->toDateString(),
+            'days' => $campaign->days,
+            'windows' => $campaign->windows,
+        ], $now);
+    }
+
+    /**
+     * Manual override wins; else highest-priority active scheduled entry.
+     *
+     * @return array{slide: array<string, mixed>, mode: string}|null
+     */
+    private function resolveEmergency(Carbon $now): ?array
+    {
+        $settings = SignageEmergencyNormalizer::normalizeFromSettings();
+        $manual = $settings['manual'];
+        if ($manual !== '' && $manual !== 'none') {
+            return [
+                'slide' => SignageTemplateFactory::emergencySlide($manual),
+                'mode' => 'emergency:' . $manual,
+            ];
         }
-        if ($campaign->date_end && $now->toDateString() > $campaign->date_end->toDateString()) {
-            return false;
-        }
-        $days = $campaign->days;
-        if (is_array($days) && $days !== []) {
-            $dow = (int) $now->dayOfWeek; // 0=Sun
-            if (! in_array($dow, array_map('intval', $days), true)) {
-                return false;
+
+        $best = null;
+        $bestPriority = -1;
+        foreach ($settings['entries'] as $entry) {
+            if (! ($entry['is_active'] ?? false)) {
+                continue;
             }
-        }
-        $windows = $campaign->windows;
-        if (is_array($windows) && $windows !== []) {
-            $hm = $now->format('H:i');
-            $ok = false;
-            foreach ($windows as $w) {
-                $start = (string) ($w['start'] ?? '00:00');
-                $end = (string) ($w['end'] ?? '23:59');
-                if ($start <= $end) {
-                    if ($hm >= $start && $hm <= $end) {
-                        $ok = true;
-                        break;
-                    }
-                } else {
-                    // overnight window
-                    if ($hm >= $start || $hm <= $end) {
-                        $ok = true;
-                        break;
-                    }
-                }
+            $schedule = is_array($entry['schedule'] ?? null) ? $entry['schedule'] : [];
+            if ($schedule !== [] && ! SignageScheduleMatcher::matches($schedule, $now)) {
+                continue;
             }
-            if (! $ok) {
-                return false;
+            $priority = (int) ($entry['priority'] ?? 0);
+            if ($priority > $bestPriority) {
+                $bestPriority = $priority;
+                $best = $entry;
             }
         }
 
-        return true;
+        if ($best === null) {
+            return null;
+        }
+
+        $entryMode = (string) $best['mode'];
+
+        return [
+            'slide' => SignageTemplateFactory::emergencySlide($entryMode, [
+                'id' => $best['id'] ?? null,
+                'title' => $best['title'] ?? '',
+                'body' => $best['body'] ?? '',
+                'title_dv' => $best['title_dv'] ?? '',
+                'body_dv' => $best['body_dv'] ?? '',
+                'layout' => $best['layout'] ?? SignageEmergencyNormalizer::defaultLayoutForMode($entryMode),
+                'reopen_at' => $best['reopen_at'] ?? null,
+            ]),
+            'mode' => 'emergency:' . $entryMode,
+        ];
     }
 
     private function inPrayerBreak(Carbon $now): bool

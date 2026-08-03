@@ -11,21 +11,24 @@ import {
   createSignageScreen,
   fetchSignageDevices,
   getSignageOverview,
+  getSiteSettings,
   setSignageBanner,
   setSignageEmergency,
+  setSignageEmergencyConfig,
   setSignagePrayer,
   updateSignageGroup,
   updateSignagePlaylist,
   type SignageBannerItem,
   type SignageCampaign,
   type SignageDevice,
+  type SignageEmergencyEntry,
   type SignageGroup,
   type SignageOverview,
   type SignagePlaylist,
   type SignageScreen,
 } from '../api';
 import {
-  BANNER_DURATION_SLIDER,
+  BANNER_REPEAT_SLIDER,
   BANNER_SPEED_PRESETS,
   normalizeBannerSettings,
   newBannerItem,
@@ -75,7 +78,60 @@ const EMERGENCY_MODES = [
   { value: 'fire_alarm', label: 'Fire alarm / evacuate' },
   { value: 'power_failure', label: 'Power failure' },
   { value: 'kitchen_closed', label: 'Kitchen closed' },
+  { value: 'staff_only', label: 'Staff only' },
+  { value: 'private_event', label: 'Private event' },
+  { value: 'holiday', label: 'Holiday' },
+  { value: 'special_notice', label: 'Special notice' },
+  { value: 'reopening_soon', label: 'Reopening soon' },
 ] as const;
+
+const EMERGENCY_LAYOUTS = [
+  { value: 'notice', label: 'Notice' },
+  { value: 'alert', label: 'Alert' },
+  { value: 'split', label: 'Split' },
+  { value: 'countdown', label: 'Countdown' },
+] as const;
+
+const SCHEDULE_DAY_OPTS = [
+  { value: 0, label: 'Sun' },
+  { value: 1, label: 'Mon' },
+  { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' },
+  { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+] as const;
+
+function emergencyEntryId(): string {
+  return `emg-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function newEmergencyEntry(): SignageEmergencyEntry {
+  return {
+    id: emergencyEntryId(),
+    mode: 'special_notice',
+    priority: 10,
+    is_active: true,
+    layout: 'notice',
+    title: '',
+    body: '',
+    title_dv: '',
+    body_dv: '',
+    reopen_at: null,
+    schedule: null,
+  };
+}
+
+function pickSiteSetting(
+  settings: Record<string, { key: string; value: string | null }[]>,
+  key: string,
+): string | null {
+  for (const group of Object.values(settings)) {
+    const row = group.find((s) => s.key === key);
+    if (row?.value) return row.value;
+  }
+  return null;
+}
 
 const PRAYER_OPTIONS = [
   { value: 'fajr', label: 'Fajr' },
@@ -229,7 +285,9 @@ export function SignagePage() {
   const [groupSaving, setGroupSaving] = useState<number | null>(null);
 
   const [emergencyMode, setEmergencyMode] = useState('none');
+  const [emergencyEntries, setEmergencyEntries] = useState<SignageEmergencyEntry[]>([]);
   const [emergencySaving, setEmergencySaving] = useState(false);
+  const [emergencyConfigSaving, setEmergencyConfigSaving] = useState(false);
 
   const [prayerEnabled, setPrayerEnabled] = useState(true);
   const [prayerBreak, setPrayerBreak] = useState('15');
@@ -239,6 +297,8 @@ export function SignagePage() {
 
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [bannerItems, setBannerItems] = useState<SignageBannerItem[]>(() => normalizeBannerSettings({}).banners);
+  const [bannerShowLogoBetween, setBannerShowLogoBetween] = useState(false);
+  const [bannerLogoUrl, setBannerLogoUrl] = useState<string | null>(null);
   const [bannerSaving, setBannerSaving] = useState(false);
 
   const [campaignForm, setCampaignForm] = useState({
@@ -277,7 +337,11 @@ export function SignagePage() {
 
   const applyOverview = useCallback((data: SignageOverview) => {
     setOverview(data);
-    setEmergencyMode(data.emergency || 'none');
+    const emergencyCfg = typeof data.emergency === 'string'
+      ? { manual: data.emergency, entries: [] as SignageEmergencyEntry[] }
+      : data.emergency;
+    setEmergencyMode(emergencyCfg?.manual || 'none');
+    setEmergencyEntries(emergencyCfg?.entries ?? []);
     setPrayerEnabled(data.prayer?.enabled ?? true);
     setPrayerBreak(String(data.prayer?.break_minutes ?? 15));
     setPrayerSelected(data.prayer?.prayers ?? []);
@@ -285,6 +349,7 @@ export function SignagePage() {
     const normalizedBanner = normalizeBannerSettings(data.banner ?? {});
     setBannerEnabled(normalizedBanner.enabled);
     setBannerItems(normalizedBanner.banners);
+    setBannerShowLogoBetween(Boolean(normalizedBanner.show_logo_between));
     const drafts: Record<number, number | ''> = {};
     for (const g of data.groups) drafts[g.id] = g.playlist_id ?? '';
     setGroupDrafts(drafts);
@@ -311,6 +376,17 @@ export function SignagePage() {
   }, [applyOverview, selectedPlaylistId, toast]);
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (tab !== 'banner') return;
+    void getSiteSettings()
+      .then(({ settings }) => {
+        const logoDark = pickSiteSetting(settings, 'logo_dark');
+        const logo = pickSiteSetting(settings, 'logo');
+        setBannerLogoUrl(logoDark || logo || null);
+      })
+      .catch(() => { /* preview works without logo */ });
+  }, [tab]);
 
   const loadDevices = useCallback(async () => {
     setDevicesLoading(true);
@@ -450,13 +526,32 @@ export function SignagePage() {
     setEmergencySaving(true);
     try {
       const res = await setSignageEmergency(emergencyMode);
-      setEmergencyMode(res.mode);
-      setOverview((prev) => (prev ? { ...prev, emergency: res.mode } : prev));
+      setEmergencyMode(res.manual);
+      setEmergencyEntries(res.entries ?? []);
+      setOverview((prev) => (prev ? { ...prev, emergency: res } : prev));
       toast.success('Emergency mode updated.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Emergency update failed');
     } finally {
       setEmergencySaving(false);
+    }
+  };
+
+  const patchEmergencyEntry = (id: string, patch: Partial<SignageEmergencyEntry>) => {
+    setEmergencyEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  };
+
+  const onSaveEmergencyConfig = async () => {
+    setEmergencyConfigSaving(true);
+    try {
+      const res = await setSignageEmergencyConfig({ entries: emergencyEntries });
+      setEmergencyEntries(res.entries ?? emergencyEntries);
+      setOverview((prev) => (prev ? { ...prev, emergency: res } : prev));
+      toast.success('Scheduled emergencies saved.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Scheduled emergencies failed');
+    } finally {
+      setEmergencyConfigSaving(false);
     }
   };
 
@@ -495,8 +590,9 @@ export function SignagePage() {
         toast.error(`“${b.label}” speed must be between 10 and 180 seconds.`);
         return;
       }
-      if (b.duration_seconds < 5 || b.duration_seconds > 600) {
-        toast.error(`“${b.label}” duration must be between 5 and 600 seconds.`);
+      const repeats = Number(b.repeat_count ?? 1);
+      if (!Number.isFinite(repeats) || repeats < 1 || repeats > 20) {
+        toast.error(`“${b.label}” repeat count must be between 1 and 20.`);
         return;
       }
     }
@@ -504,11 +600,13 @@ export function SignagePage() {
     try {
       const res = await setSignageBanner({
         enabled: bannerEnabled,
+        show_logo_between: bannerShowLogoBetween,
         banners: bannerItems,
       });
       const normalized = normalizeBannerSettings(res.banner);
       setBannerEnabled(normalized.enabled);
       setBannerItems(normalized.banners);
+      setBannerShowLogoBetween(Boolean(normalized.show_logo_between));
       setOverview((prev) => (prev ? { ...prev, banner: normalized } : prev));
       toast.success('Banner settings saved.');
     } catch (e) {
@@ -1078,6 +1176,186 @@ export function SignagePage() {
                 <Save size={16} /> {emergencySaving ? 'Saving…' : 'Save emergency mode'}
               </Btn>
             </Card>
+
+            <Card style={{ marginTop: 16 }} data-testid="signage-emergency-scheduled">
+              <h3 style={cardTitle}>Scheduled emergencies</h3>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', maxWidth: 640 }}>
+                Auto-activate during configured windows. Manual mode above always wins immediately.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
+                {emergencyEntries.map((entry, idx) => {
+                  const sched = entry.schedule ?? {};
+                  const days = Array.isArray(sched.days) ? sched.days.map(Number) : [];
+                  const window = sched.windows?.[0] ?? { start: '', end: '' };
+                  return (
+                    <div
+                      key={entry.id}
+                      data-testid={`signage-emergency-entry-${entry.id}`}
+                      style={{ padding: 14, border: '1px solid var(--color-border)', borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 12 }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <strong style={{ color: 'var(--color-text)' }}>Entry {idx + 1}</strong>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40, cursor: 'pointer', fontSize: 13 }}>
+                            <input
+                              type="checkbox"
+                              checked={entry.is_active}
+                              onChange={(e) => patchEmergencyEntry(entry.id, { is_active: e.target.checked })}
+                              style={{ width: 18, height: 18 }}
+                            />
+                            Active
+                          </label>
+                          <Btn
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setEmergencyEntries((prev) => prev.filter((e) => e.id !== entry.id))}
+                            style={{ minHeight: 40 }}
+                            data-testid={`signage-emergency-remove-${entry.id}`}
+                          >
+                            <Trash2 size={14} /> Remove
+                          </Btn>
+                        </div>
+                      </div>
+                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                        <Select
+                          label="Mode"
+                          value={entry.mode}
+                          onChange={(val) => patchEmergencyEntry(entry.id, { mode: val })}
+                          options={EMERGENCY_MODES.filter((m) => m.value !== 'none').map((m) => ({
+                            value: m.value,
+                            label: m.label,
+                          }))}
+                        />
+                        <Select
+                          label="Layout"
+                          value={entry.layout || 'notice'}
+                          onChange={(val) => patchEmergencyEntry(entry.id, { layout: val })}
+                          options={EMERGENCY_LAYOUTS.map((l) => ({ value: l.value, label: l.label }))}
+                        />
+                        <Input
+                          label="Priority"
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={String(entry.priority ?? 10)}
+                          onChange={(val) => patchEmergencyEntry(entry.id, { priority: Number.parseInt(val, 10) || 0 })}
+                        />
+                      </div>
+                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                        <Input
+                          label="Title (English)"
+                          value={entry.title}
+                          onChange={(val) => patchEmergencyEntry(entry.id, { title: val })}
+                        />
+                        <Input
+                          label="Title (Dhivehi)"
+                          value={entry.title_dv ?? ''}
+                          onChange={(val) => patchEmergencyEntry(entry.id, { title_dv: val })}
+                        />
+                      </div>
+                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                        <Input
+                          label="Body (English)"
+                          value={entry.body}
+                          onChange={(val) => patchEmergencyEntry(entry.id, { body: val })}
+                        />
+                        <Input
+                          label="Body (Dhivehi)"
+                          value={entry.body_dv ?? ''}
+                          onChange={(val) => patchEmergencyEntry(entry.id, { body_dv: val })}
+                        />
+                      </div>
+                      {entry.mode === 'reopening_soon' && (
+                        <Input
+                          label="Reopen at"
+                          type="datetime-local"
+                          value={entry.reopen_at ? entry.reopen_at.slice(0, 16) : ''}
+                          onChange={(val) => patchEmergencyEntry(entry.id, {
+                            reopen_at: val ? new Date(val).toISOString() : null,
+                          })}
+                          data-testid={`signage-emergency-reopen-${entry.id}`}
+                        />
+                      )}
+                      <div>
+                        <span style={labelStyle}>Days (empty = every day)</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                          {SCHEDULE_DAY_OPTS.map((d) => (
+                            <label key={d.value} style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36, cursor: 'pointer', fontSize: 13 }}>
+                              <input
+                                type="checkbox"
+                                checked={days.includes(d.value)}
+                                onChange={(e) => {
+                                  const next = e.target.checked
+                                    ? [...new Set([...days, d.value])]
+                                    : days.filter((x) => x !== d.value);
+                                  patchEmergencyEntry(entry.id, {
+                                    schedule: {
+                                      ...sched,
+                                      days: next.length > 0 ? next : null,
+                                    },
+                                  });
+                                }}
+                                style={{ width: 16, height: 16 }}
+                              />
+                              {d.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                        <Input
+                          label="Window start (optional)"
+                          type="time"
+                          value={window.start || ''}
+                          onChange={(val) => patchEmergencyEntry(entry.id, {
+                            schedule: {
+                              ...sched,
+                              days: sched.days ?? null,
+                              windows: val || sched.windows?.[0]?.end
+                                ? [{ start: val || '00:00', end: sched.windows?.[0]?.end || '23:59' }]
+                                : null,
+                            },
+                          })}
+                        />
+                        <Input
+                          label="Window end (optional)"
+                          type="time"
+                          value={window.end || ''}
+                          onChange={(val) => patchEmergencyEntry(entry.id, {
+                            schedule: {
+                              ...sched,
+                              days: sched.days ?? null,
+                              windows: val || sched.windows?.[0]?.start
+                                ? [{ start: sched.windows?.[0]?.start || '00:00', end: val || '23:59' }]
+                                : null,
+                            },
+                          })}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                <Btn
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setEmergencyEntries((prev) => [...prev, newEmergencyEntry()])}
+                  style={{ minHeight: 44 }}
+                  data-testid="signage-emergency-add"
+                >
+                  Add scheduled emergency
+                </Btn>
+                <Btn
+                  onClick={() => void onSaveEmergencyConfig()}
+                  disabled={emergencyConfigSaving}
+                  style={{ minHeight: 44 }}
+                  data-testid="signage-emergency-config-save"
+                >
+                  <Save size={16} /> {emergencyConfigSaving ? 'Saving…' : 'Save scheduled emergencies'}
+                </Btn>
+              </div>
+            </Card>
             </div>
           )}
 
@@ -1156,6 +1434,8 @@ export function SignagePage() {
                 enabled={bannerEnabled}
                 banners={bannerItems}
                 boardBackground={boardTheme.background}
+                logoUrl={bannerLogoUrl}
+                showLogoBetween={bannerShowLogoBetween}
               />
               <div
                 data-testid="signage-banner-prayer-island-summary"
@@ -1207,6 +1487,21 @@ export function SignagePage() {
                 <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Enable info banners</span>
               </label>
 
+              {bannerItems.filter((x) => x.enabled).length >= 2 && (
+                <label
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 16, cursor: 'pointer' }}
+                  data-testid="signage-banner-show-logo-between"
+                >
+                  <input
+                    type="checkbox"
+                    checked={bannerShowLogoBetween}
+                    onChange={(e) => setBannerShowLogoBetween(e.target.checked)}
+                    style={{ width: 18, height: 18 }}
+                  />
+                  <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Show logo between banners</span>
+                </label>
+              )}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
                 {bannerItems.map((b, idx) => {
                   const usingCustom = Boolean((b.custom_text || '').trim());
@@ -1214,9 +1509,9 @@ export function SignagePage() {
                   const speedNearest = nearestPresetValue(b.speed_seconds ?? 40, BANNER_SPEED_PRESETS);
                   const speedIndex = Math.max(0, BANNER_SPEED_PRESETS.findIndex((p) => p.value === speedNearest));
                   const speedPreset = BANNER_SPEED_PRESETS[speedIndex] ?? BANNER_SPEED_PRESETS[1];
-                  const durationDisplay = Math.max(
-                    BANNER_DURATION_SLIDER.min,
-                    Math.min(BANNER_DURATION_SLIDER.max, b.duration_seconds ?? 30),
+                  const repeatDisplay = Math.max(
+                    BANNER_REPEAT_SLIDER.min,
+                    Math.min(BANNER_REPEAT_SLIDER.max, Number(b.repeat_count ?? 1)),
                   );
                   const scrollMode = (['ticker', 'seamless', 'static'] as const).includes(b.scroll_mode as 'ticker')
                     ? String(b.scroll_mode)
@@ -1279,6 +1574,16 @@ export function SignagePage() {
                           ]}
                           data-testid={`signage-banner-scroll-mode-${b.id}`}
                         />
+                        <Select
+                          label="Direction"
+                          value={b.direction === 'rtl' ? 'rtl' : 'ltr'}
+                          onChange={(val) => patchBannerItem(b.id, { direction: val === 'rtl' ? 'rtl' : 'ltr' })}
+                          options={[
+                            { value: 'ltr', label: 'English (LTR)' },
+                            { value: 'rtl', label: 'Dhivehi (RTL)' },
+                          ]}
+                          data-testid={`signage-banner-direction-${b.id}`}
+                        />
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1305,24 +1610,24 @@ export function SignagePage() {
                         </label>
 
                         {enabledCount >= 2 && (
-                          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }} data-testid={`signage-banner-duration-${b.id}`}>
+                          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }} data-testid={`signage-banner-repeat-${b.id}`}>
                             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-                              Time on screen · {durationDisplay}s
+                              Passes before next banner · {repeatDisplay}
                             </span>
                             <input
                               type="range"
-                              min={BANNER_DURATION_SLIDER.min}
-                              max={BANNER_DURATION_SLIDER.max}
+                              min={BANNER_REPEAT_SLIDER.min}
+                              max={BANNER_REPEAT_SLIDER.max}
                               step={1}
-                              value={durationDisplay}
+                              value={repeatDisplay}
                               onChange={(e) => patchBannerItem(b.id, {
-                                duration_seconds: Number.parseInt(e.target.value, 10) || 30,
+                                repeat_count: Number.parseInt(e.target.value, 10) || 1,
                               })}
                               style={{ width: '100%', maxWidth: 360, minHeight: 36 }}
-                              data-testid={`signage-banner-duration-slider-${b.id}`}
+                              data-testid={`signage-banner-repeat-slider-${b.id}`}
                             />
                             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                              How long this banner shows before the next one takes over.
+                              How many full scroll passes before rotating to the next banner.
                             </span>
                           </label>
                         )}

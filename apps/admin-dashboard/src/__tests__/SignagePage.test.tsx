@@ -48,7 +48,7 @@ const mockOverview: api.SignageOverview = {
     },
   ],
   campaigns: [],
-  emergency: 'none',
+  emergency: { manual: 'none', entries: [] },
   prayer: { enabled: true, prayers: ['fajr', 'dhuhr'], break_minutes: 15, island_id: 102 },
   prayer_islands: [
     { id: 102, label: 'Kaafu · Malé', atoll: 'Kaafu' },
@@ -74,6 +74,8 @@ const mockOverview: api.SignageOverview = {
       background_color: 'rgba(12, 8, 4, 0.78)',
       align: 'left',
       scroll_mode: 'seamless',
+      direction: 'ltr',
+      repeat_count: 1,
       date_format: 'full',
       inset_percent: 0,
     }],
@@ -485,8 +487,8 @@ describe('SignagePage', () => {
     // Preview reflects motion mode.
     expect(screen.getByTestId('signage-banner').getAttribute('data-scroll-mode')).toBe('static');
 
-    // Time on screen hidden with one enabled banner.
-    expect(screen.queryByTestId('signage-banner-duration-main')).toBeNull();
+    // Repeat slider hidden with one enabled banner.
+    expect(screen.queryByTestId('signage-banner-repeat-main')).toBeNull();
 
     // Choosing a named font size stores the multiplier; saving keeps off-preset until edited.
     fireEvent.change(fontSelect, { target: { value: '1.3' } });
@@ -498,7 +500,7 @@ describe('SignagePage', () => {
     expect(payload.banners?.[0]?.scroll_mode).toBe('static');
   });
 
-  it('Banner timing: speed slider stores presets; duration shown with two enabled banners', async () => {
+  it('Banner timing: speed slider stores presets; repeat_count shown with two enabled banners', async () => {
     const saveSpy = vi.spyOn(api, 'setSignageBanner').mockResolvedValue({
       banner: mockOverview.banner!,
     });
@@ -507,27 +509,48 @@ describe('SignagePage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Banner' }));
     await screen.findByTestId('signage-banner-item-main');
 
-    // Off-preset speed (e.g. 45) would show nearest; mock uses 40 → Medium at index 1.
     const speedSlider = screen.getByTestId('signage-banner-speed-slider-main') as HTMLInputElement;
     expect(speedSlider.value).toBe('1');
-    expect(screen.queryByTestId('signage-banner-duration-main')).toBeNull();
+    expect(screen.queryByTestId('signage-banner-repeat-main')).toBeNull();
 
     fireEvent.click(screen.getByTestId('signage-banner-add'));
     await waitFor(() => {
-      expect(screen.getByTestId('signage-banner-duration-main')).toBeTruthy();
+      expect(screen.getByTestId('signage-banner-repeat-main')).toBeTruthy();
     });
 
     fireEvent.change(speedSlider, { target: { value: '2' } }); // Fast = 20
-    fireEvent.change(screen.getByTestId('signage-banner-duration-slider-main'), {
-      target: { value: '45' },
+    fireEvent.change(screen.getByTestId('signage-banner-repeat-slider-main'), {
+      target: { value: '4' },
     });
     fireEvent.click(screen.getByTestId('signage-banner-save'));
     await waitFor(() => expect(saveSpy).toHaveBeenCalled());
     const payload = saveSpy.mock.calls[0][0];
     expect(payload.banners?.[0]?.speed_seconds).toBe(20);
-    expect(payload.banners?.[0]?.duration_seconds).toBe(45);
-    // Newly added banner defaults to ticker.
+    expect(payload.banners?.[0]?.repeat_count).toBe(4);
     expect(payload.banners?.[1]?.scroll_mode).toBe('ticker');
+  });
+
+  it('Banner direction and show_logo_between are included in save payload', async () => {
+    const saveSpy = vi.spyOn(api, 'setSignageBanner').mockResolvedValue({
+      banner: mockOverview.banner!,
+    });
+
+    renderWithRouter(<SignagePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Banner' }));
+    await screen.findByTestId('signage-banner-item-main');
+
+    fireEvent.click(screen.getByTestId('signage-banner-add'));
+    await waitFor(() => expect(screen.getByTestId('signage-banner-show-logo-between')).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId('signage-banner-direction-main'), {
+      target: { value: 'rtl' },
+    });
+    fireEvent.click(screen.getByTestId('signage-banner-show-logo-between'));
+    fireEvent.click(screen.getByTestId('signage-banner-save'));
+    await waitFor(() => expect(saveSpy).toHaveBeenCalled());
+    const payload = saveSpy.mock.calls[0][0];
+    expect(payload.banners?.[0]?.direction).toBe('rtl');
+    expect(payload.show_logo_between).toBe(true);
   });
 });
 
