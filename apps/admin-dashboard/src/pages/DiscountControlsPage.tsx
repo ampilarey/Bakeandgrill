@@ -576,7 +576,7 @@ export function DiscountControlsPage() {
             <h2 id="dc-perm-note" style={sectionTitleStyle}>Who can discount</h2>
             <p style={sectionHintStyle}>
               Read-only from Roles & Permissions. Change grants under{' '}
-              <Link to="/settings?tab=permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>.
+              <Link to="/settings/permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>.
             </p>
             <p style={{ margin: '0 0 8px', fontSize: 13, color: '#3D2B1F' }}>
               <strong>promotions.discounts:</strong>{' '}

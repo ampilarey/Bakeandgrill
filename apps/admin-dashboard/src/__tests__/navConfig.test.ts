@@ -4,6 +4,7 @@ import {
   NAV_GROUPS,
   resolveNavItemForPath,
   can,
+  canNavItem,
   getDefaultNavPath,
   canAny,
   getAllNavItems,
@@ -19,12 +20,12 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/orders', permission: 'orders.view' },
   { to: '/kds', permission: 'orders.view' },
   { to: '/tables', permission: 'orders.view' },
-  { to: '/delivery', permission: 'delivery.view' },
+  { to: '/delivery', permission: 'orders.manage' },
   { to: '/kitchen-production', permission: 'kitchen.production.view_all' },
   { to: '/activity', permission: 'reports.view' },
   { to: '/shifts', permission: 'shifts.view_all_history' },
   { to: '/time-clock', permissions: ['staff.view', 'pos.time_clock'] },
-  { to: '/menu', permission: 'menu.view' },
+  { to: '/menu', permission: 'menu.manage' },
   { to: '/specials', permission: 'menu.manage' },
   { to: '/inventory', permission: 'inventory.view' },
   { to: '/purchase-requests', permission: 'purchase_requests.view_all' },
@@ -32,7 +33,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/purchase-orders', permission: 'suppliers.purchases' },
   { to: '/supplier-intelligence', permission: 'suppliers.view' },
   { to: '/waste-logs', permission: 'inventory.manage' },
-  { to: '/reservations', permission: 'reservations.view' },
+  { to: '/reservations', permission: 'reservations.manage' },
   { to: '/online-ordering', permission: 'settings.update' },
   { to: '/delivery-settings', permission: 'settings.update' },
   { to: '/customers', permission: 'customers.manage' },
@@ -45,32 +46,42 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/reviews', permission: 'customers.manage' },
   { to: '/promotions', permission: 'promotions.manage' },
   { to: '/discount-controls', permission: 'discounts.settings.manage' },
-  { to: '/sms', permission: 'sms_marketing.view' },
-  { to: '/sms/control-center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms'] },
+  { to: '/sms', permissions: ['integrations.sms', 'sms_marketing.manage'] },
+  { to: '/sms/control-center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms', 'sms_marketing.manage'] },
   { to: '/signage', permission: 'signage.manage' },
   { to: '/reports', permission: 'reports.view' },
   { to: '/analytics', permission: 'customers.analytics' },
   { to: '/forecasts', permission: 'reports.financial' },
   { to: '/procurement-report', permission: 'reports.financial' },
   { to: '/gst', permission: 'reports.financial' },
-  { to: '/profit-loss', permission: 'finance.profit_loss' },
+  { to: '/profit-loss', permission: 'reports.financial' },
   { to: '/invoices', permission: 'finance.invoices' },
   { to: '/expenses', permission: 'finance.expenses' },
   { to: '/refunds', permission: 'orders.refund' },
   { to: '/staff', permission: 'staff.view' },
   { to: '/content', permission: 'website.manage' },
   { to: '/media', permission: 'media.view' },
-  { to: '/settings?tab=permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
-  { to: '/settings?tab=notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
+  { to: '/settings/permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
+  { to: '/settings/notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/devices', permission: 'devices.view' },
   { to: '/print-jobs', permission: 'devices.view' },
-  { to: '/webhooks', permission: 'webhooks.manage' },
-  { to: '/xero', permission: 'xero.manage' },
+  { to: '/webhooks', permission: 'integrations.webhooks' },
+  { to: '/xero', permission: 'integrations.xero' },
   { to: '/system-health', permission: 'website.manage' },
   { to: '/service-availability', permission: 'service_availability.view' },
   { to: '/account' },
   { to: '/checklist', permission: 'website.manage' },
 ];
+
+function staff(permissions: string[]): StaffUser {
+  return {
+    id: 99,
+    name: 'Tester',
+    email: 't@test.com',
+    role: 'staff',
+    permissions,
+  };
+}
 
 describe('navConfig', () => {
   it('has six IA sections with metadata and no pinned strip', () => {
@@ -102,6 +113,45 @@ describe('navConfig', () => {
     }
   });
 
+  it('nav permissions for corrected pages match the API-enforced slug', () => {
+    const byTo = Object.fromEntries(getAllNavItems().map((i) => [i.to, i]));
+    expect(byTo['/menu']?.permission).toBe('menu.manage');
+    expect(byTo['/delivery']?.permission).toBe('orders.manage');
+    expect(byTo['/reservations']?.permission).toBe('reservations.manage');
+    expect(byTo['/profit-loss']?.permission).toBe('reports.financial');
+    expect(byTo['/sms']?.permissions).toEqual(['integrations.sms', 'sms_marketing.manage']);
+    expect(byTo['/webhooks']?.permission).toBe('integrations.webhooks');
+    expect(byTo['/xero']?.permission).toBe('integrations.xero');
+  });
+
+  it('user holding only the API permission sees the nav link; weaker drift slug does not', () => {
+    const cases: Array<{ to: string; apiPerm: string; weakPerm: string }> = [
+      { to: '/menu', apiPerm: 'menu.manage', weakPerm: 'menu.view' },
+      { to: '/delivery', apiPerm: 'orders.manage', weakPerm: 'delivery.view' },
+      { to: '/reservations', apiPerm: 'reservations.manage', weakPerm: 'reservations.view' },
+      { to: '/profit-loss', apiPerm: 'reports.financial', weakPerm: 'finance.profit_loss' },
+      { to: '/sms', apiPerm: 'integrations.sms', weakPerm: 'sms_marketing.view' },
+      { to: '/webhooks', apiPerm: 'integrations.webhooks', weakPerm: 'webhooks.manage' },
+      { to: '/xero', apiPerm: 'integrations.xero', weakPerm: 'xero.manage' },
+    ];
+
+    for (const { to, apiPerm, weakPerm } of cases) {
+      const item = getAllNavItems().find((i) => i.to === to);
+      expect(item, to).toBeTruthy();
+      expect(canNavItem(staff([apiPerm]), item!), `${to} visible with ${apiPerm}`).toBe(true);
+      expect(canNavItem(staff([weakPerm]), item!), `${to} hidden for ${weakPerm}`).toBe(false);
+    }
+
+    // sms_marketing.manage satisfies SMS APIs — must still see the nav link
+    const sms = getAllNavItems().find((i) => i.to === '/sms')!;
+    expect(canNavItem(staff(['sms_marketing.manage']), sms)).toBe(true);
+  });
+
+  it('reports.basic alone does not open reports.view-gated pages', () => {
+    expect(can(staff(['reports.basic']), 'reports.view')).toBe(false);
+    expect(can(staff(['reports.view']), 'reports.basic')).toBe(true);
+  });
+
   it('every item belongs to exactly one section and has a route path', () => {
     const seen = new Map<string, string>();
     for (const g of getNavGroups()) {
@@ -123,7 +173,8 @@ describe('navConfig', () => {
     expect(getActiveSection('/devices')?.id).toBe('system');
     expect(getActiveSection('/staff')?.id).toBe('team');
     expect(getActiveSection('/shifts')?.id).toBe('team');
-    expect(getActiveSection('/settings')?.id).toBe('system');
+    expect(getActiveSection('/settings/permissions')?.id).toBe('system');
+    expect(getActiveSection('/settings/notifications')?.id).toBe('system');
     expect(getActiveSection('/delivery-settings')?.id).toBe('manage');
   });
 
@@ -156,6 +207,13 @@ describe('navConfig', () => {
     expect(navItemPathname('/settings?tab=permissions')).toBe('/settings');
   });
 
+  it('settings nav links use path segments not query strings', () => {
+    const items = getAllNavItems();
+    expect(items.some((i) => i.to === '/settings/permissions')).toBe(true);
+    expect(items.some((i) => i.to === '/settings/notifications')).toBe(true);
+    expect(items.some((i) => i.to.includes('?tab='))).toBe(false);
+  });
+
   it('inventory.view passes for user with inventory.manage only', () => {
     const user: StaffUser = {
       id: 3,
@@ -177,7 +235,15 @@ describe('navConfig', () => {
       permissions: ['reports.view', 'finance.cash_manage'],
     };
     expect(can(user, 'shifts.view_all_history')).toBe(false);
+    // BE: shifts.view_own_history ← finance.cash_manage
     expect(can(user, 'shifts.view_own_history')).toBe(true);
+  });
+
+  it('orders.view is not granted by holding only pos.active_orders on the FE check direction', () => {
+    // BE: pos.active_orders ← orders.view (checking POS slug accepts orders.view).
+    // Checking orders.view must NOT accept pos.active_orders alone.
+    expect(can(staff(['pos.active_orders']), 'orders.view')).toBe(false);
+    expect(can(staff(['orders.view']), 'pos.active_orders')).toBe(true);
   });
 
   it('inventory.view alone does not grant inventory.manage', () => {

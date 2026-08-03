@@ -517,7 +517,7 @@ function PermissionsModal({ member, onClose }: { member: StaffMember; onClose: (
               Toggle overrides for this person. Role defaults still apply unless overridden.{' '}
               <button
                 type="button"
-                onClick={() => navigate(`/settings?tab=permissions&user=${member.id}`)}
+                onClick={() => navigate(`/settings/permissions?user=${member.id}`)}
                 style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 13 }}
               >
                 Open full permissions editor →

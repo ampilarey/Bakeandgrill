@@ -44,7 +44,7 @@ export const NAV_EXACT_MATCH_PATHS = new Set(['/customers']);
 
 const PINNED_PATHS = new Set(PINNED_NAV_ITEMS.map((i) => i.to));
 
-/** Strip query/hash so /settings?tab=permissions matches pathname /settings */
+/** Strip query/hash so path comparisons ignore search/hash. */
 export function navItemPathname(to: string): string {
   return to.split(/[?#]/)[0] || '/';
 }
@@ -61,7 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/orders',    icon: ClipboardList,   label: 'Orders',    permission: 'orders.view',    description: 'Live order queue' },
       { to: '/kds',       icon: ChefHat,         label: 'Kitchen Display', permission: 'orders.view', description: 'KDS screen' },
       { to: '/tables',      icon: LayoutGrid, label: 'Tables',         permission: 'orders.view',            description: 'Floor plan & seating' },
-      { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'delivery.view',          description: 'Active delivery queue' },
+      { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'orders.manage',          description: 'Active delivery queue' },
       { to: '/kitchen-production', icon: Utensils, label: 'Kitchen Handover', permission: 'kitchen.production.view_all', description: 'Production, receiving & variance' },
       { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
     ],
@@ -73,7 +73,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Boxes,
     order: 2,
     items: [
-      { to: '/menu',      icon: UtensilsCrossed, label: 'Menu Items', permission: 'menu.view',      description: 'Categories & items' },
+      { to: '/menu',      icon: UtensilsCrossed, label: 'Menu Items', permission: 'menu.manage',      description: 'Categories & items' },
       { to: '/specials',          icon: Tag,         label: 'Daily Specials',   permission: 'menu.manage',     description: 'Scheduled item discounts' },
       { to: '/inventory',             icon: Boxes,         label: 'Inventory',       permission: 'inventory.view',      description: 'Stock levels' },
       { to: '/purchase-requests',     icon: ClipboardPen,  label: 'Purchase Requests', permission: 'purchase_requests.view_all', description: 'Staff buying tasks' },
@@ -81,7 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/purchase-orders',       icon: Package,       label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
       { to: '/supplier-intelligence', icon: Factory,       label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
       { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'inventory.manage',    description: 'Log waste & shrinkage' },
-      { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.view',   description: 'Table bookings' },
+      { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
       { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online hours, fees & overrides' },
       { to: '/delivery-settings', icon: MapPin,      label: 'Delivery & Zones', permission: 'settings.update', description: 'Delivery hours, zone fees & alerts' },
     ],
@@ -103,8 +103,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/reviews',          icon: Star,       label: 'Reviews',         permission: 'customers.manage',    description: 'Moderate ratings' },
       { to: '/promotions', icon: Target,        label: 'Promotions',      permission: 'promotions.manage',  description: 'Discounts & offers' },
       { to: '/discount-controls', icon: Percent, label: 'Discount Controls', permission: 'discounts.settings.manage', description: 'POS caps, reasons & SMS approval' },
-      { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permission: 'sms_marketing.view', description: 'Campaigns, templates & sends' },
-      { to: '/sms/control-center', icon: MessageSquare, label: 'SMS Control Center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms'], description: 'Toggles, wording & kill switch' },
+      { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permissions: ['integrations.sms', 'sms_marketing.manage'], description: 'Campaigns, templates & sends' },
+      { to: '/sms/control-center', icon: MessageSquare, label: 'SMS Control Center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms', 'sms_marketing.manage'], description: 'Toggles, wording & kill switch' },
       { to: '/signage', icon: Tv, label: 'TV Signage', permission: 'signage.manage', description: 'Digital menu boards' },
     ],
   },
@@ -120,7 +120,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
       { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },
       { to: '/gst',         icon: Receipt,    label: 'GST',           permission: 'reports.financial',   description: 'MIRA GST reports & exports' },
-      { to: '/profit-loss', icon: PieChart,   label: 'Profit & Loss', permission: 'finance.profit_loss', description: 'P&L statement' },
+      { to: '/profit-loss', icon: PieChart,   label: 'Profit & Loss', permission: 'reports.financial', description: 'P&L statement' },
       { to: '/invoices',    icon: DollarSign, label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
       { to: '/expenses',    icon: Receipt,    label: 'Expenses',      permission: 'finance.expenses',    description: 'Operating costs' },
       { to: '/refunds',     icon: RotateCcw,  label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
@@ -135,12 +135,12 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/content', icon: LayoutTemplate, label: 'Content & Branding', permission: 'website.manage', description: 'Website + order app copy, branding & visuals' },
       { to: '/media', icon: Images, label: 'Media Library', permission: 'media.view', description: 'Uploaded images, video, audio & documents' },
-      { to: '/settings?tab=permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Role defaults & per-user overrides' },
-      { to: '/settings?tab=notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },
+      { to: '/settings/permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Role defaults & per-user overrides' },
+      { to: '/settings/notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
-      { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'webhooks.manage', description: 'Outbound integrations' },
-      { to: '/xero',          icon: Link,        label: 'Xero',           permission: 'xero.manage',    description: 'Accounting sync' },
+      { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'integrations.webhooks', description: 'Outbound integrations' },
+      { to: '/xero',          icon: Link,        label: 'Xero',           permission: 'integrations.xero',    description: 'Accounting sync' },
       { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permission: 'website.manage', description: 'Queue, webhooks & alerts' },
       { to: '/service-availability', icon: AlertTriangle, label: 'Service Availability', permission: 'service_availability.view', description: 'Maintenance & incident controls' },
     ],
@@ -250,16 +250,21 @@ export const BOTTOM_TABS: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home',    permission: 'dashboard.view' },
   { to: '/orders',    icon: ClipboardList,   label: 'Orders',  permission: 'orders.view'  },
   { to: '/kds',       icon: ChefHat,         label: 'Kitchen', permission: 'orders.view'  },
-  { to: '/menu',      icon: UtensilsCrossed, label: 'Menu',    permission: 'menu.view'    },
+  { to: '/menu',      icon: UtensilsCrossed, label: 'Menu',    permission: 'menu.manage'  },
 ];
 
 /** Returns true if the given user has the specified permission (with legacy alias support). */
+/**
+ * Aliases for `can()` — must mirror backend PermissionCatalog::SATISFIED_BY
+ * directionality. Never add reverse aliases that the API does not honour
+ * (e.g. reports.basic must not satisfy reports.view).
+ */
 const PERM_ALIASES: Record<string, string[]> = {
   'devices.manage': ['devices.approve'],
   'devices.view': ['devices.manage', 'devices.approve'],
-  'integrations.sms': ['sms_marketing.view', 'sms_marketing.manage', 'sms.logs.view', 'sms.templates.edit', 'sms.settings.manage', 'sms.contacts.manage', 'sms.scheduled.manage', 'sms.campaigns.send', 'sms.transactional.manage'],
-  'sms_marketing.view': ['integrations.sms', 'sms_marketing.manage'],
-  'sms_marketing.manage': ['integrations.sms', 'sms_marketing.view'],
+  'devices.approve': ['devices.manage'],
+  'sms_marketing.view': ['integrations.sms'],
+  'sms_marketing.manage': ['integrations.sms'],
   'sms.logs.view': ['integrations.sms', 'sms_marketing.manage'],
   'sms.templates.edit': ['integrations.sms', 'sms_marketing.manage'],
   'sms.settings.manage': ['integrations.sms', 'sms_marketing.manage'],
@@ -268,30 +273,27 @@ const PERM_ALIASES: Record<string, string[]> = {
   'sms.campaigns.send': ['integrations.sms', 'sms_marketing.manage'],
   'sms.transactional.manage': ['integrations.sms', 'sms_marketing.manage'],
   'webhooks.manage': ['integrations.webhooks'],
-  'integrations.webhooks': ['webhooks.manage'],
   'xero.manage': ['integrations.xero'],
-  'integrations.xero': ['xero.manage'],
-  'website.manage': ['settings.manage', 'roles_permissions.manage'],
-  'roles_permissions.manage': ['website.manage', 'settings.manage'],
-  'settings.manage': ['website.manage', 'settings.update'],
-  'settings.update': ['settings.manage', 'website.manage'],
-  // Keep aliases aligned with backend PermissionCatalog::SATISFIED_BY.
-  // Do not invent frontend-only aliases (e.g. reports.view → shifts) — UI would open, APIs 403.
-  'media.view': ['media.manage', 'website.manage', 'menu.manage'],
+  'roles_permissions.manage': ['website.manage'],
+  'settings.manage': ['website.manage'],
+  'settings.update': ['settings.manage'],
+  'media.view': ['website.manage', 'menu.manage'],
   'media.manage': ['website.manage'],
-  'shifts.view_own_history': ['finance.cash_manage', 'payments.cash_manage'],
-  'reports.view': ['reports.basic'],
+  'shifts.view_own_history': ['finance.cash_manage'],
   'reports.basic': ['reports.view'],
-  'orders.view': ['pos.active_orders', 'pos.view_this_device_orders'],
-  'orders.create': ['pos.ring_sales', 'pos.hold_resume'],
+  'pos.active_orders': ['orders.view'],
+  'pos.view_this_device_orders': ['orders.view'],
   'pos.ring_sales': ['orders.create'],
   'pos.hold_resume': ['orders.create'],
-  'finance.cash_manage': ['payments.cash_manage', 'pos.open_shift', 'pos.close_shift'],
-  'payments.cash_manage': ['finance.cash_manage', 'pos.open_shift', 'pos.close_shift'],
+  'pos.open_shift': ['finance.cash_manage', 'payments.cash_manage'],
+  'pos.close_shift': ['finance.cash_manage', 'payments.cash_manage'],
+  'pos.manage_order_status': ['pos.active_orders'],
+  'finance.cash_manage': ['payments.cash_manage'],
+  'payments.cash_manage': ['finance.cash_manage'],
+  'payments.cash_in_out': ['finance.cash_manage'],
   'inventory.view': ['inventory.manage'],
-  // Service Availability — matches backend PermissionCatalog::SATISFIED_BY.
-  'service_availability.view': ['settings.update', 'settings.manage', 'website.manage'],
-  'service_availability.manage_public': ['settings.update', 'settings.manage', 'website.manage'],
+  'service_availability.view': ['settings.update'],
+  'service_availability.manage_public': ['settings.update'],
 };
 
 export function can(user: StaffUser, permission?: string): boolean {

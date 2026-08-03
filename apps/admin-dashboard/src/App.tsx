@@ -226,7 +226,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="delivery" element={
-                  <PermissionGuard user={user} permission="delivery.view">
+                  <PermissionGuard user={user} permission="orders.manage">
                     <DeliveryPage />
                   </PermissionGuard>
                 } />
@@ -248,12 +248,12 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="sms" element={
-                  <PermissionGuard user={user} permission="integrations.sms">
+                  <PermissionGuard user={user} permissions={['integrations.sms', 'sms_marketing.manage']}>
                     <SmsPage />
                   </PermissionGuard>
                 } />
                 <Route path="sms/control-center" element={
-                  <PermissionGuard user={user} permissions={['sms.settings.manage', 'sms.logs.view', 'integrations.sms']}>
+                  <PermissionGuard user={user} permissions={['sms.settings.manage', 'sms.logs.view', 'integrations.sms', 'sms_marketing.manage']}>
                     <SmsControlCenterPage />
                   </PermissionGuard>
                 } />
@@ -268,7 +268,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="menu" element={
-                  <PermissionGuard user={user} permission="menu.view">
+                  <PermissionGuard user={user} permission="menu.manage">
                     <MenuPage />
                   </PermissionGuard>
                 } />
@@ -279,7 +279,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="reservations" element={
-                  <PermissionGuard user={user} permission="reservations.view">
+                  <PermissionGuard user={user} permission="reservations.manage">
                     <ReservationsPage />
                   </PermissionGuard>
                 } />
@@ -300,7 +300,7 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="profit-loss" element={
-                  <PermissionGuard user={user} permission="finance.profit_loss">
+                  <PermissionGuard user={user} permission="reports.financial">
                     <ProfitLossPage />
                   </PermissionGuard>
                 } />

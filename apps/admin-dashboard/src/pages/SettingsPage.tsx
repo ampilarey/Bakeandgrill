@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { WebsiteSettings } from './SettingsPage/WebsiteSettingsSubPage';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import {
   getSiteSettings, updateSiteSettings,
@@ -15,11 +14,13 @@ const LEGACY_TAB_REDIRECTS: Record<string, string> = {
   ordering: '/online-ordering',
   delivery: '/delivery-settings',
   'ordering-charges': '/online-ordering?section=fees',
+  website: '/content',
+  permissions: '/settings/permissions',
+  notifications: '/settings/notifications',
 };
 
 /** Settings sub-pages now live in the System section rail (no separate hub cards). */
 const SETTINGS_TABS = [
-  { id: 'website',       label: 'Website Settings',      desc: 'Moved to Website / Order App Content editors' },
   { id: 'permissions',   label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
   { id: 'notifications', label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
 ] as const;
@@ -28,6 +29,12 @@ type SettingsTabId = (typeof SETTINGS_TABS)[number]['id'];
 
 function isSettingsTab(v: string | null): v is SettingsTabId {
   return !!v && SETTINGS_TABS.some((t) => t.id === v);
+}
+
+/** Path segment after /settings/ — e.g. /settings/permissions → permissions */
+function settingsPathTab(pathname: string): string | null {
+  const match = pathname.match(/^\/settings\/([^/?#]+)/);
+  return match?.[1] ?? null;
 }
 
 // ─── Notifications sub-page ──────────────────────────────────────────────────
@@ -248,8 +255,10 @@ function NotificationsSettings() {
 // ─── Main SettingsPage ────────────────────────────────────────────────────────
 export function SettingsPage() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const pathTab = settingsPathTab(pathname);
   const userParam = searchParams.get('user');
   const initialUserId = userParam ? Number(userParam) : null;
 
@@ -259,20 +268,27 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (tabParam && LEGACY_TAB_REDIRECTS[tabParam]) {
-      navigate(LEGACY_TAB_REDIRECTS[tabParam], { replace: true });
+      const target = LEGACY_TAB_REDIRECTS[tabParam];
+      // Preserve ?user= when bouncing permissions query → path
+      if (tabParam === 'permissions' && userParam) {
+        navigate(`${target}?user=${userParam}`, { replace: true });
+        return;
+      }
+      navigate(target, { replace: true });
       return;
     }
-    // Bare /settings or unknown tabs → Roles & Permissions (rail default)
-    if (!tabParam || tabParam === 'integrations' || !isSettingsTab(tabParam)) {
-      navigate('/settings?tab=permissions', { replace: true });
+    // Bare /settings or unknown path segments → Roles & Permissions
+    if (!isSettingsTab(pathTab)) {
+      const qs = userParam ? `?user=${userParam}` : '';
+      navigate(`/settings/permissions${qs}`, { replace: true });
     }
-  }, [tabParam, navigate]);
+  }, [tabParam, pathTab, userParam, navigate]);
 
-  const active: SettingsTabId = isSettingsTab(tabParam) ? tabParam : 'permissions';
-  const card = SETTINGS_TABS.find((c) => c.id === active) ?? SETTINGS_TABS[1];
+  const active: SettingsTabId = isSettingsTab(pathTab) ? pathTab : 'permissions';
+  const card = SETTINGS_TABS.find((c) => c.id === active) ?? SETTINGS_TABS[0];
 
   // Avoid flash while redirecting legacy/bare URLs
-  if (!isSettingsTab(tabParam)) {
+  if (!isSettingsTab(pathTab) || tabParam) {
     return null;
   }
 
@@ -284,7 +300,6 @@ export function SettingsPage() {
         subtitle={card.desc}
       />
 
-      {active === 'website' && <WebsiteSettings />}
       {active === 'permissions' && (
         <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />
       )}

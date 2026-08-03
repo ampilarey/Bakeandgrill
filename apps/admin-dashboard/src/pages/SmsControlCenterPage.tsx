@@ -364,7 +364,7 @@ function TypeRow({
               <> · {row.roles_with_permission.join(', ')}</>
             )}
             {' · '}
-            <Link to="/settings?tab=permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>
+            <Link to="/settings/permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
             Last 30 days: {row.last_30_days.count} · MVR {row.last_30_days.cost_mvr.toFixed(2)}
