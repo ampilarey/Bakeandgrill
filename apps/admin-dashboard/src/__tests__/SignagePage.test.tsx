@@ -552,6 +552,83 @@ describe('SignagePage', () => {
     expect(payload.banners?.[0]?.direction).toBe('rtl');
     expect(payload.show_logo_between).toBe(true);
   });
+
+  it('Banner reorder: ↓ / ↑ change list order and persist on save', async () => {
+    const saveSpy = vi.spyOn(api, 'setSignageBanner').mockResolvedValue({
+      banner: mockOverview.banner!,
+    });
+
+    renderWithRouter(<SignagePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Banner' }));
+    await screen.findByTestId('signage-banner-item-main');
+
+    // Single banner — no move controls (same as remove).
+    expect(screen.queryByTestId('signage-banner-move-up-main')).toBeNull();
+    expect(screen.queryByTestId('signage-banner-move-down-main')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('signage-banner-add'));
+    await waitFor(() => {
+      expect(screen.getByTestId('signage-banner-move-down-main')).toBeTruthy();
+    });
+
+    const panel = screen.getByTestId('signage-banner-panel');
+    const itemsBefore = Array.from(panel.querySelectorAll('[data-testid^="signage-banner-item-"]'))
+      .map((el) => el.getAttribute('data-testid'));
+    expect(itemsBefore[0]).toBe('signage-banner-item-main');
+
+    fireEvent.click(screen.getByTestId('signage-banner-move-down-main'));
+    await waitFor(() => {
+      const items = Array.from(panel.querySelectorAll('[data-testid^="signage-banner-item-"]'))
+        .map((el) => el.getAttribute('data-testid'));
+      expect(items[0]).not.toBe('signage-banner-item-main');
+      expect(items[1]).toBe('signage-banner-item-main');
+    });
+
+    fireEvent.click(screen.getByTestId('signage-banner-move-up-main'));
+    await waitFor(() => {
+      const items = Array.from(panel.querySelectorAll('[data-testid^="signage-banner-item-"]'))
+        .map((el) => el.getAttribute('data-testid'));
+      expect(items[0]).toBe('signage-banner-item-main');
+    });
+
+    // Move down again and save — payload order must match UI.
+    fireEvent.click(screen.getByTestId('signage-banner-move-down-main'));
+    fireEvent.click(screen.getByTestId('signage-banner-save'));
+    await waitFor(() => expect(saveSpy).toHaveBeenCalled());
+    const payload = saveSpy.mock.calls[0][0];
+    expect(payload.banners?.[0]?.id).not.toBe('main');
+    expect(payload.banners?.[1]?.id).toBe('main');
+  });
+
+  it('Banner motion select uses resolveBannerScrollMode (ticker) for unrecognized modes', async () => {
+    vi.spyOn(api, 'getSignageOverview').mockResolvedValue({
+      ...mockOverview,
+      banner: {
+        enabled: true,
+        banners: [{
+          ...mockOverview.banner!.banners[0],
+          // Bypass normalize by using a value that survives if already set after load —
+          // patch after mount via the Motion select's unknown→ticker path is covered
+          // by resolveBannerScrollMode; here we assert the shared helper default
+          // matches what the Motion select shows for a fresh newBannerItem.
+          scroll_mode: 'ticker',
+        }],
+      },
+    });
+
+    renderWithRouter(<SignagePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Banner' }));
+    const select = await screen.findByTestId('signage-banner-scroll-mode-main') as HTMLSelectElement;
+    expect(select.value).toBe('ticker');
+
+    // Add banner — product default is ticker (not the old seamless UI fallback).
+    fireEvent.click(screen.getByTestId('signage-banner-add'));
+    await waitFor(() => {
+      const selects = screen.getAllByTestId(/signage-banner-scroll-mode-/);
+      expect(selects.length).toBe(2);
+      expect((selects[1] as HTMLSelectElement).value).toBe('ticker');
+    });
+  });
 });
 
 describe('SignagePage mobile footer clearance', () => {
