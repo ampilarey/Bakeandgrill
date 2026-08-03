@@ -326,6 +326,59 @@ final class SignageResolverTest extends TestCase
         $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-multi');
         $this->assertCount(2, $cfg['banner']['banners']);
         $this->assertSame('wifi', $cfg['banner']['banners'][1]['id']);
+        // Pre-enhancement banners still get appearance defaults after save.
+        $this->assertSame(1.0, $cfg['banner']['banners'][0]['font_scale']);
+        $this->assertTrue($cfg['banner']['banners'][0]['scroll']);
+        $this->assertSame('full', $cfg['banner']['banners'][0]['date_format']);
+    }
+
+    public function test_banner_appearance_settings_round_trip(): void
+    {
+        $owner = User::create([
+            'name' => 'Owner Banner Appear',
+            'email' => 'owner-banner-appear@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->putJson('/api/admin/signage/banner', [
+            'enabled' => true,
+            'banners' => [[
+                'id' => 'styled',
+                'label' => 'Styled',
+                'enabled' => true,
+                'position' => 'top',
+                'fields' => ['date', 'time'],
+                'speed_seconds' => 50,
+                'duration_seconds' => 25,
+                'font_scale' => 1.75,
+                'height_scale' => 1.25,
+                'text_color' => '#ffe8c8',
+                'background_color' => 'rgba(20, 10, 5, 0.9)',
+                'align' => 'center',
+                'scroll' => false,
+                'date_format' => 'short',
+                'inset_percent' => 3,
+            ]],
+        ])->assertOk()
+            ->assertJsonPath('banner.banners.0.font_scale', 1.75)
+            ->assertJsonPath('banner.banners.0.height_scale', 1.25)
+            ->assertJsonPath('banner.banners.0.text_color', '#ffe8c8')
+            ->assertJsonPath('banner.banners.0.background_color', 'rgba(20, 10, 5, 0.9)')
+            ->assertJsonPath('banner.banners.0.align', 'center')
+            ->assertJsonPath('banner.banners.0.scroll', false)
+            ->assertJsonPath('banner.banners.0.date_format', 'short')
+            ->assertJsonPath('banner.banners.0.inset_percent', 3);
+
+        /** @var SignageResolver $resolver */
+        $resolver = app(SignageResolver::class);
+        $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-appear');
+        $this->assertSame(1.75, $cfg['banner']['banners'][0]['font_scale']);
+        $this->assertFalse($cfg['banner']['banners'][0]['scroll']);
+        $this->assertSame('short', $cfg['banner']['banners'][0]['date_format']);
+        $this->assertSame(3.0, $cfg['banner']['banners'][0]['inset_percent']);
     }
 
     public function test_prayer_island_setting_drives_schedule_and_admin_round_trip(): void

@@ -1,6 +1,25 @@
-import type { SignageBannerItem, SignageBannerSettings } from './types';
+import type {
+  SignageBannerAlign,
+  SignageBannerDateFormat,
+  SignageBannerItem,
+  SignageBannerSettings,
+} from './types';
 
 const FIELD_ALLOW = new Set(['date', 'time', 'next_prayer', 'countdown']);
+const DATE_FORMATS = new Set<SignageBannerDateFormat>(['full', 'short', 'numeric', 'weekday', 'hijri']);
+const ALIGNS = new Set<SignageBannerAlign>(['left', 'center', 'right']);
+
+/** Defaults that match today's hardcoded CSS / date behaviour. */
+export const BANNER_APPEARANCE_DEFAULTS = {
+  font_scale: 1,
+  height_scale: 1,
+  text_color: '#fff8f0',
+  background_color: 'rgba(12, 8, 4, 0.78)',
+  align: 'left' as SignageBannerAlign,
+  scroll: true,
+  date_format: 'full' as SignageBannerDateFormat,
+  inset_percent: 0,
+};
 
 function uid(): string {
   return `bnr-${Math.random().toString(36).slice(2, 10)}`;
@@ -18,15 +37,40 @@ function clampDuration(n: unknown): number {
   return Math.max(5, Math.min(600, Math.round(v)));
 }
 
+function clampScale(n: unknown, fallback: number): number {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return fallback;
+  return Math.max(0.5, Math.min(3, Math.round(v * 100) / 100));
+}
+
+function clampInset(n: unknown): number {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(5, Math.round(v * 10) / 10));
+}
+
 function normalizeFields(raw: unknown): string[] {
   const list = Array.isArray(raw) ? raw.map(String) : [];
   const fields = list.filter((f) => FIELD_ALLOW.has(f));
   return fields.length > 0 ? fields : ['date', 'time', 'next_prayer', 'countdown'];
 }
 
+function normalizeColor(raw: unknown, fallback: string): string {
+  if (typeof raw !== 'string') return fallback;
+  const s = raw.trim();
+  if (!s || s.length > 80) return fallback;
+  // Allow hex, rgb/rgba, hsl/hsla, and named CSS colours used by admins.
+  if (/^#([0-9a-f]{3,8})$/i.test(s)) return s;
+  if (/^(rgba?|hsla?)\(/i.test(s)) return s;
+  if (/^[a-z]+$/i.test(s)) return s;
+  return fallback;
+}
+
 function normalizeItem(raw: Record<string, unknown>, fallbackIndex = 0): SignageBannerItem {
   const position = raw.position === 'top' ? 'top' : 'bottom';
   const custom = typeof raw.custom_text === 'string' ? raw.custom_text : '';
+  const dateFormat = String(raw.date_format || BANNER_APPEARANCE_DEFAULTS.date_format);
+  const align = String(raw.align || BANNER_APPEARANCE_DEFAULTS.align);
   return {
     id: String(raw.id || `legacy-${fallbackIndex}` || uid()),
     label: String(raw.label || `Banner ${fallbackIndex + 1}`),
@@ -36,6 +80,16 @@ function normalizeItem(raw: Record<string, unknown>, fallbackIndex = 0): Signage
     custom_text: custom,
     speed_seconds: clampSpeed(raw.speed_seconds),
     duration_seconds: clampDuration(raw.duration_seconds ?? 30),
+    font_scale: clampScale(raw.font_scale, BANNER_APPEARANCE_DEFAULTS.font_scale),
+    height_scale: clampScale(raw.height_scale, BANNER_APPEARANCE_DEFAULTS.height_scale),
+    text_color: normalizeColor(raw.text_color, BANNER_APPEARANCE_DEFAULTS.text_color),
+    background_color: normalizeColor(raw.background_color, BANNER_APPEARANCE_DEFAULTS.background_color),
+    align: (ALIGNS.has(align as SignageBannerAlign) ? align : BANNER_APPEARANCE_DEFAULTS.align),
+    scroll: raw.scroll !== false,
+    date_format: (DATE_FORMATS.has(dateFormat as SignageBannerDateFormat)
+      ? dateFormat
+      : BANNER_APPEARANCE_DEFAULTS.date_format),
+    inset_percent: clampInset(raw.inset_percent),
   };
 }
 

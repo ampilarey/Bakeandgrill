@@ -390,6 +390,20 @@ describe('SignagePage', () => {
     expect(select.querySelectorAll('option').length).toBeGreaterThanOrEqual(2);
     expect((select as HTMLSelectElement).value).toBe('102');
   });
+
+  it('Banner tab shows prayer island summary without a second editable dropdown', async () => {
+    renderWithRouter(<SignagePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Banner' }));
+    const summary = await screen.findByTestId('signage-banner-prayer-island-summary');
+    expect(summary.textContent).toMatch(/Prayer times:/);
+    expect(summary.textContent).toMatch(/Kaafu · Malé/);
+    expect(summary.textContent).toMatch(/change in the Prayer tab/);
+    expect(screen.queryByTestId('signage-prayer-island')).toBeNull();
+    expect(screen.getByTestId('signage-banner-panel').querySelectorAll('select[data-testid="signage-prayer-island"]').length).toBe(0);
+
+    fireEvent.click(screen.getByTestId('signage-banner-goto-prayer'));
+    expect(await screen.findByTestId('signage-prayer-island')).toBeTruthy();
+  });
 });
 
 describe('SignagePage mobile footer clearance', () => {

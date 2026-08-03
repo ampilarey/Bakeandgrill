@@ -1,5 +1,8 @@
 import { req } from './client';
 
+export type SignageBannerDateFormat = 'full' | 'short' | 'numeric' | 'weekday' | 'hijri';
+export type SignageBannerAlign = 'left' | 'center' | 'right';
+
 export type SignageBannerItem = {
   id: string;
   label: string;
@@ -9,6 +12,14 @@ export type SignageBannerItem = {
   custom_text?: string;
   speed_seconds: number;
   duration_seconds: number;
+  font_scale: number;
+  height_scale: number;
+  text_color: string;
+  background_color: string;
+  align: SignageBannerAlign | string;
+  scroll: boolean;
+  date_format: SignageBannerDateFormat | string;
+  inset_percent: number;
 };
 
 export type SignageBannerSettings = {

@@ -439,7 +439,6 @@ export function SignagePage() {
           schedule={config.prayer_schedule ?? []}
           mode={config.mode}
           burnInOffset={burnIn}
-          dateLabel={liveVars.today || undefined}
           timeLabel={liveVars.current_time || undefined}
           variables={liveVars}
         />

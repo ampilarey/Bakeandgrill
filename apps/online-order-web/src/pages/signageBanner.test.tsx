@@ -1,8 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
+  bannerStyleVars,
   buildBannerSegments,
+  formatBannerDate,
   formatCountdown,
+  normalizeBannerSettings,
   pickNextPrayer,
   shouldShowBanner,
   SignageBanner,
@@ -18,7 +21,7 @@ const schedule: SignagePrayerEntry[] = [
   { name: 'Isha', at: '2026-08-02T19:40:00+05:00' },
 ];
 
-const enabledBanner: SignageBannerSettings = {
+const enabledBanner: SignageBannerSettings = normalizeBannerSettings({
   enabled: true,
   banners: [{
     id: 'legacy',
@@ -29,7 +32,7 @@ const enabledBanner: SignageBannerSettings = {
     speed_seconds: 40,
     duration_seconds: 30,
   }],
-};
+});
 
 const legacyShape = {
   enabled: true,
@@ -121,7 +124,7 @@ describe('SignageBanner helpers', () => {
   it('renders custom_text with variables', () => {
     render(
       <SignageBanner
-        banner={{
+        banner={normalizeBannerSettings({
           enabled: true,
           banners: [{
             id: 'wifi',
@@ -133,7 +136,7 @@ describe('SignageBanner helpers', () => {
             speed_seconds: 40,
             duration_seconds: 20,
           }],
-        }}
+        })}
         schedule={[]}
         mode="normal"
         nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
@@ -141,5 +144,108 @@ describe('SignageBanner helpers', () => {
       />,
     );
     expect(screen.getByTestId('signage-banner').textContent).toMatch(/Wi-Fi: BG-Guest · secret/);
+  });
+
+  it('normalises absent appearance fields to legacy defaults', () => {
+    const item = normalizeBannerSettings({
+      enabled: true,
+      position: 'bottom',
+      fields: ['date', 'time'],
+      speed_seconds: 40,
+    }).banners[0];
+    expect(item.font_scale).toBe(1);
+    expect(item.height_scale).toBe(1);
+    expect(item.text_color).toBe('#fff8f0');
+    expect(item.background_color).toBe('rgba(12, 8, 4, 0.78)');
+    expect(item.align).toBe('left');
+    expect(item.scroll).toBe(true);
+    expect(item.date_format).toBe('full');
+    expect(item.inset_percent).toBe(0);
+  });
+
+  it('emits CSS custom properties from font/height scale', () => {
+    const item = normalizeBannerSettings({
+      enabled: true,
+      banners: [{
+        id: 'scaled',
+        font_scale: 1.5,
+        height_scale: 2,
+        speed_seconds: 40,
+        inset_percent: 2,
+      }],
+    }).banners[0];
+    const vars = bannerStyleVars(item);
+    expect(vars['--signage-banner-font-scale']).toBe('1.5');
+    expect(vars['--signage-banner-height-scale']).toBe('2');
+    expect(vars['--signage-banner-inset']).toBe('2%');
+  });
+
+  it('renders without marquee animation when scroll is false', () => {
+    render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [{
+            id: 'static',
+            enabled: true,
+            position: 'bottom',
+            fields: ['date'],
+            scroll: false,
+            align: 'center',
+            speed_seconds: 40,
+            duration_seconds: 30,
+          }],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+        dateLabel="Saturday, 2 Aug 2026"
+      />,
+    );
+    const el = screen.getByTestId('signage-banner');
+    expect(el.getAttribute('data-scroll')).toBe('0');
+    expect(el.className).toMatch(/signage-banner--static/);
+    expect(el.style.getPropertyValue('--signage-banner-justify')).toBe('center');
+  });
+
+  it('formats each date_format for a fixed date', () => {
+    const now = new Date('2026-08-03T12:00:00+05:00');
+    expect(formatBannerDate(now, 'full')).toMatch(/Monday/);
+    expect(formatBannerDate(now, 'full')).toMatch(/3/);
+    expect(formatBannerDate(now, 'full')).toMatch(/Aug/);
+    expect(formatBannerDate(now, 'full')).toMatch(/2026/);
+    expect(formatBannerDate(now, 'short')).toMatch(/Mon/);
+    expect(formatBannerDate(now, 'short')).not.toMatch(/2026/);
+    expect(formatBannerDate(now, 'numeric')).toMatch(/03\/08\/2026|3\/8\/2026/);
+    expect(formatBannerDate(now, 'weekday')).toBe('Monday');
+    const hijri = formatBannerDate(now, 'hijri');
+    expect(hijri.length).toBeGreaterThan(0);
+    expect(() => formatBannerDate(now, 'hijri')).not.toThrow();
+  });
+
+  it('uses per-banner date_format when dateLabel is not overridden', () => {
+    render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [{
+            id: 'weekday',
+            enabled: true,
+            position: 'bottom',
+            fields: ['date'],
+            date_format: 'weekday',
+            speed_seconds: 40,
+            duration_seconds: 30,
+          }],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-03T12:00:00+05:00')}
+        timeLabel="12:00"
+      />,
+    );
+    const el = screen.getByTestId('signage-banner');
+    expect(el.getAttribute('data-date-format')).toBe('weekday');
+    expect(el.textContent).toMatch(/Monday/);
   });
 });

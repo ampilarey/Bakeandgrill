@@ -51,6 +51,9 @@ export type SignagePrayerEntry = {
   at: string;
 };
 
+export type SignageBannerDateFormat = 'full' | 'short' | 'numeric' | 'weekday' | 'hijri';
+export type SignageBannerAlign = 'left' | 'center' | 'right';
+
 export type SignageBannerItem = {
   id: string;
   label: string;
@@ -62,6 +65,20 @@ export type SignageBannerItem = {
   speed_seconds: number;
   /** How long this banner stays before rotating to the next enabled one. */
   duration_seconds: number;
+  /** Multiplier on the 2.2vmin base font size. */
+  font_scale: number;
+  /** Multiplier on the 5.2vmin base height. */
+  height_scale: number;
+  text_color: string;
+  /** May include alpha, e.g. rgba(12, 8, 4, 0.78). */
+  background_color: string;
+  /** Meaningful when scroll is false. */
+  align: SignageBannerAlign | string;
+  /** When false, renders a static bar (no marquee). */
+  scroll: boolean;
+  date_format: SignageBannerDateFormat | string;
+  /** 0–5 — percent inset from the screen edge (TV overscan). */
+  inset_percent: number;
 };
 
 export type SignageBannerSettings = {

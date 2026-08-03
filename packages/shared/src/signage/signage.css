@@ -197,34 +197,36 @@
   overflow: hidden;
 }
 
-/* Persistent info banner — sibling of .signage-stage, outside keyed transitions */
+/* Persistent info banner — sibling of .signage-stage, outside keyed transitions.
+   Appearance knobs are CSS custom properties set inline from SignageBanner
+   (same pattern as --signage-banner-speed). Values below are the defaults. */
 .signage-banner {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: var(--signage-banner-inset, 0%);
+  right: var(--signage-banner-inset, 0%);
   z-index: 40;
-  height: 5.2vmin;
-  min-height: 36px;
+  height: calc(5.2vmin * var(--signage-banner-height-scale, 1));
+  min-height: calc(36px * var(--signage-banner-height-scale, 1));
   display: flex;
   align-items: center;
   overflow: hidden;
   pointer-events: none;
-  background: rgba(12, 8, 4, 0.78);
-  color: #fff8f0;
+  background: var(--signage-banner-bg, rgba(12, 8, 4, 0.78));
+  color: var(--signage-banner-color, #fff8f0);
   border-color: rgba(255, 248, 240, 0.18);
   font-family: system-ui, sans-serif;
-  font-size: 2.2vmin;
+  font-size: calc(2.2vmin * var(--signage-banner-font-scale, 1));
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .signage-banner-bottom {
-  bottom: 0;
+  bottom: var(--signage-banner-inset, 0%);
   border-top: 1px solid rgba(255, 248, 240, 0.18);
 }
 
 .signage-banner-top {
-  top: 0;
+  top: var(--signage-banner-inset, 0%);
   border-bottom: 1px solid rgba(255, 248, 240, 0.18);
 }
 
@@ -235,11 +237,16 @@
   animation: signage-banner-marquee var(--signage-banner-speed, 40s) linear infinite;
 }
 
+.signage-banner--static .signage-banner-track {
+  animation: none;
+  width: 100%;
+  justify-content: var(--signage-banner-justify, flex-start);
+}
+
 .signage-banner-text {
   padding: 0 4vmin;
 }
 
-/* Switch to a static bar by setting animation: none on .signage-banner-track */
 @keyframes signage-banner-marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

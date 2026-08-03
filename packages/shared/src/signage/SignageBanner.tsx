@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { activeBanners, normalizeBannerSettings } from './bannerConfig';
+import { activeBanners, BANNER_APPEARANCE_DEFAULTS, normalizeBannerSettings } from './bannerConfig';
 import { interpolate } from './interpolate';
-import type { SignageBannerItem, SignageBannerSettings, SignagePrayerEntry } from './types';
+import type {
+  SignageBannerDateFormat,
+  SignageBannerItem,
+  SignageBannerSettings,
+  SignagePrayerEntry,
+} from './types';
+
+/** Pinned so two TVs from different suppliers render the same date strings. */
+export const SIGNAGE_BANNER_LOCALE = 'en-GB';
 
 export type SignageBannerProps = {
   banner: SignageBannerSettings;
@@ -54,8 +62,24 @@ export function shouldShowBanner(banner: SignageBannerSettings | null | undefine
   return activeBanners(normalized).length > 0;
 }
 
-function defaultDateLabel(now: Date): string {
-  return now.toLocaleDateString(undefined, {
+function formatGregorian(now: Date, opts: Intl.DateTimeFormatOptions): string {
+  return now.toLocaleDateString(SIGNAGE_BANNER_LOCALE, opts);
+}
+
+function formatHijri(now: Date): string {
+  try {
+    const formatted = new Intl.DateTimeFormat(SIGNAGE_BANNER_LOCALE, {
+      calendar: 'islamic-umalqura',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(now);
+    if (formatted && formatted.trim()) return formatted;
+  } catch {
+    /* calendar unsupported */
+  }
+  // Fallback — never throw on a TV board.
+  return formatGregorian(now, {
     weekday: 'long',
     day: 'numeric',
     month: 'short',
@@ -63,8 +87,33 @@ function defaultDateLabel(now: Date): string {
   });
 }
 
+/** Format a banner date for the given `date_format` (pinned locale). */
+export function formatBannerDate(
+  now: Date,
+  format: SignageBannerDateFormat | string = 'full',
+): string {
+  switch (format) {
+    case 'short':
+      return formatGregorian(now, { weekday: 'short', day: 'numeric', month: 'short' });
+    case 'numeric':
+      return formatGregorian(now, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    case 'weekday':
+      return formatGregorian(now, { weekday: 'long' });
+    case 'hijri':
+      return formatHijri(now);
+    case 'full':
+    default:
+      return formatGregorian(now, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+  }
+}
+
 function defaultTimeLabel(now: Date): string {
-  return now.toLocaleTimeString(undefined, {
+  return now.toLocaleTimeString(SIGNAGE_BANNER_LOCALE, {
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -131,6 +180,28 @@ function bannerText(
   return `${opts.dateLabel}   ·   ${opts.timeLabel}`;
 }
 
+function justifyForAlign(align: string): string {
+  if (align === 'center') return 'center';
+  if (align === 'right') return 'flex-end';
+  return 'flex-start';
+}
+
+/** CSS custom properties derived from a banner item (for tests / rendering). */
+export function bannerStyleVars(item: SignageBannerItem): Record<string, string> {
+  const fontScale = Number(item.font_scale) || BANNER_APPEARANCE_DEFAULTS.font_scale;
+  const heightScale = Number(item.height_scale) || BANNER_APPEARANCE_DEFAULTS.height_scale;
+  const inset = Math.max(0, Math.min(5, Number(item.inset_percent) || 0));
+  return {
+    '--signage-banner-speed': `${Math.max(10, Math.min(180, Number(item.speed_seconds) || 40))}s`,
+    '--signage-banner-font-scale': String(fontScale),
+    '--signage-banner-height-scale': String(heightScale),
+    '--signage-banner-color': item.text_color || BANNER_APPEARANCE_DEFAULTS.text_color,
+    '--signage-banner-bg': item.background_color || BANNER_APPEARANCE_DEFAULTS.background_color,
+    '--signage-banner-justify': justifyForAlign(item.align || 'left'),
+    '--signage-banner-inset': `${inset}%`,
+  };
+}
+
 export function SignageBanner({
   banner,
   schedule,
@@ -174,7 +245,7 @@ export function SignageBanner({
 
   const active = enabledList[bannerIndex % enabledList.length];
   const next = pickNextPrayer(schedule, nowMs);
-  const dLabel = dateLabel ?? defaultDateLabel(now);
+  const dLabel = dateLabel ?? formatBannerDate(now, active.date_format || 'full');
   const tLabel = timeLabel ?? defaultTimeLabel(now);
   const text = bannerText(active, {
     dateLabel: dLabel,
@@ -184,27 +255,30 @@ export function SignageBanner({
     variables,
   });
 
-  const speed = Math.max(10, Math.min(180, Number(active.speed_seconds) || 40));
   const position = active.position === 'top' ? 'top' : 'bottom';
+  const scrolling = active.scroll !== false;
   const drift: CSSProperties = burnInOffset
     ? { transform: `translate(${burnInOffset.x}px, ${burnInOffset.y}px)` }
     : {};
 
-  const marquee = `${text}   ·   ${text}`;
+  const displayText = scrolling ? `${text}   ·   ${text}` : text;
+  const vars = bannerStyleVars(active);
 
   return (
     <div
-      className={`signage-banner signage-banner-${position}`}
+      className={`signage-banner signage-banner-${position}${scrolling ? '' : ' signage-banner--static'}`}
       data-testid="signage-banner"
       data-banner-id={active.id}
       data-banner-label={active.label}
+      data-scroll={scrolling ? '1' : '0'}
+      data-date-format={active.date_format || 'full'}
       style={{
         ...drift,
-        ['--signage-banner-speed' as string]: `${speed}s`,
+        ...vars,
       }}
     >
       <div className="signage-banner-track" data-testid="signage-banner-track">
-        <span className="signage-banner-text">{marquee}</span>
+        <span className="signage-banner-text">{displayText}</span>
       </div>
     </div>
   );

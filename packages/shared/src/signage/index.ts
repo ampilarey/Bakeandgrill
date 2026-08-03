@@ -1,5 +1,7 @@
 export type {
   MenuItemLite,
+  SignageBannerAlign,
+  SignageBannerDateFormat,
   SignageBannerItem,
   SignageBannerSettings,
   SignageCategoryLite,
@@ -27,14 +29,18 @@ export {
   SignageBanner,
   pickNextPrayer,
   formatCountdown,
+  formatBannerDate,
+  bannerStyleVars,
   shouldShowBanner,
   buildBannerSegments,
+  SIGNAGE_BANNER_LOCALE,
 } from './SignageBanner';
 export type { SignageBannerProps } from './SignageBanner';
 export {
   normalizeBannerSettings,
   activeBanners,
   newBannerItem,
+  BANNER_APPEARANCE_DEFAULTS,
 } from './bannerConfig';
 export { brandCardSlide } from './brandCard';
 export {

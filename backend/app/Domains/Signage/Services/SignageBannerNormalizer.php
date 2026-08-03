@@ -15,13 +15,29 @@ namespace App\Domains\Signage\Services;
  *   fields: list<string>,
  *   custom_text: string,
  *   speed_seconds: int,
- *   duration_seconds: int
+ *   duration_seconds: int,
+ *   font_scale: float,
+ *   height_scale: float,
+ *   text_color: string,
+ *   background_color: string,
+ *   align: string,
+ *   scroll: bool,
+ *   date_format: string,
+ *   inset_percent: float
  * }
  * @phpstan-type BannerSettings array{enabled: bool, banners: list<BannerItem>}
  */
 final class SignageBannerNormalizer
 {
     private const ALLOWED_FIELDS = ['date', 'time', 'next_prayer', 'countdown'];
+
+    private const ALLOWED_DATE_FORMATS = ['full', 'short', 'numeric', 'weekday', 'hijri'];
+
+    private const ALLOWED_ALIGNS = ['left', 'center', 'right'];
+
+    private const DEFAULT_TEXT_COLOR = '#fff8f0';
+
+    private const DEFAULT_BG_COLOR = 'rgba(12, 8, 4, 0.78)';
 
     /**
      * @param  mixed  $raw
@@ -128,6 +144,28 @@ final class SignageBannerNormalizer
             $duration = 600;
         }
 
+        $fontScale = self::clampScale($raw['font_scale'] ?? 1.0);
+        $heightScale = self::clampScale($raw['height_scale'] ?? 1.0);
+
+        $dateFormat = (string) ($raw['date_format'] ?? 'full');
+        if (! in_array($dateFormat, self::ALLOWED_DATE_FORMATS, true)) {
+            $dateFormat = 'full';
+        }
+
+        $align = (string) ($raw['align'] ?? 'left');
+        if (! in_array($align, self::ALLOWED_ALIGNS, true)) {
+            $align = 'left';
+        }
+
+        $inset = (float) ($raw['inset_percent'] ?? 0);
+        if ($inset < 0) {
+            $inset = 0.0;
+        }
+        if ($inset > 5) {
+            $inset = 5.0;
+        }
+        $inset = round($inset, 1);
+
         return [
             'id' => (string) ($raw['id'] ?? ('legacy-'.$fallbackIndex)),
             'label' => (string) ($raw['label'] ?? ('Banner '.($fallbackIndex + 1))),
@@ -137,6 +175,49 @@ final class SignageBannerNormalizer
             'custom_text' => (string) ($raw['custom_text'] ?? ''),
             'speed_seconds' => $speed,
             'duration_seconds' => $duration,
+            'font_scale' => $fontScale,
+            'height_scale' => $heightScale,
+            'text_color' => self::normalizeColor($raw['text_color'] ?? null, self::DEFAULT_TEXT_COLOR),
+            'background_color' => self::normalizeColor($raw['background_color'] ?? null, self::DEFAULT_BG_COLOR),
+            'align' => $align,
+            'scroll' => ($raw['scroll'] ?? true) !== false,
+            'date_format' => $dateFormat,
+            'inset_percent' => $inset,
         ];
+    }
+
+    private static function clampScale(mixed $raw): float
+    {
+        $v = is_numeric($raw) ? (float) $raw : 1.0;
+        if ($v < 0.5) {
+            $v = 0.5;
+        }
+        if ($v > 3.0) {
+            $v = 3.0;
+        }
+
+        return round($v, 2);
+    }
+
+    private static function normalizeColor(mixed $raw, string $fallback): string
+    {
+        if (! is_string($raw)) {
+            return $fallback;
+        }
+        $s = trim($raw);
+        if ($s === '' || strlen($s) > 80) {
+            return $fallback;
+        }
+        if (preg_match('/^#([0-9a-fA-F]{3,8})$/', $s)) {
+            return $s;
+        }
+        if (preg_match('/^(rgba?|hsla?)\(/i', $s)) {
+            return $s;
+        }
+        if (preg_match('/^[a-zA-Z]+$/', $s)) {
+            return $s;
+        }
+
+        return $fallback;
     }
 }
