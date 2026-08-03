@@ -231,3 +231,93 @@ Read-only review of migrations + money paths. No migrate/seed run.
 
 - Exhaustive dead-export graph (knip/ts-prune not run).
 
+
+---
+
+## Part F — Tests and config
+
+### Findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| MAJOR | Config cache | `env()` read outside `config/` in request path | `CustomerAuthController.php` (`OTP_DEV_RETURN` ×2); `VideoProcessor.php` (`config('media.ffmpeg_path', env('FFMPEG_PATH'))` — **no `config/media.php` exists**) | After `php artisan config:cache`, `env()` returns null outside config files. OTP dev-return and ffmpeg path silently break. |
+| MINOR | Skipped tests (the 3) | Always/soft skips in green suite | See quotes below | Confirmed via filtered run: 3 skipped. |
+| MINOR | Coverage gap | BML initiate soft-skips instead of asserting Http::fake success path | `BmlReturnUrlTest::test_payment_initiation_builds_return_url_with_order_id` | Payment contract gap. Other payment/webhook/refund/stock/permission suites are comparatively strong. |
+| MINOR | Coverage gap | FE/BE permission alias reverse-grants not tested | devices (and historically SMS/webhooks) | Route permission snapshot won’t catch nav over-grant. |
+| INFO | Machine-specific | Host paths / brand URL defaults | `.env` redis sock path; `VideoProcessor` `/usr/bin` probes; `https://bakeandgrill.mv` defaults in service_availability/content/SMS demos | Fine on sg-s2; brittle in bare containers. |
+| INFO | CLI env() | Staff CLI create gated by `env('ALLOW_STAFF_CLI_CREATE')` | Create/Activate/SetStaff commands | CLI-only; lower risk than HTTP path. |
+
+### The 3 skipped tests (quoted)
+
+1. **`OrderStatusMachineTest::test_kds_bump_pending_to_ready_then_completed`**  
+   > `KDS no longer supports pending→ready bump; cashier marks ready from POS.`
+
+2. **`ImageUploadLimitsTest::test_webp_mimes_excluded_when_unsupported`**  
+   > `GD supports WebP on this runtime — exclusion path not exercised.`
+
+3. **`BmlReturnUrlTest::test_payment_initiation_builds_return_url_with_order_id`**  
+   > `BML payment initiation not available in this test environment.`
+
+### What was checked
+
+- `rg env(` under `app/`; absence of `config/media.php`.
+- Filtered PHPUnit for the three skips.
+- Coverage notes for payments/orders/stock/permissions (qualitative).
+
+### What passed
+
+- Large feature suites exist for orders, payments/webhooks, stock, permissions (not “untested domains”).
+- Config files generally used for runtime settings.
+
+### Findings by severity (Part F)
+
+- BLOCKER: 0  
+- MAJOR: 1  
+- MINOR: 3  
+- INFO: 2  
+
+### Untested (Part F)
+
+- Coverage % metrics (phpunit clover / vitest coverage not generated).
+
+---
+
+## Cross-cutting summary (read this first)
+
+Highest-value themes spanning apps/parts:
+
+1. **Staff AuthZ holes on receipts (BLOCKER)** — Part B. Any staff token can mint public receipt links and reach receipt-send without `orders.receipts`. Same root cause as missing route middleware on “core staff” order helpers (`orders` index/stream, customer addresses). Fix as one middleware pass on `orders.php` / `devices.php` stream routes.
+
+2. **Money still half-migrated to laari (MAJOR)** — Parts C + E + POS. Float/`*100` in PHP and JS beside integer laari columns. One conversion library on both sides; stop dual-writing decimals for tender math.
+
+3. **Silent failure / wrong-default UI (MAJOR)** — Part A. GST export → opaque 500 when TIN missing; GST dashboard and SMS Automations hide errors (and Automations defaults toggles ON). Pattern: `try/finally` without `catch`, or exceptions mapped to generic 500.
+
+4. **Destructive / confirm-less money & status actions (MAJOR/MINOR)** — Parts A. POS Ops refund (no confirm) vs Receipts (confirm); KDS 86; delivery Mark Delivered. Shared UX rule: terminal money/status needs confirm.
+
+5. **Permission alias directionality FE≠BE (MAJOR)** — Part E (+ historical Part A nav drift already fixed for SMS/webhooks/menu). Remaining: `devices.manage` ↔ `devices.approve`. Add a parity test against `PermissionCatalog::SATISFIED_BY`.
+
+6. **`env()` vs `config:cache` (MAJOR)** — Part F. OTP_DEV_RETURN + missing `config/media.php` for ffmpeg. Deploy already runs `config:cache` — these reads are dead after cache.
+
+7. **Heavy client chunks (MAJOR)** — Part D. Shared `prepareUpload` ~1.3MB on admin and POS; POS index ~632KB.
+
+8. **TV/signage resilience (MAJOR)** — Part A. Empty cache + failed config = infinite spinner. Same offline-first pattern should set an error state.
+
+### Suggested fix-prompt batches (for later)
+
+| Batch | Findings | Why together |
+|---|---|---|
+| A | Receipt-link/send middleware; orders list/stream `orders.view`; customer addresses `customers.lookup` | One AuthZ pass on staff order/customer routes |
+| B | GST 422 for missing TIN; GstPage/AutomationsTab error UI | Fail loudly, not wrongly |
+| C | Laari-only tender path (POS + OrderSettlement leftovers) | Money integrity |
+| D | `config/media.php` + move `OTP_DEV_RETURN` into config; FE devices alias parity test | Config-cache + permission parity |
+| E | Ops refund confirm; signage empty-cache error; prepareUpload code-split review | UX + perf polish |
+
+### Audit constraints / honesty
+
+- No browser automation — console/XHR-per-page and true 390px interaction incomplete.
+- No destructive writes, no SMS/payment capture, no printer jobs.
+- Local DB sparse (1 inactive item); empty menus treated as data, not product bugs.
+- Local `artisan serve` SPA deep-link quirk may not reproduce on cPanel — confirm on TEST before prioritizing.
+
+**Report tip:** branch `cursor/full-system-audit-f876` — commits per Part A→F. No PR opened. No product code changed.
+
