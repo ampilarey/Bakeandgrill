@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './ErrorBoundary';
+import '@shared/styles/fonts.css';
 import './index.css';
 
 const rootEl = document.getElementById('root');

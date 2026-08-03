@@ -193,7 +193,7 @@ export function ReservationPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { minHeight: "100vh", background: "var(--color-bg)", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" },
+  page: { minHeight: "100vh", background: "var(--color-bg)", fontFamily: "var(--font-ui)" },
   card: { maxWidth: 520, margin: "32px auto", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 16, padding: 32, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" },
   heading: { fontSize: 22, fontWeight: 700, margin: "0 0 8px", color: "var(--color-text)" },
   sub: { fontSize: 15, color: "var(--color-text-muted)", margin: "0 0 16px" },

@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./signage": "./src/signage/index.ts",
-    "./signage/signage.css": "./src/signage/signage.css"
+    "./signage/signage.css": "./src/signage/signage.css",
+    "./styles/fonts.css": "./src/styles/fonts.css"
   },
   "peerDependencies": {
     "react": ">=18",

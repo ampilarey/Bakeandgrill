@@ -665,7 +665,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 75px; }
 
 body {
   margin: 0;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-ui);
   background: var(--color-bg);
   color: var(--color-text);
   line-height: 1.6;

@@ -14,8 +14,8 @@ export const PARITY_THEME: SignageTheme = {
   surface: '#2A2118',
   text: '#FFF8F0',
   muted: '#C4B5A5',
-  font_display: 'Georgia, serif',
-  font_body: 'system-ui, sans-serif',
+  font_display: 'var(--font-display)',
+  font_body: 'var(--font-ui)',
 };
 
 export const PARITY_VARIABLES: Record<string, string> = {

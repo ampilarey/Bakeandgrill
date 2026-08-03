@@ -214,7 +214,7 @@
   background: var(--signage-banner-bg, rgba(12, 8, 4, 0.78));
   color: var(--signage-banner-color, #fff8f0);
   border-color: rgba(255, 248, 240, 0.18);
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-ui, system-ui, sans-serif);
   font-size: calc(2.2vmin * var(--signage-banner-font-scale, 1));
   font-weight: 600;
   letter-spacing: 0.02em;

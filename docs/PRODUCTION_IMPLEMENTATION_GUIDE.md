@@ -1423,7 +1423,7 @@ $users = User::with('role')->orderByDesc('created_at')->paginate(100);
 **Fix:** Add to each `apps/*/index.html`:
 ```html
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com;">
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com;">
 ```
 Or configure at the Nginx/server level.
 

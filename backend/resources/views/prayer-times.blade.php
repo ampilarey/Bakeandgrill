@@ -11,20 +11,7 @@
     <title>Prayer Times — {{ $siteName }}</title>
     <link rel="icon" type="image/png" href="{{ content('favicon', asset('logo.png')) }}">
 
-    {{-- Dhivehi font --}}
-    <style>
-        @font-face {
-            font-family: 'A_Faruma';
-            src: url('/fonts/a_faruma.ttf') format('truetype');
-            font-weight: 400;
-            font-style: normal;
-            font-display: swap;
-        }
-    </style>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
 
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,9 +34,6 @@
             --radius:    16px;
             --radius-sm: 10px;
             --radius-xs: 6px;
-
-            --font-ui:     'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            --font-dhivehi: 'A_Faruma', 'MV Faseyha', 'MV Waheed', serif;
         }
 
         html { font-size: 16px; scroll-behavior: smooth; }

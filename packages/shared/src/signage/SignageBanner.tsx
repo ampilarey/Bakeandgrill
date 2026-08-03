@@ -13,9 +13,11 @@ import type {
 /** Pinned so two TVs from different suppliers render the same date strings. */
 export const SIGNAGE_BANNER_LOCALE = 'en-GB';
 
-/** Thaana-capable stack — do not assume the TV ships with a Dhivehi font. */
-export const SIGNAGE_BANNER_THAANA_FONT =
-  '"MV Typewriter", "Faruma", "MV Faseyha", "Noto Sans Thaana", "FreeFont", sans-serif';
+/**
+ * @deprecated Prefer `lang="dv"` / `dir="rtl"` — shared fonts.css applies
+ * `var(--font-dhivehi)` automatically. Kept for callers that still read the stack.
+ */
+export const SIGNAGE_BANNER_THAANA_FONT = 'var(--font-dhivehi)';
 
 export type SignageBannerProps = {
   banner: SignageBannerSettings;
@@ -404,7 +406,6 @@ export function SignageBanner({
             data-testid="signage-banner-text"
             dir={direction === 'rtl' ? 'rtl' : 'ltr'}
             lang={direction === 'rtl' ? 'dv' : undefined}
-            style={direction === 'rtl' ? { fontFamily: SIGNAGE_BANNER_THAANA_FONT } : undefined}
           >
             {displayText}
           </span>

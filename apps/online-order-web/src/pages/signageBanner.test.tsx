@@ -432,6 +432,8 @@ describe('SignageBanner helpers', () => {
     const rtlText = screen.getByTestId('signage-banner-text');
     expect(rtlText.getAttribute('dir')).toBe('rtl');
     expect(rtlText.getAttribute('lang')).toBe('dv');
+    // Thaana comes from fonts.css [lang=dv]/[dir=rtl] — no per-element fontFamily.
+    expect(rtlText.style.fontFamily).toBe('');
     expect(screen.getByTestId('signage-banner').getAttribute('data-direction')).toBe('rtl');
     expect(screen.queryAllByTestId('signage-banner-text')).toHaveLength(1);
   });

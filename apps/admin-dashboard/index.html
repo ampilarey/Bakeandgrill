@@ -8,15 +8,14 @@
     <!-- Keep in sync with backend SecurityHeaders middleware: browsers enforce the
          INTERSECTION of this meta CSP and the server header, and the /admin/ directory
          index can be served statically (bypassing Laravel), so this meta is load-bearing. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io;" />
     <meta name="theme-color" content="#0f172a" />
     <link rel="icon" type="image/png" href="/logo.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/fonts.css" />
     <script src="%BASE_URL%theme-init.js"></script>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1e293b; }
+      body { font-family: var(--font-ui); background: #f1f5f9; color: #1e293b; }
       html[data-theme="dark"] body { background: #0F0D0A; color: #F0EAE0; }
       button { font-family: inherit; cursor: pointer; }
       input, select, textarea { font-family: inherit; }

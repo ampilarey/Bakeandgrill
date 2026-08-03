@@ -21,7 +21,7 @@ export function buildLocalReceiptHtml(order: OfflineOrderRecord): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(order.local_order_number)}</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: "Plus Jakarta Sans", system-ui, sans-serif; max-width: 360px; margin: 0 auto; color: ${BRAND.dark}; background: ${BRAND.bg}; }
+  body { font-family: var(--font-ui, system-ui, sans-serif); max-width: 360px; margin: 0 auto; color: ${BRAND.dark}; background: ${BRAND.bg}; }
   .masthead { background: linear-gradient(135deg, ${BRAND.dark} 0%, #2a1a0a 100%); color: #fff; padding: 16px; border-bottom: 3px solid ${BRAND.primary}; }
   .masthead h1 { font-size: 18px; margin: 0 0 2px; font-weight: 800; letter-spacing: -0.02em; }
   .masthead .tagline { font-size: 10px; color: #F0A96A; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
