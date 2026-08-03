@@ -1,0 +1,70 @@
+/**
+ * Shared typography — Bake & Grill
+ *
+ * Self-hosted faces under /fonts/ (absolute URLs — the sheet is bundled into
+ * /admin/assets/, /order/assets/, etc., so relative paths would break).
+ *
+ * Canonical copy: packages/shared/src/styles/fonts.css
+ * Blade/public copy: backend/public/css/fonts.css (keep in sync)
+ */
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-800.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'A_Faruma';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/a_faruma.ttf') format('truetype');
+}
+
+:root {
+  --font-ui: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-dhivehi: 'A_Faruma', 'MV Faseyha', 'MV Waheed', serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* Marking content as Dhivehi is enough — no per-component font wiring. */
+[lang="dv"],
+[dir="rtl"] {
+  font-family: var(--font-dhivehi);
+}

@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/react';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import '@shared/styles/fonts.css';
 import './index.css';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';

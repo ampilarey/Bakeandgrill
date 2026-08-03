@@ -9,9 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loading — {{ $siteName }}</title>
     <link rel="icon" type="image/png" href="{{ content('favicon', $logoUrl) }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -20,7 +18,7 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: var(--font-ui);
             background: #FFFDF9;
             color: #2A1E0C;
             -webkit-font-smoothing: antialiased;

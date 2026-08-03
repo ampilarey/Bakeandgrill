@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
             minHeight: inline ? '40vh' : '60vh',
             padding: '2rem',
             textAlign: 'center',
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontFamily: "var(--font-ui)",
           }}
         >
           <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>😔</div>

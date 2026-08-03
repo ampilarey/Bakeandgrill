@@ -1215,7 +1215,7 @@ const S = {
   page: {
     minHeight: '100vh',
     background: 'var(--color-bg)',
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontFamily: "var(--font-ui)",
     display: 'flex',
     flexDirection: 'column' as const,
   } as React.CSSProperties,

@@ -76,8 +76,8 @@ function SignageEl({
     animationDuration: `${el.animation?.duration ?? 700}ms`,
     animationDelay: `${el.animation?.delay ?? 0}ms`,
     fontFamily: style.fontFamily === 'display'
-      ? (theme.font_display || 'Georgia, serif')
-      : (theme.font_body || 'system-ui, sans-serif'),
+      ? (theme.font_display || 'var(--font-display)')
+      : (theme.font_body || 'var(--font-ui)'),
     color: (style.color as string) || theme.text || '#FFF8F0',
     fontSize: style.fontSize != null ? `${style.fontSize}vmin` : undefined,
     fontWeight: style.fontWeight as number | undefined,
@@ -283,7 +283,7 @@ export function SlideCanvas({
         height: '100%',
         overflow: 'hidden',
         color: theme.text || '#FFF8F0',
-        fontFamily: theme.font_body || 'system-ui, sans-serif',
+        fontFamily: theme.font_body || 'var(--font-ui)',
         ...bgStyle(slide, theme),
       }}
     >
