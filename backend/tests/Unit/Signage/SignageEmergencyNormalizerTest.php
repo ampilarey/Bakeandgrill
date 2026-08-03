@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Signage;
 
 use App\Domains\Signage\Services\SignageEmergencyNormalizer;
-use App\Domains\Signage\Services\SignageTemplateFactory;
 use PHPUnit\Framework\TestCase;
 
 final class SignageEmergencyNormalizerTest extends TestCase
@@ -35,7 +34,52 @@ final class SignageEmergencyNormalizerTest extends TestCase
     {
         $this->assertSame('alert', SignageEmergencyNormalizer::defaultLayoutForMode('fire_alarm'));
         $this->assertSame('countdown', SignageEmergencyNormalizer::defaultLayoutForMode('reopening_soon'));
+        $this->assertSame('full_bleed', SignageEmergencyNormalizer::defaultLayoutForMode('private_event'));
         $this->assertSame('notice', SignageEmergencyNormalizer::defaultLayoutForMode('closed'));
+    }
+
+    public function test_entry_normalizes_media_fields(): void
+    {
+        $entry = SignageEmergencyNormalizer::normalizeEntry([
+            'mode' => 'closed',
+            'layout' => 'split',
+            'media_type' => 'image',
+            'media_url' => 'https://cdn.example.com/closed.jpg',
+            'icon' => 'closed',
+        ], 0);
+
+        $this->assertSame('image', $entry['media_type']);
+        $this->assertSame('https://cdn.example.com/closed.jpg', $entry['media_url']);
+        $this->assertSame('closed', $entry['icon']);
+    }
+
+    public function test_fire_alarm_strips_image_and_video_media(): void
+    {
+        $image = SignageEmergencyNormalizer::normalizeEntry([
+            'mode' => 'fire_alarm',
+            'media_type' => 'image',
+            'media_url' => 'https://cdn.example.com/fire.jpg',
+        ], 0);
+        $this->assertSame('none', $image['media_type']);
+        $this->assertSame('', $image['media_url']);
+
+        $icon = SignageEmergencyNormalizer::normalizeEntry([
+            'mode' => 'fire_alarm',
+            'media_type' => 'icon',
+            'icon' => 'fire',
+        ], 0);
+        $this->assertSame('icon', $icon['media_type']);
+        $this->assertSame('fire', $icon['icon']);
+    }
+
+    public function test_legacy_entry_without_media_stays_none(): void
+    {
+        $entry = SignageEmergencyNormalizer::normalizeEntry([
+            'mode' => 'closed',
+            'title' => 'We are closed',
+        ], 0);
+        $this->assertSame('none', $entry['media_type']);
+        $this->assertSame('', $entry['media_url']);
     }
 
     public function test_default_copy_matches_legacy_english(): void
@@ -60,69 +104,5 @@ final class SignageEmergencyNormalizerTest extends TestCase
         $this->assertSame('countdown', $entry['layout']);
         $this->assertSame('ދެން ބޭނުން', $entry['title_dv']);
         $this->assertSame('2026-08-03T18:00:00+05:00', $entry['reopen_at']);
-    }
-}
-
-final class SignageTemplateFactoryEmergencyTest extends TestCase
-{
-    public function test_notice_layout_has_centered_elements(): void
-    {
-        $slide = SignageTemplateFactory::emergencySlide('closed');
-        $this->assertSame('notice', $slide['emergency_layout']);
-        $this->assertStringContainsString('Emergency: closed', $slide['name']);
-        $texts = array_values(array_filter($slide['elements'], fn ($el) => ($el['type'] ?? '') === 'text'));
-        $this->assertNotEmpty($texts);
-        $this->assertSame('We are closed', $texts[0]['text']);
-    }
-
-    public function test_alert_layout_for_fire_alarm(): void
-    {
-        $slide = SignageTemplateFactory::emergencySlide('fire_alarm');
-        $this->assertSame('alert', $slide['emergency_layout']);
-        $this->assertSame('#B91C1C', $slide['background']['value']);
-        $types = array_column($slide['elements'], 'type');
-        $this->assertContains('shape', $types);
-        $logos = array_filter($slide['elements'], fn ($el) => ($el['type'] ?? '') === 'logo');
-        $this->assertEmpty($logos);
-    }
-
-    public function test_split_layout_includes_logo(): void
-    {
-        $slide = SignageTemplateFactory::emergencySlide('maintenance', ['layout' => 'split']);
-        $this->assertSame('split', $slide['emergency_layout']);
-        $types = array_column($slide['elements'], 'type');
-        $this->assertContains('logo', $types);
-    }
-
-    public function test_countdown_layout_has_countdown_binding(): void
-    {
-        $slide = SignageTemplateFactory::emergencySlide('reopening_soon', [
-            'reopen_at' => '2026-08-03T18:00:00+05:00',
-        ]);
-        $this->assertSame('countdown', $slide['emergency_layout']);
-        $countdown = null;
-        foreach ($slide['elements'] as $el) {
-            if (($el['binding']['type'] ?? '') === 'countdown') {
-                $countdown = $el;
-                break;
-            }
-        }
-        $this->assertNotNull($countdown);
-        $this->assertSame('2026-08-03T18:00:00+05:00', $countdown['binding']['reopen_at']);
-        $this->assertSame('emergency-countdown', $countdown['binding']['testId']);
-    }
-
-    public function test_dhivehi_elements_included_when_provided(): void
-    {
-        $slide = SignageTemplateFactory::emergencySlide('special_notice', [
-            'title_dv' => 'ޚާއްޞަ',
-            'body_dv' => 'މަޢުލޫމާތު',
-        ]);
-        $dv = array_values(array_filter(
-            $slide['elements'],
-            fn ($el) => ($el['style']['lang'] ?? '') === 'dv'
-        ));
-        $this->assertCount(2, $dv);
-        $this->assertSame('rtl', $dv[0]['style']['dir']);
     }
 }

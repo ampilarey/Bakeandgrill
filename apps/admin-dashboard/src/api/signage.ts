@@ -44,7 +44,8 @@ export type SignageBannerSettings = {
   speed_seconds?: number;
 };
 
-export type SignageEmergencyLayout = 'notice' | 'alert' | 'split' | 'countdown';
+export type SignageEmergencyLayout = 'notice' | 'alert' | 'split' | 'countdown' | 'full_bleed';
+export type SignageEmergencyMediaType = 'none' | 'image' | 'video' | 'icon';
 
 export type SignageEmergencyEntry = {
   id: string;
@@ -58,6 +59,9 @@ export type SignageEmergencyEntry = {
   body_dv?: string;
   reopen_at?: string | null;
   schedule?: SignageSchedule | null;
+  media_type?: SignageEmergencyMediaType | string;
+  media_url?: string;
+  icon?: string;
 };
 
 export type SignageEmergencyConfig = {

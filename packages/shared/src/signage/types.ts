@@ -71,9 +71,14 @@ export type SignageBannerItem = {
   label: string;
   enabled: boolean;
   position: 'top' | 'bottom' | string;
-  fields: Array<'date' | 'time' | 'next_prayer' | 'countdown' | string>;
+  fields: Array<'date' | 'time' | 'next_prayer' | 'countdown' | 'all_prayers' | string>;
   /** When set, replaces the fields marquee (supports {{variables}}). */
   custom_text?: string;
+  /**
+   * Compatibility knob for travel rate. Presets map to outcome labels
+   * (Very slow → Very fast). Ticker/seamless animation duration is derived
+   * from measured track width so short and long messages share visual speed.
+   */
   speed_seconds: number;
   /**
    * @deprecated Ignored for rotation. Kept so old saves load cleanly.
@@ -108,11 +113,12 @@ export type SignageBannerSettings = {
   show_logo_between?: boolean;
   /** @deprecated Stage-3 single-banner fields — still accepted on read. */
   position?: 'top' | 'bottom' | string;
-  fields?: Array<'date' | 'time' | 'next_prayer' | 'countdown' | string>;
+  fields?: Array<'date' | 'time' | 'next_prayer' | 'countdown' | 'all_prayers' | string>;
   speed_seconds?: number;
 };
 
-export type SignageEmergencyLayout = 'notice' | 'alert' | 'split' | 'countdown';
+export type SignageEmergencyLayout = 'notice' | 'alert' | 'split' | 'countdown' | 'full_bleed';
+export type SignageEmergencyMediaType = 'none' | 'image' | 'video' | 'icon';
 
 export type SignageEmergencyEntry = {
   id: string;
@@ -127,6 +133,11 @@ export type SignageEmergencyEntry = {
   /** For reopening_soon countdown. */
   reopen_at?: string | null;
   schedule?: SignageSchedule | null;
+  media_type?: SignageEmergencyMediaType | string;
+  /** Library URL from MediaPicker — never typed freehand. */
+  media_url?: string;
+  /** Named pictogram when media_type is icon. */
+  icon?: string;
 };
 
 export type SignageEmergencySettings = {

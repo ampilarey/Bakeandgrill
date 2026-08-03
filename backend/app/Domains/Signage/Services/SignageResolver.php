@@ -224,6 +224,9 @@ final class SignageResolver
                 'body_dv' => $best['body_dv'] ?? '',
                 'layout' => $best['layout'] ?? SignageEmergencyNormalizer::defaultLayoutForMode($entryMode),
                 'reopen_at' => $best['reopen_at'] ?? null,
+                'media_type' => $best['media_type'] ?? 'none',
+                'media_url' => $best['media_url'] ?? '',
+                'icon' => $best['icon'] ?? SignageEmergencyNormalizer::defaultIconForMode($entryMode),
             ]),
             'mode' => 'emergency:' . $entryMode,
         ];

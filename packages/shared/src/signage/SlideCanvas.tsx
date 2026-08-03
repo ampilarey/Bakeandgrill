@@ -1,5 +1,6 @@
 import { Component, type CSSProperties, type ErrorInfo, type ReactNode, useMemo } from 'react';
 import { formatPrice, resolveBoundItems } from './bindMenu';
+import { EmergencyIcon } from './emergencyIcons';
 import { interpolate } from './interpolate';
 import type { MenuItemLite, SignageConfig, SignageElement, SignageSlide, SignageTheme } from './types';
 
@@ -116,6 +117,21 @@ function SignageEl({
       body = url
         ? <video src={url} autoPlay muted loop playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         : null;
+      break;
+    }
+    case 'icon': {
+      const name = String(el.binding?.icon ?? el.binding?.name ?? 'megaphone');
+      const color = String(style.color || theme.primary || '#D4813A');
+      body = (
+        <div
+          className="signage-emergency-icon"
+          data-testid="signage-emergency-icon"
+          data-icon={name}
+          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color }}
+        >
+          <EmergencyIcon name={name} color={color} />
+        </div>
+      );
       break;
     }
     case 'logo':

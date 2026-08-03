@@ -11,6 +11,7 @@ export type {
   SignageElement,
   SignageEmergencyEntry,
   SignageEmergencyLayout,
+  SignageEmergencyMediaType,
   SignageEmergencySettings,
   SignagePrayerEntry,
   SignageSchedule,
@@ -36,27 +37,39 @@ export {
   pickNextPrayer,
   formatCountdown,
   formatBannerDate,
+  formatPrayerClock,
   bannerStyleVars,
   shouldShowBanner,
   buildBannerSegments,
+  buildAllPrayersParts,
+  computeBannerAnimationSeconds,
   resolveBannerScrollMode,
   resolveBannerDirection,
   SIGNAGE_BANNER_LOCALE,
   SIGNAGE_BANNER_THAANA_FONT,
   fireSignageBannerIteration,
   fireSignageBannerLogoEnd,
+  BANNER_SPEED_RANGE,
 } from './SignageBanner';
-export type { SignageBannerProps } from './SignageBanner';
+export type { SignageBannerProps, AllPrayerPart } from './SignageBanner';
 export {
   normalizeBannerSettings,
   normalizeScrollMode,
   activeBanners,
   newBannerItem,
+  clampSpeed,
   BANNER_APPEARANCE_DEFAULTS,
   BANNER_SPEED_PRESETS,
   BANNER_DURATION_SLIDER,
   BANNER_REPEAT_SLIDER,
 } from './bannerConfig';
+export {
+  EMERGENCY_ICON_NAMES,
+  EmergencyIcon,
+  defaultEmergencyIconForMode,
+  isEmergencyIconName,
+} from './emergencyIcons';
+export type { EmergencyIconName } from './emergencyIcons';
 export { scheduleMatches } from './scheduleMatches';
 export { brandCardSlide } from './brandCard';
 export {

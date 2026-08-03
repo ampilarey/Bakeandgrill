@@ -9,11 +9,14 @@ import type {
   SignageSchedule,
 } from './types';
 
-const FIELD_ALLOW = new Set(['date', 'time', 'next_prayer', 'countdown']);
+const FIELD_ALLOW = new Set(['date', 'time', 'next_prayer', 'countdown', 'all_prayers']);
 const DATE_FORMATS = new Set<SignageBannerDateFormat>(['full', 'short', 'numeric', 'weekday', 'hijri']);
 const ALIGNS = new Set<SignageBannerAlign>(['left', 'center', 'right']);
 const SCROLL_MODES = new Set<SignageBannerScrollMode>(['ticker', 'seamless', 'static']);
 const DIRECTIONS = new Set<SignageBannerDirection>(['ltr', 'rtl']);
+
+/** Stored speed_seconds floor/ceiling (presets sit inside this range). */
+export const BANNER_SPEED_RANGE = { min: 5, max: 180 } as const;
 
 /** Appearance defaults for normalized items. */
 export const BANNER_APPEARANCE_DEFAULTS = {
@@ -30,10 +33,17 @@ export const BANNER_APPEARANCE_DEFAULTS = {
   repeat_count: 1,
 };
 
+/**
+ * Outcome labels for the admin speed control.
+ * Values stay in `speed_seconds` for compatibility; ticker/seamless
+ * durations are derived from measured track width at runtime.
+ */
 export const BANNER_SPEED_PRESETS = [
+  { label: 'Very slow', value: 90 },
   { label: 'Slow', value: 60 },
   { label: 'Medium', value: 40 },
   { label: 'Fast', value: 20 },
+  { label: 'Very fast', value: 10 },
 ] as const;
 
 export const BANNER_REPEAT_SLIDER = { min: 1, max: 20 } as const;
@@ -45,10 +55,10 @@ function uid(): string {
   return `bnr-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function clampSpeed(n: unknown): number {
+export function clampSpeed(n: unknown): number {
   const v = Number(n);
   if (!Number.isFinite(v)) return 40;
-  return Math.max(10, Math.min(180, Math.round(v)));
+  return Math.max(BANNER_SPEED_RANGE.min, Math.min(BANNER_SPEED_RANGE.max, Math.round(v)));
 }
 
 function clampDuration(n: unknown): number {

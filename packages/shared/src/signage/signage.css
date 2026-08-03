@@ -241,16 +241,16 @@
   animation: signage-banner-marquee var(--signage-banner-speed, 40s) linear infinite;
 }
 
-/* Ticker LTR — single copy enters from the right and clears off the left. */
-.signage-banner--ticker.signage-banner--ltr .signage-banner-track {
-  width: 100%;
-  animation: signage-banner-ticker-ltr var(--signage-banner-speed, 40s) linear infinite;
+/* Ticker — track is max-content; from/to px come from measured widths so
+   short and long messages share the same visual travel speed. */
+.signage-banner--ticker.signage-banner--ltr .signage-banner-track,
+.signage-banner--ticker.signage-banner--rtl .signage-banner-track {
+  animation: signage-banner-ticker var(--signage-banner-speed, 40s) linear infinite;
 }
 
-/* Ticker RTL — Dhivehi: enters left, exits right. */
-.signage-banner--ticker.signage-banner--rtl .signage-banner-track {
-  width: 100%;
-  animation: signage-banner-ticker-rtl var(--signage-banner-speed, 40s) linear infinite;
+.signage-banner-prayer-next {
+  color: var(--signage-banner-accent, #d4813a);
+  font-weight: 800;
 }
 
 /* Static — animation-driven hold (no setTimeout). Repeats = repeat_count. */
@@ -288,14 +288,9 @@
   to { transform: translateX(-50%); }
 }
 
-@keyframes signage-banner-ticker-ltr {
-  from { transform: translateX(100%); }
-  to { transform: translateX(-100%); }
-}
-
-@keyframes signage-banner-ticker-rtl {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
+@keyframes signage-banner-ticker {
+  from { transform: translateX(var(--signage-banner-ticker-from, 100%)); }
+  to { transform: translateX(var(--signage-banner-ticker-to, -100%)); }
 }
 
 @keyframes signage-banner-static-hold {

@@ -2,8 +2,12 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   BANNER_APPEARANCE_DEFAULTS,
+  BANNER_SPEED_PRESETS,
+  BANNER_SPEED_RANGE,
   bannerStyleVars,
+  buildAllPrayersParts,
   buildBannerSegments,
+  computeBannerAnimationSeconds,
   fireSignageBannerIteration,
   formatBannerDate,
   formatCountdown,
@@ -82,6 +86,106 @@ describe('SignageBanner helpers', () => {
       nowMs: Date.now(),
     });
     expect(parts).toEqual(['Saturday, 2 Aug 2026', '1:00 PM']);
+  });
+
+  it('speed presets include extended range and floor is 5', () => {
+    expect(BANNER_SPEED_PRESETS.map((p) => p.label)).toEqual([
+      'Very slow', 'Slow', 'Medium', 'Fast', 'Very fast',
+    ]);
+    expect(BANNER_SPEED_PRESETS.map((p) => p.value)).toEqual([90, 60, 40, 20, 10]);
+    expect(BANNER_SPEED_RANGE.min).toBe(5);
+    expect(normalizeBannerSettings({
+      enabled: true,
+      banners: [{ id: 'x', speed_seconds: 5 }],
+    }).banners[0].speed_seconds).toBe(5);
+    expect(normalizeBannerSettings({
+      enabled: true,
+      banners: [{ id: 'x', speed_seconds: 4 }],
+    }).banners[0].speed_seconds).toBe(5);
+  });
+
+  it('measured-width duration keeps visual speed constant across message lengths', () => {
+    const speedSeconds = 40;
+    const container = 1000;
+    const shortTrack = 200;
+    const longTrack = 2000;
+    const shortDur = computeBannerAnimationSeconds({
+      speedSeconds,
+      mode: 'ticker',
+      containerWidth: container,
+      trackWidth: shortTrack,
+    });
+    const longDur = computeBannerAnimationSeconds({
+      speedSeconds,
+      mode: 'ticker',
+      containerWidth: container,
+      trackWidth: longTrack,
+    });
+    expect(longDur).toBeGreaterThan(shortDur);
+    const pxPerSecond = (2 * container) / speedSeconds;
+    expect((container + shortTrack) / shortDur).toBeCloseTo(pxPerSecond, 5);
+    expect((container + longTrack) / longDur).toBeCloseTo(pxPerSecond, 5);
+  });
+
+  it('all_prayers renders five entries and highlights the next one', () => {
+    const nowMs = Date.parse('2026-08-02T11:00:00+05:00');
+    const next = pickNextPrayer(schedule, nowMs);
+    expect(next?.name).toBe('Dhuhr');
+    const parts = buildAllPrayersParts(schedule, next);
+    expect(parts).toHaveLength(5);
+    expect(parts.map((p) => p.name)).toEqual(['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']);
+    expect(parts.find((p) => p.isNext)?.name).toBe('Dhuhr');
+
+    render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [{
+            id: 'all',
+            fields: ['all_prayers'],
+            speed_seconds: 40,
+            duration_seconds: 30,
+          }],
+        })}
+        schedule={schedule}
+        mode="normal"
+        nowMs={nowMs}
+      />,
+    );
+    expect(screen.getByTestId('signage-banner-all-prayers').textContent).toMatch(/Fajr/);
+    expect(screen.getByTestId('signage-banner-all-prayers').textContent).toMatch(/Isha/);
+    expect(screen.getByTestId('signage-banner-prayer-next').textContent).toMatch(/Dhuhr/);
+  });
+
+  it('all_prayers renders nothing on an empty schedule', () => {
+    expect(buildAllPrayersParts([], null)).toEqual([]);
+    expect(buildBannerSegments({
+      fields: ['all_prayers'],
+      dateLabel: 'x',
+      timeLabel: 'y',
+      next: null,
+      nowMs: Date.now(),
+      schedule: [],
+    })).toEqual([]);
+
+    const { container } = render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [{
+            id: 'all',
+            fields: ['all_prayers'],
+            speed_seconds: 40,
+            duration_seconds: 30,
+          }],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+      />,
+    );
+    // Falls back to date · time when all field segments are empty.
+    expect(container.querySelector('[data-testid="signage-banner-all-prayers"]')).toBeNull();
   });
 
   it('renders nothing when disabled', () => {

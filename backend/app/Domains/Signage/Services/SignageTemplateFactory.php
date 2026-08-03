@@ -265,7 +265,7 @@ final class SignageTemplateFactory
     }
 
     /**
-     * @param  array<string, mixed>  $opts  title, body, title_dv, body_dv, layout, reopen_at
+     * @param  array<string, mixed>  $opts  title, body, title_dv, body_dv, layout, reopen_at, media_type, media_url, icon
      * @return array<string, mixed>
      */
     public static function emergencySlide(string $mode, array $opts = []): array
@@ -281,10 +281,28 @@ final class SignageTemplateFactory
         }
         $reopenAt = isset($opts['reopen_at']) && is_string($opts['reopen_at']) ? $opts['reopen_at'] : null;
 
+        $mediaType = (string) ($opts['media_type'] ?? 'none');
+        if (! in_array($mediaType, SignageEmergencyNormalizer::MEDIA_TYPES, true)) {
+            $mediaType = 'none';
+        }
         $isFireAlarm = $mode === 'fire_alarm';
+        if ($isFireAlarm && in_array($mediaType, ['image', 'video'], true)) {
+            $mediaType = 'none';
+        }
+        $mediaUrl = is_string($opts['media_url'] ?? null) ? trim((string) $opts['media_url']) : '';
+        $icon = (string) ($opts['icon'] ?? SignageEmergencyNormalizer::defaultIconForMode($mode));
+        if (! in_array($icon, SignageEmergencyNormalizer::ICONS, true)) {
+            $icon = SignageEmergencyNormalizer::defaultIconForMode($mode);
+        }
+
         $background = $isFireAlarm || $layout === 'alert'
             ? ['type' => 'solid', 'value' => '#B91C1C', 'opacity' => 1]
             : ['type' => 'solid', 'value' => '#1C1408', 'opacity' => 1];
+
+        // full_bleed uses media as the slide background when image URL is set.
+        if ($layout === 'full_bleed' && $mediaType === 'image' && $mediaUrl !== '') {
+            $background = ['type' => 'image', 'value' => $mediaUrl, 'opacity' => 1];
+        }
 
         $slide = [
             'id' => self::id($opts['id'] ?? null),
@@ -296,7 +314,18 @@ final class SignageTemplateFactory
             'background' => $background,
             'template_origin' => 'emergency:' . $mode,
             'emergency_layout' => $layout,
-            'elements' => self::emergencyElements($layout, $title, $body, $titleDv, $bodyDv, $reopenAt, $isFireAlarm),
+            'elements' => self::emergencyElements(
+                $layout,
+                $title,
+                $body,
+                $titleDv,
+                $bodyDv,
+                $reopenAt,
+                $isFireAlarm,
+                $mediaType,
+                $mediaUrl,
+                $icon,
+            ),
         ];
 
         return $slide;
@@ -313,14 +342,52 @@ final class SignageTemplateFactory
         string $bodyDv,
         ?string $reopenAt,
         bool $isFireAlarm,
+        string $mediaType = 'none',
+        string $mediaUrl = '',
+        string $icon = 'megaphone',
     ): array {
         $elements = [];
+        $mediaEl = self::mediaElement($mediaType, $mediaUrl, $icon, $isFireAlarm);
 
-        if ($layout === 'alert') {
+        if ($layout === 'full_bleed') {
+            if ($mediaType === 'video' && $mediaUrl !== '') {
+                $elements[] = self::el('video', 0, 0, 100, 100, [
+                    'style' => ['objectFit' => 'cover'],
+                    'binding' => ['url' => $mediaUrl, 'testId' => 'emergency-full-bleed-video'],
+                ]);
+            } elseif ($mediaType === 'image' && $mediaUrl !== '') {
+                // Background already carries the image; keep a cover element for z-order/tests.
+                $elements[] = self::el('image', 0, 0, 100, 100, [
+                    'style' => ['objectFit' => 'cover', 'opacity' => 0],
+                    'binding' => ['url' => $mediaUrl, 'testId' => 'emergency-full-bleed-image'],
+                ]);
+            } elseif ($mediaEl !== null) {
+                $elements[] = self::el($mediaEl['type'], 8, 10, 18, 18, $mediaEl['extra']);
+            }
+            $elements[] = self::el('shape', 0, 55, 100, 45, [
+                'style' => ['fill' => 'rgba(12, 8, 4, 0.72)', 'opacity' => 1],
+                'binding' => ['testId' => 'emergency-full-bleed-scrim'],
+            ]);
+            $elements[] = self::el('text', 6, 60, 88, 14, [
+                'text' => $title,
+                'style' => ['fontSize' => 6.5, 'fontWeight' => 800, 'color' => '#FFF8F0', 'textAlign' => 'center'],
+                'binding' => ['testId' => 'emergency-full-bleed-title'],
+            ]);
+            if ($body !== '') {
+                $elements[] = self::el('text', 10, 76, 80, 14, [
+                    'text' => $body,
+                    'style' => ['fontSize' => 3.6, 'color' => '#FFF8F0', 'textAlign' => 'center'],
+                    'binding' => ['testId' => 'emergency-full-bleed-body'],
+                ]);
+            }
+        } elseif ($layout === 'alert') {
             $elements[] = self::el('shape', 0, 0, 100, 100, [
                 'style' => ['fill' => '#B91C1C', 'opacity' => 1],
                 'binding' => ['testId' => 'emergency-alert-bg'],
             ]);
+            if ($mediaEl !== null) {
+                $elements[] = self::el($mediaEl['type'], 42, 8, 16, 14, $mediaEl['extra']);
+            }
             $elements[] = self::el('text', 6, 28, 88, 22, [
                 'text' => $title,
                 'style' => [
@@ -340,9 +407,13 @@ final class SignageTemplateFactory
                 ]);
             }
         } elseif ($layout === 'split') {
-            $elements[] = self::el('logo', 6, 28, 28, 44, [
-                'style' => ['objectFit' => 'contain'],
-            ]);
+            if ($mediaEl !== null) {
+                $elements[] = self::el($mediaEl['type'], 6, 28, 28, 44, $mediaEl['extra']);
+            } else {
+                $elements[] = self::el('logo', 6, 28, 28, 44, [
+                    'style' => ['objectFit' => 'contain'],
+                ]);
+            }
             $elements[] = self::el('text', 38, 28, 56, 14, [
                 'text' => $title,
                 'style' => ['fontSize' => 5.5, 'fontWeight' => 800, 'color' => '#D4813A'],
@@ -352,6 +423,9 @@ final class SignageTemplateFactory
                 'style' => ['fontSize' => 3.5, 'color' => '#FFF8F0'],
             ]);
         } elseif ($layout === 'countdown') {
+            if ($mediaEl !== null) {
+                $elements[] = self::el($mediaEl['type'], 42, 6, 16, 12, $mediaEl['extra']);
+            }
             $elements[] = self::el('text', 8, 22, 84, 14, [
                 'text' => $title,
                 'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#D4813A', 'textAlign' => 'center'],
@@ -373,6 +447,9 @@ final class SignageTemplateFactory
             ]);
         } else {
             // notice — centered title/body (legacy default)
+            if ($mediaEl !== null) {
+                $elements[] = self::el($mediaEl['type'], 42, 8, 16, 14, $mediaEl['extra']);
+            }
             $elements[] = self::el('text', 8, 30, 84, 14, [
                 'text' => $title,
                 'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#D4813A', 'textAlign' => 'center'],
@@ -383,7 +460,7 @@ final class SignageTemplateFactory
                     'style' => ['fontSize' => 3.8, 'color' => '#FFF8F0', 'textAlign' => 'center'],
                 ]);
             }
-            if (! $isFireAlarm && $layout === 'notice') {
+            if ($mediaEl === null && ! $isFireAlarm && $layout === 'notice') {
                 $elements[] = self::el('logo', 78, 8, 16, 14, [
                     'animation' => ['entrance' => 'fade', 'duration' => 600],
                 ]);
@@ -417,6 +494,49 @@ final class SignageTemplateFactory
         }
 
         return $elements;
+    }
+
+    /**
+     * @return array{type: string, extra: array<string, mixed>}|null
+     */
+    private static function mediaElement(
+        string $mediaType,
+        string $mediaUrl,
+        string $icon,
+        bool $isFireAlarm,
+    ): ?array {
+        if ($isFireAlarm && in_array($mediaType, ['image', 'video'], true)) {
+            $mediaType = 'none';
+        }
+        if ($mediaType === 'image' && $mediaUrl !== '') {
+            return [
+                'type' => 'image',
+                'extra' => [
+                    'style' => ['objectFit' => 'cover'],
+                    'binding' => ['url' => $mediaUrl, 'testId' => 'emergency-media-image'],
+                ],
+            ];
+        }
+        if ($mediaType === 'video' && $mediaUrl !== '') {
+            return [
+                'type' => 'video',
+                'extra' => [
+                    'style' => ['objectFit' => 'cover'],
+                    'binding' => ['url' => $mediaUrl, 'testId' => 'emergency-media-video'],
+                ],
+            ];
+        }
+        if ($mediaType === 'icon') {
+            return [
+                'type' => 'icon',
+                'extra' => [
+                    'style' => ['color' => $isFireAlarm ? '#FFFFFF' : '#D4813A'],
+                    'binding' => ['icon' => $icon, 'testId' => 'emergency-media-icon'],
+                ],
+            ];
+        }
+
+        return null;
     }
 
     /**

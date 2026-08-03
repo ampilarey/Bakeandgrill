@@ -206,4 +206,124 @@ final class SignageBannerV2Test extends TestCase
         $overview = $this->getJson('/api/admin/signage')->assertOk();
         $overview->assertJsonPath('emergency.entries.0.title', 'Eid hours');
     }
+
+    public function test_fire_alarm_rejects_image_and_video_media(): void
+    {
+        $owner = User::create([
+            'name' => 'Owner Fire Media',
+            'email' => 'owner-fire-media@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->putJson('/api/admin/signage/emergency', [
+            'entries' => [[
+                'id' => 'fire-1',
+                'mode' => 'fire_alarm',
+                'priority' => 100,
+                'is_active' => true,
+                'layout' => 'alert',
+                'title' => 'Evacuate',
+                'media_type' => 'image',
+                'media_url' => 'https://cdn.example.com/fire.jpg',
+            ]],
+        ])->assertStatus(422)
+            ->assertJsonFragment(['Fire alarm may only use none or icon media.']);
+
+        $this->putJson('/api/admin/signage/emergency', [
+            'entries' => [[
+                'id' => 'fire-2',
+                'mode' => 'fire_alarm',
+                'priority' => 100,
+                'is_active' => true,
+                'layout' => 'alert',
+                'title' => 'Evacuate',
+                'media_type' => 'video',
+                'media_url' => 'https://cdn.example.com/fire.mp4',
+            ]],
+        ])->assertStatus(422)
+            ->assertJsonFragment(['Fire alarm entries cannot use image or video media.']);
+
+        $this->putJson('/api/admin/signage/emergency', [
+            'entries' => [[
+                'id' => 'fire-3',
+                'mode' => 'fire_alarm',
+                'priority' => 100,
+                'is_active' => true,
+                'layout' => 'alert',
+                'title' => 'Evacuate',
+                'media_type' => 'icon',
+                'icon' => 'fire',
+            ]],
+        ])->assertOk()
+            ->assertJsonPath('entries.0.media_type', 'icon')
+            ->assertJsonPath('entries.0.icon', 'fire');
+    }
+
+    public function test_banner_speed_accepts_five_rejects_below(): void
+    {
+        $owner = User::create([
+            'name' => 'Owner Banner Speed',
+            'email' => 'owner-banner-speed@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->putJson('/api/admin/signage/banner', [
+            'enabled' => true,
+            'banners' => [[
+                'id' => 'fast',
+                'label' => 'Fast',
+                'enabled' => true,
+                'position' => 'bottom',
+                'fields' => ['date'],
+                'speed_seconds' => 5,
+                'duration_seconds' => 30,
+            ]],
+        ])->assertOk()
+            ->assertJsonPath('banner.banners.0.speed_seconds', 5);
+
+        $this->putJson('/api/admin/signage/banner', [
+            'enabled' => true,
+            'banners' => [[
+                'id' => 'too-fast',
+                'label' => 'Too fast',
+                'enabled' => true,
+                'position' => 'bottom',
+                'fields' => ['date'],
+                'speed_seconds' => 4,
+                'duration_seconds' => 30,
+            ]],
+        ])->assertStatus(422);
+    }
+
+    public function test_all_prayers_field_round_trips(): void
+    {
+        $owner = User::create([
+            'name' => 'Owner All Prayers',
+            'email' => 'owner-all-prayers@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->putJson('/api/admin/signage/banner', [
+            'enabled' => true,
+            'banners' => [[
+                'id' => 'prayers',
+                'label' => 'Prayers',
+                'enabled' => true,
+                'position' => 'bottom',
+                'fields' => ['all_prayers'],
+                'speed_seconds' => 40,
+                'duration_seconds' => 30,
+            ]],
+        ])->assertOk()
+            ->assertJsonPath('banner.banners.0.fields.0', 'all_prayers');
+    }
 }

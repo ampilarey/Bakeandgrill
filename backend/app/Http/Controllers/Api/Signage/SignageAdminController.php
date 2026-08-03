@@ -268,6 +268,8 @@ final class SignageAdminController extends Controller
     {
         $modes = implode(',', SignageEmergencyNormalizer::MODES);
         $layouts = implode(',', SignageEmergencyNormalizer::LAYOUTS);
+        $mediaTypes = implode(',', SignageEmergencyNormalizer::MEDIA_TYPES);
+        $icons = implode(',', SignageEmergencyNormalizer::ICONS);
         $data = $request->validate([
             'mode' => 'sometimes|string|in:'.$modes,
             'entries' => 'sometimes|array',
@@ -284,6 +286,9 @@ final class SignageAdminController extends Controller
             'entries.*.title_dv' => 'nullable|string|max:200',
             'entries.*.body_dv' => 'nullable|string|max:500',
             'entries.*.reopen_at' => 'nullable|string|max:40',
+            'entries.*.media_type' => 'nullable|string|in:'.$mediaTypes,
+            'entries.*.media_url' => 'nullable|string|max:500',
+            'entries.*.icon' => 'nullable|string|in:'.$icons,
             'entries.*.schedule' => 'nullable|array',
             'entries.*.schedule.date_start' => 'nullable|date',
             'entries.*.schedule.date_end' => 'nullable|date',
@@ -293,6 +298,25 @@ final class SignageAdminController extends Controller
 
         if (! isset($data['mode']) && ! isset($data['entries'])) {
             return response()->json(['message' => 'Provide mode and/or entries.'], 422);
+        }
+
+        // Fire alarm must never accept image/video — enforce in validation, not convention.
+        if (isset($data['entries']) && is_array($data['entries'])) {
+            foreach ($data['entries'] as $i => $entry) {
+                if (! is_array($entry)) {
+                    continue;
+                }
+                $entryMode = (string) ($entry['mode'] ?? '');
+                $mediaType = (string) ($entry['media_type'] ?? 'none');
+                if ($entryMode === 'fire_alarm' && in_array($mediaType, ['image', 'video'], true)) {
+                    return response()->json([
+                        'message' => 'Fire alarm entries cannot use image or video media.',
+                        'errors' => [
+                            "entries.$i.media_type" => ['Fire alarm may only use none or icon media.'],
+                        ],
+                    ], 422);
+                }
+            }
         }
 
         $old = $this->emergencyConfig();
@@ -361,9 +385,9 @@ final class SignageAdminController extends Controller
             'banners.*.enabled' => 'nullable|boolean',
             'banners.*.position' => 'nullable|string|in:top,bottom',
             'banners.*.fields' => 'nullable|array',
-            'banners.*.fields.*' => 'string|in:date,time,next_prayer,countdown',
+            'banners.*.fields.*' => 'string|in:date,time,next_prayer,countdown,all_prayers',
             'banners.*.custom_text' => 'nullable|string|max:500',
-            'banners.*.speed_seconds' => 'nullable|integer|min:10|max:180',
+            'banners.*.speed_seconds' => 'nullable|integer|min:'.SignageBannerNormalizer::SPEED_MIN.'|max:'.SignageBannerNormalizer::SPEED_MAX,
             'banners.*.duration_seconds' => 'nullable|integer|min:5|max:600',
             'banners.*.repeat_count' => 'nullable|integer|min:1|max:20',
             'banners.*.font_scale' => 'nullable|numeric|min:0.5|max:3',
@@ -384,8 +408,8 @@ final class SignageAdminController extends Controller
             // Legacy Stage-3 single-banner fields still accepted.
             'position' => 'nullable|string|in:top,bottom',
             'fields' => 'nullable|array',
-            'fields.*' => 'string|in:date,time,next_prayer,countdown',
-            'speed_seconds' => 'nullable|integer|min:10|max:180',
+            'fields.*' => 'string|in:date,time,next_prayer,countdown,all_prayers',
+            'speed_seconds' => 'nullable|integer|min:'.SignageBannerNormalizer::SPEED_MIN.'|max:'.SignageBannerNormalizer::SPEED_MAX,
         ]);
         $old = $this->bannerConfig();
 

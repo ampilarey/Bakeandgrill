@@ -42,7 +42,11 @@ namespace App\Domains\Signage\Services;
  */
 final class SignageBannerNormalizer
 {
-    private const ALLOWED_FIELDS = ['date', 'time', 'next_prayer', 'countdown'];
+    private const ALLOWED_FIELDS = ['date', 'time', 'next_prayer', 'countdown', 'all_prayers'];
+
+    public const SPEED_MIN = 5;
+
+    public const SPEED_MAX = 180;
 
     private const ALLOWED_DATE_FORMATS = ['full', 'short', 'numeric', 'weekday', 'hijri'];
 
@@ -160,11 +164,11 @@ final class SignageBannerNormalizer
         }
 
         $speed = (int) ($raw['speed_seconds'] ?? 40);
-        if ($speed < 10) {
-            $speed = 10;
+        if ($speed < self::SPEED_MIN) {
+            $speed = self::SPEED_MIN;
         }
-        if ($speed > 180) {
-            $speed = 180;
+        if ($speed > self::SPEED_MAX) {
+            $speed = self::SPEED_MAX;
         }
 
         $duration = (int) ($raw['duration_seconds'] ?? 30);

@@ -20,7 +20,10 @@ use App\Models\SiteSetting;
  *   title_dv: string,
  *   body_dv: string,
  *   reopen_at: string|null,
- *   schedule: array<string, mixed>|null
+ *   schedule: array<string, mixed>|null,
+ *   media_type: string,
+ *   media_url: string,
+ *   icon: string
  * }
  * @phpstan-type EmergencySettings array{
  *   manual: string,
@@ -29,7 +32,7 @@ use App\Models\SiteSetting;
  */
 final class SignageEmergencyNormalizer
 {
-  /** @var list<string> */
+    /** @var list<string> */
     public const MODES = [
         'none',
         'closed',
@@ -46,7 +49,24 @@ final class SignageEmergencyNormalizer
     ];
 
     /** @var list<string> */
-    public const LAYOUTS = ['notice', 'alert', 'split', 'countdown'];
+    public const LAYOUTS = ['notice', 'alert', 'split', 'countdown', 'full_bleed'];
+
+    /** @var list<string> */
+    public const MEDIA_TYPES = ['none', 'image', 'video', 'icon'];
+
+    /** @var list<string> */
+    public const ICONS = [
+        'fire',
+        'alert',
+        'closed',
+        'wrench',
+        'zap',
+        'utensils',
+        'users',
+        'calendar',
+        'megaphone',
+        'clock',
+    ];
 
     /**
      * @return EmergencySettings
@@ -113,6 +133,30 @@ final class SignageEmergencyNormalizer
             ? $raw['reopen_at']
             : null;
 
+        $mediaType = (string) ($raw['media_type'] ?? 'none');
+        if (! in_array($mediaType, self::MEDIA_TYPES, true)) {
+            $mediaType = 'none';
+        }
+
+        // Fire alarm must never depend on image/video — strip if present in stored data.
+        // API validation also rejects these; this keeps resolve resilient.
+        if ($mode === 'fire_alarm' && in_array($mediaType, ['image', 'video'], true)) {
+            $mediaType = 'none';
+        }
+
+        $mediaUrl = is_string($raw['media_url'] ?? null) ? trim((string) $raw['media_url']) : '';
+        if (strlen($mediaUrl) > 500) {
+            $mediaUrl = substr($mediaUrl, 0, 500);
+        }
+        if (! in_array($mediaType, ['image', 'video'], true)) {
+            $mediaUrl = '';
+        }
+
+        $icon = (string) ($raw['icon'] ?? self::defaultIconForMode($mode));
+        if (! in_array($icon, self::ICONS, true)) {
+            $icon = self::defaultIconForMode($mode);
+        }
+
         return [
             'id' => (string) ($raw['id'] ?? ('emg-'.$fallbackIndex)),
             'mode' => $mode,
@@ -125,6 +169,9 @@ final class SignageEmergencyNormalizer
             'body_dv' => (string) ($raw['body_dv'] ?? ''),
             'reopen_at' => $reopenAt,
             'schedule' => SignageBannerNormalizer::normalizeSchedule($raw['schedule'] ?? null),
+            'media_type' => $mediaType,
+            'media_url' => $mediaUrl,
+            'icon' => $icon,
         ];
     }
 
@@ -133,7 +180,23 @@ final class SignageEmergencyNormalizer
         return match ($mode) {
             'fire_alarm' => 'alert',
             'reopening_soon' => 'countdown',
+            'private_event' => 'full_bleed',
             default => 'notice',
+        };
+    }
+
+    public static function defaultIconForMode(string $mode): string
+    {
+        return match ($mode) {
+            'fire_alarm' => 'fire',
+            'power_failure' => 'zap',
+            'maintenance' => 'wrench',
+            'kitchen_closed' => 'utensils',
+            'staff_only' => 'users',
+            'private_event', 'holiday' => 'calendar',
+            'reopening_soon' => 'clock',
+            'closed' => 'closed',
+            default => 'megaphone',
         };
     }
 

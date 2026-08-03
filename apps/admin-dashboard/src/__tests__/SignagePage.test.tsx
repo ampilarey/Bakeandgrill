@@ -510,7 +510,8 @@ describe('SignagePage', () => {
     await screen.findByTestId('signage-banner-item-main');
 
     const speedSlider = screen.getByTestId('signage-banner-speed-slider-main') as HTMLInputElement;
-    expect(speedSlider.value).toBe('1');
+    // Presets: Very slow, Slow, Medium(40), Fast(20), Very fast
+    expect(speedSlider.value).toBe('2');
     expect(screen.queryByTestId('signage-banner-repeat-main')).toBeNull();
 
     fireEvent.click(screen.getByTestId('signage-banner-add'));
@@ -518,7 +519,7 @@ describe('SignagePage', () => {
       expect(screen.getByTestId('signage-banner-repeat-main')).toBeTruthy();
     });
 
-    fireEvent.change(speedSlider, { target: { value: '2' } }); // Fast = 20
+    fireEvent.change(speedSlider, { target: { value: '3' } }); // Fast = 20
     fireEvent.change(screen.getByTestId('signage-banner-repeat-slider-main'), {
       target: { value: '4' },
     });

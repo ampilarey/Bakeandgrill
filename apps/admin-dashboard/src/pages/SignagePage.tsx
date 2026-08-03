@@ -30,12 +30,15 @@ import {
 import {
   BANNER_REPEAT_SLIDER,
   BANNER_SPEED_PRESETS,
+  BANNER_SPEED_RANGE,
+  EMERGENCY_ICON_NAMES,
   normalizeBannerSettings,
   newBannerItem,
   resolveBannerScrollMode,
 } from '@shared/signage';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
+import { MediaPicker } from '../components/MediaPicker';
 import { Btn, Card, EmptyState, Input, PageHeader, PageShell, Select, Spinner } from '../components/SharedUI';
 import { BannerAppearanceEditor } from './signage/BannerAppearanceEditor';
 import { BannerLivePreview } from './signage/BannerLivePreview';
@@ -47,6 +50,7 @@ const BANNER_FIELD_OPTS = [
   { value: 'time', label: 'Time' },
   { value: 'next_prayer', label: 'Next prayer' },
   { value: 'countdown', label: 'Countdown' },
+  { value: 'all_prayers', label: 'All prayers' },
 ] as const;
 
 type Tab = 'screens' | 'playlists' | 'campaigns' | 'emergency' | 'prayer' | 'banner' | 'devices';
@@ -91,7 +95,20 @@ const EMERGENCY_LAYOUTS = [
   { value: 'alert', label: 'Alert' },
   { value: 'split', label: 'Split' },
   { value: 'countdown', label: 'Countdown' },
+  { value: 'full_bleed', label: 'Full bleed' },
 ] as const;
+
+const EMERGENCY_MEDIA_TYPES = [
+  { value: 'none', label: 'None' },
+  { value: 'icon', label: 'Icon' },
+  { value: 'image', label: 'Image' },
+  { value: 'video', label: 'Video' },
+] as const;
+
+const EMERGENCY_ICON_OPTS = EMERGENCY_ICON_NAMES.map((name) => ({
+  value: name,
+  label: name.charAt(0).toUpperCase() + name.slice(1),
+}));
 
 const SCHEDULE_DAY_OPTS = [
   { value: 0, label: 'Sun' },
@@ -120,6 +137,9 @@ function newEmergencyEntry(): SignageEmergencyEntry {
     body_dv: '',
     reopen_at: null,
     schedule: null,
+    media_type: 'none',
+    media_url: '',
+    icon: 'megaphone',
   };
 }
 
@@ -289,6 +309,7 @@ export function SignagePage() {
   const [emergencyEntries, setEmergencyEntries] = useState<SignageEmergencyEntry[]>([]);
   const [emergencySaving, setEmergencySaving] = useState(false);
   const [emergencyConfigSaving, setEmergencyConfigSaving] = useState(false);
+  const [emergencyMediaPick, setEmergencyMediaPick] = useState<{ id: string; mediaType: 'image' | 'video' } | null>(null);
 
   const [prayerEnabled, setPrayerEnabled] = useState(true);
   const [prayerBreak, setPrayerBreak] = useState('15');
@@ -598,8 +619,8 @@ export function SignagePage() {
 
   const onSaveBanner = async () => {
     for (const b of bannerItems) {
-      if (b.speed_seconds < 10 || b.speed_seconds > 180) {
-        toast.error(`“${b.label}” speed must be between 10 and 180 seconds.`);
+      if (b.speed_seconds < BANNER_SPEED_RANGE.min || b.speed_seconds > BANNER_SPEED_RANGE.max) {
+        toast.error(`“${b.label}” speed must be between ${BANNER_SPEED_RANGE.min} and ${BANNER_SPEED_RANGE.max}.`);
         return;
       }
       const repeats = Number(b.repeat_count ?? 1);
@@ -1288,6 +1309,62 @@ export function SignagePage() {
                           data-testid={`signage-emergency-reopen-${entry.id}`}
                         />
                       )}
+                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                        <Select
+                          label="Media"
+                          value={entry.media_type || 'none'}
+                          onChange={(val) => {
+                            const mediaType = val as SignageEmergencyEntry['media_type'];
+                            if (entry.mode === 'fire_alarm' && (mediaType === 'image' || mediaType === 'video')) {
+                              toast.error('Fire alarm may only use none or icon media.');
+                              return;
+                            }
+                            patchEmergencyEntry(entry.id, {
+                              media_type: mediaType,
+                              media_url: mediaType === 'image' || mediaType === 'video' ? (entry.media_url || '') : '',
+                            });
+                          }}
+                          options={EMERGENCY_MEDIA_TYPES
+                            .filter((m) => entry.mode !== 'fire_alarm' || m.value === 'none' || m.value === 'icon')
+                            .map((m) => ({ value: m.value, label: m.label }))}
+                          data-testid={`signage-emergency-media-type-${entry.id}`}
+                        />
+                        {(entry.media_type || 'none') === 'icon' && (
+                          <Select
+                            label="Icon"
+                            value={entry.icon || 'megaphone'}
+                            onChange={(val) => patchEmergencyEntry(entry.id, { icon: val })}
+                            options={EMERGENCY_ICON_OPTS}
+                            data-testid={`signage-emergency-icon-${entry.id}`}
+                          />
+                        )}
+                      </div>
+                      {((entry.media_type || 'none') === 'image' || (entry.media_type || 'none') === 'video') && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                          <Btn
+                            type="button"
+                            variant="secondary"
+                            style={{ minHeight: 44 }}
+                            data-testid={`signage-emergency-media-pick-${entry.id}`}
+                            onClick={() => setEmergencyMediaPick({
+                              id: entry.id,
+                              mediaType: entry.media_type === 'video' ? 'video' : 'image',
+                            })}
+                          >
+                            Choose from library
+                          </Btn>
+                          {entry.media_url ? (
+                            <span
+                              style={{ fontSize: 12, color: 'var(--color-text-secondary)', wordBreak: 'break-all' }}
+                              data-testid={`signage-emergency-media-url-${entry.id}`}
+                            >
+                              {entry.media_url}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>No media selected</span>
+                          )}
+                        </div>
+                      )}
                       <div>
                         <span style={labelStyle}>Days (empty = every day)</span>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -1368,6 +1445,20 @@ export function SignagePage() {
                 </Btn>
               </div>
             </Card>
+            <MediaPicker
+              open={Boolean(emergencyMediaPick)}
+              onClose={() => setEmergencyMediaPick(null)}
+              mediaType={emergencyMediaPick?.mediaType}
+              title="Emergency media"
+              onPick={(asset) => {
+                if (!emergencyMediaPick) return;
+                patchEmergencyEntry(emergencyMediaPick.id, {
+                  media_type: emergencyMediaPick.mediaType,
+                  media_url: asset.url,
+                });
+                setEmergencyMediaPick(null);
+              }}
+            />
             </div>
           )}
 
