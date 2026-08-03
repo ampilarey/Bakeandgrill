@@ -1,0 +1,1 @@
+import{b as i}from"./vendor-HEF0F3_5.js";function r(e=768){const[s,t]=i.useState(()=>typeof window<"u"?window.innerWidth<=e:!1);return i.useEffect(()=>{const n=()=>t(window.innerWidth<=e);return n(),window.addEventListener("resize",n),()=>window.removeEventListener("resize",n)},[e]),s}export{r as u};
