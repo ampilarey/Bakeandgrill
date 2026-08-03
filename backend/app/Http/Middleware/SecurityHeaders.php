@@ -43,6 +43,11 @@ class SecurityHeaders
             return true;
         }
 
+        // Admin TV Signage screen preview iframe — public read-only board, same-origin only.
+        if ($request->is('order/tv') || $request->is('order/tv/*')) {
+            return true;
+        }
+
         return $request->query->has('previewToken')
             && ($request->is('order') || $request->is('order/*'));
     }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
-import { SignagePage } from '../pages/SignagePage';
+import { boardPixelSize, SignagePage } from '../pages/SignagePage';
 import { renderWithRouter } from './testUtils';
 import * as api from '../api';
 
@@ -117,6 +117,25 @@ describe('SignagePage', () => {
     });
     expect(screen.getByTestId('signage-emergency-select')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Save emergency mode/i })).toBeTruthy();
+  });
+
+  it('previews screens in a CSS-scaled full-resolution iframe with embed=1', async () => {
+    renderWithRouter(<SignagePage />);
+
+    const frame = await screen.findByTestId('signage-preview-frame-default') as HTMLIFrameElement;
+    expect(frame.getAttribute('src')).toMatch(/\/order\/tv\/default\?embed=1$/);
+    expect(frame.style.width).toBe('1920px');
+    expect(frame.style.height).toBe('1080px');
+    expect(frame.style.transformOrigin).toMatch(/top/i);
+    expect(frame.style.transform).toMatch(/scale\(/);
+    expect(screen.getByTestId('signage-preview-default')).toBeTruthy();
+  });
+
+  it('boardPixelSize respects portrait orientation', () => {
+    expect(boardPixelSize('1920x1080', 'landscape')).toEqual({ width: 1920, height: 1080 });
+    expect(boardPixelSize('1920x1080', 'portrait')).toEqual({ width: 1080, height: 1920 });
+    expect(boardPixelSize(null, null)).toEqual({ width: 1920, height: 1080 });
+    expect(boardPixelSize('1080x1920', 'portrait')).toEqual({ width: 1080, height: 1920 });
   });
 
   it('loads device health and pending pairings', async () => {

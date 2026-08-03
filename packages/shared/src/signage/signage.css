@@ -9,6 +9,12 @@
   z-index: 9999;
 }
 
+/* Admin (or any same-origin) iframe preview — fixed escapes the frame on iOS Safari. */
+.signage-page.signage-embed {
+  position: absolute;
+  z-index: 1;
+}
+
 .signage-orient-landscape .signage-stage,
 .signage-orient-portrait .signage-stage {
   position: absolute;

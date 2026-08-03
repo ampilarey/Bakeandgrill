@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Copy, ExternalLink, Pencil, Save, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -91,6 +91,88 @@ function tvUrl(slug: string): string {
   const path = `/order/tv/${encodeURIComponent(slug || 'default')}`;
   if (typeof window === 'undefined') return path;
   return `${window.location.origin}${path}`;
+}
+
+/** Board pixel size for thumbnail scaling — honour orientation when resolution is landscape-labelled. */
+export function boardPixelSize(
+  resolution: string | null | undefined,
+  orientation: string | null | undefined,
+): { width: number; height: number } {
+  const m = /^(\d+)\s*[xX×]\s*(\d+)$/.exec(String(resolution || '1920x1080').trim());
+  let width = m ? Number(m[1]) : 1920;
+  let height = m ? Number(m[2]) : 1080;
+  if (!Number.isFinite(width) || width <= 0) width = 1920;
+  if (!Number.isFinite(height) || height <= 0) height = 1080;
+  const portrait = String(orientation || '').toLowerCase() === 'portrait';
+  if (portrait && width > height) {
+    return { width: height, height: width };
+  }
+  if (!portrait && height > width) {
+    return { width: height, height: width };
+  }
+  return { width, height };
+}
+
+function SignageScreenPreview({ screen, url }: { screen: SignageScreen; url: string }) {
+  const { width: boardW, height: boardH } = boardPixelSize(screen.resolution, screen.orientation);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(() => 240 / boardH);
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      setScale(240 / boardH);
+      return;
+    }
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width: cw, height: ch } = entry.contentRect;
+      if (cw <= 0 || ch <= 0) return;
+      setScale(Math.min(cw / boardW, ch / boardH));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [boardW, boardH]);
+
+  const previewSrc = `${url}${url.includes('?') ? '&' : '?'}embed=1`;
+
+  // ~240px tall thumbnail; width follows board aspect (portrait stays portrait).
+  const thumbH = 240;
+  const thumbW = thumbH * (boardW / boardH);
+
+  return (
+    <div
+      ref={boxRef}
+      data-testid={`signage-preview-${screen.slug}`}
+      style={{
+        marginTop: 16,
+        borderRadius: 12,
+        overflow: 'hidden',
+        border: '1px solid var(--color-border)',
+        background: '#111',
+        position: 'relative',
+        width: `min(100%, ${thumbW}px)`,
+        aspectRatio: `${boardW} / ${boardH}`,
+        maxHeight: thumbH,
+      }}
+    >
+      <iframe
+        title={`Preview ${screen.name}`}
+        src={previewSrc}
+        data-testid={`signage-preview-frame-${screen.slug}`}
+        style={{
+          width: boardW,
+          height: boardH,
+          border: 'none',
+          display: 'block',
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
+  );
 }
 
 function asSlides(raw: unknown): SlideDraft[] {
@@ -547,9 +629,7 @@ export function SignagePage() {
             <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Scan to open on TV</span>
           </div>
         </div>
-        <div style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--color-border)', background: '#111' }}>
-          <iframe title={`Preview ${screen.name}`} src={url} style={{ width: '100%', height: 240, border: 'none', display: 'block' }} />
-        </div>
+        <SignageScreenPreview screen={screen} url={url} />
       </Card>
       </div>
     );

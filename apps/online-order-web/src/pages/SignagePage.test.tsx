@@ -94,6 +94,34 @@ vi.mock('../context/SiteSettingsContext', () => ({
 }));
 
 describe('SignagePage', () => {
+  it('adds signage-embed class when ?embed=1 is present', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tv?embed=1']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const root = await screen.findByTestId('signage-page');
+    expect(root.className).toMatch(/\bsignage-embed\b/);
+    expect(root.getAttribute('data-embed')).toBe('1');
+  });
+
+  it('does not add signage-embed when top-level without embed query', async () => {
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const root = await screen.findByTestId('signage-page');
+    expect(root.className).not.toMatch(/\bsignage-embed\b/);
+    expect(root.getAttribute('data-embed')).toBe('0');
+  });
+
   it('renders element-tree slides with transition classes and no interactive chrome', async () => {
     render(
       <MemoryRouter initialEntries={['/tv']}>

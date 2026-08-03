@@ -140,4 +140,29 @@ class ContentPreviewTest extends TestCase
         $response->assertHeader('X-Frame-Options', 'DENY');
         $this->assertStringContainsString("frame-ancestors 'none'", (string) $response->headers->get('Content-Security-Policy'));
     }
+
+    public function test_signage_tv_path_allows_same_origin_iframe(): void
+    {
+        // SPA shell may 200 (deployed) or 503 (missing dist) in CI — framing headers still apply.
+        $response = $this->get('/order/tv/default');
+        $this->assertContains($response->status(), [200, 503]);
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $this->assertStringContainsString("frame-ancestors 'self'", (string) $response->headers->get('Content-Security-Policy'));
+    }
+
+    public function test_signage_tv_root_path_allows_same_origin_iframe(): void
+    {
+        $response = $this->get('/order/tv');
+        $this->assertContains($response->status(), [200, 503]);
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $this->assertStringContainsString("frame-ancestors 'self'", (string) $response->headers->get('Content-Security-Policy'));
+    }
+
+    public function test_order_path_without_preview_token_still_denies_framing(): void
+    {
+        $response = $this->get('/order/menu');
+        $this->assertContains($response->status(), [200, 503]);
+        $response->assertHeader('X-Frame-Options', 'DENY');
+        $this->assertStringContainsString("frame-ancestors 'none'", (string) $response->headers->get('Content-Security-Policy'));
+    }
 }

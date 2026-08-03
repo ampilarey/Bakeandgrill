@@ -81,6 +81,19 @@ function writeCache(screen: string, blob: CacheBlob) {
   } catch { /* quota */ }
 }
 
+/** True inside an iframe (or when ?embed=1 forces preview mode). */
+function detectEmbedded(): boolean {
+  try {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('embed') === '1') return true;
+    return window.self !== window.top;
+  } catch {
+    // Cross-origin access to window.top can throw — treat as embedded.
+    return true;
+  }
+}
+
 async function fetchConfig(screen: string): Promise<SignageConfig> {
   const path = screen && screen !== 'default' ? `/signage/${encodeURIComponent(screen)}` : '/signage';
   const res = await fetch(`${API_ORIGIN}/api${path}`, { credentials: 'omit' });
@@ -108,6 +121,7 @@ export function SignagePage() {
   const [black, setBlack] = useState(false);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [deviceApproved, setDeviceApproved] = useState(false);
+  const [embedded] = useState(detectEmbedded);
 
   const versionRef = useRef<string>('');
   const advanceTimer = useRef<number | null>(null);
@@ -366,8 +380,9 @@ export function SignagePage() {
 
   return (
     <div
-      className={`signage-page signage-orient-${orientation}`}
+      className={`signage-page signage-orient-${orientation}${embedded ? ' signage-embed' : ''}`}
       data-testid="signage-page"
+      data-embed={embedded ? '1' : '0'}
       data-command={command ?? ''}
       data-approved={deviceApproved ? '1' : '0'}
     >
