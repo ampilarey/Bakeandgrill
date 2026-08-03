@@ -234,7 +234,17 @@
   display: flex;
   white-space: nowrap;
   width: max-content;
+}
+
+/* Seamless — duplicated text, gapless loop (legacy default). */
+.signage-banner--seamless .signage-banner-track {
   animation: signage-banner-marquee var(--signage-banner-speed, 40s) linear infinite;
+}
+
+/* Ticker — single copy enters from the right and clears off the left. */
+.signage-banner--ticker .signage-banner-track {
+  width: 100%;
+  animation: signage-banner-ticker var(--signage-banner-speed, 40s) linear infinite;
 }
 
 .signage-banner--static .signage-banner-track {
@@ -250,4 +260,9 @@
 @keyframes signage-banner-marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
+}
+
+@keyframes signage-banner-ticker {
+  from { transform: translateX(100%); }
+  to { transform: translateX(-100%); }
 }

@@ -2,6 +2,7 @@ import { req } from './client';
 
 export type SignageBannerDateFormat = 'full' | 'short' | 'numeric' | 'weekday' | 'hijri';
 export type SignageBannerAlign = 'left' | 'center' | 'right';
+export type SignageBannerScrollMode = 'ticker' | 'seamless' | 'static';
 
 export type SignageBannerItem = {
   id: string;
@@ -17,7 +18,7 @@ export type SignageBannerItem = {
   text_color: string;
   background_color: string;
   align: SignageBannerAlign | string;
-  scroll: boolean;
+  scroll_mode: SignageBannerScrollMode | string;
   date_format: SignageBannerDateFormat | string;
   inset_percent: number;
 };

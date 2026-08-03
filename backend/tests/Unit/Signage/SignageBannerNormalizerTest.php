@@ -62,9 +62,20 @@ final class SignageBannerNormalizerTest extends TestCase
         $this->assertSame('#fff8f0', $item['text_color']);
         $this->assertSame('rgba(12, 8, 4, 0.78)', $item['background_color']);
         $this->assertSame('left', $item['align']);
-        $this->assertTrue($item['scroll']);
+        $this->assertSame('seamless', $item['scroll_mode']);
         $this->assertSame('full', $item['date_format']);
         $this->assertSame(0.0, $item['inset_percent']);
+    }
+
+    public function test_legacy_scroll_boolean_migrates_to_scroll_mode(): void
+    {
+        $seamless = SignageBannerNormalizer::normalizeItem(['scroll' => true], 0);
+        $static = SignageBannerNormalizer::normalizeItem(['scroll' => false], 0);
+        $ticker = SignageBannerNormalizer::normalizeItem(['scroll_mode' => 'ticker'], 0);
+
+        $this->assertSame('seamless', $seamless['scroll_mode']);
+        $this->assertSame('static', $static['scroll_mode']);
+        $this->assertSame('ticker', $ticker['scroll_mode']);
     }
 
     public function test_appearance_fields_round_trip_through_normalize(): void
@@ -84,7 +95,7 @@ final class SignageBannerNormalizerTest extends TestCase
                 'text_color' => '#ffeeaa',
                 'background_color' => 'rgba(0, 0, 0, 0.5)',
                 'align' => 'center',
-                'scroll' => false,
+                'scroll_mode' => 'static',
                 'date_format' => 'hijri',
                 'inset_percent' => 2.5,
             ]],
@@ -96,7 +107,7 @@ final class SignageBannerNormalizerTest extends TestCase
         $this->assertSame('#ffeeaa', $item['text_color']);
         $this->assertSame('rgba(0, 0, 0, 0.5)', $item['background_color']);
         $this->assertSame('center', $item['align']);
-        $this->assertFalse($item['scroll']);
+        $this->assertSame('static', $item['scroll_mode']);
         $this->assertSame('hijri', $item['date_format']);
         $this->assertSame(2.5, $item['inset_percent']);
     }

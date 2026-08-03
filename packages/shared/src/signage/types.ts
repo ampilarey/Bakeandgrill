@@ -53,6 +53,8 @@ export type SignagePrayerEntry = {
 
 export type SignageBannerDateFormat = 'full' | 'short' | 'numeric' | 'weekday' | 'hijri';
 export type SignageBannerAlign = 'left' | 'center' | 'right';
+/** ticker = one copy clears the screen; seamless = duplicated loop; static = no motion. */
+export type SignageBannerScrollMode = 'ticker' | 'seamless' | 'static';
 
 export type SignageBannerItem = {
   id: string;
@@ -72,10 +74,9 @@ export type SignageBannerItem = {
   text_color: string;
   /** May include alpha, e.g. rgba(12, 8, 4, 0.78). */
   background_color: string;
-  /** Meaningful when scroll is false. */
+  /** Meaningful when scroll_mode is static. */
   align: SignageBannerAlign | string;
-  /** When false, renders a static bar (no marquee). */
-  scroll: boolean;
+  scroll_mode: SignageBannerScrollMode | string;
   date_format: SignageBannerDateFormat | string;
   /** 0–5 — percent inset from the screen edge (TV overscan). */
   inset_percent: number;

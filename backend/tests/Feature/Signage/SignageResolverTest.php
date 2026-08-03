@@ -328,7 +328,7 @@ final class SignageResolverTest extends TestCase
         $this->assertSame('wifi', $cfg['banner']['banners'][1]['id']);
         // Pre-enhancement banners still get appearance defaults after save.
         $this->assertSame(1.0, $cfg['banner']['banners'][0]['font_scale']);
-        $this->assertTrue($cfg['banner']['banners'][0]['scroll']);
+        $this->assertSame('seamless', $cfg['banner']['banners'][0]['scroll_mode']);
         $this->assertSame('full', $cfg['banner']['banners'][0]['date_format']);
     }
 
@@ -358,7 +358,7 @@ final class SignageResolverTest extends TestCase
                 'text_color' => '#ffe8c8',
                 'background_color' => 'rgba(20, 10, 5, 0.9)',
                 'align' => 'center',
-                'scroll' => false,
+                'scroll_mode' => 'ticker',
                 'date_format' => 'short',
                 'inset_percent' => 3,
             ]],
@@ -368,7 +368,7 @@ final class SignageResolverTest extends TestCase
             ->assertJsonPath('banner.banners.0.text_color', '#ffe8c8')
             ->assertJsonPath('banner.banners.0.background_color', 'rgba(20, 10, 5, 0.9)')
             ->assertJsonPath('banner.banners.0.align', 'center')
-            ->assertJsonPath('banner.banners.0.scroll', false)
+            ->assertJsonPath('banner.banners.0.scroll_mode', 'ticker')
             ->assertJsonPath('banner.banners.0.date_format', 'short')
             ->assertJsonPath('banner.banners.0.inset_percent', 3);
 
@@ -376,9 +376,36 @@ final class SignageResolverTest extends TestCase
         $resolver = app(SignageResolver::class);
         $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v-banner-appear');
         $this->assertSame(1.75, $cfg['banner']['banners'][0]['font_scale']);
-        $this->assertFalse($cfg['banner']['banners'][0]['scroll']);
+        $this->assertSame('ticker', $cfg['banner']['banners'][0]['scroll_mode']);
         $this->assertSame('short', $cfg['banner']['banners'][0]['date_format']);
         $this->assertSame(3.0, $cfg['banner']['banners'][0]['inset_percent']);
+    }
+
+    public function test_banner_legacy_scroll_false_migrates_on_save(): void
+    {
+        $owner = User::create([
+            'name' => 'Owner Banner Migrate',
+            'email' => 'owner-banner-migrate@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->putJson('/api/admin/signage/banner', [
+            'enabled' => true,
+            'banners' => [[
+                'id' => 'legacy-scroll',
+                'label' => 'Legacy',
+                'enabled' => true,
+                'position' => 'bottom',
+                'fields' => ['date'],
+                'speed_seconds' => 40,
+                'duration_seconds' => 30,
+                'scroll' => false,
+            ]],
+        ])->assertOk()
+            ->assertJsonPath('banner.banners.0.scroll_mode', 'static');
     }
 
     public function test_prayer_island_setting_drives_schedule_and_admin_round_trip(): void

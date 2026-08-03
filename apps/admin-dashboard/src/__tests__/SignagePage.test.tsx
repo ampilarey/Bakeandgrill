@@ -73,7 +73,7 @@ const mockOverview: api.SignageOverview = {
       text_color: '#fff8f0',
       background_color: 'rgba(12, 8, 4, 0.78)',
       align: 'left',
-      scroll: true,
+      scroll_mode: 'seamless',
       date_format: 'full',
       inset_percent: 0,
     }],
@@ -444,12 +444,14 @@ describe('SignagePage', () => {
     const fontSelect = screen.getByTestId('signage-banner-font-scale-main') as HTMLSelectElement;
     expect(fontSelect.value).toBe('1');
 
-    // Align hidden while scroll is on.
+    // Align hidden unless motion is static.
     const advanced = screen.getByTestId('signage-banner-advanced-main');
     fireEvent.click(advanced.querySelector('summary')!);
     expect(screen.queryByTestId('signage-banner-align-main')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('signage-banner-scroll-main'));
+    fireEvent.change(screen.getByTestId('signage-banner-scroll-mode-main'), {
+      target: { value: 'static' },
+    });
     expect(await screen.findByTestId('signage-banner-align-main')).toBeTruthy();
 
     // Edge checkbox stores 3 when checked.
@@ -480,6 +482,12 @@ describe('SignagePage', () => {
       expect(bg === '#0c0804' || bg === 'rgba(12, 8, 4, 1)').toBe(true);
     });
 
+    // Preview reflects motion mode.
+    expect(screen.getByTestId('signage-banner').getAttribute('data-scroll-mode')).toBe('static');
+
+    // Time on screen hidden with one enabled banner.
+    expect(screen.queryByTestId('signage-banner-duration-main')).toBeNull();
+
     // Choosing a named font size stores the multiplier; saving keeps off-preset until edited.
     fireEvent.change(fontSelect, { target: { value: '1.3' } });
     fireEvent.click(screen.getByTestId('signage-banner-save'));
@@ -487,7 +495,39 @@ describe('SignagePage', () => {
     const payload = saveSpy.mock.calls[0][0];
     expect(payload.banners?.[0]?.font_scale).toBe(1.3);
     expect(payload.banners?.[0]?.inset_percent).toBe(3);
-    expect(payload.banners?.[0]?.scroll).toBe(false);
+    expect(payload.banners?.[0]?.scroll_mode).toBe('static');
+  });
+
+  it('Banner timing: speed slider stores presets; duration shown with two enabled banners', async () => {
+    const saveSpy = vi.spyOn(api, 'setSignageBanner').mockResolvedValue({
+      banner: mockOverview.banner!,
+    });
+
+    renderWithRouter(<SignagePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Banner' }));
+    await screen.findByTestId('signage-banner-item-main');
+
+    // Off-preset speed (e.g. 45) would show nearest; mock uses 40 → Medium at index 1.
+    const speedSlider = screen.getByTestId('signage-banner-speed-slider-main') as HTMLInputElement;
+    expect(speedSlider.value).toBe('1');
+    expect(screen.queryByTestId('signage-banner-duration-main')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('signage-banner-add'));
+    await waitFor(() => {
+      expect(screen.getByTestId('signage-banner-duration-main')).toBeTruthy();
+    });
+
+    fireEvent.change(speedSlider, { target: { value: '2' } }); // Fast = 20
+    fireEvent.change(screen.getByTestId('signage-banner-duration-slider-main'), {
+      target: { value: '45' },
+    });
+    fireEvent.click(screen.getByTestId('signage-banner-save'));
+    await waitFor(() => expect(saveSpy).toHaveBeenCalled());
+    const payload = saveSpy.mock.calls[0][0];
+    expect(payload.banners?.[0]?.speed_seconds).toBe(20);
+    expect(payload.banners?.[0]?.duration_seconds).toBe(45);
+    // Newly added banner defaults to ticker.
+    expect(payload.banners?.[1]?.scroll_mode).toBe('ticker');
   });
 });
 

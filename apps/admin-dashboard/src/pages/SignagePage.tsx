@@ -24,12 +24,18 @@ import {
   type SignagePlaylist,
   type SignageScreen,
 } from '../api';
-import { normalizeBannerSettings, newBannerItem } from '@shared/signage';
+import {
+  BANNER_DURATION_SLIDER,
+  BANNER_SPEED_PRESETS,
+  normalizeBannerSettings,
+  newBannerItem,
+} from '@shared/signage';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
 import { Btn, Card, EmptyState, Input, PageHeader, PageShell, Select, Spinner } from '../components/SharedUI';
 import { BannerAppearanceEditor } from './signage/BannerAppearanceEditor';
 import { BannerLivePreview } from './signage/BannerLivePreview';
+import { nearestPresetValue } from './signage/bannerAppearanceUx';
 import { SignageDesigner, type DesignerSlide } from './signage/SignageDesigner';
 
 const BANNER_FIELD_OPTS = [
@@ -1204,6 +1210,17 @@ export function SignagePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
                 {bannerItems.map((b, idx) => {
                   const usingCustom = Boolean((b.custom_text || '').trim());
+                  const enabledCount = bannerItems.filter((x) => x.enabled).length;
+                  const speedNearest = nearestPresetValue(b.speed_seconds ?? 40, BANNER_SPEED_PRESETS);
+                  const speedIndex = Math.max(0, BANNER_SPEED_PRESETS.findIndex((p) => p.value === speedNearest));
+                  const speedPreset = BANNER_SPEED_PRESETS[speedIndex] ?? BANNER_SPEED_PRESETS[1];
+                  const durationDisplay = Math.max(
+                    BANNER_DURATION_SLIDER.min,
+                    Math.min(BANNER_DURATION_SLIDER.max, b.duration_seconds ?? 30),
+                  );
+                  const scrollMode = (['ticker', 'seamless', 'static'] as const).includes(b.scroll_mode as 'ticker')
+                    ? String(b.scroll_mode)
+                    : 'seamless';
                   return (
                     <div
                       key={b.id}
@@ -1251,22 +1268,64 @@ export function SignagePage() {
                             { value: 'top', label: 'Top' },
                           ]}
                         />
-                        <Input
-                          label="Scroll speed (sec)"
-                          type="number"
-                          min={10}
-                          max={180}
-                          value={String(b.speed_seconds)}
-                          onChange={(val) => patchBannerItem(b.id, { speed_seconds: Number.parseInt(val, 10) || 40 })}
+                        <Select
+                          label="Motion"
+                          value={scrollMode}
+                          onChange={(val) => patchBannerItem(b.id, { scroll_mode: val })}
+                          options={[
+                            { value: 'ticker', label: 'Ticker — scrolls off, then returns' },
+                            { value: 'seamless', label: 'Seamless — continuous loop' },
+                            { value: 'static', label: 'Static — no motion' },
+                          ]}
+                          data-testid={`signage-banner-scroll-mode-${b.id}`}
                         />
-                        <Input
-                          label="Show for (sec)"
-                          type="number"
-                          min={5}
-                          max={600}
-                          value={String(b.duration_seconds)}
-                          onChange={(val) => patchBannerItem(b.id, { duration_seconds: Number.parseInt(val, 10) || 30 })}
-                        />
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }} data-testid={`signage-banner-speed-${b.id}`}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                            Speed · {speedPreset.label}
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={BANNER_SPEED_PRESETS.length - 1}
+                            step={1}
+                            value={speedIndex}
+                            onChange={(e) => {
+                              const preset = BANNER_SPEED_PRESETS[Number.parseInt(e.target.value, 10)] ?? BANNER_SPEED_PRESETS[1];
+                              patchBannerItem(b.id, { speed_seconds: preset.value });
+                            }}
+                            style={{ width: '100%', maxWidth: 360, minHeight: 36 }}
+                            data-testid={`signage-banner-speed-slider-${b.id}`}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                            {speedPreset.label} ({speedPreset.value}s)
+                          </span>
+                        </label>
+
+                        {enabledCount >= 2 && (
+                          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }} data-testid={`signage-banner-duration-${b.id}`}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                              Time on screen · {durationDisplay}s
+                            </span>
+                            <input
+                              type="range"
+                              min={BANNER_DURATION_SLIDER.min}
+                              max={BANNER_DURATION_SLIDER.max}
+                              step={1}
+                              value={durationDisplay}
+                              onChange={(e) => patchBannerItem(b.id, {
+                                duration_seconds: Number.parseInt(e.target.value, 10) || 30,
+                              })}
+                              style={{ width: '100%', maxWidth: 360, minHeight: 36 }}
+                              data-testid={`signage-banner-duration-slider-${b.id}`}
+                            />
+                            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                              How long this banner shows before the next one takes over.
+                            </span>
+                          </label>
+                        )}
                       </div>
 
                       <div>

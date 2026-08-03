@@ -3,6 +3,7 @@ export type {
   SignageBannerAlign,
   SignageBannerDateFormat,
   SignageBannerItem,
+  SignageBannerScrollMode,
   SignageBannerSettings,
   SignageCategoryLite,
   SignageConfig,
@@ -33,14 +34,18 @@ export {
   bannerStyleVars,
   shouldShowBanner,
   buildBannerSegments,
+  resolveBannerScrollMode,
   SIGNAGE_BANNER_LOCALE,
 } from './SignageBanner';
 export type { SignageBannerProps } from './SignageBanner';
 export {
   normalizeBannerSettings,
+  normalizeScrollMode,
   activeBanners,
   newBannerItem,
   BANNER_APPEARANCE_DEFAULTS,
+  BANNER_SPEED_PRESETS,
+  BANNER_DURATION_SLIDER,
 } from './bannerConfig';
 export { brandCardSlide } from './brandCard';
 export {

@@ -4,6 +4,7 @@ import { interpolate } from './interpolate';
 import type {
   SignageBannerDateFormat,
   SignageBannerItem,
+  SignageBannerScrollMode,
   SignageBannerSettings,
   SignagePrayerEntry,
 } from './types';
@@ -256,21 +257,22 @@ export function SignageBanner({
   });
 
   const position = active.position === 'top' ? 'top' : 'bottom';
-  const scrolling = active.scroll !== false;
+  const scrollMode = resolveBannerScrollMode(active);
   const drift: CSSProperties = burnInOffset
     ? { transform: `translate(${burnInOffset.x}px, ${burnInOffset.y}px)` }
     : {};
 
-  const displayText = scrolling ? `${text}   ·   ${text}` : text;
+  // Seamless duplicates for a gapless loop; ticker/static use a single copy.
+  const displayText = scrollMode === 'seamless' ? `${text}   ·   ${text}` : text;
   const vars = bannerStyleVars(active);
 
   return (
     <div
-      className={`signage-banner signage-banner-${position}${scrolling ? '' : ' signage-banner--static'}`}
+      className={`signage-banner signage-banner-${position} signage-banner--${scrollMode}`}
       data-testid="signage-banner"
       data-banner-id={active.id}
       data-banner-label={active.label}
-      data-scroll={scrolling ? '1' : '0'}
+      data-scroll-mode={scrollMode}
       data-date-format={active.date_format || 'full'}
       style={{
         ...drift,
@@ -282,4 +284,13 @@ export function SignageBanner({
       </div>
     </div>
   );
+}
+
+/** Resolve motion mode from a banner item (supports legacy `scroll` on raw payloads via normalize). */
+export function resolveBannerScrollMode(item: SignageBannerItem | { scroll_mode?: string; scroll?: boolean }): SignageBannerScrollMode {
+  const mode = String((item as SignageBannerItem).scroll_mode || '');
+  if (mode === 'ticker' || mode === 'seamless' || mode === 'static') return mode;
+  // Defensive: un-normalized objects may still carry legacy scroll.
+  if ('scroll' in item && (item as { scroll?: boolean }).scroll === false) return 'static';
+  return 'seamless';
 }

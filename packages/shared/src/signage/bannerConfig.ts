@@ -2,24 +2,36 @@ import type {
   SignageBannerAlign,
   SignageBannerDateFormat,
   SignageBannerItem,
+  SignageBannerScrollMode,
   SignageBannerSettings,
 } from './types';
 
 const FIELD_ALLOW = new Set(['date', 'time', 'next_prayer', 'countdown']);
 const DATE_FORMATS = new Set<SignageBannerDateFormat>(['full', 'short', 'numeric', 'weekday', 'hijri']);
 const ALIGNS = new Set<SignageBannerAlign>(['left', 'center', 'right']);
+const SCROLL_MODES = new Set<SignageBannerScrollMode>(['ticker', 'seamless', 'static']);
 
-/** Defaults that match today's hardcoded CSS / date behaviour. */
+/** Defaults that match today's hardcoded CSS / date behaviour for migrated banners. */
 export const BANNER_APPEARANCE_DEFAULTS = {
   font_scale: 1,
   height_scale: 1,
   text_color: '#fff8f0',
   background_color: 'rgba(12, 8, 4, 0.78)',
   align: 'left' as SignageBannerAlign,
-  scroll: true,
+  /** Migrated legacy default (old scroll: true). New banners use ticker via newBannerItem. */
+  scroll_mode: 'seamless' as SignageBannerScrollMode,
   date_format: 'full' as SignageBannerDateFormat,
   inset_percent: 0,
 };
+
+/** Speed slider presets — stored as speed_seconds. */
+export const BANNER_SPEED_PRESETS = [
+  { label: 'Slow', value: 60 },
+  { label: 'Medium', value: 40 },
+  { label: 'Fast', value: 20 },
+] as const;
+
+export const BANNER_DURATION_SLIDER = { min: 5, max: 120 } as const;
 
 function uid(): string {
   return `bnr-${Math.random().toString(36).slice(2, 10)}`;
@@ -59,11 +71,26 @@ function normalizeColor(raw: unknown, fallback: string): string {
   if (typeof raw !== 'string') return fallback;
   const s = raw.trim();
   if (!s || s.length > 80) return fallback;
-  // Allow hex, rgb/rgba, hsl/hsla, and named CSS colours used by admins.
   if (/^#([0-9a-f]{3,8})$/i.test(s)) return s;
   if (/^(rgba?|hsla?)\(/i.test(s)) return s;
   if (/^[a-z]+$/i.test(s)) return s;
   return fallback;
+}
+
+/**
+ * Resolve scroll_mode from new field or legacy `scroll` boolean.
+ * Existing saves: scroll true/absent → seamless, scroll false → static.
+ * Explicit scroll_mode always wins.
+ */
+export function normalizeScrollMode(raw: Record<string, unknown>): SignageBannerScrollMode {
+  const mode = String(raw.scroll_mode || '');
+  if (SCROLL_MODES.has(mode as SignageBannerScrollMode)) {
+    return mode as SignageBannerScrollMode;
+  }
+  if ('scroll' in raw) {
+    return raw.scroll === false ? 'static' : 'seamless';
+  }
+  return BANNER_APPEARANCE_DEFAULTS.scroll_mode;
 }
 
 function normalizeItem(raw: Record<string, unknown>, fallbackIndex = 0): SignageBannerItem {
@@ -85,7 +112,7 @@ function normalizeItem(raw: Record<string, unknown>, fallbackIndex = 0): Signage
     text_color: normalizeColor(raw.text_color, BANNER_APPEARANCE_DEFAULTS.text_color),
     background_color: normalizeColor(raw.background_color, BANNER_APPEARANCE_DEFAULTS.background_color),
     align: (ALIGNS.has(align as SignageBannerAlign) ? align : BANNER_APPEARANCE_DEFAULTS.align),
-    scroll: raw.scroll !== false,
+    scroll_mode: normalizeScrollMode(raw),
     date_format: (DATE_FORMATS.has(dateFormat as SignageBannerDateFormat)
       ? dateFormat
       : BANNER_APPEARANCE_DEFAULTS.date_format),
@@ -114,11 +141,12 @@ export function normalizeBannerSettings(raw: unknown): SignageBannerSettings {
         fields: ['date', 'time', 'next_prayer', 'countdown'],
         speed_seconds: 40,
         duration_seconds: 30,
+        scroll_mode: 'ticker',
       })],
     };
   }
 
-  // Legacy single banner → one-item list.
+  // Legacy single banner → one-item list (migrates to seamless via absent scroll_mode).
   const hasLegacy = 'position' in cfg || 'fields' in cfg || 'speed_seconds' in cfg || 'enabled' in cfg;
   if (hasLegacy) {
     return {
@@ -145,6 +173,7 @@ export function normalizeBannerSettings(raw: unknown): SignageBannerSettings {
       fields: ['date', 'time', 'next_prayer', 'countdown'],
       speed_seconds: 40,
       duration_seconds: 30,
+      scroll_mode: 'ticker',
     })],
   };
 }
@@ -163,6 +192,7 @@ export function newBannerItem(partial: Partial<SignageBannerItem> = {}): Signage
     fields: ['date', 'time', 'next_prayer', 'countdown'],
     speed_seconds: 40,
     duration_seconds: 30,
+    scroll_mode: 'ticker',
     ...partial,
   });
 }

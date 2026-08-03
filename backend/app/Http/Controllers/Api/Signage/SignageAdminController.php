@@ -327,6 +327,8 @@ final class SignageAdminController extends Controller
             'banners.*.text_color' => 'nullable|string|max:80',
             'banners.*.background_color' => 'nullable|string|max:80',
             'banners.*.align' => 'nullable|string|in:left,center,right',
+            'banners.*.scroll_mode' => 'nullable|string|in:ticker,seamless,static',
+            // Legacy boolean — migrated to scroll_mode in SignageBannerNormalizer.
             'banners.*.scroll' => 'nullable|boolean',
             'banners.*.date_format' => 'nullable|string|in:full,short,numeric,weekday,hijri',
             'banners.*.inset_percent' => 'nullable|numeric|min:0|max:5',

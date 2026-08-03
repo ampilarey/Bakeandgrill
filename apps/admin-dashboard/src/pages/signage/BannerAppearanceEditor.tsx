@@ -152,7 +152,10 @@ export function BannerAppearanceEditor({ banner, theme, onPatch }: Props) {
   const bgColor = banner.background_color || 'rgba(12, 8, 4, 0.78)';
   const fontNearest = nearestPresetValue(banner.font_scale ?? 1, FONT_SIZE_OPTIONS);
   const heightNearest = nearestPresetValue(banner.height_scale ?? 1, HEIGHT_SIZE_OPTIONS);
-  const scrolling = banner.scroll !== false;
+  const scrollMode = (['ticker', 'seamless', 'static'] as const).includes(banner.scroll_mode as 'ticker')
+    ? String(banner.scroll_mode)
+    : 'seamless';
+  const isStatic = scrollMode === 'static';
   const align = banner.align === 'center' || banner.align === 'right' ? banner.align : 'left';
   const dateFormat = (['full', 'short', 'numeric', 'weekday', 'hijri'] as const).includes(
     banner.date_format as 'full',
@@ -255,18 +258,7 @@ export function BannerAppearanceEditor({ banner, theme, onPatch }: Props) {
             Advanced
           </summary>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40, cursor: 'pointer', fontSize: 13 }}>
-              <input
-                type="checkbox"
-                checked={scrolling}
-                onChange={(e) => onPatch({ scroll: e.target.checked })}
-                style={{ width: 18, height: 18 }}
-                data-testid={`signage-banner-scroll-${id}`}
-              />
-              Scroll across the screen (turn off for short text)
-            </label>
-
-            {!scrolling && (
+            {isStatic && (
               <Select
                 label="Align"
                 value={align}

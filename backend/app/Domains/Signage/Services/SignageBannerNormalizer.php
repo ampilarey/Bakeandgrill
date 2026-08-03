@@ -21,7 +21,7 @@ namespace App\Domains\Signage\Services;
  *   text_color: string,
  *   background_color: string,
  *   align: string,
- *   scroll: bool,
+ *   scroll_mode: string,
  *   date_format: string,
  *   inset_percent: float
  * }
@@ -34,6 +34,8 @@ final class SignageBannerNormalizer
     private const ALLOWED_DATE_FORMATS = ['full', 'short', 'numeric', 'weekday', 'hijri'];
 
     private const ALLOWED_ALIGNS = ['left', 'center', 'right'];
+
+    private const ALLOWED_SCROLL_MODES = ['ticker', 'seamless', 'static'];
 
     private const DEFAULT_TEXT_COLOR = '#fff8f0';
 
@@ -65,6 +67,7 @@ final class SignageBannerNormalizer
                     'fields' => self::ALLOWED_FIELDS,
                     'speed_seconds' => 40,
                     'duration_seconds' => 30,
+                    'scroll_mode' => 'ticker',
                 ], 0);
             }
 
@@ -101,6 +104,7 @@ final class SignageBannerNormalizer
                 'fields' => self::ALLOWED_FIELDS,
                 'speed_seconds' => 40,
                 'duration_seconds' => 30,
+                'scroll_mode' => 'ticker',
             ], 0)],
         ];
     }
@@ -180,10 +184,27 @@ final class SignageBannerNormalizer
             'text_color' => self::normalizeColor($raw['text_color'] ?? null, self::DEFAULT_TEXT_COLOR),
             'background_color' => self::normalizeColor($raw['background_color'] ?? null, self::DEFAULT_BG_COLOR),
             'align' => $align,
-            'scroll' => ($raw['scroll'] ?? true) !== false,
+            'scroll_mode' => self::normalizeScrollMode($raw),
             'date_format' => $dateFormat,
             'inset_percent' => $inset,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     */
+    public static function normalizeScrollMode(array $raw): string
+    {
+        $mode = (string) ($raw['scroll_mode'] ?? '');
+        if (in_array($mode, self::ALLOWED_SCROLL_MODES, true)) {
+            return $mode;
+        }
+        if (array_key_exists('scroll', $raw)) {
+            return ($raw['scroll'] ?? true) === false ? 'static' : 'seamless';
+        }
+
+        // Pre-scroll_mode saves behaved like scroll:true → seamless.
+        return 'seamless';
     }
 
     private static function clampScale(mixed $raw): float

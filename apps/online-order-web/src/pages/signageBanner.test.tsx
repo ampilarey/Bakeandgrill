@@ -5,6 +5,7 @@ import {
   buildBannerSegments,
   formatBannerDate,
   formatCountdown,
+  newBannerItem,
   normalizeBannerSettings,
   pickNextPrayer,
   shouldShowBanner,
@@ -158,9 +159,24 @@ describe('SignageBanner helpers', () => {
     expect(item.text_color).toBe('#fff8f0');
     expect(item.background_color).toBe('rgba(12, 8, 4, 0.78)');
     expect(item.align).toBe('left');
-    expect(item.scroll).toBe(true);
+    expect(item.scroll_mode).toBe('seamless'); // legacy scroll:true migration
     expect(item.date_format).toBe('full');
     expect(item.inset_percent).toBe(0);
+  });
+
+  it('migrates legacy scroll boolean to scroll_mode', () => {
+    expect(normalizeBannerSettings({
+      enabled: true,
+      banners: [{ id: 'a', scroll: true }],
+    }).banners[0].scroll_mode).toBe('seamless');
+    expect(normalizeBannerSettings({
+      enabled: true,
+      banners: [{ id: 'b', scroll: false }],
+    }).banners[0].scroll_mode).toBe('static');
+  });
+
+  it('new banners default to ticker', () => {
+    expect(newBannerItem().scroll_mode).toBe('ticker');
   });
 
   it('emits CSS custom properties from font/height scale', () => {
@@ -180,8 +196,59 @@ describe('SignageBanner helpers', () => {
     expect(vars['--signage-banner-inset']).toBe('2%');
   });
 
-  it('renders without marquee animation when scroll is false', () => {
-    render(
+  it('ticker is a single copy; seamless duplicates; static has no animation class path', () => {
+    const text = 'Monday · 12:00';
+    const ticker = render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [{
+            id: 'ticker',
+            enabled: true,
+            fields: ['date'],
+            custom_text: text,
+            scroll_mode: 'ticker',
+            speed_seconds: 40,
+            duration_seconds: 30,
+          }],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+      />,
+    );
+    const tickerEl = ticker.getByTestId('signage-banner');
+    expect(tickerEl.getAttribute('data-scroll-mode')).toBe('ticker');
+    expect(tickerEl.className).toMatch(/signage-banner--ticker/);
+    expect(tickerEl.textContent).toBe(text);
+    expect(tickerEl.textContent?.split(text).length - 1).toBe(1);
+    ticker.unmount();
+
+    const seamless = render(
+      <SignageBanner
+        banner={normalizeBannerSettings({
+          enabled: true,
+          banners: [{
+            id: 'seamless',
+            enabled: true,
+            fields: ['date'],
+            custom_text: text,
+            scroll_mode: 'seamless',
+            speed_seconds: 40,
+            duration_seconds: 30,
+          }],
+        })}
+        schedule={[]}
+        mode="normal"
+        nowMs={Date.parse('2026-08-02T11:00:00+05:00')}
+      />,
+    );
+    const seamlessEl = seamless.getByTestId('signage-banner');
+    expect(seamlessEl.getAttribute('data-scroll-mode')).toBe('seamless');
+    expect(seamlessEl.textContent?.split(text).length - 1).toBe(2);
+    seamless.unmount();
+
+    const staticBanner = render(
       <SignageBanner
         banner={normalizeBannerSettings({
           enabled: true,
@@ -190,7 +257,7 @@ describe('SignageBanner helpers', () => {
             enabled: true,
             position: 'bottom',
             fields: ['date'],
-            scroll: false,
+            scroll_mode: 'static',
             align: 'center',
             speed_seconds: 40,
             duration_seconds: 30,
@@ -202,8 +269,8 @@ describe('SignageBanner helpers', () => {
         dateLabel="Saturday, 2 Aug 2026"
       />,
     );
-    const el = screen.getByTestId('signage-banner');
-    expect(el.getAttribute('data-scroll')).toBe('0');
+    const el = staticBanner.getByTestId('signage-banner');
+    expect(el.getAttribute('data-scroll-mode')).toBe('static');
     expect(el.className).toMatch(/signage-banner--static/);
     expect(el.style.getPropertyValue('--signage-banner-justify')).toBe('center');
   });
