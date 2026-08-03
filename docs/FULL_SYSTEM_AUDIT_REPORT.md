@@ -66,3 +66,55 @@ Known issues excluded from re-reporting (per brief): admin API call↔route reso
 - TV board end-to-end with paired device + playlist — would need device heartbeat; config GET only.
 - Low-permission UI (known nav drift excluded).
 - Whether TEST/cPanel deep-links hit the same serve quirk as local `artisan serve`.
+
+---
+
+## Part B — Security
+
+Verified with ephemeral staff user `audit-empty@local` (role with **zero** permissions, Sanctum `staff` token) plus unauthenticated probes. No SMS was delivered (send returned 422 before carrier).
+
+### Findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| BLOCKER | AuthZ / receipts | Any staff token can mint a **public receipt URL** for an order | `GET /api/orders/{orderId}/receipt-link` — `orders.php:63`; no `permission:orders.receipts` | Confirmed: empty-perm token → **200** `{"link":"http://localhost:8000/receipts/…"}`. Anyone with a stolen/low staff token can share receipt links. |
+| BLOCKER | AuthZ / receipts | Receipt **send** has no permission middleware | `POST /api/receipts/{orderId}/send` — `orders.php:64` | Confirmed: empty-perm token reached controller (**422** `Recipient not available` — auth passed). Would SMS/email when recipient exists. |
+| MAJOR | AuthZ / orders | `GET /api/orders` and `GET /api/stream/orders` have no `orders.view` | `orders.php:22`; `devices.php:46` | Empty-perm: list **200** (empty dataset here); stream **200** (SSE pings). Show for order 5 returned **403** (controller visibility). Live streams/lists should deny, not soft-filter. |
+| MAJOR | AuthZ / customers | `GET /api/customers/{id}/addresses` missing `customers.lookup` | `orders.php:87-88` (throttle only) | Sibling POS routes require `customers.lookup`. Confirmed: empty-perm → **200** `{"addresses":[]}` for customer 1; `customers/search` correctly **403**. |
+| MINOR | AuthZ / kitchen | `POST /api/kitchen-production/{id}/cancel` has no route permission; `cancel_own` unused | `kitchen.php`; `KitchenProductionService::cancelBatch` | Relies on produced_by / manage checks in service. Catalog slug `kitchen.production.cancel_own` unused. |
+| MINOR | AuthZ / SMS | Control-center GET relies on controller checks only | `marketing.php` ~149 | Empty-perm correctly **403** via controller; route lacks middleware (defense-in-depth). |
+| INFO | AuthZ | Unauthenticated `/api/admin*` rejected | sample: customers, promotions, staff, site-settings | All **401**. Clean. |
+| INFO | Secrets | No live secrets in committed client bundles / `.env.example` | apps + public dist grep | `.env` gitignored. Placeholders only. |
+| INFO | SQLi | No user-input SQL concatenation found | `whereRaw`/`selectRaw` spot-check | Bindings / fixed expressions. |
+| INFO | Mass-assignment | Broad `$fillable` on some models but audited controllers whitelist | Customer/User/Order | No live `$request->all()` privilege path found in this pass. |
+
+### Known (not re-opened as new)
+
+- `kitchen.production.view_all` vs route `view_own` mismatch still present (nav vs list middleware).
+
+### What was checked
+
+- Empty-perm staff token against orders list/show/stream, receipt-link, receipt-send, customer addresses vs search, kitchen-production, admin customers/promotions, delivery drivers, SMS control-center.
+- Unauthenticated admin/site-settings.
+- Static review: admin route middleware presence, customer IDOR scoping (customer-token paths), secrets grep, SQL raw usage, fillable patterns.
+
+### What passed
+
+- Unauthenticated admin APIs → 401.
+- Permission-gated admin endpoints (customers.manage, promotions.manage, orders.manage drivers) → 403 for empty-perm.
+- Customer-token routes appear ownership-scoped in code review.
+- No committed live API keys found.
+
+### Findings by severity (Part B)
+
+- BLOCKER: 2  
+- MAJOR: 2  
+- MINOR: 2  
+- INFO: 4  
+
+### Untested (Part B)
+
+- Full IDOR matrix across every `{id}` staff endpoint with two real customers (only addresses probed).
+- Receipt send with a real phone (would hit SMS — skipped).
+- Cross-store multi-tenancy (single-tenant app).
+
