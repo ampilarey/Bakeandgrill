@@ -643,7 +643,7 @@ export function SignagePage() {
         subtitle="Digital menu boards, playlists, campaigns & emergency overrides"
       />
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+      <div className="signage-tab-row" data-testid="signage-tab-row" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {TABS.map((t) => (
           <button key={t.id} type="button" style={tabBtn(tab === t.id)} onClick={() => setTab(t.id)}>
             {t.label}
@@ -1133,7 +1133,8 @@ export function SignagePage() {
                       <div
                         key={d.id}
                         data-testid={`signage-pending-${d.id}`}
-                        style={{ display: 'grid', gridTemplateColumns: '1fr 200px auto', gap: 12, alignItems: 'end', padding: 12, border: '1px solid var(--color-border)', borderRadius: 12 }}
+                        className="form-grid-3"
+                        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, alignItems: 'end', padding: 12, border: '1px solid var(--color-border)', borderRadius: 12 }}
                       >
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.12em' }}>{d.pairing_code || '······'}</div>

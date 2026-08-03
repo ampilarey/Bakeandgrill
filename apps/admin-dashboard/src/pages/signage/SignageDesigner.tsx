@@ -2,6 +2,7 @@
  * Freeform slide designer — element-tree WYSIWYG (Phase 1b).
  * Visual layer = shared @shared/signage SlideCanvas (same as /order/tv).
  * Editing chrome (selection/drag/resize/guides) overlays on top.
+ * On mobile (<768px) the canvas is a read-only preview; edit via layers + XYWH.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPE } from 'react';
 import { AlignCenter, Copy, Eye, EyeOff, Lock, Redo2, Save, Trash2, Undo2, Unlock } from 'lucide-react';
@@ -21,6 +22,7 @@ import { saveSignageCustomTemplate } from '../../api';
 import { Btn } from '../../components/SharedUI';
 import { useToast } from '../../components/ui';
 import { MediaPicker } from '../../components/MediaPicker';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 /** Shared element type; locked/hidden are editor fields already on SignageElement. */
 export type DesignerElement = SignageElement;
@@ -104,6 +106,7 @@ function previewConfig(slide: SignageSlide, orientation: string): SignageConfig 
 
 export function SignageDesigner({ slide, onChange, onClose }: Props) {
   const toast = useToast();
+  const isMobile = useIsMobile();
   const [local, setLocal] = useState<DesignerSlide>(() => clone(slide));
   const [orient, setOrient] = useState<'landscape' | 'portrait'>('landscape');
   const [previewSize, setPreviewSize] = useState<'desktop' | '1080p' | '4k'>('desktop');
@@ -205,6 +208,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
   };
 
   useEffect(() => {
+    if (isMobile) return;
     const move = (e: PointerEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -256,7 +260,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
-  }, [drag, resize, pushHistory]);
+  }, [drag, resize, pushHistory, isMobile]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -312,27 +316,43 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
   const label: CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 };
   const input: CSSProperties = { minHeight: 40, width: '100%', borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' };
 
+  const actionButtons = (
+    <>
+      <Btn type="button" variant="secondary" onClick={onClose} style={{ minHeight: 40 }}>Cancel</Btn>
+      <Btn type="button" onClick={apply} style={{ minHeight: 40 }} data-testid="signage-designer-apply">Apply to playlist</Btn>
+    </>
+  );
+
   return (
-    <div data-testid="signage-designer" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div data-testid="signage-designer" className="signage-designer" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="signage-designer-toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <Btn type="button" variant="secondary" onClick={undo} style={{ minHeight: 40 }}><Undo2 size={14} /> Undo</Btn>
         <Btn type="button" variant="secondary" onClick={redo} style={{ minHeight: 40 }}><Redo2 size={14} /> Redo</Btn>
         <Btn type="button" variant="secondary" onClick={() => setOrient((o) => (o === 'landscape' ? 'portrait' : 'landscape'))} style={{ minHeight: 40 }}>
           {orient === 'landscape' ? '16:9' : '9:16'}
         </Btn>
-        <select value={previewSize} onChange={(e) => setPreviewSize(e.target.value as typeof previewSize)} style={{ ...input, width: 120 }}>
+        <select
+          className="signage-designer-preview-size"
+          value={previewSize}
+          onChange={(e) => setPreviewSize(e.target.value as typeof previewSize)}
+          style={{ ...input, width: 120 }}
+          data-testid="signage-designer-preview-size"
+        >
           <option value="desktop">Desktop</option>
           <option value="1080p">1080p</option>
           <option value="4k">4K</option>
         </select>
         <Btn type="button" variant="secondary" onClick={() => void saveTemplate()} style={{ minHeight: 40 }}><Save size={14} /> Save as template</Btn>
-        <div style={{ flex: 1 }} />
-        <Btn type="button" variant="secondary" onClick={onClose} style={{ minHeight: 40 }}>Cancel</Btn>
-        <Btn type="button" onClick={apply} style={{ minHeight: 40 }} data-testid="signage-designer-apply">Apply to playlist</Btn>
+        {!isMobile && (
+          <>
+            <div style={{ flex: 1 }} />
+            {actionButtons}
+          </>
+        )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 260px', gap: 12 }}>
-        <div style={panel}>
+      <div className="signage-designer-grid" style={{ display: 'grid', gridTemplateColumns: '160px 1fr 260px', gap: 12 }}>
+        <div className="signage-designer-palette" style={panel}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Add</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {ELEMENT_TYPES.map((t) => (
@@ -342,11 +362,12 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
             ))}
           </div>
           <div style={{ fontWeight: 700, margin: '14px 0 8px' }}>Layers</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflow: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }} data-testid="signage-designer-layers">
             {[...elements].reverse().map((el) => (
               <button
                 key={el.id}
                 type="button"
+                data-testid={`signage-layer-${el.id}`}
                 onClick={() => setSelected([el.id])}
                 style={{
                   minHeight: 32, textAlign: 'left', borderRadius: 8, border: selected.includes(el.id) ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
@@ -362,18 +383,20 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           </div>
         </div>
 
-        <div style={{ ...panel, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#2A2118', minHeight: 360 }}>
+        <div
+          className="signage-designer-canvas-wrap"
+          style={{ ...panel, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 360 }}
+        >
           <div
             ref={canvasRef}
+            className="signage-designer-canvas"
             data-testid="signage-designer-canvas"
-            onPointerDown={() => setSelected([])}
+            onPointerDown={() => { if (!isMobile) setSelected([]); }}
             style={{
               position: 'relative',
               width: '100%',
               maxWidth: maxW,
               aspectRatio: aspect,
-              border: '1px solid #5C4A3A',
-              boxShadow: '0 12px 40px rgba(0,0,0,.35)',
               overflow: 'hidden',
             }}
           >
@@ -404,8 +427,8 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
             {/* Safe zone guide */}
             <div style={{ position: 'absolute', inset: '5%', border: '1px dashed rgba(212,129,58,.45)', pointerEvents: 'none', zIndex: 2000 }} data-testid="signage-safe-zone" />
 
-            {/* Interaction overlay — selection / drag / resize only */}
-            {(isAuto ? [] : elements).map((el) => (
+            {/* Interaction overlay — desktop only (mobile uses layers + XYWH) */}
+            {(!isMobile && !isAuto ? elements : []).map((el) => (
               <div
                 key={el.id}
                 data-testid={`designer-el-${el.id}`}
@@ -427,6 +450,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
               >
                 {selected.includes(el.id) && !el.locked && (
                   <div
+                    data-testid={`designer-resize-${el.id}`}
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       setResize({ id: el.id, startX: e.clientX, startY: e.clientY, ow: el.w, oh: el.h });
@@ -439,7 +463,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           </div>
         </div>
 
-        <div style={{ ...panel, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="signage-designer-props" style={{ ...panel, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ fontWeight: 700 }}>Slide</div>
           <label style={label}>Name</label>
           <input style={input} value={local.name || ''} onChange={(e) => setLocal({ ...local, name: e.target.value })} />
@@ -470,6 +494,68 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
                 <Btn type="button" variant="secondary" style={{ minHeight: 36 }} onClick={() => patchSelected({ x: Math.max(0, (100 - selEl.w) / 2) })}>
                   <AlignCenter size={14} />
                 </Btn>
+              </div>
+              <div
+                className="form-grid-2"
+                data-testid="signage-designer-xywh"
+                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}
+              >
+                <div>
+                  <label style={label}>X %</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    data-testid="designer-xywh-x"
+                    style={input}
+                    value={selEl.x}
+                    disabled={Boolean(selEl.locked)}
+                    onChange={(e) => patchSelected({ x: Math.max(0, Math.min(100 - selEl.w, Number(e.target.value))) })}
+                  />
+                </div>
+                <div>
+                  <label style={label}>Y %</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    data-testid="designer-xywh-y"
+                    style={input}
+                    value={selEl.y}
+                    disabled={Boolean(selEl.locked)}
+                    onChange={(e) => patchSelected({ y: Math.max(0, Math.min(100 - selEl.h, Number(e.target.value))) })}
+                  />
+                </div>
+                <div>
+                  <label style={label}>W %</label>
+                  <input
+                    type="number"
+                    min={4}
+                    max={100}
+                    step={0.5}
+                    data-testid="designer-xywh-w"
+                    style={input}
+                    value={selEl.w}
+                    disabled={Boolean(selEl.locked)}
+                    onChange={(e) => patchSelected({ w: Math.max(4, Math.min(100 - selEl.x, Number(e.target.value))) })}
+                  />
+                </div>
+                <div>
+                  <label style={label}>H %</label>
+                  <input
+                    type="number"
+                    min={4}
+                    max={100}
+                    step={0.5}
+                    data-testid="designer-xywh-h"
+                    style={input}
+                    value={selEl.h}
+                    disabled={Boolean(selEl.locked)}
+                    onChange={(e) => patchSelected({ h: Math.max(4, Math.min(100 - selEl.y, Number(e.target.value))) })}
+                  />
+                </div>
               </div>
               {(selEl.type === 'text' || selEl.type === 'variable') && (
                 <>
@@ -521,6 +607,12 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {isMobile && (
+        <div className="signage-designer-sticky-actions" data-testid="signage-designer-sticky-actions">
+          {actionButtons}
+        </div>
+      )}
 
       <MediaPicker
         open={mediaOpen}
