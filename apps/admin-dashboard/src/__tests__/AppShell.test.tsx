@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { SectionRail } from '../components/SectionRail';
-import { MobileTabBar } from '../components/MobileTabBar';
+import { ADMIN_TABBAR_CSS_VAR, MobileTabBar } from '../components/MobileTabBar';
 import { getNavGroups, getSectionById } from '../components/navConfig';
 import type { StaffUser } from '../api';
 
@@ -109,6 +109,7 @@ describe('SectionRail', () => {
 describe('MobileTabBar', () => {
   beforeEach(() => {
     mockMobileWidth();
+    document.documentElement.style.removeProperty(ADMIN_TABBAR_CSS_VAR);
   });
 
   it('renders permitted sections only', () => {
@@ -120,6 +121,68 @@ describe('MobileTabBar', () => {
     expect(screen.getByRole('navigation', { name: /Admin sections/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Monitor')).toBeInTheDocument();
     expect(screen.queryByLabelText('Analyze')).not.toBeInTheDocument();
+  });
+
+  it('publishes measured height to --admin-tabbar-h on the document root', () => {
+    const observers: Array<{ callback: ResizeObserverCallback; el: Element }> = [];
+    class FakeResizeObserver {
+      callback: ResizeObserverCallback;
+      constructor(cb: ResizeObserverCallback) {
+        this.callback = cb;
+        observers.push({ callback: cb, el: document.body });
+      }
+      observe(el: Element) {
+        observers[observers.length - 1].el = el;
+        // jsdom often reports 0×0 — stub a realistic notched-phone height.
+        Object.defineProperty(el, 'getBoundingClientRect', {
+          configurable: true,
+          value: () => ({
+            x: 0, y: 0, top: 700, left: 0, right: 390, bottom: 780,
+            width: 390, height: 80, toJSON: () => ({}),
+          }),
+        });
+        this.callback(
+          [{ target: el, contentRect: { height: 80 } as DOMRectReadOnly } as ResizeObserverEntry],
+          this as unknown as ResizeObserver,
+        );
+      }
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+    render(
+      <MemoryRouter initialEntries={['/orders']}>
+        <MobileTabBar user={limited} onSelectSection={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(document.documentElement.style.getPropertyValue(ADMIN_TABBAR_CSS_VAR)).toBe('80px');
+    expect(screen.getByTestId('admin-mobile-tabbar')).toBeTruthy();
+  });
+});
+
+describe('admin mobile tab-bar clearance CSS', () => {
+  it('uses --admin-tabbar-h and does not hardcode legacy clearance constants', async () => {
+    const fs = await import('node:fs') as { readFileSync: (p: string, e: string) => string };
+    const path = await import('node:path') as {
+      dirname: (p: string) => string;
+      join: (...p: string[]) => string;
+    };
+    const url = await import('node:url') as { fileURLToPath: (u: string | URL) => string };
+    const dir = path.dirname(url.fileURLToPath(import.meta.url));
+    const css = fs.readFileSync(path.join(dir, '../index.css'), 'utf8');
+
+    expect(css).toMatch(/--admin-tabbar-h/);
+    expect(css).toMatch(/\.admin-bottom-safe\s*\{/);
+    expect(css).not.toMatch(/\.admin-mobile-bottom-nav\s*\{/);
+    expect(css).not.toMatch(/padding-bottom:\s*calc\(112px/);
+    expect(css).not.toMatch(/padding-bottom:\s*calc\(80px\s*\+/);
+    expect(css).not.toMatch(/padding-bottom:\s*calc\(72px\s*\+\s*56px/);
+    expect(css).not.toMatch(/bottom:\s*calc\(56px\s*\+\s*env\(safe-area/);
+    expect(css).not.toMatch(/bottom:\s*calc\(72px\s*\+\s*env\(safe-area/);
+    // Blanket main padding must be overridden for the shell main.
+    expect(css).toMatch(/main\.admin-shell-main--mobile\s*\{[\s\S]*?padding-bottom:\s*calc\(var\(--admin-tabbar-h/);
   });
 });
 

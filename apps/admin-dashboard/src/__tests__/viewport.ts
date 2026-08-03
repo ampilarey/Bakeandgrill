@@ -60,12 +60,12 @@ export function injectSignageMobileCss(): HTMLStyleElement {
     .signage-designer-palette { order: 3 !important; }
     .signage-designer-preview-size { display: none !important; }
     .signage-designer {
-      padding-bottom: calc(72px + 56px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(var(--admin-tabbar-h, 56px) + 72px);
     }
     .signage-designer-sticky-actions {
       display: flex !important;
       position: sticky;
-      bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+      bottom: var(--admin-tabbar-h, 56px);
     }
     .signage-tab-row {
       flex-wrap: nowrap !important;

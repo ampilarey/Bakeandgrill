@@ -401,25 +401,15 @@ describe('SignagePage mobile footer clearance', () => {
     vi.spyOn(api, 'fetchSignageDevices').mockResolvedValue({ data: [] });
   });
 
-  it('keeps mobile main padding above the tab bar height', async () => {
-    // Regression for group Save / playlist selects clipped by the fixed tab bar.
-    const style = document.createElement('style');
-    style.textContent = `
-      .admin-shell-main--mobile {
-        padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
-      }
-    `;
-    document.head.appendChild(style);
-
+  it('renders group Save controls inside the shell main on mobile', async () => {
+    // Clearance itself is covered by the CSS source + MobileTabBar height tests;
+    // here we only guard that the clipped control still mounts on the screens tab.
     const main = document.createElement('main');
     main.className = 'admin-shell-main admin-shell-main--mobile';
     document.body.appendChild(main);
     const { container } = renderWithRouter(<SignagePage />);
     main.appendChild(container);
-
     expect(await screen.findByTestId('signage-group-save-10')).toBeTruthy();
-    const pad = getComputedStyle(main).paddingBottom;
-    // Must clear 56px tab bar (+ buffer); not the old 80px that lost to browser chrome.
-    expect(pad).toMatch(/112px/);
+    expect(main.contains(screen.getByTestId('signage-group-save-10'))).toBe(true);
   });
 });

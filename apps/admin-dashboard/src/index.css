@@ -46,6 +46,12 @@
   --color-signage-canvas-bg:     #2A2118;
   --color-signage-canvas-border: #5C4A3A;
 
+  /*
+   * Measured height of the fixed mobile tab bar (set by MobileTabBar via
+   * ResizeObserver). Fallback ≈ un-notched bar; never hardcode clearances.
+   */
+  --admin-tabbar-h: 56px;
+
   /* Radius */
   --radius-sm:  6px;
   --radius-md:  10px;
@@ -484,8 +490,16 @@ a { text-decoration: none; color: inherit; }
 
 /* Mobile: < 768px */
 @media (max-width: 767px) {
-  /* Page padding */
+  /*
+   * Generic page padding. Must NOT win over shell clearance — the previous
+   * `padding: 12px !important` shorthand zeroed out --admin-tabbar-h padding
+   * on .admin-shell-main--mobile, so bumping 80→112px never reached the device.
+   */
   main { padding: 12px !important; }
+  main.admin-shell-main--mobile {
+    padding: 16px !important;
+    padding-bottom: calc(var(--admin-tabbar-h, 56px) + 16px) !important;
+  }
 
   /* Stat grids: two-col on mobile */
   .stat-grid {
@@ -651,14 +665,14 @@ a { text-decoration: none; color: inherit; }
   .signage-designer-preview-size {
     display: none !important;
   }
-  /* Clear MobileTabBar (56px) + safe area — sticky bar must not sit under the tabs. */
+  /* Sticky actions sit above the measured tab bar; extra pad for the sticky row itself. */
   .signage-designer {
-    padding-bottom: calc(72px + 56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--admin-tabbar-h, 56px) + 72px);
   }
   .signage-designer-sticky-actions {
     display: flex !important;
     position: sticky;
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    bottom: var(--admin-tabbar-h, 56px);
     z-index: var(--z-overlay);
     gap: 8px;
     padding: 10px 0;
@@ -1112,22 +1126,6 @@ a { text-decoration: none; color: inherit; }
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-.admin-mobile-bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: var(--z-overlay);
-  /* min-height so safe-area padding grows the bar instead of squeezing icons */
-  min-height: 56px;
-  height: auto;
-  padding-bottom: env(safe-area-inset-bottom, 0);
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  align-items: stretch;
-}
-
 /* ── Two-level AppShell ─────────────────────────────────────── */
 .admin-shell-root--desktop {
   flex-direction: column;
@@ -1315,8 +1313,13 @@ a { text-decoration: none; color: inherit; }
 
 .admin-shell-main--mobile {
   padding: 16px;
-  /* Tab bar (56) + gap + iOS browser chrome buffer beyond env(safe-area). */
-  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  /* Measured tab bar + breathing room. Overridden with !important in the mobile media block. */
+  padding-bottom: calc(var(--admin-tabbar-h, 56px) + 16px);
+}
+
+/* Extra clearance for pages that need more than the shell main padding alone. */
+.admin-bottom-safe {
+  padding-bottom: calc(var(--admin-tabbar-h, 56px) + 16px);
 }
 
 .admin-shell-icon-btn {
@@ -1758,7 +1761,7 @@ a { text-decoration: none; color: inherit; }
 
 @media (max-width: 767px) {
   .content-studio-page.content-studio-page--dirty {
-    padding-bottom: calc(72px + 56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--admin-tabbar-h, 56px) + 72px);
   }
 
   .content-studio-page .content-studio-publish-desktop {
@@ -1774,7 +1777,7 @@ a { text-decoration: none; color: inherit; }
     position: fixed;
     left: 12px;
     right: 12px;
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 8px);
+    bottom: calc(var(--admin-tabbar-h, 56px) + 8px);
     z-index: calc(var(--z-overlay) - 1);
     gap: 10px;
     align-items: center;
@@ -2277,7 +2280,7 @@ a { text-decoration: none; color: inherit; }
 /* ── Floating preview button — mobile ───────────────────────── */
 .hub-preview-float-btn {
   position: fixed;
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--admin-tabbar-h, 56px) + 16px);
   right: 16px;
   z-index: calc(var(--z-overlay, 40) - 1);
   display: inline-flex;
