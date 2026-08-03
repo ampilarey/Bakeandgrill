@@ -32,6 +32,7 @@ import {
   BANNER_SPEED_PRESETS,
   normalizeBannerSettings,
   newBannerItem,
+  resolveBannerScrollMode,
 } from '@shared/signage';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
@@ -582,6 +583,17 @@ export function SignagePage() {
 
   const patchBannerItem = (id: string, patch: Partial<SignageBannerItem>) => {
     setBannerItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  };
+
+  const moveBanner = (index: number, dir: -1 | 1) => {
+    const next = index + dir;
+    if (next < 0 || next >= bannerItems.length) return;
+    setBannerItems((prev) => {
+      const copy = [...prev];
+      const [row] = copy.splice(index, 1);
+      copy.splice(next, 0, row);
+      return copy;
+    });
   };
 
   const onSaveBanner = async () => {
@@ -1513,9 +1525,7 @@ export function SignagePage() {
                     BANNER_REPEAT_SLIDER.min,
                     Math.min(BANNER_REPEAT_SLIDER.max, Number(b.repeat_count ?? 1)),
                   );
-                  const scrollMode = (['ticker', 'seamless', 'static'] as const).includes(b.scroll_mode as 'ticker')
-                    ? String(b.scroll_mode)
-                    : 'seamless';
+                  const scrollMode = resolveBannerScrollMode(b);
                   return (
                     <div
                       key={b.id}
@@ -1524,7 +1534,7 @@ export function SignagePage() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                         <strong style={{ color: 'var(--color-text)' }}>Banner {idx + 1}</strong>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 40, cursor: 'pointer', fontSize: 13 }}>
                             <input
                               type="checkbox"
@@ -1535,15 +1545,39 @@ export function SignagePage() {
                             On
                           </label>
                           {bannerItems.length > 1 && (
-                            <Btn
-                              type="button"
-                              variant="secondary"
-                              onClick={() => setBannerItems((prev) => prev.filter((x) => x.id !== b.id))}
-                              style={{ minHeight: 40 }}
-                              data-testid={`signage-banner-remove-${b.id}`}
-                            >
-                              <Trash2 size={14} /> Remove
-                            </Btn>
+                            <>
+                              <Btn
+                                type="button"
+                                variant="secondary"
+                                onClick={() => moveBanner(idx, -1)}
+                                disabled={idx === 0}
+                                style={{ minHeight: 40 }}
+                                data-testid={`signage-banner-move-up-${b.id}`}
+                                aria-label={`Move banner ${idx + 1} up`}
+                              >
+                                ↑
+                              </Btn>
+                              <Btn
+                                type="button"
+                                variant="secondary"
+                                onClick={() => moveBanner(idx, 1)}
+                                disabled={idx === bannerItems.length - 1}
+                                style={{ minHeight: 40 }}
+                                data-testid={`signage-banner-move-down-${b.id}`}
+                                aria-label={`Move banner ${idx + 1} down`}
+                              >
+                                ↓
+                              </Btn>
+                              <Btn
+                                type="button"
+                                variant="secondary"
+                                onClick={() => setBannerItems((prev) => prev.filter((x) => x.id !== b.id))}
+                                style={{ minHeight: 40 }}
+                                data-testid={`signage-banner-remove-${b.id}`}
+                              >
+                                <Trash2 size={14} /> Remove
+                              </Btn>
+                            </>
                           )}
                         </div>
                       </div>
