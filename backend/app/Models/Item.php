@@ -43,6 +43,7 @@ class Item extends Model
         'is_active',
         'is_available',
         'snoozed_until',
+        'unavailable_reason_note',
         'sort_order',
         'stock_quantity',
         'low_stock_threshold',

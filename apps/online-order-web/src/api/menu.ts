@@ -161,7 +161,10 @@ export type FetchItemsResult = {
 };
 
 async function fetchItemsForChannel(ch: MenuListingChannel): Promise<MenuItem[]> {
-  const qs = new URLSearchParams({ available_only: '1', channel: ch });
+  // Keep inactive items off the menu via the API's is_active filter.
+  // Do NOT send available_only — snoozed / 86'd / sold-out items must stay
+  // visible (dimmed) with available_now / unavailable_reason attached.
+  const qs = new URLSearchParams({ channel: ch });
   const res = await request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?${qs}`);
   return (res.data ?? []).map((item) => ({
     ...item,

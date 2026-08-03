@@ -88,6 +88,10 @@ export type MenuItem = {
   available_now?: boolean;
   unavailable_reason?: string | null;
   available_from?: string | null;
+  /** Server-computed — threshold itself is never public. */
+  is_low_stock?: boolean;
+  /** Optional short staff note shown to customers when the item is unavailable. */
+  unavailable_reason_note?: string | null;
   availability?: {
     available: boolean;
     reason_code?: string | null;

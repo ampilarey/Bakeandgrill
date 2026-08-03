@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import {
   fetchAdminCategories, createCategory, updateCategory, deleteCategory,
   fetchAdminItems, createItem, updateItem, deleteItem, toggleItemAvailability,
+  snoozeItem,
   getBarcodeLabel, getItemWithRecipe,
   fetchMenuGroups, getKitchenMenuState, updateKitchenMenuState,
   type MenuCategory, type MenuItem, type BarcodeLabel, type ItemWithRecipe,
-  type MenuGroupRow,
+  type MenuGroupRow, type SnoozeUntil,
 } from '../../api';
 import { useConfirmDialog } from '../../components/Layout';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
@@ -198,6 +199,29 @@ export function useMenuPage() {
     } catch (e) { setError((e as Error).message); }
   };
 
+  const handleSnoozeItem = async (
+    item: MenuItem,
+    until: SnoozeUntil,
+    opts?: { until_date?: string; unavailable_reason_note?: string | null },
+  ) => {
+    try {
+      const res = await snoozeItem(item.id, until, opts);
+      await loadItems();
+      setEditingItem((prev) => {
+        if (!prev || prev.id !== item.id) return prev;
+        return {
+          ...prev,
+          is_available: res.item.is_available ?? prev.is_available,
+          snoozed_until: res.item.snoozed_until,
+          unavailable_reason_note: res.item.unavailable_reason_note ?? null,
+        };
+      });
+    } catch (e) {
+      setError((e as Error).message);
+      throw e;
+    }
+  };
+
   const handlePerPageChange = (nextPerPage: number) => {
     setPerPage(nextPerPage);
     setPage(1);
@@ -269,6 +293,7 @@ export function useMenuPage() {
     saveKitchenDuty,
     handleDeleteItem,
     handleToggleAvail,
+    handleSnoozeItem,
     handlePerPageChange,
     handlePageChange,
     handleBarcodeLabel,

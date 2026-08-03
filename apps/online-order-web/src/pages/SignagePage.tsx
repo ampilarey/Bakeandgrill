@@ -62,6 +62,15 @@ function toLite(items: Item[]): MenuItemLite[] {
     special: i.special ?? null,
     show_on_signage: i.show_on_signage,
     is_signage_promoted: i.is_signage_promoted,
+    available_now: i.available_now,
+    unavailable_reason: i.unavailable_reason,
+    availability: i.availability
+      ? {
+          available: i.availability.available,
+          reason_code: i.availability.reason_code ?? null,
+          available_stock: i.availability.available_stock ?? null,
+        }
+      : null,
   }));
 }
 

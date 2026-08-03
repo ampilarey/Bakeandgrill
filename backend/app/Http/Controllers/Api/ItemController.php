@@ -19,6 +19,7 @@ use App\Services\RecipeCostCalculator;
 use App\Services\SpecialPricingService;
 use App\Services\VariantSyncService;
 use App\Support\MediaFileCleaner;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -154,6 +155,7 @@ class ItemController extends Controller
                 'tax_code' => $item->tax_code ?? 'standard_8',
                 'is_available' => $item->is_available,
                 'snoozed_until' => $item->snoozed_until?->toIso8601String(),
+                'unavailable_reason_note' => $item->unavailable_reason_note,
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
                 // Signage board flags — default safely when the columns predate the migration.
@@ -304,11 +306,12 @@ class ItemController extends Controller
                             'item_unavailable',
                             'This item is currently unavailable.',
                         );
-                    $data = $availability->withPublicAliases($data, $posResult);
+                    $data = $availability->withPublicAliases($data, $posResult, $item);
                 } else {
                     $data = $availability->withPublicAliases(
                         $data,
                         $availability->check($item, $channel),
+                        $item,
                     );
                 }
             }
@@ -497,6 +500,7 @@ class ItemController extends Controller
             $payload = $availability->withPublicAliases(
                 $payload,
                 $availability->check($item, $channel),
+                $item,
             );
         }
 
@@ -704,33 +708,78 @@ class ItemController extends Controller
 
     /**
      * PATCH /api/items/{id}/snooze
-     * Body: { until: 'end_of_day' | null } — null clears the 86 snooze.
+     * Body: {
+     *   until: '2_hours'|'end_of_day'|'tomorrow'|'date'|'indefinite'|null,
+     *   until_date?: Y-m-d (required when until=date),
+     *   unavailable_reason_note?: string|null (optional, max 80)
+     * }
+     * null until clears the snooze / restores availability.
      */
     public function snooze(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'until' => ['present', 'nullable', 'string', 'in:end_of_day'],
+            'until' => ['present', 'nullable', 'string', 'in:2_hours,end_of_day,tomorrow,date,indefinite'],
+            'until_date' => ['nullable', 'required_if:until,date', 'date', 'after_or_equal:today'],
+            'unavailable_reason_note' => ['nullable', 'string', 'max:80'],
         ]);
 
         $item = Item::query()->findOrFail($id);
+        $tz = config('app.timezone');
+        $note = array_key_exists('unavailable_reason_note', $validated)
+            ? (is_string($validated['unavailable_reason_note'])
+                ? trim($validated['unavailable_reason_note'])
+                : null)
+            : $item->unavailable_reason_note;
+        if ($note === '') {
+            $note = null;
+        }
 
         if ($validated['until'] === null) {
-            $item->update(['snoozed_until' => null]);
-        } else {
             $item->update([
-                'snoozed_until' => now()->timezone(config('app.timezone'))->endOfDay(),
+                'is_available' => true,
+                'snoozed_until' => null,
+                'unavailable_reason_note' => null,
             ]);
+            $message = 'Item restored.';
+        } elseif ($validated['until'] === 'indefinite') {
+            $item->update([
+                'is_available' => false,
+                'snoozed_until' => null,
+                'unavailable_reason_note' => $note,
+            ]);
+            $message = 'Item marked unavailable.';
+        } else {
+            $snoozedUntil = match ($validated['until']) {
+                '2_hours' => now()->timezone($tz)->addHours(2),
+                'end_of_day' => now()->timezone($tz)->endOfDay(),
+                'tomorrow' => now()->timezone($tz)->addDay()->endOfDay(),
+                'date' => Carbon::parse($validated['until_date'], $tz)->endOfDay(),
+                default => now()->timezone($tz)->endOfDay(),
+            };
+            $item->update([
+                'is_available' => true,
+                'snoozed_until' => $snoozedUntil,
+                'unavailable_reason_note' => $note,
+            ]);
+            $message = match ($validated['until']) {
+                '2_hours' => 'Item marked unavailable for 2 hours.',
+                'tomorrow' => 'Item marked unavailable until end of tomorrow.',
+                'date' => 'Item marked unavailable until '.$snoozedUntil->toDateString().'.',
+                default => 'Item marked unavailable today.',
+            };
         }
 
         $item->refresh();
 
         return response()->json([
-            'message' => $item->snoozed_until ? 'Item marked unavailable today.' : 'Item restored.',
+            'message' => $message,
             'item' => [
                 'id' => $item->id,
                 'name' => $item->name,
+                'is_available' => (bool) $item->is_available,
                 'snoozed_until' => $item->snoozed_until?->toIso8601String(),
                 'is_snoozed' => $item->isSnoozed(),
+                'unavailable_reason_note' => $item->unavailable_reason_note,
             ],
         ]);
     }

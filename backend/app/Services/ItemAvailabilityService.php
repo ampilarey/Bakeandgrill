@@ -90,6 +90,7 @@ class ItemAvailabilityService
                 return AvailabilityResult::unavailable(
                     'out_of_stock',
                     "{$item->name} is currently sold out.",
+                    availableStock: 0,
                 );
             }
 
@@ -124,17 +125,44 @@ class ItemAvailabilityService
     }
 
     /**
+     * Server-side low-stock flag. Threshold stays admin-only — never expose it publicly.
+     */
+    public function isLowStock(Item $item, AvailabilityResult $result): bool
+    {
+        if (!$result->allowed) {
+            return false;
+        }
+        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
+            return false;
+        }
+
+        $stock = $result->availableStock;
+        if ($stock === null || $stock >= 9999 || $stock <= 0) {
+            return false;
+        }
+
+        $threshold = max(0, (int) ($item->low_stock_threshold ?? 5));
+
+        return $stock <= $threshold;
+    }
+
+    /**
      * Wave C optional top-level aliases (non-breaking).
      *
      * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
-    public function withPublicAliases(array $data, AvailabilityResult $result): array
+    public function withPublicAliases(array $data, AvailabilityResult $result, ?Item $item = null): array
     {
         $data['availability'] = $this->toAvailabilityBlock($result);
         $data['available_now'] = $result->allowed;
         $data['unavailable_reason'] = $result->allowed ? null : $result->reasonCode;
         $data['available_from'] = $result->availableFrom;
+        $data['is_low_stock'] = $item ? $this->isLowStock($item, $result) : false;
+        $note = $item?->unavailable_reason_note;
+        $data['unavailable_reason_note'] = (!$result->allowed && is_string($note) && trim($note) !== '')
+            ? trim($note)
+            : null;
 
         return $data;
     }
@@ -151,7 +179,7 @@ class ItemAvailabilityService
         foreach ($items as $item) {
             $arr = $item->toArray();
             $check = $this->check($item, $channel, $at);
-            $result[] = $this->withPublicAliases($arr, $check);
+            $result[] = $this->withPublicAliases($arr, $check, $item);
         }
 
         return $result;
@@ -192,8 +220,12 @@ final class AvailabilityResult
         return new self(true, null, '', $availableStock, null);
     }
 
-    public static function unavailable(string $reasonCode, string $message, ?string $availableFrom = null): self
-    {
-        return new self(false, $reasonCode, $message, null, $availableFrom);
+    public static function unavailable(
+        string $reasonCode,
+        string $message,
+        ?string $availableFrom = null,
+        ?int $availableStock = null,
+    ): self {
+        return new self(false, $reasonCode, $message, $availableStock, $availableFrom);
     }
 }

@@ -66,13 +66,21 @@ function isBestsellerItem(item: Item): boolean {
   return salesCount(item) > 0;
 }
 
+function itemAvailableRank(item: Item): number {
+  if (typeof item.available_now === 'boolean') return item.available_now ? 0 : 1;
+  return item.is_available === false ? 1 : 0;
+}
+
 function sortMenuItems(list: Item[], sortBy: string): Item[] {
-  if (sortBy === 'price-low') return [...list].sort((a, b) => Number(a.base_price) - Number(b.base_price));
-  if (sortBy === 'price-high') return [...list].sort((a, b) => Number(b.base_price) - Number(a.base_price));
+  const byAvailThen = (primary: (a: Item, b: Item) => number) =>
+    [...list].sort((a, b) => itemAvailableRank(a) - itemAvailableRank(b) || primary(a, b));
+
+  if (sortBy === 'price-low') return byAvailThen((a, b) => Number(a.base_price) - Number(b.base_price));
+  if (sortBy === 'price-high') return byAvailThen((a, b) => Number(b.base_price) - Number(a.base_price));
   if (sortBy === 'bestseller') {
-    return [...list].sort((a, b) => salesCount(b) - salesCount(a) || a.name.localeCompare(b.name));
+    return byAvailThen((a, b) => salesCount(b) - salesCount(a) || a.name.localeCompare(b.name));
   }
-  return [...list].sort((a, b) => a.name.localeCompare(b.name));
+  return byAvailThen((a, b) => a.name.localeCompare(b.name));
 }
 
 const DIETARY_FILTERS = [

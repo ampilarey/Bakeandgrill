@@ -8,6 +8,11 @@ import type { Item, Variant } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { buildItemSlides } from '../../utils/itemMedia';
+import {
+  isItemAvailableNow,
+  itemLowStockLabel,
+  itemUnavailableLabel,
+} from '../../utils/itemAvailability';
 import { formatCardPrice } from '../../utils/money';
 import { MenuImageSlider } from './MenuImageSlider';
 
@@ -82,7 +87,9 @@ export function ProductCard({
     return cardDescriptionPreview(item.description).text;
   }, [item.short_description, item.short_description_dv, item.description, isDv]);
 
-  const isUnavailable = item.is_available === false;
+  const isUnavailable = !isItemAvailableNow(item);
+  const unavailLabel = isUnavailable ? itemUnavailableLabel(item, t) : null;
+  const lowStockLabel = !isUnavailable ? itemLowStockLabel(item, t) : null;
   const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
   const special = item.special;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
@@ -165,7 +172,14 @@ export function ProductCard({
         </div>
         {isUnavailable && (
           <div className="menu-card-unavail-overlay">
-            <span className="badge badge-unavail">{t('menu.unavailable')}</span>
+            <span className="badge badge-unavail" data-testid="product-card-unavail">
+              {unavailLabel}
+            </span>
+          </div>
+        )}
+        {!isUnavailable && lowStockLabel && (
+          <div className="menu-card-image-badges menu-card-image-badges--circle" data-testid="product-card-low-stock">
+            <span className="badge badge-sale">{lowStockLabel}</span>
           </div>
         )}
         {onToggleFavourite && (

@@ -36,6 +36,8 @@
         },
         "available_now": true,
         "unavailable_reason": null,
-        "available_from": null
+        "available_from": null,
+        "is_low_stock": false,
+        "unavailable_reason_note": null
     }
 }

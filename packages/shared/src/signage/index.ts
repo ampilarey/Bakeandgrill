@@ -24,6 +24,7 @@ export {
   expandAutoSlides,
   expandPlaylist,
   isOnSignage,
+  isSoldOutOnSignage,
   qualifiesForShowcase,
   rotateWindow,
 } from './autoSlides';

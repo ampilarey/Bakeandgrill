@@ -21,6 +21,7 @@
             "tax_code": "standard_8",
             "is_available": true,
             "snoozed_until": null,
+            "unavailable_reason_note": null,
             "is_active": true,
             "sort_order": 0,
             "show_on_signage": true,
@@ -62,7 +63,8 @@
             },
             "available_now": true,
             "unavailable_reason": null,
-            "available_from": null
+            "available_from": null,
+            "is_low_stock": false
         }
     ],
     "first_page_url": "http://localhost:8000/api/items?page=1",

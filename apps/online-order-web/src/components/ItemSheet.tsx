@@ -8,6 +8,12 @@ import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { Variant } from '@shared/types';
 import { useCart } from '../context/CartContext';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
+import { useLanguage } from '../context/LanguageContext';
+import {
+  isItemAvailableNow,
+  itemLowStockLabel,
+  itemUnavailableLabel,
+} from '../utils/itemAvailability';
 import { buildItemSlides } from '../utils/itemMedia';
 import { formatCardPrice, formatSavingsLabel } from '../utils/money';
 import { MenuImageSlider } from './menu/MenuImageSlider';
@@ -46,7 +52,11 @@ export function ItemSheet({
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
   const { addItem } = useCart();
+  const { t } = useLanguage();
   const { settings: siteSettings } = useSiteSettingsContext();
+  const itemAvailable = isItemAvailableNow(item);
+  const unavailLabel = !itemAvailable ? itemUnavailableLabel(item, t) : null;
+  const lowStockLabel = itemAvailable ? itemLowStockLabel(item, t) : null;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
   const packagingOptions = (item.packaging_options ?? [])
     .slice()
@@ -80,7 +90,8 @@ export function ItemSheet({
       : (item.special?.discount_pct
         ? `${item.special.discount_pct}% OFF`
         : null);
-  const canAdd = (!item.has_variants || selectedVariant !== null)
+  const canAdd = itemAvailable
+    && (!item.has_variants || selectedVariant !== null)
     && (!showPackagingPicker || selectedPackagingId != null);
 
   const [reviews, setReviews] = useState<ItemReview[]>([]);
@@ -299,6 +310,33 @@ export function ItemSheet({
                 </span>
               ) : null}
             </div>
+
+            {!itemAvailable && unavailLabel && (
+              <p
+                data-testid="item-sheet-unavail"
+                style={{
+                  margin: '0 0 0.85rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  color: '#b91c1c',
+                }}
+              >
+                {unavailLabel}
+              </p>
+            )}
+            {itemAvailable && lowStockLabel && (
+              <p
+                data-testid="item-sheet-low-stock"
+                style={{
+                  margin: '0 0 0.85rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  color: '#b45309',
+                }}
+              >
+                {lowStockLabel}
+              </p>
+            )}
 
             {(metaBits.length > 0 || avgRating !== null) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: '0.85rem', alignItems: 'center' }}>
@@ -617,11 +655,13 @@ export function ItemSheet({
                 cursor: canAdd ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
               }}
             >
-              {canAdd
-                ? (isEdit
-                  ? `Update — MVR ${(totalPrice * qty).toFixed(2)}`
-                  : `Add${qty > 1 ? ` ${qty}×` : ''} to cart — MVR ${(totalPrice * qty).toFixed(2)}`)
-                : 'Select an option first'}
+              {!itemAvailable
+                ? (unavailLabel ?? t('menu.unavailable'))
+                : canAdd
+                  ? (isEdit
+                    ? `Update — MVR ${(totalPrice * qty).toFixed(2)}`
+                    : `Add${qty > 1 ? ` ${qty}×` : ''} to cart — MVR ${(totalPrice * qty).toFixed(2)}`)
+                  : 'Select an option first'}
             </button>
             {item.is_catering && !isEdit && (
               <a

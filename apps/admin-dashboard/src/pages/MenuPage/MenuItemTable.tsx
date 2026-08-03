@@ -1,6 +1,7 @@
-import type { MenuCategory, MenuGroupRow, MenuItem } from '../../api';
+import type { MenuCategory, MenuGroupRow, MenuItem, SnoozeUntil } from '../../api';
 import { Badge, Btn, Card, EmptyState, Input, Spinner } from '../../components/Layout';
 import { menuItemMarginLabel, menuItemMarginLevel, MENU_MARGIN_COLORS } from '../../utils/menuMargin';
+import { ItemSnoozeControls } from './ItemSnoozeControls';
 
 type MenuItemTableProps = {
   categories: MenuCategory[];
@@ -24,6 +25,11 @@ type MenuItemTableProps = {
   onToggleKitchenGroup: (id: number) => void;
   onSaveKitchenDuty: () => void;
   onToggleAvail: (item: MenuItem) => void;
+  onSnoozeItem: (
+    item: MenuItem,
+    until: SnoozeUntil,
+    opts?: { until_date?: string; unavailable_reason_note?: string | null },
+  ) => Promise<void> | void;
   onEditItem: (item: MenuItem) => void;
   onDeleteItem: (id: number) => void;
   onBarcodeLabel: (itemId: number) => void;
@@ -52,6 +58,7 @@ export function MenuItemTable({
   onToggleKitchenGroup,
   onSaveKitchenDuty,
   onToggleAvail,
+  onSnoozeItem,
   onEditItem,
   onDeleteItem,
   onBarcodeLabel,
@@ -227,6 +234,16 @@ export function MenuItemTable({
                       ) : (
                         <Badge label={item.is_available ? 'Available' : 'Sold out'} color={item.is_available ? 'green' : 'gray'} />
                       )}
+                      <div style={{ marginTop: 8 }}>
+                        <ItemSnoozeControls
+                          compact
+                          canManage={canManage}
+                          snoozedUntil={item.snoozed_until}
+                          isAvailable={item.is_available}
+                          reasonNote={item.unavailable_reason_note}
+                          onSnooze={(until, opts) => onSnoozeItem(item, until, opts)}
+                        />
+                      </div>
                     </td>
                     <td style={{ padding: '10px 14px' }}>
                       <Badge label={item.is_active ? 'Active' : 'Hidden'} color={item.is_active ? 'green' : 'gray'} />

@@ -73,6 +73,18 @@ describe('expandAutoSlides', () => {
     expect(listedIds(out).sort()).toEqual([3, 4]);
   });
 
+  it('excludes sold-out items from showcase and category lists', () => {
+    const items = [
+      item(1, { image_url: '/a.jpg', unavailable_reason: 'out_of_stock', available_now: false }),
+      item(2, { image_url: '/b.jpg', availability: { available: false, reason_code: 'out_of_stock', available_stock: 0 } }),
+      item(3, { image_url: '/c.jpg' }),
+      item(4),
+    ];
+    const out = expandAutoSlides(autoSlide(), items, CATEGORIES);
+    expect(showcaseIds(out)).toEqual(['auto-sc-3']);
+    expect(listedIds(out)).toEqual([4]);
+  });
+
   it('excludes items flagged off the board', () => {
     const items = [
       item(1, { image_url: '/a.jpg', show_on_signage: false }),

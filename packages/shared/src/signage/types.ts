@@ -189,6 +189,14 @@ export type MenuItemLite = {
   show_on_signage?: boolean;
   /** Force a showcase slide even with no photo and no discount. */
   is_signage_promoted?: boolean;
+  /** From public menu — used to keep sold-out dishes off showcase slides. */
+  available_now?: boolean;
+  unavailable_reason?: string | null;
+  availability?: {
+    available?: boolean;
+    reason_code?: string | null;
+    available_stock?: number | null;
+  } | null;
 };
 
 export type SignageCategoryLite = {

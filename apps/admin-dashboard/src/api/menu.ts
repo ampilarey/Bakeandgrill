@@ -79,6 +79,10 @@ export type MenuItem = {
   tax_rate?: number | null;
   tax_code?: string | null;
   is_available: boolean;
+  /** ISO datetime — 86 / snooze until this time. */
+  snoozed_until?: string | null;
+  /** Optional short note shown to customers while unavailable. */
+  unavailable_reason_note?: string | null;
   is_active: boolean;
   sort_order?: number | null;
   track_stock?: boolean;
@@ -266,6 +270,35 @@ export async function deleteItem(id: number): Promise<void> {
 
 export async function toggleItemAvailability(id: number): Promise<{ item: MenuItem }> {
   return req(`/items/${id}/toggle-availability`, { method: 'PATCH' });
+}
+
+export type SnoozeUntil = '2_hours' | 'end_of_day' | 'tomorrow' | 'date' | 'indefinite' | null;
+
+export async function snoozeItem(
+  id: number,
+  until: SnoozeUntil,
+  opts?: { until_date?: string; unavailable_reason_note?: string | null },
+): Promise<{
+  message: string;
+  item: {
+    id: number;
+    name: string;
+    is_available?: boolean;
+    snoozed_until: string | null;
+    is_snoozed: boolean;
+    unavailable_reason_note?: string | null;
+  };
+}> {
+  return req(`/items/${id}/snooze`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      until,
+      ...(opts?.until_date ? { until_date: opts.until_date } : {}),
+      ...(opts && 'unavailable_reason_note' in opts
+        ? { unavailable_reason_note: opts.unavailable_reason_note }
+        : {}),
+    }),
+  });
 }
 
 export async function uploadMenuImage(

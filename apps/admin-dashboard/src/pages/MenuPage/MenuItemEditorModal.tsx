@@ -9,6 +9,8 @@ import {
 } from './menuItemForm';
 import { PhotosTab } from './PhotosTab';
 import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
+import { ItemSnoozeControls } from './ItemSnoozeControls';
+import type { SnoozeUntil } from '../../api';
 import { cardDescriptionPreview } from '@shared/utils';
 
 function MenuCardLivePreview({ form }: { form: ItemForm }) {
@@ -297,6 +299,9 @@ function VariantsEditor({
 
 export function MenuItemEditorModal({
   initial, title, categories, menuGroups, onSave, onClose, itemId,
+  snoozedUntil = null,
+  reasonNote = null,
+  onSnooze,
 }: {
   initial: ItemForm;
   title: string;
@@ -305,6 +310,12 @@ export function MenuItemEditorModal({
   onSave: (f: ItemForm) => Promise<void>;
   onClose: () => void;
   itemId?: number;
+  snoozedUntil?: string | null;
+  reasonNote?: string | null;
+  onSnooze?: (
+    until: SnoozeUntil,
+    opts?: { until_date?: string; unavailable_reason_note?: string | null },
+  ) => Promise<void>;
 }) {
   const [activeTab, setActiveTab] = useState<'details' | 'photos'>('details');
   const [form, setForm] = useState<ItemForm>(initial);
@@ -853,6 +864,15 @@ export function MenuItemEditorModal({
                 Available (orderable today)
               </label>
             </div>
+            {itemId != null && onSnooze && (
+              <ItemSnoozeControls
+                canManage
+                snoozedUntil={snoozedUntil}
+                isAvailable={form.is_available}
+                reasonNote={reasonNote}
+                onSnooze={onSnooze}
+              />
+            )}
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
             <Btn variant="ghost" onClick={onClose}>Cancel</Btn>

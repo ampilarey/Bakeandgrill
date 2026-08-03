@@ -27,6 +27,15 @@ export function isOnSignage(item: MenuItemLite): boolean {
   return item.show_on_signage !== false;
 }
 
+/** Sold-out dishes must not get a full-screen showcase (or category row ad). */
+export function isSoldOutOnSignage(item: MenuItemLite): boolean {
+  if (item.unavailable_reason === 'out_of_stock') return true;
+  if (item.availability?.reason_code === 'out_of_stock') return true;
+  if (item.availability?.available_stock === 0) return true;
+  if (item.available_now === false && item.unavailable_reason === 'out_of_stock') return true;
+  return false;
+}
+
 function showcaseRank(item: MenuItemLite): number {
   if (item.special) return 0;
   if (item.is_signage_promoted) return 1;
@@ -181,7 +190,7 @@ export function expandAutoSlides(
   );
   const showThumbs = binding.show_thumbs === true;
 
-  const visible = items.filter(isOnSignage);
+  const visible = items.filter(isOnSignage).filter((i) => !isSoldOutOnSignage(i));
   const showcaseAll = visible.filter(qualifiesForShowcase).sort(compareShowcase);
   const listed = visible.filter((i) => !qualifiesForShowcase(i));
 

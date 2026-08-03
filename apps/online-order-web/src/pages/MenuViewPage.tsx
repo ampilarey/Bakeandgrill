@@ -52,6 +52,17 @@ function itemListPrice(item: Item): number {
   return Number(item.special?.effective_price ?? item.base_price);
 }
 
+function itemAvailableRank(item: Item): number {
+  if (typeof item.available_now === 'boolean') return item.available_now ? 0 : 1;
+  return item.is_available === false ? 1 : 0;
+}
+
+function sortMenuViewItems(list: Item[]): Item[] {
+  return [...list].sort(
+    (a, b) => itemAvailableRank(a) - itemAvailableRank(b) || a.name.localeCompare(b.name),
+  );
+}
+
 export function MenuViewPage() {
   const { lang, setLang } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
@@ -177,15 +188,15 @@ export function MenuViewPage() {
           .filter((c) => c.parent_id === category.id)
           .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
 
-        const directItems = items
-          .filter((item) => item.category_id === category.id)
-          .sort((a, b) => a.name.localeCompare(b.name));
+        const directItems = sortMenuViewItems(
+          items.filter((item) => item.category_id === category.id),
+        );
         const subcategories = childCats
           .map((sub) => ({
             category: sub,
-            items: items
-              .filter((item) => item.category_id === sub.id)
-              .sort((a, b) => a.name.localeCompare(b.name)),
+            items: sortMenuViewItems(
+              items.filter((item) => item.category_id === sub.id),
+            ),
           }))
           .filter((block) => block.items.length > 0);
 
@@ -198,9 +209,7 @@ export function MenuViewPage() {
       })
       .filter((section) => section.directItems.length > 0 || section.subcategories.length > 0);
 
-    const other = items
-      .filter((item) => !usedItemIds.has(item.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const other = sortMenuViewItems(items.filter((item) => !usedItemIds.has(item.id)));
     return { sections, other };
   }, [categories, parentCategories, items]);
 

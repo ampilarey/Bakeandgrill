@@ -104,4 +104,17 @@ class ItemSnoozeTest extends TestCase
 
         $this->assertNull($item->fresh()->snoozed_until);
     }
+
+    public function test_snoozed_item_remains_on_public_menu_without_available_only(): void
+    {
+        $item = Item::factory()->create(['is_available' => true, 'is_active' => true]);
+        $this->enableChannels($item);
+        $item->update(['snoozed_until' => now()->endOfDay()]);
+
+        $row = collect($this->getJson('/api/items?channel=online_pickup')->json('data'))
+            ->firstWhere('id', $item->id);
+        $this->assertNotNull($row);
+        $this->assertFalse($row['available_now']);
+        $this->assertSame('snoozed', $row['unavailable_reason']);
+    }
 }

@@ -89,6 +89,14 @@ function MenuItemTile({
   const price = effectiveItemPrice(item);
   const wasPrice = originalItemPrice(item);
   const hasVariants = item.has_variants;
+  const stockLeft = (() => {
+    const n = item.availability?.available_stock;
+    if (n == null || !Number.isFinite(Number(n))) return null;
+    const qty = Number(n);
+    // Untracked sentinel from StockReservationService.
+    if (qty >= 9999) return null;
+    return qty;
+  })();
   const [imgFailed, setImgFailed] = useState(false);
   const imgSrc = item.image_url && !imgFailed ? item.image_url : null;
 
@@ -190,6 +198,22 @@ function MenuItemTile({
             </span>
           )}
         </span>
+        {stockLeft != null && (
+          <span
+            data-testid="pos-stock-count"
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: stockLeft <= 0
+                ? (imgSrc ? '#FCA5A5' : '#B91C1C')
+                : stockLeft <= 3
+                  ? (imgSrc ? '#FDE68A' : '#B45309')
+                  : (imgSrc ? 'rgba(255,255,255,0.85)' : '#64748B'),
+            }}
+          >
+            {stockLeft <= 0 ? 'Sold out' : `${stockLeft} left`}
+          </span>
+        )}
       </div>
     </button>
   );

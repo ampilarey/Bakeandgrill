@@ -359,6 +359,7 @@ export function MenuPage() {
           onToggleKitchenGroup={m.toggleKitchenGroup}
           onSaveKitchenDuty={m.saveKitchenDuty}
           onToggleAvail={m.handleToggleAvail}
+          onSnoozeItem={m.handleSnoozeItem}
           onEditItem={m.setEditingItem}
           onDeleteItem={m.handleDeleteItem}
           onBarcodeLabel={m.handleBarcodeLabel}
@@ -414,6 +415,9 @@ export function MenuPage() {
           onSave={m.handleUpdateItem}
           onClose={() => m.setEditingItem(null)}
           itemId={m.editingItem.id}
+          snoozedUntil={m.editingItem.snoozed_until}
+          reasonNote={m.editingItem.unavailable_reason_note}
+          onSnooze={(until, opts) => m.handleSnoozeItem(m.editingItem!, until, opts)}
         />
       )}
 

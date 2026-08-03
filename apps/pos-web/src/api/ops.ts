@@ -63,13 +63,32 @@ export async function adjustPreparedStock(
   });
 }
 
+export type SnoozeUntil = "2_hours" | "end_of_day" | "tomorrow" | "date" | "indefinite" | null;
+
 export async function snoozeItem(
   itemId: number,
-  until: "end_of_day" | null,
-): Promise<{ message: string; item: { id: number; name: string; snoozed_until: string | null; is_snoozed: boolean } }> {
+  until: SnoozeUntil,
+  opts?: { until_date?: string; unavailable_reason_note?: string | null },
+): Promise<{
+  message: string;
+  item: {
+    id: number;
+    name: string;
+    is_available?: boolean;
+    snoozed_until: string | null;
+    is_snoozed: boolean;
+    unavailable_reason_note?: string | null;
+  };
+}> {
   return request(`/items/${itemId}/snooze`, {
     method: "PATCH",
-    body: JSON.stringify({ until }),
+    body: JSON.stringify({
+      until,
+      ...(opts?.until_date ? { until_date: opts.until_date } : {}),
+      ...(opts && "unavailable_reason_note" in opts
+        ? { unavailable_reason_note: opts.unavailable_reason_note }
+        : {}),
+    }),
   });
 }
 
