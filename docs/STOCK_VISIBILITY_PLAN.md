@@ -1,8 +1,35 @@
-# Stock visibility — audit and plan
+# Item availability — audit and plan
 
-How stock is calculated today, where the customer-facing gap is, and what to add.
+Three connected pieces, all touching the same files:
 
-## How it works now
+1. **Stock visibility** — sold-out and low-stock shown to customers
+2. **Unavailable items stay on the menu** — dimmed, not deleted
+3. **Snooze with durations and a reason** — the raw-material case
+
+## The three states, and why they behave differently
+
+An item can be off for three unrelated reasons, and today they behave
+inconsistently:
+
+| State | Set by | Today's customer experience |
+|---|---|---|
+| **Inactive** | Item editor | Removed from menu — correct, it is retired |
+| **Unavailable / snoozed** | POS toggle or snooze | **Removed from menu** — wrong |
+| **Sold out** | Automatic, when tracking is on | **Shown as fully orderable** — wrong |
+
+Two different bugs producing the same customer question: *"where did the fish go?"*
+and *"why did it fail at checkout?"*
+
+The disappearing case is caused upstream of any display code:
+`apps/online-order-web/src/api/menu.ts:164` hardcodes `available_only: '1'` on
+every request, and `ItemController.php:112-117` then removes 86'd and snoozed
+items **in SQL**. They never reach the client to be dimmed.
+
+Note the asymmetry: that filter checks `is_available` and `snoozed_until` but
+**not** stock — which is exactly why sold-out items arrive and look normal while
+snoozed ones vanish entirely.
+
+## How stock works now
 
 Stock applies only when **both** `track_stock` is on **and** `availability_type`
 is `stock_based` (`ItemAvailabilityService.php:87`). Any other combination skips
@@ -120,7 +147,55 @@ That is the most visible version of this bug: the board is actively advertising
 something the kitchen cannot make. Filter sold-out items out of showcase slides
 and strike them through, or drop them, in category lists.
 
-### 5. Admin alerting already exists
+### 5. Keep unavailable items on both menus
+
+There are two customer menu surfaces, and both are affected identically:
+`MenuPage.tsx` (online ordering) and `MenuViewPage.tsx` (dine-in view). Both call
+`fetchItems(…)`, so both inherit the `available_only` filter.
+
+Remove `available_only: '1'` from `fetchItems` so both menus receive the whole
+list with per-item availability attached, and render unavailable items dimmed,
+unclickable, with a short label from `unavailable_reason` and sorted to the end of
+their category.
+
+**Keep filtering `is_active`.** Inactive items are deliberately retired; they
+should stay off the menu. Only the temporary states — 86'd, snoozed, sold out —
+become visible-but-dimmed. This distinction is the whole point: a customer should
+see that today's fish is off, not that a dish you stopped selling last year exists.
+
+Removing the filter means both menus get larger payloads including items that
+cannot be ordered. Confirm the category counts, "declutter" logic and any
+empty-category handling in `MenuPage` still behave — there are existing tests
+(`MenuPage.declutter.test.tsx`) that will notice.
+
+### 6. Snooze needs durations, a reason, and an admin UI
+
+The raw-material case — *"no fish until Thursday"* — is mostly built already but
+too rigid to use.
+
+**What exists:** `PATCH /items/{id}/toggle-availability` (off indefinitely) and
+`PATCH /items/{id}/snooze` (off until end of day, auto-restores). The POS already
+has a one-tap snooze button (`OpsPanel.tsx:174`).
+
+**Three gaps:**
+
+- **Only one duration.** The endpoint validates `'until' => in:end_of_day`
+  (`ItemController.php:712`) — nothing else is accepted. If the delivery arrives
+  Thursday, someone must re-snooze every day until then. Add: 2 hours, end of day,
+  tomorrow, a specific date, and indefinite.
+- **No reason recorded.** Nothing captures *why*, so the customer gets a generic
+  label and staff cannot tell a supplier problem from a broken fryer. Add a short
+  optional `unavailable_reason_note`, surfaced to the customer when set:
+  *"Unavailable · Back Thursday"*.
+- **No admin UI at all.** Grep finds no snooze or 86 control anywhere in
+  `apps/admin-dashboard/src/pages/MenuPage`. It is POS-only, so you must be at the
+  counter to mark something off.
+
+**Keep the reason optional and short.** A required field gets "n/a" typed into it
+at 7pm on a Friday; a long one invites explanations customers do not need.
+*"Back Thursday"* is the useful shape.
+
+### 7. Admin alerting already exists
 
 `OpsAlertsService.php:74` already flags `stock_quantity <= low_stock_threshold`.
 No work needed — worth knowing it is there before anyone builds a second one.
@@ -138,6 +213,29 @@ No work needed — worth knowing it is there before anyone builds a second one.
 - A sold-out item does not produce a signage showcase slide.
 - `available_now` absent falls back to `is_available` — no regression on
   un-annotated endpoints.
+- A snoozed item **appears** on both menus, dimmed, rather than disappearing.
+- An **inactive** item still does not appear on either menu.
+- Each snooze duration sets the expected `snoozed_until`; indefinite sets none.
+- A snooze reason renders on the customer card when set, and nothing extra when
+  blank.
+- `MenuPage` declutter and empty-category behaviour survive the larger payload.
+
+## Noted for a later wave
+
+**First-purchase discount for registered customers.** Most of this already exists
+on `Promotion` — `first_order_only`, `type`/`discount_value`, `scope: 'item'` with
+`PromotionTarget`, `starts_at`/`expires_at`, `auto_apply` — and it already reaches
+the menu as the `special` block.
+
+One real gap: `firstOrderGate` (`PromotionEvaluator.php:466`) treats **guests as
+eligible**, so an unregistered customer gets the discount and gets it again on
+every subsequent guest order. If the intent is to reward registration, that is
+backwards and needs a `registered_only` condition.
+
+Two things to check before writing code: whether the promotions admin UI exposes
+`first_order_only` at all, and whether it combines correctly with `scope: 'item'`.
+It may be pure configuration. Deliberately out of this wave — promotions and
+orders share no files with the menu work.
 
 ## Out of scope
 
