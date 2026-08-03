@@ -243,8 +243,8 @@ final class SignageBannerNormalizer
             return ($raw['scroll'] ?? true) === false ? 'static' : 'seamless';
         }
 
-        // Pre-scroll_mode saves behaved like scroll:true → seamless.
-        return 'seamless';
+        // No scroll_mode / scroll key → product default (ticker).
+        return 'ticker';
     }
 
     /**

@@ -63,7 +63,7 @@ final class SignageBannerNormalizerTest extends TestCase
         $this->assertSame('#fff8f0', $item['text_color']);
         $this->assertSame('rgba(12, 8, 4, 0.78)', $item['background_color']);
         $this->assertSame('left', $item['align']);
-        $this->assertSame('seamless', $item['scroll_mode']);
+        $this->assertSame('ticker', $item['scroll_mode']);
         $this->assertSame('ltr', $item['direction']);
         $this->assertSame(1, $item['repeat_count']);
         $this->assertSame('full', $item['date_format']);

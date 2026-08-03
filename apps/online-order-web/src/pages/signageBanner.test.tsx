@@ -167,7 +167,7 @@ describe('SignageBanner helpers', () => {
     expect(item.text_color).toBe('#fff8f0');
     expect(item.background_color).toBe('rgba(12, 8, 4, 0.78)');
     expect(item.align).toBe('left');
-    expect(item.scroll_mode).toBe('seamless'); // absent scroll → seamless
+    expect(item.scroll_mode).toBe('ticker'); // absent scroll_mode → ticker
     expect(item.date_format).toBe('full');
     expect(item.inset_percent).toBe(0);
   });
@@ -188,12 +188,12 @@ describe('SignageBanner helpers', () => {
     expect(normalizeScrollMode({ scroll: true, scroll_mode: 'ticker' })).toBe('ticker');
   });
 
-  it('absent scroll defaults to seamless', () => {
-    expect(normalizeScrollMode({})).toBe('seamless');
+  it('absent scroll_mode defaults to ticker', () => {
+    expect(normalizeScrollMode({})).toBe('ticker');
     expect(normalizeBannerSettings({
       enabled: true,
       banners: [{ id: 'legacy-absent' }],
-    }).banners[0].scroll_mode).toBe('seamless');
+    }).banners[0].scroll_mode).toBe('ticker');
   });
 
   it('new banners default to ticker', () => {

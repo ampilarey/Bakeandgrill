@@ -22,7 +22,7 @@ export const BANNER_APPEARANCE_DEFAULTS = {
   text_color: '#fff8f0',
   background_color: 'rgba(12, 8, 4, 0.78)',
   align: 'left' as SignageBannerAlign,
-  /** Default for new items via newBannerItem(); legacy absent scroll maps to seamless. */
+  /** Default for new items and for saves with no scroll_mode / scroll key. */
   scroll_mode: 'ticker' as SignageBannerScrollMode,
   direction: 'ltr' as SignageBannerDirection,
   date_format: 'full' as SignageBannerDateFormat,
@@ -110,8 +110,8 @@ function normalizeSchedule(raw: unknown): SignageSchedule | null {
 
 /**
  * Resolve scroll_mode. Explicit scroll_mode always wins.
- * Legacy scroll:false → static; scroll:true → seamless; absent → seamless.
- * (One-time DB migration moves stored seamless → ticker; does not change this rule.)
+ * Legacy scroll:false → static; scroll:true → seamless (pre-migration look).
+ * Absent → ticker (product default after the seamless→ticker migration).
  */
 export function normalizeScrollMode(raw: Record<string, unknown>): SignageBannerScrollMode {
   const mode = String(raw.scroll_mode || '');
@@ -121,7 +121,7 @@ export function normalizeScrollMode(raw: Record<string, unknown>): SignageBanner
   if ('scroll' in raw) {
     return raw.scroll === false ? 'static' : 'seamless';
   }
-  return 'seamless';
+  return 'ticker';
 }
 
 function normalizeItem(raw: Record<string, unknown>, fallbackIndex = 0): SignageBannerItem {
