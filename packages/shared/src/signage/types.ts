@@ -55,6 +55,16 @@ export type SignageBannerDateFormat = 'full' | 'short' | 'numeric' | 'weekday' |
 export type SignageBannerAlign = 'left' | 'center' | 'right';
 /** ticker = one copy clears the screen; seamless = duplicated loop; static = no motion. */
 export type SignageBannerScrollMode = 'ticker' | 'seamless' | 'static';
+export type SignageBannerDirection = 'ltr' | 'rtl';
+
+/** Same shape as campaign windows — reused for banners and scheduled emergencies. */
+export type SignageSchedule = {
+  date_start?: string | null;
+  date_end?: string | null;
+  /** 0=Sun … 6=Sat. Empty/null = every day. */
+  days?: number[] | null;
+  windows?: Array<{ start: string; end: string }> | null;
+};
 
 export type SignageBannerItem = {
   id: string;
@@ -65,8 +75,13 @@ export type SignageBannerItem = {
   /** When set, replaces the fields marquee (supports {{variables}}). */
   custom_text?: string;
   speed_seconds: number;
-  /** How long this banner stays before rotating to the next enabled one. */
+  /**
+   * @deprecated Ignored for rotation. Kept so old saves load cleanly.
+   * Advancement uses `repeat_count` + animation events.
+   */
   duration_seconds: number;
+  /** How many full passes before the next banner (default 1). */
+  repeat_count: number;
   /** Multiplier on the 2.2vmin base font size. */
   font_scale: number;
   /** Multiplier on the 5.2vmin base height. */
@@ -77,18 +92,47 @@ export type SignageBannerItem = {
   /** Meaningful when scroll_mode is static. */
   align: SignageBannerAlign | string;
   scroll_mode: SignageBannerScrollMode | string;
+  /** ltr = English ticker; rtl = Dhivehi (dir=rtl, lang=dv). */
+  direction: SignageBannerDirection | string;
   date_format: SignageBannerDateFormat | string;
   /** 0–5 — percent inset from the screen edge (TV overscan). */
   inset_percent: number;
+  /** Absent / empty = always on. */
+  schedule?: SignageSchedule | null;
 };
 
 export type SignageBannerSettings = {
   enabled: boolean;
   banners: SignageBannerItem[];
+  /** Show brand logo in the strip between banners (skipped when only one enabled). */
+  show_logo_between?: boolean;
   /** @deprecated Stage-3 single-banner fields — still accepted on read. */
   position?: 'top' | 'bottom' | string;
   fields?: Array<'date' | 'time' | 'next_prayer' | 'countdown' | string>;
   speed_seconds?: number;
+};
+
+export type SignageEmergencyLayout = 'notice' | 'alert' | 'split' | 'countdown';
+
+export type SignageEmergencyEntry = {
+  id: string;
+  mode: string;
+  priority: number;
+  is_active: boolean;
+  layout: SignageEmergencyLayout | string;
+  title: string;
+  body: string;
+  title_dv?: string;
+  body_dv?: string;
+  /** For reopening_soon countdown. */
+  reopen_at?: string | null;
+  schedule?: SignageSchedule | null;
+};
+
+export type SignageEmergencySettings = {
+  /** Immediate manual override — beats every scheduled entry. */
+  manual: string;
+  entries: SignageEmergencyEntry[];
 };
 
 export type SignageConfig = {

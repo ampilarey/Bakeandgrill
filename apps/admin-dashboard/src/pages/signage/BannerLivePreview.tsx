@@ -5,6 +5,8 @@ type Props = {
   enabled: boolean;
   banners: SignageBannerItem[];
   boardBackground?: string;
+  logoUrl?: string | null;
+  showLogoBetween?: boolean;
 };
 
 const PREVIEW_NOW = Date.parse('2026-08-03T12:00:00+05:00');
@@ -12,12 +14,19 @@ const PREVIEW_NOW = Date.parse('2026-08-03T12:00:00+05:00');
 /**
  * Live strip using the real SignageBanner so admin preview cannot drift from the TV.
  */
-export function BannerLivePreview({ enabled, banners, boardBackground = '#1C1408' }: Props) {
+export function BannerLivePreview({
+  enabled,
+  banners,
+  boardBackground = '#1C1408',
+  logoUrl = null,
+  showLogoBetween = false,
+}: Props) {
   const previewBanner: SignageBannerItem = banners.find((b) => b.enabled) ?? banners[0];
   if (!previewBanner) return null;
 
   const settings: SignageBannerSettings = {
     enabled: true,
+    show_logo_between: showLogoBetween,
     banners: [{ ...previewBanner, enabled: true, duration_seconds: 60 }],
   };
 
@@ -62,6 +71,7 @@ export function BannerLivePreview({ enabled, banners, boardBackground = '#1C1408
         ]}
         mode="normal"
         nowMs={PREVIEW_NOW}
+        logoUrl={logoUrl}
         variables={{
           wifi_name: 'BG-Guest',
           wifi_password: 'secret',

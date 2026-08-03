@@ -215,7 +215,7 @@ final class SignageResolverTest extends TestCase
 
         $this->putJson('/api/admin/signage/emergency', ['mode' => 'maintenance'])
             ->assertOk()
-            ->assertJson(['mode' => 'maintenance']);
+            ->assertJsonPath('manual', 'maintenance');
         $this->assertSame('maintenance', (string) SiteSetting::get('signage_emergency'));
     }
 

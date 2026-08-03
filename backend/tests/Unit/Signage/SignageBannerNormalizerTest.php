@@ -57,14 +57,18 @@ final class SignageBannerNormalizerTest extends TestCase
         ]);
 
         $item = $cfg['banners'][0];
+        $this->assertFalse($cfg['show_logo_between']);
         $this->assertSame(1.0, $item['font_scale']);
         $this->assertSame(1.0, $item['height_scale']);
         $this->assertSame('#fff8f0', $item['text_color']);
         $this->assertSame('rgba(12, 8, 4, 0.78)', $item['background_color']);
         $this->assertSame('left', $item['align']);
         $this->assertSame('seamless', $item['scroll_mode']);
+        $this->assertSame('ltr', $item['direction']);
+        $this->assertSame(1, $item['repeat_count']);
         $this->assertSame('full', $item['date_format']);
         $this->assertSame(0.0, $item['inset_percent']);
+        $this->assertNull($item['schedule']);
     }
 
     public function test_legacy_scroll_boolean_migrates_to_scroll_mode(): void
@@ -129,5 +133,42 @@ final class SignageBannerNormalizerTest extends TestCase
         $this->assertSame('full', $item['date_format']);
         $this->assertSame('left', $item['align']);
         $this->assertSame('#fff8f0', $item['text_color']);
+    }
+
+    public function test_repeat_count_direction_show_logo_between_and_schedule(): void
+    {
+        $cfg = SignageBannerNormalizer::normalize([
+            'enabled' => true,
+            'show_logo_between' => true,
+            'banners' => [[
+                'id' => 'rtl',
+                'label' => 'Dhivehi',
+                'enabled' => true,
+                'position' => 'bottom',
+                'fields' => ['date'],
+                'speed_seconds' => 40,
+                'repeat_count' => 5,
+                'direction' => 'rtl',
+                'schedule' => [
+                    'days' => [1, 3, 5],
+                    'windows' => [['start' => '18:00', 'end' => '22:00']],
+                ],
+            ]],
+        ]);
+
+        $this->assertTrue($cfg['show_logo_between']);
+        $item = $cfg['banners'][0];
+        $this->assertSame(5, $item['repeat_count']);
+        $this->assertSame('rtl', $item['direction']);
+        $this->assertSame([1, 3, 5], $item['schedule']['days']);
+        $this->assertSame('18:00', $item['schedule']['windows'][0]['start']);
+    }
+
+    public function test_repeat_count_is_clamped(): void
+    {
+        $low = SignageBannerNormalizer::normalizeItem(['repeat_count' => 0], 0);
+        $high = SignageBannerNormalizer::normalizeItem(['repeat_count' => 99], 0);
+        $this->assertSame(1, $low['repeat_count']);
+        $this->assertSame(20, $high['repeat_count']);
     }
 }

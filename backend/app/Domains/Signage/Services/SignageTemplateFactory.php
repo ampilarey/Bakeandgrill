@@ -264,27 +264,159 @@ final class SignageTemplateFactory
         return $slide;
     }
 
-    /** @return array<string, mixed> */
-    public static function emergencySlide(string $mode): array
+    /**
+     * @param  array<string, mixed>  $opts  title, body, title_dv, body_dv, layout, reopen_at
+     * @return array<string, mixed>
+     */
+    public static function emergencySlide(string $mode, array $opts = []): array
     {
-        $copy = match ($mode) {
-            'closed' => ['title' => 'We are closed', 'body' => 'Thank you for visiting. See you soon.'],
-            'prayer_break' => ['title' => 'Prayer break', 'body' => 'Service will resume shortly. {{next_prayer}}'],
-            'maintenance' => ['title' => 'Under maintenance', 'body' => 'We will be right back.'],
-            'fire_alarm' => ['title' => 'Please evacuate', 'body' => 'Follow staff instructions. Leave calmly.'],
-            'power_failure' => ['title' => 'Temporary power issue', 'body' => 'Service may be delayed. Thank you for your patience.'],
-            'kitchen_closed' => ['title' => 'Kitchen temporarily closed', 'body' => 'Please ask staff for details.'],
-            default => ['title' => 'Please stand by', 'body' => ''],
-        };
+        $defaults = SignageEmergencyNormalizer::defaultCopyForMode($mode);
+        $title = (string) ($opts['title'] ?? $defaults['title']);
+        $body = (string) ($opts['body'] ?? $defaults['body']);
+        $titleDv = (string) ($opts['title_dv'] ?? '');
+        $bodyDv = (string) ($opts['body_dv'] ?? '');
+        $layout = (string) ($opts['layout'] ?? SignageEmergencyNormalizer::defaultLayoutForMode($mode));
+        if (! in_array($layout, SignageEmergencyNormalizer::LAYOUTS, true)) {
+            $layout = SignageEmergencyNormalizer::defaultLayoutForMode($mode);
+        }
+        $reopenAt = isset($opts['reopen_at']) && is_string($opts['reopen_at']) ? $opts['reopen_at'] : null;
 
-        return self::template('notice', [
+        $isFireAlarm = $mode === 'fire_alarm';
+        $background = $isFireAlarm || $layout === 'alert'
+            ? ['type' => 'solid', 'value' => '#B91C1C', 'opacity' => 1]
+            : ['type' => 'solid', 'value' => '#1C1408', 'opacity' => 1];
+
+        $slide = [
+            'id' => self::id($opts['id'] ?? null),
             'name' => 'Emergency: ' . $mode,
             'seconds' => 60,
             'weight' => 1,
             'transition' => 'fade',
-            'fields' => $copy,
-            'background' => ['type' => 'solid', 'value' => '#1C1408', 'opacity' => 1],
-        ]);
+            'transition_ms' => 700,
+            'background' => $background,
+            'template_origin' => 'emergency:' . $mode,
+            'emergency_layout' => $layout,
+            'elements' => self::emergencyElements($layout, $title, $body, $titleDv, $bodyDv, $reopenAt, $isFireAlarm),
+        ];
+
+        return $slide;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function emergencyElements(
+        string $layout,
+        string $title,
+        string $body,
+        string $titleDv,
+        string $bodyDv,
+        ?string $reopenAt,
+        bool $isFireAlarm,
+    ): array {
+        $elements = [];
+
+        if ($layout === 'alert') {
+            $elements[] = self::el('shape', 0, 0, 100, 100, [
+                'style' => ['fill' => '#B91C1C', 'opacity' => 1],
+                'binding' => ['testId' => 'emergency-alert-bg'],
+            ]);
+            $elements[] = self::el('text', 6, 28, 88, 22, [
+                'text' => $title,
+                'style' => [
+                    'fontSize' => 9,
+                    'fontWeight' => 900,
+                    'color' => '#FFFFFF',
+                    'textAlign' => 'center',
+                    'textTransform' => 'uppercase',
+                ],
+                'binding' => ['testId' => 'emergency-alert-title'],
+            ]);
+            if ($body !== '') {
+                $elements[] = self::el('text', 8, 54, 84, 16, [
+                    'text' => $body,
+                    'style' => ['fontSize' => 4.2, 'fontWeight' => 600, 'color' => '#FEE2E2', 'textAlign' => 'center'],
+                    'binding' => ['testId' => 'emergency-alert-body'],
+                ]);
+            }
+        } elseif ($layout === 'split') {
+            $elements[] = self::el('logo', 6, 28, 28, 44, [
+                'style' => ['objectFit' => 'contain'],
+            ]);
+            $elements[] = self::el('text', 38, 28, 56, 14, [
+                'text' => $title,
+                'style' => ['fontSize' => 5.5, 'fontWeight' => 800, 'color' => '#D4813A'],
+            ]);
+            $elements[] = self::el('text', 38, 46, 56, 22, [
+                'text' => $body,
+                'style' => ['fontSize' => 3.5, 'color' => '#FFF8F0'],
+            ]);
+        } elseif ($layout === 'countdown') {
+            $elements[] = self::el('text', 8, 22, 84, 14, [
+                'text' => $title,
+                'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#D4813A', 'textAlign' => 'center'],
+            ]);
+            if ($body !== '') {
+                $elements[] = self::el('text', 10, 38, 80, 12, [
+                    'text' => $body,
+                    'style' => ['fontSize' => 3.6, 'color' => '#FFF8F0', 'textAlign' => 'center'],
+                ]);
+            }
+            $elements[] = self::el('text', 20, 54, 60, 18, [
+                'text' => '',
+                'binding' => [
+                    'type' => 'countdown',
+                    'reopen_at' => $reopenAt ?? '',
+                    'testId' => 'emergency-countdown',
+                ],
+                'style' => ['fontSize' => 7, 'fontWeight' => 800, 'color' => '#FFF8F0', 'textAlign' => 'center'],
+            ]);
+        } else {
+            // notice — centered title/body (legacy default)
+            $elements[] = self::el('text', 8, 30, 84, 14, [
+                'text' => $title,
+                'style' => ['fontSize' => 6, 'fontWeight' => 800, 'color' => '#D4813A', 'textAlign' => 'center'],
+            ]);
+            if ($body !== '') {
+                $elements[] = self::el('text', 10, 48, 80, 20, [
+                    'text' => $body,
+                    'style' => ['fontSize' => 3.8, 'color' => '#FFF8F0', 'textAlign' => 'center'],
+                ]);
+            }
+            if (! $isFireAlarm && $layout === 'notice') {
+                $elements[] = self::el('logo', 78, 8, 16, 14, [
+                    'animation' => ['entrance' => 'fade', 'duration' => 600],
+                ]);
+            }
+        }
+
+        if ($titleDv !== '') {
+            $elements[] = self::el('text', 8, 72, 84, 10, [
+                'text' => $titleDv,
+                'style' => [
+                    'fontSize' => 4.5,
+                    'fontWeight' => 700,
+                    'color' => '#D4813A',
+                    'textAlign' => 'center',
+                    'lang' => 'dv',
+                    'dir' => 'rtl',
+                ],
+            ]);
+        }
+        if ($bodyDv !== '') {
+            $elements[] = self::el('text', 10, 82, 80, 12, [
+                'text' => $bodyDv,
+                'style' => [
+                    'fontSize' => 3.4,
+                    'color' => '#FFF8F0',
+                    'textAlign' => 'center',
+                    'lang' => 'dv',
+                    'dir' => 'rtl',
+                ],
+            ]);
+        }
+
+        return $elements;
     }
 
     /**

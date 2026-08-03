@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type AnimationEvent, type CSSProperties } from 'react';
 import { activeBanners, BANNER_APPEARANCE_DEFAULTS, normalizeBannerSettings } from './bannerConfig';
 import { interpolate } from './interpolate';
 import type {
   SignageBannerDateFormat,
+  SignageBannerDirection,
   SignageBannerItem,
   SignageBannerScrollMode,
   SignageBannerSettings,
@@ -11,6 +12,10 @@ import type {
 
 /** Pinned so two TVs from different suppliers render the same date strings. */
 export const SIGNAGE_BANNER_LOCALE = 'en-GB';
+
+/** Thaana-capable stack — do not assume the TV ships with a Dhivehi font. */
+export const SIGNAGE_BANNER_THAANA_FONT =
+  '"MV Typewriter", "Faruma", "MV Faseyha", "Noto Sans Thaana", "FreeFont", sans-serif';
 
 export type SignageBannerProps = {
   banner: SignageBannerSettings;
@@ -24,6 +29,13 @@ export type SignageBannerProps = {
   timeLabel?: string;
   /** For custom_text interpolation (wifi, phone, etc.). */
   variables?: Record<string, string>;
+  /** Brand logo for the between-banner separator (`logo_dark ?? logo`). */
+  logoUrl?: string | null;
+  /**
+   * Test hook: when set, force this many animation iterations before asserting.
+   * Production always drives from real animation events.
+   */
+  onAdvance?: (info: { fromId: string; toId: string; viaLogo: boolean }) => void;
 };
 
 export function pickNextPrayer(
@@ -43,7 +55,6 @@ export function pickNextPrayer(
   return next;
 }
 
-/** Minute-granularity remaining string, e.g. "in 2h 14m" / "in 45m" / "in <1m". */
 export function formatCountdown(remainingMs: number): string {
   if (!Number.isFinite(remainingMs) || remainingMs <= 0) return 'now';
   const totalMin = Math.max(0, Math.floor(remainingMs / 60_000));
@@ -79,7 +90,6 @@ function formatHijri(now: Date): string {
   } catch {
     /* calendar unsupported */
   }
-  // Fallback — never throw on a TV board.
   return formatGregorian(now, {
     weekday: 'long',
     day: 'numeric',
@@ -88,7 +98,6 @@ function formatHijri(now: Date): string {
   });
 }
 
-/** Format a banner date for the given `date_format` (pinned locale). */
 export function formatBannerDate(
   now: Date,
   format: SignageBannerDateFormat | string = 'full',
@@ -187,11 +196,11 @@ function justifyForAlign(align: string): string {
   return 'flex-start';
 }
 
-/** CSS custom properties derived from a banner item (for tests / rendering). */
 export function bannerStyleVars(item: SignageBannerItem): Record<string, string> {
   const fontScale = Number(item.font_scale) || BANNER_APPEARANCE_DEFAULTS.font_scale;
   const heightScale = Number(item.height_scale) || BANNER_APPEARANCE_DEFAULTS.height_scale;
   const inset = Math.max(0, Math.min(5, Number(item.inset_percent) || 0));
+  const repeats = Math.max(1, Math.min(20, Number(item.repeat_count) || 1));
   return {
     '--signage-banner-speed': `${Math.max(10, Math.min(180, Number(item.speed_seconds) || 40))}s`,
     '--signage-banner-font-scale': String(fontScale),
@@ -200,8 +209,27 @@ export function bannerStyleVars(item: SignageBannerItem): Record<string, string>
     '--signage-banner-bg': item.background_color || BANNER_APPEARANCE_DEFAULTS.background_color,
     '--signage-banner-justify': justifyForAlign(item.align || 'left'),
     '--signage-banner-inset': `${inset}%`,
+    '--signage-banner-repeats': String(repeats),
   };
 }
+
+export function resolveBannerScrollMode(
+  item: SignageBannerItem | { scroll_mode?: string; scroll?: boolean },
+): SignageBannerScrollMode {
+  const mode = String((item as SignageBannerItem).scroll_mode || '');
+  if (mode === 'ticker' || mode === 'seamless' || mode === 'static') return mode;
+  if ('scroll' in item && (item as { scroll?: boolean }).scroll === false) return 'static';
+  if ('scroll' in item && (item as { scroll?: boolean }).scroll === true) return 'seamless';
+  return 'seamless';
+}
+
+export function resolveBannerDirection(
+  item: SignageBannerItem | { direction?: string },
+): SignageBannerDirection {
+  return item.direction === 'rtl' ? 'rtl' : 'ltr';
+}
+
+type Phase = 'banner' | 'logo';
 
 export function SignageBanner({
   banner,
@@ -212,12 +240,19 @@ export function SignageBanner({
   dateLabel,
   timeLabel,
   variables = {},
+  logoUrl,
+  onAdvance,
 }: SignageBannerProps) {
   const [tick, setTick] = useState(() => Date.now());
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [phase, setPhase] = useState<Phase>('banner');
+  const [passCount, setPassCount] = useState(0);
+  const passCountRef = useRef(0);
 
   const normalized = useMemo(() => normalizeBannerSettings(banner), [banner]);
-  const enabledList = useMemo(() => activeBanners(normalized), [normalized]);
+  const nowMs = nowMsProp ?? tick;
+  const now = useMemo(() => new Date(nowMs), [nowMs]);
+  const enabledList = useMemo(() => activeBanners(normalized, now), [normalized, now]);
 
   useEffect(() => {
     if (nowMsProp != null) return;
@@ -227,23 +262,16 @@ export function SignageBanner({
 
   useEffect(() => {
     setBannerIndex(0);
+    setPhase('banner');
+    setPassCount(0);
+    passCountRef.current = 0;
   }, [enabledList.map((b) => b.id).join('|')]);
 
-  useEffect(() => {
-    if (enabledList.length <= 1) return;
-    const current = enabledList[bannerIndex % enabledList.length];
-    const ms = Math.max(5, current?.duration_seconds ?? 30) * 1000;
-    const id = window.setTimeout(() => {
-      setBannerIndex((i) => (i + 1) % enabledList.length);
-    }, ms);
-    return () => window.clearTimeout(id);
-  }, [enabledList, bannerIndex]);
-
-  const nowMs = nowMsProp ?? tick;
-  const now = useMemo(() => new Date(nowMs), [nowMs]);
+  // No setTimeout rotation — advancement is driven only by animation events below.
 
   if (!shouldShowBanner(normalized, mode) || enabledList.length === 0) return null;
 
+  const showLogoBetween = Boolean(normalized.show_logo_between) && enabledList.length > 1 && Boolean(logoUrl);
   const active = enabledList[bannerIndex % enabledList.length];
   const next = pickNextPrayer(schedule, nowMs);
   const dLabel = dateLabel ?? formatBannerDate(now, active.date_format || 'full');
@@ -258,39 +286,111 @@ export function SignageBanner({
 
   const position = active.position === 'top' ? 'top' : 'bottom';
   const scrollMode = resolveBannerScrollMode(active);
+  const direction = resolveBannerDirection(active);
+  const repeatCount = Math.max(1, Math.min(20, Number(active.repeat_count) || 1));
   const drift: CSSProperties = burnInOffset
     ? { transform: `translate(${burnInOffset.x}px, ${burnInOffset.y}px)` }
     : {};
 
-  // Seamless duplicates for a gapless loop; ticker/static use a single copy.
   const displayText = scrollMode === 'seamless' ? `${text}   ·   ${text}` : text;
   const vars = bannerStyleVars(active);
 
+  const advanceFrom = (fromId: string) => {
+    if (enabledList.length <= 1) {
+      passCountRef.current = 0;
+      setPassCount(0);
+      return;
+    }
+    const nextIndex = (bannerIndex + 1) % enabledList.length;
+    const toId = enabledList[nextIndex]?.id ?? fromId;
+    if (showLogoBetween) {
+      setPhase('logo');
+      passCountRef.current = 0;
+      setPassCount(0);
+      onAdvance?.({ fromId, toId, viaLogo: true });
+      return;
+    }
+    setBannerIndex(nextIndex);
+    passCountRef.current = 0;
+    setPassCount(0);
+    onAdvance?.({ fromId, toId, viaLogo: false });
+  };
+
+  const onTrackAnimationIteration = (e: AnimationEvent<HTMLDivElement>) => {
+    if (phase !== 'banner') return;
+    if (e.target !== e.currentTarget) return;
+    if (scrollMode === 'static') return; // static uses animationend after N holds
+    const nextPass = passCountRef.current + 1;
+    passCountRef.current = nextPass;
+    setPassCount(nextPass);
+    if (nextPass >= repeatCount) {
+      advanceFrom(active.id);
+    }
+  };
+
+  const onTrackAnimationEnd = (e: AnimationEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return;
+    if (phase === 'logo') {
+      const fromId = active.id;
+      const nextIndex = (bannerIndex + 1) % enabledList.length;
+      setBannerIndex(nextIndex);
+      setPhase('banner');
+      passCountRef.current = 0;
+      setPassCount(0);
+      onAdvance?.({ fromId, toId: enabledList[nextIndex]?.id ?? fromId, viaLogo: true });
+      return;
+    }
+    if (scrollMode === 'static') {
+      // One-shot (or N-iteration) hold finished — advance.
+      advanceFrom(active.id);
+    }
+  };
+
+  const dirClass = direction === 'rtl' ? ' signage-banner--rtl' : ' signage-banner--ltr';
+  const phaseClass = phase === 'logo' ? ' signage-banner--logo' : ` signage-banner--${scrollMode}`;
+
   return (
     <div
-      className={`signage-banner signage-banner-${position} signage-banner--${scrollMode}`}
+      className={`signage-banner signage-banner-${position}${phaseClass}${dirClass}`}
       data-testid="signage-banner"
-      data-banner-id={active.id}
-      data-banner-label={active.label}
+      data-banner-id={phase === 'banner' ? active.id : 'logo'}
+      data-banner-label={phase === 'banner' ? active.label : 'logo'}
       data-scroll-mode={scrollMode}
+      data-direction={direction}
+      data-phase={phase}
+      data-pass-count={passCount}
       data-date-format={active.date_format || 'full'}
       style={{
         ...drift,
         ...vars,
       }}
     >
-      <div className="signage-banner-track" data-testid="signage-banner-track">
-        <span className="signage-banner-text">{displayText}</span>
-      </div>
+      {phase === 'logo' ? (
+        <div
+          className="signage-banner-logo-hold"
+          data-testid="signage-banner-logo"
+          onAnimationEnd={onTrackAnimationEnd}
+        >
+          <img src={logoUrl || ''} alt="" className="signage-banner-logo-img" />
+        </div>
+      ) : (
+        <div
+          className="signage-banner-track"
+          data-testid="signage-banner-track"
+          onAnimationIteration={onTrackAnimationIteration}
+          onAnimationEnd={onTrackAnimationEnd}
+        >
+          <span
+            className="signage-banner-text"
+            data-testid="signage-banner-text"
+            dir={direction === 'rtl' ? 'rtl' : 'ltr'}
+            lang={direction === 'rtl' ? 'dv' : undefined}
+            style={direction === 'rtl' ? { fontFamily: SIGNAGE_BANNER_THAANA_FONT } : undefined}
+          >
+            {displayText}
+          </span>
+        </div>
+      )}
     </div>
   );
-}
-
-/** Resolve motion mode from a banner item (supports legacy `scroll` on raw payloads via normalize). */
-export function resolveBannerScrollMode(item: SignageBannerItem | { scroll_mode?: string; scroll?: boolean }): SignageBannerScrollMode {
-  const mode = String((item as SignageBannerItem).scroll_mode || '');
-  if (mode === 'ticker' || mode === 'seamless' || mode === 'static') return mode;
-  // Defensive: un-normalized objects may still carry legacy scroll.
-  if ('scroll' in item && (item as { scroll?: boolean }).scroll === false) return 'static';
-  return 'seamless';
 }

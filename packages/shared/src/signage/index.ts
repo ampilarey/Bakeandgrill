@@ -2,13 +2,18 @@ export type {
   MenuItemLite,
   SignageBannerAlign,
   SignageBannerDateFormat,
+  SignageBannerDirection,
   SignageBannerItem,
   SignageBannerScrollMode,
   SignageBannerSettings,
   SignageCategoryLite,
   SignageConfig,
   SignageElement,
+  SignageEmergencyEntry,
+  SignageEmergencyLayout,
+  SignageEmergencySettings,
   SignagePrayerEntry,
+  SignageSchedule,
   SignageSlide,
   SignageTheme,
 } from './types';
@@ -35,7 +40,9 @@ export {
   shouldShowBanner,
   buildBannerSegments,
   resolveBannerScrollMode,
+  resolveBannerDirection,
   SIGNAGE_BANNER_LOCALE,
+  SIGNAGE_BANNER_THAANA_FONT,
 } from './SignageBanner';
 export type { SignageBannerProps } from './SignageBanner';
 export {
@@ -46,7 +53,9 @@ export {
   BANNER_APPEARANCE_DEFAULTS,
   BANNER_SPEED_PRESETS,
   BANNER_DURATION_SLIDER,
+  BANNER_REPEAT_SLIDER,
 } from './bannerConfig';
+export { scheduleMatches } from './scheduleMatches';
 export { brandCardSlide } from './brandCard';
 export {
   PARITY_THEME,

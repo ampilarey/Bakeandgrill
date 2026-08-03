@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\Signage;
 use App\Domains\PrayerTimes\Actions\GetIslandCollection;
 use App\Domains\Signage\Services\SignageBannerNormalizer;
 use App\Domains\Signage\Services\SignageCache;
+use App\Domains\Signage\Services\SignageEmergencyNormalizer;
 use App\Domains\Signage\Services\SignageTemplateFactory;
 use App\Http\Controllers\Controller;
 use App\Models\SignageCampaign;
@@ -35,7 +36,7 @@ final class SignageAdminController extends Controller
             'groups' => SignageGroup::query()->with('playlist:id,name')->orderBy('name')->get(),
             'screens' => SignageScreen::query()->with(['group:id,name', 'playlist:id,name'])->orderBy('name')->get(),
             'campaigns' => SignageCampaign::query()->with('playlist:id,name')->orderByDesc('priority')->get(),
-            'emergency' => (string) SiteSetting::get('signage_emergency', 'none'),
+            'emergency' => $this->emergencyConfig(),
             'prayer' => $this->prayerConfig(),
             'prayer_islands' => $this->prayerIslandOptions(),
             'banner' => $this->bannerConfig(),
@@ -265,16 +266,57 @@ final class SignageAdminController extends Controller
 
     public function updateEmergency(Request $request): JsonResponse
     {
+        $modes = implode(',', SignageEmergencyNormalizer::MODES);
+        $layouts = implode(',', SignageEmergencyNormalizer::LAYOUTS);
         $data = $request->validate([
-            'mode' => 'required|string|in:none,closed,prayer_break,maintenance,fire_alarm,power_failure,kitchen_closed',
+            'mode' => 'sometimes|string|in:'.$modes,
+            'entries' => 'sometimes|array',
+            'entries.*.id' => 'nullable|string|max:80',
+            'entries.*.mode' => 'required_with:entries|string|in:'.implode(',', array_filter(
+                SignageEmergencyNormalizer::MODES,
+                fn (string $m) => $m !== 'none'
+            )),
+            'entries.*.priority' => 'nullable|integer|min:0|max:9999',
+            'entries.*.is_active' => 'nullable|boolean',
+            'entries.*.layout' => 'nullable|string|in:'.$layouts,
+            'entries.*.title' => 'nullable|string|max:200',
+            'entries.*.body' => 'nullable|string|max:500',
+            'entries.*.title_dv' => 'nullable|string|max:200',
+            'entries.*.body_dv' => 'nullable|string|max:500',
+            'entries.*.reopen_at' => 'nullable|string|max:40',
+            'entries.*.schedule' => 'nullable|array',
+            'entries.*.schedule.date_start' => 'nullable|date',
+            'entries.*.schedule.date_end' => 'nullable|date',
+            'entries.*.schedule.days' => 'nullable|array',
+            'entries.*.schedule.windows' => 'nullable|array',
         ]);
-        $old = (string) SiteSetting::get('signage_emergency', 'none');
-        SiteSetting::set('signage_emergency', $data['mode']);
+
+        if (! isset($data['mode']) && ! isset($data['entries'])) {
+            return response()->json(['message' => 'Provide mode and/or entries.'], 422);
+        }
+
+        $old = $this->emergencyConfig();
+        $current = $old;
+
+        if (isset($data['mode'])) {
+            SiteSetting::set('signage_emergency', $data['mode']);
+            $current['manual'] = $data['mode'];
+        }
+
+        if (isset($data['entries'])) {
+            $normalized = SignageEmergencyNormalizer::normalize(
+                (string) ($current['manual'] ?? 'none'),
+                ['entries' => $data['entries']]
+            );
+            SiteSetting::set('signage_emergency_entries', ['entries' => $normalized['entries']]);
+            $current['entries'] = $normalized['entries'];
+        }
+
         SiteSetting::bust();
-        $this->touch($request, 'signage.emergency.updated', null, ['mode' => $old], $data);
+        $this->touch($request, 'signage.emergency.updated', null, $old, $current);
         SignageCache::bust();
 
-        return response()->json(['mode' => $data['mode']]);
+        return response()->json($current);
     }
 
     public function updatePrayer(Request $request): JsonResponse
@@ -312,6 +354,7 @@ final class SignageAdminController extends Controller
     {
         $data = $request->validate([
             'enabled' => 'required|boolean',
+            'show_logo_between' => 'nullable|boolean',
             'banners' => 'nullable|array',
             'banners.*.id' => 'nullable|string|max:80',
             'banners.*.label' => 'nullable|string|max:120',
@@ -322,16 +365,22 @@ final class SignageAdminController extends Controller
             'banners.*.custom_text' => 'nullable|string|max:500',
             'banners.*.speed_seconds' => 'nullable|integer|min:10|max:180',
             'banners.*.duration_seconds' => 'nullable|integer|min:5|max:600',
+            'banners.*.repeat_count' => 'nullable|integer|min:1|max:20',
             'banners.*.font_scale' => 'nullable|numeric|min:0.5|max:3',
             'banners.*.height_scale' => 'nullable|numeric|min:0.5|max:3',
             'banners.*.text_color' => 'nullable|string|max:80',
             'banners.*.background_color' => 'nullable|string|max:80',
             'banners.*.align' => 'nullable|string|in:left,center,right',
             'banners.*.scroll_mode' => 'nullable|string|in:ticker,seamless,static',
-            // Legacy boolean — migrated to scroll_mode in SignageBannerNormalizer.
+            'banners.*.direction' => 'nullable|string|in:ltr,rtl',
             'banners.*.scroll' => 'nullable|boolean',
             'banners.*.date_format' => 'nullable|string|in:full,short,numeric,weekday,hijri',
             'banners.*.inset_percent' => 'nullable|numeric|min:0|max:5',
+            'banners.*.schedule' => 'nullable|array',
+            'banners.*.schedule.date_start' => 'nullable|date',
+            'banners.*.schedule.date_end' => 'nullable|date',
+            'banners.*.schedule.days' => 'nullable|array',
+            'banners.*.schedule.windows' => 'nullable|array',
             // Legacy Stage-3 single-banner fields still accepted.
             'position' => 'nullable|string|in:top,bottom',
             'fields' => 'nullable|array',
@@ -343,11 +392,13 @@ final class SignageAdminController extends Controller
         if (isset($data['banners']) && is_array($data['banners'])) {
             $cfg = SignageBannerNormalizer::normalize([
                 'enabled' => (bool) $data['enabled'],
+                'show_logo_between' => (bool) ($data['show_logo_between'] ?? false),
                 'banners' => $data['banners'],
             ]);
         } else {
             $cfg = SignageBannerNormalizer::normalize([
                 'enabled' => (bool) $data['enabled'],
+                'show_logo_between' => (bool) ($data['show_logo_between'] ?? $old['show_logo_between'] ?? false),
                 'position' => $data['position'] ?? ($old['banners'][0]['position'] ?? 'bottom'),
                 'fields' => $data['fields'] ?? ($old['banners'][0]['fields'] ?? ['date', 'time', 'next_prayer', 'countdown']),
                 'speed_seconds' => $data['speed_seconds'] ?? ($old['banners'][0]['speed_seconds'] ?? 40),
@@ -449,7 +500,13 @@ final class SignageAdminController extends Controller
         }
     }
 
-    /** @return array{enabled: bool, banners: list<array<string, mixed>>} */
+    /** @return array{manual: string, entries: list<array<string, mixed>>} */
+    private function emergencyConfig(): array
+    {
+        return SignageEmergencyNormalizer::normalizeFromSettings();
+    }
+
+    /** @return array{enabled: bool, show_logo_between: bool, banners: list<array<string, mixed>>} */
     private function bannerConfig(): array
     {
         return SignageBannerNormalizer::normalize(SiteSetting::get('signage_banner', '{}'));

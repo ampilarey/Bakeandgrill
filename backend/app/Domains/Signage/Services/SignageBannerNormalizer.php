@@ -7,6 +7,12 @@ namespace App\Domains\Signage\Services;
 /**
  * Normalizes Stage-3 single-banner and Stage-4 multi-banner shapes to one list.
  *
+ * @phpstan-type BannerSchedule array{
+ *   date_start?: string|null,
+ *   date_end?: string|null,
+ *   days?: list<int>|null,
+ *   windows?: list<array{start: string, end: string}>|null
+ * }
  * @phpstan-type BannerItem array{
  *   id: string,
  *   label: string,
@@ -16,16 +22,23 @@ namespace App\Domains\Signage\Services;
  *   custom_text: string,
  *   speed_seconds: int,
  *   duration_seconds: int,
+ *   repeat_count: int,
  *   font_scale: float,
  *   height_scale: float,
  *   text_color: string,
  *   background_color: string,
  *   align: string,
  *   scroll_mode: string,
+ *   direction: string,
  *   date_format: string,
- *   inset_percent: float
+ *   inset_percent: float,
+ *   schedule: BannerSchedule|null
  * }
- * @phpstan-type BannerSettings array{enabled: bool, banners: list<BannerItem>}
+ * @phpstan-type BannerSettings array{
+ *   enabled: bool,
+ *   show_logo_between: bool,
+ *   banners: list<BannerItem>
+ * }
  */
 final class SignageBannerNormalizer
 {
@@ -36,6 +49,8 @@ final class SignageBannerNormalizer
     private const ALLOWED_ALIGNS = ['left', 'center', 'right'];
 
     private const ALLOWED_SCROLL_MODES = ['ticker', 'seamless', 'static'];
+
+    private const ALLOWED_DIRECTIONS = ['ltr', 'rtl'];
 
     private const DEFAULT_TEXT_COLOR = '#fff8f0';
 
@@ -49,6 +64,7 @@ final class SignageBannerNormalizer
     {
         $cfg = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
         $masterEnabled = (bool) ($cfg['enabled'] ?? false);
+        $showLogoBetween = ($cfg['show_logo_between'] ?? false) === true;
 
         if (isset($cfg['banners']) && is_array($cfg['banners'])) {
             $banners = [];
@@ -68,10 +84,15 @@ final class SignageBannerNormalizer
                     'speed_seconds' => 40,
                     'duration_seconds' => 30,
                     'scroll_mode' => 'ticker',
+                    'repeat_count' => 1,
                 ], 0);
             }
 
-            return ['enabled' => $masterEnabled, 'banners' => $banners];
+            return [
+                'enabled' => $masterEnabled,
+                'show_logo_between' => $showLogoBetween,
+                'banners' => $banners,
+            ];
         }
 
         $hasLegacy = array_key_exists('position', $cfg)
@@ -82,6 +103,7 @@ final class SignageBannerNormalizer
         if ($hasLegacy) {
             return [
                 'enabled' => $masterEnabled,
+                'show_logo_between' => $showLogoBetween,
                 'banners' => [self::normalizeItem([
                     'id' => 'legacy',
                     'label' => 'Info',
@@ -96,6 +118,7 @@ final class SignageBannerNormalizer
 
         return [
             'enabled' => false,
+            'show_logo_between' => false,
             'banners' => [self::normalizeItem([
                 'id' => 'default',
                 'label' => 'Prayer',
@@ -105,6 +128,7 @@ final class SignageBannerNormalizer
                 'speed_seconds' => 40,
                 'duration_seconds' => 30,
                 'scroll_mode' => 'ticker',
+                'repeat_count' => 1,
             ], 0)],
         ];
     }
@@ -148,6 +172,14 @@ final class SignageBannerNormalizer
             $duration = 600;
         }
 
+        $repeatCount = (int) ($raw['repeat_count'] ?? 1);
+        if ($repeatCount < 1) {
+            $repeatCount = 1;
+        }
+        if ($repeatCount > 20) {
+            $repeatCount = 20;
+        }
+
         $fontScale = self::clampScale($raw['font_scale'] ?? 1.0);
         $heightScale = self::clampScale($raw['height_scale'] ?? 1.0);
 
@@ -159,6 +191,11 @@ final class SignageBannerNormalizer
         $align = (string) ($raw['align'] ?? 'left');
         if (! in_array($align, self::ALLOWED_ALIGNS, true)) {
             $align = 'left';
+        }
+
+        $direction = (string) ($raw['direction'] ?? 'ltr');
+        if (! in_array($direction, self::ALLOWED_DIRECTIONS, true)) {
+            $direction = 'ltr';
         }
 
         $inset = (float) ($raw['inset_percent'] ?? 0);
@@ -179,14 +216,17 @@ final class SignageBannerNormalizer
             'custom_text' => (string) ($raw['custom_text'] ?? ''),
             'speed_seconds' => $speed,
             'duration_seconds' => $duration,
+            'repeat_count' => $repeatCount,
             'font_scale' => $fontScale,
             'height_scale' => $heightScale,
             'text_color' => self::normalizeColor($raw['text_color'] ?? null, self::DEFAULT_TEXT_COLOR),
             'background_color' => self::normalizeColor($raw['background_color'] ?? null, self::DEFAULT_BG_COLOR),
             'align' => $align,
             'scroll_mode' => self::normalizeScrollMode($raw),
+            'direction' => $direction,
             'date_format' => $dateFormat,
             'inset_percent' => $inset,
+            'schedule' => self::normalizeSchedule($raw['schedule'] ?? null),
         ];
     }
 
@@ -205,6 +245,52 @@ final class SignageBannerNormalizer
 
         // Pre-scroll_mode saves behaved like scroll:true → seamless.
         return 'seamless';
+    }
+
+    /**
+     * @param  mixed  $raw
+     * @return BannerSchedule|null
+     */
+    public static function normalizeSchedule(mixed $raw): ?array
+    {
+        if (! is_array($raw)) {
+            return null;
+        }
+        $hasAny = array_key_exists('date_start', $raw)
+            || array_key_exists('date_end', $raw)
+            || array_key_exists('days', $raw)
+            || array_key_exists('windows', $raw);
+        if (! $hasAny) {
+            return null;
+        }
+
+        $schedule = [];
+        if (array_key_exists('date_start', $raw) && $raw['date_start'] !== null && $raw['date_start'] !== '') {
+            $schedule['date_start'] = (string) $raw['date_start'];
+        }
+        if (array_key_exists('date_end', $raw) && $raw['date_end'] !== null && $raw['date_end'] !== '') {
+            $schedule['date_end'] = (string) $raw['date_end'];
+        }
+        if (isset($raw['days']) && is_array($raw['days']) && $raw['days'] !== []) {
+            $schedule['days'] = array_values(array_map('intval', $raw['days']));
+        }
+        if (isset($raw['windows']) && is_array($raw['windows']) && $raw['windows'] !== []) {
+            $windows = [];
+            foreach ($raw['windows'] as $window) {
+                if (! is_array($window)) {
+                    continue;
+                }
+                $windows[] = [
+                    'start' => (string) ($window['start'] ?? '00:00'),
+                    'end' => (string) ($window['end'] ?? '23:59'),
+                ];
+            }
+            if ($windows !== []) {
+                $schedule['windows'] = $windows;
+            }
+        }
+
+        return $schedule === [] ? null : $schedule;
     }
 
     private static function clampScale(mixed $raw): float

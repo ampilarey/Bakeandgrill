@@ -3,6 +3,14 @@ import { req } from './client';
 export type SignageBannerDateFormat = 'full' | 'short' | 'numeric' | 'weekday' | 'hijri';
 export type SignageBannerAlign = 'left' | 'center' | 'right';
 export type SignageBannerScrollMode = 'ticker' | 'seamless' | 'static';
+export type SignageBannerDirection = 'ltr' | 'rtl';
+
+export type SignageSchedule = {
+  date_start?: string | null;
+  date_end?: string | null;
+  days?: number[] | null;
+  windows?: Array<{ start: string; end: string }> | null;
+};
 
 export type SignageBannerItem = {
   id: string;
@@ -13,23 +21,48 @@ export type SignageBannerItem = {
   custom_text?: string;
   speed_seconds: number;
   duration_seconds: number;
+  repeat_count: number;
   font_scale: number;
   height_scale: number;
   text_color: string;
   background_color: string;
   align: SignageBannerAlign | string;
   scroll_mode: SignageBannerScrollMode | string;
+  direction: SignageBannerDirection | string;
   date_format: SignageBannerDateFormat | string;
   inset_percent: number;
+  schedule?: SignageSchedule | null;
 };
 
 export type SignageBannerSettings = {
   enabled: boolean;
   banners: SignageBannerItem[];
+  show_logo_between?: boolean;
   /** @deprecated Stage-3 single-banner fields — still accepted on read. */
   position?: 'top' | 'bottom' | string;
   fields?: string[];
   speed_seconds?: number;
+};
+
+export type SignageEmergencyLayout = 'notice' | 'alert' | 'split' | 'countdown';
+
+export type SignageEmergencyEntry = {
+  id: string;
+  mode: string;
+  priority: number;
+  is_active: boolean;
+  layout: SignageEmergencyLayout | string;
+  title: string;
+  body: string;
+  title_dv?: string;
+  body_dv?: string;
+  reopen_at?: string | null;
+  schedule?: SignageSchedule | null;
+};
+
+export type SignageEmergencyConfig = {
+  manual: string;
+  entries: SignageEmergencyEntry[];
 };
 
 export type SignagePrayerIsland = {
@@ -44,6 +77,7 @@ export type SignageOverview = {
   screens: SignageScreen[];
   campaigns: SignageCampaign[];
   emergency: string;
+  emergency_config?: SignageEmergencyConfig;
   prayer: { enabled: boolean; prayers: string[]; break_minutes: number; island_id?: number };
   prayer_islands?: SignagePrayerIsland[];
   banner?: SignageBannerSettings;
@@ -166,6 +200,16 @@ export async function setSignageEmergency(mode: string) {
   });
 }
 
+export async function setSignageEmergencyConfig(body: {
+  mode?: string;
+  entries?: SignageEmergencyEntry[];
+}) {
+  return req<{ mode: string; emergency_config: SignageEmergencyConfig }>('/admin/signage/emergency', {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function setSignagePrayer(body: {
   enabled: boolean;
   prayers?: string[];
@@ -181,6 +225,7 @@ export async function setSignagePrayer(body: {
 export async function setSignageBanner(body: {
   enabled: boolean;
   banners?: SignageBannerItem[];
+  show_logo_between?: boolean;
   /** Legacy Stage-3 fields still accepted by the API. */
   position?: 'top' | 'bottom' | string;
   fields?: string[];

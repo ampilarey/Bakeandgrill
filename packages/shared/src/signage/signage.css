@@ -236,25 +236,51 @@
   width: max-content;
 }
 
-/* Seamless — duplicated text, gapless loop (legacy default). */
+/* Seamless — duplicated text, gapless loop. */
 .signage-banner--seamless .signage-banner-track {
   animation: signage-banner-marquee var(--signage-banner-speed, 40s) linear infinite;
 }
 
-/* Ticker — single copy enters from the right and clears off the left. */
-.signage-banner--ticker .signage-banner-track {
+/* Ticker LTR — single copy enters from the right and clears off the left. */
+.signage-banner--ticker.signage-banner--ltr .signage-banner-track {
   width: 100%;
-  animation: signage-banner-ticker var(--signage-banner-speed, 40s) linear infinite;
+  animation: signage-banner-ticker-ltr var(--signage-banner-speed, 40s) linear infinite;
 }
 
+/* Ticker RTL — Dhivehi: enters left, exits right. */
+.signage-banner--ticker.signage-banner--rtl .signage-banner-track {
+  width: 100%;
+  animation: signage-banner-ticker-rtl var(--signage-banner-speed, 40s) linear infinite;
+}
+
+/* Static — animation-driven hold (no setTimeout). Repeats = repeat_count. */
 .signage-banner--static .signage-banner-track {
-  animation: none;
   width: 100%;
   justify-content: var(--signage-banner-justify, flex-start);
+  animation: signage-banner-static-hold var(--signage-banner-speed, 40s) linear var(--signage-banner-repeats, 1);
 }
 
 .signage-banner-text {
   padding: 0 4vmin;
+}
+
+.signage-banner--logo {
+  justify-content: center;
+}
+
+.signage-banner-logo-hold {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  animation: signage-banner-logo-hold 2.4s linear 1;
+}
+
+.signage-banner-logo-img {
+  max-height: 70%;
+  max-width: 40%;
+  object-fit: contain;
 }
 
 @keyframes signage-banner-marquee {
@@ -262,7 +288,22 @@
   to { transform: translateX(-50%); }
 }
 
-@keyframes signage-banner-ticker {
+@keyframes signage-banner-ticker-ltr {
   from { transform: translateX(100%); }
   to { transform: translateX(-100%); }
+}
+
+@keyframes signage-banner-ticker-rtl {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes signage-banner-static-hold {
+  from { opacity: 1; }
+  to { opacity: 1; }
+}
+
+@keyframes signage-banner-logo-hold {
+  from { opacity: 1; }
+  to { opacity: 1; }
 }

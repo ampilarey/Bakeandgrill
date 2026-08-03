@@ -130,6 +130,36 @@ function SignageEl({
         </div>
       );
       break;
+    case 'countdown': {
+      const reopenAt = String(el.binding?.reopen_at ?? '');
+      const target = Date.parse(reopenAt);
+      const nowMs = Date.parse(variables.server_time ?? '') || Date.now();
+      let label = '';
+      if (Number.isFinite(target)) {
+        const remaining = target - nowMs;
+        if (remaining <= 0) {
+          label = 'now';
+        } else {
+          const totalMin = Math.max(0, Math.floor(remaining / 60_000));
+          const hours = Math.floor(totalMin / 60);
+          const mins = totalMin % 60;
+          if (hours > 0 && mins > 0) label = `${hours}h ${mins}m`;
+          else if (hours > 0) label = `${hours}h`;
+          else if (totalMin < 1) label = '<1m';
+          else label = `${mins}m`;
+        }
+      }
+      body = (
+        <div
+          className="signage-countdown"
+          data-testid="signage-countdown"
+          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}
+        >
+          {label}
+        </div>
+      );
+      break;
+    }
     case 'qr': {
       const url = String(el.binding?.url ?? '/order/view');
       const abs = url.startsWith('http') ? url : `${typeof window !== 'undefined' ? window.location.origin : ''}${url.startsWith('/') ? '' : '/'}${url}`;
