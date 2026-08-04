@@ -1,3 +1,4 @@
+import { isBusinessDateInFuture } from "@shared/utils/businessDay";
 import { fetchReceipts } from "../api";
 
 export type OpenTicket = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
@@ -31,8 +32,13 @@ export function ticketDisplayTotal(t: OpenTicket): number {
   return summed > 0 ? summed : stored;
 }
 
-/** Kitchen lifecycle stage — aligned with KDS columns (Pending / Cooking / Ready). */
-export type TicketStage = "parked" | "queued" | "cooking" | "ready";
+/**
+ * Kitchen lifecycle stage — aligned with KDS columns (Pending / Cooking / Ready),
+ * plus "tomorrow" for paid collect-tomorrow tickets waiting on a future day.
+ *
+ * Handover: Tomorrow → Parked (collection morning) → Cooking → Ready.
+ */
+export type TicketStage = "tomorrow" | "parked" | "queued" | "cooking" | "ready";
 
 export type TicketStageInput = {
   status?: string | null;
@@ -40,15 +46,11 @@ export type TicketStageInput = {
   fulfil_date?: string | null;
 };
 
-/**
- * Collect-tomorrow tickets (fulfil_date set, not yet fired) stay "parked"
- * so Open Tickets shows Fire — same staff surface as held POS tickets.
- * Do not invent a separate screen for this.
- */
 export function ticketStage(
   statusOrTicket: string | null | undefined | TicketStageInput,
   maybeFiredAt?: string | null,
   maybeFulfilDate?: string | null,
+  now: Date = new Date(),
 ): TicketStage {
   let status: string | null | undefined;
   let firedAt: string | null | undefined;
@@ -64,7 +66,11 @@ export function ticketStage(
     fulfilDate = maybeFulfilDate;
   }
 
-  if (fulfilDate && !firedAt) return "parked";
+  // Collect-tomorrow: own stage until the restaurant's collection day begins.
+  if (fulfilDate && !firedAt) {
+    if (isBusinessDateInFuture(fulfilDate, now)) return "tomorrow";
+    return "parked";
+  }
   if (status === "held") return "parked";
   if (status === "ready") return "ready";
   if (status === "in_progress" || status === "preparing") return "cooking";

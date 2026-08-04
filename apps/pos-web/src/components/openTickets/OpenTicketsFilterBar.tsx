@@ -6,7 +6,7 @@ import { FilterGroup } from "./filterPrimitives";
 
 type Props = {
   allCount: number;
-  stageCounts: { queued: number; cooking: number; ready: number; parked: number };
+  stageCounts: { queued: number; cooking: number; ready: number; parked: number; tomorrow: number };
   typeCounts: { dine_in: number; takeaway: number; online_pickup: number; delivery: number };
   paymentCounts: { paid: number; unpaid: number };
   activeFilter: OpenTicketsFilterKey;
@@ -65,6 +65,7 @@ export function OpenTicketsFilterBar({
             { key: "stage:cooking", label: "Cooking", count: stageCounts.cooking },
             { key: "stage:ready", label: "Ready", count: stageCounts.ready },
             { key: "stage:parked", label: "Parked", count: stageCounts.parked },
+            { key: "stage:tomorrow", label: "Tomorrow", count: stageCounts.tomorrow },
           ]}
           selected={activeFilter}
           onSelect={(k) => setActiveFilter(k as OpenTicketsFilterKey)}

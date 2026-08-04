@@ -1,3 +1,7 @@
+import {
+  businessDayStartIso,
+  formatBusinessDayLabel,
+} from "@shared/utils/businessDay";
 import type { TicketStage } from "./openTicketUtils";
 
 export function formatTicketAge(iso: string | null | undefined): string {
@@ -45,24 +49,38 @@ export function compareTicketsByAge(
   return tA - tB; // older first
 }
 
-/** Prefer hold time for parked tickets; fire time for kitchen stages. */
+/**
+ * Prefer hold time for parked tickets; fire time for kitchen stages.
+ * Collect-tomorrow tickets on collection day age from the start of that
+ * business day — not from when the order was placed the evening before.
+ */
 export function ticketAgeAnchor(ticket: AgeFields, stage: TicketStage): string | null {
+  if (stage === "tomorrow") {
+    // Future start-of-day keeps these from floating above same-day "ok" tickets.
+    return ticket.fulfil_date ? businessDayStartIso(ticket.fulfil_date) : null;
+  }
   if (stage === "parked") {
+    if (ticket.fulfil_date && !ticket.fired_at) {
+      return businessDayStartIso(ticket.fulfil_date);
+    }
     return ticket.held_at ?? ticket.created_at ?? null;
   }
   return ticket.fired_at ?? ticket.created_at ?? null;
 }
 
-function minutesSince(iso: string | null | undefined): number | null {
+function minutesSince(iso: string | null | undefined, nowMs: number = Date.now()): number | null {
   if (!iso) return null;
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
-  return Math.floor((Date.now() - t) / 60000);
+  return Math.floor((nowMs - t) / 60000);
 }
 
 /** Parked/held tickets: warn at 15m, critical at 30m. */
-export function parkedTicketAgeLevel(iso: string | null | undefined): TicketAgeLevel {
-  const m = minutesSince(iso);
+export function parkedTicketAgeLevel(
+  iso: string | null | undefined,
+  nowMs: number = Date.now(),
+): TicketAgeLevel {
+  const m = minutesSince(iso, nowMs);
   if (m == null) return "ok";
   if (m >= 30) return "critical";
   if (m >= 15) return "warn";
@@ -87,13 +105,28 @@ export function readyTicketAgeLevel(iso: string | null | undefined): TicketAgeLe
   return "ok";
 }
 
-export function ticketAgeLevel(iso: string | null | undefined, stage: TicketStage): TicketAgeLevel {
-  if (stage === "parked") return parkedTicketAgeLevel(iso);
+export function ticketAgeLevel(
+  iso: string | null | undefined,
+  stage: TicketStage,
+  nowMs: number = Date.now(),
+): TicketAgeLevel {
+  if (stage === "tomorrow") return "ok";
+  if (stage === "parked") return parkedTicketAgeLevel(iso, nowMs);
   if (stage === "ready") return readyTicketAgeLevel(iso);
   return kitchenTicketAgeLevel(iso);
 }
 
-export function ticketAgeTitle(level: TicketAgeLevel, stage: TicketStage): string {
+export function ticketAgeTitle(
+  level: TicketAgeLevel,
+  stage: TicketStage,
+  opts?: { fulfil_date?: string | null },
+): string {
+  if (stage === "tomorrow") {
+    const day = opts?.fulfil_date
+      ? formatBusinessDayLabel(opts.fulfil_date)
+      : "collection day";
+    return `Waiting for ${day} — nothing to do yet`;
+  }
   if (stage === "parked") {
     if (level === "critical") return "Parked 30+ minutes — fire or void soon";
     if (level === "warn") return "Parked 15+ minutes";

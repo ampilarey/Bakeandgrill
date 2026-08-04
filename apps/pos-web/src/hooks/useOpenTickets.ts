@@ -24,7 +24,7 @@ export type { OpenTicket, TicketStage };
 
 export type OpenTicketsFilterKey =
   | "all"
-  | "stage:queued" | "stage:cooking" | "stage:ready" | "stage:parked"
+  | "stage:queued" | "stage:cooking" | "stage:ready" | "stage:parked" | "stage:tomorrow"
   | "type:dine_in" | "type:takeaway" | "type:online_pickup" | "type:delivery"
   | "payment:paid" | "payment:unpaid";
 
@@ -459,7 +459,7 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
   }, [searchScopedTickets]);
 
   const stageCounts = useMemo(() => {
-    const counts = { parked: 0, queued: 0, cooking: 0, ready: 0 };
+    const counts = { parked: 0, queued: 0, cooking: 0, ready: 0, tomorrow: 0 };
     searchScopedTickets.forEach((t) => {
       counts[ticketStage(t)]++;
     });

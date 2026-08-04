@@ -139,6 +139,13 @@ export function TicketRow({
 
   const collectTomorrow = Boolean(t.fulfil_date && !t.fired_at);
   const stageBadge = {
+    tomorrow: {
+      label: "Collect tomorrow",
+      color: palette.panelMuted,
+      bg: palette.bgAlt,
+      border: palette.borderStrong,
+      title: `Customer collects on ${t.fulfil_date}. Nothing to fire until then.`,
+    },
     parked: {
       label: collectTomorrow ? "Collect tomorrow" : "Parked",
       color: palette.panelMuted,
@@ -338,7 +345,7 @@ export function TicketRow({
             {t.type === "delivery" && t.delivery_island ? ` · ${t.delivery_island}` : ""}
             {ageIso ? (
               <span
-                title={ticketAgeTitle(ageLevel, stage)}
+                title={ticketAgeTitle(ageLevel, stage, { fulfil_date: t.fulfil_date })}
                 style={{
                   color: ageLevel !== "ok" ? ageStyle.color : palette.panelMuted,
                   fontWeight: ageLevel !== "ok" ? 700 : 500,
@@ -375,7 +382,7 @@ export function TicketRow({
       }}>
         {mergeTargetId === null && (
           <>
-            {stage === "parked" && canHoldResume && (
+            {(stage === "parked" || stage === "tomorrow") && canHoldResume && (
               <ActionButton
                 onClick={() => handleFireToKitchen(t)}
                 busy={busy}
