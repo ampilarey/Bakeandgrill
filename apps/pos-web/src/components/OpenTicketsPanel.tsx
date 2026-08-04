@@ -15,6 +15,7 @@ import { EmptyState, PanelShell } from "./openTickets/PanelShell";
 import { PhonePromptModal } from "./openTickets/PhonePromptModal";
 import { SplitItemPicker } from "./openTickets/SplitItemPicker";
 import { TicketList } from "./openTickets/TicketList";
+import { FireEarlyConfirmModal } from "./openTickets/FireEarlyConfirmModal";
 import { VoidConfirmModal } from "./openTickets/VoidConfirmModal";
 
 const PrintBillFallbackModal = lazy(() =>
@@ -84,6 +85,9 @@ export function OpenTicketsPanel({
     typeCounts,
     stageCounts,
     handleFireToKitchen,
+    fireEarlyConfirm,
+    cancelFireEarly,
+    confirmFireEarly,
     handleSendPayLink,
     handleStartCooking,
     handleMarkReady,
@@ -241,6 +245,14 @@ export function OpenTicketsPanel({
             setVoidPrompt(null);
           }}
           onConfirm={() => void handleConfirmVoid()}
+        />
+      )}
+      {fireEarlyConfirm && (
+        <FireEarlyConfirmModal
+          ticket={fireEarlyConfirm}
+          busy={busyId === fireEarlyConfirm.id}
+          onCancel={cancelFireEarly}
+          onConfirm={() => void confirmFireEarly()}
         />
       )}
       {printBillFallback && (

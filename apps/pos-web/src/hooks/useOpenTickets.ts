@@ -75,6 +75,8 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
   const [mergeTargetId, setMergeTargetId] = useState<number | null>(null);
   const [mergeConfirm, setMergeConfirm] = useState<{ target: OpenTicket; source: OpenTicket } | null>(null);
   const [mergeBusy, setMergeBusy] = useState(false);
+  /** Collect-tomorrow ticket awaiting confirm before early fire. */
+  const [fireEarlyConfirm, setFireEarlyConfirm] = useState<OpenTicket | null>(null);
   const [splitFor, setSplitFor] = useState<OpenTicket | null>(null);
   /**
    * FIX 19 — when window.open is blocked (mobile Safari, popup-blocker,
@@ -139,7 +141,7 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
     );
   }, []);
 
-  const handleFireToKitchen = async (t: OpenTicket) => {
+  const executeFireToKitchen = useCallback(async (t: OpenTicket) => {
     setBusyId(t.id);
     setRowMsg(null);
     try {
@@ -151,7 +153,31 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
     } finally {
       setBusyId(null);
     }
-  };
+  }, [patchTicket]);
+
+  /**
+   * Fire to kitchen. Collect-tomorrow tickets still waiting on a future day
+   * need an explicit confirm — firing early sends tomorrow's food today.
+   * On collection day (stage "parked") and for ordinary tickets: one tap.
+   */
+  const handleFireToKitchen = useCallback((t: OpenTicket) => {
+    if (ticketStage(t) === "tomorrow") {
+      setFireEarlyConfirm(t);
+      return;
+    }
+    void executeFireToKitchen(t);
+  }, [executeFireToKitchen]);
+
+  const cancelFireEarly = useCallback(() => {
+    setFireEarlyConfirm(null);
+  }, []);
+
+  const confirmFireEarly = useCallback(async () => {
+    const t = fireEarlyConfirm;
+    if (!t) return;
+    await executeFireToKitchen(t);
+    setFireEarlyConfirm(null);
+  }, [fireEarlyConfirm, executeFireToKitchen]);
 
   const doSendPayLink = async (t: OpenTicket, phone?: string) => {
     setBusyId(t.id);
@@ -507,6 +533,9 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
     typeCounts,
     stageCounts,
     handleFireToKitchen,
+    fireEarlyConfirm,
+    cancelFireEarly,
+    confirmFireEarly,
     handleSendPayLink,
     handleStartCooking,
     handleMarkReady,
