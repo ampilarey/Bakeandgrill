@@ -274,31 +274,37 @@ Read-only review of migrations + money paths. No migrate/seed run.
 - MINOR: 3  
 - INFO: 2  
 
-### Untested (Part F)
+### Untested (Part F) — updated after completion pass
 
-- Coverage % metrics (phpunit clover / vitest coverage not generated).
+- ~~Coverage % metrics~~ → **Covered** in Completion pass Gap 6 (`pcov` + `vitest --coverage`).
 
 ---
 
 ## Cross-cutting summary (read this first)
 
+**Completion pass (2026-08-04) did change priorities** in two ways: (1) owner “empty admin pages” is **not** a blanket permissions issue — seeded Playwright pass rendered CONTENT on all 58 admin routes; (2) **query-cost and concrete routing bugs** now outrank several polish items. AuthZ blockers from the first pass remain #1.
+
 Highest-value themes spanning apps/parts:
 
-1. **Staff AuthZ holes on receipts (BLOCKER)** — Part B. Any staff token can mint public receipt links and reach receipt-send without `orders.receipts`. Same root cause as missing route middleware on “core staff” order helpers (`orders` index/stream, customer addresses). Fix as one middleware pass on `orders.php` / `devices.php` stream routes.
+1. **Staff AuthZ holes on receipts (BLOCKER)** — Part B (unchanged). Any staff token can mint public receipt links and reach receipt-send without `orders.receipts`. Same family: `orders` index/stream, customer addresses. Still the top security fix.
 
-2. **Money still half-migrated to laari (MAJOR)** — Parts C + E + POS. Float/`*100` in PHP and JS beside integer laari columns. One conversion library on both sides; stop dual-writing decimals for tender math.
+2. **Content hub / settings N+1 (MAJOR) — NEW from Gap 2** — `GET /api/admin/content` **802 queries** (site_settings-by-key loop ×516); export 206q; SMS control center 52q. Will dominate admin latency as CMS keys grow. Batch/cache settings reads.
 
-3. **Silent failure / wrong-default UI (MAJOR)** — Part A. GST export → opaque 500 when TIN missing; GST dashboard and SMS Automations hide errors (and Automations defaults toggles ON). Pattern: `try/finally` without `catch`, or exceptions mapped to generic 500.
+3. **Supplier Intelligence route shadowing (MAJOR) — NEW from Gap 1** — `GET /api/suppliers/performance` binds as `suppliers/{id}` → 404 “Supplier performance”. Static route loses to `{id}`; page loads chrome without performance data.
 
-4. **Destructive / confirm-less money & status actions (MAJOR/MINOR)** — Parts A. POS Ops refund (no confirm) vs Receipts (confirm); KDS 86; delivery Mark Delivered. Shared UX rule: terminal money/status needs confirm.
+4. **Money still half-migrated to laari (MAJOR)** — Parts C + E + POS (unchanged). Float/`*100` beside laari columns.
 
-5. **Permission alias directionality FE≠BE (MAJOR)** — Part E (+ historical Part A nav drift already fixed for SMS/webhooks/menu). Remaining: `devices.manage` ↔ `devices.approve`. Add a parity test against `PermissionCatalog::SATISFIED_BY`.
+5. **TV/signage resilience (MAJOR)** — Part A + **confirmed Gap 1**. `/order/tv` stuck on “LOADING BOARD…” under empty cache / failed config (plus 429/419 noise in harness).
 
-6. **`env()` vs `config:cache` (MAJOR)** — Part F. OTP_DEV_RETURN + missing `config/media.php` for ffmpeg. Deploy already runs `config:cache` — these reads are dead after cache.
+6. **Silent failure / wrong-default UI (MAJOR)** — Part A (unchanged). GST opaque 500; Automations toggles default ON; GstPage empty shell on failed load.
 
-7. **Heavy client chunks (MAJOR)** — Part D. Shared `prepareUpload` ~1.3MB on admin and POS; POS index ~632KB.
+7. **Thin coverage on inventory & order-status controllers (MAJOR) — NEW from Gap 6** — `InventoryController` ~10% lines; `OrderStatusController` ~31%. Backend overall 68% masks these holes.
 
-8. **TV/signage resilience (MAJOR)** — Part A. Empty cache + failed config = infinite spinner. Same offline-first pattern should set an error state.
+8. **Permission alias FE≠BE + `env()`/config:cache + heavy chunks** — Parts E/F/D (unchanged). `devices.manage` direction; OTP_DEV_RETURN / media ffmpeg config; prepareUpload ~1.3MB.
+
+9. **Delivery driver stats 500 (MAJOR) — NEW from Gap 1** — `/api/driver/stats` 500 for valid driver token; history page errors.
+
+Customer-token IDOR matrix (Gap 3) found **no** cross-customer leaks; do not deprioritize staff AuthZ blockers because of that.
 
 ### Suggested fix-prompt batches (for later)
 
@@ -309,6 +315,8 @@ Highest-value themes spanning apps/parts:
 | C | Laari-only tender path (POS + OrderSettlement leftovers) | Money integrity |
 | D | `config/media.php` + move `OTP_DEV_RETURN` into config; FE devices alias parity test | Config-cache + permission parity |
 | E | Ops refund confirm; signage empty-cache error; prepareUpload code-split review | UX + perf polish |
+| F | Content settings N+1 (admin content + SMS control center); supplier `/performance` route order | Perf + broken Supplier Intelligence |
+| G | `InventoryController` / `OrderStatusController` coverage; driver `/stats` 500 | Reliability on hot paths |
 
 ### Audit constraints / honesty
 
@@ -317,7 +325,7 @@ Highest-value themes spanning apps/parts:
 - Completion pass seeded local DB (82 items, 45 orders, 20 customers) before Gaps 1–6.
 - Local `artisan serve` SPA deep-link quirk worked around with throwaway router; confirm Apache/nginx on TEST before prioritizing that INFO.
 
-**Report tip:** branch `cursor/full-system-audit-f876` — commits per Part A→F. No PR opened. No product code changed.
+**Report tip:** branch `cursor/full-system-audit-f876` — first pass Parts A–F + completion Gaps 1–6. No PR opened. No product code changed. Throwaway scripts under `/tmp` only.
 
 ---
 
@@ -559,4 +567,58 @@ Dual `default` + named page exports are style noise, not proof the route is dead
 - MAJOR: 0  
 - MINOR: 1 (admin/order dead files + large unused API surface — cleanup debt)  
 - INFO: knip noise (types, duplicate default exports, HTML-linked assets)
+
+### Gap 6 — Part F coverage metrics
+
+**Backend:** `php -d pcov.enabled=1 vendor/bin/phpunit --coverage-text` (pcov installed in audit env only).  
+**Frontends:** `vitest run --coverage` per app (`@vitest/coverage-v8`). Order app: one pre-existing failing test (`signageBanner.test.tsx` schedule window) excluded to obtain a report — **not** a product fix.
+
+#### Overall
+
+| Suite | Lines | Statements | Notes |
+|---|---:|---:|---|
+| Backend (PHPUnit) | **68.33%** (29498/43168) | Methods 45.53% / Classes 23.04% | 1863 passed, 3 skipped |
+| admin-dashboard | **43.14%** | 40.57% | Largest FE surface |
+| online-order-web | **55.57%** | 52.84% | Excl. 1 failing signage banner test |
+| pos-web | **32.84%** | 30.92% | |
+| kds-web | **35.49%** | 32.68% | Only 3 tests |
+| delivery-web | **17.14%** | 15.18% | Only 1 test — thinnest app |
+
+#### Domain line coverage (backend, name-heuristic class sets)
+
+| Domain | Classes | Lines covered | Thin / notable |
+|---|---:|---:|---|
+| Payments | 55 | **75.8%** | `PaymentController` 45%; `StripeService` 37%; refund listeners ~43–54% |
+| Orders | 109 | **71.7%** | `OrderStatusController` **31%**; order SMS listeners ~21%; `ReceiptPageController` 23% |
+| Stock / inventory | 48 | **72.6%** | `InventoryController` **10%** (very thin); `PurchaseWorkflowController` 50% |
+| Permissions / auth | 20 | **77.3%** | `DeviceController` 41%; middleware `RequireAnyPermission` 53% |
+| Promotions / loyalty / gifts | 61 | **76.8%** | `RecordReferralRedemptionListener` 12%; `DiscountCardController` 28%; `LoyaltyController` 47% |
+
+Overall backend ~68% hides **controller-level holes** in inventory + order status + payments.
+
+#### Frontend domain thin spots (admin/POS samples)
+
+| Area | Observation |
+|---|---|
+| Admin `api/orders.ts`, `api/gst.ts` | **0%** line coverage in vitest report |
+| Admin `OrdersPage.tsx` | ~38% |
+| POS `useOpenTickets.ts`, many ticket UI files | ~0–1% |
+| Delivery / KDS | Suite too small for domain confidence — treat app-level % as the signal |
+
+#### Findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| MAJOR | Coverage / inventory | `InventoryController` ~**10%** lines | Backend coverage | Stock mutations lightly tested relative to risk. |
+| MAJOR | Coverage / orders | `OrderStatusController` ~**31%** lines | Backend coverage | Status machine + side effects under-tested vs volume of order tests elsewhere. |
+| MINOR | Coverage / delivery-web | **17%** lines; 1 test | delivery-web | Regressions easy. |
+| MINOR | Coverage / admin API clients | orders/gst API modules at 0% | admin vitest | UI tests don’t exercise client wrappers. |
+| INFO | Order vitest | `signageBanner.test.tsx` schedule assertion failing in this env | online-order-web | Blocked full green `--coverage` until excluded; investigate separately. |
+
+#### Gap 6 severity counts
+
+- BLOCKER: 0  
+- MAJOR: 2  
+- MINOR: 2  
+- INFO: 1  
 
