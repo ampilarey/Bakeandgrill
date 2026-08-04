@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { composeOrderingStatusBanner, ORDER_STATUS_DEFAULTS } from './orderingStatusBanner';
+import {
+  composeClosedMenuBanner,
+  composeOrderingStatusBanner,
+  ORDER_STATUS_DEFAULTS,
+} from './orderingStatusBanner';
 
 const defaults = {
   open: ORDER_STATUS_DEFAULTS.open,
@@ -76,5 +80,25 @@ describe('composeOrderingStatusBanner', () => {
         copy: { ...defaults, open: 'We are open', closes: 'Until {time}' },
       }),
     ).toBe('We are open · Until 6pm');
+  });
+});
+
+describe('composeClosedMenuBanner', () => {
+  it('keeps the closed strip short with opens + tomorrow', () => {
+    expect(
+      composeClosedMenuBanner({
+        opensFormatted: '10:00 AM',
+        hasTomorrowItems: true,
+      }),
+    ).toBe('Closed · Opens 10:00 AM · Some items for tomorrow');
+  });
+
+  it('omits tomorrow when no eligible items', () => {
+    expect(
+      composeClosedMenuBanner({
+        opensFormatted: '10:00 AM',
+        hasTomorrowItems: false,
+      }),
+    ).toBe('Closed · Opens 10:00 AM');
   });
 });

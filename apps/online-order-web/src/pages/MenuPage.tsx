@@ -16,7 +16,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderModeToggle } from '../components/OrderModeToggle';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
-import { composeOrderingStatusBanner, ORDER_STATUS_DEFAULTS } from '../utils/orderingStatusBanner';
+import { composeClosedMenuBanner } from '../utils/orderingStatusBanner';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
@@ -659,7 +659,7 @@ export function MenuPage() {
   const pickupBlocked = !isServiceAvailable('online_pickup');
   const deliveryBlocked = (isOpen === true && !deliveryAvailable) || !isServiceAvailable('online_delivery');
 
-  // Shop-level closed notice — items stay browsable; only checkout is blocked.
+  // Shop-level closed notice — short strip; browse stays open.
   const gateClosedBanner = useMemo(() => {
     if (isOpen !== false) return null;
     let opensFormatted = '';
@@ -671,23 +671,14 @@ export function MenuPage() {
         }
       } catch { /* ignore */ }
     }
-    return composeOrderingStatusBanner({
-      isOpen: false,
-      deliveryAvailable: true,
-      closesFormatted: '',
+    return composeClosedMenuBanner({
       opensFormatted,
-      deliveryFromFormatted: '',
-      gateMessage,
-      copy: {
-        open: ORDER_STATUS_DEFAULTS.open,
-        closed: ORDER_STATUS_DEFAULTS.closed,
-        pickupOnly: ORDER_STATUS_DEFAULTS.pickup_only,
-        closes: ORDER_STATUS_DEFAULTS.closes,
-        opens: ORDER_STATUS_DEFAULTS.opens,
-        deliveryFrom: ORDER_STATUS_DEFAULTS.delivery_from,
-      },
+      hasTomorrowItems: items.some((item) => Boolean(item.allow_pre_order)),
+      closedLabel: t('menu.banner_closed_short'),
+      opensTemplate: t('menu.banner_opens_short'),
+      tomorrowLabel: t('menu.banner_tomorrow_short'),
     });
-  }, [isOpen, nextOpenWindow, gateMessage]);
+  }, [isOpen, nextOpenWindow, items, t]);
 
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>

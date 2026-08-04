@@ -200,10 +200,11 @@ describe('browse while ordering gate is closed', () => {
     await user.click(document.querySelector('.float-cart-fab') as HTMLElement);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Ordering opens at/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Ordering is closed/i })).toBeTruthy();
     });
     expect(screen.queryByRole('button', { name: /Proceed to Checkout/i })).toBeNull();
-    const cta = screen.getByRole('button', { name: /Ordering opens at/i });
+    const cta = screen.getByRole('button', { name: /Ordering is closed/i });
     expect(cta).toBeDisabled();
+    expect(screen.getByTestId('cart-closed-tomorrow-tip')).toBeTruthy();
   });
 });

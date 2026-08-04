@@ -64,3 +64,27 @@ export function composeOrderingStatusBanner(args: {
   const closesPart = part(copy.closes, closesFormatted);
   return closesPart ? `${copy.open} · ${closesPart}` : copy.open;
 }
+
+/**
+ * Compact MenuPage closed strip — skips long Ordering Control messages.
+ * Example: "Closed · Opens 10:00 AM · Some items for tomorrow"
+ */
+export function composeClosedMenuBanner(args: {
+  opensFormatted: string;
+  hasTomorrowItems: boolean;
+  closedLabel?: string;
+  opensTemplate?: string;
+  tomorrowLabel?: string;
+}): string {
+  const closed = (args.closedLabel ?? 'Closed').trim() || 'Closed';
+  const opensTpl = args.opensTemplate ?? 'Opens {time}';
+  const tomorrow = (args.tomorrowLabel ?? 'Some items for tomorrow').trim();
+  const bits = [closed];
+  if (args.opensFormatted) {
+    bits.push(opensTpl.replace('{time}', args.opensFormatted));
+  }
+  if (args.hasTomorrowItems && tomorrow) {
+    bits.push(tomorrow);
+  }
+  return bits.join(' · ');
+}
