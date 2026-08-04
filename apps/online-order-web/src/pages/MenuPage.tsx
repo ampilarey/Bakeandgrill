@@ -111,7 +111,7 @@ function dietaryFilterLabel(slug: string, sampleRaw?: string): string {
 }
 
 export function MenuPage() {
-  const { addItem, pruneCartToAllowedItemIds, cart } = useCart();
+  const { addItem, pruneCartToAllowedItemIds, refreshPricesFromMenu, cart } = useCart();
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
@@ -206,6 +206,9 @@ export function MenuPage() {
         setCategories(cats.data ?? []);
         setItems(loadedItems);
         setCateringListing(cateringIts.data ?? []);
+        // Refresh cart item snapshots (allow_pre_order, prices, etc.) so a
+        // stale localStorage cart still unlocks "collect tomorrow" when closed.
+        refreshPricesFromMenu(loadedItems);
         const allowedIds = new Set(loadedItems.map((item) => item.id));
         const removedCount = cartRef.current.filter((entry) => !allowedIds.has(entry.item.id)).length;
         if (removedCount > 0) {

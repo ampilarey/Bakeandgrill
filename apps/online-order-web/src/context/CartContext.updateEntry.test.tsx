@@ -114,3 +114,28 @@ describe('CartContext.updateEntry', () => {
     expect(result.current.cart[0].modifiers.map((m) => m.id)).toEqual([100]);
   });
 });
+
+describe('CartContext.refreshPricesFromMenu', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('syncs allow_pre_order from fresh menu into a stale cart line', () => {
+    const { result } = renderHook(() => useCart(), { wrapper });
+    act(() => {
+      result.current.addItem({ ...baseItem, allow_pre_order: false }, 1, [], null);
+    });
+    expect(result.current.cart[0].item.allow_pre_order).toBe(false);
+
+    act(() => {
+      result.current.refreshPricesFromMenu([
+        { ...baseItem, allow_pre_order: true, base_price: 95 } as Item,
+      ]);
+    });
+
+    expect(result.current.cart[0].item.allow_pre_order).toBe(true);
+  });
+});
