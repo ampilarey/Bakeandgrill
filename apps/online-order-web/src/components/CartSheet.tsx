@@ -10,6 +10,9 @@ export type CartSheetProps = {
   onClose: () => void;
   closedMessage?: string | null;
   isOpen?: boolean;
+  /** Derived once in FloatingCartBar — keep drawer/sheet CTAs identical. */
+  canCheckout?: boolean;
+  checkoutForTomorrow?: boolean;
 };
 
 export function CartSheet({
@@ -17,6 +20,8 @@ export function CartSheet({
   onClose,
   closedMessage,
   isOpen = true,
+  canCheckout,
+  checkoutForTomorrow,
 }: CartSheetProps) {
   const { t } = useLanguage();
 
@@ -27,7 +32,13 @@ export function CartSheet({
       title={t('cart.title')}
       closeAriaLabel={t('sheet.close')}
     >
-      <CartDrawer isOpen={isOpen} closedMessage={closedMessage} compact />
+      <CartDrawer
+        isOpen={isOpen}
+        closedMessage={closedMessage}
+        compact
+        canCheckout={canCheckout}
+        checkoutForTomorrow={checkoutForTomorrow}
+      />
     </Sheet>
   );
 }

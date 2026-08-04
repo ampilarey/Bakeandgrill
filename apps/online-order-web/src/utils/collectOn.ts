@@ -15,6 +15,35 @@ export function cartAllowsTomorrow(lines: CollectOnCartLine[]): boolean {
 }
 
 /**
+ * Cart checkout button eligibility shared by CartDrawer and the
+ * FloatingCartBar → CartSheet path (both render CartDrawer).
+ *
+ * While the shop is closed, checkout stays available only when every
+ * line allows tomorrow collection — so the customer can reach the
+ * Today/Tomorrow picker that CheckoutPage already handles.
+ */
+export type CartCheckoutCta = {
+  canCheckout: boolean;
+  /** Shop closed + cart qualifies for tomorrow — label must say so. */
+  checkoutForTomorrow: boolean;
+};
+
+export function cartCheckoutCta(args: {
+  shopOpen: boolean;
+  lines: CollectOnCartLine[];
+}): CartCheckoutCta {
+  const hasItems = args.lines.length > 0;
+  if (!hasItems) {
+    return { canCheckout: false, checkoutForTomorrow: false };
+  }
+  if (args.shopOpen) {
+    return { canCheckout: true, checkoutForTomorrow: false };
+  }
+  const forTomorrow = cartAllowsTomorrow(args.lines);
+  return { canCheckout: forTomorrow, checkoutForTomorrow: forTomorrow };
+}
+
+/**
  * When the shop is closed, checkout defaults to Tomorrow (if the cart allows).
  * When open, default Today — unless the cart forces tomorrow.
  */

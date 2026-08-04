@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { estimateEarnPointsForSubtotalMvr } from '../utils/loyalty';
 import { formatCardPrice, formatSavingsLabel } from '../utils/money';
+import { cartCheckoutCta } from '../utils/collectOn';
 import { ItemSheet } from './ItemSheet';
 
 const DEFAULT_FREE_DELIVERY_MVR = 200;
@@ -23,9 +24,21 @@ type Props = {
   closedMessage?: string | null;
   /** Mobile sheet already shows a title — hide inner heading to save space and surface checkout */
   compact?: boolean;
+  /**
+   * When provided (FloatingCartBar → CartSheet), use the parent-derived CTA
+   * so both surfaces cannot disagree. Otherwise derive from cart + isOpen.
+   */
+  canCheckout?: boolean;
+  checkoutForTomorrow?: boolean;
 };
 
-export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
+export function CartDrawer({
+  isOpen = true,
+  closedMessage,
+  compact,
+  canCheckout: canCheckoutProp,
+  checkoutForTomorrow: checkoutForTomorrowProp,
+}: Props) {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { cart, cartTotal, updateQuantity, addItem, updateEntry } = useCart();
@@ -161,7 +174,12 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
     navigate('/checkout');
   };
 
-  const canCheckout = cart.length > 0 && isOpen;
+  const derivedCta = cartCheckoutCta({
+    shopOpen: isOpen,
+    lines: cart.map((e) => ({ allow_pre_order: e.item?.allow_pre_order })),
+  });
+  const canCheckout = canCheckoutProp ?? derivedCta.canCheckout;
+  const checkoutForTomorrow = checkoutForTomorrowProp ?? derivedCta.checkoutForTomorrow;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.5rem' : '1rem' }}>
@@ -375,11 +393,13 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           onMouseEnter={(e) => { if (canCheckout) e.currentTarget.style.background = 'var(--color-primary-hover)'; }}
           onMouseLeave={(e) => { if (canCheckout) e.currentTarget.style.background = 'var(--color-primary)'; }}
         >
-          {!isOpen
-            ? (closedMessage?.trim() || t('cart.closed_cta_short'))
-            : cart.length === 0
-              ? t('cart.add_items_cta')
-              : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
+          {checkoutForTomorrow
+            ? `${t('cart.checkout_tomorrow')} — MVR ${cartTotal.toFixed(2)} →`
+            : !isOpen
+              ? (closedMessage?.trim() || t('cart.closed_cta_short'))
+              : cart.length === 0
+                ? t('cart.add_items_cta')
+                : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
         </button>
       </div>
 

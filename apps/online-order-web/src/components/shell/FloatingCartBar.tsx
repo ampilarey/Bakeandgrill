@@ -6,6 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useServiceStatusContext } from '../../context/ServiceStatusContext';
 import { useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
+import { cartCheckoutCta } from '../../utils/collectOn';
 import { isEventFlowPath } from '../../utils/eventFlowPath';
 import { CartSheet } from '../CartSheet';
 
@@ -41,8 +42,17 @@ export function FloatingCartBar() {
   const orderingState = get('online_ordering');
   const effectiveOpen = orderingOpen && checkoutAvailable && orderingServiceAvailable;
 
+  /** Single derived CTA — CartSheet/CartDrawer must not invent a second rule. */
+  const checkoutCta = cartCheckoutCta({
+    shopOpen: effectiveOpen,
+    lines: cart.map((e) => ({ allow_pre_order: e.item?.allow_pre_order })),
+  });
+
   const closedCta = (() => {
     if (effectiveOpen) return null;
+    // Tomorrow-eligible carts get an enabled checkout label in CartDrawer —
+    // keep the reopen copy off the yellow banner so it doesn't fight the CTA.
+    if (checkoutCta.checkoutForTomorrow) return null;
     if (!orderingServiceAvailable) {
       return orderingState?.public_message?.trim() || t('cart.closed_cta_short');
     }
@@ -125,6 +135,8 @@ export function FloatingCartBar() {
         onClose={closeCartSheet}
         isOpen={effectiveOpen}
         closedMessage={closedCta}
+        canCheckout={checkoutCta.canCheckout}
+        checkoutForTomorrow={checkoutCta.checkoutForTomorrow}
       />
     </>
   );
