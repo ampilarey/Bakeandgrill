@@ -31,7 +31,7 @@ class CreateStaffUserCommand extends Command
     public function handle(): int
     {
         if (app()->isProduction()) {
-            if (!filter_var(env('ALLOW_STAFF_CLI_CREATE', false), FILTER_VALIDATE_BOOLEAN)) {
+            if (!(bool) config('system.allow_staff_cli_create')) {
                 $this->error('Refused in production. Set ALLOW_STAFF_CLI_CREATE=true in .env for a deliberate one-shot, then remove it.');
 
                 return 1;

@@ -271,6 +271,19 @@ describe('navConfig', () => {
     expect(can(user, 'devices.approve')).toBe(false);
   });
 
+  it('devices.approve alone does not grant devices.manage (no reverse alias)', () => {
+    const user: StaffUser = {
+      id: 6,
+      name: 'Approver',
+      email: 'a@test.com',
+      role: 'manager',
+      permissions: ['devices.approve'],
+    };
+    expect(can(user, 'devices.approve')).toBe(true);
+    expect(can(user, 'devices.view')).toBe(true);
+    expect(can(user, 'devices.manage')).toBe(false);
+  });
+
   it('getDefaultNavPath picks first accessible route', () => {
     const cashier: StaffUser = {
       id: 7,

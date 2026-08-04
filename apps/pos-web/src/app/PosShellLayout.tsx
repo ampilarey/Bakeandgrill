@@ -1,7 +1,7 @@
+import { lazy, Suspense, useMemo } from 'react';
 import { makeCartKey } from '../hooks/useCart';
 import { MenuGrid } from '../components/MenuGrid';
 import { OrderCart } from '../components/OrderCart';
-import { OpsPanel } from '../components/OpsPanel';
 import { SendBillPanel } from '../components/SendBillPanel';
 import { NotePickerModal } from '../components/NotePickerModal';
 import { PackagingReconcileModal } from '../components/PackagingReconcileModal';
@@ -9,25 +9,16 @@ import { OpenShiftModal } from '../components/OpenShiftModal';
 import { CloseShiftModal } from '../components/CloseShiftModal';
 import { SaveTicketModal } from '../components/SaveTicketModal';
 import { OpenTicketsPanel } from '../components/OpenTicketsPanel';
-import { EventsPanel } from '../components/EventsPanel';
-import { KitchenReceivingPanel } from '../components/KitchenReceivingPanel';
-import { ReceiptsPanel } from '../components/ReceiptsPanel';
 import { ShiftPanel } from '../components/ShiftPanel';
-import { ShiftHistoryPanel } from '../components/ShiftHistoryPanel';
-import { SalesReportPanel } from '../components/SalesReportPanel';
-import { ExpensesPanel } from '../components/ExpensesPanel';
 import { PosPreferencesModal } from '../components/PosPreferencesModal';
 import { SideDrawer } from '../components/SideDrawer';
 import { ChargeOverlay } from '../components/ChargeOverlay';
 import { DiscountApprovalModal } from '../components/DiscountApprovalModal';
-import { OfflineSyncPanel } from '../components/OfflineSyncPanel';
 import type { OfflineOrderRecord } from '../offline/db';
 import { ReceiptActionsBanner } from '../components/ReceiptActionsBanner';
 import { PosUpdateBanner } from '../components/PosUpdateBanner';
 import { OnlineOrderToasts } from '../components/OnlineOrderToasts';
 import { RequestItemModal } from '../components/RequestItemModal';
-import { MyPurchaseRequestsPanel } from '../components/MyPurchaseRequestsPanel';
-import { AssignedBuyingListPanel } from '../components/AssignedBuyingListPanel';
 import { POS_BUILD_INFO } from '../posBuildInfo';
 import { closeTable, mergeTables, openTable, validateManualDiscountInput } from '../api';
 import { palette } from '../theme';
@@ -36,7 +27,48 @@ import type { CartItem } from '../types';
 import { usePosAppContext } from './PosAppProvider';
 import { paneTitle, Banner, NoticeBanner, shouldShowStatusBanner } from './posUiHelpers';
 import type { Pane } from './types';
-import { useMemo } from 'react';
+
+// Secondary panes — not needed on the cashier first screen (sales + cart).
+// Lazy-load so the main chunk stays under the audit budget without delaying
+// the first ring-sale interaction.
+const OpsPanel = lazy(() =>
+  import('../components/OpsPanel').then((m) => ({ default: m.OpsPanel })),
+);
+const ReceiptsPanel = lazy(() =>
+  import('../components/ReceiptsPanel').then((m) => ({ default: m.ReceiptsPanel })),
+);
+const EventsPanel = lazy(() =>
+  import('../components/EventsPanel').then((m) => ({ default: m.EventsPanel })),
+);
+const KitchenReceivingPanel = lazy(() =>
+  import('../components/KitchenReceivingPanel').then((m) => ({ default: m.KitchenReceivingPanel })),
+);
+const ShiftHistoryPanel = lazy(() =>
+  import('../components/ShiftHistoryPanel').then((m) => ({ default: m.ShiftHistoryPanel })),
+);
+const SalesReportPanel = lazy(() =>
+  import('../components/SalesReportPanel').then((m) => ({ default: m.SalesReportPanel })),
+);
+const ExpensesPanel = lazy(() =>
+  import('../components/ExpensesPanel').then((m) => ({ default: m.ExpensesPanel })),
+);
+const OfflineSyncPanel = lazy(() =>
+  import('../components/OfflineSyncPanel').then((m) => ({ default: m.OfflineSyncPanel })),
+);
+const MyPurchaseRequestsPanel = lazy(() =>
+  import('../components/MyPurchaseRequestsPanel').then((m) => ({ default: m.MyPurchaseRequestsPanel })),
+);
+const AssignedBuyingListPanel = lazy(() =>
+  import('../components/AssignedBuyingListPanel').then((m) => ({ default: m.AssignedBuyingListPanel })),
+);
+
+function PaneFallback() {
+  return (
+    <div style={{ padding: 24, color: '#64748B', fontSize: 14, fontWeight: 600 }}>
+      Loading…
+    </div>
+  );
+}
 
 /** FIX 9: humanise "cached tax settings from …" age for the offline banner. */
 function formatSettingsAge(ms: number): string {
@@ -538,7 +570,8 @@ export function PosShellLayout() {
         )}
 
         {pane === 'receipts' && (
-          <ReceiptsPanel
+          <Suspense fallback={<PaneFallback />}>
+            <ReceiptsPanel
             onClose={() => {
               setReceiptsFocusOrderId(null);
               setPane(shiftOpen && canRingSales ? "sales" : canAccessOps ? "ops" : "shift_history");
@@ -548,6 +581,7 @@ export function PosShellLayout() {
             receiptResendEnabled={smsNotifications.receipt_resend}
             canRefund={canRefund && shiftOpen}
           />
+          </Suspense>
         )}
 
         {pane === 'open_tickets' && (
@@ -582,7 +616,8 @@ export function PosShellLayout() {
         )}
 
         {pane === 'events' && (
-          <EventsPanel
+          <Suspense fallback={<PaneFallback />}>
+            <EventsPanel
             canManageEvents={canManageEvents}
             shiftOpen={shiftOpen}
             onClose={() => setPane(shiftOpen && canRingSales ? "sales" : canAccessOps ? "ops" : "events")}
@@ -597,6 +632,7 @@ export function PosShellLayout() {
                 });
             }}
           />
+          </Suspense>
         )}
 
         {pane === 'shift' && (
@@ -614,11 +650,14 @@ export function PosShellLayout() {
         )}
 
         {pane === 'shift_history' && (
-          <ShiftHistoryPanel onClose={() => setPane(canAccessOps ? "ops" : "shift")} />
+          <Suspense fallback={<PaneFallback />}>
+            <ShiftHistoryPanel onClose={() => setPane(canAccessOps ? "ops" : "shift")} />
+          </Suspense>
         )}
 
         {pane === 'sales_report' && canViewReports && (
-          <SalesReportPanel
+          <Suspense fallback={<PaneFallback />}>
+            <SalesReportPanel
             onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift")}
             onOpenReceipts={
               canViewReceipts && shiftOpen ? () => setPane("receipts") : undefined
@@ -627,46 +666,57 @@ export function PosShellLayout() {
               canViewShiftHistory ? () => setPane("shift_history") : undefined
             }
           />
+          </Suspense>
         )}
 
         {pane === 'expenses' && canManageExpenses && (
-          <ExpensesPanel
+          <Suspense fallback={<PaneFallback />}>
+            <ExpensesPanel
             onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift")}
           />
+          </Suspense>
         )}
 
         {pane === 'ops' && (
-          <OpsPanel
-            {...ops}
-            permissions={{
-              inventory: canOpsInventory,
-              preparedStock: canOpsPreparedStock,
-              refunds: canRefund,
-              shiftOpen,
-            }}
-            onRequestItem={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
-            onMenuRefresh={() => void refreshAll()}
-          />
+          <Suspense fallback={<PaneFallback />}>
+            <OpsPanel
+              {...ops}
+              permissions={{
+                inventory: canOpsInventory,
+                preparedStock: canOpsPreparedStock,
+                refunds: canRefund,
+                shiftOpen,
+              }}
+              onRequestItem={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
+              onMenuRefresh={() => void refreshAll()}
+            />
+          </Suspense>
         )}
 
         {pane === 'my_requests' && (
-          <MyPurchaseRequestsPanel
+          <Suspense fallback={<PaneFallback />}>
+            <MyPurchaseRequestsPanel
             onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift_history")}
             onRequestNew={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
           />
+          </Suspense>
         )}
 
         {pane === 'buying_list' && (
-          <AssignedBuyingListPanel
-            onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift_history")}
-          />
+          <Suspense fallback={<PaneFallback />}>
+            <AssignedBuyingListPanel
+              onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift_history")}
+            />
+          </Suspense>
         )}
 
         {pane === 'kitchen_receiving' && (
-          <KitchenReceivingPanel
+          <Suspense fallback={<PaneFallback />}>
+            <KitchenReceivingPanel
             onClose={() => setPane(canViewActiveOrders && shiftOpen ? "open_tickets" : canRingSales && shiftOpen ? "sales" : "shift_history")}
             onReceived={() => void refreshOpenTickets()}
           />
+          </Suspense>
         )}
       </main>
 
@@ -861,7 +911,8 @@ export function PosShellLayout() {
       )}
 
       {showOfflineSyncPanel && (
-        <OfflineSyncPanel
+        <Suspense fallback={<PaneFallback />}>
+          <OfflineSyncPanel
           shiftId={shift.current?.id ?? null}
           onClose={() => {
             setShowOfflineSyncPanel(false);
@@ -895,6 +946,7 @@ export function PosShellLayout() {
             void refreshOfflineCounts();
           }}
         />
+        </Suspense>
       )}
 
       {/* Per-line kitchen note picker. We look up the active cart line

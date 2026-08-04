@@ -1,15 +1,21 @@
+import { lazy, Suspense } from 'react';
 import { LoginPage } from '../pages/LoginPage';
 import { TimeClockPanel } from '../components/TimeClockPanel';
 import { LockScreen } from '../components/LockScreen';
 import { KitchenStaffLanding } from '../components/KitchenStaffLanding';
 import { RequestItemModal } from '../components/RequestItemModal';
-import { MyPurchaseRequestsPanel } from '../components/MyPurchaseRequestsPanel';
-import { AssignedBuyingListPanel } from '../components/AssignedBuyingListPanel';
 import { ShiftClosedGate } from '../components/ShiftClosedGate';
 import { OpenShiftModal } from '../components/OpenShiftModal';
 import { evaluateOfflineGate } from '../offline/offlineGate';
 import { usePosAppContext } from './PosAppProvider';
 import { PosShellLayout } from './PosShellLayout';
+
+const MyPurchaseRequestsPanel = lazy(() =>
+  import('../components/MyPurchaseRequestsPanel').then((m) => ({ default: m.MyPurchaseRequestsPanel })),
+);
+const AssignedBuyingListPanel = lazy(() =>
+  import('../components/AssignedBuyingListPanel').then((m) => ({ default: m.AssignedBuyingListPanel })),
+);
 
 export function PosRouter() {
   const app = usePosAppContext();
@@ -69,14 +75,20 @@ export function PosRouter() {
   if (canKitchenOnly) {
     if (kitchenPane === "my_requests") {
       return (
-        <MyPurchaseRequestsPanel
-          onClose={() => setKitchenPane("home")}
-          onRequestNew={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
-        />
+        <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
+          <MyPurchaseRequestsPanel
+            onClose={() => setKitchenPane("home")}
+            onRequestNew={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
+          />
+        </Suspense>
       );
     }
     if (kitchenPane === "buying_list") {
-      return <AssignedBuyingListPanel onClose={() => setKitchenPane("home")} />;
+      return (
+        <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
+          <AssignedBuyingListPanel onClose={() => setKitchenPane("home")} />
+        </Suspense>
+      );
     }
     return (
       <>

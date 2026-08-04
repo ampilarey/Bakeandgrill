@@ -187,7 +187,7 @@ class CustomerAuthController extends Controller
         // Dev convenience only — never in production, never just on APP_DEBUG.
         // Requires an explicit OTP_DEV_RETURN=true to surface the code to the
         // client so staging logs and screenshots can't accidentally leak it.
-        if (app()->environment(['local', 'testing']) && filter_var(env('OTP_DEV_RETURN'), FILTER_VALIDATE_BOOLEAN)) {
+        if (app()->environment(['local', 'testing']) && (bool) config('system.otp_dev_return')) {
             $response['otp'] = $otpCode;
         }
 
@@ -332,7 +332,7 @@ class CustomerAuthController extends Controller
             'expires_in' => 600,
         ];
 
-        if (app()->environment(['local', 'testing']) && filter_var(env('OTP_DEV_RETURN'), FILTER_VALIDATE_BOOLEAN)) {
+        if (app()->environment(['local', 'testing']) && (bool) config('system.otp_dev_return')) {
             $response['otp'] = $otpCode;
         }
 

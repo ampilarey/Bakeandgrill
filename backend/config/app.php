@@ -142,4 +142,17 @@ return [
     // ─── Frontend ────────────────────────────────────────────────────────────
     'frontend_url' => env('FRONTEND_URL', env('APP_URL')),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted proxies (reverse proxy / Cloudflare)
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated IPs/CIDRs, or "*" (never use * in production).
+    | bootstrap/app.php and VerifyProductionConfig read this via config() —
+    | do not call env('TRUSTED_PROXIES') outside this file.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
 ];

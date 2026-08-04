@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { palette, type } from "../theme";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { type OpenTicket, useOpenTickets } from "../hooks/useOpenTickets";
@@ -13,10 +13,15 @@ import { OpenTicketsFilterBar } from "./openTickets/OpenTicketsFilterBar";
 import { OpenTicketsScopeBar } from "./openTickets/OpenTicketsScopeBar";
 import { EmptyState, PanelShell } from "./openTickets/PanelShell";
 import { PhonePromptModal } from "./openTickets/PhonePromptModal";
-import { PrintBillFallbackModal } from "./openTickets/PrintBillFallbackModal";
 import { SplitItemPicker } from "./openTickets/SplitItemPicker";
 import { TicketList } from "./openTickets/TicketList";
 import { VoidConfirmModal } from "./openTickets/VoidConfirmModal";
+
+const PrintBillFallbackModal = lazy(() =>
+  import("./openTickets/PrintBillFallbackModal").then((m) => ({
+    default: m.PrintBillFallbackModal,
+  })),
+);
 
 export type { OpenTicket, TicketStage };
 export { ticketDisplayTotal, ticketStage };
@@ -239,14 +244,16 @@ export function OpenTicketsPanel({
         />
       )}
       {printBillFallback && (
-        <PrintBillFallbackModal
-          url={printBillFallback.url}
-          ticketLabel={
-            printBillFallback.ticket.ticket_name
-              ?? `Order ${printBillFallback.ticket.order_number}`
-          }
-          onClose={closePrintBillFallback}
-        />
+        <Suspense fallback={null}>
+          <PrintBillFallbackModal
+            url={printBillFallback.url}
+            ticketLabel={
+              printBillFallback.ticket.ticket_name
+                ?? `Order ${printBillFallback.ticket.order_number}`
+            }
+            onClose={closePrintBillFallback}
+          />
+        </Suspense>
       )}
     </PanelShell>
   );

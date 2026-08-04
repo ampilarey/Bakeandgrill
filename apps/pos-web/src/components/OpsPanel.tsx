@@ -8,6 +8,7 @@ import {
 } from "../api";
 import type { Item } from "../types";
 import type { useOps } from "../hooks/useOps";
+import { RefundConfirmModal } from "./RefundConfirmModal";
 
 type OpsState = ReturnType<typeof useOps>;
 type Tab = "inventory" | "prepared" | "availability" | "refunds";
@@ -807,6 +808,35 @@ function RefundsTab({ ops }: { ops: OpsState }) {
     { value: "rejected", label: "Rejected" },
   ];
 
+  // Two-step refund (same pattern as ReceiptsPanel): first tap stages a
+  // confirm modal; createRefund only runs after "Yes, issue refund".
+  const [pendingRefund, setPendingRefund] = useState<{
+    orderId: number;
+    amount: number;
+    reason: string;
+    cashOverride: boolean;
+  } | null>(null);
+
+  const handleRefundIntent = () => {
+    const orderId = Number.parseInt(ops.refundOrderId, 10);
+    const amount = Number.parseFloat(ops.refundAmount);
+    if (!Number.isFinite(orderId) || orderId <= 0) {
+      ops.setOpsMessage("Enter a valid order ID.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      ops.setOpsMessage("Enter a valid refund amount.");
+      return;
+    }
+    ops.setOpsMessage("");
+    setPendingRefund({
+      orderId,
+      amount,
+      reason: ops.refundReason.trim(),
+      cashOverride: ops.refundCashOverride,
+    });
+  };
+
   return (
     <>
       <Header
@@ -836,7 +866,7 @@ function RefundsTab({ ops }: { ops: OpsState }) {
             placeholder="Reason (optional)"
             style={fieldStyle}
           />
-          <PrimaryBtn onClick={ops.handleCreateRefund}>Record refund</PrimaryBtn>
+          <PrimaryBtn onClick={handleRefundIntent}>Record refund</PrimaryBtn>
         </div>
         <label style={{
           display: "flex", alignItems: "center", gap: 8, marginTop: 8,
@@ -851,6 +881,21 @@ function RefundsTab({ ops }: { ops: OpsState }) {
           Refund card portion in cash (backend decides breakdown)
         </label>
       </FormCard>
+
+      {pendingRefund && (
+        <RefundConfirmModal
+          orderLabel={`Order #${pendingRefund.orderId}`}
+          amount={pendingRefund.amount}
+          reason={pendingRefund.reason}
+          cashRefundOverride={pendingRefund.cashOverride}
+          cashOverrideMode="display"
+          onCancel={() => setPendingRefund(null)}
+          onConfirm={() => {
+            setPendingRefund(null);
+            ops.handleCreateRefund();
+          }}
+        />
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>Filter</span>

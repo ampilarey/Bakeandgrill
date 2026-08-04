@@ -166,17 +166,19 @@ final class VideoProcessor
         ];
     }
 
-    /** Prefer FFMPEG_PATH / FFPROBE_PATH when cPanel PATH is thin for php-fpm. */
+    /** Prefer configured ffmpeg/ffprobe paths when cPanel PATH is thin for php-fpm. */
     private function bin(string $name): string
     {
         if ($name === 'ffmpeg') {
-            $configured = (string) config('media.ffmpeg_path', env('FFMPEG_PATH', ''));
+            // Paths come from config/media.php — never read $_ENV here (breaks under config:cache).
+            $configured = (string) config('media.ffmpeg_path', '');
             if ($configured !== '' && is_executable($configured)) {
                 return $configured;
             }
         }
         if ($name === 'ffprobe') {
-            $configured = (string) config('media.ffprobe_path', env('FFPROBE_PATH', ''));
+            // Paths come from config/media.php — never read $_ENV here (breaks under config:cache).
+            $configured = (string) config('media.ffprobe_path', '');
             if ($configured !== '' && is_executable($configured)) {
                 return $configured;
             }

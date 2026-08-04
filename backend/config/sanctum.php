@@ -66,6 +66,9 @@ return [
     */
 
     'admin_token_ttl_hours' => max(1, (int) (env('ADMIN_TOKEN_TTL_HOURS') ?: 24)),
+    // True when ADMIN_TOKEN_TTL_HOURS was explicitly set in the environment
+    // (survives config:cache). VerifyProductionConfig warns when false.
+    'admin_token_ttl_hours_configured' => env('ADMIN_TOKEN_TTL_HOURS') !== null && env('ADMIN_TOKEN_TTL_HOURS') !== '',
     'pos_token_ttl_hours' => max(1, (int) (env('POS_TOKEN_TTL_HOURS') ?: 72)),
     'driver_token_ttl_hours' => max(1, (int) (env('DRIVER_TOKEN_TTL_HOURS') ?: 12)),
 

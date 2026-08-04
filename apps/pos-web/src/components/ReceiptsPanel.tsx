@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createRefund, fetchReceipts, getReceiptLink, sendReceipt } from "../api";
 import { localDateYmd } from "../utils/localDate";
 import { EmptyState, PanelShell } from "./OpenTicketsPanel";
+import { RefundConfirmModal } from "./RefundConfirmModal";
 
 export type Receipt = Awaited<ReturnType<typeof fetchReceipts>>["data"][number];
 
@@ -386,146 +387,15 @@ function ReceiptDetail({
 
       {pendingRefund && (
         <RefundConfirmModal
-          orderNumber={receipt.order_number}
+          orderLabel={receipt.order_number}
           orderTotal={Number(receipt.total)}
           amount={pendingRefund.amount}
           reason={pendingRefund.reason}
+          cashOverrideMode="edit"
           onCancel={() => setPendingRefund(null)}
           onConfirm={(cashRefundOverride) => void handleRefundConfirmed(cashRefundOverride)}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * Last-mile confirm before money goes back out to a customer. Shows
- * the full proposed refund — amount, reason, target order, and a
- * "full / partial" tag so the cashier eyeballs the number against
- * what they actually intended to refund. The submit button is a
- * destructive red and is the only path to fire `createRefund`.
- */
-function RefundConfirmModal({
-  orderNumber,
-  orderTotal,
-  amount,
-  reason,
-  onCancel,
-  onConfirm,
-}: {
-  orderNumber: string;
-  orderTotal: number;
-  amount: number;
-  reason: string;
-  onCancel: () => void;
-  onConfirm: (cashRefundOverride: boolean) => void;
-}) {
-  const partial = amount + 0.005 < orderTotal;
-  // FIX 1e — cashier can optionally force the entire refund to
-  // come out of the drawer as cash instead of reversing the
-  // original tender proportionally. Common when the customer's
-  // card is no longer with them, or when the manager wants to
-  // simplify the reconciliation. The POS never computes
-  // per-tender amounts — the backend inspects the order's
-  // payment mix and returns the actual laari splits after.
-  const [cashRefundOverride, setCashRefundOverride] = useState(false);
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onCancel}
-      style={{
-        position: "fixed", inset: 0, zIndex: 950,
-        background: "rgba(15,23,42,0.55)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "#fff", borderRadius: 14, width: "100%", maxWidth: 420,
-          padding: 20, display: "flex", flexDirection: "column", gap: 14,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#0F172A" }}>
-            Issue refund?
-          </div>
-          <div style={{ marginTop: 4, fontSize: 13, color: "#64748B" }}>
-            This pays money back to the customer. Cannot be undone from the POS.
-          </div>
-        </div>
-        <div style={{
-          border: "1px solid #FECACA", background: "#FEF2F2",
-          borderRadius: 10, padding: "12px 14px",
-          display: "grid", rowGap: 6, fontSize: 13, color: "#0F172A",
-        }}>
-          <Row label="Order">{orderNumber}</Row>
-          <Row label="Refund amount">
-            <strong>MVR {amount.toFixed(2)}</strong>{" "}
-            <span style={{ fontSize: 11, color: partial ? "#B45309" : "#15803D", fontWeight: 700 }}>
-              {partial ? "PARTIAL" : "FULL"}
-            </span>
-          </Row>
-          <Row label="Order total">MVR {orderTotal.toFixed(2)}</Row>
-          {reason ? (
-            <Row label="Reason">{reason}</Row>
-          ) : (
-            <Row label="Reason"><em style={{ color: "#94A3B8" }}>(none)</em></Row>
-          )}
-        </div>
-        <label style={{
-          display: "flex", alignItems: "center", gap: 8,
-          padding: "8px 10px", borderRadius: 8,
-          background: "#F8FAFC", border: "1px solid #E2E8F0",
-          fontSize: 13, color: "#0F172A", cursor: "pointer",
-        }}>
-          <input
-            type="checkbox"
-            checked={cashRefundOverride}
-            onChange={(e) => setCashRefundOverride(e.target.checked)}
-            style={{ width: 16, height: 16 }}
-          />
-          <span>Refund card portion in cash</span>
-        </label>
-        <p style={{ margin: 0, fontSize: 11, color: "#94A3B8", lineHeight: 1.4 }}>
-          {cashRefundOverride
-            ? "The whole refund will be handed back as cash. The backend records the reversal breakdown."
-            : "Refunds each tender in the same proportion it was paid. Server-side computes the split."}
-        </p>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button
-            onClick={onCancel}
-            style={{
-              padding: "10px 16px", borderRadius: 10, fontWeight: 700,
-              background: "#fff", color: "#0F172A",
-              border: "1px solid #CBD5E1", cursor: "pointer", fontSize: 13,
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onConfirm(cashRefundOverride)}
-            style={{
-              padding: "10px 16px", borderRadius: 10, fontWeight: 800,
-              background: "#B91C1C", color: "#fff",
-              border: "none", cursor: "pointer", fontSize: 13,
-            }}
-          >
-            Yes, issue refund
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-      <span style={{ color: "#64748B", fontWeight: 600 }}>{label}</span>
-      <span style={{ textAlign: "right" }}>{children}</span>
     </div>
   );
 }

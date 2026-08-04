@@ -35,7 +35,7 @@ class VerifyProductionConfig extends Command
             $failures[] = ['APP_KEY', 'Must be set'];
         }
 
-        $trustedProxies = env('TRUSTED_PROXIES');
+        $trustedProxies = config('app.trusted_proxies');
         if ($trustedProxies === null || trim((string) $trustedProxies) === '' || trim((string) $trustedProxies) === '*') {
             $failures[] = ['TRUSTED_PROXIES', 'Set explicit proxy IPs/CIDRs — never use * in production'];
         }
@@ -49,8 +49,8 @@ class VerifyProductionConfig extends Command
             $failures[] = ['BACKUP_DISKS', 'No backup destination disks configured'];
         } elseif (
             $backupDisks === ['backups']
-            && blank(env('AWS_ACCESS_KEY_ID'))
-            && blank(env('AWS_BUCKET'))
+            && blank(config('filesystems.disks.s3.key'))
+            && blank(config('filesystems.disks.s3.bucket'))
         ) {
             $warnings[] = ['BACKUP_DISKS', 'Local-only backups — configure S3 (AWS_*) for off-server retention'];
         }
@@ -67,7 +67,7 @@ class VerifyProductionConfig extends Command
             $warnings[] = ['HEALTHCHECK_URL', 'Scheduler external heartbeat not configured'];
         }
 
-        if (blank(env('ADMIN_TOKEN_TTL_HOURS'))) {
+        if (!(bool) config('sanctum.admin_token_ttl_hours_configured')) {
             $warnings[] = ['ADMIN_TOKEN_TTL_HOURS', 'Using default 24h — set explicitly if you need a different admin token TTL'];
         }
 

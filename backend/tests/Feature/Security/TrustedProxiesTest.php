@@ -12,7 +12,10 @@ class TrustedProxiesTest extends TestCase
 {
     public function test_spoofed_forwarded_for_does_not_change_client_ip_without_trusted_proxies(): void
     {
-        $this->assertNull(env('TRUSTED_PROXIES'));
+        $this->assertTrue(
+            blank(config('app.trusted_proxies')),
+            'Test assumes no trusted proxies are configured',
+        );
 
         Route::get('/_test/client-ip', fn (Request $request) => response()->json([
             'ip' => $request->ip(),

@@ -30,59 +30,68 @@ class VerifyProductionConfigTest extends TestCase
     {
         config([
             'app.debug' => true,
-            'app.key' => 'base64:' . base64_encode(random_bytes(32)),
+            'app.key' => 'base64:'.base64_encode(random_bytes(32)),
+            'app.trusted_proxies' => '127.0.0.1',
             'sentry.dsn' => 'https://example@sentry.io/1',
             'backup.backup.destination.disks' => ['backups'],
             'queue.default' => 'redis',
             'cache.default' => 'redis',
         ]);
 
-        putenv('TRUSTED_PROXIES=127.0.0.1');
-
         $this->artisan('app:verify-production-config')
             ->assertFailed();
-
-        putenv('TRUSTED_PROXIES');
     }
 
     public function test_fails_when_trusted_proxies_is_wildcard(): void
     {
         config([
             'app.debug' => false,
-            'app.key' => 'base64:' . base64_encode(random_bytes(32)),
+            'app.key' => 'base64:'.base64_encode(random_bytes(32)),
+            'app.trusted_proxies' => '*',
             'sentry.dsn' => 'https://example@sentry.io/1',
             'backup.backup.destination.disks' => ['backups'],
             'queue.default' => 'redis',
             'cache.default' => 'redis',
         ]);
 
-        putenv('TRUSTED_PROXIES=*');
-
         $this->artisan('app:verify-production-config')
             ->assertFailed();
-
-        putenv('TRUSTED_PROXIES');
     }
 
     public function test_passes_when_required_values_are_set(): void
     {
         config([
             'app.debug' => false,
-            'app.key' => 'base64:' . base64_encode(random_bytes(32)),
+            'app.key' => 'base64:'.base64_encode(random_bytes(32)),
+            'app.trusted_proxies' => '127.0.0.1',
             'sentry.dsn' => 'https://example@sentry.io/1',
             'backup.backup.destination.disks' => ['s3'],
             'queue.default' => 'redis',
             'cache.default' => 'redis',
             'system.healthcheck_url' => 'https://hc.example/ping',
+            'sanctum.admin_token_ttl_hours_configured' => true,
         ]);
-
-        putenv('TRUSTED_PROXIES=127.0.0.1');
-        putenv('ADMIN_TOKEN_TTL_HOURS=24');
 
         $this->artisan('app:verify-production-config')
             ->assertSuccessful();
+    }
 
-        putenv('TRUSTED_PROXIES');
-        putenv('ADMIN_TOKEN_TTL_HOURS');
+    public function test_warns_when_admin_token_ttl_not_configured(): void
+    {
+        config([
+            'app.debug' => false,
+            'app.key' => 'base64:'.base64_encode(random_bytes(32)),
+            'app.trusted_proxies' => '127.0.0.1',
+            'sentry.dsn' => 'https://example@sentry.io/1',
+            'backup.backup.destination.disks' => ['s3'],
+            'queue.default' => 'redis',
+            'cache.default' => 'redis',
+            'system.healthcheck_url' => 'https://hc.example/ping',
+            'sanctum.admin_token_ttl_hours_configured' => false,
+        ]);
+
+        $this->artisan('app:verify-production-config')
+            ->expectsOutputToContain('ADMIN_TOKEN_TTL_HOURS')
+            ->assertSuccessful();
     }
 }

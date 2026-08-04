@@ -1,0 +1,209 @@
+{
+    "description": "Shared PermissionCatalog::SATISFIED_BY \u2194 admin PERM_ALIASES parity. Both sides must match this object exactly (keys and alias lists, including order). Never add a one-sided alias.",
+    "repo_relative_path": "fixtures/permission_satisfied_by_parity.json",
+    "satisfied_by": {
+        "devices.approve": [
+            "devices.manage"
+        ],
+        "devices.view": [
+            "devices.manage",
+            "devices.approve"
+        ],
+        "roles_permissions.manage": [
+            "website.manage"
+        ],
+        "settings.manage": [
+            "website.manage"
+        ],
+        "settings.update": [
+            "settings.manage"
+        ],
+        "reports.basic": [
+            "reports.view"
+        ],
+        "finance.cash_manage": [
+            "payments.cash_manage"
+        ],
+        "payments.cash_manage": [
+            "finance.cash_manage"
+        ],
+        "payments.cash_in_out": [
+            "finance.cash_manage"
+        ],
+        "payments.deposit": [
+            "payments.wallet"
+        ],
+        "payments.wallet": [
+            "payments.deposit"
+        ],
+        "customers.deposit.view": [
+            "customers.deposit.manage"
+        ],
+        "customers.deposit.receive": [
+            "customers.deposit.manage"
+        ],
+        "customers.deposit.freeze": [
+            "customers.deposit.manage"
+        ],
+        "customers.deposit.refund": [
+            "customers.deposit.manage"
+        ],
+        "customers.deposit.transfer_credit": [
+            "customers.deposit.manage"
+        ],
+        "sms_marketing.view": [
+            "integrations.sms"
+        ],
+        "sms_marketing.manage": [
+            "integrations.sms"
+        ],
+        "sms.logs.view": [
+            "integrations.sms",
+            "sms_marketing.manage"
+        ],
+        "sms.templates.edit": [
+            "integrations.sms",
+            "sms_marketing.manage"
+        ],
+        "sms.settings.manage": [
+            "integrations.sms",
+            "sms_marketing.manage"
+        ],
+        "sms.contacts.manage": [
+            "integrations.sms",
+            "sms_marketing.manage"
+        ],
+        "sms.scheduled.manage": [
+            "integrations.sms",
+            "sms_marketing.manage"
+        ],
+        "sms.campaigns.send": [
+            "integrations.sms",
+            "sms_marketing.manage"
+        ],
+        "sms.transactional.manage": [
+            "integrations.sms",
+            "sms_marketing.manage"
+        ],
+        "media.view": [
+            "website.manage",
+            "menu.manage"
+        ],
+        "media.manage": [
+            "website.manage"
+        ],
+        "webhooks.manage": [
+            "integrations.webhooks"
+        ],
+        "xero.manage": [
+            "integrations.xero"
+        ],
+        "users.view": [
+            "staff.view"
+        ],
+        "users.create": [
+            "staff.create"
+        ],
+        "users.update": [
+            "staff.update"
+        ],
+        "users.delete": [
+            "staff.delete"
+        ],
+        "menu.manage": [
+            "menu.manage"
+        ],
+        "website.manage": [
+            "website.manage"
+        ],
+        "pos.active_orders": [
+            "orders.view"
+        ],
+        "pos.view_this_device_orders": [
+            "orders.view"
+        ],
+        "pos.ring_sales": [
+            "orders.create"
+        ],
+        "pos.hold_resume": [
+            "orders.create"
+        ],
+        "pos.open_shift": [
+            "finance.cash_manage",
+            "payments.cash_manage"
+        ],
+        "pos.close_shift": [
+            "finance.cash_manage",
+            "payments.cash_manage"
+        ],
+        "pos.lock_screen": [
+            "pos.access"
+        ],
+        "pos.time_clock": [
+            "pos.access"
+        ],
+        "pos.manage_order_status": [
+            "pos.active_orders"
+        ],
+        "orders.receipts": [
+            "orders.view"
+        ],
+        "orders.send_sms_bill": [
+            "orders.view"
+        ],
+        "orders.send_payment_link": [
+            "orders.view"
+        ],
+        "orders.update": [
+            "orders.manage"
+        ],
+        "customers.lookup": [
+            "customers.view"
+        ],
+        "customers.create": [
+            "customers.manage"
+        ],
+        "loyalty.manage": [
+            "loyalty.manage"
+        ],
+        "promotions.apply_promo_code": [
+            "promotions.discounts"
+        ],
+        "shifts.view_own_history": [
+            "finance.cash_manage"
+        ],
+        "inventory.view": [
+            "inventory.manage"
+        ],
+        "suppliers.view": [
+            "suppliers.view"
+        ],
+        "kds.view": [
+            "orders.view"
+        ],
+        "kds.start_order": [
+            "orders.manage"
+        ],
+        "kds.bump_order": [
+            "orders.manage"
+        ],
+        "kds.recall_order": [
+            "orders.manage"
+        ],
+        "kds.mark_kitchen_done": [
+            "orders.manage"
+        ],
+        "kds.print_ticket": [
+            "orders.manage"
+        ],
+        "kds.manage_availability": [
+            "menu.manage"
+        ],
+        "service_availability.view": [
+            "settings.update"
+        ],
+        "service_availability.manage_public": [
+            "settings.update"
+        ]
+    }
+}

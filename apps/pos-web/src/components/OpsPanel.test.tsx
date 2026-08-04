@@ -36,6 +36,8 @@ function makeOps(overrides: Partial<OpsState> = {}): OpsState {
     setAdjustQuantity: noop,
     adjustNotes: "",
     setAdjustNotes: noop,
+    wasteReason: "spoilage",
+    setWasteReason: noop,
     suppliers: [{ id: 1, name: "Test Supplier" }],
     purchaseSupplierId: null,
     setPurchaseSupplierId: noop,
@@ -60,11 +62,12 @@ function makeOps(overrides: Partial<OpsState> = {}): OpsState {
     handleCloseShift: noop,
     handleCashMovement: noop,
     handleAdjustInventory: noop,
+    handleRecordWaste: noop,
     handleCreatePurchase: noop,
     handleCreateRefund: noop,
     setOpsMessage: noop,
     ...overrides,
-  };
+  } as OpsState;
 }
 
 describe("OpsPanel", () => {

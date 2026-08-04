@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class CustomerOtpTest extends TestCase
@@ -12,21 +13,19 @@ class CustomerOtpTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Reset OTP_DEV_RETURN after each test — `env()` is cached by Laravel,
-     * but PHP's getenv reads fresh, so the explicit cleanup keeps test
-     * ordering effects out of the picture.
+     * Reset otp_dev_return after each test so ordering cannot leak the flag.
      */
     protected function tearDown(): void
     {
-        putenv('OTP_DEV_RETURN');
+        Config::set('system.otp_dev_return', false);
         parent::tearDown();
     }
 
     public function test_customer_can_request_and_verify_otp(): void
     {
-        // OTP dev-return is gated behind an explicit env flag now, NOT
-        // APP_DEBUG, to keep the code out of staging logs (BE-105).
-        putenv('OTP_DEV_RETURN=true');
+        // OTP dev-return is gated behind config + local/testing environment,
+        // NOT APP_DEBUG, to keep the code out of staging logs (BE-105).
+        Config::set('system.otp_dev_return', true);
 
         $requestResponse = $this->postJson('/api/auth/customer/otp/request', [
             'phone' => '+9607001234',
@@ -60,7 +59,7 @@ class CustomerOtpTest extends TestCase
      */
     public function test_back_to_back_otp_requests_in_same_minute_both_dispatch(): void
     {
-        putenv('OTP_DEV_RETURN=true');
+        Config::set('system.otp_dev_return', true);
         $phone = '+9607001234';
 
         // First request

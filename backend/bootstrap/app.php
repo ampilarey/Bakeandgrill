@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Trust reverse proxies for correct HTTPS / client IP behind nginx or Cloudflare.
         // MUST list explicit proxy IPs/CIDRs in production — never use '*' (OTP/login throttles are IP-based).
+        // Note: this callback can run before the config repository is bound (artisan),
+        // so we read TRUSTED_PROXIES from the environment here. Application code and
+        // VerifyProductionConfig use config('app.trusted_proxies') instead.
         $trusted = env('TRUSTED_PROXIES');
         if ($trusted !== null && $trusted !== '') {
             $at = $trusted === '*' ? '*' : array_values(array_filter(array_map('trim', explode(',', (string) $trusted))));
