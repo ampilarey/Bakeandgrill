@@ -7,6 +7,7 @@ import {
   type StaffNotificationLog,
 } from '../../api';
 import { Badge, Btn, EmptyState, Spinner, StatCard, TableCard, TD, TH } from '../../components/Layout';
+import { isAutomationEnabled } from './automationSettings';
 
 type EventConfig = {
   key: string;
@@ -28,19 +29,32 @@ const EVENTS: EventConfig[] = [
 
 const STATUS_COLOR: Record<string, string> = { sent: 'green', failed: 'red', queued: 'orange' };
 
+const errorBoxStyle: React.CSSProperties = {
+  background: 'var(--color-danger-bg)',
+  color: 'var(--color-danger-strong)',
+  padding: '10px 14px',
+  borderRadius: 8,
+  marginBottom: 16,
+  fontSize: '0.875rem',
+};
+
 export function AutomationsTab() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [settingsError, setSettingsError] = useState('');
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
 
   const [logs, setLogs] = useState<StaffNotificationLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
+  const [logsError, setLogsError] = useState('');
   const [logsMeta, setLogsMeta] = useState<{ total: number } | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [resendingId, setResendingId] = useState<number | null>(null);
 
   const loadSettings = async () => {
     setLoadingSettings(true);
+    setSettingsError('');
     try {
       const res = await getSiteSettings();
       const map: Record<string, string> = {};
@@ -49,7 +63,14 @@ export function AutomationsTab() {
           if (s.value !== null) map[s.key] = s.value;
         });
       });
+      // Successful fetch: absent keys default ON — same as StaffNotificationDispatcher.
+      for (const event of EVENTS) {
+        if (map[event.key] === undefined) map[event.key] = '1';
+      }
       setSettings(map);
+    } catch (e) {
+      setSettings({});
+      setSettingsError((e as Error).message || 'Failed to load automation settings.');
     } finally {
       setLoadingSettings(false);
     }
@@ -57,10 +78,15 @@ export function AutomationsTab() {
 
   const loadLogs = async () => {
     setLogsLoading(true);
+    setLogsError('');
     try {
       const res = await fetchStaffNotificationLogs({ status: statusFilter || undefined });
       setLogs(res.data);
       setLogsMeta({ total: res.meta.total });
+    } catch (e) {
+      setLogs([]);
+      setLogsMeta(null);
+      setLogsError((e as Error).message || 'Failed to load notification logs.');
     } finally {
       setLogsLoading(false);
     }
@@ -72,9 +98,12 @@ export function AutomationsTab() {
   const toggleEvent = async (key: string, currentValue: string) => {
     const newValue = currentValue === '1' || currentValue === '' ? '0' : '1';
     setSavingKey(key);
+    setActionError('');
     try {
       await updateSiteSettings({ [key]: newValue });
       setSettings(s => ({ ...s, [key]: newValue }));
+    } catch (e) {
+      setActionError((e as Error).message || 'Failed to update automation.');
     } finally {
       setSavingKey(null);
     }
@@ -82,18 +111,18 @@ export function AutomationsTab() {
 
   const handleResend = async (id: number) => {
     setResendingId(id);
+    setActionError('');
     try {
       await resendStaffNotification(id);
       await loadLogs();
+    } catch (e) {
+      setActionError((e as Error).message || 'Failed to resend notification.');
     } finally {
       setResendingId(null);
     }
   };
 
-  const isEnabled = (key: string) => {
-    const v = settings[key];
-    return v === undefined || v === '1' || v === 'true';
-  };
+  const isEnabled = (key: string) => isAutomationEnabled(settings[key]);
 
   const sentCount = logs.filter(l => l.status === 'sent').length;
   const failedCount = logs.filter(l => l.status === 'failed').length;
@@ -108,8 +137,20 @@ export function AutomationsTab() {
           Enable or disable SMS notifications for each event. Staff routing is configured per-staff in the Staff page.
         </p>
 
-        {loadingSettings ? <Spinner /> : (
-          <div style={{ display: 'grid', gap: 10 }}>
+        {actionError && (
+          <div data-testid="automations-action-error" style={errorBoxStyle}>{actionError}</div>
+        )}
+
+        {loadingSettings ? <Spinner /> : settingsError ? (
+          <div data-testid="automations-settings-error" style={errorBoxStyle}>
+            <div style={{ marginBottom: 8 }}>
+              Could not load automation settings — toggles are hidden so they cannot be mistaken for live state.
+            </div>
+            <div style={{ marginBottom: 10 }}>{settingsError}</div>
+            <Btn variant="secondary" onClick={() => void loadSettings()}>Retry</Btn>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }} data-testid="automations-toggles">
             {EVENTS.map(event => {
               const enabled = isEnabled(event.key);
               return (
@@ -125,6 +166,10 @@ export function AutomationsTab() {
                     </div>
                   </div>
                   <button
+                    type="button"
+                    aria-label={`${event.label}: ${enabled ? 'enabled' : 'disabled'}`}
+                    data-testid={`automation-toggle-${event.key}`}
+                    data-enabled={enabled ? '1' : '0'}
                     onClick={() => toggleEvent(event.key, settings[event.key] ?? '1')}
                     disabled={savingKey === event.key}
                     style={{
@@ -157,9 +202,13 @@ export function AutomationsTab() {
               <option value="failed">Failed</option>
               <option value="queued">Queued</option>
             </select>
-            <Btn variant="secondary" onClick={loadLogs}><RotateCcw size={13} /></Btn>
+            <Btn variant="secondary" onClick={() => void loadLogs()}><RotateCcw size={13} /></Btn>
           </div>
         </div>
+
+        {logsError && (
+          <div data-testid="automations-logs-error" style={errorBoxStyle}>{logsError}</div>
+        )}
 
         {logsMeta && (
           <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
@@ -169,7 +218,7 @@ export function AutomationsTab() {
           </div>
         )}
 
-        {logsLoading ? <Spinner /> : logs.length === 0 ? (
+        {logsLoading ? <Spinner /> : logsError ? null : logs.length === 0 ? (
           <TableCard><EmptyState message="No staff notifications logged yet." /></TableCard>
         ) : (
           <TableCard>
@@ -210,7 +259,7 @@ export function AutomationsTab() {
                     </td>
                     <td style={TD}>
                       {l.status !== 'sent' && (
-                        <Btn variant="ghost" disabled={resendingId === l.id} onClick={() => handleResend(l.id)} title="Resend">
+                        <Btn variant="ghost" disabled={resendingId === l.id} onClick={() => void handleResend(l.id)} title="Resend">
                           <Send size={12} />
                         </Btn>
                       )}

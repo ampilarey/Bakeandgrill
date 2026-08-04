@@ -50,11 +50,19 @@ export default function GstPage() {
   const [adjReason, setAdjReason] = useState('');
   const [adjBusy, setAdjBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageTone, setMessageTone] = useState<'ok' | 'err'>('ok');
 
-  useEffect(() => {
+  const showMessage = (text: string, tone: 'ok' | 'err' = 'ok') => {
+    setMessage(text);
+    setMessageTone(tone);
+  };
+
+  const loadDashboard = () => {
     setLoading(true);
+    setLoadError('');
     Promise.all([
       getGstSummary(period),
       getGstSettings(),
@@ -63,7 +71,16 @@ export default function GstPage() {
       setSummary(s);
       setSettings(st.settings);
       setWarnings(rec.warnings);
+    }).catch((e) => {
+      setSummary(null);
+      setSettings(null);
+      setWarnings([]);
+      setLoadError((e as Error).message || 'Failed to load GST data.');
     }).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadDashboard();
   }, [period]);
 
   useEffect(() => {
@@ -91,15 +108,24 @@ export default function GstPage() {
     }
   }, [tab, period, ledgerPage]);
 
+  const runExport = async (fn: () => Promise<void>) => {
+    try {
+      await fn();
+      showMessage('Export ready.');
+    } catch (e) {
+      showMessage((e as Error).message || 'Export failed.', 'err');
+    }
+  };
+
   const saveSettings = async () => {
     if (!settings) return;
     setSaving(true);
     try {
       const res = await updateGstSettings(settings);
       setSettings(res.settings);
-      setMessage('GST settings saved.');
+      showMessage('GST settings saved.');
     } catch {
-      setMessage('Failed to save settings.');
+      showMessage('Failed to save settings.', 'err');
     } finally {
       setSaving(false);
     }
@@ -109,7 +135,7 @@ export default function GstPage() {
     const taxableLaar = mvrToLaar(adjTaxable);
     const taxLaar = mvrToLaar(adjTax);
     if (!adjDocNo.trim() || !adjReason.trim() || isNaN(taxableLaar) || isNaN(taxLaar)) {
-      setMessage('Document no, taxable amount, tax amount, and reason are required.');
+      showMessage('Document no, taxable amount, tax amount, and reason are required.', 'err');
       return;
     }
     setAdjBusy(true);
@@ -124,7 +150,7 @@ export default function GstPage() {
         total_laar: taxableLaar + taxLaar,
         reason: adjReason.trim(),
       });
-      setMessage('Manual GST adjustment posted.');
+      showMessage('Manual GST adjustment posted.');
       setAdjDocNo('');
       setAdjTaxable('');
       setAdjTax('');
@@ -135,7 +161,7 @@ export default function GstPage() {
       setLedger(r.data ?? []);
       setLedgerMeta(r.meta);
     } catch (e) {
-      setMessage((e as Error).message || 'Failed to post adjustment.');
+      showMessage((e as Error).message || 'Failed to post adjustment.', 'err');
     } finally {
       setAdjBusy(false);
     }
@@ -165,11 +191,41 @@ export default function GstPage() {
         </TabList>
       </Tabs>
 
-      {message && <p style={{ color: '#059669', margin: '12px 0' }}>{message}</p>}
+      {message && (
+        <p
+          data-testid="gst-banner"
+          style={{
+            color: messageTone === 'err' ? 'var(--color-danger-strong)' : '#059669',
+            margin: '12px 0',
+          }}
+        >
+          {message}
+        </p>
+      )}
+
+      {loadError && (
+        <div
+          data-testid="gst-load-error"
+          style={{
+            background: 'var(--color-danger-bg)',
+            color: 'var(--color-danger-strong)',
+            padding: '12px 14px',
+            borderRadius: 8,
+            marginTop: 16,
+            fontSize: 14,
+          }}
+        >
+          <div style={{ marginBottom: 8 }}>
+            Could not load GST data — dashboard figures are hidden so they cannot be mistaken for live totals.
+          </div>
+          <div style={{ marginBottom: 10 }}>{loadError}</div>
+          <Button variant="secondary" onClick={() => loadDashboard()}>Retry</Button>
+        </div>
+      )}
 
       {loading && tab === 'Dashboard' && <p>Loading…</p>}
 
-      {!loading && tab === 'Dashboard' && summary && (
+      {!loading && !loadError && tab === 'Dashboard' && summary && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 16 }}>
             <StatCard label="Net GST payable" value={mvr(summary.net_gst_payable_laar)} accent="var(--color-primary)" />
@@ -191,12 +247,19 @@ export default function GstPage() {
           )}
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
-            <Button onClick={() => downloadGstSummaryCsv(period)}>Export summary CSV</Button>
-            <Button onClick={() => downloadGstOutputXlsx(period)}>Output Tax Statement (XLSX)</Button>
-            <Button onClick={() => downloadGstInputXlsx(period)}>Input Tax Statement (XLSX)</Button>
-            <Button onClick={() => downloadGstLedgerCsv(period)}>Ledger CSV</Button>
+            <Button onClick={() => void runExport(() => downloadGstSummaryCsv(period))}>Export summary CSV</Button>
+            <Button onClick={() => void runExport(() => downloadGstOutputXlsx(period))}>Output Tax Statement (XLSX)</Button>
+            <Button onClick={() => void runExport(() => downloadGstInputXlsx(period))}>Input Tax Statement (XLSX)</Button>
+            <Button onClick={() => void runExport(() => downloadGstLedgerCsv(period))}>Ledger CSV</Button>
             {!summary.locked && (
-              <Button variant="secondary" onClick={async () => { await lockGstPeriod(period); setMessage('Period locked.'); }}>
+              <Button variant="secondary" onClick={async () => {
+                try {
+                  await lockGstPeriod(period);
+                  showMessage('Period locked.');
+                } catch (e) {
+                  showMessage((e as Error).message || 'Failed to lock period.', 'err');
+                }
+              }}>
                 Lock period
               </Button>
             )}

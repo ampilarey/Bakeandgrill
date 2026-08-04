@@ -40,7 +40,9 @@ class GstExportService
     {
         $errors = $this->validateOutputExport($period);
         if ($errors !== []) {
-            throw new \RuntimeException(implode(' ', $errors));
+            // InvalidArgumentException → 422 with the message text (bootstrap/app.php).
+            // Genuine export faults below still surface as 500.
+            throw new \InvalidArgumentException(implode(' ', $errors));
         }
 
         $data = $this->reports->outputStatement($period);

@@ -296,4 +296,55 @@ class GstModuleTest extends TestCase
             (string) $response->headers->get('content-type'),
         );
     }
+
+    public function test_output_xlsx_missing_seller_tin_returns_422(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+        $period = now()->format('Y-m');
+
+        GstSetting::query()->updateOrCreate(['id' => 1], [
+            'seller_tin' => '',
+            'taxable_activity_no' => 'TA-001',
+            'seller_name' => 'Bake & Grill Test',
+        ]);
+        app(GstSettingsService::class)->bust();
+
+        $this->getJson("/api/reports/finance/gst/export/output-statement.xlsx?period={$period}")
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn (string $message): bool => str_contains($message, 'Seller TIN'));
+    }
+
+    public function test_output_xlsx_missing_taxable_activity_returns_422(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+        $period = now()->format('Y-m');
+
+        GstSetting::query()->updateOrCreate(['id' => 1], [
+            'seller_tin' => 'TIN-TEST-001',
+            'taxable_activity_no' => '',
+            'seller_name' => 'Bake & Grill Test',
+        ]);
+        app(GstSettingsService::class)->bust();
+
+        $this->getJson("/api/reports/finance/gst/export/output-statement.xlsx?period={$period}")
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn (string $message): bool => str_contains($message, 'Taxable activity'));
+    }
+
+    public function test_output_xlsx_unexpected_fault_still_returns_500(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+        $period = now()->format('Y-m');
+
+        $this->mock(\App\Domains\Gst\Services\GstExportService::class, function ($mock) use ($period) {
+            $mock->shouldReceive('outputStatementXlsx')
+                ->once()
+                ->with($period)
+                ->andThrow(new \RuntimeException('disk exploded'));
+        });
+
+        $this->getJson("/api/reports/finance/gst/export/output-statement.xlsx?period={$period}")
+            ->assertStatus(500)
+            ->assertJsonPath('message', 'Server error. Please try again.');
+    }
 }
