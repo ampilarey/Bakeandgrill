@@ -39,8 +39,11 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
     Route::middleware('permission:menu.prepared_stock')->group(function () {
         Route::get('/prepared-stock', [App\Http\Controllers\Api\PreparedStockController::class, 'index']);
         Route::post('/items/{id}/prepared-stock/adjust', [App\Http\Controllers\Api\PreparedStockController::class, 'adjust']);
-        Route::patch('/items/{id}/snooze', [App\Http\Controllers\Api\ItemController::class, 'snooze']);
     });
+
+    // Snooze / 86 — admin menu editors (menu.manage) or POS ops (menu.prepared_stock)
+    Route::patch('/items/{id}/snooze', [App\Http\Controllers\Api\ItemController::class, 'snooze'])
+        ->middleware('permission.any:menu.manage,menu.prepared_stock');
 
     // Suppliers — read requires suppliers.view, write requires suppliers.manage
     Route::middleware('permission:suppliers.view')->group(function () {

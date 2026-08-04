@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Menu;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
-use App\Models\User;
 use App\Services\PosMenuBuilder;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,14 +75,30 @@ class ItemSnoozeTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_snooze_endpoint_requires_prepared_stock_permission(): void
+    public function test_snooze_endpoint_requires_menu_manage_or_prepared_stock(): void
     {
+        PermissionCatalogSync::sync();
         $item = Item::factory()->create();
-        $user = User::factory()->create();
+        $user = $this->makeStaff();
         Sanctum::actingAs($user, ['staff']);
 
         $this->patchJson('/api/items/' . $item->id . '/snooze', ['until' => 'end_of_day'])
-            ->assertStatus(403);
+            ->assertStatus(403)
+            ->assertJsonPath('required_any.0', 'menu.manage');
+
+        $user->grantPermission('menu.manage');
+        $user->unsetRelation('permissions');
+        Sanctum::actingAs($user->fresh(), ['staff']);
+        $this->patchJson('/api/items/' . $item->id . '/snooze', ['until' => 'end_of_day'])
+            ->assertOk()
+            ->assertJsonPath('item.is_snoozed', true);
+
+        $opsOnly = $this->makeStaff();
+        $opsOnly->grantPermission('menu.prepared_stock');
+        Sanctum::actingAs($opsOnly->fresh(), ['staff']);
+        $this->patchJson('/api/items/' . $item->id . '/snooze', ['until' => null])
+            ->assertOk()
+            ->assertJsonPath('item.is_snoozed', false);
     }
 
     public function test_snooze_toggle_idempotent(): void

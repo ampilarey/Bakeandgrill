@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { MenuCategory, MenuGroupRow } from '../../api';
 import { useGstBootstrap } from '../../hooks/useGstBootstrap';
 import { Btn, ErrorMsg, Input, Modal } from '../../components/Layout';
@@ -9,7 +9,7 @@ import {
 } from './menuItemForm';
 import { PhotosTab } from './PhotosTab';
 import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
-import { ItemSnoozeControls } from './ItemSnoozeControls';
+import { ItemSnoozeControls, type ItemSnoozeControlsHandle } from './ItemSnoozeControls';
 import type { SnoozeUntil } from '../../api';
 import { cardDescriptionPreview } from '@shared/utils';
 
@@ -321,6 +321,7 @@ export function MenuItemEditorModal({
   const [form, setForm] = useState<ItemForm>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const snoozeRef = useRef<ItemSnoozeControlsHandle>(null);
   const gstBootstrap = useGstBootstrap();
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -333,6 +334,7 @@ export function MenuItemEditorModal({
     if (updated && typeof updated.is_available === 'boolean') {
       set('is_available', updated.is_available);
     }
+    return updated;
   };
 
   const handleSave = async () => {
@@ -352,8 +354,20 @@ export function MenuItemEditorModal({
       if (!Number.isFinite(qty) || qty < 0) { setError('Quantity on hand must be 0 or more.'); return; }
     }
     setError(''); setLoading(true);
-    try { await onSave(form); }
-    catch (e) { setError((e as Error).message); }
+    try {
+      // Persist snooze duration/note first — Save item used to skip this API.
+      let saveForm = form;
+      if (itemId != null && onSnooze) {
+        const snoozed = await snoozeRef.current?.applyCurrent() as
+          | { is_available?: boolean }
+          | undefined;
+        if (snoozed && typeof snoozed.is_available === 'boolean') {
+          saveForm = { ...form, is_available: snoozed.is_available };
+          set('is_available', snoozed.is_available);
+        }
+      }
+      await onSave(saveForm);
+    } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
 
@@ -886,6 +900,7 @@ export function MenuItemEditorModal({
             </div>
             {itemId != null && onSnooze && (
               <ItemSnoozeControls
+                ref={snoozeRef}
                 canManage
                 snoozedUntil={snoozedUntil}
                 isAvailable={form.is_available}

@@ -29,7 +29,7 @@ describe('ItemSnoozeControls', () => {
   });
 
   it('keeps Indefinite selected after Apply snooze returns indefinitely off', async () => {
-    const onSnooze = vi.fn().mockResolvedValue(undefined);
+    const onSnooze = vi.fn().mockResolvedValue({ is_available: false, snoozed_until: null });
     const { rerender } = render(
       <ItemSnoozeControls
         canManage
@@ -44,6 +44,9 @@ describe('ItemSnoozeControls', () => {
     await waitFor(() => {
       expect(onSnooze).toHaveBeenCalledWith('indefinite', expect.any(Object));
     });
+    await waitFor(() => {
+      expect(screen.getByTestId('item-snooze-saved')).toBeInTheDocument();
+    });
 
     rerender(
       <ItemSnoozeControls
@@ -57,5 +60,23 @@ describe('ItemSnoozeControls', () => {
       expect(screen.getByTestId('item-snooze-until')).toHaveValue('indefinite');
     });
     expect(screen.getByText('Unavailable (indefinite)')).toBeInTheDocument();
+  });
+
+  it('surfaces API permission errors instead of failing silently', async () => {
+    const onSnooze = vi.fn().mockRejectedValue(new Error('You do not have permission to perform this action.'));
+    render(
+      <ItemSnoozeControls
+        canManage
+        isAvailable
+        snoozedUntil={null}
+        onSnooze={onSnooze}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('item-snooze-until'), { target: { value: 'indefinite' } });
+    fireEvent.click(screen.getByRole('button', { name: /Apply snooze/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/do not have permission/i)).toBeInTheDocument();
+    });
   });
 });
