@@ -22,6 +22,7 @@
             "is_available": true,
             "snoozed_until": null,
             "unavailable_reason_note": null,
+            "allow_pre_order": false,
             "is_active": true,
             "sort_order": 0,
             "show_on_signage": true,

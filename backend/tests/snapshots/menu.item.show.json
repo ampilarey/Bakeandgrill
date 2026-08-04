@@ -17,6 +17,7 @@
         "tax_rate": "0.00",
         "tax_code": "standard_8",
         "is_available": true,
+        "allow_pre_order": false,
         "created_at": "__VOLATILE__",
         "category": {
             "id": "__VOLATILE__",

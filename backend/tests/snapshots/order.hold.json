@@ -82,6 +82,7 @@
         "idempotency_key": null,
         "manual_discount_reason": null,
         "manual_discount_reason_note": null,
-        "manual_discount_approved_by": null
+        "manual_discount_approved_by": null,
+        "fulfil_date": null
     }
 }

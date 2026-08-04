@@ -60,10 +60,10 @@
                     "short_description": null,
                     "short_description_dv": null,
                     "price_note": null,
-          "show_on_signage": true,
-          "is_signage_promoted": false,
-          "unavailable_reason_note": null
-        }
+                    "show_on_signage": true,
+                    "is_signage_promoted": false,
+                    "unavailable_reason_note": null
+                }
             ]
         }
     ]

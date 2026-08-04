@@ -26,6 +26,7 @@
         "delivery_contact_phone": null,
         "delivery_notes": null,
         "pickup_slot_at": null,
+        "fulfil_date": null,
         "estimated_wait_minutes": null,
         "proof_of_delivery_url": null,
         "payment_settlement": {
