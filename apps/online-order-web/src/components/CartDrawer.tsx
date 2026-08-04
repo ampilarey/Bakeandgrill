@@ -246,7 +246,7 @@ export function CartDrawer({
                         data-testid="cart-line-tomorrow"
                         style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8rem', display: 'block' }}
                       >
-                        {t('cart.line_tomorrow')}
+                        {t('menu.can_order_tomorrow')}
                       </span>
                     ) : null}
                   </p>

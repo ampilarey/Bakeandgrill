@@ -28,7 +28,7 @@ vi.mock('../context/LanguageContext', () => ({
         'cart.add_items_cta': 'Add items to continue',
         'cart.subtotal': 'Subtotal',
         'cart.subtotal_excl': '',
-        'cart.line_tomorrow': 'Tomorrow',
+        'menu.can_order_tomorrow': 'Can be ordered for tomorrow',
         'cart.closed_tomorrow_tip': 'Add only Tomorrow items to order for tomorrow.',
       };
       return map[key] ?? key;

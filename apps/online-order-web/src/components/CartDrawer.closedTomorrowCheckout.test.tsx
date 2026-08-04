@@ -203,7 +203,7 @@ describe('closed shop → tomorrow checkout CTA', () => {
       /Add only Tomorrow items to order for tomorrow/i,
     );
     const tomorrowLine = screen.getByTestId('cart-line-tomorrow');
-    expect(tomorrowLine).toHaveTextContent(/Tomorrow/i);
+    expect(tomorrowLine).toHaveTextContent(/Can be ordered for tomorrow/i);
     expect(tomorrowLine.tagName).toBe('SPAN');
     expect(tomorrowLine).toHaveStyle({ display: 'block' });
   });

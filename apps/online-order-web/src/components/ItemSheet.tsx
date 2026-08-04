@@ -277,6 +277,19 @@ export function ItemSheet({
                 {item.name_dv}
               </p>
             )}
+            {item.allow_pre_order ? (
+              <p
+                data-testid="item-sheet-tomorrow"
+                style={{
+                  margin: '0 0 0.55rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: 'var(--color-primary)',
+                }}
+              >
+                {t('menu.can_order_tomorrow')}
+              </p>
+            ) : null}
             <div
               data-testid="item-sheet-price"
               style={{

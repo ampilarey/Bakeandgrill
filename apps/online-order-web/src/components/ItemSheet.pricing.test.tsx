@@ -6,6 +6,25 @@ vi.mock('../context/CartContext', () => ({
   useCart: () => ({ addItem: vi.fn() }),
 }));
 
+vi.mock('../context/LanguageContext', () => ({
+  useLanguage: () => ({
+    t: (key: string) => {
+      const map: Record<string, string> = {
+        'menu.can_order_tomorrow': 'Can be ordered for tomorrow',
+      };
+      return map[key] ?? key;
+    },
+    lang: 'en',
+  }),
+}));
+
+vi.mock('../context/SiteSettingsContext', () => ({
+  useSiteSettingsContext: () => ({
+    settings: { logo: '/logo.png' },
+    text: (_k: string, d: string) => d,
+  }),
+}));
+
 vi.mock('../api', async () => {
   const actual = await vi.importActual<typeof import('../api')>('../api');
   return {
@@ -57,5 +76,22 @@ describe('ItemSheet pricing display', () => {
     expect(price.textContent).toMatch(/100\.00\/-/);
     expect(price.textContent).not.toMatch(/MVR/i);
     expect(screen.getByTestId('item-sheet-savings').textContent).toMatch(/20%\s*OFF|Chef Deal|% OFF/);
+  });
+
+  it('shows can-order-for-tomorrow under the name when allow_pre_order', () => {
+    render(
+      <ItemSheet
+        open
+        item={{ ...saleItem, allow_pre_order: true }}
+        qty={1}
+        selectedModifiers={[]}
+        onToggleModifier={() => {}}
+        onAddToCart={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('item-sheet-tomorrow')).toHaveTextContent(
+      /Can be ordered for tomorrow/i,
+    );
   });
 });
