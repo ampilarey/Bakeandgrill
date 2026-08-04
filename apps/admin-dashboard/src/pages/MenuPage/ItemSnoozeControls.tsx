@@ -14,9 +14,9 @@ export type ItemSnoozeControlsProps = {
   ) => Promise<unknown> | void;
 };
 
-/** Parent Save item can flush the current duration + note. */
+/** Parent Save item flushes snooze only when the user edited these controls. */
 export type ItemSnoozeControlsHandle = {
-  applyCurrent: () => Promise<unknown>;
+  applyCurrentIfDirty: () => Promise<unknown>;
 };
 
 function isCurrentlySnoozed(snoozedUntil?: string | null): boolean {
@@ -54,12 +54,14 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
     );
     const [untilDate, setUntilDate] = useState('');
     const [note, setNote] = useState(reasonNote ?? '');
+    const [dirty, setDirty] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [savedFlash, setSavedFlash] = useState(false);
 
     useEffect(() => {
       setUntil(inferSnoozeUntil(snoozedUntil, isAvailable));
+      setDirty(false);
     }, [snoozedUntil, isAvailable]);
 
     useEffect(() => {
@@ -76,6 +78,7 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
         if (next === null) {
           const updated = await onSnooze(null);
           setNote('');
+          setDirty(false);
           setSavedFlash(true);
           return updated;
         }
@@ -89,6 +92,7 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
           unavailable_reason_note: note.trim() || null,
         });
         setUntil(next);
+        setDirty(false);
         setSavedFlash(true);
         return updated;
       } catch (e) {
@@ -101,7 +105,10 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
     };
 
     useImperativeHandle(ref, () => ({
-      applyCurrent: () => apply(until),
+      applyCurrentIfDirty: async () => {
+        if (!dirty) return undefined;
+        return apply(until);
+      },
     }));
 
     const statusLabel = snoozed
@@ -158,8 +165,8 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
       >
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Snooze / 86</div>
         <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-          Temporarily hide from ordering. Use <strong>Apply snooze</strong> or <strong>Save item</strong> to save
-          duration and note. Inactive items stay off the menu entirely — use Active for that.
+          Temporarily hide from ordering. Change duration/note, then use <strong>Apply snooze</strong> (or Save item).
+          Inactive items stay off the menu entirely — use Active for that.
         </p>
         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: snoozed || indefinitelyOff ? 'var(--color-danger-strong)' : 'var(--color-success)' }}>
           {statusLabel}
@@ -173,7 +180,10 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
                 <select
                   data-testid="item-snooze-until"
                   value={until}
-                  onChange={(e) => setUntil(e.target.value as Exclude<SnoozeUntil, null>)}
+                  onChange={(e) => {
+                    setUntil(e.target.value as Exclude<SnoozeUntil, null>);
+                    setDirty(true);
+                  }}
                   style={{ minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px' }}
                 >
                   <option value="2_hours">2 hours</option>
@@ -186,14 +196,24 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
               {until === 'date' && (
                 <label style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   Until date
-                  <Input type="date" value={untilDate} onChange={setUntilDate} />
+                  <Input
+                    type="date"
+                    value={untilDate}
+                    onChange={(v) => {
+                      setUntilDate(v);
+                      setDirty(true);
+                    }}
+                  />
                 </label>
               )}
               <label style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 Reason note (optional)
                 <Input
                   value={note}
-                  onChange={setNote}
+                  onChange={(v) => {
+                    setNote(v);
+                    setDirty(true);
+                  }}
                   placeholder="Back Thursday"
                   maxLength={80}
                 />

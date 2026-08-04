@@ -1,6 +1,11 @@
+import { createRef } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ItemSnoozeControls, inferSnoozeUntil } from './ItemSnoozeControls';
+import {
+  ItemSnoozeControls,
+  inferSnoozeUntil,
+  type ItemSnoozeControlsHandle,
+} from './ItemSnoozeControls';
 
 describe('inferSnoozeUntil', () => {
   it('maps indefinite (unavailable, no snooze timestamp) to indefinite', () => {
@@ -78,5 +83,40 @@ describe('ItemSnoozeControls', () => {
     await waitFor(() => {
       expect(screen.getByText(/do not have permission/i)).toBeInTheDocument();
     });
+  });
+
+  it('does not apply snooze on Save when controls were not edited', async () => {
+    const onSnooze = vi.fn().mockResolvedValue({ is_available: true });
+    const ref = createRef<ItemSnoozeControlsHandle>();
+    render(
+      <ItemSnoozeControls
+        ref={ref}
+        canManage
+        isAvailable
+        snoozedUntil={null}
+        onSnooze={onSnooze}
+      />,
+    );
+
+    await expect(ref.current?.applyCurrentIfDirty()).resolves.toBeUndefined();
+    expect(onSnooze).not.toHaveBeenCalled();
+  });
+
+  it('applies snooze on Save only after the user edits duration', async () => {
+    const onSnooze = vi.fn().mockResolvedValue({ is_available: false, snoozed_until: null });
+    const ref = createRef<ItemSnoozeControlsHandle>();
+    render(
+      <ItemSnoozeControls
+        ref={ref}
+        canManage
+        isAvailable
+        snoozedUntil={null}
+        onSnooze={onSnooze}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('item-snooze-until'), { target: { value: 'indefinite' } });
+    await ref.current?.applyCurrentIfDirty();
+    expect(onSnooze).toHaveBeenCalledWith('indefinite', expect.any(Object));
   });
 });

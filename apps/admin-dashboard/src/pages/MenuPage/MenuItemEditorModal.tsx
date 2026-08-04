@@ -355,10 +355,10 @@ export function MenuItemEditorModal({
     }
     setError(''); setLoading(true);
     try {
-      // Persist snooze duration/note first — Save item used to skip this API.
+      // Only flush snooze when the user edited duration/note (not on every Save).
       let saveForm = form;
       if (itemId != null && onSnooze) {
-        const snoozed = await snoozeRef.current?.applyCurrent() as
+        const snoozed = await snoozeRef.current?.applyCurrentIfDirty() as
           | { is_available?: boolean }
           | undefined;
         if (snoozed && typeof snoozed.is_available === 'boolean') {
