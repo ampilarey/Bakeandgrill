@@ -122,8 +122,21 @@ export function OpeningStatusBadge({
     label = contentOrI18n(text('order_hours_closed', ''), t('status.closed'));
   }
 
-  const tomorrow = !open && tomorrowLine?.trim() ? tomorrowLine.trim() : '';
-  const aria = tomorrow ? `${label}. ${tomorrow}` : label;
+  const tomorrowRaw = !open && tomorrowLine?.trim() ? tomorrowLine.trim() : '';
+  // If CMS/label already includes the tip, don't render it twice.
+  let mainLabel = label;
+  let tomorrow = tomorrowRaw;
+  if (tomorrowRaw) {
+    const idx = label.toLowerCase().indexOf(tomorrowRaw.toLowerCase());
+    if (idx >= 0) {
+      mainLabel = label
+        .slice(0, idx)
+        .replace(/[\s·•|]+$/g, '')
+        .trim();
+      tomorrow = tomorrowRaw;
+    }
+  }
+  const aria = tomorrow ? `${mainLabel}. ${tomorrow}` : mainLabel;
 
   return (
     <span
@@ -134,7 +147,7 @@ export function OpeningStatusBadge({
     >
       <span className="opening-status-badge__main">
         <span className="opening-status-dot" />
-        {label}
+        {mainLabel}
       </span>
       {tomorrow ? (
         <span className="opening-status-badge__tomorrow">{tomorrow}</span>

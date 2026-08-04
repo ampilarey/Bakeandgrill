@@ -105,4 +105,25 @@ describe('OpeningStatusBadge content overrides', () => {
     );
     expect(screen.getByRole('status').querySelector('.opening-status-badge__tomorrow')).toBeNull();
   });
+
+  it('does not duplicate tomorrow when already in the closed label', () => {
+    textMock.mockImplementation((key: string, fallback: string) => {
+      if (key === 'order_hours_closed') {
+        return 'Online ordering closed\nSome items can be ordered for tomorrow';
+      }
+      return fallback;
+    });
+    render(
+      <OpeningStatusBadge
+        open={false}
+        tomorrowLine="Some items can be ordered for tomorrow"
+      />,
+    );
+    const badge = screen.getByRole('status');
+    const matches = badge.textContent?.match(/Some items can be ordered for tomorrow/g) ?? [];
+    expect(matches).toHaveLength(1);
+    expect(badge.querySelector('.opening-status-badge__main')?.textContent).toBe(
+      'Online ordering closed',
+    );
+  });
 });
