@@ -375,7 +375,11 @@ export function CartDrawer({ isOpen = true, closedMessage, compact }: Props) {
           onMouseEnter={(e) => { if (canCheckout) e.currentTarget.style.background = 'var(--color-primary-hover)'; }}
           onMouseLeave={(e) => { if (canCheckout) e.currentTarget.style.background = 'var(--color-primary)'; }}
         >
-          {!isOpen ? t('cart.closed_cta') : cart.length === 0 ? t('cart.add_items_cta') : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
+          {!isOpen
+            ? (closedMessage?.trim() || t('cart.closed_cta_short'))
+            : cart.length === 0
+              ? t('cart.add_items_cta')
+              : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}
         </button>
       </div>
 

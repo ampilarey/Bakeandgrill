@@ -9,9 +9,22 @@ import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { isEventFlowPath } from '../../utils/eventFlowPath';
 import { CartSheet } from '../CartSheet';
 
+function formatOpenTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Logo cart FAB → CartSheet. All breakpoints — only when the cart has items.
  * Hidden on event/quote flows so the immediate cart doesn't compete with event lines.
+ * While ordering is closed the cart stays visible; the CTA says when it reopens
+ * (or "Ordering is closed") instead of offering checkout.
  */
 export function FloatingCartBar() {
   const { t } = useLanguage();
@@ -21,17 +34,25 @@ export function FloatingCartBar() {
   const { isAvailable, get } = useServiceStatusContext();
   const location = useLocation();
   const [orderingOpen, setOrderingOpen] = useState(true);
-  const [closedMessage, setClosedMessage] = useState<string | null>(null);
+  const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const checkoutAvailable = isAvailable('online_checkout');
   const orderingServiceAvailable = isAvailable('online_ordering');
   const checkoutState = get('online_checkout');
   const orderingState = get('online_ordering');
   const effectiveOpen = orderingOpen && checkoutAvailable && orderingServiceAvailable;
-  const effectiveMessage = !orderingServiceAvailable
-    ? (orderingState?.public_message?.trim() || t('cart.closed_cta'))
-    : !checkoutAvailable
-      ? (checkoutState?.public_message ?? 'Online checkout is temporarily unavailable.')
-      : (closedMessage || (!orderingOpen ? t('cart.closed_cta') : null));
+
+  const closedCta = (() => {
+    if (effectiveOpen) return null;
+    if (!orderingServiceAvailable) {
+      return orderingState?.public_message?.trim() || t('cart.closed_cta_short');
+    }
+    if (!checkoutAvailable) {
+      return checkoutState?.public_message?.trim() || t('cart.closed_cta_short');
+    }
+    const openAt = formatOpenTime(nextOpenWindow);
+    if (openAt) return t('cart.opens_at_cta').replace('{time}', openAt);
+    return t('cart.closed_cta_short');
+  })();
 
   const count = cart.reduce((sum, e) => sum + e.quantity, 0);
   const logoSrc = s.logo || '/logo.png';
@@ -43,10 +64,13 @@ export function FloatingCartBar() {
       .then((gate) => {
         if (cancelled) return;
         setOrderingOpen(gate.open);
-        setClosedMessage(gate.open ? null : (gate.message ?? null));
+        setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
       })
       .catch(() => {
-        if (!cancelled) setOrderingOpen(true);
+        if (!cancelled) {
+          setOrderingOpen(true);
+          setNextOpenWindow(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -100,7 +124,7 @@ export function FloatingCartBar() {
         open={cartSheetOpen}
         onClose={closeCartSheet}
         isOpen={effectiveOpen}
-        closedMessage={effectiveMessage}
+        closedMessage={closedCta}
       />
     </>
   );

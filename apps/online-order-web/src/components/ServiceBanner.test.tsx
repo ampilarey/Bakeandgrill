@@ -89,6 +89,18 @@ describe('ServiceBanner', () => {
     expect(banner).toHaveAttribute('aria-live', 'polite');
   });
 
+  it('shows forced gateClosedMessage for the online_ordering banner', async () => {
+    mocked.mockResolvedValue(buildServices());
+    render(
+      <ServiceStatusProvider>
+        <ServiceBanner gateClosedMessage="Shop closed · Opens 9:00 AM" />
+      </ServiceStatusProvider>
+    );
+    await flush();
+    const banner = screen.getByTestId('service-banner-online_ordering');
+    expect(banner).toHaveTextContent('Shop closed · Opens 9:00 AM');
+  });
+
   it('respects banner priority: online_ordering (umbrella) wins over online_delivery', async () => {
     mocked.mockResolvedValue(
       buildServices({

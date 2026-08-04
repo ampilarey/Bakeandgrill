@@ -16,7 +16,11 @@ use Carbon\Carbon;
  *  - Menu-group / chef-duty check  (KitchenMenuResolver)
  *  - Per-channel availability      (ItemChannelAvailability rows)
  *  - Stock availability            (StockReservationService)
- *  - Global online ordering gate   (OnlineOrderingGateService)
+ *
+ * The online ordering gate (OnlineOrderingGateService) is a shop-level
+ * condition enforced at order creation via assertOpen() — deliberately not
+ * applied per item. Stamping "ordering_closed" onto every dish makes the
+ * whole menu unbrowsable while the kitchen is shut.
  *
  * Returns a structured AvailabilityResult instead of a plain bool, so
  * callers can surface the reason and the next-open window without
@@ -29,7 +33,6 @@ class ItemAvailabilityService
 {
     public function __construct(
         private readonly KitchenMenuResolver $menuResolver,
-        private readonly OnlineOrderingGateService $gate,
         private readonly StockReservationService $reservations,
     ) {}
 
@@ -67,23 +70,7 @@ class ItemAvailabilityService
             );
         }
 
-        // 3. Online ordering gate (only for online channels)
-        if (in_array($channel, ['online_pickup', 'delivery'], true)) {
-            if (!$this->gate->isOpen($at)) {
-                $status = $this->gate->status($at);
-                $from = is_string($status['next_open_window'] ?? null)
-                    ? $status['next_open_window']
-                    : null;
-
-                return AvailabilityResult::unavailable(
-                    'ordering_closed',
-                    $this->gate->closedMessage(),
-                    availableFrom: $from,
-                );
-            }
-        }
-
-        // 4. Stock check (for prepared items only)
+        // 3. Stock check (for prepared items only)
         if ($item->track_stock && $item->availability_type === 'stock_based') {
             $available = $this->reservations->getAvailableStock($item);
             if ($available <= 0) {

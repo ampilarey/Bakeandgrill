@@ -86,17 +86,19 @@ class ItemAvailabilityServiceTest extends TestCase
         $this->assertSame('item_unavailable', $result->reasonCode);
     }
 
-    public function test_ordering_closed_returns_correct_reason(): void
+    public function test_ordering_gate_closed_does_not_mark_item_unavailable(): void
     {
+        // Shop-level gate must not stamp ordering_closed onto individual dishes —
+        // browsing stays live; checkout is blocked separately via assertOpen().
         $this->setSetting('online_ordering_enabled', '0');
         $this->setSetting('online_ordering_closed_message', 'Kitchen closed.');
         Cache::forget('site_setting.online_ordering_enabled');
         Cache::forget('site_setting.online_ordering_closed_message');
 
         $result = $this->service()->check($this->item, 'online_pickup');
-        $this->assertFalse($result->allowed);
-        $this->assertSame('ordering_closed', $result->reasonCode);
-        $this->assertSame('Kitchen closed.', $result->message);
+        $this->assertTrue($result->allowed);
+        $this->assertNull($result->reasonCode);
+        $this->assertNotSame('ordering_closed', $result->reasonCode);
     }
 
     public function test_out_of_stock_prepared_item_returns_correct_reason(): void
@@ -119,13 +121,13 @@ class ItemAvailabilityServiceTest extends TestCase
         $this->assertSame('out_of_stock', $result->reasonCode);
     }
 
-    public function test_ordering_closed_does_not_affect_pos_channel(): void
+    public function test_dine_in_channel_stays_available_when_ordering_gate_closed(): void
     {
         $this->setSetting('online_ordering_enabled', '0');
         Cache::forget('site_setting.online_ordering_enabled');
 
-        // dine_in is a POS channel — gate should not apply
         $result = $this->service()->check($this->item, 'dine_in');
+        $this->assertTrue($result->allowed);
         $this->assertNotSame('ordering_closed', $result->reasonCode);
     }
 
@@ -195,8 +197,10 @@ class ItemAvailabilityServiceTest extends TestCase
         }
     }
 
-    public function test_ordering_closed_with_schedule_sets_available_from(): void
+    public function test_outside_ordering_schedule_does_not_mark_item_unavailable(): void
     {
+        // Schedule closed is shop-level (assertOpen on create). Per-item check
+        // must stay allowed so the menu (including dine-in QR) remains browsable.
         Carbon::setTestNow(Carbon::create(2026, 6, 15, 12, 30, 0, config('app.timezone', 'UTC')));
         $dayKey = 'mon'; // 2026-06-15 is Monday
 
@@ -207,9 +211,8 @@ class ItemAvailabilityServiceTest extends TestCase
             ]));
 
             $result = $this->service()->check($this->item, 'online_pickup');
-            $this->assertFalse($result->allowed);
-            $this->assertSame('ordering_closed', $result->reasonCode);
-            $this->assertNotNull($result->availableFrom);
+            $this->assertTrue($result->allowed);
+            $this->assertNull($result->reasonCode);
         } finally {
             Carbon::setTestNow();
         }

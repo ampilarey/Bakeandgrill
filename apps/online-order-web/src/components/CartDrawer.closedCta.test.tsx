@@ -23,6 +23,8 @@ vi.mock('../context/LanguageContext', () => ({
         'cart.empty': 'empty',
         'cart.checkout': 'Proceed to Checkout',
         'cart.closed_cta': 'Online ordering is off',
+        'cart.closed_cta_short': 'Ordering is closed',
+        'cart.opens_at_cta': 'Ordering opens at {time}',
         'cart.add_items_cta': 'Add items to continue',
         'cart.subtotal': 'Subtotal',
         'cart.subtotal_excl': '',
@@ -75,15 +77,25 @@ vi.mock('../api', async () => {
 });
 
 describe('CartDrawer closed CTA', () => {
-  it('disables Proceed as Online ordering is off while cart still has items', () => {
+  it('disables checkout CTA with closed message while cart still has items', () => {
     render(
       <MemoryRouter>
-        <CartDrawer isOpen={false} closedMessage="Online ordering is temporarily unavailable." />
+        <CartDrawer isOpen={false} closedMessage="Ordering opens at 10:00 AM" />
       </MemoryRouter>,
     );
 
-    const btn = screen.getByRole('button', { name: /Online ordering is off/i });
+    const btn = screen.getByRole('button', { name: /Ordering opens at 10:00 AM/i });
     expect(btn).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /Proceed to Checkout/i })).toBeNull();
     expect(screen.getByText('Burger')).toBeInTheDocument();
+  });
+
+  it('falls back to short closed CTA when no closedMessage is passed', () => {
+    render(
+      <MemoryRouter>
+        <CartDrawer isOpen={false} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: /Ordering is closed/i })).toBeDisabled();
   });
 });

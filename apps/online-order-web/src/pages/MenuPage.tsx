@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
 import { ItemSheet } from '../components/ItemSheet';
 import { SearchOverlay } from '../components/SearchOverlay';
+import { ServiceBanner } from '../components/ServiceBanner';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useShellNav } from '../context/ShellNavContext';
@@ -15,6 +16,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderModeToggle } from '../components/OrderModeToggle';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
+import { composeOrderingStatusBanner, ORDER_STATUS_DEFAULTS } from '../utils/orderingStatusBanner';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
@@ -143,6 +145,7 @@ export function MenuPage() {
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
   const [gateMessage, setGateMessage] = useState<string>('');
+  const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -218,6 +221,7 @@ export function MenuPage() {
         setIsOpen(gate.open);
         setDeliveryAvailable(gate.delivery_available ?? true);
         setGateMessage(gate.message ?? '');
+        setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -652,8 +656,39 @@ export function MenuPage() {
   const pickupBlocked = !isServiceAvailable('online_pickup');
   const deliveryBlocked = (isOpen === true && !deliveryAvailable) || !isServiceAvailable('online_delivery');
 
+  // Shop-level closed notice — items stay browsable; only checkout is blocked.
+  const gateClosedBanner = useMemo(() => {
+    if (isOpen !== false) return null;
+    let opensFormatted = '';
+    if (nextOpenWindow) {
+      try {
+        const d = new Date(nextOpenWindow);
+        if (!Number.isNaN(d.getTime())) {
+          opensFormatted = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        }
+      } catch { /* ignore */ }
+    }
+    return composeOrderingStatusBanner({
+      isOpen: false,
+      deliveryAvailable: true,
+      closesFormatted: '',
+      opensFormatted,
+      deliveryFromFormatted: '',
+      gateMessage,
+      copy: {
+        open: ORDER_STATUS_DEFAULTS.open,
+        closed: ORDER_STATUS_DEFAULTS.closed,
+        pickupOnly: ORDER_STATUS_DEFAULTS.pickup_only,
+        closes: ORDER_STATUS_DEFAULTS.closes,
+        opens: ORDER_STATUS_DEFAULTS.opens,
+        deliveryFrom: ORDER_STATUS_DEFAULTS.delivery_from,
+      },
+    });
+  }, [isOpen, nextOpenWindow, gateMessage]);
+
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>
+      <ServiceBanner gateClosedMessage={gateClosedBanner} />
       {/* ── Sticky menu controls ─────────────────────────────────── */}
       <div
         ref={menuStickyRef}

@@ -2,13 +2,11 @@ import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import type { ServiceKey } from '../api/serviceStatus';
 
 /**
- * Order-app service maintenance banner (unused in shell).
- *
- * Kept for unit coverage / possible future opt-in. Not mounted in AppShell —
- * the hero OpeningStatusBadge + ordering/delivery status already cover this
- * UX, and a second top strip was redundant.
+ * Order-app service / ordering-gate banner.
  *
  * Precedence: checkout > payment > pickup > delivery > catering > registration.
+ * MenuPage may pass `gateClosedMessage` so the shop-hours gate (with reopen
+ * time) surfaces even when browsing stays live.
  */
 const BANNER_PRIORITY: ServiceKey[] = [
   'online_ordering',
@@ -30,36 +28,72 @@ const DEFAULT_MESSAGES: Partial<Record<ServiceKey, string>> = {
   customer_registration: 'New account signups are temporarily paused.',
 };
 
-export function ServiceBanner() {
+export type ServiceBannerProps = {
+  /**
+   * When the online ordering gate is closed, MenuPage passes a composed
+   * closed + reopen notice. Forces the online_ordering banner with this text.
+   */
+  gateClosedMessage?: string | null;
+};
+
+function BannerShell({
+  testId,
+  message,
+  alternatives,
+}: {
+  testId: string;
+  message: string;
+  alternatives?: string[];
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid={testId}
+      style={{
+        width: '100%',
+        padding: '0.55rem 1.25rem',
+        background: 'var(--color-warning-bg, #fef3c7)',
+        borderBottom: '1px solid var(--color-warning, #f59e0b)',
+        color: 'var(--color-warning, #92400e)',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        textAlign: 'center',
+      }}
+    >
+      {message}
+      {alternatives && alternatives.length > 0 && (
+        <span style={{ marginInlineStart: '0.4rem', fontWeight: 500, opacity: 0.85 }}>
+          (Try: {alternatives.join(', ')})
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function ServiceBanner({ gateClosedMessage }: ServiceBannerProps = {}) {
   const { get } = useServiceStatusContext();
+  const forced = gateClosedMessage?.trim();
+
+  if (forced) {
+    return (
+      <BannerShell
+        testId="service-banner-online_ordering"
+        message={forced}
+      />
+    );
+  }
 
   for (const key of BANNER_PRIORITY) {
     const entry = get(key);
     if (entry && !entry.available) {
       const message = entry.public_message?.trim() || DEFAULT_MESSAGES[key] || 'This service is temporarily unavailable.';
       return (
-        <div
-          role="status"
-          aria-live="polite"
-          data-testid={`service-banner-${key}`}
-          style={{
-            width: '100%',
-            padding: '0.55rem 1.25rem',
-            background: 'var(--color-warning-bg, #fef3c7)',
-            borderBottom: '1px solid var(--color-warning, #f59e0b)',
-            color: 'var(--color-warning, #92400e)',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            textAlign: 'center',
-          }}
-        >
-          {message}
-          {entry.alternatives && entry.alternatives.length > 0 && (
-            <span style={{ marginInlineStart: '0.4rem', fontWeight: 500, opacity: 0.85 }}>
-              (Try: {entry.alternatives.join(', ')})
-            </span>
-          )}
-        </div>
+        <BannerShell
+          testId={`service-banner-${key}`}
+          message={message}
+          alternatives={entry.alternatives}
+        />
       );
     }
   }

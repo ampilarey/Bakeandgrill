@@ -134,6 +134,8 @@ const TRANSLATIONS: Translations = {
   "cart.subtotal": "Subtotal",
   "cart.subtotal_excl": "(excl. tax & fees)",
   "cart.closed_cta": "Online ordering is off",
+  "cart.closed_cta_short": "Ordering is closed",
+  "cart.opens_at_cta": "Ordering opens at {time}",
   "menu.pickup_unavailable": "Pickup is currently unavailable",
   "menu.delivery_unavailable": "Delivery is currently unavailable",
   "cart.add_items_cta": "Add items to continue",

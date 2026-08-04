@@ -28,6 +28,9 @@ vi.mock('../api', async () => {
           base_price: 40,
           category_id: 1,
           is_available: true,
+          // Dine-in QR uses online_pickup; shop gate closed must not dim cards.
+          available_now: true,
+          unavailable_reason: null,
           has_variants: false,
           variants: [],
           created_at: old,
@@ -41,6 +44,8 @@ vi.mock('../api', async () => {
           base_price: 55,
           category_id: 2,
           is_available: true,
+          available_now: true,
+          unavailable_reason: null,
           has_variants: false,
           variants: [],
           created_at: recent,
@@ -155,6 +160,21 @@ describe('MenuViewPage', () => {
     expect(screen.queryByTestId('item-sheet-add-bar')).toBeNull();
     expect(screen.queryByText(/Add to cart/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /add to cart/i })).toBeNull();
+  });
+
+  it('keeps dine-in cards browsable when available_now is true (gate closed does not dim)', async () => {
+    render(<MenuViewPage />);
+    const cards = await screen.findAllByTestId('product-card');
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      expect(card).toHaveAttribute('role', 'button');
+      expect(card).toHaveAttribute('tabIndex', '0');
+      expect(card.className).not.toMatch(/unavailable/);
+    }
+    fireEvent.click(cards[0]);
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeTruthy();
+    });
   });
 
   it('shows recently created items under New items and excludes old ones', async () => {
