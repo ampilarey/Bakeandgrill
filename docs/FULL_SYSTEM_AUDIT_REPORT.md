@@ -152,11 +152,11 @@ Read-only review of migrations + money paths. No migrate/seed run.
 - MINOR: 3  
 - INFO: 1  
 
-### Untested (Part C)
+### Untested (Part C) — updated after completion pass
 
-- Live orphan row counts on TEST DB (no production DB access).
-- Full migration dry-run against a prod dump.
-
+- ~~Orphan row counts on unconstrained FKs with seeded DB~~ → **Covered** in Completion pass Gap 4.
+- ~~Migration safety review (last 30 days, review-only)~~ → **Covered** in Completion pass Gap 4.
+- Replay of historical destructive migrations on a clone — still not run (safety).
 
 ---
 
@@ -471,4 +471,39 @@ No receipt SMS send to a real phone. Some POS order POSTs returned **429** under
 - INFO: 3  
 
 First-pass BLOCKERs on receipt-link/send without `orders.receipts` remain the top AuthZ issues; this gap did not re-test those with empty-perm staff tokens.
+
+### Gap 4 — Part C orphans and migration safety
+
+**Orphans method:** SQLite `PRAGMA foreign_key_list` (269 FK entries). Counted children whose `*_id` points at a missing parent for core business pairs **and** for every `*_id` column lacking a DB-level FK. Seeded DB: 47 orders, 82 items, 22 customers (incl. IDOR pair), etc. **No migrations executed.**
+
+**Migration method:** Static review of 84 migration files dated ≥2026-07-05 (last ~30 days). Flagged operations that would fail or lock on a populated MySQL table. Did not run them.
+
+#### Orphan findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| INFO | Orphans (seeded) | **Zero** orphan rows on all probed FK-backed relations | orders/items/payments/addresses/role_permission/… | Seeded data is clean; no live orphan debt observed. |
+| INFO | Unconstrained `*_id` | 29 columns end with `_id` but have **no** DB FK | e.g. `stock_movements.reference_id`, `sms_logs.reference_id`, `audit_logs.model_id`, `signage_*.store_id`, `stock_reservations.session_id` | Polymorphic / soft references by design. Orphan counts where a parent table was guessable were **0**. `stock_movements` still empty here — first-pass index concern remains for scale. |
+
+#### Migration safety findings (review only — last 30 days)
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| MAJOR | Unique on hot table | Adds `orders.idempotency_key` **unique** with no pre-dedupe | `2026_07_21_100000_add_idempotency_key_to_orders.php` | Safe while column is new/null-heavy; **fails** if any duplicate non-null keys already exist (import/replay). On large `orders`, unique index build = metadata lock / long copy on older MySQL. |
+| MAJOR | Column change + FK | `abandoned_carts.customer_id` `->change()` nullable then `foreign()` | `2026_07_18_200000_abandoned_cart_guest_phone.php` | `change()` requires doctrine/dbal historically; FK add fails if orphans exist. Down() forces non-null + cascade — dangerous on rollback with guest carts. |
+| MAJOR | Data delete before unique | Dedupes then unique on `site_settings` | `2026_07_22_150000_add_scope_to_site_settings.php`, `2026_07_22_180200_add_locale_to_site_settings.php` | Up() deletes duplicate key/scope(/locale) rows — **intentional data loss** if dupes were meaningful. Down() deletes non-default scopes/locales. Already applied on prod/test: residual risk is replay/clone. |
+| MINOR | Unique token column | `gift_card_purchases.view_token` unique nullable | `2026_07_19_020000_gift_card_purchase_view_token.php` | Fine for empty/new; unique index on growing table still a write-cost note. |
+| MINOR | Unique reference | `catering_requests.reference` unique | `2026_07_20_120000_event_order_drafts_phase2.php` | Fails if backfill produced collisions (migration also imports pre-orders). |
+| MINOR | FK on orders | `manual_discount_approved_by` → `users` | `2026_07_24_120000_pos_discount_controls.php` | Adding FK to large `orders` can lock writes on MySQL InnoDB while validating. |
+| INFO | Permission revoke | Deletes `role_permission` rows for staff `reports.*` | `2026_07_17_062500_revoke_reports_view_from_staff_role.php` | Small table; safe. Behavioral change for staff role. |
+| INFO | Signage JSON rewrite | Rewrites `signage_banner` setting value | `2026_08_03_120000_migrate_signage_banner_seamless_to_ticker.php` | Pure data transform; low lock risk; verify JSON shape on deploy. |
+
+Most other “DROP” hits in the scanner are `down()` dropColumn stubs or create-table blueprints — not up() destructive drops.
+
+#### Gap 4 severity counts
+
+- BLOCKER: 0  
+- MAJOR: 3 (migration safety on populated tables)  
+- MINOR: 3  
+- INFO: 4  
 
