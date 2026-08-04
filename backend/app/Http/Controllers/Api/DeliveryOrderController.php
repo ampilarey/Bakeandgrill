@@ -54,16 +54,6 @@ class DeliveryOrderController extends Controller
             // Overlay guards emit 503; legacy gate services keep their 422s.
             app(ServiceAvailabilityService::class)->assertAvailable('online_checkout');
             app(ServiceAvailabilityService::class)->assertAvailable('online_delivery');
-
-            app(OnlineOrderingGateService::class)->assertOpen();
-
-            // Validate delivery_island early so we can pass it to the delivery gate
-            $earlyIsland = $request->input('delivery_island');
-
-            // Delivery-specific gate: accepting flag + delivery schedule + zone check
-            $this->deliveryGate->assertDeliveryOpen(
-                is_string($earlyIsland) ? $earlyIsland : null,
-            );
         }
 
         $validated = $request->validate([
@@ -118,6 +108,19 @@ class DeliveryOrderController extends Controller
             $validated['fulfil_date'] = $resolvedFulfil;
         } else {
             unset($validated['fulfil_date']);
+        }
+
+        if (!$isStaff) {
+            // Same-day blocked while closed; tomorrow + allow_pre_order may proceed.
+            app(OnlineOrderingGateService::class)->assertOpenOrTomorrowCollect(
+                $validated['fulfil_date'] ?? null,
+            );
+
+            $this->deliveryGate->assertDeliveryOpen(
+                is_string($validated['delivery_island'] ?? null)
+                    ? $validated['delivery_island']
+                    : null,
+            );
         }
 
         $delivery = DeliveryDetails::fromArray($validated);

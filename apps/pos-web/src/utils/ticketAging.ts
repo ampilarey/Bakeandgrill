@@ -25,16 +25,17 @@ type AgeFields = {
   fired_at?: string | null;
   created_at?: string | null;
   status?: string;
+  fulfil_date?: string | null;
 };
 
 /** Sort critical → warn → ok, then older first within the same level. */
 export function compareTicketsByAge(
   a: AgeFields & { status: string },
   b: AgeFields & { status: string },
-  stageOf: (status: string) => TicketStage,
+  stageOf: (ticket: AgeFields & { status: string }) => TicketStage,
 ): number {
-  const stageA = stageOf(a.status);
-  const stageB = stageOf(b.status);
+  const stageA = stageOf(a);
+  const stageB = stageOf(b);
   const levelA = ticketAgeLevel(ticketAgeAnchor(a, stageA), stageA);
   const levelB = ticketAgeLevel(ticketAgeAnchor(b, stageB), stageB);
   const rankDiff = AGE_LEVEL_RANK[levelA] - AGE_LEVEL_RANK[levelB];

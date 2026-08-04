@@ -317,10 +317,10 @@ class OrderCreationController extends Controller
         }
         unset($payload['collect_on']);
 
-        // Same-day orders still require the shop to be open. Tomorrow collection
-        // is gated in Stage F (assertOpenOrTomorrowCollect) — until then keep
-        // assertOpen so Group 1 does not weaken the closed-shop guard.
-        app(OnlineOrderingGateService::class)->assertOpen();
+        // Same-day still blocked while closed; tomorrow + allow_pre_order may proceed.
+        app(OnlineOrderingGateService::class)->assertOpenOrTomorrowCollect(
+            $payload['fulfil_date'] ?? null,
+        );
 
         if (!empty($payload['pickup_slot_at'])) {
             app(\App\Domains\Ordering\Services\PickupSlotService::class)

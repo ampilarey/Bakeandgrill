@@ -53,6 +53,17 @@ class DeductPreparedStockListener
             return;
         }
 
+        // Collect-tomorrow: stock was not reserved at create; deduct when staff
+        // fires the ticket to kitchen on the collection day (OrderStatusController).
+        if ($order->fulfil_date !== null) {
+            Log::info('DeductPreparedStockListener: deferring deduction until fire', [
+                'order_id' => $event->data->orderId,
+                'fulfil_date' => $order->fulfil_date?->toDateString(),
+            ]);
+
+            return;
+        }
+
         try {
             $this->reservationService->convertToDeduction($order);
         } catch (\Throwable $e) {

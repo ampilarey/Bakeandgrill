@@ -42,6 +42,28 @@ class OnlineOrderingGateService
         }
     }
 
+    /**
+     * Same-day customer orders still require the shop open.
+     * Collect-tomorrow orders (fulfil_date already server-resolved) may proceed
+     * while closed when every line was validated as allow_pre_order.
+     */
+    public function assertOpenOrTomorrowCollect(?string $fulfilDate, ?Carbon $at = null): void
+    {
+        if ($this->isOpen($at)) {
+            return;
+        }
+
+        if ($fulfilDate === null || $fulfilDate === '') {
+            abort(422, $this->evaluate($at)->message ?: $this->closedMessage());
+        }
+
+        $allowed = app(OrderFulfilDateService::class)->allowedTomorrowDateString($at);
+        if ($fulfilDate !== $allowed) {
+            abort(422, $this->closedMessage());
+        }
+        // Items already validated by the caller via assertAllItemsAllowTomorrow.
+    }
+
     /** Returns a structured result suitable for the public status endpoint. */
     public function status(?Carbon $at = null): array
     {

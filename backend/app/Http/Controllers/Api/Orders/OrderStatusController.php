@@ -21,6 +21,7 @@ use App\Models\Variant;
 use App\Services\AuditLogService;
 use App\Services\OrderStatusMachine;
 use App\Services\StockManagementService;
+use App\Services\StockReservationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +87,8 @@ class OrderStatusController extends Controller
             // can see them. Already-pending orders just get fired_at
             // refreshed (cashier asked for a reprint).
             $oldStatus = $order->status;
+            $wasUnfired = $order->fired_at === null;
+            $deferStock = $order->fulfil_date !== null;
             if ($order->status === 'held') {
                 app(OrderStatusMachine::class)->assertTransitionAllowed($order, 'pending');
                 $order->update([
@@ -93,12 +96,25 @@ class OrderStatusController extends Controller
                     'held_at' => null,
                     'fired_at' => $order->fired_at ?? now(),
                 ]);
-            } elseif (in_array($order->status, ['pending', 'in_progress'], true)) {
+            } elseif (in_array($order->status, ['pending', 'in_progress', 'paid'], true)) {
                 if (!$order->fired_at) {
                     $order->update(['fired_at' => now()]);
                 }
             } else {
                 abort(422, "Order is {$order->status} and cannot be fired to kitchen.");
+            }
+
+            // Collect-tomorrow: stock was skipped at create/pay — deduct on first fire.
+            // Held POS tickets already deducted at create (no fulfil_date on those).
+            if ($wasUnfired && $deferStock && $oldStatus !== 'held') {
+                $freshForStock = $order->fresh(['items.item', 'items.variant']);
+                if ($freshForStock) {
+                    // Idempotent via StockMovement unique keys inside convertToDeduction.
+                    app(StockReservationService::class)->convertToDeduction(
+                        $freshForStock,
+                        $request->user()?->id,
+                    );
+                }
             }
 
             app(AuditLogService::class)->log(

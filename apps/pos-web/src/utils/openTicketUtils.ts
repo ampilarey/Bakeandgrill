@@ -34,7 +34,37 @@ export function ticketDisplayTotal(t: OpenTicket): number {
 /** Kitchen lifecycle stage — aligned with KDS columns (Pending / Cooking / Ready). */
 export type TicketStage = "parked" | "queued" | "cooking" | "ready";
 
-export function ticketStage(status: string | null | undefined): TicketStage {
+export type TicketStageInput = {
+  status?: string | null;
+  fired_at?: string | null;
+  fulfil_date?: string | null;
+};
+
+/**
+ * Collect-tomorrow tickets (fulfil_date set, not yet fired) stay "parked"
+ * so Open Tickets shows Fire — same staff surface as held POS tickets.
+ * Do not invent a separate screen for this.
+ */
+export function ticketStage(
+  statusOrTicket: string | null | undefined | TicketStageInput,
+  maybeFiredAt?: string | null,
+  maybeFulfilDate?: string | null,
+): TicketStage {
+  let status: string | null | undefined;
+  let firedAt: string | null | undefined;
+  let fulfilDate: string | null | undefined;
+
+  if (statusOrTicket && typeof statusOrTicket === "object") {
+    status = statusOrTicket.status;
+    firedAt = statusOrTicket.fired_at;
+    fulfilDate = statusOrTicket.fulfil_date;
+  } else {
+    status = statusOrTicket;
+    firedAt = maybeFiredAt;
+    fulfilDate = maybeFulfilDate;
+  }
+
+  if (fulfilDate && !firedAt) return "parked";
   if (status === "held") return "parked";
   if (status === "ready") return "ready";
   if (status === "in_progress" || status === "preparing") return "cooking";

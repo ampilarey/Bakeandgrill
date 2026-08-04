@@ -52,6 +52,15 @@ class DispatchKitchenPrintListener
             return;
         }
 
+        // Collect-tomorrow stays off the kitchen printer until fire-to-kitchen
+        // (same hold as KDS — see OrderStatusController::fireToKitchen).
+        if ($event instanceof OrderPaid
+            && $order->fulfil_date !== null
+            && $order->fired_at === null
+        ) {
+            return;
+        }
+
         try {
             $this->printJobService->dispatchKitchenJobs($order);
         } catch (\Throwable $e) {

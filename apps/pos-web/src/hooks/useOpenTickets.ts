@@ -383,7 +383,7 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
           // no chip-level filter
         } else if (activeFilter.startsWith("stage:")) {
           const want = activeFilter.slice(6) as TicketStage;
-          if (ticketStage(t.status) !== want) return false;
+          if (ticketStage(t) !== want) return false;
         } else if (activeFilter.startsWith("type:")) {
           const want = activeFilter.slice(5);
           if (t.type !== want) return false;
@@ -461,7 +461,7 @@ export function useOpenTickets({ cartCustomerPhone, onOrderCancelled }: UseOpenT
   const stageCounts = useMemo(() => {
     const counts = { parked: 0, queued: 0, cooking: 0, ready: 0 };
     searchScopedTickets.forEach((t) => {
-      counts[ticketStage(t.status)]++;
+      counts[ticketStage(t)]++;
     });
     return counts;
   }, [searchScopedTickets]);

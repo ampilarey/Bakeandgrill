@@ -521,6 +521,8 @@ export async function fetchReceipts(params: {
     /** New: timestamp the kitchen first saw the chit. NULL means
      *  the ticket is still parked (Save Ticket without Fire). */
     fired_at?: string | null;
+    /** Collect-tomorrow date (Y-m-d). Null = same-day / legacy. */
+    fulfil_date?: string | null;
     /** Set when cashier parks the ticket (status held). */
     held_at?: string | null;
     total: number;

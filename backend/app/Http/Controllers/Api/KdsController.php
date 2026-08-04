@@ -66,6 +66,11 @@ class KdsController extends Controller
                 $q->where('type', '!=', 'catering')
                     ->orWhereNotNull('fired_at');
             })
+            // Collect-tomorrow orders reuse the same hold: stay off KDS until fired.
+            ->where(function ($q) {
+                $q->whereNull('fulfil_date')
+                    ->orWhereNotNull('fired_at');
+            })
             ->orderBy('created_at')
             ->get()
             ->map(fn (Order $order) => $this->formatKitchenOrder($order));

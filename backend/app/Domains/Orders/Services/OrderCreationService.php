@@ -485,15 +485,20 @@ class OrderCreationService
         $subtotal = 0;
 
         $isOnlineOrder = in_array($order->type, ['online_pickup', 'delivery'], true);
+        // Tomorrow collection must not consume today's sellable stock (Stage D).
+        $deferStockForTomorrow = $order->fulfil_date !== null;
 
         // Pre-load all referenced items in a single query to avoid N+1
         $itemIds = array_column($items, 'item_id');
-        $itemMap = Item::with(['variants', 'modifiers', 'packagingOptions'])
+        $itemQuery = Item::with(['variants', 'modifiers', 'packagingOptions'])
             ->where('is_active', true)
-            ->where('is_available', true)
-            ->whereIn('id', $itemIds)
-            ->get()
-            ->keyBy('id');
+            ->whereIn('id', $itemIds);
+        // Same-day still requires available-today; tomorrow may include 86'd items
+        // the owner ticked for tomorrow (validated earlier via allow_pre_order).
+        if (!$deferStockForTomorrow) {
+            $itemQuery->where('is_available', true);
+        }
+        $itemMap = $itemQuery->get()->keyBy('id');
 
         $this->kitchenMenuResolver->assertLineItemsAllowedForOrderType(
             $itemMap->all(),
@@ -564,7 +569,8 @@ class OrderCreationService
             // ── Stock check ───────────────────────────────────────────────────
             // Variant-level stock takes priority when the variant tracks its own stock.
             // Offline sync skips availability abort (Policy A) — deduct prepared stock below.
-            if (!$offlineSync) {
+            // Tomorrow collection skips today's availability — stock is deducted on fire.
+            if (!$offlineSync && !$deferStockForTomorrow) {
                 if ($variant && $variant->track_stock) {
                     $lockedVariant = \App\Models\Variant::lockForUpdate()->find($variant->id) ?? $variant;
                     $available = app(StockReservationService::class)->getAvailableVariantStock($lockedVariant);
@@ -689,7 +695,8 @@ class OrderCreationService
         // Online orders: reserve prepared stock after all items are persisted.
         // This runs inside the same DB::transaction() so a failed reservation rolls
         // back the entire order creation — no orphaned order without reserved stock.
-        if ($isOnlineOrder) {
+        // Tomorrow collection skips reservation so today's customers still see stock.
+        if ($isOnlineOrder && !$deferStockForTomorrow) {
             app(StockReservationService::class)->reserveForOrder($order);
         }
 

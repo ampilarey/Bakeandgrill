@@ -133,12 +133,21 @@ export function TicketRow({
     };
   }, [moreOpen]);
 
-  const stage = ticketStage(t.status);
+  const stage = ticketStage(t);
   const isPaid = t.payment_status === "paid";
   const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
 
+  const collectTomorrow = Boolean(t.fulfil_date && !t.fired_at);
   const stageBadge = {
-    parked: { label: "Parked", color: palette.panelMuted, bg: palette.bgAlt, border: palette.borderStrong, title: "Kitchen has not seen this yet" },
+    parked: {
+      label: collectTomorrow ? "Collect tomorrow" : "Parked",
+      color: palette.panelMuted,
+      bg: palette.bgAlt,
+      border: palette.borderStrong,
+      title: collectTomorrow
+        ? `Customer collects on ${t.fulfil_date}. Fire when ready for the kitchen.`
+        : "Kitchen has not seen this yet",
+    },
     queued: { label: "New", color: palette.info, bg: palette.infoBg, border: "#BFDBFE", title: "Waiting for kitchen to start (KDS Pending)" },
     cooking: { label: "Cooking", color: palette.warnDark, bg: palette.warnBg, border: palette.warnBorder, title: "Kitchen is preparing this" },
     ready: { label: "Ready", color: palette.successDark, bg: palette.successBg, border: palette.successBorder, title: "Ready for the customer to collect" },

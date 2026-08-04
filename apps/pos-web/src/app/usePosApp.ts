@@ -522,7 +522,7 @@ export function usePosApp() {
       const { count, rows } = await fetchActiveOrdersBadgeSample();
       setOpenTicketsCount(count);
       setOpenTicketsCritical(rows.some((t) => {
-        const stage = ticketStage(t.status);
+        const stage = ticketStage(t);
         return ticketAgeLevel(ticketAgeAnchor(t, stage), stage) === "critical";
       }));
     } catch { /* best-effort */ }
