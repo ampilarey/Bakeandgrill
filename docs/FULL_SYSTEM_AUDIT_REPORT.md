@@ -113,12 +113,11 @@ Verified with ephemeral staff user `audit-empty@local` (role with **zero** permi
 - MINOR: 2  
 - INFO: 4  
 
-### Untested (Part B)
+### Untested (Part B) — updated after completion pass
 
-- Full IDOR matrix across every `{id}` staff endpoint with two real customers (only addresses probed).
+- ~~Full IDOR matrix across every `{id}` staff endpoint with two real customers~~ → **Covered** in Completion pass Gap 3.
 - Receipt send with a real phone (would hit SMS — skipped).
 - Cross-store multi-tenancy (single-tenant app).
-
 
 ---
 
@@ -428,5 +427,48 @@ Most finance/inventory/media/SMS log endpoints **do** expose Laravel pagination 
 - BLOCKER: 0  
 - MAJOR: 4  
 - MINOR: 3  
-- INFO: 2  
+- INFO: 2
+
+### Gap 3 — Part B full IDOR matrix
+
+**Method:** Created customers **Alice** (`id=21`, `+9607001001`) and **Bob** (`id=22`, `+9607001002`) each with a default address and an order (`46` / `47`). Issued Sanctum **customer** tokens for each. Probed:
+
+1. Customer portal order/address routes (own vs other).
+2. Staff/admin `{id}` GET routes involving customers/orders/finance (customer token must deny).
+3. Staff/admin write routes on the same surfaces (customer token must deny before mutation/SMS).
+4. Owner staff token control reads both customers (expected allow — single-tenant staff).
+
+No receipt SMS send to a real phone. Some POS order POSTs returned **429** under throttle (not treated as allow).
+
+#### Findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| INFO | IDOR matrix | No cross-customer data leak found in this pass | Customer portal + staff `{id}` probes | Alice token: own order **200**; Bob order/address/default **401/403/404**; Bob address label unchanged after PATCH attempt. |
+| INFO | Staff boundary | Customer tokens cannot use staff customer/order APIs | 49 staff GET `{id}` probes + 69 write probes | **0** HTTP 2xx leaks. Writes: 62 explicit deny + 10 throttle **429** (still no success body). |
+| INFO | Method mismatch | `GET /api/customers/{id}` is not a route (PATCH only) | `api/customers/{id}` | Returns **405** — not an IDOR; listed only so scanners don’t confuse it with a show endpoint. |
+
+#### Matrix highlights
+
+| Case | Result |
+|---|---|
+| `custA GET /api/customer/orders/{own}` | 200 |
+| `custA GET /api/customer/orders/{Bob}` | deny |
+| `custB GET /api/customer/orders/{Alice}` | deny |
+| `custA PATCH/default Bob address` | deny (Bob address unchanged) |
+| `custA GET /api/customers/{Bob}/addresses` | deny (staff.token) |
+| `custA GET /api/orders/{Bob}/receipt-link` | deny |
+| `custA GET /api/admin/customers/{Bob}` (+ credit/deposit/activity) | deny |
+| Staff owner GET both customers/orders/addresses | 200 (control) |
+| Broad staff GET `{id}` w/ customer token | 49/49 deny |
+| Staff write `{id}` customer/order family w/ customer token | 0 allows |
+
+#### Gap 3 severity counts
+
+- BLOCKER: 0 (first-pass receipt AuthZ blockers unchanged; not re-opened here)  
+- MAJOR: 0 new  
+- MINOR: 0 new  
+- INFO: 3  
+
+First-pass BLOCKERs on receipt-link/send without `orders.receipts` remain the top AuthZ issues; this gap did not re-test those with empty-perm staff tokens.
 
