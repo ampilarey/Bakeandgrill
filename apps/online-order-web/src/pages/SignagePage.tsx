@@ -145,14 +145,17 @@ export function SignagePage() {
   const slideIdRef = useRef<string | null>(null);
   const offlineRef = useRef(false);
 
+  // Shared board clock — gate + banner + live vars must use the same instant.
+  const nowMs = useMemo(() => Date.now(), [tick]);
+
   // Live clock variables
   const liveVars = useMemo(() => {
     const base = { ...(config?.variables ?? {}) };
-    const now = new Date();
+    const now = new Date(nowMs);
     base.current_time = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     base.today = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
     return base;
-  }, [config?.variables, tick]);
+  }, [config?.variables, nowMs]);
 
   const hasAutoMenu = useMemo(
     () => (config?.slides ?? []).some((s) => s.template_origin === AUTO_MENU_ORIGIN),
@@ -389,7 +392,7 @@ export function SignagePage() {
   const showBanner = Boolean(
     config
     && !black
-    && shouldShowBanner(config.banner, config.mode),
+    && shouldShowBanner(config.banner, config.mode, new Date(nowMs)),
   );
   const isLoading = !config && !offline;
   const showIdleBrand = Boolean(config && !currentSlide && !black);
@@ -447,6 +450,7 @@ export function SignagePage() {
           banner={config.banner}
           schedule={config.prayer_schedule ?? []}
           mode={config.mode}
+          nowMs={nowMs}
           burnInOffset={burnIn}
           timeLabel={liveVars.current_time || undefined}
           variables={liveVars}

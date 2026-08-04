@@ -206,6 +206,37 @@ describe('SignageBanner helpers', () => {
     expect(shouldShowBanner(enabledBanner, 'emergency:closed')).toBe(false);
   });
 
+  it('shouldShowBanner evaluates schedule against the injected clock', () => {
+    // Fixed Monday — must not depend on the machine's real weekday.
+    const monday = new Date('2026-08-03T12:00:00+05:00');
+    const mondayOnly = normalizeBannerSettings({
+      enabled: true,
+      banners: [{
+        id: 'monday-only',
+        enabled: true,
+        fields: ['date'],
+        schedule: {
+          days: [1],
+          windows: [{ start: '00:00', end: '23:59' }],
+        },
+      }],
+    });
+    const tuesdayOnly = normalizeBannerSettings({
+      enabled: true,
+      banners: [{
+        id: 'tuesday-only',
+        enabled: true,
+        fields: ['date'],
+        schedule: {
+          days: [2],
+          windows: [{ start: '00:00', end: '23:59' }],
+        },
+      }],
+    });
+    expect(shouldShowBanner(mondayOnly, 'normal', monday)).toBe(true);
+    expect(shouldShowBanner(tuesdayOnly, 'normal', monday)).toBe(false);
+  });
+
   it('renders next prayer and countdown under normal mode', () => {
     render(
       <SignageBanner

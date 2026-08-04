@@ -83,12 +83,21 @@ export function formatCountdown(remainingMs: number): string {
   return `in ${hours}h ${mins}m`;
 }
 
-export function shouldShowBanner(banner: SignageBannerSettings | null | undefined, mode?: string): boolean {
+/**
+ * Visibility gate used by the player and the banner itself.
+ * Pass `now` whenever a clock is available (preview, injected nowMs, tests);
+ * omit it to evaluate against wall-clock time (legacy callers).
+ */
+export function shouldShowBanner(
+  banner: SignageBannerSettings | null | undefined,
+  mode?: string,
+  now: Date = new Date(),
+): boolean {
   const normalized = normalizeBannerSettings(banner ?? {});
   if (!normalized.enabled) return false;
   const m = mode ?? 'normal';
   if (m === 'prayer_break' || m.startsWith('emergency:')) return false;
-  return activeBanners(normalized).length > 0;
+  return activeBanners(normalized, now).length > 0;
 }
 
 function formatGregorian(now: Date, opts: Intl.DateTimeFormatOptions): string {
@@ -440,7 +449,7 @@ export function SignageBanner({
     passCountRef.current = 0;
   }, [enabledKey]);
 
-  const showBanner = shouldShowBanner(normalized, mode) && enabledList.length > 0;
+  const showBanner = shouldShowBanner(normalized, mode, now) && enabledList.length > 0;
   const showLogoBetween = Boolean(normalized.show_logo_between) && enabledList.length > 1 && Boolean(logoUrl);
   const active = showBanner ? enabledList[bannerIndex % enabledList.length] : null;
   const next = pickNextPrayer(schedule, nowMs);
