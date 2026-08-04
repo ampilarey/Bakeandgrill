@@ -11,6 +11,11 @@ type Props = {
   nextOpenWindow?: string | null;
   /** Explicit message to show when closed (e.g. from gate API) */
   closedDetail?: string | null;
+  /**
+   * Optional second line when closed (e.g. home hero: “Some items can be ordered for tomorrow”).
+   * Smaller type; only rendered when `open` is false.
+   */
+  tomorrowLine?: string | null;
   timeDisplay?: '24h' | '12h';
   className?: string;
   style?: React.CSSProperties;
@@ -77,7 +82,14 @@ function contentOrI18n(
  * (`order_hours_*`) with i18n fallback when empty.
  */
 export function OpeningStatusBadge({
-  open, reason, currentClose, nextOpenWindow, timeDisplay = '24h', className = '', style,
+  open,
+  reason,
+  currentClose,
+  nextOpenWindow,
+  tomorrowLine,
+  timeDisplay = '24h',
+  className = '',
+  style,
 }: Omit<Props, 'closedDetail'> & { closedDetail?: string | null }) {
   const { t } = useLanguage();
   const { text } = useSiteSettingsContext();
@@ -110,15 +122,23 @@ export function OpeningStatusBadge({
     label = contentOrI18n(text('order_hours_closed', ''), t('status.closed'));
   }
 
+  const tomorrow = !open && tomorrowLine?.trim() ? tomorrowLine.trim() : '';
+  const aria = tomorrow ? `${label}. ${tomorrow}` : label;
+
   return (
     <span
-      className={`opening-status-badge ${open ? 'open' : 'closed'} ${className}`.trim()}
+      className={`opening-status-badge ${open ? 'open' : 'closed'}${tomorrow ? ' has-tomorrow' : ''} ${className}`.trim()}
       style={style}
       role="status"
-      aria-label={label}
+      aria-label={aria}
     >
-      <span className="opening-status-dot" />
-      {label}
+      <span className="opening-status-badge__main">
+        <span className="opening-status-dot" />
+        {label}
+      </span>
+      {tomorrow ? (
+        <span className="opening-status-badge__tomorrow">{tomorrow}</span>
+      ) : null}
     </span>
   );
 }

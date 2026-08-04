@@ -73,6 +73,8 @@ export function HomePage() {
   >(null);
   const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
+  /** Closed-shop tip: at least one menu item allows order-for-tomorrow. */
+  const [hasTomorrowItems, setHasTomorrowItems] = useState(false);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [reorderingId, setReorderingId] = useState<number | null>(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
@@ -115,14 +117,18 @@ export function HomePage() {
 
   usePageTitle(null);
 
-  // ── Load featured items (kept for potential future use, kept non-blocking) ─
+  // ── Menu scan: whether any item can be ordered for tomorrow (closed banner) ─
   useEffect(() => {
-    const loadFeatured = () => {
-      fetchItems().catch(() => {});
+    const loadTomorrowEligibility = () => {
+      fetchItems()
+        .then(({ data }) => {
+          setHasTomorrowItems((data ?? []).some((item) => Boolean(item.allow_pre_order)));
+        })
+        .catch(() => setHasTomorrowItems(false));
     };
-    loadFeatured();
-    window.addEventListener('sales_channel_change', loadFeatured);
-    return () => window.removeEventListener('sales_channel_change', loadFeatured);
+    loadTomorrowEligibility();
+    window.addEventListener('sales_channel_change', loadTomorrowEligibility);
+    return () => window.removeEventListener('sales_channel_change', loadTomorrowEligibility);
   }, []);
 
   // ── Load ordering status + specials + reviews ──────────────────────────────
@@ -234,6 +240,9 @@ export function HomePage() {
         currentClose={currentClose}
         nextOpenWindow={nextOpenWindow}
         closedDetail={hoursMsg}
+        tomorrowLine={
+          !isOpen && hasTomorrowItems ? t('menu.banner_tomorrow_short') : null
+        }
         timeDisplay="24h"
       />
     ) : null;

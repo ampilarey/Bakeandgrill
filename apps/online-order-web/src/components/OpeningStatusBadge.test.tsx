@@ -77,4 +77,32 @@ describe('OpeningStatusBadge content overrides', () => {
     );
     expect(screen.getByRole('status').textContent).toMatch(/Shut · Back at/);
   });
+
+  it('shows smaller tomorrow line under closed label when provided', () => {
+    textMock.mockImplementation((_k, fallback) => fallback);
+    render(
+      <OpeningStatusBadge
+        open={false}
+        reason="schedule"
+        tomorrowLine="Some items can be ordered for tomorrow"
+      />,
+    );
+    const badge = screen.getByRole('status');
+    expect(badge).toHaveClass('has-tomorrow');
+    expect(badge.textContent).toContain('Some items can be ordered for tomorrow');
+    expect(badge.querySelector('.opening-status-badge__tomorrow')?.textContent).toBe(
+      'Some items can be ordered for tomorrow',
+    );
+  });
+
+  it('hides tomorrow line when open', () => {
+    textMock.mockImplementation((_k, fallback) => fallback);
+    render(
+      <OpeningStatusBadge
+        open
+        tomorrowLine="Some items can be ordered for tomorrow"
+      />,
+    );
+    expect(screen.getByRole('status').querySelector('.opening-status-badge__tomorrow')).toBeNull();
+  });
 });
