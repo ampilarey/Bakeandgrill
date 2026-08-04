@@ -85,6 +85,7 @@ const TRANSLATIONS: Translations = {
   "mode.pickup": "Pickup",
   "mode.delivery": "Delivery",
   "mode.toggle_aria": "Order mode",
+  "mode.choose_prompt": "Choose pickup or delivery",
   "menu.categories": "Categories",
   "menu.clear_filters": "Clear filters",
   "menu.toast_prune_one": "{n} cart item removed for this order mode.",
@@ -182,6 +183,9 @@ const TRANSLATIONS: Translations = {
   "prayer.cached": "Showing cached times",
   // ── Phase 5 Checkout accordion strings ────────────────────────────────────
   "checkout.acc_order_type": "Order Type",
+  "checkout.choose_order_type": "Choose pickup or delivery",
+  "checkout.choose_order_type_hint": "Select how you want your order before placing it.",
+  "checkout.pickup_unavailable_switched": "Pickup is unavailable right now — switched to delivery.",
   "checkout.acc_pickup": "Pickup Time",
   "checkout.acc_delivery": "Delivery Details",
   "checkout.acc_discounts": "Discounts & Rewards",

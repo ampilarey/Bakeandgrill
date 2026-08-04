@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { OrderModeToggle } from './OrderModeToggle';
 import { OrderModeProvider } from '../context/OrderModeContext';
 import { LanguageProvider } from '../context/LanguageContext';
-import { setSalesChannel } from '../api/menu';
+import { confirmSalesChannel, setSalesChannel } from '../api/menu';
 
 function renderToggle(props: Parameters<typeof OrderModeToggle>[0] = {}) {
   return render(
@@ -16,10 +16,29 @@ function renderToggle(props: Parameters<typeof OrderModeToggle>[0] = {}) {
   );
 }
 
-describe('OrderModeToggle blocked flags', () => {
+describe('OrderModeToggle', () => {
   beforeEach(() => {
     localStorage.clear();
     setSalesChannel('online_pickup');
+  });
+
+  it('renders neither pill active when mode is unconfirmed', () => {
+    renderToggle();
+    const pickup = screen.getByRole('button', { name: /pickup/i });
+    const delivery = screen.getByRole('button', { name: /delivery/i });
+    expect(pickup).toHaveAttribute('aria-pressed', 'false');
+    expect(delivery).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText(/choose pickup or delivery/i)).toBeTruthy();
+  });
+
+  it('activates the tapped pill and confirms', async () => {
+    const user = userEvent.setup();
+    renderToggle();
+    const delivery = screen.getByRole('button', { name: /delivery/i });
+    await user.click(delivery);
+    expect(delivery).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /pickup/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText(/choose pickup or delivery/i)).toBeNull();
   });
 
   it('keeps delivery tappable (not disabled) when deliveryBlocked and calls onBlockedTap', async () => {
@@ -44,6 +63,7 @@ describe('OrderModeToggle blocked flags', () => {
   });
 
   it('does not switch mode when blocked side is clicked', async () => {
+    confirmSalesChannel();
     const user = userEvent.setup();
     renderToggle({ deliveryBlocked: true });
     const delivery = screen.getByRole('button', { name: /delivery/i });

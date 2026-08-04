@@ -359,6 +359,8 @@ export function useCheckout() {
   const [globalError, setGlobalError] = useState("");
 
   const hasMounted = useRef(false);
+  const channelPruneSkipFirst = useRef(true);
+  const [lastChannelPrune, setLastChannelPrune] = useState<{ count: number; at: number } | null>(null);
 
   // Channel persistence lives in OrderModeContext (setMode → setSalesChannel).
   // fetchItems may emit sales_channel_change on delivery→pickup fallback; context
@@ -370,9 +372,16 @@ export function useCheckout() {
       .then((res) => {
         if (cancelled) return;
         const ids = new Set((res.data ?? []).map((i) => i.id));
+        const removedCount = readCart().filter((entry) => !ids.has(entry.id)).length;
         pruneCartToAllowedItemIds(ids);
         refreshPricesFromMenu(res.data ?? []);
         bumpCart();
+        // Toast on mode switch only — not the initial checkout mount.
+        if (channelPruneSkipFirst.current) {
+          channelPruneSkipFirst.current = false;
+        } else if (removedCount > 0) {
+          setLastChannelPrune({ count: removedCount, at: Date.now() });
+        }
       })
       .catch(() => { /* menu load failed — leave cart as-is rather than wiping items */ });
     return () => {
@@ -1121,6 +1130,7 @@ export function useCheckout() {
   return {
     cart, isAuthenticated, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, pickupSlotAt, setPickupSlotAt,
+    lastChannelPrune,
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
     delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,

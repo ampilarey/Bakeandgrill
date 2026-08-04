@@ -55,6 +55,10 @@ vi.mock('../api', async () => {
       delivery_available: true,
       message: null,
     }),
+    fetchOrderingEligibility: vi.fn().mockResolvedValue({
+      delivery: { accepting: true, reason: null, message: null },
+      active_menu_groups: [],
+    }),
     fetchOffers: vi.fn().mockResolvedValue({ offers: [], subtext: null }),
     getMyFavourites: vi.fn().mockResolvedValue([]),
     getWaitTimeEstimate: vi.fn().mockResolvedValue(null),
@@ -80,6 +84,7 @@ vi.mock('../context/CartContext', () => ({
     cartTotal: 0,
     cartCount: 0,
     pruneCartToAllowedItemIds: vi.fn(),
+    refreshPricesFromMenu: vi.fn(),
   }),
 }));
 
@@ -102,7 +107,12 @@ vi.mock('../context/ServiceStatusContext', () => ({
 }));
 
 vi.mock('../context/OrderModeContext', () => ({
-  useOrderMode: () => ({ mode: 'delivery', setMode: vi.fn() }),
+  useOrderMode: () => ({
+    mode: 'delivery',
+    setMode: vi.fn(),
+    modeConfirmed: true,
+    channel: 'delivery',
+  }),
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));

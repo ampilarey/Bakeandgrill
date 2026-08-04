@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { fetchCategories, fetchItems, fetchOnlineOrderingStatus, fetchOffers, getMyFavourites, toggleFavourite, getWaitTimeEstimate, API_ORIGIN } from '../api';
+import {
+  fetchCategories,
+  fetchItems,
+  fetchOnlineOrderingStatus,
+  fetchOrderingEligibility,
+  fetchOffers,
+  getMyFavourites,
+  toggleFavourite,
+  getWaitTimeEstimate,
+  API_ORIGIN,
+} from '../api';
 import type { Category, Item, Modifier, Offer } from '../api';
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +27,7 @@ import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderModeToggle } from '../components/OrderModeToggle';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { composeClosedMenuBanner } from '../utils/orderingStatusBanner';
+import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { FilterChipsRow, type SaleFilter } from '../components/menu/FilterChipsRow';
@@ -144,6 +155,8 @@ export function MenuPage() {
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
+  /** null = not loaded / failed — must not block delivery. */
+  const [eligibilityAccepting, setEligibilityAccepting] = useState<boolean | null>(null);
   const [gateMessage, setGateMessage] = useState<string>('');
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
 
@@ -239,6 +252,9 @@ export function MenuPage() {
         setOffersSubtext(res.subtext ?? null);
       })
       .catch(() => { /* non-blocking */ });
+    fetchOrderingEligibility()
+      .then((elig) => setEligibilityAccepting(elig.delivery.accepting))
+      .catch(() => setEligibilityAccepting(null));
     const onChannel = () => loadMenu();
     window.addEventListener('sales_channel_change', onChannel);
     return () => window.removeEventListener('sales_channel_change', onChannel);
@@ -630,6 +646,37 @@ export function MenuPage() {
     </div>
   );
 
+  const pickupBlocked = isPickupBlocked({ serviceAvailable: isServiceAvailable('online_pickup') });
+  const deliveryBlocked = isDeliveryBlocked({
+    isOpen,
+    deliveryAvailable,
+    eligibilityAccepting,
+    serviceAvailable: isServiceAvailable('online_delivery'),
+  });
+
+  // Shop-level closed notice — drop “check back” filler; keep opens + tomorrow tip.
+  // Must stay above any early return so hook order is stable.
+  const gateClosedBanner = useMemo(() => {
+    if (isOpen !== false) return null;
+    let opensFormatted = '';
+    if (nextOpenWindow) {
+      try {
+        const d = new Date(nextOpenWindow);
+        if (!Number.isNaN(d.getTime())) {
+          opensFormatted = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        }
+      } catch { /* ignore */ }
+    }
+    return composeClosedMenuBanner({
+      opensFormatted,
+      hasTomorrowItems: items.some((item) => Boolean(item.allow_pre_order)),
+      gateMessage,
+      fallbackClosed: t('menu.banner_closed_fallback'),
+      opensTemplate: t('menu.banner_opens_short'),
+      tomorrowLabel: t('menu.banner_tomorrow_short'),
+    });
+  }, [isOpen, nextOpenWindow, gateMessage, items, t]);
+
   if (error) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -655,31 +702,6 @@ export function MenuPage() {
       </div>
     );
   }
-
-  const pickupBlocked = !isServiceAvailable('online_pickup');
-  const deliveryBlocked = (isOpen === true && !deliveryAvailable) || !isServiceAvailable('online_delivery');
-
-  // Shop-level closed notice — drop “check back” filler; keep opens + tomorrow tip.
-  const gateClosedBanner = useMemo(() => {
-    if (isOpen !== false) return null;
-    let opensFormatted = '';
-    if (nextOpenWindow) {
-      try {
-        const d = new Date(nextOpenWindow);
-        if (!Number.isNaN(d.getTime())) {
-          opensFormatted = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        }
-      } catch { /* ignore */ }
-    }
-    return composeClosedMenuBanner({
-      opensFormatted,
-      hasTomorrowItems: items.some((item) => Boolean(item.allow_pre_order)),
-      gateMessage,
-      fallbackClosed: t('menu.banner_closed_fallback'),
-      opensTemplate: t('menu.banner_opens_short'),
-      tomorrowLabel: t('menu.banner_tomorrow_short'),
-    });
-  }, [isOpen, nextOpenWindow, gateMessage, items, t]);
 
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>

@@ -12,6 +12,7 @@ export type SalesChannel = 'online_pickup' | 'delivery';
 export type MenuListingChannel = SalesChannel | 'catering';
 
 const SALES_CHANNEL_KEY = 'bakegrill_sales_channel';
+const SALES_CHANNEL_CONFIRMED_KEY = 'bakegrill_sales_channel_confirmed';
 
 export function getSalesChannel(): SalesChannel {
   if (typeof localStorage === 'undefined') return 'online_pickup';
@@ -22,6 +23,18 @@ export function setSalesChannel(channel: SalesChannel): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.setItem(SALES_CHANNEL_KEY, channel);
   window.dispatchEvent(new Event('sales_channel_change'));
+}
+
+/** True once the customer has explicitly tapped pickup or delivery. */
+export function isSalesChannelConfirmed(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  return localStorage.getItem(SALES_CHANNEL_CONFIRMED_KEY) === '1';
+}
+
+/** Mark the sales channel as an explicit customer choice. */
+export function confirmSalesChannel(): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(SALES_CHANNEL_CONFIRMED_KEY, '1');
 }
 
 export interface OrderingEligibility {

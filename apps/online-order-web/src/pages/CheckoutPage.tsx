@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   fetchOrderingEligibility, type OrderingEligibility,
   fetchOnlineOrderingStatus, type OnlineOrderingStatus,
@@ -12,6 +12,8 @@ import { useCheckout } from "../hooks/useCheckout";
 import { useSiteSettingsContext } from "../context/SiteSettingsContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useServiceStatusContext } from "../context/ServiceStatusContext";
+import { useOrderMode } from "../context/OrderModeContext";
+import { useToast } from "../context/ToastContext";
 import { AuthBlock } from "../components/AuthBlock";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { CartSummary } from "../components/CartSummary";
@@ -24,6 +26,7 @@ import {
 import { AccordionItem } from '../components/ui/Accordion';
 import { StickyCtaBar } from '../components/ui/StickyCtaBar';
 import { defaultCollectOn, forcedTomorrowNotice } from '../utils/collectOn';
+import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 
 function parseFreeDeliveryThreshold(raw: string | undefined): number {
   const n = parseFloat(raw ?? '');
@@ -109,9 +112,19 @@ const ERROR_TO_ACCORDION: Record<string, string> = {
 export function CheckoutPage() {
   const navigate  = useNavigate();
   const { t }     = useLanguage();
+  const { showToast } = useToast();
+  const { modeConfirmed } = useOrderMode();
+  const needsModeChoice = !modeConfirmed;
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [openId, setOpenId]           = useState<string | null>('order-type');
-  const toggle = (id: string) => setOpenId((cur) => (cur === id ? null : id));
+  const toggle = (id: string) => {
+    // Keep Order Type open until the customer makes an explicit choice.
+    if (id === 'order-type' && needsModeChoice) {
+      setOpenId('order-type');
+      return;
+    }
+    setOpenId((cur) => (cur === id ? null : id));
+  };
 
   const { settings: s, text } = useSiteSettingsContext();
   const { isAvailable: isServiceAvailable, get: getService, openUnavailableModal } = useServiceStatusContext();
@@ -174,6 +187,7 @@ export function CheckoutPage() {
   const {
     cart, isAuthenticated, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, pickupSlotAt, setPickupSlotAt,
+    lastChannelPrune,
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
     delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
@@ -195,18 +209,56 @@ export function CheckoutPage() {
     handleApplyFriendReferral, handleRemoveFriendReferral,
   } = useCheckout();
 
-  const deliveryBlocked = (orderElig != null && !orderElig.delivery.accepting) || !deliveryServiceAvailable;
-  const pickupBlocked = !pickupServiceAvailable;
+  const deliveryBlocked = isDeliveryBlocked({
+    isOpen: onlineGate == null ? null : onlineGate.open,
+    deliveryAvailable: onlineGate?.delivery_available ?? true,
+    eligibilityAccepting: orderElig == null ? null : orderElig.delivery.accepting,
+    serviceAvailable: deliveryServiceAvailable,
+  });
+  const pickupBlocked = isPickupBlocked({ serviceAvailable: pickupServiceAvailable });
   const shopClosed = onlineGate != null && !onlineGate.open;
   const orderingGateClosed = shopClosed || !checkoutServiceAvailable;
   const collectTomorrowDate = onlineGate?.order_for_tomorrow?.collect_tomorrow_date ?? null;
   const canOrderTomorrowWhileClosed = shopClosed && allowsTomorrow && checkoutServiceAvailable;
   const placeBlockedByGate = orderingGateClosed && !(canOrderTomorrowWhileClosed && collectOn === 'tomorrow');
 
+  // Auto-fallback when the chosen mode becomes unavailable — never counts as an explicit choice.
+  const lastAutoFlipKey = useRef<string | null>(null);
   useEffect(() => {
-    if (deliveryBlocked && orderType === 'delivery' && !pickupBlocked) setOrderType('pickup');
-    if (pickupBlocked && orderType === 'pickup' && !deliveryBlocked) setOrderType('delivery');
-  }, [deliveryBlocked, pickupBlocked, orderType, setOrderType]);
+    if (deliveryBlocked && orderType === 'delivery' && !pickupBlocked) {
+      const key = 'delivery→pickup';
+      if (lastAutoFlipKey.current !== key) {
+        lastAutoFlipKey.current = key;
+        showToast(t('checkout.delivery_unavailable'));
+      }
+      setOrderType('pickup', { explicit: false });
+      return;
+    }
+    if (pickupBlocked && orderType === 'pickup' && !deliveryBlocked) {
+      const key = 'pickup→delivery';
+      if (lastAutoFlipKey.current !== key) {
+        lastAutoFlipKey.current = key;
+        showToast(t('checkout.pickup_unavailable_switched'));
+      }
+      setOrderType('delivery', { explicit: false });
+      return;
+    }
+    lastAutoFlipKey.current = null;
+  }, [deliveryBlocked, pickupBlocked, orderType, setOrderType, showToast, t]);
+
+  // Keep Order Type open while unconfirmed (also if another accordion was force-opened).
+  useEffect(() => {
+    if (needsModeChoice) setOpenId('order-type');
+  }, [needsModeChoice]);
+
+  // Surface channel-switch cart pruning (same copy as menu).
+  const lastPruneAt = useRef<number | null>(null);
+  useEffect(() => {
+    if (!lastChannelPrune || lastChannelPrune.at === lastPruneAt.current) return;
+    lastPruneAt.current = lastChannelPrune.at;
+    const pruneKey = lastChannelPrune.count === 1 ? 'menu.toast_prune_one' : 'menu.toast_prune_many';
+    showToast(t(pruneKey).replace('{n}', String(lastChannelPrune.count)));
+  }, [lastChannelPrune, showToast, t]);
 
   // Default Today when open, Tomorrow when closed (or cart forces tomorrow).
   useEffect(() => {
@@ -297,19 +349,27 @@ export function CheckoutPage() {
     ? t('checkout.processing')
     : placeBlockedByGate
       ? t('checkout.gate_closed')
-      : !paymentServiceAvailable && amountDueLaar > 0
-        ? 'Online payment unavailable'
-        : amountDueLaar <= 0
-          ? t('checkout.place_no_payment')
-          : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar)));
+      : needsModeChoice
+        ? t('checkout.choose_order_type')
+        : !paymentServiceAvailable && amountDueLaar > 0
+          ? 'Online payment unavailable'
+          : amountDueLaar <= 0
+            ? t('checkout.place_no_payment')
+            : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar)));
 
   // ── Section bodies (bare content — AccordionItem provides title/chrome) ──────
 
   const bodyOrderType = (
     <>
+      {needsModeChoice && (
+        <p style={{ margin: '0 0 12px', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.45 }}>
+          {t('checkout.choose_order_type_hint')}
+        </p>
+      )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {(['pickup', 'delivery'] as const).map((type) => {
           const blocked = (type === 'delivery' && deliveryBlocked) || (type === 'pickup' && pickupBlocked);
+          const active = !needsModeChoice && orderType === type;
           return (
             <button
               key={type}
@@ -321,10 +381,10 @@ export function CheckoutPage() {
               disabled={blocked}
               style={{
                 ...S.typeBtn,
-                ...(orderType === type ? S.typeBtnActive : {}),
+                ...(active ? S.typeBtnActive : {}),
                 ...(blocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
               }}
-              aria-pressed={orderType === type}
+              aria-pressed={active}
             >
               {type === 'pickup' ? `🥡 ${t('checkout.type_pickup')}` : `🛵 ${t('checkout.type_delivery')}`}
             </button>
@@ -919,6 +979,15 @@ export function CheckoutPage() {
           </div>
         </div>
       )}
+      {needsModeChoice && !placeBlockedByGate && (
+        <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="choose-order-type-hint">
+          <span className="banner-icon">🥡</span>
+          <div>
+            <p className="banner-title">{t('checkout.choose_order_type')}</p>
+            <p className="banner-sub">{t('checkout.choose_order_type_hint')}</p>
+          </div>
+        </div>
+      )}
       {canOrderTomorrowWhileClosed && collectOn === 'tomorrow' && (
         <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="tomorrow-while-closed-banner">
           <span className="banner-icon">📅</span>
@@ -1052,7 +1121,11 @@ export function CheckoutPage() {
               <AccordionItem
                 id="order-type"
                 title={t('checkout.acc_order_type')}
-                summary={orderType === 'pickup' ? t('mode.pickup') : t('mode.delivery')}
+                summary={
+                  needsModeChoice
+                    ? t('checkout.choose_order_type')
+                    : (orderType === 'pickup' ? t('mode.pickup') : t('mode.delivery'))
+                }
                 open={openId === 'order-type'}
                 onToggle={() => toggle('order-type')}
               >
@@ -1117,6 +1190,7 @@ export function CheckoutPage() {
                   isPlacing
                   || !acceptTerms
                   || placeBlockedByGate
+                  || needsModeChoice
                   || !checkoutServiceAvailable
                   || (!paymentServiceAvailable && amountDueLaar > 0)
                 }

@@ -1,7 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getSalesChannel, setSalesChannel } from '../api/menu';
+import {
+  confirmSalesChannel,
+  getSalesChannel,
+  isSalesChannelConfirmed,
+  setSalesChannel,
+} from '../api/menu';
 import {
   OrderModeProvider,
   channelToMode,
@@ -30,39 +35,83 @@ describe('OrderModeContext', () => {
     expect(modeToChannel('delivery')).toBe('delivery');
   });
 
-  it('initializes from getSalesChannel()', () => {
+  it('initializes from getSalesChannel() with modeConfirmed false on fresh storage', () => {
     setSalesChannel('delivery');
     const { result } = renderHook(() => useOrderMode(), { wrapper });
     expect(result.current.mode).toBe('delivery');
     expect(result.current.channel).toBe('delivery');
+    expect(result.current.modeConfirmed).toBe(false);
+    expect(isSalesChannelConfirmed()).toBe(false);
   });
 
-  it('setMode persists channel and updates mode', () => {
+  it('setMode persists channel, updates mode, and confirms by default', () => {
     const { result } = renderHook(() => useOrderMode(), { wrapper });
     act(() => {
       result.current.setMode('delivery');
     });
     expect(result.current.mode).toBe('delivery');
     expect(getSalesChannel()).toBe('delivery');
+    expect(result.current.modeConfirmed).toBe(true);
+    expect(isSalesChannelConfirmed()).toBe(true);
   });
 
-  it('treats sales_channel_change as authoritative (delivery→pickup fallback)', () => {
+  it('setMode with explicit:false does not confirm', () => {
     const { result } = renderHook(() => useOrderMode(), { wrapper });
     act(() => {
-      result.current.setMode('delivery');
+      result.current.setMode('delivery', { explicit: false });
     });
     expect(result.current.mode).toBe('delivery');
+    expect(result.current.modeConfirmed).toBe(false);
+    expect(isSalesChannelConfirmed()).toBe(false);
+  });
+
+  it('tapping the already-active mode still confirms', () => {
+    const { result } = renderHook(() => useOrderMode(), { wrapper });
+    expect(result.current.mode).toBe('pickup');
+    expect(result.current.modeConfirmed).toBe(false);
+    act(() => {
+      result.current.setMode('pickup');
+    });
+    expect(result.current.mode).toBe('pickup');
+    expect(result.current.modeConfirmed).toBe(true);
+  });
+
+  it('treats sales_channel_change as authoritative without confirming (delivery→pickup fallback)', () => {
+    const { result } = renderHook(() => useOrderMode(), { wrapper });
+    act(() => {
+      result.current.setMode('delivery', { explicit: false });
+    });
+    expect(result.current.mode).toBe('delivery');
+    expect(result.current.modeConfirmed).toBe(false);
 
     act(() => {
-      // Simulates fetchItems empty-delivery fallback (menu.ts)
+      // Simulates fetchItems empty-delivery fallback (menu.ts) — no confirmSalesChannel
       setSalesChannel('online_pickup');
     });
 
     expect(result.current.mode).toBe('pickup');
     expect(getSalesChannel()).toBe('online_pickup');
+    expect(result.current.modeConfirmed).toBe(false);
+  });
+
+  it('does not clear confirmation when channel changes after an explicit choice', () => {
+    const { result } = renderHook(() => useOrderMode(), { wrapper });
+    act(() => {
+      result.current.setMode('delivery');
+    });
+    expect(result.current.modeConfirmed).toBe(true);
+
+    act(() => {
+      setSalesChannel('online_pickup');
+    });
+    expect(result.current.mode).toBe('pickup');
+    // confirm flag remains in storage — automatic flip after a real choice stays confirmed
+    expect(isSalesChannelConfirmed()).toBe(true);
+    expect(result.current.modeConfirmed).toBe(true);
   });
 
   it('does not re-emit when setMode is a no-op for the current channel', () => {
+    confirmSalesChannel();
     const { result } = renderHook(() => useOrderMode(), { wrapper });
     let events = 0;
     const spy = () => {
