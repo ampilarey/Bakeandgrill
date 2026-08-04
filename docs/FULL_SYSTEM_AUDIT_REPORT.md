@@ -226,10 +226,9 @@ Read-only review of migrations + money paths. No migrate/seed run.
 - MINOR: 2  
 - INFO: 2  
 
-### Untested (Part E)
+### Untested (Part E) — updated after completion pass
 
-- Exhaustive dead-export graph (knip/ts-prune not run).
-
+- ~~Exhaustive dead-export graph (knip/ts-prune)~~ → **Covered** in Completion pass Gap 5 (`knip` run locally; not committed).
 
 ---
 
@@ -505,5 +504,59 @@ Most other “DROP” hits in the scanner are `down()` dropColumn stubs or creat
 - BLOCKER: 0  
 - MAJOR: 3 (migration safety on populated tables)  
 - MINOR: 3  
-- INFO: 4  
+- INFO: 4
+
+### Gap 5 — Part E dead-code graph
+
+**Tool:** `knip@5` (temporary install, **not** committed) across workspaces: `admin-dashboard`, `online-order-web`, `pos-web`, `kds-web`, `delivery-web`, `packages/shared`. Entry points = each app `main.tsx` + vitest files. Distinguish: unused **files**, unused **runtime exports**, unused **types**, and assets knip cannot see (HTML script tags).
+
+#### Unused files (likely dead)
+
+| App | File | Verdict |
+|---|---|---|
+| admin | `src/components/content-editors/VisualBlockPreview.tsx` | **Dead file** — no TS imports (only eslint baseline mention). |
+| admin | `src/hooks/useFocusTrap.ts` | **Dead in admin** — no admin imports; POS has its own copy that is used. |
+| admin | `src/utils/fmt.ts` | **Dead file** — no `utils/fmt` imports under admin `src/`. |
+| admin | `public/theme-init.js` | **False positive** — referenced from `index.html` (`%BASE_URL%theme-init.js`). |
+| order | `src/components/Layout.tsx` | **Dead file** — superseded by shell layout; no page imports. |
+| order | `src/components/ui/{Badge,Button,Card,EmptyState,ErrorState,Input,Modal,SectionHeader,index}.ts(x)` | **Dead kit** — 9 files; app uses other UI paths. |
+| order | `src/types.ts`, `src/utils/sanitize.ts` | **Dead files** (no src imports). |
+| order | `public/sw.js` | Likely PWA artifact; knip unused (may still be registered at runtime). |
+| pos | `src/offline/localReceipt.ts` | **Dead file** — no references. |
+| kds / delivery / shared | — | No unused source files reported. |
+
+#### Unused exports (high-signal runtime)
+
+| App | Unused exports (approx) | Unused types | Notes |
+|---|---:|---:|---|
+| admin-dashboard | **102** | 49 | ~32 unused **API client helpers** (tables open/close/split, KDS start/bump/recall, variants CRUD, shift open/close, GST download, etc.) — likely UI never wired or replaced. |
+| online-order-web | **33** | ~28 | Includes API helpers (`createPreOrder`, `getCustomerDeposit`), icon barrel exports, page `default` duplicates. |
+| pos-web | **37** | 35 | Ops/SMS promo helpers, offline DB helpers, theme tokens unused at call sites. |
+| kds-web | **1** | 2 | `uploadPurchaseRequestAttachment` unused. |
+| delivery-web | **0** | 0 | Clean. |
+| packages/shared | **2** | 0 | `SIGNAGE_BANNER_TEST_*` constants — **test-oriented** names; treat as test/harness exports, not prod dead UI. |
+
+#### Duplicate exports
+
+| App | Examples |
+|---|---|
+| admin | `AppShell|Layout` alias; several `Page|default` dual exports |
+| order | 10 `Page|default` dual exports |
+| pos | `PARKED_AGE_COLORS|TICKET_AGE_COLORS` |
+
+Dual `default` + named page exports are style noise, not proof the route is dead (routes import one of them).
+
+#### Test-only vs genuinely dead
+
+- Shared `SIGNAGE_BANNER_TEST_*` → **test/harness**, keep.
+- Admin unused API functions with no page import → **genuinely unused clients** (or only reachable via dynamic paths knip missed — none found for the table/KDS helpers).
+- Order legacy `components/ui/*` → **genuinely dead** relative to current shell.
+- `theme-init.js` → **not dead**.
+
+#### Gap 5 severity counts
+
+- BLOCKER: 0  
+- MAJOR: 0  
+- MINOR: 1 (admin/order dead files + large unused API surface — cleanup debt)  
+- INFO: knip noise (types, duplicate default exports, HTML-linked assets)
 
