@@ -216,6 +216,7 @@ export function useMenuPage() {
           unavailable_reason_note: res.item.unavailable_reason_note ?? null,
         };
       });
+      return res.item;
     } catch (e) {
       setError((e as Error).message);
       throw e;

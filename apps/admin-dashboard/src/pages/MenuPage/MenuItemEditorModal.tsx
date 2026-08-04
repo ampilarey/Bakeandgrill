@@ -315,7 +315,7 @@ export function MenuItemEditorModal({
   onSnooze?: (
     until: SnoozeUntil,
     opts?: { until_date?: string; unavailable_reason_note?: string | null },
-  ) => Promise<void>;
+  ) => Promise<{ is_available?: boolean; snoozed_until?: string | null; unavailable_reason_note?: string | null } | void>;
 }) {
   const [activeTab, setActiveTab] = useState<'details' | 'photos'>('details');
   const [form, setForm] = useState<ItemForm>(initial);
@@ -323,6 +323,17 @@ export function MenuItemEditorModal({
   const [error, setError] = useState('');
   const gstBootstrap = useGstBootstrap();
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  /** Keep form.is_available aligned with snooze API so Save Item cannot undo indefinite. */
+  const handleSnooze = async (
+    until: SnoozeUntil,
+    opts?: { until_date?: string; unavailable_reason_note?: string | null },
+  ) => {
+    const updated = await onSnooze?.(until, opts);
+    if (updated && typeof updated.is_available === 'boolean') {
+      set('is_available', updated.is_available);
+    }
+  };
 
   const handleSave = async () => {
     if (!form.name.trim()) { setError('Item name is required.'); return; }
@@ -879,7 +890,7 @@ export function MenuItemEditorModal({
                 snoozedUntil={snoozedUntil}
                 isAvailable={form.is_available}
                 reasonNote={reasonNote}
-                onSnooze={onSnooze}
+                onSnooze={handleSnooze}
               />
             )}
           </div>

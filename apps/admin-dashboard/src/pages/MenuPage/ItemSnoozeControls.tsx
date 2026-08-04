@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { SnoozeUntil } from '../../api';
 import { Btn, Input } from '../../components/Layout';
 
@@ -11,12 +11,23 @@ export type ItemSnoozeControlsProps = {
   onSnooze: (
     until: SnoozeUntil,
     opts?: { until_date?: string; unavailable_reason_note?: string | null },
-  ) => Promise<void> | void;
+  ) => Promise<unknown> | void;
 };
 
 function isCurrentlySnoozed(snoozedUntil?: string | null): boolean {
   if (!snoozedUntil) return false;
   return new Date(snoozedUntil).getTime() > Date.now();
+}
+
+/** Duration shown in the select — must reflect saved state when reopening. */
+export function inferSnoozeUntil(
+  snoozedUntil: string | null | undefined,
+  isAvailable: boolean,
+): Exclude<SnoozeUntil, null> {
+  if (isAvailable === false && !isCurrentlySnoozed(snoozedUntil)) {
+    return 'indefinite';
+  }
+  return 'end_of_day';
 }
 
 export function ItemSnoozeControls({
@@ -29,11 +40,21 @@ export function ItemSnoozeControls({
 }: ItemSnoozeControlsProps) {
   const snoozed = isCurrentlySnoozed(snoozedUntil);
   const indefinitelyOff = isAvailable === false && !snoozed;
-  const [until, setUntil] = useState<Exclude<SnoozeUntil, null>>('end_of_day');
+  const [until, setUntil] = useState<Exclude<SnoozeUntil, null>>(() =>
+    inferSnoozeUntil(snoozedUntil, isAvailable),
+  );
   const [untilDate, setUntilDate] = useState('');
   const [note, setNote] = useState(reasonNote ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setUntil(inferSnoozeUntil(snoozedUntil, isAvailable));
+  }, [snoozedUntil, isAvailable]);
+
+  useEffect(() => {
+    setNote(reasonNote ?? '');
+  }, [reasonNote]);
 
   const apply = async (next: SnoozeUntil) => {
     if (!canManage || busy) return;
@@ -52,6 +73,7 @@ export function ItemSnoozeControls({
           until_date: next === 'date' ? untilDate : undefined,
           unavailable_reason_note: note.trim() || null,
         });
+        setUntil(next);
       }
     } catch (e) {
       setError((e as Error).message || 'Could not update snooze.');
@@ -114,6 +136,7 @@ export function ItemSnoozeControls({
             <label style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
               Duration
               <select
+                data-testid="item-snooze-until"
                 value={until}
                 onChange={(e) => setUntil(e.target.value as Exclude<SnoozeUntil, null>)}
                 style={{ minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px' }}

@@ -29,7 +29,7 @@ type MenuItemTableProps = {
     item: MenuItem,
     until: SnoozeUntil,
     opts?: { until_date?: string; unavailable_reason_note?: string | null },
-  ) => Promise<void> | void;
+  ) => Promise<unknown> | void;
   onEditItem: (item: MenuItem) => void;
   onDeleteItem: (id: number) => void;
   onBarcodeLabel: (itemId: number) => void;
