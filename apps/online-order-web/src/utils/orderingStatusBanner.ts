@@ -65,21 +65,44 @@ export function composeOrderingStatusBanner(args: {
   return closesPart ? `${copy.open} · ${closesPart}` : copy.open;
 }
 
+/** Drop the usual “please check back…” filler from Ordering Control closed copy. */
+export function stripCheckBackFromClosedMessage(message: string): string {
+  return message
+    .replace(/\s*Please check back during opening hours\.?/gi, '')
+    .replace(/\s*Please check back later\.?/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+\./g, '.')
+    .trim()
+    .replace(/[.]+$/, (m) => (m.length ? '.' : ''));
+}
+
 /**
- * Compact MenuPage closed strip — skips long Ordering Control messages.
- * Example: "Closed · Opens 10:00 AM · Some items for tomorrow"
+ * MenuPage closed strip: keep the closed sentence (minus check-back filler),
+ * then Opens {time} and optional tomorrow note.
+ *
+ * Example:
+ * "Online ordering is currently closed. · Opens 10:00 AM · Some items for tomorrow"
  */
 export function composeClosedMenuBanner(args: {
   opensFormatted: string;
   hasTomorrowItems: boolean;
-  closedLabel?: string;
+  gateMessage?: string | null;
+  fallbackClosed?: string;
   opensTemplate?: string;
   tomorrowLabel?: string;
 }): string {
-  const closed = (args.closedLabel ?? 'Closed').trim() || 'Closed';
+  const raw = (args.gateMessage && args.gateMessage.trim())
+    ? args.gateMessage.trim()
+    : (args.fallbackClosed ?? 'Online ordering is currently closed.');
+  const closed = stripCheckBackFromClosedMessage(raw)
+    || (args.fallbackClosed ?? 'Online ordering is currently closed.');
   const opensTpl = args.opensTemplate ?? 'Opens {time}';
   const tomorrow = (args.tomorrowLabel ?? 'Some items for tomorrow').trim();
-  const bits = [closed];
+  const bits = [closed.replace(/[.]+$/, '.')];
+  // Prefer a single trailing period on the closed sentence for readability.
+  if (!bits[0].endsWith('.')) {
+    bits[0] = `${bits[0]}.`;
+  }
   if (args.opensFormatted) {
     bits.push(opensTpl.replace('{time}', args.opensFormatted));
   }

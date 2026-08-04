@@ -659,7 +659,7 @@ export function MenuPage() {
   const pickupBlocked = !isServiceAvailable('online_pickup');
   const deliveryBlocked = (isOpen === true && !deliveryAvailable) || !isServiceAvailable('online_delivery');
 
-  // Shop-level closed notice — short strip; browse stays open.
+  // Shop-level closed notice — drop “check back” filler; keep opens + tomorrow tip.
   const gateClosedBanner = useMemo(() => {
     if (isOpen !== false) return null;
     let opensFormatted = '';
@@ -674,11 +674,12 @@ export function MenuPage() {
     return composeClosedMenuBanner({
       opensFormatted,
       hasTomorrowItems: items.some((item) => Boolean(item.allow_pre_order)),
-      closedLabel: t('menu.banner_closed_short'),
+      gateMessage,
+      fallbackClosed: t('menu.banner_closed_fallback'),
       opensTemplate: t('menu.banner_opens_short'),
       tomorrowLabel: t('menu.banner_tomorrow_short'),
     });
-  }, [isOpen, nextOpenWindow, items, t]);
+  }, [isOpen, nextOpenWindow, gateMessage, items, t]);
 
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>

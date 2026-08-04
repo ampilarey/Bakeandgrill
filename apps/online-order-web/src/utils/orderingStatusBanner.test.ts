@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   composeClosedMenuBanner,
   composeOrderingStatusBanner,
+  stripCheckBackFromClosedMessage,
   ORDER_STATUS_DEFAULTS,
 } from './orderingStatusBanner';
 
@@ -83,14 +84,28 @@ describe('composeOrderingStatusBanner', () => {
   });
 });
 
+describe('stripCheckBackFromClosedMessage', () => {
+  it('removes the check-back sentence only', () => {
+    expect(
+      stripCheckBackFromClosedMessage(
+        'Online ordering is currently closed. Please check back during opening hours.',
+      ),
+    ).toBe('Online ordering is currently closed.');
+  });
+});
+
 describe('composeClosedMenuBanner', () => {
-  it('keeps the closed strip short with opens + tomorrow', () => {
+  it('keeps closed copy, drops check-back, adds opens + tomorrow', () => {
     expect(
       composeClosedMenuBanner({
         opensFormatted: '10:00 AM',
         hasTomorrowItems: true,
+        gateMessage:
+          'Online ordering is currently closed. Please check back during opening hours.',
       }),
-    ).toBe('Closed · Opens 10:00 AM · Some items for tomorrow');
+    ).toBe(
+      'Online ordering is currently closed. · Opens 10:00 AM · Some items for tomorrow',
+    );
   });
 
   it('omits tomorrow when no eligible items', () => {
@@ -98,7 +113,8 @@ describe('composeClosedMenuBanner', () => {
       composeClosedMenuBanner({
         opensFormatted: '10:00 AM',
         hasTomorrowItems: false,
+        gateMessage: 'Online ordering is currently closed.',
       }),
-    ).toBe('Closed · Opens 10:00 AM');
+    ).toBe('Online ordering is currently closed. · Opens 10:00 AM');
   });
 });
