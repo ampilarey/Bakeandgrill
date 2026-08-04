@@ -156,6 +156,8 @@ class ItemController extends Controller
                 'is_available' => $item->is_available,
                 'snoozed_until' => $item->snoozed_until?->toIso8601String(),
                 'unavailable_reason_note' => $item->unavailable_reason_note,
+                // Order-for-tomorrow: revive existing column for admin edit + checkout UI.
+                'allow_pre_order' => (bool) $item->allow_pre_order,
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
                 // Signage board flags — default safely when the columns predate the migration.
@@ -467,6 +469,7 @@ class ItemController extends Controller
             'tax_rate' => $item->tax_rate,
             'tax_code' => $item->tax_code ?? 'standard_8',
             'is_available' => $item->is_available,
+            'allow_pre_order' => (bool) $item->allow_pre_order,
             'created_at' => $item->created_at?->toIso8601String(),
             'category' => $item->category ? [
                 'id' => $item->category->id,

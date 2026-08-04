@@ -854,7 +854,7 @@ export function MenuItemEditorModal({
                 )}
               </div>
             )}
-            <div style={{ display: 'flex', gap: 20 }}>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
                 Active (exists in system)
@@ -862,6 +862,15 @@ export function MenuItemEditorModal({
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.is_available} onChange={(e) => set('is_available', e.target.checked)} />
                 Available (orderable today)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={form.allow_pre_order}
+                  onChange={(e) => set('allow_pre_order', e.target.checked)}
+                  data-testid="allow-pre-order-toggle"
+                />
+                Can be ordered for tomorrow
               </label>
             </div>
             {itemId != null && onSnooze && (

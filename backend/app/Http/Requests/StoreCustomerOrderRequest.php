@@ -31,6 +31,10 @@ class StoreCustomerOrderRequest extends FormRequest
             'items.*.modifiers.*.quantity' => 'sometimes|integer|min:1|max:10',
             'items.*.packaging_option_id' => 'nullable|integer|exists:item_packaging_options,id',
             'pickup_slot_at' => 'nullable|date|after:now',
+            // Collection intent — server recomputes the allowed tomorrow date.
+            // Clients may send fulfil_date (Y-m-d) and/or collect_on ("today"|"tomorrow").
+            'fulfil_date' => 'nullable|date_format:Y-m-d',
+            'collect_on' => 'nullable|string|in:today,tomorrow',
         ];
     }
 }

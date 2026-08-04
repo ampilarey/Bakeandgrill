@@ -96,6 +96,7 @@ class Order extends Model
         'picked_up_at',
         'delivered_at',
         'pickup_slot_at',
+        'fulfil_date',
         'proof_of_delivery_path',
         'store_id',
     ];
@@ -126,6 +127,7 @@ class Order extends Model
         'picked_up_at' => 'datetime',
         'delivered_at' => 'datetime',
         'pickup_slot_at' => 'datetime',
+        'fulfil_date' => 'date',
         // Scalars
         'tax_inclusive' => 'boolean',
         'referral_redemption_recorded' => 'boolean',

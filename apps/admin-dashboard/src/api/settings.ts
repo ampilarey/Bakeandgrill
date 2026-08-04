@@ -35,6 +35,11 @@ export interface OnlineOrderingGateStatus {
   schedule_active: boolean;
   current_close: string | null;
   next_open_window: string | null;
+  /** Present when order-for-tomorrow is configured. */
+  order_for_tomorrow?: {
+    cutoff: string;
+    collect_tomorrow_date: string;
+  };
 }
 
 export async function getOnlineOrderingStatus(): Promise<OnlineOrderingGateStatus> {
@@ -58,6 +63,13 @@ export async function updateOnlineOrderingSchedule(
   schedule: Record<string, OnlineOrderingDayWindow> | null,
 ): Promise<{ online_ordering_schedule: unknown; status: OnlineOrderingGateStatus }> {
   return req('/admin/ordering/schedule', { method: 'PUT', body: JSON.stringify({ schedule }) });
+}
+
+/** Owner cutoff: after this HH:mm, “tomorrow” means the day after. */
+export async function updateOrderForTomorrowCutoff(
+  cutoff: string,
+): Promise<{ order_for_tomorrow_cutoff: string; status: OnlineOrderingGateStatus }> {
+  return req('/admin/ordering/tomorrow-cutoff', { method: 'PUT', body: JSON.stringify({ cutoff }) });
 }
 
 // ── Pre-order / catering gate ─────────────────────────────────────────────────

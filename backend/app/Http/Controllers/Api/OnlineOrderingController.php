@@ -12,6 +12,7 @@ use App\Services\AuditLogService;
 use App\Services\CateringOrderingGateService;
 use App\Services\DeliveryGateService;
 use App\Services\OnlineOrderingGateService;
+use App\Services\OrderFulfilDateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -66,6 +67,7 @@ class OnlineOrderingController extends Controller
         $status['delivery_available'] = $status['open'] && $deliveryStatus['delivery_open'];
         $status['next_delivery_window'] = $deliveryStatus['next_delivery_window'] ?? null;
         $status['preorder'] = $this->cateringGate->status();
+        $status['order_for_tomorrow'] = app(OrderFulfilDateService::class)->statusFragment();
 
         // Additive services map — older clients ignore it. Same shape as
         // GET /api/service-status so a single reader can consume either.
@@ -323,6 +325,36 @@ class OnlineOrderingController extends Controller
         return response()->json([
             'override_until' => $validated['override_until'],
             'status' => $this->gate->status(),
+        ]);
+    }
+
+    /**
+     * Owner sets the "order for tomorrow" cutoff time (HH:mm).
+     * Body: { "cutoff": "20:00" }
+     */
+    public function updateTomorrowCutoff(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cutoff' => ['required', 'string', 'regex:/^\d{1,2}:\d{2}$/'],
+        ]);
+
+        try {
+            $normalized = \Carbon\Carbon::createFromFormat('H:i', $validated['cutoff'])
+                ->format('H:i');
+        } catch (\Throwable) {
+            return response()->json(['message' => 'Cutoff must be HH:mm (24-hour).'], 422);
+        }
+
+        $oldValue = SiteSetting::get(OrderFulfilDateService::SETTING_KEY);
+        SiteSetting::set(OrderFulfilDateService::SETTING_KEY, $normalized);
+        $this->auditGateWrite(OrderFulfilDateService::SETTING_KEY, $oldValue, $normalized, $request);
+
+        $status = $this->gate->status();
+        $status['order_for_tomorrow'] = app(OrderFulfilDateService::class)->statusFragment();
+
+        return response()->json([
+            'order_for_tomorrow_cutoff' => $normalized,
+            'status' => $status,
         ]);
     }
 }

@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Services\AuditLogService;
 use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
+use App\Services\OrderFulfilDateService;
 use App\Services\PermissionService;
 use App\Services\ShiftAccessService;
 use App\Support\BusinessDay;
@@ -292,11 +293,34 @@ class OrderCreationController extends Controller
         // legacy gate (422 shape) — keeps existing order-app tests green while
         // exposing the new maintenance switch.
         app(ServiceAvailabilityService::class)->assertAvailable('online_checkout');
-        app(OnlineOrderingGateService::class)->assertOpen();
 
         $payload = $request->validated();
         $payload['customer_id'] = $customer->id;
         $payload['type'] = $payload['type'] ?? 'online_pickup';
+
+        // Never trust a browser-supplied collection date — recompute tomorrow
+        // from the owner cutoff, or leave null for same-day.
+        $fulfil = app(OrderFulfilDateService::class);
+        $resolvedFulfil = $fulfil->resolveForCustomerOrder(
+            isset($payload['fulfil_date']) ? (string) $payload['fulfil_date'] : null,
+            isset($payload['collect_on']) ? (string) $payload['collect_on'] : null,
+        );
+        if ($resolvedFulfil !== null) {
+            $itemIds = array_map(
+                static fn ($row) => (int) ($row['item_id'] ?? 0),
+                $payload['items'] ?? [],
+            );
+            $fulfil->assertAllItemsAllowTomorrow($itemIds);
+            $payload['fulfil_date'] = $resolvedFulfil;
+        } else {
+            unset($payload['fulfil_date']);
+        }
+        unset($payload['collect_on']);
+
+        // Same-day orders still require the shop to be open. Tomorrow collection
+        // is gated in Stage F (assertOpenOrTomorrowCollect) — until then keep
+        // assertOpen so Group 1 does not weaken the closed-shop guard.
+        app(OnlineOrderingGateService::class)->assertOpen();
 
         if (!empty($payload['pickup_slot_at'])) {
             app(\App\Domains\Ordering\Services\PickupSlotService::class)

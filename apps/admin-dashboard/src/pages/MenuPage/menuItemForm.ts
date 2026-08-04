@@ -45,6 +45,8 @@ export type ItemForm = {
   track_stock: boolean;
   stock_quantity: string;
   low_stock_threshold: string;
+  /** Customers may order this item for tomorrow collection. */
+  allow_pre_order: boolean;
   variants: VariantRow[];
   dietary_tags: string;
   allergens: string;
@@ -124,6 +126,7 @@ export function itemToForm(item: MenuItem): ItemForm {
     track_stock: item.track_stock ?? false,
     stock_quantity: item.stock_quantity != null ? String(item.stock_quantity) : '0',
     low_stock_threshold: item.low_stock_threshold != null ? String(item.low_stock_threshold) : '5',
+    allow_pre_order: item.allow_pre_order ?? false,
     variants: (item.variants ?? []).map((v) => ({ ...v, _key: String(v.id ?? Math.random()) })),
     dietary_tags: (item.dietary_tags ?? []).join(', '),
     allergens: (item.allergens ?? []).join(', '),
@@ -223,6 +226,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     ? Math.max(0, Math.min(9999, parseInt(form.calories, 10) || 0))
     : null;
   payload.spice_level = form.spice_level === 'none' ? null : form.spice_level;
+  payload.allow_pre_order = form.allow_pre_order;
   return payload;
 }
 
@@ -244,6 +248,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     is_combo: false, combo_discount_pct: '', combo_items: [],
     show_on_signage: true, is_signage_promoted: false,
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
+    allow_pre_order: false,
     dietary_tags: '', allergens: '',
     prep_time_minutes: '', calories: '', spice_level: 'none',
   };

@@ -10,6 +10,7 @@ import {
   toggleOnlineOrdering,
   setOnlineOrderingOverride,
   updateOnlineOrderingSchedule,
+  updateOrderForTomorrowCutoff,
   getCateringOrderingStatus,
   toggleCateringOrdering,
   setCateringOrderingOverride,
@@ -251,6 +252,8 @@ export default function OnlineOrderingPage() {
   const [cateringSavingOverride, setCateringSavingOverride] = useState(false);
   const [cateringSchedule, setCateringSchedule] = useState<Schedule>(DEFAULT_SCHEDULE);
   const [cateringScheduleSaving, setCateringScheduleSaving] = useState(false);
+  const [tomorrowCutoff, setTomorrowCutoff] = useState('20:00');
+  const [tomorrowCutoffSaving, setTomorrowCutoffSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -262,6 +265,9 @@ export default function OnlineOrderingPage() {
     getOnlineOrderingStatus()
       .then((s) => {
         setStatus(s);
+        if (s.order_for_tomorrow?.cutoff) {
+          setTomorrowCutoff(s.order_for_tomorrow.cutoff);
+        }
         if (s.override_until) {
           // Convert ISO datetime to local datetime-local input value (must use local parts, not UTC)
           const d = new Date(s.override_until);
@@ -302,6 +308,8 @@ export default function OnlineOrderingPage() {
       if (raw) setSchedule(parseSchedule(raw));
       const cateringRaw = byKey('catering_ordering_schedule') ?? '';
       if (cateringRaw) setCateringSchedule(parseSchedule(cateringRaw));
+      const tomorrowCutoffRaw = byKey('order_for_tomorrow_cutoff');
+      if (tomorrowCutoffRaw) setTomorrowCutoff(tomorrowCutoffRaw);
       const closedMsg = byKey('catering_ordering_closed_message');
       if (closedMsg) setCateringClosedMessage(closedMsg);
       const enabled = byKey('pickup_slots_enabled');
@@ -614,6 +622,24 @@ export default function OnlineOrderingPage() {
       showToast('Failed to update. Try again.', 'err');
     } finally {
       setToggling(false);
+    }
+  };
+
+  const saveTomorrowCutoff = async () => {
+    if (!/^\d{1,2}:\d{2}$/.test(tomorrowCutoff.trim())) {
+      showToast('Use HH:mm (24-hour), e.g. 20:00.', 'err');
+      return;
+    }
+    setTomorrowCutoffSaving(true);
+    try {
+      const res = await updateOrderForTomorrowCutoff(tomorrowCutoff.trim());
+      setTomorrowCutoff(res.order_for_tomorrow_cutoff);
+      if (res.status) setStatus(res.status);
+      showToast('Tomorrow cutoff saved.');
+    } catch {
+      showToast('Failed to save tomorrow cutoff.', 'err');
+    } finally {
+      setTomorrowCutoffSaving(false);
     }
   };
 
@@ -1049,6 +1075,41 @@ export default function OnlineOrderingPage() {
             <Power size={14} />
             {toggling ? 'Updating…' : status.master_switch ? 'Turn OFF online ordering' : 'Turn ON online ordering'}
           </button>
+        </div>
+      </div>
+
+      {/* Collect tomorrow cutoff */}
+      <div style={S.card} data-testid="order-for-tomorrow-cutoff">
+        <p style={S.sectionTitle}>Collect tomorrow — cutoff time</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
+          After this time, “tomorrow” at checkout means the day after. Before it, tomorrow means the next calendar day.
+          Default is 20:00.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 140 }}>
+            <label style={S.label}>Cutoff (HH:mm)</label>
+            <input
+              type="time"
+              style={S.input}
+              value={tomorrowCutoff}
+              onChange={(e) => setTomorrowCutoff(e.target.value)}
+              data-testid="tomorrow-cutoff-input"
+            />
+          </div>
+          <button
+            type="button"
+            style={S.btnPrimary}
+            onClick={() => void saveTomorrowCutoff()}
+            disabled={tomorrowCutoffSaving}
+          >
+            <Save size={14} />
+            {tomorrowCutoffSaving ? 'Saving…' : 'Save cutoff'}
+          </button>
+          {status.order_for_tomorrow?.collect_tomorrow_date && (
+            <p style={{ ...S.reasonNote, margin: 0 }}>
+              Customers can currently choose collect on {status.order_for_tomorrow.collect_tomorrow_date}.
+            </p>
+          )}
         </div>
       </div>
 

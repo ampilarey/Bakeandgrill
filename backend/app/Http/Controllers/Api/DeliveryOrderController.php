@@ -96,7 +96,29 @@ class DeliveryOrderController extends Controller
             'idempotency_key' => 'nullable|string|max:64',
             'ticket_name' => 'nullable|string|max:80',
             'ticket_note' => 'nullable|string|max:255',
+            'fulfil_date' => 'nullable|date_format:Y-m-d',
+            'collect_on' => 'nullable|string|in:today,tomorrow',
         ]);
+
+        // Recompute tomorrow collection server-side (never trust the browser date).
+        $fulfil = app(\App\Services\OrderFulfilDateService::class);
+        $resolvedFulfil = $fulfil->resolveForCustomerOrder(
+            isset($validated['fulfil_date']) ? (string) $validated['fulfil_date'] : null,
+            isset($validated['collect_on']) ? (string) $validated['collect_on'] : null,
+        );
+        unset($validated['collect_on']);
+        if ($resolvedFulfil !== null) {
+            if ($isCustomer) {
+                $itemIds = array_map(
+                    static fn ($row) => (int) ($row['item_id'] ?? 0),
+                    $validated['items'] ?? [],
+                );
+                $fulfil->assertAllItemsAllowTomorrow($itemIds);
+            }
+            $validated['fulfil_date'] = $resolvedFulfil;
+        } else {
+            unset($validated['fulfil_date']);
+        }
 
         $delivery = DeliveryDetails::fromArray($validated);
 

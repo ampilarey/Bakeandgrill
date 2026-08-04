@@ -140,6 +140,9 @@ class OrderCreationService
                 'notes' => $payload['notes'] ?? null,
                 'customer_notes' => $payload['customer_notes'] ?? null,
                 'pickup_slot_at' => !empty($payload['pickup_slot_at']) ? $payload['pickup_slot_at'] : null,
+                // Null = same-day (existing behaviour). Tomorrow collection stores the
+                // server-resolved date from OrderFulfilDateService — never trust the client.
+                'fulfil_date' => !empty($payload['fulfil_date']) ? $payload['fulfil_date'] : null,
             ]);
 
             $this->addOrderItems($order, $payload['items'] ?? [], $user, !empty($payload['offline_sync']));
