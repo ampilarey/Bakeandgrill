@@ -182,6 +182,7 @@ export function CartDrawer({
   const checkoutForTomorrow = checkoutForTomorrowProp ?? derivedCta.checkoutForTomorrow;
   /** Closed + cart not yet tomorrow-eligible → short tip instead of a long duplicate banner. */
   const showClosedTomorrowTip = !isOpen && cart.length > 0 && !checkoutForTomorrow;
+  const blockingTomorrowCount = !isOpen ? cart.filter((e) => !e.item?.allow_pre_order).length : 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.5rem' : '1rem' }}>
@@ -241,12 +242,12 @@ export function CartDrawer({
                         + {entry.packagingOptionName}
                       </span>
                     )}
-                    {!isOpen && entry.item.allow_pre_order ? (
+                    {!isOpen && !entry.item.allow_pre_order ? (
                       <span
-                        data-testid="cart-line-tomorrow"
-                        style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8rem', display: 'block' }}
+                        data-testid="cart-line-blocks-tomorrow"
+                        style={{ fontWeight: 600, color: 'var(--color-warning)', fontSize: '0.8rem', display: 'block' }}
                       >
-                        {t('menu.can_order_tomorrow')}
+                        {t('cart.blocks_tomorrow')}
                       </span>
                     ) : null}
                   </p>
@@ -385,7 +386,9 @@ export function CartDrawer({
               textAlign: 'center',
             }}
           >
-            {t('cart.closed_tomorrow_tip')}
+            {blockingTomorrowCount === 1
+              ? t('cart.remove_blockers_one')
+              : t('cart.remove_blockers_many').replace('{n}', String(blockingTomorrowCount))}
           </div>
         )}
 

@@ -25,7 +25,7 @@ import {
 } from '../utils/loyalty';
 import { AccordionItem } from '../components/ui/Accordion';
 import { StickyCtaBar } from '../components/ui/StickyCtaBar';
-import { defaultCollectOn, forcedTomorrowNotice } from '../utils/collectOn';
+import { defaultCollectOn, forcedTomorrowNotice, formatTomorrowDateLabel } from '../utils/collectOn';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 
 function parseFreeDeliveryThreshold(raw: string | undefined): number {
@@ -401,66 +401,69 @@ export function CheckoutPage() {
           Pickup orders are temporarily paused.
         </p>
       )}
-
-      <div style={{ marginTop: 16 }} data-testid="collect-on-picker">
-        <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-          Collect
-        </p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {(['today', 'tomorrow'] as const).map((day) => {
-            const todayBlocked = day === 'today' && (shopClosed || cartForcesTomorrow);
-            const tomorrowBlocked = day === 'tomorrow' && !allowsTomorrow;
-            const blocked = todayBlocked || tomorrowBlocked;
-            return (
-              <button
-                key={day}
-                type="button"
-                data-testid={`collect-on-${day}`}
-                onClick={() => {
-                  if (blocked) return;
-                  setCollectOn(day);
-                }}
-                disabled={blocked}
-                style={{
-                  ...S.typeBtn,
-                  ...(collectOn === day ? S.typeBtnActive : {}),
-                  ...(blocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
-                }}
-                aria-pressed={collectOn === day}
-              >
-                {day === 'today' ? 'Today' : 'Tomorrow'}
-              </button>
-            );
-          })}
-        </div>
-        {collectOn === 'tomorrow' && collectTomorrowDate && (
-          <p style={{ margin: '10px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-            Collect tomorrow ({collectTomorrowDate}). You pay now.
-          </p>
-        )}
-        {(cartForcesTomorrow || (shopClosed && collectOn === 'tomorrow')) && allowsTomorrow && (
-          <p
-            data-testid="forced-tomorrow-notice"
-            style={{
-              margin: '10px 0 0',
-              fontSize: 'var(--text-sm)',
-              color: 'var(--color-text)',
-              lineHeight: 1.5,
-              background: 'var(--color-surface-alt)',
-              borderRadius: 10,
-              padding: '10px 12px',
-            }}
-          >
-            {forcedTomorrowNotice(collectTomorrowDate)}
-          </p>
-        )}
-        {!allowsTomorrow && shopClosed && (
-          <p style={{ margin: '10px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-            Ordering is closed for today. Remove items that cannot be collected tomorrow, or come back when we reopen.
-          </p>
-        )}
-      </div>
     </>
+  );
+
+  // Today/Tomorrow lives with the rest of the "when" decisions (slot/address),
+  // not with the pickup/delivery choice.
+  const tomorrowDateLabel = formatTomorrowDateLabel(collectTomorrowDate);
+  const bodyWhenPicker = (
+    <div style={{ marginBottom: 16 }} data-testid="collect-on-picker">
+      <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
+        {t('checkout.when_title')}
+      </p>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {(['today', 'tomorrow'] as const).map((day) => {
+          const todayBlocked = day === 'today' && (shopClosed || cartForcesTomorrow);
+          const tomorrowBlocked = day === 'tomorrow' && !allowsTomorrow;
+          const blocked = todayBlocked || tomorrowBlocked;
+          const label = day === 'today'
+            ? t(orderType === 'delivery' ? 'checkout.when_delivery_today' : 'checkout.when_pickup_today')
+            : `${t(orderType === 'delivery' ? 'checkout.when_delivery_tomorrow' : 'checkout.when_pickup_tomorrow')} · ${tomorrowDateLabel}`;
+          return (
+            <button
+              key={day}
+              type="button"
+              data-testid={`collect-on-${day}`}
+              onClick={() => {
+                if (blocked) return;
+                setCollectOn(day);
+              }}
+              disabled={blocked}
+              style={{
+                ...S.typeBtn,
+                ...(collectOn === day ? S.typeBtnActive : {}),
+                ...(blocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
+              }}
+              aria-pressed={collectOn === day}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      {(cartForcesTomorrow || (shopClosed && collectOn === 'tomorrow')) && allowsTomorrow && (
+        <p
+          data-testid="forced-tomorrow-notice"
+          style={{
+            margin: '10px 0 0',
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text)',
+            lineHeight: 1.5,
+            background: 'var(--color-surface-alt)',
+            borderRadius: 10,
+            padding: '10px 12px',
+          }}
+        >
+          {forcedTomorrowNotice(collectTomorrowDate)}
+        </p>
+      )}
+      {!allowsTomorrow && shopClosed && (
+        <p style={{ margin: '10px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+          Ordering is closed for today. Remove items that cannot be collected tomorrow, or come back when we reopen.
+        </p>
+      )}
+    </div>
   );
 
   const bodyPickupSlot = (
@@ -957,15 +960,25 @@ export function CheckoutPage() {
     </div>
   );
 
-  // Fulfillment accordion (pickup slot or delivery form — mode-specific).
-  // Same-day pickup slots only — hide when collecting tomorrow.
-  const showFulfillmentAccordion = orderType === 'delivery'
-    || (orderType === 'pickup' && pickupSlotsEnabled && collectOn === 'today');
-  const bodyFulfillment          = orderType === 'pickup' ? bodyPickupSlot : bodyDelivery;
-  const fulfillmentTitle         = orderType === 'pickup' ? t('checkout.acc_pickup') : t('checkout.acc_delivery');
-  const fulfillmentSummary       = orderType === 'pickup'
-    ? (pickupSlotAt ? (pickupSlots.find((sl) => sl.starts_at === pickupSlotAt)?.label ?? pickupSlotAt) : t('checkout.asap'))
-    : (delivery.address_line1 || undefined);
+  // Fulfillment accordion: Today/Tomorrow picker + mode-specific detail
+  // (same-day pickup slots or the delivery form). Always visible.
+  const showPickupSlots = orderType === 'pickup' && pickupSlotsEnabled && collectOn === 'today';
+  const bodyFulfillment = (
+    <>
+      {bodyWhenPicker}
+      {showPickupSlots ? bodyPickupSlot : orderType === 'delivery' ? bodyDelivery : null}
+    </>
+  );
+  const fulfillmentTitle = orderType === 'pickup' ? t('checkout.acc_when') : t('checkout.acc_delivery');
+  const collectDayLabel  = collectOn === 'tomorrow'
+    ? `${t('checkout.day_tomorrow')}, ${tomorrowDateLabel}`
+    : t('checkout.day_today');
+  const pickupSlotLabel  = pickupSlotAt
+    ? (pickupSlots.find((sl) => sl.starts_at === pickupSlotAt)?.label ?? pickupSlotAt)
+    : t('checkout.asap');
+  const fulfillmentSummary = orderType === 'pickup'
+    ? (showPickupSlots ? `${collectDayLabel} · ${pickupSlotLabel}` : collectDayLabel)
+    : (delivery.address_line1 ? `${collectDayLabel} · ${delivery.address_line1}` : collectDayLabel);
 
   // StickyCtaBar above-content: gate banner + terms + error + pending note
   const stickyAbove = (
@@ -988,14 +1001,14 @@ export function CheckoutPage() {
           </div>
         </div>
       )}
-      {canOrderTomorrowWhileClosed && collectOn === 'tomorrow' && (
-        <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="tomorrow-while-closed-banner">
+      {collectOn === 'tomorrow' && !placeBlockedByGate && (
+        <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="tomorrow-order-banner">
           <span className="banner-icon">📅</span>
           <div>
-            <p className="banner-title">Collect tomorrow</p>
+            <p className="banner-title">{t('checkout.tomorrow_banner_title')}</p>
             <p className="banner-sub">
-              We’re closed for today — you can still order items marked for tomorrow and pay now.
-              {collectTomorrowDate ? ` Collection date: ${collectTomorrowDate}.` : ''}
+              {t(orderType === 'delivery' ? 'checkout.tomorrow_banner_delivery' : 'checkout.tomorrow_banner_pickup')
+                .replace('{date}', tomorrowDateLabel)}
             </p>
           </div>
         </div>
@@ -1132,17 +1145,15 @@ export function CheckoutPage() {
                 {bodyOrderType}
               </AccordionItem>
 
-              {showFulfillmentAccordion && (
-                <AccordionItem
-                  id="fulfillment"
-                  title={fulfillmentTitle}
-                  summary={fulfillmentSummary}
-                  open={openId === 'fulfillment'}
-                  onToggle={() => toggle('fulfillment')}
-                >
-                  {bodyFulfillment}
-                </AccordionItem>
-              )}
+              <AccordionItem
+                id="fulfillment"
+                title={fulfillmentTitle}
+                summary={fulfillmentSummary}
+                open={openId === 'fulfillment'}
+                onToggle={() => toggle('fulfillment')}
+              >
+                {bodyFulfillment}
+              </AccordionItem>
 
               <AccordionItem
                 id="discounts"

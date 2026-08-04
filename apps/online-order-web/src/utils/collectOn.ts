@@ -58,11 +58,19 @@ export function defaultCollectOn(args: {
 }
 
 /**
+ * Human date for "tomorrow" — "2026-08-06" → "Wed 6 Aug".
+ * Falls back to the device's local tomorrow when the API date is missing.
+ */
+export function formatTomorrowDateLabel(collectTomorrowDate: string | null | undefined): string {
+  const date = collectTomorrowDate && /^\d{4}-\d{2}-\d{2}/.test(collectTomorrowDate)
+    ? new Date(`${collectTomorrowDate.slice(0, 10)}T00:00:00`)
+    : new Date(Date.now() + 24 * 60 * 60 * 1000);
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
+}
+
+/**
  * Plain notice shown before pay when the whole order must be collected tomorrow.
  */
 export function forcedTomorrowNotice(collectTomorrowDate: string | null | undefined): string {
-  const dateBit = collectTomorrowDate
-    ? ` Collect on ${collectTomorrowDate}.`
-    : '';
-  return `This order will be for tomorrow because it includes items that are only available then.${dateBit} You pay now.`;
+  return `This order will be for tomorrow because it includes items that are only available then. Collect on ${formatTomorrowDateLabel(collectTomorrowDate)}. You pay now.`;
 }

@@ -28,8 +28,9 @@ vi.mock('../context/LanguageContext', () => ({
         'cart.add_items_cta': 'Add items to continue',
         'cart.subtotal': 'Subtotal',
         'cart.subtotal_excl': '',
-        'menu.can_order_tomorrow': 'Can be ordered for tomorrow',
-        'cart.closed_tomorrow_tip': 'Add only Tomorrow items to order for tomorrow.',
+        'cart.blocks_tomorrow': 'Not available for tomorrow',
+        'cart.remove_blockers_one': 'Remove 1 item to order for tomorrow.',
+        'cart.remove_blockers_many': 'Remove {n} items to order for tomorrow.',
       };
       return map[key] ?? key;
     },
@@ -91,7 +92,7 @@ describe('CartDrawer closed CTA', () => {
     expect(screen.queryByRole('button', { name: /Proceed to Checkout/i })).toBeNull();
     expect(screen.getByText('Burger')).toBeInTheDocument();
     expect(screen.getByTestId('cart-closed-tomorrow-tip')).toHaveTextContent(
-      /Add only Tomorrow items to order for tomorrow/i,
+      /Remove 1 item to order for tomorrow/i,
     );
     expect(screen.queryByText(/Ordering opens at 10:00 AM/i)).toBeNull();
   });

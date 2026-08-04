@@ -188,7 +188,7 @@ describe('closed shop → tomorrow checkout CTA', () => {
     expect(btn).toHaveTextContent(/Checkout — collect tomorrow/i);
   });
 
-  it('CartDrawer: closed + mixed cart → short tip + Tomorrow line label', async () => {
+  it('CartDrawer: closed + mixed cart → remove-blocker tip + blocking line label', async () => {
     await act(async () => {
       wrapDrawer({
         isOpen: false,
@@ -200,12 +200,14 @@ describe('closed shop → tomorrow checkout CTA', () => {
     expect(btn).toBeDisabled();
     expect(screen.queryByRole('button', { name: /collect tomorrow/i })).toBeNull();
     expect(screen.getByTestId('cart-closed-tomorrow-tip')).toHaveTextContent(
-      /Add only Tomorrow items to order for tomorrow/i,
+      /Remove 1 item to order for tomorrow/i,
     );
-    const tomorrowLine = screen.getByTestId('cart-line-tomorrow');
-    expect(tomorrowLine).toHaveTextContent(/Can be ordered for tomorrow/i);
-    expect(tomorrowLine.tagName).toBe('SPAN');
-    expect(tomorrowLine).toHaveStyle({ display: 'block' });
+    // Only the blocking line is labelled — the pre-orderable line stays clean.
+    const blockingLines = screen.getAllByTestId('cart-line-blocks-tomorrow');
+    expect(blockingLines).toHaveLength(1);
+    expect(blockingLines[0]).toHaveTextContent(/Not available for tomorrow/i);
+    expect(blockingLines[0].tagName).toBe('SPAN');
+    expect(blockingLines[0]).toHaveStyle({ display: 'block' });
   });
 
   it('CartDrawer: closed + empty cart → disabled closed CTA', async () => {

@@ -4,6 +4,7 @@ import {
   cartCheckoutCta,
   defaultCollectOn,
   forcedTomorrowNotice,
+  formatTomorrowDateLabel,
 } from './collectOn';
 
 describe('collectOn helpers', () => {
@@ -71,7 +72,20 @@ describe('collectOn helpers', () => {
 
   it('states the mixed-cart rule in plain language before pay', () => {
     expect(forcedTomorrowNotice('2026-08-05')).toContain('tomorrow');
-    expect(forcedTomorrowNotice('2026-08-05')).toContain('2026-08-05');
+    expect(forcedTomorrowNotice('2026-08-05')).toContain('Wed 5 Aug');
     expect(forcedTomorrowNotice('2026-08-05')).toContain('pay now');
+  });
+
+  it('formats the API date as a human day label', () => {
+    expect(formatTomorrowDateLabel('2026-08-06')).toBe('Thu 6 Aug');
+    expect(formatTomorrowDateLabel('2026-12-25')).toBe('Fri 25 Dec');
+  });
+
+  it('falls back to the local tomorrow when the API date is missing', () => {
+    const expected = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+      .format(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    expect(formatTomorrowDateLabel(null)).toBe(expected);
+    expect(formatTomorrowDateLabel(undefined)).toBe(expected);
+    expect(formatTomorrowDateLabel('not-a-date')).toBe(expected);
   });
 });
