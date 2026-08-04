@@ -202,7 +202,10 @@ describe('closed shop → tomorrow checkout CTA', () => {
     expect(screen.getByTestId('cart-closed-tomorrow-tip')).toHaveTextContent(
       /Add only Tomorrow items to order for tomorrow/i,
     );
-    expect(screen.getByTestId('cart-line-tomorrow')).toHaveTextContent(/Tomorrow/i);
+    const tomorrowLine = screen.getByTestId('cart-line-tomorrow');
+    expect(tomorrowLine).toHaveTextContent(/Tomorrow/i);
+    expect(tomorrowLine.tagName).toBe('SPAN');
+    expect(tomorrowLine).toHaveStyle({ display: 'block' });
   });
 
   it('CartDrawer: closed + empty cart → disabled closed CTA', async () => {

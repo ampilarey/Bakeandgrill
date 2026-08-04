@@ -230,14 +230,7 @@ export function CartDrawer({
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                   <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', flex: 1 }}>
-                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                      {entry.item.name}
-                      {!isOpen && entry.item.allow_pre_order ? (
-                        <span className="badge badge-tomorrow" data-testid="cart-line-tomorrow">
-                          {t('cart.line_tomorrow')}
-                        </span>
-                      ) : null}
-                    </span>
+                    {entry.item.name}
                     {entry.variantName && (
                       <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block' }}>
                         {entry.variantName}
@@ -248,6 +241,14 @@ export function CartDrawer({
                         + {entry.packagingOptionName}
                       </span>
                     )}
+                    {!isOpen && entry.item.allow_pre_order ? (
+                      <span
+                        data-testid="cart-line-tomorrow"
+                        style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8rem', display: 'block' }}
+                      >
+                        {t('cart.line_tomorrow')}
+                      </span>
+                    ) : null}
                   </p>
                   {isAuthenticated && (
                     <button
