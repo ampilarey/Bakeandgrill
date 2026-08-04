@@ -188,7 +188,7 @@ describe('closed shop → tomorrow checkout CTA', () => {
     expect(btn).toHaveTextContent(/Checkout — collect tomorrow/i);
   });
 
-  it('CartDrawer: closed + mixed cart → disabled reopen message', async () => {
+  it('CartDrawer: closed + mixed cart → short tip + Tomorrow line label', async () => {
     await act(async () => {
       wrapDrawer({
         isOpen: false,
@@ -196,9 +196,13 @@ describe('closed shop → tomorrow checkout CTA', () => {
         closedMessage: 'Ordering opens at 10:00 AM',
       });
     });
-    const btn = await screen.findByRole('button', { name: /Ordering opens at 10:00 AM/i });
+    const btn = await screen.findByRole('button', { name: /Ordering is closed/i });
     expect(btn).toBeDisabled();
     expect(screen.queryByRole('button', { name: /collect tomorrow/i })).toBeNull();
+    expect(screen.getByTestId('cart-closed-tomorrow-tip')).toHaveTextContent(
+      /Add only Tomorrow items to order for tomorrow/i,
+    );
+    expect(screen.getByTestId('cart-line-tomorrow')).toHaveTextContent(/Tomorrow/i);
   });
 
   it('CartDrawer: closed + empty cart → disabled closed CTA', async () => {
@@ -236,7 +240,7 @@ describe('closed shop → tomorrow checkout CTA', () => {
         items: [tomorrowItem, todayOnlyItem],
         shopOpen: false,
         expectEnabled: false,
-        label: /Ordering opens at/i,
+        label: /Ordering is closed/i,
       },
       {
         items: [todayOnlyItem],

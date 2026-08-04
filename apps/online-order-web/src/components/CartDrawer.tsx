@@ -180,6 +180,8 @@ export function CartDrawer({
   });
   const canCheckout = canCheckoutProp ?? derivedCta.canCheckout;
   const checkoutForTomorrow = checkoutForTomorrowProp ?? derivedCta.checkoutForTomorrow;
+  /** Closed + cart not yet tomorrow-eligible → short tip instead of a long duplicate banner. */
+  const showClosedTomorrowTip = !isOpen && cart.length > 0 && !checkoutForTomorrow;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.5rem' : '1rem' }}>
@@ -228,7 +230,14 @@ export function CartDrawer({
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                   <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', flex: 1 }}>
-                    {entry.item.name}
+                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                      {entry.item.name}
+                      {!isOpen && entry.item.allow_pre_order ? (
+                        <span className="badge badge-tomorrow" data-testid="cart-line-tomorrow">
+                          {t('cart.line_tomorrow')}
+                        </span>
+                      ) : null}
+                    </span>
                     {entry.variantName && (
                       <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block' }}>
                         {entry.variantName}
@@ -360,7 +369,24 @@ export function CartDrawer({
           </div>
         )}
 
-        {/* Closed copy lives on the checkout button only — avoid a second identical banner. */}
+        {showClosedTomorrowTip && (
+          <div
+            data-testid="cart-closed-tomorrow-tip"
+            style={{
+              marginTop: '0.75rem',
+              padding: '0.65rem 0.75rem',
+              background: 'var(--color-warning-bg)',
+              borderRadius: 8,
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              color: 'var(--color-warning)',
+              border: '1px solid rgba(202,138,4,0.25)',
+              textAlign: 'center',
+            }}
+          >
+            {t('cart.closed_tomorrow_tip')}
+          </div>
+        )}
 
         {waitMinutes != null && cart.length > 0 && (
           <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
@@ -392,7 +418,9 @@ export function CartDrawer({
           {checkoutForTomorrow
             ? `${t('cart.checkout_tomorrow')} — MVR ${cartTotal.toFixed(2)} →`
             : !isOpen
-              ? (closedMessage?.trim() || t('cart.closed_cta_short'))
+              ? (showClosedTomorrowTip
+                ? t('cart.closed_cta_short')
+                : (closedMessage?.trim() || t('cart.closed_cta_short')))
               : cart.length === 0
                 ? t('cart.add_items_cta')
                 : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}

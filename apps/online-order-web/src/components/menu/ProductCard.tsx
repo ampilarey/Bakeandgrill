@@ -31,8 +31,6 @@ export type ProductCardProps = {
   layout?: 'grid' | 'list';
   /** Optional NEW badge (dine-in menu). */
   isNew?: boolean;
-  /** When online ordering is closed, mark items that can still be ordered for tomorrow. */
-  shopClosed?: boolean;
 };
 
 const SPICE_MAP: Record<string, { label: string; icon: string }> = {
@@ -50,15 +48,12 @@ export function ProductCard({
   onToggleFavourite,
   layout = 'grid',
   isNew = false,
-  shopClosed = false,
 }: ProductCardProps) {
   void _onAddToCart;
   const { t, lang } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
   const isList = layout === 'list';
   const isDv = lang === 'dv';
-  const orderForTomorrow = Boolean(item.allow_pre_order);
-  const showTomorrowBadge = shopClosed && orderForTomorrow;
 
   const mediaAlt =
     item.photos?.find((p) => p.is_primary)?.alt_text
@@ -129,22 +124,16 @@ export function ProductCard({
     if (!isUnavailable) onSelectItem(item, 1);
   };
 
-  const badge = (!isUnavailable && (isNew || (onSale && saleBadgeLabel) || spice || showTomorrowBadge))
-    || (isUnavailable && showTomorrowBadge)
+  const badge = !isUnavailable && (isNew || (onSale && saleBadgeLabel) || spice)
     ? (
       <div className="menu-card-image-badges menu-card-image-badges--circle">
-        {showTomorrowBadge ? (
-          <span className="badge badge-tomorrow" data-testid="product-card-tomorrow-badge">
-            {t('menu.badge_tomorrow')}
-          </span>
-        ) : null}
-        {!showTomorrowBadge && isNew ? <span className="badge badge-sale" data-testid="product-card-new-badge">NEW</span> : null}
-        {!showTomorrowBadge && !isNew && onSale && saleBadgeLabel
+        {isNew ? <span className="badge badge-sale" data-testid="product-card-new-badge">NEW</span> : null}
+        {!isNew && onSale && saleBadgeLabel
           ? <span className="badge badge-sale">{saleBadgeLabel}</span>
-          : !showTomorrowBadge && !isNew && spice
+          : !isNew && spice
             ? <span className="badge badge-spicy">{spice.icon}</span>
             : null}
-        {!showTomorrowBadge && isNew && onSale && saleBadgeLabel
+        {isNew && onSale && saleBadgeLabel
           ? <span className="badge badge-sale">{saleBadgeLabel}</span>
           : null}
       </div>

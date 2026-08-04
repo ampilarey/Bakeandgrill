@@ -28,6 +28,8 @@ vi.mock('../context/LanguageContext', () => ({
         'cart.add_items_cta': 'Add items to continue',
         'cart.subtotal': 'Subtotal',
         'cart.subtotal_excl': '',
+        'cart.line_tomorrow': 'Tomorrow',
+        'cart.closed_tomorrow_tip': 'Add only Tomorrow items to order for tomorrow.',
       };
       return map[key] ?? key;
     },
@@ -77,19 +79,21 @@ vi.mock('../api', async () => {
 });
 
 describe('CartDrawer closed CTA', () => {
-  it('disables checkout CTA with closed message while cart still has items', () => {
+  it('disables checkout CTA and shows short tomorrow tip while cart has items', () => {
     render(
       <MemoryRouter>
         <CartDrawer isOpen={false} closedMessage="Ordering opens at 10:00 AM" />
       </MemoryRouter>,
     );
 
-    const btn = screen.getByRole('button', { name: /Ordering opens at 10:00 AM/i });
+    const btn = screen.getByRole('button', { name: /Ordering is closed/i });
     expect(btn).toBeDisabled();
     expect(screen.queryByRole('button', { name: /Proceed to Checkout/i })).toBeNull();
     expect(screen.getByText('Burger')).toBeInTheDocument();
-    // Closed copy appears once on the CTA — not also as a yellow banner above it.
-    expect(screen.getAllByText(/Ordering opens at 10:00 AM/i)).toHaveLength(1);
+    expect(screen.getByTestId('cart-closed-tomorrow-tip')).toHaveTextContent(
+      /Add only Tomorrow items to order for tomorrow/i,
+    );
+    expect(screen.queryByText(/Ordering opens at 10:00 AM/i)).toBeNull();
   });
 
   it('falls back to short closed CTA when no closedMessage is passed', () => {

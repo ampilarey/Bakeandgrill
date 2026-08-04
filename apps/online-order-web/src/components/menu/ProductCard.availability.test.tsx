@@ -14,7 +14,6 @@ vi.mock('../../context/LanguageContext', () => ({
         'menu.only_n_left': 'Only {n} left',
         'menu.few_left': 'Few left',
         'menu.view_item': 'View {name}',
-        'menu.badge_tomorrow': 'Tomorrow',
       };
       return map[key] ?? key;
     },
@@ -134,39 +133,5 @@ describe('ProductCard availability', () => {
       />,
     );
     expect(screen.queryByTestId('product-card-low-stock')).toBeNull();
-  });
-
-  it('shows Tomorrow badge when shop is closed and item allows pre-order', () => {
-    render(
-      <ProductCard
-        shopClosed
-        item={item({ allow_pre_order: true, available_now: true })}
-        onSelectItem={() => {}}
-        onAddToCart={() => {}}
-      />,
-    );
-    expect(screen.getByTestId('product-card-tomorrow-badge')).toHaveTextContent('Tomorrow');
-  });
-
-  it('hides Tomorrow badge when shop is open or item is today-only', () => {
-    const { rerender } = render(
-      <ProductCard
-        shopClosed={false}
-        item={item({ allow_pre_order: true, available_now: true })}
-        onSelectItem={() => {}}
-        onAddToCart={() => {}}
-      />,
-    );
-    expect(screen.queryByTestId('product-card-tomorrow-badge')).toBeNull();
-
-    rerender(
-      <ProductCard
-        shopClosed
-        item={item({ allow_pre_order: false, available_now: true })}
-        onSelectItem={() => {}}
-        onAddToCart={() => {}}
-      />,
-    );
-    expect(screen.queryByTestId('product-card-tomorrow-badge')).toBeNull();
   });
 });
