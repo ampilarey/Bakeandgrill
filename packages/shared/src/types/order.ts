@@ -117,6 +117,9 @@ export type Order = {
   delivery_contact_phone?: string | null;
   delivery_notes?: string | null;
   desired_eta?: string | null;
+  pickup_slot_at?: string | null;
+  /** Y-m-d collection date when the customer chose tomorrow; null = same-day. */
+  fulfil_date?: string | null;
 };
 
 export type SalesSummary = {

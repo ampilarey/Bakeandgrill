@@ -94,6 +94,9 @@
             <div class="doc-meta-row"><span>Order type</span><span>{{ $typeLabel }}</span></div>
             <div class="doc-meta-row"><span>Status</span><span style="text-transform: capitalize">{{ $statusLabel }}</span></div>
             <div class="doc-meta-row"><span>Placed</span><span>{{ optional($order->created_at)->timezone($tz)->format('D, j M Y g:i A') }}</span></div>
+            @if ($order->fulfil_date)
+                <div class="doc-meta-row"><span>Collect on</span><span>{{ $order->fulfil_date->timezone($tz)->format('D, j M Y') }}</span></div>
+            @endif
         </div>
 
         <div class="doc-table-scroll">

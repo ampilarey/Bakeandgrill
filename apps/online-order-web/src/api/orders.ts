@@ -10,6 +10,7 @@ export type OrderDetail = Order & {
   /** Points credited when the order completed (customer order API). */
   loyalty_points_earned?: number;
   pickup_slot_at?: string | null;
+  fulfil_date?: string | null;
   estimated_wait_minutes?: number | null;
   proof_of_delivery_url?: string | null;
 };
@@ -33,6 +34,8 @@ export type DeliveryOrderPayload = {
   address_label?: string;
   desired_eta?: string;
   customer_notes?: string;
+  collect_on?: 'today' | 'tomorrow';
+  fulfil_date?: string;
 };
 
 export interface ReorderPayload {
@@ -64,6 +67,8 @@ export async function createCustomerOrder(
     customer_notes?: string;
     type?: string;
     pickup_slot_at?: string;
+    collect_on?: 'today' | 'tomorrow';
+    fulfil_date?: string;
   },
 ): Promise<{ order: Order }> {
   return request<{ order: Order }>(ENDPOINTS.CUSTOMER_ORDERS, {

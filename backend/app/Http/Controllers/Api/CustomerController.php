@@ -571,6 +571,7 @@ class CustomerController extends Controller
                 'delivery_contact_phone' => $order->delivery_contact_phone,
                 'delivery_notes' => $order->delivery_notes,
                 'pickup_slot_at' => $order->pickup_slot_at?->toIso8601String(),
+                'fulfil_date' => $order->fulfil_date?->toDateString(),
                 'estimated_wait_minutes' => $order->estimated_wait_minutes,
                 'proof_of_delivery_url' => $order->proof_of_delivery_path
                     ? \Illuminate\Support\Facades\Storage::disk('public')->url($order->proof_of_delivery_path)

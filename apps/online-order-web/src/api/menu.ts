@@ -55,6 +55,11 @@ export interface OnlineOrderingStatus {
   next_delivery_window: string | null;
   /** Nested pre-order / events gate (optional — older servers omit). */
   preorder?: PreorderGateStatus;
+  /** Collect-tomorrow cutoff + the single allowed tomorrow date. */
+  order_for_tomorrow?: {
+    cutoff: string;
+    collect_tomorrow_date: string;
+  };
 }
 
 export type PreorderGateStatus = {

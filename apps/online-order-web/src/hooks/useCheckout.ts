@@ -48,6 +48,8 @@ import {
 } from '@shared/utils/serviceCharge';
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from '@shared/utils/effectiveDiscount';
 import { estimateDeliveryFeeLaar } from '@shared/utils/deliveryFeeEstimate';
+import type { CollectOn } from '../utils/collectOn';
+import { cartAllowsTomorrow } from '../utils/collectOn';
 
 export type CartItem = {
   id: number;
@@ -60,6 +62,9 @@ export type CartItem = {
   packagingFee?: number;
   packagingFeeMode?: 'per_unit' | 'per_line' | null;
   packagingOptionId?: number | null;
+  allow_pre_order?: boolean;
+  is_available?: boolean;
+  available_now?: boolean;
 };
 
 export type OrderType = "pickup" | "delivery";
@@ -187,6 +192,9 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
         tax_code?: string | null;
         packaging_fee?: number | string | null;
         packaging_fee_mode?: string | null;
+        allow_pre_order?: boolean;
+        is_available?: boolean;
+        available_now?: boolean;
       };
       quantity: number;
       modifiers?: Array<{ id: number; name: string; price: number | string }>;
@@ -211,6 +219,9 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
           ? 'per_line' as const
           : 'per_unit' as const,
       packagingOptionId: e.packagingOptionId ?? null,
+      allow_pre_order: Boolean(e.item?.allow_pre_order),
+      is_available: e.item?.is_available,
+      available_now: e.item?.available_now,
     }));
   } catch { return []; }
 }
@@ -286,6 +297,7 @@ export function useCheckout() {
 
   const { mode: orderType, setMode: setOrderType } = useOrderMode();
   const [pickupSlotAt, setPickupSlotAt] = useState<string | null>(null);
+  const [collectOn, setCollectOn] = useState<CollectOn>('today');
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
 
@@ -901,6 +913,7 @@ export function useCheckout() {
           save_address: saveAddress || undefined,
           address_label: saveAddress ? (addressLabel.trim() || undefined) : undefined,
           customer_notes: notes || undefined,
+          collect_on: collectOn,
         });
         orderId = res.order.id;
       } else {
@@ -914,7 +927,9 @@ export function useCheckout() {
           })),
           type: "online_pickup",
           customer_notes: notes || undefined,
-          pickup_slot_at: pickupSlotAt ?? undefined,
+          // Pickup slots are same-day only — skip when collecting tomorrow.
+          pickup_slot_at: collectOn === 'today' ? (pickupSlotAt ?? undefined) : undefined,
+          collect_on: collectOn,
         });
         orderId = res.order.id;
       }
@@ -1097,9 +1112,17 @@ export function useCheckout() {
     setCustomerName(name);
   };
 
+  const allowsTomorrow = cartAllowsTomorrow(cart);
+  const cartForcesTomorrow = cart.some((line) => {
+    const unavailableToday = line.is_available === false || line.available_now === false;
+    return Boolean(line.allow_pre_order) && unavailableToday;
+  });
+
   return {
     cart, isAuthenticated, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
-    orderType, setOrderType, pickupSlotAt, setPickupSlotAt, delivery, setDelivery, notes, setNotes,
+    orderType, setOrderType, pickupSlotAt, setPickupSlotAt,
+    collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
+    delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,

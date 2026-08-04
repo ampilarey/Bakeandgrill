@@ -873,6 +873,12 @@ export function OrderStatusPage() {
               {order.pickup_slot_at && (
                 <DetailRow label={t('track.label_pickup')} value={new Date(order.pickup_slot_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} />
               )}
+              {order.fulfil_date && (
+                <DetailRow
+                  label="Collect on"
+                  value={new Date(`${order.fulfil_date}T12:00:00`).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                />
+              )}
               {order.paid_at && (
                 <DetailRow label={t('track.label_paid_at')} value={new Date(order.paid_at).toLocaleString()} />
               )}

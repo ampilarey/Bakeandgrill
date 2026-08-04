@@ -43,6 +43,12 @@ class ReportsService
      */
     public function salesSummary(Carbon $from, Carbon $to, ?int $userId = null, ?int $shiftId = null, ?int $deviceId = null): array
     {
+        // REVENUE DATE (order-for-tomorrow): sales reports use payment/create
+        // time (`orders.created_at`), NOT `fulfil_date`. Money moved today
+        // counts as today's revenue; fulfil_date is for kitchen planning only.
+        // Do not silently switch this to collection date without an explicit
+        // product decision.
+        //
         // Gift-card purchase orders are tender loads — not merchandise sales.
         // They surface in dedicated `gift_cards_sold_*` fields (below) but must
         // never inflate sales totals, tax, discount, or category breakdowns.

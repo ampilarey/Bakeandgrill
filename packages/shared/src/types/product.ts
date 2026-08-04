@@ -124,6 +124,8 @@ export type MenuItem = {
   sales_30d?: number;
   /** ISO datetime — used by the dine-in view “New items” section. */
   created_at?: string | null;
+  /** Owner-ticked: item can be ordered for tomorrow collection. */
+  allow_pre_order?: boolean;
 };
 
 export type ComboItemEntry = {

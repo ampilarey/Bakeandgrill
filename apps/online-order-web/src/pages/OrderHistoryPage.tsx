@@ -239,6 +239,17 @@ export function OrderHistoryPage() {
                             }}>
                               {typeLabel(order.type)}
                             </span>
+                            {order.fulfil_date && (
+                              <span style={{
+                                fontSize: '0.72rem', fontWeight: 700,
+                                color: 'var(--color-primary)',
+                                background: 'var(--color-surface-alt)',
+                                padding: '0.1rem 0.5rem',
+                                borderRadius: '999px',
+                              }}>
+                                Collect {new Date(`${order.fulfil_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
                           </div>
                           {/* Live status pill with pulse dot */}
                           <div style={{ marginBottom: '0.35rem' }}>
@@ -356,6 +367,16 @@ export function OrderHistoryPage() {
                           }}>
                             {typeLabel(order.type)}
                           </span>
+                          {order.fulfil_date && (
+                            <span style={{
+                              fontSize: '0.68rem', fontWeight: 700,
+                              color: 'var(--color-primary)',
+                              background: 'var(--color-surface-alt)',
+                              padding: '0.1rem 0.45rem', borderRadius: '999px',
+                            }}>
+                              Collect {new Date(`${order.fulfil_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
                           <span style={{
                             fontSize: '0.68rem', fontWeight: 600,
                             color: s.color, background: s.bg,
