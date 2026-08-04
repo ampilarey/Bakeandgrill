@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Stream;
 
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Role;
@@ -183,6 +184,7 @@ class OrderStreamAuthTest extends TestCase
     public function test_staff_can_access_orders_stream_without_ticket(): void
     {
         $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'description' => '', 'is_active' => true]);
+        PermissionCatalogSync::sync();
         $staff = User::create([
             'name' => 'Staff Member',
             'email' => 'staff-stream@test.com',
@@ -194,13 +196,13 @@ class OrderStreamAuthTest extends TestCase
 
         Sanctum::actingAs($staff, ['staff']);
 
-        // Staff stream doesn't need a ticket — just auth.
+        // Staff stream doesn't need a ticket — staff + orders.view (role default).
         // The stream is a StreamedResponse (infinite), so we verify it doesn't
         // return 401/403 by checking the authenticated route allows access.
         $response = $this->getJson('/api/stream/orders');
 
         // TestResponse::assertOk / assertStatus works even on StreamedResponse wrappers
         $statusCode = method_exists($response, 'status') ? $response->status() : $response->getStatusCode();
-        $this->assertNotContains($statusCode, [401, 403], 'Authenticated staff should not receive 401 or 403 on the orders stream.');
+        $this->assertNotContains($statusCode, [401, 403], 'Authenticated staff with orders.view should not receive 401 or 403 on the orders stream.');
     }
 }

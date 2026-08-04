@@ -59,9 +59,11 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     Route::post('/orders/{order}/discount/confirm', [App\Http\Controllers\Api\Orders\DiscountApprovalController::class, 'confirm'])
         ->middleware(['permission:promotions.discounts', 'throttle:10,1']);
 
-    // Receipts (staff)
-    Route::get('/orders/{orderId}/receipt-link', [App\Http\Controllers\Api\ReceiptController::class, 'linkForOrder']);
-    Route::post('/receipts/{orderId}/send', [App\Http\Controllers\Api\ReceiptController::class, 'send']);
+    // Receipts (staff) — orders.receipts; SATISFIED_BY also admits orders.view
+    Route::get('/orders/{orderId}/receipt-link', [App\Http\Controllers\Api\ReceiptController::class, 'linkForOrder'])
+        ->middleware('permission:orders.receipts');
+    Route::post('/receipts/{orderId}/send', [App\Http\Controllers\Api\ReceiptController::class, 'send'])
+        ->middleware('permission:orders.receipts');
 
     // Refunds
     Route::get('/refunds', [App\Http\Controllers\Api\RefundController::class, 'index'])

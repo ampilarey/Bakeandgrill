@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Role;
@@ -23,6 +24,7 @@ class ReceiptTest extends TestCase
             ['slug' => 'staff'],
             ['name' => 'Staff', 'description' => 'Staff role', 'is_active' => true],
         );
+        PermissionCatalogSync::sync();
 
         $user = User::create([
             'name' => 'Cashier',
@@ -63,12 +65,11 @@ class ReceiptTest extends TestCase
 
     public function test_staff_can_get_receipt_link_without_sending(): void
     {
-        $role = Role::create([
-            'name' => 'Cashier2',
-            'slug' => 'cashier2',
-            'description' => 'Cashier role',
-            'is_active' => true,
-        ]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => 'Staff role', 'is_active' => true],
+        );
+        PermissionCatalogSync::sync();
 
         $user = User::create([
             'name' => 'Cashier2',

@@ -43,10 +43,12 @@ if (routes_domain_section_is('devices', 'streams') && !routes_domain_loaded('dev
     routes_domain_mark_loaded('devices.streams');
 
     Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
-        Route::get('/stream/orders', [App\Http\Controllers\Api\StreamController::class, 'orders']);
+        Route::get('/stream/orders', [App\Http\Controllers\Api\StreamController::class, 'orders'])
+            ->middleware('permission:orders.view');
         Route::get('/stream/kds', [App\Http\Controllers\Api\StreamController::class, 'kds'])
             ->middleware('permission:kds.view');
-        Route::get('/stream/orders/{order}/status', [App\Http\Controllers\Api\StreamController::class, 'orderStatus']);
+        Route::get('/stream/orders/{order}/status', [App\Http\Controllers\Api\StreamController::class, 'orderStatus'])
+            ->middleware('permission:orders.view');
     });
 
     Route::middleware(['auth:sanctum', 'customer.token'])->post(
