@@ -190,11 +190,10 @@ Read-only review of migrations + money paths. No migrate/seed run.
 - MINOR: 3  
 - INFO: 0  
 
-### Untested (Part D)
+### Untested (Part D) — updated after completion pass
 
-- Query-log N+1 counts on warm TEST dataset (>20 queries threshold).
-- p95 latency on production-sized data.
-
+- ~~N+1 / query counts on hot paths~~ → **Covered** in Completion pass Gap 2 (query log against seeded DB).
+- Bundle sizes from first pass still stand; not re-measured.
 
 ---
 
@@ -382,5 +381,52 @@ Highest-value themes spanning apps/parts:
 - BLOCKER: 0  
 - MAJOR: 3  
 - MINOR: 4  
-- INFO: 4  
+- INFO: 4
+
+### Gap 2 — Part D N+1 query counts
+
+**Method:** Owner Sanctum staff token; `DB::enableQueryLog()` around HTTP kernel handles for ~96 significant GET list/detail endpoints against the seeded DB. Flag threshold: **>20 queries**. Also inspected pagination metadata on large list responses.
+
+#### Findings
+
+| Severity | Area | What is wrong | Where | Notes |
+|---|---|---|---|---|
+| MAJOR | Content hub | `GET /api/admin/content` fires **802** queries | Repeated `select "value" from "site_settings" where "key" = ? and "scope" = ? and "locale" = ? limit 1` **×516** | Classic per-key settings lookup inside a loop. ~90KB response. Will worsen as content keys grow. |
+| MAJOR | Content export | `GET /api/admin/content/export` fires **206** queries | Same `site_settings` single-key select **×206** | Same anti-pattern as index. |
+| MAJOR | SMS control center | `GET /api/admin/sms/control-center` fires **52** queries | `site_settings` single-key select **×34** | Same settings N+1 family. |
+| MAJOR | Admin customers list | `GET /api/admin/customers` fires **22** queries for 20 customers | Per-customer orders aggregate `COUNT/SUM/MAX … where customer_id = ?` **×20** | Classic N+1; should be one grouped subquery/join. Response includes `meta.total` but no `per_page` — returns full set. |
+| MINOR | Customer metrics | `GET /api/admin/customers/metrics` fires **23** queries | Repeated customer/order count subqueries (×3 patterns) | Over threshold; dashboard widget. |
+| MINOR | Categories payload | `GET /api/categories` returns **unbounded** list with nested `items` (~88KB for 8 cats) | No `per_page` / pagination keys | Embeds items per category; will grow with menu size. |
+| MINOR | KDS orders | `GET /api/kds/orders` returns **unbounded** `orders[]` (27 rows here) | No pagination | Acceptable for active kitchen board if filtered to open tickets; no hard limit visible. |
+| INFO | Items list | `GET /api/items` paginates with **per_page=100** | 82 items → single page ~108KB | Pagination exists but default page size is large for admin menus. |
+| INFO | Orders list | `GET /api/orders` paginated (30/page here) | 9 queries | Healthy relative to content hub. |
+
+#### Over-threshold summary (>20 queries)
+
+| Queries | Endpoint | Dominant repeated SQL |
+|---:|---|---|
+| 802 | `GET /api/admin/content` | `site_settings` by key/scope/locale ×516 |
+| 206 | `GET /api/admin/content/export` | same ×206 |
+| 52 | `GET /api/admin/sms/control-center` | same ×34 |
+| 23 | `GET /api/admin/customers/metrics` | customer segment counts |
+| 22 | `GET /api/admin/customers` | per-customer paid-order aggregate ×20 |
+
+#### List endpoints without meaningful pagination/limit (seeded visibility)
+
+| Endpoint | Observation |
+|---|---|
+| `GET /api/categories` | Full array + nested items; no page meta |
+| `GET /api/kds/orders` | Full `orders` array; no page meta |
+| `GET /api/admin/customers` | Returns all rows (`meta.total=20`, no `per_page`) |
+| `GET /api/admin/staff` | Full `staff` array |
+| `GET /api/devices` | Full `data` array |
+
+Most finance/inventory/media/SMS log endpoints **do** expose Laravel pagination meta.
+
+#### Gap 2 severity counts
+
+- BLOCKER: 0  
+- MAJOR: 4  
+- MINOR: 3  
+- INFO: 2  
 
