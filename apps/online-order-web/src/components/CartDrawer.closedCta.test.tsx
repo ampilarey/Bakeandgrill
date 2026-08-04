@@ -88,6 +88,8 @@ describe('CartDrawer closed CTA', () => {
     expect(btn).toBeDisabled();
     expect(screen.queryByRole('button', { name: /Proceed to Checkout/i })).toBeNull();
     expect(screen.getByText('Burger')).toBeInTheDocument();
+    // Closed copy appears once on the CTA — not also as a yellow banner above it.
+    expect(screen.getAllByText(/Ordering opens at 10:00 AM/i)).toHaveLength(1);
   });
 
   it('falls back to short closed CTA when no closedMessage is passed', () => {

@@ -819,6 +819,7 @@ a { text-decoration: none; color: inherit; }
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 .badge-mto        { background: rgba(22,163,74,0.1); color: #15803d; border: 1px solid rgba(22,163,74,0.2); }
+.badge-tomorrow   { background: rgba(14,116,144,0.12); color: #0e7490; border: 1px solid rgba(14,116,144,0.28); font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; }
 .badge-combo      { background: rgba(79,70,229,0.1); color: #4338ca; border: 1px solid rgba(79,70,229,0.2); }
 .menu-card-image-badges {
   position: absolute;
@@ -875,6 +876,9 @@ a { text-decoration: none; color: inherit; }
 }
 [data-theme="dark"] .badge-mto {
   background: rgba(74,222,128,0.12); color: #86efac; border-color: rgba(74,222,128,0.28);
+}
+[data-theme="dark"] .badge-tomorrow {
+  background: rgba(34,211,238,0.12); color: #67e8f9; border-color: rgba(34,211,238,0.3);
 }
 [data-theme="dark"] .badge-combo {
   background: rgba(165,180,252,0.12); color: #c7d2fe; border-color: rgba(165,180,252,0.3);

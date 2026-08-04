@@ -111,6 +111,8 @@ const TRANSLATIONS: Translations = {
   "menu.only_n_left": "Only {n} left",
   "menu.few_left": "Few left",
   "menu.view_item": "View details for {name}",
+  "menu.badge_tomorrow": "Tomorrow",
+  "menu.closed_tomorrow_hint": "Items marked Tomorrow can still be ordered for collection tomorrow",
   "a11y.announcement": "Site announcement",
   // ── Phase 4 Home strings ───────────────────────────────────────────────────
   "home.sign_in": "Sign in",

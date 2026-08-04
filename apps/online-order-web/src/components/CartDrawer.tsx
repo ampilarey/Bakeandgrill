@@ -360,11 +360,7 @@ export function CartDrawer({
           </div>
         )}
 
-        {closedMessage && (
-          <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--color-warning-bg)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--color-warning)', border: '1px solid rgba(202,138,4,0.25)' }}>
-            {closedMessage}
-          </div>
-        )}
+        {/* Closed copy lives on the checkout button only — avoid a second identical banner. */}
 
         {waitMinutes != null && cart.length > 0 && (
           <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>

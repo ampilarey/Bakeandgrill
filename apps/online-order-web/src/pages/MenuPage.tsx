@@ -619,6 +619,7 @@ export function MenuPage() {
       <ProductCard
         item={item}
         layout={viewMode}
+        shopClosed={isOpen === false}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
         onAddToCart={(it, qty, variant, packagingOptionId) => {
           addItem(it, qty, [], variant ?? null, packagingOptionId);
@@ -659,7 +660,7 @@ export function MenuPage() {
   const pickupBlocked = !isServiceAvailable('online_pickup');
   const deliveryBlocked = (isOpen === true && !deliveryAvailable) || !isServiceAvailable('online_delivery');
 
-  // Shop-level closed notice — items stay browsable; only checkout is blocked.
+  // Shop-level closed notice — items stay browsable; tomorrow-eligible checkout may still work.
   const gateClosedBanner = useMemo(() => {
     if (isOpen !== false) return null;
     let opensFormatted = '';
@@ -671,7 +672,7 @@ export function MenuPage() {
         }
       } catch { /* ignore */ }
     }
-    return composeOrderingStatusBanner({
+    const base = composeOrderingStatusBanner({
       isOpen: false,
       deliveryAvailable: true,
       closesFormatted: '',
@@ -687,7 +688,10 @@ export function MenuPage() {
         deliveryFrom: ORDER_STATUS_DEFAULTS.delivery_from,
       },
     });
-  }, [isOpen, nextOpenWindow, gateMessage]);
+    const hasTomorrowItems = items.some((item) => item.allow_pre_order);
+    if (!hasTomorrowItems) return base;
+    return `${base} · ${t('menu.closed_tomorrow_hint')}`;
+  }, [isOpen, nextOpenWindow, gateMessage, items, t]);
 
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>
