@@ -121,6 +121,8 @@ export function SignagePage() {
   const [items, setItems] = useState<MenuItemLite[]>([]);
   const [categories, setCategories] = useState<SignageCategoryLite[]>([]);
   const [offline, setOffline] = useState(false);
+  /** First boot / empty cache and the config fetch failed — not the same as loading. */
+  const [bootError, setBootError] = useState(false);
   const [index, setIndex] = useState(0);
   const [pendingConfig, setPendingConfig] = useState<SignageConfig | null>(null);
   const [burnIn, setBurnIn] = useState({ x: 0, y: 0 });
@@ -219,6 +221,7 @@ export function SignagePage() {
         writeCache(screen, { config: cfg, items: lite, categories: cats, savedAt: Date.now() });
         setOffline(false);
         offlineRef.current = false;
+        setBootError(false);
         setItems(lite);
         setCategories(cats);
 
@@ -237,10 +240,14 @@ export function SignagePage() {
         if (cached) {
           setOffline(true);
           offlineRef.current = true;
+          setBootError(false);
           setConfig(cached.config);
           setItems(cached.items);
           setCategories(cached.categories ?? []);
           versionRef.current = cached.config.playlist_version;
+        } else {
+          // First boot with no network and no cache — do not spin forever.
+          setBootError(true);
         }
       }
     };
@@ -394,8 +401,26 @@ export function SignagePage() {
     && !black
     && shouldShowBanner(config.banner, config.mode, new Date(nowMs)),
   );
-  const isLoading = !config && !offline;
+  const isLoading = !config && !offline && !bootError;
   const showIdleBrand = Boolean(config && !currentSlide && !black);
+  const showBootError = bootError && !config && !black;
+  const bootTheme = { primary: '#D4813A', background: '#0d0a07', text: '#FFF8F0' };
+  const bootStubConfig = useMemo((): SignageConfig => ({
+    screen: { id: 0, name: 'boot', slug: screen, group_id: null },
+    playlist_id: null,
+    playlist_version: '',
+    source: 'boot',
+    mode: 'normal',
+    orientation: 'landscape',
+    resolution: '1920x1080',
+    refresh_seconds: 120,
+    theme: bootTheme,
+    slides: [],
+    rotation: [],
+    variables: {},
+    bestsellers: [],
+    menu_new_days: 30,
+  }), [screen]);
 
   return (
     <div
@@ -460,6 +485,30 @@ export function SignagePage() {
       {isLoading && !black && (
         <div className="signage-loading" data-testid="signage-loading">
           Loading board…
+        </div>
+      )}
+      {showBootError && (
+        <div className="signage-stage" data-testid="signage-boot-error">
+          <SlideCanvas
+            slide={idleSlide}
+            theme={bootTheme}
+            variables={{
+              branch_name: settings.site_name || 'Bake & Grill',
+              business_phone: settings.business_phone || '',
+              business_website: settings.business_website || '',
+            }}
+            items={[]}
+            config={bootStubConfig}
+            logoUrl={logoUrl}
+            burnInOffset={burnIn}
+          />
+          <div
+            className="signage-offline"
+            data-testid="signage-boot-error-note"
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 24, textAlign: 'center' }}
+          >
+            Cannot reach the server — retrying
+          </div>
         </div>
       )}
       {showPairing && (

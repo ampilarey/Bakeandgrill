@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SignagePage } from './SignagePage';
@@ -180,6 +180,67 @@ describe('SignagePage', () => {
     );
 
     expect(await screen.findByTestId('signage-offline')).toBeTruthy();
+    expect(screen.getByText(/Hello Bake & Grill/)).toBeTruthy();
+    expect(screen.queryByTestId('signage-boot-error')).toBeNull();
+    expect(screen.queryByTestId('signage-loading')).toBeNull();
+  });
+
+  it('shows a boot error (not a spinner) when fetch fails with empty cache', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('signage-boot-error')).toBeTruthy();
+    expect(screen.getByTestId('signage-boot-error-note')).toHaveTextContent(/Cannot reach the server — retrying/);
+    expect(screen.queryByTestId('signage-loading')).toBeNull();
+    expect(screen.queryByTestId('signage-offline')).toBeNull();
+  });
+
+  it('recovers to a normal board after a failed first load when refresh succeeds', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let configAttempts = 0;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: null,
+          }),
+        };
+      }
+      configAttempts += 1;
+      if (configAttempts === 1) {
+        throw new Error('network');
+      }
+      return { ok: true, json: async () => config };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('signage-boot-error')).toBeTruthy();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('signage-boot-error')).toBeNull();
+      expect(screen.getByTestId('signage-slide-canvas')).toBeTruthy();
+    });
     expect(screen.getByText(/Hello Bake & Grill/)).toBeTruthy();
   });
 

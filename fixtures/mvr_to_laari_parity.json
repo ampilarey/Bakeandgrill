@@ -1,0 +1,28 @@
+{
+  "description": "Shared MVR→laari parity table for POS Math.round(n*100) and App\\Support\\LaariConverter::toLaar. Negatives are legal in LaariConverter (refunds/adjustments).",
+  "repo_relative_path": "fixtures/mvr_to_laari_parity.json",
+  "pairs": [
+    { "input": 0.1, "expected_laari": 10 },
+    { "input": 0.2, "expected_laari": 20 },
+    { "input": 0.07, "expected_laari": 7 },
+    { "input": 2.675, "expected_laari": 268 },
+    { "input": 8.15, "expected_laari": 815 },
+    { "input": 19.99, "expected_laari": 1999 },
+    { "input": 33.33, "expected_laari": 3333 },
+    { "input": 1234.56, "expected_laari": 123456 },
+    { "input": 99999.99, "expected_laari": 9999999 },
+    { "input": 0, "expected_laari": 0 },
+    { "input": -5.0, "expected_laari": -500 },
+    { "input": -0.1, "expected_laari": -10 },
+    { "input": -19.99, "expected_laari": -1999 }
+  ],
+  "known_divergences": [
+    {
+      "input": 1.005,
+      "js_laari": 100,
+      "php_bcmath_laari": 101,
+      "php_float_fallback_laari": 100,
+      "note": "IEEE754: 1.005*100 → 100.4999… so Math.round and PHP float-fallback give 100; bcmath half-up on exact 1.005 gives 101. Do not silently pick a winner — needs a product decision."
+    }
+  ]
+}
