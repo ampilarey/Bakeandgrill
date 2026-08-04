@@ -81,7 +81,7 @@ export function stripCheckBackFromClosedMessage(message: string): string {
  * then Opens {time} and optional tomorrow note.
  *
  * Example:
- * "Online ordering is currently closed. · Opens 10:00 AM · Some items for tomorrow"
+ * "Online ordering is currently closed. · Opens 10:00 AM · Some items can be ordered for tomorrow"
  */
 export function composeClosedMenuBanner(args: {
   opensFormatted: string;
@@ -97,7 +97,7 @@ export function composeClosedMenuBanner(args: {
   const closed = stripCheckBackFromClosedMessage(raw)
     || (args.fallbackClosed ?? 'Online ordering is currently closed.');
   const opensTpl = args.opensTemplate ?? 'Opens {time}';
-  const tomorrow = (args.tomorrowLabel ?? 'Some items for tomorrow').trim();
+  const tomorrow = (args.tomorrowLabel ?? 'Some items can be ordered for tomorrow').trim();
   const bits = [closed.replace(/[.]+$/, '.')];
   // Prefer a single trailing period on the closed sentence for readability.
   if (!bits[0].endsWith('.')) {

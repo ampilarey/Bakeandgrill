@@ -114,7 +114,7 @@ const TRANSLATIONS: Translations = {
   "menu.can_order_tomorrow": "Can be ordered for tomorrow",
   "menu.banner_closed_fallback": "Online ordering is currently closed.",
   "menu.banner_opens_short": "Opens {time}",
-  "menu.banner_tomorrow_short": "Some items for tomorrow",
+  "menu.banner_tomorrow_short": "Some items can be ordered for tomorrow",
   "cart.closed_tomorrow_tip": "Add only Tomorrow items to order for tomorrow.",
   "a11y.announcement": "Site announcement",
   // ── Phase 4 Home strings ───────────────────────────────────────────────────

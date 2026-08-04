@@ -104,7 +104,7 @@ describe('composeClosedMenuBanner', () => {
           'Online ordering is currently closed. Please check back during opening hours.',
       }),
     ).toBe(
-      'Online ordering is currently closed. · Opens 10:00 AM · Some items for tomorrow',
+      'Online ordering is currently closed. · Opens 10:00 AM · Some items can be ordered for tomorrow',
     );
   });
 
