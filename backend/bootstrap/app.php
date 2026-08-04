@@ -97,6 +97,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (Throwable $e, Illuminate\Http\Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
+                // Named rate limiters attach a JSON body via HttpResponseException —
+                // must not be rewritten into a generic 500.
+                if ($e instanceof Illuminate\Http\Exceptions\HttpResponseException) {
+                    return $e->getResponse();
+                }
+
                 if ($e instanceof App\Exceptions\ServiceUnavailableException) {
                     return $e->render($request);
                 }

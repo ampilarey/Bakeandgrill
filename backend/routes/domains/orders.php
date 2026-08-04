@@ -123,11 +123,11 @@ if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orde
     Route::get('/shifts/{id}/summary', [App\Http\Controllers\Api\ShiftController::class, 'summary'])
         ->middleware('permission:shifts.view_own_history');
     Route::post('/shifts/open', [App\Http\Controllers\Api\ShiftController::class, 'open'])
-        ->middleware(['permission:pos.open_shift', 'throttle:5,1']);
+        ->middleware(['permission:pos.open_shift', 'throttle:pos-shift']);
     Route::post('/shifts/{id}/close', [App\Http\Controllers\Api\ShiftController::class, 'close'])
-        ->middleware(['permission:pos.close_shift', 'throttle:5,1']);
+        ->middleware(['permission:pos.close_shift', 'throttle:pos-shift']);
     Route::post('/shifts/{id}/force-close', [App\Http\Controllers\Api\ShiftController::class, 'forceClose'])
-        ->middleware(['permission:shifts.view_all_history', 'throttle:5,1']);
+        ->middleware(['permission:shifts.view_all_history', 'throttle:pos-shift']);
     Route::post('/shifts/{id}/cash-movements', [App\Http\Controllers\Api\CashMovementController::class, 'store'])
         ->middleware(['permission:payments.cash_in_out', 'device.active', 'throttle:30,1']);
 }

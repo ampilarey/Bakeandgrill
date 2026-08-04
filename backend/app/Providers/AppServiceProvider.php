@@ -58,6 +58,21 @@ class AppServiceProvider extends ServiceProvider
             });
         });
 
+        // Shift open/close/force-close — authenticated + permission-gated already.
+        // Keep a ceiling against buggy retry loops, but allow real till use
+        // (mistyped opening float, shared office IP) without locking cashiers out.
+        RateLimiter::for('pos-shift', function (Request $request) {
+            $key = $request->user()?->id
+                ? 'user:'.$request->user()->id
+                : (string) $request->ip();
+
+            return Limit::perMinute(60)->by($key)->response(function () {
+                return response()->json([
+                    'message' => 'Too many shift open or close attempts. Wait about a minute and try again.',
+                ], 429);
+            });
+        });
+
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
         Item::observe(ItemObserver::class);
