@@ -1011,22 +1011,22 @@ a { text-decoration: none; color: inherit; }
   flex-shrink: 0;
 }
 .tomorrow-ordering-badge.open {
-  background: rgba(120, 72, 12, 0.88);
-  color: #FDE68A;
-  border: 1px solid rgba(253, 230, 138, 0.28);
+  background: rgba(29, 94, 56, 0.85);
+  color: #6EE7A0;
+  border: 1px solid rgba(110, 231, 160, 0.25);
 }
 .tomorrow-ordering-badge.open .tomorrow-ordering-badge__dot {
-  background: #FBBF24;
-  box-shadow: 0 0 5px #FBBF24;
+  background: #4ADE80;
+  box-shadow: 0 0 6px #4ADE80;
   animation: pulse-dot 2s infinite;
 }
 .tomorrow-ordering-badge.closed {
-  background: rgba(55, 55, 60, 0.88);
-  color: #D4D4D8;
-  border: 1px solid rgba(212, 212, 216, 0.22);
+  background: rgba(120, 20, 15, 0.85);
+  color: #FCA5A5;
+  border: 1px solid rgba(252, 165, 165, 0.25);
 }
 .tomorrow-ordering-badge.closed .tomorrow-ordering-badge__dot {
-  background: #A1A1AA;
+  background: #FCA5A5;
 }
 
 /* legacy hero class kept if used elsewhere */
