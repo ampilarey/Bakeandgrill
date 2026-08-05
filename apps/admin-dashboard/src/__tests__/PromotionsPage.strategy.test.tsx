@@ -142,6 +142,17 @@ describe('PromotionsPage strategy fields', () => {
     expect(await screen.findByText(/Approximate under high concurrency/i)).toBeTruthy();
   });
 
+  it('target picker uses Customer must buy / They get wording', async () => {
+    renderWithRouter(<PromotionsPage />);
+    await screen.findByRole('heading', { name: 'Promotions' });
+    fireEvent.click(screen.getByRole('button', { name: /\+ New Promo/i }));
+    expect(await screen.findByTestId('promo-target-picker')).toBeTruthy();
+    expect(screen.getByText('Customer must buy')).toBeTruthy();
+    expect(screen.getByText('They get')).toBeTruthy();
+    expect(screen.queryByText(/trigger/i)).toBeNull();
+    expect(screen.queryByText(/reward/i)).toBeNull();
+  });
+
   it('shows day and time window fields when auto-apply is off', async () => {
     renderWithRouter(<PromotionsPage />);
     await screen.findByRole('heading', { name: 'Promotions' });

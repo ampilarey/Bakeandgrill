@@ -34,6 +34,8 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
 
     // ─── Promotions ──────────────────────────────────────────────────────────────
     // Public/customer — validate a code
+    Route::post('/promotions/cart-rewards', [App\Http\Controllers\Api\PromotionController::class, 'cartRewards'])
+        ->middleware('throttle:60,1');
     Route::post('/promotions/validate', [App\Http\Controllers\Api\PromotionController::class, 'validate'])
         ->middleware('throttle:20,1');
 

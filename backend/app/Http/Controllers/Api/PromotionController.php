@@ -23,6 +23,47 @@ class PromotionController extends Controller
     ) {}
 
     /**
+     * Cart reward picker — which free rewards the current basket has earned.
+     * Public; entitlement is recomputed from the submitted lines (not trusted client state).
+     */
+    public function cartRewards(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'items' => 'required|array|min:1|max:50',
+            'items.*.item_id' => 'required|integer|min:1',
+            'items.*.quantity' => 'required|integer|min:1|max:99',
+            'items.*.unit_price' => 'nullable|numeric|min:0',
+        ]);
+
+        $user = $request->user();
+        $customerId = ($user && $user->tokenCan('customer')) ? (int) $user->id : null;
+
+        $lines = [];
+        foreach ($validated['items'] as $row) {
+            $lines[] = [
+                'item_id' => (int) $row['item_id'],
+                'quantity' => (int) $row['quantity'],
+                'unit_price' => (float) ($row['unit_price'] ?? 0),
+            ];
+        }
+
+        // Fill missing prices from catalog so free_item math / display is honest.
+        $itemIds = array_column($lines, 'item_id');
+        $prices = \App\Models\Item::query()->whereIn('id', $itemIds)->pluck('base_price', 'id');
+        foreach ($lines as &$line) {
+            if ($line['unit_price'] <= 0) {
+                $line['unit_price'] = (float) ($prices[$line['item_id']] ?? 0);
+            }
+            $line['total_price'] = $line['unit_price'] * $line['quantity'];
+        }
+        unset($line);
+
+        return response()->json([
+            'rewards' => $this->evaluator->earnedRewardChoices($lines, $customerId),
+        ]);
+    }
+
+    /**
      * Validate a promo code (public / customer).
      */
     public function validate(Request $request): JsonResponse
@@ -414,6 +455,9 @@ class PromotionController extends Controller
             'targets.*.target_type' => 'required_with:targets|in:item,category',
             'targets.*.target_id' => 'required_with:targets|integer|min:1',
             'targets.*.is_exclusion' => 'boolean',
+            'targets.*.role' => 'nullable|in:trigger,reward',
+            'targets.*.metadata' => 'nullable|array',
+            'targets.*.metadata.min_qty' => 'nullable|integer|min:1',
         ]);
 
         $validated['discount_value'] = (int) ($validated['discount_value'] ?? 0);
@@ -447,6 +491,9 @@ class PromotionController extends Controller
                 'target_type' => $target['target_type'],
                 'target_id' => (int) $target['target_id'],
                 'is_exclusion' => (bool) ($target['is_exclusion'] ?? false),
+                // null role = reward by construction (legacy).
+                'role' => $target['role'] ?? null,
+                'metadata' => $target['metadata'] ?? null,
             ]);
         }
 
@@ -498,6 +545,9 @@ class PromotionController extends Controller
             'targets.*.target_type' => 'required_with:targets|in:item,category',
             'targets.*.target_id' => 'required_with:targets|integer|min:1',
             'targets.*.is_exclusion' => 'boolean',
+            'targets.*.role' => 'nullable|in:trigger,reward',
+            'targets.*.metadata' => 'nullable|array',
+            'targets.*.metadata.min_qty' => 'nullable|integer|min:1',
         ]);
 
         if (($validated['type'] ?? $promotion->type) === 'free_delivery') {
@@ -523,6 +573,8 @@ class PromotionController extends Controller
                     'target_type' => $target['target_type'],
                     'target_id' => (int) $target['target_id'],
                     'is_exclusion' => (bool) ($target['is_exclusion'] ?? false),
+                    'role' => $target['role'] ?? null,
+                    'metadata' => $target['metadata'] ?? null,
                 ]);
             }
         }

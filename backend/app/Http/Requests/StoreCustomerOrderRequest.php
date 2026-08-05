@@ -38,6 +38,10 @@ class StoreCustomerOrderRequest extends FormRequest
             // Clients may send fulfil_date (Y-m-d) and/or collect_on ("today"|"tomorrow").
             'fulfil_date' => 'nullable|date_format:Y-m-d',
             'collect_on' => 'nullable|string|in:today,tomorrow',
+            // Free-reward claims from the cart picker — server re-checks entitlement.
+            'reward_claims' => 'nullable|array|max:10',
+            'reward_claims.*.promotion_id' => 'required_with:reward_claims|integer|min:1',
+            'reward_claims.*.item_id' => 'required_with:reward_claims|integer|min:1',
         ];
     }
 

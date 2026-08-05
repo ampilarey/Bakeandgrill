@@ -19,6 +19,7 @@ const STRATEGY_TYPES: PromotionType[] = ['tiered', 'quantity_break', 'buy_x_get_
 const TYPE_OPTIONS = [
   { value: 'fixed', label: 'Fixed Amount (MVR)' },
   { value: 'percentage', label: 'Percentage (%)' },
+  { value: 'free_item', label: 'Free item' },
   { value: 'tiered', label: 'Tiered (spend & save)' },
   { value: 'quantity_break', label: 'Quantity break' },
   { value: 'buy_x_get_y', label: 'BOGO / Buy X Get Y' },
@@ -54,12 +55,15 @@ function PromotionForm({
   const [error, setError] = useState('');
   const [targetType, setTargetType] = useState<'item' | 'category'>('category');
   const [targetId, setTargetId] = useState('');
+  /** UI: "must_buy" = trigger, "they_get" = reward — never show those API words. */
+  const [targetSide, setTargetSide] = useState<'must_buy' | 'they_get'>('they_get');
+  const [targetMinQty, setTargetMinQty] = useState('1');
 
   const set = <K extends keyof PromotionPayload>(k: K, v: PromotionPayload[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
   const autoApply = !!form.auto_apply;
-  const isStrategy = STRATEGY_TYPES.includes(form.type);
+  const isStrategy = STRATEGY_TYPES.includes(form.type) || form.type === 'free_item';
   const meta = form.metadata ?? {};
   const tiers: PromotionTier[] = Array.isArray(meta.tiers) ? meta.tiers : [];
 
@@ -149,8 +153,18 @@ function PromotionForm({
     const id = parseInt(targetId, 10);
     if (!Number.isFinite(id) || id < 1) return;
     const existing = form.targets ?? [];
-    if (existing.some((t) => t.target_type === targetType && t.target_id === id)) return;
-    set('targets', [...existing, { target_type: targetType, target_id: id, is_exclusion: false }]);
+    const role = targetSide === 'must_buy' ? 'trigger' as const : 'reward' as const;
+    if (existing.some((t) => t.target_type === targetType && t.target_id === id && (t.role ?? 'reward') === role)) {
+      return;
+    }
+    const minQty = Math.max(1, parseInt(targetMinQty, 10) || 1);
+    set('targets', [...existing, {
+      target_type: targetType,
+      target_id: id,
+      is_exclusion: false,
+      role,
+      metadata: role === 'trigger' ? { min_qty: minQty } : null,
+    }]);
     setTargetId('');
   };
 
@@ -404,29 +418,53 @@ function PromotionForm({
         </p>
       )}
 
-      {autoApply && (
-        <Field label="Targets (item or category IDs — leave empty for whole-order)">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Select
-              value={targetType}
-              onChange={(v) => setTargetType(v as 'item' | 'category')}
-              options={[{ value: 'category', label: 'Category' }, { value: 'item', label: 'Item' }]}
+      <Field label="What the customer must buy / what they get (optional)">
+        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px' }}>
+          Use “Customer must buy” for the item that unlocks the offer, and “They get” for what is discounted or free.
+          Leave empty for a whole-order discount.
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }} data-testid="promo-target-picker">
+          <Select
+            value={targetSide}
+            onChange={(v) => setTargetSide(v as 'must_buy' | 'they_get')}
+            options={[
+              { value: 'must_buy', label: 'Customer must buy' },
+              { value: 'they_get', label: 'They get' },
+            ]}
+          />
+          <Select
+            value={targetType}
+            onChange={(v) => setTargetType(v as 'item' | 'category')}
+            options={[{ value: 'category', label: 'Category' }, { value: 'item', label: 'Item' }]}
+          />
+          <Input value={targetId} onChange={setTargetId} type="number" placeholder="ID" />
+          {targetSide === 'must_buy' && (
+            <Input
+              value={targetMinQty}
+              onChange={setTargetMinQty}
+              type="number"
+              placeholder="Qty"
+              style={{ width: 72 }}
+              data-testid="promo-trigger-min-qty"
             />
-            <Input value={targetId} onChange={setTargetId} type="number" placeholder="ID" />
-            <Btn small variant="secondary" onClick={addTarget}>Add</Btn>
-          </div>
-          {(form.targets ?? []).length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-              {(form.targets ?? []).map((t, i) => (
-                <span key={`${t.target_type}-${t.target_id}-${i}`} style={{ fontSize: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 8px' }}>
-                  {t.target_type} #{t.target_id}
+          )}
+          <Btn small variant="secondary" onClick={addTarget}>Add</Btn>
+        </div>
+        {(form.targets ?? []).length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            {(form.targets ?? []).map((t, i) => {
+              const side = (t.role ?? 'reward') === 'trigger' ? 'Customer must buy' : 'They get';
+              const min = t.metadata?.min_qty;
+              return (
+                <span key={`${t.target_type}-${t.target_id}-${t.role ?? 'reward'}-${i}`} style={{ fontSize: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 8px' }}>
+                  {side}: {t.target_type} #{t.target_id}{min && min > 1 ? ` ×${min}` : ''}
                   <button type="button" onClick={() => removeTarget(i)} style={{ marginLeft: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
                 </span>
-              ))}
-            </div>
-          )}
-        </Field>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </Field>
 
       {/* Happy-hour / day windows — available for coded AND auto-apply promos.
           Backend already enforces days_of_week / starts_time / ends_time for both. */}

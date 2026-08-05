@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Promotions;
 
 use App\Domains\Promotions\Services\PromotionEvaluator;
+use App\Models\PromotionTarget;
 use App\Models\SiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Promotions\Concerns\BuildsPromoOrders;
@@ -78,5 +79,35 @@ class ExistingPromoRegressionTest extends TestCase
         $result = app(PromotionEvaluator::class)->evaluate('HUGE', $this->buildPromoOrder(40.0), $this->customer->id);
         $this->assertTrue($result['valid']);
         $this->assertSame(4000, $result['discount_laar']);
+    }
+
+    /**
+     * REGRESSION: null/absent role on promotion_targets MUST mean reward.
+     * If that default is lost, every live free_item / targeted percentage
+     * either stops applying or starts applying to the wrong lines.
+     */
+    public function test_null_role_targets_still_mean_reward(): void
+    {
+        $promo = $this->makePromo([
+            'name' => 'Legacy free item',
+            'type' => 'free_item',
+            'discount_value' => 0,
+            'code' => null,
+            'auto_apply' => true,
+            'scope' => 'item',
+        ]);
+        // Explicitly leave role null — the pre-role shape of every live promo.
+        PromotionTarget::create([
+            'promotion_id' => $promo->id,
+            'target_type' => 'item',
+            'target_id' => $this->item->id,
+            'is_exclusion' => false,
+            'role' => null,
+        ]);
+
+        $order = $this->buildPromoOrder(100.0);
+        $applied = app(PromotionEvaluator::class)->applyAutomatic($order, $this->customer->id);
+        $this->assertCount(1, $applied);
+        $this->assertSame(10000, $applied[0]['discount_laar']);
     }
 }

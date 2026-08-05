@@ -138,13 +138,29 @@ class AutoPromotionPricing
             ->active()
             ->with('targets')
             ->get()
-            ->filter(fn (Promotion $p) => $p->isValid() && $p->targets->where('is_exclusion', false)->isNotEmpty());
+            ->filter(function (Promotion $p) {
+                if (!$p->isValid()) {
+                    return false;
+                }
+                // Catalog prices cannot know basket triggers — skip those promos here.
+                // They apply at order time via PromotionEvaluator::applyAutomatic.
+                $inclusions = $p->targets->where('is_exclusion', false);
+                if ($inclusions->contains(fn ($t) => ($t->role ?? null) === 'trigger')) {
+                    return false;
+                }
+
+                return $inclusions->isNotEmpty();
+            });
 
         $byItem = [];
         $byCategory = [];
 
         foreach ($promos as $promo) {
+            // Index reward targets only (null role = reward by construction).
             foreach ($promo->targets->where('is_exclusion', false) as $target) {
+                if (($target->role ?? null) === 'trigger') {
+                    continue;
+                }
                 if ($target->target_type === 'item') {
                     $byItem[(int) $target->target_id][] = $promo;
                 } elseif ($target->target_type === 'category') {

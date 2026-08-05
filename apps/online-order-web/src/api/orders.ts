@@ -44,6 +44,7 @@ export type DeliveryOrderPayload = {
   customer_notes?: string;
   collect_on?: 'today' | 'tomorrow';
   fulfil_date?: string;
+  reward_claims?: Array<{ promotion_id: number; item_id: number }>;
 };
 
 export interface ReorderPayload {
@@ -79,6 +80,7 @@ export async function createCustomerOrder(
     fulfil_date?: string;
     /** Prepaid dine-in: how many people are coming. */
     party_size?: number;
+    reward_claims?: Array<{ promotion_id: number; item_id: number }>;
   },
 ): Promise<{ order: Order }> {
   return request<{ order: Order }>(ENDPOINTS.CUSTOMER_ORDERS, {

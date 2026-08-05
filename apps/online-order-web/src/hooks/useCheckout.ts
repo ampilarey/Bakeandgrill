@@ -65,6 +65,7 @@ export type CartItem = {
   allow_pre_order?: boolean;
   is_available?: boolean;
   available_now?: boolean;
+  rewardPromotionId?: number | null;
 };
 
 export type OrderType = "pickup" | "delivery";
@@ -203,6 +204,7 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
       packagingOptionId?: number | null;
       packagingFee?: number | null;
       packagingFeeMode?: 'per_unit' | 'per_line' | null;
+      rewardPromotionId?: number | null;
     }> = Array.isArray(parsed) ? parsed : (parsed?.entries ?? []);
     return entries.map((e) => ({
       id:        e.item?.id ?? (e as unknown as CartItem).id,
@@ -222,8 +224,19 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
       allow_pre_order: Boolean(e.item?.allow_pre_order),
       is_available: e.item?.is_available,
       available_now: e.item?.available_now,
+      rewardPromotionId: e.rewardPromotionId ?? null,
     }));
   } catch { return []; }
+}
+
+function rewardClaimsFromCart(cart: CartItem[]): Array<{ promotion_id: number; item_id: number }> {
+  const claims: Array<{ promotion_id: number; item_id: number }> = [];
+  for (const item of cart) {
+    if (item.rewardPromotionId) {
+      claims.push({ promotion_id: item.rewardPromotionId, item_id: item.id });
+    }
+  }
+  return claims;
 }
 
 /** Mirror GstTaxCalculator / POS effectiveLineTaxRatePercent. */
@@ -948,6 +961,7 @@ export function useCheckout() {
           address_label: saveAddress ? (addressLabel.trim() || undefined) : undefined,
           customer_notes: notes || undefined,
           collect_on: collectOn,
+          reward_claims: rewardClaimsFromCart(cart),
         });
         orderId = res.order.id;
       } else if (orderType === "dine_in") {
@@ -964,6 +978,7 @@ export function useCheckout() {
           pickup_slot_at: pickupSlotAt ?? undefined,
           party_size: partySize,
           collect_on: "today",
+          reward_claims: rewardClaimsFromCart(cart),
         });
         orderId = res.order.id;
       } else {
@@ -977,6 +992,7 @@ export function useCheckout() {
           })),
           type: "online_pickup",
           customer_notes: notes || undefined,
+          reward_claims: rewardClaimsFromCart(cart),
           // Pickup slots are same-day only — skip when collecting tomorrow.
           pickup_slot_at: collectOn === 'today' ? (pickupSlotAt ?? undefined) : undefined,
           collect_on: collectOn,

@@ -12,6 +12,29 @@ export async function validatePromoCode(code: string): Promise<PromoValidation> 
   });
 }
 
+export type CartRewardChoice = {
+  promotion_id: number;
+  promotion_name: string;
+  message: string;
+  reward_items: Array<{
+    id: number;
+    name: string;
+    base_price: number;
+    image_url: string | null;
+    is_available?: boolean;
+  }>;
+};
+
+/** Server decides which free rewards the basket has earned. */
+export async function fetchCartRewards(
+  items: Array<{ item_id: number; quantity: number; unit_price?: number }>,
+): Promise<{ rewards: CartRewardChoice[] }> {
+  return request<{ rewards: CartRewardChoice[] }>('/promotions/cart-rewards', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+}
+
 export async function applyPromoCode(
   orderId: number,
   code: string,

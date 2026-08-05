@@ -7,6 +7,9 @@ export type PromotionTarget = {
   target_type: 'item' | 'category';
   target_id: number;
   is_exclusion?: boolean;
+  /** null/absent = reward (legacy). UI uses "Customer must buy" / "They get". */
+  role?: 'trigger' | 'reward' | null;
+  metadata?: { min_qty?: number } | null;
 };
 
 export type PromotionType =

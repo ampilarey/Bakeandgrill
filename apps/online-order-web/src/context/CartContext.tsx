@@ -16,6 +16,8 @@ export type CartEntry = {
   packagingOptionName?: string | null;
   packagingFee?: number | null;
   packagingFeeMode?: 'per_unit' | 'per_line' | null;
+  /** Set when this line was added via the cart free-reward picker. */
+  rewardPromotionId?: number | null;
 };
 
 export type UpdateEntryInput = {
@@ -36,7 +38,10 @@ interface CartContextValue {
     modifiers?: Modifier[],
     variant?: Variant | null,
     packagingOptionId?: number | null,
+    options?: { rewardPromotionId?: number | null },
   ) => void;
+  /** Remove cart lines claimed as free rewards for the given promotion ids. */
+  removeRewardClaims: (promotionIds: number[]) => void;
   updateQuantity: (index: number, quantity: number) => void;
   /**
    * Edit a cart line in place (Item sheet edit mode). Merges into an identical
@@ -96,7 +101,7 @@ function packagingSnapshot(item: Item, packagingOptionId?: number | null) {
   };
 }
 
-const CART_VERSION = 5;
+const CART_VERSION = 6;
 const CART_KEY = 'bakegrill_cart';
 
 type StoredCart = {
@@ -191,15 +196,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     modifiers: Modifier[] = [],
     variant?: Variant | null,
     packagingOptionId?: number | null,
+    options?: { rewardPromotionId?: number | null },
   ) => {
     if (quantity < 1) return;
+    const rewardPromotionId = options?.rewardPromotionId ?? null;
     setCart((prev) => {
       const variantId = variant?.id ?? null;
       const packaging = packagingSnapshot(item, packagingOptionId);
       const key = cartLineKey(item.id, variantId, modifiers, packaging.packagingOptionId);
-      const idx = prev.findIndex(
-        (e) => cartLineKey(e.item.id, e.variantId, e.modifiers, e.packagingOptionId) === key,
-      );
+      // Free-reward lines stay separate so they can be withdrawn cleanly.
+      const idx = rewardPromotionId
+        ? -1
+        : prev.findIndex(
+          (e) => !e.rewardPromotionId
+            && cartLineKey(e.item.id, e.variantId, e.modifiers, e.packagingOptionId) === key,
+        );
 
       if (idx >= 0) {
         const next = [...prev];
@@ -220,9 +231,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
           variantPrice: unitPrice,
           originalPrice,
           ...packaging,
+          rewardPromotionId,
         },
       ];
     });
+  }, []);
+
+  const removeRewardClaims = useCallback((promotionIds: number[]) => {
+    if (promotionIds.length === 0) return;
+    const set = new Set(promotionIds);
+    setCart((prev) => prev.filter((e) => !e.rewardPromotionId || !set.has(e.rewardPromotionId)));
   }, []);
 
   const updateQuantity = useCallback((index: number, quantity: number) => {
@@ -354,7 +372,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <CartContext.Provider value={{ cart, cartTotal, addItem, updateQuantity, updateEntry, clearCart, pruneCartToAllowedItemIds, refreshPricesFromMenu }}>
+    <CartContext.Provider value={{ cart, cartTotal, addItem, updateQuantity, updateEntry, clearCart, pruneCartToAllowedItemIds, refreshPricesFromMenu, removeRewardClaims }}>
       {children}
     </CartContext.Provider>
   );

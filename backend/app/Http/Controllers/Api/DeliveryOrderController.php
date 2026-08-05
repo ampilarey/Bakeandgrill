@@ -88,6 +88,9 @@ class DeliveryOrderController extends Controller
             'ticket_note' => 'nullable|string|max:255',
             'fulfil_date' => 'nullable|date_format:Y-m-d',
             'collect_on' => 'nullable|string|in:today,tomorrow',
+            'reward_claims' => 'nullable|array|max:10',
+            'reward_claims.*.promotion_id' => 'required_with:reward_claims|integer|min:1',
+            'reward_claims.*.item_id' => 'required_with:reward_claims|integer|min:1',
         ]);
 
         // Recompute tomorrow collection server-side (never trust the browser date).

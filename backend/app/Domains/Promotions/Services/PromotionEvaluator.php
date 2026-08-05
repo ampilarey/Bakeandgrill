@@ -12,8 +12,10 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderPromotion;
 use App\Models\Promotion;
+use App\Models\PromotionTarget;
 use App\Models\SiteSetting;
 use App\Support\LaariConverter;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -135,14 +137,23 @@ class PromotionEvaluator
     }
 
     /**
-     * Item/category-targeted promo (has inclusion targets) vs order-level.
+     * Promo whose discount is baked into catalog line prices by EffectivePriceService.
+     * Only percentage/fixed with reward targets and NO trigger rows qualify — free_item,
+     * BOGO, and trigger-gated offers must still run through applyAutomatic.
      */
     public function isItemLevelPromo(Promotion $promo): bool
     {
+        if (!in_array($promo->type, ['percentage', 'fixed'], true)) {
+            return false;
+        }
+
         $promo->loadMissing('targets');
         $inclusions = $promo->targets->where('is_exclusion', false);
+        if ($inclusions->contains(fn (PromotionTarget $t) => $t->isTrigger())) {
+            return false;
+        }
 
-        return $inclusions->isNotEmpty();
+        return $inclusions->filter(fn (PromotionTarget $t) => $t->isReward())->isNotEmpty();
     }
 
     /**
@@ -425,6 +436,12 @@ class PromotionEvaluator
 
     private function calculateDiscount(Promotion $promo, Order $order, int $subtotalLaar): int
     {
+        // Trigger rows (if any) must be satisfied before any discount is computed.
+        // Promotions with no trigger rows keep today's behaviour untouched.
+        if (!$this->triggersSatisfied($promo, $order)) {
+            return 0;
+        }
+
         $applicableAmount = $this->applicableSubtotal($promo, $order);
 
         $raw = match ($promo->type) {
@@ -441,6 +458,281 @@ class PromotionEvaluator
         $raw = max(0, min($raw, $applicableAmount > 0 ? $applicableAmount : $subtotalLaar));
 
         return $this->applyMarginFloor($promo, $order, $raw);
+    }
+
+    /**
+     * When a promotion has trigger targets, every trigger row must be satisfied
+     * (matching basket qty ≥ that row's metadata.min_qty, default 1).
+     * No trigger rows → always true (legacy behaviour).
+     */
+    public function triggersSatisfied(Promotion $promo, Order $order): bool
+    {
+        $promo->loadMissing('targets');
+        $triggers = $promo->targets
+            ->where('is_exclusion', false)
+            ->filter(fn (PromotionTarget $t) => $t->isTrigger())
+            ->values();
+
+        if ($triggers->isEmpty()) {
+            return true;
+        }
+
+        $order->loadMissing('items.item');
+        foreach ($triggers as $trigger) {
+            $needed = $trigger->triggerMinQty();
+            $have = $this->quantityMatchingTarget($order, $trigger);
+            if ($have < $needed) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function quantityMatchingTarget(Order $order, PromotionTarget $target): float
+    {
+        $qty = 0.0;
+        foreach ($this->candidateOrderLines($order) as $line) {
+            if ($this->lineMatchesTarget($line, $target)) {
+                $qty += (float) $line->quantity;
+            }
+        }
+
+        return $qty;
+    }
+
+    private function lineMatchesTarget(OrderItem $line, PromotionTarget $target): bool
+    {
+        if ($target->target_type === 'item') {
+            return (int) $line->item_id === (int) $target->target_id;
+        }
+        if ($target->target_type === 'category') {
+            return (int) ($line->item?->category_id ?? 0) === (int) $target->target_id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Single place that decides which order lines a promo may look at.
+     * Future platter children: add `if ($line->parent_order_item_id) return false;` here.
+     *
+     * @return Collection<int, OrderItem>
+     */
+    private function candidateOrderLines(Order $order): Collection
+    {
+        $order->loadMissing('items.item');
+
+        return $order->items->filter(function (OrderItem $line) {
+            // FUTURE platter child filter — keep in one place:
+            // if ($line->parent_order_item_id) { return false; }
+            return true;
+        })->values();
+    }
+
+    /**
+     * Lines that count as REWARD (discounted) side.
+     * null/absent role = reward by construction.
+     * Lines already consumed as a trigger are never also discounted as their own reward —
+     * otherwise a customer buys one burger and gets that same burger free.
+     *
+     * @return Collection<int, OrderItem>
+     */
+    private function filterLines(Promotion $promo, Order $order, string $role = PromotionTarget::ROLE_REWARD): Collection
+    {
+        $promo->loadMissing('targets');
+        $order->loadMissing('items.item');
+
+        $allInclusions = $promo->targets->where('is_exclusion', false);
+        $exclusions = $promo->targets->where('is_exclusion', true);
+
+        if ($role === PromotionTarget::ROLE_TRIGGER) {
+            $inclusions = $allInclusions->filter(fn (PromotionTarget $t) => $t->isTrigger())->values();
+        } else {
+            // Reward: explicit reward OR null/absent (legacy).
+            $inclusions = $allInclusions->filter(fn (PromotionTarget $t) => $t->isReward())->values();
+        }
+
+        $excludedItemIds = $exclusions->where('target_type', 'item')->pluck('target_id')->all();
+        $excludedCategoryIds = $exclusions->where('target_type', 'category')->pluck('target_id')->all();
+        $includedItemIds = $inclusions->where('target_type', 'item')->pluck('target_id')->all();
+        $includedCategoryIds = $inclusions->where('target_type', 'category')->pluck('target_id')->all();
+
+        $triggerTargets = $allInclusions->filter(fn (PromotionTarget $t) => $t->isTrigger())->values();
+
+        return $this->candidateOrderLines($order)->filter(function (OrderItem $orderItem) use (
+            $excludedItemIds,
+            $excludedCategoryIds,
+            $includedItemIds,
+            $includedCategoryIds,
+            $inclusions,
+            $triggerTargets,
+            $role,
+        ) {
+            // A line consumed as a trigger must NOT also be discounted as its own reward.
+            if ($role === PromotionTarget::ROLE_REWARD && $triggerTargets->isNotEmpty()) {
+                foreach ($triggerTargets as $trigger) {
+                    if ($this->lineMatchesTarget($orderItem, $trigger)) {
+                        return false;
+                    }
+                }
+            }
+
+            $itemId = $orderItem->item_id;
+            $categoryId = $orderItem->item?->category_id ?? null;
+            if (in_array($itemId, $excludedItemIds, true) || in_array($categoryId, $excludedCategoryIds, true)) {
+                return false;
+            }
+            if ($inclusions->isNotEmpty()) {
+                return in_array($itemId, $includedItemIds, true)
+                    || in_array($categoryId, $includedCategoryIds, true);
+            }
+
+            // Trigger role with no trigger inclusions → nothing matches.
+            if ($role === PromotionTarget::ROLE_TRIGGER) {
+                return false;
+            }
+
+            // Reward with no reward inclusions → whole-order (legacy).
+            return true;
+        })->values();
+    }
+
+    /**
+     * Cart reward picker: earned free_item offers with a choice of reward items.
+     *
+     * @param  array<int, array{item_id: int, quantity?: numeric, unit_price?: numeric, total_price?: numeric}>  $lines
+     * @return list<array{promotion_id: int, promotion_name: string, message: string, reward_items: list<array{id: int, name: string, base_price: float, image_url: ?string}>}>
+     */
+    public function earnedRewardChoices(array $lines, ?int $customerId = null): array
+    {
+        if ($lines === []) {
+            return [];
+        }
+
+        $order = $this->ephemeralOrderFromLines($lines);
+        $promos = Promotion::query()
+            ->autoApply()
+            ->active()
+            ->where('type', 'free_item')
+            ->with('targets')
+            ->get();
+
+        $out = [];
+        foreach ($promos as $promo) {
+            if (!$this->triggersSatisfied($promo, $order)) {
+                continue;
+            }
+
+            $rewardTargets = $promo->targets
+                ->where('is_exclusion', false)
+                ->filter(fn (PromotionTarget $t) => $t->isReward() && $t->target_type === 'item')
+                ->values();
+
+            if ($rewardTargets->isEmpty()) {
+                continue;
+            }
+
+            // Must have trigger rows — otherwise this is a legacy free_item (cheapest in cart)
+            // and the picker is not needed.
+            $hasTriggers = $promo->targets
+                ->where('is_exclusion', false)
+                ->contains(fn (PromotionTarget $t) => $t->isTrigger());
+            if (!$hasTriggers) {
+                continue;
+            }
+
+            $eligibility = $this->eligibilityForPromotion($promo, $order, $customerId, null);
+            // eligibility requires a reward line already in the basket for free_item discount > 0.
+            // For the picker we only need triggers + valid gates (dates, caps), not the discount yet.
+            if (!$promo->isValid()) {
+                continue;
+            }
+            if ($promo->max_uses && self::campaignUsageIncludingPending($promo, null) >= (int) $promo->max_uses) {
+                continue;
+            }
+            $registeredCheck = $this->registeredOnlyGate($promo, $customerId);
+            if ($registeredCheck !== null) {
+                continue;
+            }
+            $firstOrderCheck = $this->firstOrderGate($promo, $customerId, null);
+            if ($firstOrderCheck !== null) {
+                continue;
+            }
+
+            $itemIds = $rewardTargets->pluck('target_id')->all();
+            $items = Item::query()
+                ->whereIn('id', $itemIds)
+                ->where('is_active', true)
+                ->get(['id', 'name', 'base_price', 'image_url', 'is_available']);
+
+            $rewardItems = $items->map(fn (Item $item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'base_price' => (float) $item->base_price,
+                'image_url' => $item->image_url,
+                'is_available' => (bool) $item->is_available,
+            ])->values()->all();
+
+            if ($rewardItems === []) {
+                continue;
+            }
+
+            $out[] = [
+                'promotion_id' => $promo->id,
+                'promotion_name' => $promo->name,
+                'message' => "You've earned a free drink — choose one.",
+                'reward_items' => $rewardItems,
+            ];
+
+            // Silence unused variable in case eligibility is useful for future gates.
+            unset($eligibility);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Validate client-submitted reward claims. Returns null if ok, or an error message.
+     *
+     * @param  list<array{promotion_id: int, item_id: int}>  $claims
+     * @param  array<int, array{item_id: int, quantity?: numeric, unit_price?: numeric, total_price?: numeric}>  $lines
+     */
+    public function validateRewardClaims(array $claims, array $lines, ?int $customerId = null): ?string
+    {
+        if ($claims === []) {
+            return null;
+        }
+
+        $earned = $this->earnedRewardChoices($lines, $customerId);
+        $earnedMap = [];
+        foreach ($earned as $offer) {
+            $earnedMap[$offer['promotion_id']] = array_column($offer['reward_items'], 'id');
+        }
+
+        foreach ($claims as $claim) {
+            $promoId = (int) ($claim['promotion_id'] ?? 0);
+            $itemId = (int) ($claim['item_id'] ?? 0);
+            if ($promoId < 1 || $itemId < 1) {
+                return 'Invalid reward claim.';
+            }
+            if (!isset($earnedMap[$promoId]) || !in_array($itemId, $earnedMap[$promoId], true)) {
+                return 'This free reward is not available for your basket.';
+            }
+            // Claimed item must actually be in the submitted lines.
+            $inBasket = false;
+            foreach ($lines as $line) {
+                if ((int) ($line['item_id'] ?? 0) === $itemId) {
+                    $inBasket = true;
+                    break;
+                }
+            }
+            if (!$inBasket) {
+                return 'Claimed reward item is not in the order.';
+            }
+        }
+
+        return null;
     }
 
     public function isDeliveryWaiver(Promotion $promo): bool
@@ -628,38 +920,11 @@ class PromotionEvaluator
         };
     }
 
-    /** @return \Illuminate\Support\Collection<int, OrderItem> */
+    /** @return Collection<int, OrderItem> */
     private function qualifyingLines(Promotion $promo, Order $order)
     {
-        $order->loadMissing('items.item');
-        $promo->loadMissing('targets');
-
-        $inclusions = $promo->targets->where('is_exclusion', false);
-        $exclusions = $promo->targets->where('is_exclusion', true);
-        $excludedItemIds = $exclusions->where('target_type', 'item')->pluck('target_id')->all();
-        $excludedCategoryIds = $exclusions->where('target_type', 'category')->pluck('target_id')->all();
-        $includedItemIds = $inclusions->where('target_type', 'item')->pluck('target_id')->all();
-        $includedCategoryIds = $inclusions->where('target_type', 'category')->pluck('target_id')->all();
-
-        return $order->items->filter(function (OrderItem $orderItem) use (
-            $excludedItemIds,
-            $excludedCategoryIds,
-            $includedItemIds,
-            $includedCategoryIds,
-            $inclusions,
-        ) {
-            $itemId = $orderItem->item_id;
-            $categoryId = $orderItem->item?->category_id ?? null;
-            if (in_array($itemId, $excludedItemIds, true) || in_array($categoryId, $excludedCategoryIds, true)) {
-                return false;
-            }
-            if ($inclusions->isNotEmpty()) {
-                return in_array($itemId, $includedItemIds, true)
-                    || in_array($categoryId, $includedCategoryIds, true);
-            }
-
-            return true;
-        })->values();
+        // Reward side only — null role counts as reward (legacy).
+        return $this->filterLines($promo, $order, PromotionTarget::ROLE_REWARD);
     }
 
     /**
@@ -714,40 +979,24 @@ class PromotionEvaluator
 
     /**
      * Calculate the subtotal amount that the promotion can be applied to,
-     * taking into account inclusions and exclusions.
+     * taking into account reward inclusions/exclusions (and trigger consumption).
      */
     private function applicableSubtotal(Promotion $promo, Order $order): int
     {
-        if ($promo->scope === 'order') {
+        $promo->loadMissing('targets');
+        $rewardInclusions = $promo->targets
+            ->where('is_exclusion', false)
+            ->filter(fn (PromotionTarget $t) => $t->isReward());
+
+        if ($promo->scope === 'order' && $rewardInclusions->isEmpty() && $promo->targets->where('is_exclusion', false)->filter(fn (PromotionTarget $t) => $t->isTrigger())->isEmpty()) {
+            // Legacy whole-order: no targets at all.
             if ($promo->targets->isEmpty()) {
                 return (int) ($order->subtotal_laar ?? LaariConverter::toLaar($order->subtotal));
             }
         }
 
-        $inclusions = $promo->targets->where('is_exclusion', false);
-        $exclusions = $promo->targets->where('is_exclusion', true);
-
-        $excludedItemIds = $exclusions->where('target_type', 'item')->pluck('target_id')->toArray();
-        $excludedCategoryIds = $exclusions->where('target_type', 'category')->pluck('target_id')->toArray();
-
-        $includedItemIds = $inclusions->where('target_type', 'item')->pluck('target_id')->toArray();
-        $includedCategoryIds = $inclusions->where('target_type', 'category')->pluck('target_id')->toArray();
-
         $total = 0;
-        foreach ($order->items as $orderItem) {
-            $itemId = $orderItem->item_id;
-            $categoryId = $orderItem->item?->category_id ?? null;
-
-            if (in_array($itemId, $excludedItemIds) || in_array($categoryId, $excludedCategoryIds)) {
-                continue;
-            }
-
-            if (!empty($includedItemIds) || !empty($includedCategoryIds)) {
-                if (!in_array($itemId, $includedItemIds) && !in_array($categoryId, $includedCategoryIds)) {
-                    continue;
-                }
-            }
-
+        foreach ($this->qualifyingLines($promo, $order) as $orderItem) {
             $total += LaariConverter::toLaar($orderItem->total_price);
         }
 
@@ -756,18 +1005,20 @@ class PromotionEvaluator
 
     private function freeItemDiscount(Promotion $promo, Order $order): int
     {
-        // Free item = cheapest qualifying item's price
-        $targets = $promo->targets->where('is_exclusion', false)->where('target_type', 'item');
-        if ($targets->isEmpty()) {
-            return 0;
-        }
+        // Free item = cheapest REWARD item already in the basket (not a trigger line).
+        $rewardLines = $this->qualifyingLines($promo, $order)
+            ->filter(function (OrderItem $line) use ($promo) {
+                $rewardItemIds = $promo->targets
+                    ->where('is_exclusion', false)
+                    ->filter(fn (PromotionTarget $t) => $t->isReward() && $t->target_type === 'item')
+                    ->pluck('target_id')
+                    ->all();
 
-        $targetItemIds = $targets->pluck('target_id')->toArray();
-        $cheapestItem = $order->items
-            ->filter(fn ($i) => in_array($i->item_id, $targetItemIds))
-            ->sortBy('unit_price')
-            ->first();
+                return $rewardItemIds === [] || in_array((int) $line->item_id, array_map('intval', $rewardItemIds), true);
+            })
+            ->sortBy('unit_price');
 
+        $cheapestItem = $rewardLines->first();
         if (!$cheapestItem) {
             return 0;
         }

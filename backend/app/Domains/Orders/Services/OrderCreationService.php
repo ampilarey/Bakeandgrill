@@ -88,6 +88,40 @@ class OrderCreationService
             $this->assertOnlineOrderThrottleNotExceeded();
         }
 
+        // Reward claims are decided by the server. A client that submits a free
+        // reward the basket did not earn is rejected here — single enforcement
+        // point for POS and online (both create via this service).
+        $rewardClaims = $payload['reward_claims'] ?? [];
+        if (is_array($rewardClaims) && $rewardClaims !== []) {
+            $lines = [];
+            foreach ($payload['items'] ?? [] as $row) {
+                $lines[] = [
+                    'item_id' => (int) ($row['item_id'] ?? 0),
+                    'quantity' => (int) ($row['quantity'] ?? 1),
+                    'unit_price' => 0,
+                ];
+            }
+            // unit_price 0 is fine for entitlement checks (triggers look at item ids/qty).
+            // For earnedRewardChoices we still need catalog prices on ephemeral lines —
+            // fill from items table.
+            $itemIds = array_values(array_unique(array_column($lines, 'item_id')));
+            $prices = Item::query()->whereIn('id', $itemIds)->pluck('base_price', 'id');
+            foreach ($lines as &$line) {
+                $line['unit_price'] = (float) ($prices[$line['item_id']] ?? 0);
+                $line['total_price'] = $line['unit_price'] * $line['quantity'];
+            }
+            unset($line);
+
+            $claimError = $this->promotionEvaluator->validateRewardClaims(
+                $rewardClaims,
+                $lines,
+                isset($payload['customer_id']) ? (int) $payload['customer_id'] : null,
+            );
+            if ($claimError !== null) {
+                abort(422, $claimError);
+            }
+        }
+
         $initialStatus = $isCustomerOnlineOrder ? 'payment_pending' : 'pending';
 
         $printKitchen = $isCustomerOnlineOrder

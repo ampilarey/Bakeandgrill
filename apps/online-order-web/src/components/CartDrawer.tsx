@@ -11,6 +11,7 @@ import { estimateEarnPointsForSubtotalMvr } from '../utils/loyalty';
 import { formatCardPrice, formatSavingsLabel } from '../utils/money';
 import { cartCheckoutCta } from '../utils/collectOn';
 import { ItemSheet } from './ItemSheet';
+import { CartRewardPrompt } from './CartRewardPrompt';
 
 const DEFAULT_FREE_DELIVERY_MVR = 200;
 
@@ -224,6 +225,7 @@ export function CartDrawer({
                 Ordering for a future event? Use Event ordering for quotes, deposits and scheduling →
               </a>
             )}
+            <CartRewardPrompt />
             {cart.map((entry, index) => (
               <div
                 key={`${entry.item.id}-${index}`}
