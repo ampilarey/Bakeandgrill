@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
   isItemAvailableNow,
   isItemOrderableForDay,
+  isTomorrowFullyBooked,
   itemAvailableStock,
   itemLowStockLabel,
+  itemTomorrowLowLabel,
   itemUnavailableLabel,
 } from './itemAvailability';
 
 const t = (k: string) => {
   const map: Record<string, string> = {
     'menu.out_of_stock': 'Sold out',
+    'menu.sold_out_tomorrow': 'Sold out for tomorrow',
     'menu.unavailable_today': 'Unavailable today',
     'menu.opens_at': 'Opens at {time}',
     'menu.channel_unavailable': 'Not available for pickup / delivery',
@@ -36,12 +39,28 @@ describe('isItemOrderableForDay', () => {
     expect(isItemOrderableForDay({ available_now: true, allow_pre_order: false }, 'today')).toBe(true);
   });
 
-  it('tomorrow ignores today stock — allow_pre_order is the only gate', () => {
+  it('tomorrow ignores today stock — allow_pre_order gates eligibility', () => {
     // Sold out today but made fresh for tomorrow.
     expect(isItemOrderableForDay({ available_now: false, allow_pre_order: true }, 'tomorrow')).toBe(true);
     // Available now but the owner has not ticked pre-order.
     expect(isItemOrderableForDay({ available_now: true, allow_pre_order: false }, 'tomorrow')).toBe(false);
     expect(isItemOrderableForDay({ available_now: true }, 'tomorrow')).toBe(false);
+  });
+
+  it('tomorrow daily make-limit: remaining 0 is not orderable; null is unlimited', () => {
+    expect(isItemOrderableForDay({
+      allow_pre_order: true,
+      tomorrow_remaining: 0,
+    }, 'tomorrow')).toBe(false);
+    expect(isItemOrderableForDay({
+      allow_pre_order: true,
+      tomorrow_remaining: 2,
+    }, 'tomorrow')).toBe(true);
+    expect(isItemOrderableForDay({
+      allow_pre_order: true,
+      tomorrow_remaining: null,
+    }, 'tomorrow')).toBe(true);
+    expect(isTomorrowFullyBooked({ allow_pre_order: true, tomorrow_remaining: 0 })).toBe(true);
   });
 });
 
@@ -101,5 +120,14 @@ describe('itemLowStockLabel', () => {
       is_low_stock: false,
       availability: { available: true, available_stock: 2 },
     }, t)).toBeNull();
+  });
+});
+
+describe('itemTomorrowLowLabel', () => {
+  it('shows Only N left when remaining is low but not full', () => {
+    expect(itemTomorrowLowLabel({ allow_pre_order: true, tomorrow_remaining: 2 }, t)).toBe('Only 2 left');
+    expect(itemTomorrowLowLabel({ allow_pre_order: true, tomorrow_remaining: 5 }, t)).toBe('Few left');
+    expect(itemTomorrowLowLabel({ allow_pre_order: true, tomorrow_remaining: 0 }, t)).toBeNull();
+    expect(itemTomorrowLowLabel({ allow_pre_order: true, tomorrow_remaining: null }, t)).toBeNull();
   });
 });

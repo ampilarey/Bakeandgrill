@@ -12,6 +12,7 @@ import { useLanguage } from '../context/LanguageContext';
 import {
   isItemOrderableForDay,
   itemLowStockLabel,
+  itemTomorrowLowLabel,
   itemUnavailableLabel,
 } from '../utils/itemAvailability';
 import { buildItemSlides } from '../utils/itemMedia';
@@ -62,11 +63,16 @@ export function ItemSheet({
   const { settings: siteSettings } = useSiteSettingsContext();
   const itemAvailable = isItemOrderableForDay(item, orderDay);
   const blockedForTomorrow = orderDay === 'tomorrow' && !item.allow_pre_order;
+  const fullForTomorrow = orderDay === 'tomorrow' && item.allow_pre_order && item.tomorrow_remaining === 0;
   const unavailLabel = !itemAvailable
-    ? (blockedForTomorrow ? t('cart.blocks_tomorrow') : itemUnavailableLabel(item, t))
+    ? (blockedForTomorrow
+      ? t('cart.blocks_tomorrow')
+      : (fullForTomorrow ? t('menu.sold_out_tomorrow') : itemUnavailableLabel(item, t)))
     : null;
-  // Today's stock counts don't apply to tomorrow's fresh batch.
-  const lowStockLabel = itemAvailable && orderDay === 'today' ? itemLowStockLabel(item, t) : null;
+  // Today: stock badge. Tomorrow: remaining of the daily make-limit.
+  const lowStockLabel = itemAvailable
+    ? (orderDay === 'today' ? itemLowStockLabel(item, t) : itemTomorrowLowLabel(item, t))
+    : null;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
   const packagingOptions = (item.packaging_options ?? [])
     .slice()

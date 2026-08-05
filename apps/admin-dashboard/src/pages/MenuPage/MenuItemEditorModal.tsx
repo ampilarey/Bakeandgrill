@@ -892,12 +892,30 @@ export function MenuItemEditorModal({
                 <input
                   type="checkbox"
                   checked={form.allow_pre_order}
-                  onChange={(e) => set('allow_pre_order', e.target.checked)}
+                  onChange={(e) => {
+                    set('allow_pre_order', e.target.checked);
+                    if (!e.target.checked) set('tomorrow_daily_capacity', '');
+                  }}
                   data-testid="allow-pre-order-toggle"
                 />
                 Can be ordered for tomorrow
               </label>
             </div>
+            {form.allow_pre_order && (
+              <div style={{ marginTop: 12, maxWidth: 280 }} data-testid="tomorrow-daily-capacity-field">
+                <Field label="Most you can make in a day">
+                  <Input
+                    value={form.tomorrow_daily_capacity}
+                    onChange={(v) => set('tomorrow_daily_capacity', v.replace(/[^\d]/g, ''))}
+                    placeholder="No limit"
+                    data-testid="tomorrow-daily-capacity-input"
+                  />
+                </Field>
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Leave blank for no limit. Counts every tomorrow order for this item across all customers.
+                </p>
+              </div>
+            )}
             {itemId != null && onSnooze && (
               <ItemSnoozeControls
                 ref={snoozeRef}

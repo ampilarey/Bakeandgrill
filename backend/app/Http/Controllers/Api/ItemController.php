@@ -15,8 +15,10 @@ use App\Models\ItemChannelAvailability;
 use App\Services\AvailabilityResult;
 use App\Services\EffectivePriceService;
 use App\Services\ItemAvailabilityService;
+use App\Services\OrderFulfilDateService;
 use App\Services\RecipeCostCalculator;
 use App\Services\SpecialPricingService;
+use App\Services\TomorrowDailyCapacityService;
 use App\Services\VariantSyncService;
 use App\Support\MediaFileCleaner;
 use Carbon\Carbon;
@@ -124,8 +126,16 @@ class ItemController extends Controller
                 : 100); // public menu always gets all items
         $items = $query->orderBy('sort_order')->orderBy('name')->paginate($perPage);
 
+        // Remaining count for collect-tomorrow (never expose the configured capacity).
+        $tomorrowRemainingMap = [];
+        if (!$isAdmin || $isPosView) {
+            $tomorrowDate = app(OrderFulfilDateService::class)->allowedTomorrowDateString();
+            $tomorrowRemainingMap = app(TomorrowDailyCapacityService::class)
+                ->remainingMap($items->getCollection(), $tomorrowDate);
+        }
+
         // Admin gets full data; public / POS get stripped response + availability metadata
-        $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing, $effectivePricing) {
+        $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
             $recipeCosts = $includeAdminExtras ? app(RecipeCostCalculator::class) : null;
@@ -158,6 +168,10 @@ class ItemController extends Controller
                 'unavailable_reason_note' => $item->unavailable_reason_note,
                 // Order-for-tomorrow: revive existing column for admin edit + checkout UI.
                 'allow_pre_order' => (bool) $item->allow_pre_order,
+                // Admin-only kitchen cap. Public list gets tomorrow_remaining instead.
+                'tomorrow_daily_capacity' => $includeAdminExtras
+                    ? ($item->tomorrow_daily_capacity !== null ? (int) $item->tomorrow_daily_capacity : null)
+                    : null,
                 'is_active' => $item->is_active,
                 'sort_order' => $item->sort_order,
                 // Signage board flags — default safely when the columns predate the migration.
@@ -316,6 +330,11 @@ class ItemController extends Controller
                         $item,
                     );
                 }
+                // Public: remaining only. Never leak tomorrow_daily_capacity.
+                unset($data['tomorrow_daily_capacity']);
+                $data['tomorrow_remaining'] = array_key_exists($item->id, $tomorrowRemainingMap)
+                    ? $tomorrowRemainingMap[$item->id]
+                    : null;
             }
 
             if ($includeAdminExtras) {
@@ -499,12 +518,21 @@ class ItemController extends Controller
             ),
         ];
 
-        if (!$isAdmin) {
+        if ($isAdmin) {
+            $payload['tomorrow_daily_capacity'] = $item->tomorrow_daily_capacity !== null
+                ? (int) $item->tomorrow_daily_capacity
+                : null;
+        } else {
             $payload = $availability->withPublicAliases(
                 $payload,
                 $availability->check($item, $channel),
                 $item,
             );
+            unset($payload['tomorrow_daily_capacity']);
+            $tomorrowDate = app(OrderFulfilDateService::class)->allowedTomorrowDateString();
+            $remainingMap = app(TomorrowDailyCapacityService::class)
+                ->remainingMap([$item], $tomorrowDate);
+            $payload['tomorrow_remaining'] = $remainingMap[$item->id] ?? null;
         }
 
         return response()->json(['item' => $payload]);

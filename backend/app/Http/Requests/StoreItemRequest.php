@@ -75,6 +75,8 @@ class StoreItemRequest extends FormRequest
             'availability_type' => 'sometimes|string|in:always,stock_based,made_to_order,pre_order_only',
             // Order-for-tomorrow: revive existing items.allow_pre_order column.
             'allow_pre_order' => 'sometimes|boolean',
+            // Per-day max for collect-tomorrow. Null/omitted = unlimited.
+            'tomorrow_daily_capacity' => 'sometimes|nullable|integer|min:1',
             'sort_order' => 'nullable|integer',
             'modifier_ids' => 'sometimes|array',
             'modifier_ids.*' => 'integer|exists:modifiers,id',

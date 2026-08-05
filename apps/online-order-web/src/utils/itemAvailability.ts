@@ -9,15 +9,27 @@ export function isItemAvailableNow(item: Pick<MenuItem, 'available_now' | 'is_av
 /**
  * Orderability for the app-wide day choice. Tomorrow orders are made fresh,
  * so today's stock / 86 / ordering-window state does not apply — the owner's
- * allow_pre_order flag is the only gate (mirrors the backend, which skips the
- * stock check and reservation whenever fulfil_date is set).
+ * allow_pre_order flag gates eligibility, and tomorrow_remaining (when set)
+ * gates the daily kitchen make-limit.
  */
 export function isItemOrderableForDay(
-  item: Pick<MenuItem, 'available_now' | 'is_available' | 'allow_pre_order'>,
+  item: Pick<MenuItem, 'available_now' | 'is_available' | 'allow_pre_order' | 'tomorrow_remaining'>,
   day: 'today' | 'tomorrow',
 ): boolean {
-  if (day === 'tomorrow') return Boolean(item.allow_pre_order);
+  if (day === 'tomorrow') {
+    if (!item.allow_pre_order) return false;
+    // Explicit 0 = fully booked for tomorrow. null/undefined = unlimited.
+    if (item.tomorrow_remaining === 0) return false;
+    return true;
+  }
   return isItemAvailableNow(item);
+}
+
+/** True when the item is allowed for tomorrow but the daily make-limit is full. */
+export function isTomorrowFullyBooked(
+  item: Pick<MenuItem, 'allow_pre_order' | 'tomorrow_remaining'>,
+): boolean {
+  return Boolean(item.allow_pre_order) && item.tomorrow_remaining === 0;
 }
 
 function formatAvailableFrom(iso: string | null | undefined): string | null {
@@ -99,4 +111,21 @@ export function itemLowStockLabel(
   if (stock == null || stock <= 0) return null;
   if (stock <= 3) return t('menu.only_n_left').replace('{n}', String(stock));
   return t('menu.few_left');
+}
+
+/**
+ * Low-but-not-full remaining for collect-tomorrow. Reuses the same "Only N left"
+ * / "Few left" copy as today's stock badge — never shows the configured max.
+ */
+export function itemTomorrowLowLabel(
+  item: Pick<MenuItem, 'allow_pre_order' | 'tomorrow_remaining'>,
+  t: TranslateFn,
+): string | null {
+  if (!item.allow_pre_order) return null;
+  const remaining = item.tomorrow_remaining;
+  if (remaining == null || remaining <= 0) return null;
+  if (remaining <= 3) return t('menu.only_n_left').replace('{n}', String(remaining));
+  // Cap is set but not critically low — still tip the customer when ≤5.
+  if (remaining <= 5) return t('menu.few_left');
+  return null;
 }

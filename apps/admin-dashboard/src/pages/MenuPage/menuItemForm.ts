@@ -47,6 +47,8 @@ export type ItemForm = {
   low_stock_threshold: string;
   /** Customers may order this item for tomorrow collection. */
   allow_pre_order: boolean;
+  /** Max the kitchen can make for one tomorrow date. Empty = no limit. */
+  tomorrow_daily_capacity: string;
   variants: VariantRow[];
   dietary_tags: string;
   allergens: string;
@@ -127,6 +129,9 @@ export function itemToForm(item: MenuItem): ItemForm {
     stock_quantity: item.stock_quantity != null ? String(item.stock_quantity) : '0',
     low_stock_threshold: item.low_stock_threshold != null ? String(item.low_stock_threshold) : '5',
     allow_pre_order: item.allow_pre_order ?? false,
+    tomorrow_daily_capacity: item.tomorrow_daily_capacity != null
+      ? String(item.tomorrow_daily_capacity)
+      : '',
     variants: (item.variants ?? []).map((v) => ({ ...v, _key: String(v.id ?? Math.random()) })),
     dietary_tags: (item.dietary_tags ?? []).join(', '),
     allergens: (item.allergens ?? []).join(', '),
@@ -227,6 +232,15 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     : null;
   payload.spice_level = form.spice_level === 'none' ? null : form.spice_level;
   payload.allow_pre_order = form.allow_pre_order;
+  if (form.allow_pre_order) {
+    const raw = form.tomorrow_daily_capacity.trim();
+    payload.tomorrow_daily_capacity = raw !== ''
+      ? Math.max(1, parseInt(raw, 10) || 1)
+      : null;
+  } else {
+    // Unticked: clear any leftover limit so it cannot apply by accident.
+    payload.tomorrow_daily_capacity = null;
+  }
   return payload;
 }
 
@@ -249,6 +263,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     show_on_signage: true, is_signage_promoted: false,
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
     allow_pre_order: false,
+    tomorrow_daily_capacity: '',
     dietary_tags: '', allergens: '',
     prep_time_minutes: '', calories: '', spice_level: 'none',
   };

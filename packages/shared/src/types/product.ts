@@ -126,6 +126,11 @@ export type MenuItem = {
   created_at?: string | null;
   /** Owner-ticked: item can be ordered for tomorrow collection. */
   allow_pre_order?: boolean;
+  /**
+   * Units still available for collect-tomorrow on the allowed tomorrow date.
+   * Null/undefined = no daily limit. Never exposes the configured max itself.
+   */
+  tomorrow_remaining?: number | null;
 };
 
 export type ComboItemEntry = {

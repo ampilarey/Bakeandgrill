@@ -9,6 +9,7 @@ vi.mock('../../context/LanguageContext', () => ({
     t: (key: string) => {
       const map: Record<string, string> = {
         'menu.out_of_stock': 'Sold out',
+        'menu.sold_out_tomorrow': 'Sold out for tomorrow',
         'menu.unavailable_today': 'Unavailable today',
         'menu.unavailable': 'Unavailable',
         'menu.only_n_left': 'Only {n} left',
@@ -122,6 +123,40 @@ describe('ProductCard availability', () => {
       />,
     );
     expect(screen.getByTestId('product-card-unavail')).toHaveTextContent('Unavailable · Back Thursday');
+  });
+
+  it('tomorrow mode: fully booked item shows sold-out-for-tomorrow badge', () => {
+    render(
+      <ProductCard
+        item={item({
+          available_now: true,
+          allow_pre_order: true,
+          tomorrow_remaining: 0,
+        })}
+        orderDay="tomorrow"
+        onSelectItem={() => {}}
+        onAddToCart={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('product-card')).toHaveClass('unavailable');
+    expect(screen.getByTestId('product-card-unavail')).toHaveTextContent('Sold out for tomorrow');
+  });
+
+  it('tomorrow mode: low remaining reuses the low-stock badge', () => {
+    render(
+      <ProductCard
+        item={item({
+          available_now: true,
+          allow_pre_order: true,
+          tomorrow_remaining: 2,
+        })}
+        orderDay="tomorrow"
+        onSelectItem={() => {}}
+        onAddToCart={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId('product-card-unavail')).toBeNull();
+    expect(screen.getByTestId('product-card-low-stock')).toHaveTextContent('Only 2 left');
   });
 
   it('shows Only N left / Few left from is_low_stock, never for 9999 stock', () => {

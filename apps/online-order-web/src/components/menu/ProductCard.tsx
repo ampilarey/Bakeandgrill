@@ -11,6 +11,7 @@ import { buildItemSlides } from '../../utils/itemMedia';
 import {
   isItemOrderableForDay,
   itemLowStockLabel,
+  itemTomorrowLowLabel,
   itemUnavailableLabel,
 } from '../../utils/itemAvailability';
 import { formatCardPrice } from '../../utils/money';
@@ -95,11 +96,18 @@ export function ProductCard({
 
   const isUnavailable = !isItemOrderableForDay(item, orderDay);
   const blockedForTomorrow = orderDay === 'tomorrow' && !item.allow_pre_order;
-  // Tomorrow-blocked cards dim without a badge — the reason shows in the
-  // item sheet when tapped. Other reasons (sold out, snoozed) keep the badge.
-  const unavailLabel = isUnavailable && !blockedForTomorrow ? itemUnavailableLabel(item, t) : null;
-  // Today's stock counts don't apply to tomorrow's fresh batch.
-  const lowStockLabel = !isUnavailable && orderDay === 'today' ? itemLowStockLabel(item, t) : null;
+  const fullForTomorrow = orderDay === 'tomorrow' && item.allow_pre_order && item.tomorrow_remaining === 0;
+  // Tomorrow-blocked (not ticked) cards dim without a badge — the reason shows
+  // in the item sheet. Fully booked for tomorrow uses the sold-out badge.
+  const unavailLabel = isUnavailable && !blockedForTomorrow
+    ? (fullForTomorrow ? t('menu.sold_out_tomorrow') : itemUnavailableLabel(item, t))
+    : null;
+  // Today: stock badge. Tomorrow: remaining of the daily make-limit (same badge).
+  const lowStockLabel = !isUnavailable
+    ? (orderDay === 'today'
+      ? itemLowStockLabel(item, t)
+      : itemTomorrowLowLabel(item, t))
+    : null;
   const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
   const special = item.special;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);

@@ -91,6 +91,8 @@ export type MenuItem = {
   availability_type?: 'always' | 'stock_based' | 'made_to_order' | 'pre_order_only' | null;
   /** When true, customers may order this item for tomorrow collection. */
   allow_pre_order?: boolean;
+  /** Max units kitchen can make for one tomorrow collection date. Null = no limit. */
+  tomorrow_daily_capacity?: number | null;
   category_id?: number | null;
   menu_group_id?: number | null;
   prep_time_minutes?: number | null;
@@ -154,6 +156,7 @@ export type MenuItemPayload = {
   low_stock_threshold?: number | null;
   availability_type?: 'always' | 'stock_based' | 'made_to_order' | 'pre_order_only';
   allow_pre_order?: boolean;
+  tomorrow_daily_capacity?: number | null;
   channel_availability?: Array<{
     channel: string;
     is_enabled: boolean;

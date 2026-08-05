@@ -62,7 +62,8 @@
                     "price_note": null,
                     "show_on_signage": true,
                     "is_signage_promoted": false,
-                    "unavailable_reason_note": null
+                    "unavailable_reason_note": null,
+                    "tomorrow_daily_capacity": null
                 }
             ]
         }

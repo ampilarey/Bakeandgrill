@@ -21,6 +21,7 @@ use App\Models\Shift;
 use App\Services\PrintJobService;
 use App\Services\StockManagementService;
 use App\Services\StockReservationService;
+use App\Services\TomorrowDailyCapacityService;
 use App\Support\DeferAfterResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -515,6 +516,10 @@ class OrderCreationService
             $deferStockForTomorrow,
         );
 
+        // Qty of each item already accepted earlier in this same payload (same
+        // item on two lines must share one daily capacity bucket).
+        $tomorrowQueuedByItem = [];
+
         foreach ($items as $itemPayload) {
             $itemId = $itemPayload['item_id'];
             $itemModel = $itemMap->get($itemId);
@@ -528,6 +533,22 @@ class OrderCreationService
             $quantity = (float) $itemPayload['quantity'];
             if ($quantity <= 0) {
                 abort(422, "Quantity must be greater than zero for item {$itemId}.");
+            }
+
+            // Collect-tomorrow daily kitchen cap (per item, per fulfil_date).
+            // Stock for today is still skipped below — this is a separate limit.
+            if ($deferStockForTomorrow && $order->fulfil_date !== null) {
+                $fulfilDate = $order->fulfil_date instanceof \Carbon\CarbonInterface
+                    ? $order->fulfil_date->toDateString()
+                    : (string) $order->fulfil_date;
+                $itemModel = app(TomorrowDailyCapacityService::class)->assertCanAllocate(
+                    $itemModel,
+                    $fulfilDate,
+                    $quantity,
+                    $order->id,
+                    (float) ($tomorrowQueuedByItem[$itemModel->id] ?? 0),
+                );
+                $tomorrowQueuedByItem[$itemModel->id] = (float) ($tomorrowQueuedByItem[$itemModel->id] ?? 0) + $quantity;
             }
 
             // ── Variant resolution ────────────────────────────────────────────

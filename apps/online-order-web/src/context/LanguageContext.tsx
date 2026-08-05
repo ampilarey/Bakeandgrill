@@ -107,6 +107,7 @@ const TRANSLATIONS: Translations = {
   "menu.open_search": "Search",
   "menu.unavailable": "Unavailable",
   "menu.out_of_stock": "Sold out",
+  "menu.sold_out_tomorrow": "Sold out for tomorrow",
   "menu.unavailable_today": "Unavailable today",
   "menu.opens_at": "Opens at {time}",
   "menu.channel_unavailable": "Not available for pickup / delivery",
