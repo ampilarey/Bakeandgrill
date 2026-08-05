@@ -14,6 +14,8 @@
             "updated_at": "__VOLATILE__",
             "image_original_url": null,
             "thumb_url": null,
+            "image_webp_url": null,
+            "thumb_webp_url": null,
             "items": [
                 {
                     "id": "__VOLATILE__",
@@ -63,7 +65,9 @@
                     "show_on_signage": true,
                     "is_signage_promoted": false,
                     "unavailable_reason_note": null,
-                    "tomorrow_daily_capacity": null
+                    "tomorrow_daily_capacity": null,
+                    "image_webp_url": null,
+                    "thumb_webp_url": null
                 }
             ]
         }
