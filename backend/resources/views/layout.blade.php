@@ -521,7 +521,25 @@
             letter-spacing: -0.02em;
         }
         .mob-logo img { width: 32px; height: 32px; border-radius: 7px; }
-        .mob-hdr-btns { display: flex; align-items: center; gap: 0.5rem; }
+        .mob-hdr-btns { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+        /* Logged-in chip: phone digits only (matches order app). Cap width if name is fallback. */
+        .mob-hdr-account {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            max-width: min(11rem, 42vw);
+            padding: 0.3rem 0.65rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .mob-order-btn {
             padding: 0.45rem 0.875rem;
             min-height: 44px;
@@ -1273,8 +1291,9 @@
             @auth('customer')
                 @php
                     $cust = Auth::guard('customer')->user();
+                    // Compact header chip: always phone (matches order app). Name lives on Account.
                     $dispPhoneDesk = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
-                    $greetDesk = !empty($cust->name) ? $cust->name : $dispPhoneDesk;
+                    $greetDesk = $dispPhoneDesk !== '' ? $dispPhoneDesk : ($cust->name ?? 'Account');
                 @endphp
                 <a href="/order/account" class="hdr-account" title="{{ $greetDesk }}">Account</a>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
@@ -1341,10 +1360,12 @@
             @auth('customer')
                 @php
                     $cust = Auth::guard('customer')->user();
+                    // Compact header chip: always phone (matches order app). Do NOT prefer name —
+                    // long Dhivehi/English names overflow this pill. Full name is on Account.
                     $dispPhone = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
-                    $greetMob = !empty($cust->name) ? $cust->name : $dispPhone;
+                    $greetMob = $dispPhone !== '' ? $dispPhone : ($cust->name ?? 'Account');
                 @endphp
-                <a href="/order/account" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.65rem;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-size:0.75rem;font-weight:600;color:var(--muted);text-decoration:none;white-space:nowrap;">
+                <a href="/order/account" class="mob-hdr-account" title="{{ $greetMob }}">
                     👤 {{ $greetMob }}
                 </a>
             @else
