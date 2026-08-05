@@ -89,8 +89,9 @@ describe('ProductCard availability', () => {
         onAddToCart={() => {}}
       />,
     );
-    // Available today but not ticked for tomorrow — dimmed yet clickable.
-    expect(screen.getByTestId('product-card-unavail')).toHaveTextContent('cart.blocks_tomorrow');
+    // Available today but not ticked for tomorrow — dimmed (no badge), still clickable.
+    expect(screen.getByTestId('product-card')).toHaveClass('unavailable');
+    expect(screen.queryByTestId('product-card-unavail')).toBeNull();
     await user.click(screen.getByTestId('product-card'));
     expect(onSelectItem).toHaveBeenCalled();
   });

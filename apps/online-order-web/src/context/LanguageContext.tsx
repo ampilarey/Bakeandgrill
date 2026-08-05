@@ -116,7 +116,7 @@ const TRANSLATIONS: Translations = {
   "menu.banner_closed_fallback": "Online ordering is currently closed.",
   "menu.banner_opens_short": "Opens {time}",
   "menu.banner_tomorrow_short": "Some items can be ordered for tomorrow",
-  "menu.tomorrow_note": "Ordering for tomorrow, {date} — dimmed items aren't available for tomorrow",
+  "menu.tomorrow_note": "Ordering for tomorrow, {date}",
   "menu.pruned_tomorrow_one": "1 item removed — not available for tomorrow",
   "menu.pruned_tomorrow_many": "{n} items removed — not available for tomorrow",
   "menu.pruned_today_one": "1 item removed — not available today",

@@ -398,6 +398,9 @@ export function MenuPage() {
     pruneCartToAllowedItemIds(new Set(allowed.map((i) => i.id)));
     setDay(target);
     setDaySwitchConfirm(null);
+    if (target === 'tomorrow') {
+      showToast(t('menu.tomorrow_note').replace('{date}', formatTomorrowDateLabel(collectTomorrowDate)));
+    }
     if (!modeConfirmed) setModeSheetOpen(true);
   };
 
@@ -817,7 +820,10 @@ export function MenuPage() {
                 setDaySwitchConfirm({ target: next, count });
                 return false;
               }}
-              onDaySelect={() => {
+              onDaySelect={(next) => {
+                if (next === 'tomorrow') {
+                  showToast(t('menu.tomorrow_note').replace('{date}', formatTomorrowDateLabel(collectTomorrowDate)));
+                }
                 // Day picked — ask "how" right away unless already chosen.
                 if (!modeConfirmed) setModeSheetOpen(true);
               }}
@@ -924,25 +930,6 @@ export function MenuPage() {
             </div>
           )}
         </div>
-
-        {day === 'tomorrow' && !loading && (
-          <div
-            role="status"
-            data-testid="tomorrow-menu-note"
-            style={{
-              marginTop: '0.6rem',
-              padding: '7px 12px',
-              borderRadius: 10,
-              background: 'var(--color-primary-light, #FFF7ED)',
-              border: '1px solid var(--color-border)',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: 'var(--color-primary)',
-            }}
-          >
-            {t('menu.tomorrow_note').replace('{date}', formatTomorrowDateLabel(collectTomorrowDate))}
-          </div>
-        )}
 
         {deliveryFallback && (
           <div

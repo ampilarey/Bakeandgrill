@@ -95,9 +95,9 @@ export function ProductCard({
 
   const isUnavailable = !isItemOrderableForDay(item, orderDay);
   const blockedForTomorrow = orderDay === 'tomorrow' && !item.allow_pre_order;
-  const unavailLabel = isUnavailable
-    ? (blockedForTomorrow ? t('cart.blocks_tomorrow') : itemUnavailableLabel(item, t))
-    : null;
+  // Tomorrow-blocked cards dim without a badge — the reason shows in the
+  // item sheet when tapped. Other reasons (sold out, snoozed) keep the badge.
+  const unavailLabel = isUnavailable && !blockedForTomorrow ? itemUnavailableLabel(item, t) : null;
   // Today's stock counts don't apply to tomorrow's fresh batch.
   const lowStockLabel = !isUnavailable && orderDay === 'today' ? itemLowStockLabel(item, t) : null;
   const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
@@ -182,7 +182,7 @@ export function ProductCard({
             className="menu-card-media-circle__slider"
           />
         </div>
-        {isUnavailable && (
+        {unavailLabel && (
           <div className="menu-card-unavail-overlay">
             <span className="badge badge-unavail" data-testid="product-card-unavail">
               {unavailLabel}
