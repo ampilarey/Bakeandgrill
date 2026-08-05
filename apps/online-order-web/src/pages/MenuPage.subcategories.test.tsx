@@ -101,8 +101,8 @@ vi.mock('../context/SiteSettingsContext', () => ({
 
 vi.mock('../context/ServiceStatusContext', () => ({
   useServiceStatusContext: () => ({
-    isAvailable: () => true,
     get: () => null,
+    isAvailable: () => true,
   }),
 }));
 

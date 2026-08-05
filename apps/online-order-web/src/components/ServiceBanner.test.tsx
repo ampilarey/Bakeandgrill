@@ -117,4 +117,23 @@ describe('ServiceBanner', () => {
     expect(await screen.findByTestId('service-banner-online_ordering')).toBeInTheDocument();
     expect(screen.queryByTestId('service-banner-online_delivery')).toBeNull();
   });
+
+  it('never banners a delivery-only outage — shown contextually in the mode sheet instead', async () => {
+    mocked.mockResolvedValue(
+      buildServices({
+        online_delivery: {
+          available: false,
+          status: 'unavailable',
+          public_message: 'Delivery is not available at this time. Please check our delivery hours.',
+        },
+      })
+    );
+    const { container } = render(
+      <ServiceStatusProvider>
+        <ServiceBanner />
+      </ServiceStatusProvider>
+    );
+    await flush();
+    expect(container.querySelector('[data-testid^="service-banner-"]')).toBeNull();
+  });
 });

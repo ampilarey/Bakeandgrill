@@ -131,7 +131,7 @@ export function MenuPage() {
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
   const { openCartSheet } = useShellNav();
-  const { isAvailable: isServiceAvailable } = useServiceStatusContext();
+  const { isAvailable: isServiceAvailable, get: getServiceEntry } = useServiceStatusContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -1089,7 +1089,7 @@ export function MenuPage() {
         open={modeSheetOpen}
         onClose={() => setModeSheetOpen(false)}
         deliveryBlockedToday={deliveryBlocked}
-        deliveryBlockedReason={gateMessage || null}
+        deliveryBlockedReason={getServiceEntry('online_delivery')?.public_message || gateMessage || null}
         pickupBlocked={pickupBlocked}
         tomorrowDate={collectTomorrowDate}
       />

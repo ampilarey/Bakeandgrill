@@ -83,8 +83,8 @@ vi.mock('../context/SiteSettingsContext', () => ({
 
 vi.mock('../context/ServiceStatusContext', () => ({
   useServiceStatusContext: () => ({
-    isAvailable: (key: string) => key !== 'online_pickup',
     get: () => null,
+    isAvailable: (key: string) => key !== 'online_pickup',
   }),
 }));
 
