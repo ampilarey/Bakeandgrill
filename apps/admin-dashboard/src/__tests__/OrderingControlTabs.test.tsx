@@ -16,16 +16,16 @@ describe('OrderingControlTabs', () => {
     renderAt('/online-ordering');
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((t) => t.textContent)).toEqual([
-      'Online', 'Features', 'Slots & fees', 'Pre-order', 'Delivery',
+      'Online', 'Features', 'Slots', 'Pre-order', 'Delivery',
     ]);
   });
 
   it.each([
     ['/online-ordering', 'Online'],
     ['/online-ordering?section=features', 'Features'],
-    ['/online-ordering?section=slots-fees', 'Slots & fees'],
-    ['/online-ordering?section=pickup', 'Slots & fees'],
-    ['/online-ordering?section=fees', 'Slots & fees'],
+    ['/online-ordering?section=slots-fees', 'Slots'],
+    ['/online-ordering?section=pickup', 'Slots'],
+    ['/online-ordering?section=fees', 'Slots'],
     ['/online-ordering?section=events', 'Pre-order'],
     ['/online-ordering?section=gates', 'Online'],
     ['/delivery-settings', 'Delivery'],

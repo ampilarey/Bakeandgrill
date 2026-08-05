@@ -103,9 +103,11 @@ export const S = {
     color: '#065F46',
     border: '1px solid #A7F3D0',
     borderRadius: 20,
-    padding: '4px 14px',
+    padding: '4px 12px',
     fontSize: 13,
     fontWeight: 700,
+    maxWidth: '100%',
+    flexWrap: 'wrap' as const,
   } as CSSProperties,
   statusClosed: {
     display: 'inline-flex',
@@ -115,9 +117,11 @@ export const S = {
     color: 'var(--color-danger-strong)',
     border: '1px solid #FECACA',
     borderRadius: 20,
-    padding: '4px 14px',
+    padding: '4px 12px',
     fontSize: 13,
     fontWeight: 700,
+    maxWidth: '100%',
+    flexWrap: 'wrap' as const,
   } as CSSProperties,
   reasonNote: {
     fontSize: 12,
@@ -440,10 +444,10 @@ export function GateStatusCard({
 }: GateStatusCardProps) {
   return (
     <div className="oc-card" style={S.card} data-testid={testId}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <span style={open ? S.statusOpen : S.statusClosed}>
-            {open ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+            {open ? <CheckCircle2 size={14} style={{ flexShrink: 0 }} /> : <AlertTriangle size={14} style={{ flexShrink: 0 }} />}
             {open ? openText : closedText}
           </span>
           {!open && reason ? (
@@ -561,8 +565,8 @@ export function ScheduleEditor({
                     className="oc-window-row"
                     style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
                   >
-                    <div className="oc-time-field" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <label style={{ fontSize: 12, color: '#9C8575', width: 36, flexShrink: 0 }}>Open</label>
+                    <div className="oc-time-field" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 120px', minWidth: 0 }}>
+                      <label style={{ fontSize: 12, color: '#9C8575' }}>Open</label>
                       <input
                         type="time"
                         value={win.open}
@@ -570,11 +574,11 @@ export function ScheduleEditor({
                           ...day,
                           windows: day.windows.map((w, i) => (i === idx ? { ...w, open: e.target.value } : w)),
                         })}
-                        style={{ ...S.input, width: 110, padding: '5px 8px' }}
+                        style={{ ...S.input, width: '100%', padding: '5px 8px' }}
                       />
                     </div>
-                    <div className="oc-time-field" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <label style={{ fontSize: 12, color: '#9C8575', width: 36, flexShrink: 0 }}>Close</label>
+                    <div className="oc-time-field" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 120px', minWidth: 0 }}>
+                      <label style={{ fontSize: 12, color: '#9C8575' }}>Close</label>
                       <input
                         type="time"
                         value={win.close}
@@ -582,7 +586,7 @@ export function ScheduleEditor({
                           ...day,
                           windows: day.windows.map((w, i) => (i === idx ? { ...w, close: e.target.value } : w)),
                         })}
-                        style={{ ...S.input, width: 110, padding: '5px 8px' }}
+                        style={{ ...S.input, width: '100%', padding: '5px 8px' }}
                       />
                     </div>
                     {day.windows.length > 1 && (

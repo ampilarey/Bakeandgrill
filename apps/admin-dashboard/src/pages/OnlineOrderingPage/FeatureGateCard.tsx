@@ -86,7 +86,7 @@ export function FeatureGateCard({
   return (
     <div className="oc-card" style={S.card} data-testid={`feature-gate-${gate.key}`}>
       {/* Collapsed header: everything you need at a glance + quick on/off */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="oc-feature-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
@@ -97,7 +97,7 @@ export function FeatureGateCard({
             minWidth: 0,
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            gap: 8,
             flexWrap: 'wrap',
             background: 'none',
             border: 'none',

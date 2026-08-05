@@ -725,7 +725,7 @@ export default function OnlineOrderingPage() {
             />
             Enable pickup slots
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          <div className="oc-form-grid">
             <div>
               <label style={S.label}>Slot length (minutes)</label>
               <input
@@ -770,25 +770,26 @@ export default function OnlineOrderingPage() {
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)' }}>
             Packaging is set per menu item. This page only controls the receipt label, small-order fee, and order caps.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          <div className="oc-form-grid">
             <div>
               <label style={S.label}>Packaging label</label>
               <input style={S.input} value={feeSettings.packaging_label} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_label: e.target.value })} />
             </div>
             <div>
-              <label style={S.label}>Max orders / 15 min (0 = unlimited)</label>
+              <label style={S.label}>Max orders / 15 min</label>
               <input style={S.input} type="number" min={0} max={500} value={feeSettings.ordering_max_per_15min} onChange={(e) => setFeeSettings({ ...feeSettings, ordering_max_per_15min: parseInt(e.target.value, 10) || 0 })} />
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>0 = unlimited</p>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <input type="checkbox" checked={feeSettings.small_order_enabled} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_enabled: e.target.checked })} />
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, lineHeight: 1.4 }}>
+              <input type="checkbox" checked={feeSettings.small_order_enabled} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_enabled: e.target.checked })} style={{ marginTop: 2 }} />
               Small-order fee below threshold
             </label>
             <div>
-              <label style={S.label}>Small order threshold (MVR)</label>
+              <label style={S.label}>Small-order threshold (MVR)</label>
               <input style={S.input} type="number" min={0} value={feeSettings.small_order_threshold_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_threshold_mvr: parseFloat(e.target.value) || 0 })} />
             </div>
             <div>
-              <label style={S.label}>Small order fee (MVR)</label>
+              <label style={S.label}>Small-order fee (MVR)</label>
               <input style={S.input} type="number" min={0} value={feeSettings.small_order_amount_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_amount_mvr: parseFloat(e.target.value) || 0 })} />
             </div>
           </div>
@@ -802,12 +803,16 @@ export default function OnlineOrderingPage() {
 
       <div className="oc-card" style={S.card}>
         <p style={S.sectionTitle}>Service charge</p>
-        <ServiceChargeSettings />
+        <div className="oc-nested-settings">
+          <ServiceChargeSettings />
+        </div>
       </div>
 
       <div className="oc-card" style={S.card}>
-        <p style={S.sectionTitle}>Payment commission (BML / card)</p>
-        <PaymentCommissionSettings />
+        <p style={S.sectionTitle}>Payment commission</p>
+        <div className="oc-nested-settings">
+          <PaymentCommissionSettings />
+        </div>
       </div>
 
       </>)}
@@ -874,7 +879,7 @@ export default function OnlineOrderingPage() {
           Notify fallbacks when no event staff are online, lead time for new requests, and quote link validity.
           Appoint handlers via Roles & Permissions → <code>events.manage</code>.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+        <div className="oc-form-grid">
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={S.label}>Closed message</label>
             <input

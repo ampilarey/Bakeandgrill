@@ -391,7 +391,7 @@ export default function DeliverySettingsPage() {
           )}
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <div className="oc-form-grid" style={{ marginBottom: 16 }}>
           <div>
             <label style={S.label}>Default fee (MVR)</label>
             <input
@@ -404,7 +404,7 @@ export default function DeliverySettingsPage() {
             />
           </div>
           <div>
-            <label style={S.label}>Free delivery from (MVR subtotal)</label>
+            <label style={S.label}>Free delivery from (MVR)</label>
             <input
               type="number"
               min={0}
@@ -421,33 +421,35 @@ export default function DeliverySettingsPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
           {zoneRows.map((row, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div key={idx} className="oc-zone-row">
               <input
                 type="text"
                 placeholder="Island / area"
                 value={row.name}
                 onChange={(e) => updateZoneRow(idx, 'name', e.target.value)}
-                style={{ ...S.input, flex: '1 1 140px' }}
+                style={S.input}
               />
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="Fee"
-                value={row.fee}
-                onChange={(e) => updateZoneRow(idx, 'fee', e.target.value)}
-                style={{ ...S.input, width: 100 }}
-              />
-              <span style={{ fontSize: 12, color: '#9C8575' }}>MVR</span>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => removeZoneRow(idx)}
-                style={{ background: 'none', border: 'none', color: '#C0392B', cursor: 'pointer', fontSize: 18, padding: '8px 10px' }}
-                aria-label="Remove zone"
-              >
-                ×
-              </button>
+              <div className="oc-zone-fee">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="Fee"
+                  value={row.fee}
+                  onChange={(e) => updateZoneRow(idx, 'fee', e.target.value)}
+                  style={S.input}
+                />
+                <span style={{ fontSize: 12, color: '#9C8575', flexShrink: 0 }}>MVR</span>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => removeZoneRow(idx)}
+                  style={{ background: 'none', border: 'none', color: '#C0392B', cursor: 'pointer', fontSize: 18, padding: '8px 10px' }}
+                  aria-label="Remove zone"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           ))}
         </div>
