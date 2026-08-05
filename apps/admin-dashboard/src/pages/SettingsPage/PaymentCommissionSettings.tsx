@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { Save } from 'lucide-react';
 import { Button, Card } from '../../components/ui';
 import {
   getPaymentCommissionSettings,
   updatePaymentCommissionSettings,
   type PaymentCommissionSettings as Settings,
 } from '../../api';
+import { MasterSwitchRow, S } from '../OnlineOrderingPage/orderingControlUi';
 
 function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
   return (
@@ -12,6 +14,8 @@ function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; d
       type="button"
       disabled={disabled}
       onClick={onClick}
+      role="switch"
+      aria-checked={on}
       style={{
         flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none',
         cursor: disabled ? 'wait' : 'pointer', background: on ? 'var(--color-success-strong)' : '#D1D5DB',
@@ -31,7 +35,7 @@ function exampleNet(amount: number, ratePercent: number): { fee: number; net: nu
   return { fee, net: Math.round((amount - fee) * 100) / 100 };
 }
 
-export function PaymentCommissionSettings() {
+export function PaymentCommissionSettings({ embedded = false }: { embedded?: boolean }) {
   const [form, setForm] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,6 +75,81 @@ export function PaymentCommissionSettings() {
 
   const posExample = exampleNet(100, form.pos_card_rate_percent);
   const gwExample = exampleNet(100, form.online_gateway_rate_percent);
+
+  const saveButton = embedded ? (
+    <div style={{ marginTop: 4 }}>
+      <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void handleSave()} disabled={saving}>
+        <Save size={14} />
+        {saving ? 'Saving…' : 'Save commission'}
+      </button>
+      {saved && <p style={{ ...S.reasonNote, color: 'var(--color-success-strong)', fontWeight: 600 }}>Saved</p>}
+    </div>
+  ) : (
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <Button onClick={() => void handleSave()} disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</Button>
+      {saved && <span style={{ fontSize: 13, color: 'var(--color-success-strong)', fontWeight: 600 }}>Saved</span>}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {error && (
+          <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0, background: 'var(--color-danger-bg)', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px' }}>
+            {error}
+          </p>
+        )}
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+          BML deducts a processing fee from card, QR, and online gateway income. Rates are snapshotted on each payment — changing them does not rewrite history.
+        </p>
+
+        <MasterSwitchRow
+          on={form.enabled}
+          toggling={false}
+          titleOn="Commission tracking is ON"
+          titleOff="Commission tracking is OFF"
+          helpOn="Fees are calculated on new card / gateway payments."
+          helpOff="No commission is calculated on new payments."
+          onToggle={() => setForm({ ...form, enabled: !form.enabled })}
+        />
+
+        <div className="oc-form-grid">
+          <div>
+            <label style={S.label}>POS card / QR rate (%)</label>
+            <input
+              type="number"
+              min={0}
+              max={10}
+              step={0.1}
+              value={form.pos_card_rate_percent}
+              onChange={(e) => setForm({ ...form, pos_card_rate_percent: parseFloat(e.target.value) || 0 })}
+              style={S.input}
+            />
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Example: MVR 100 → MVR {posExample.fee.toFixed(2)} fee → MVR {posExample.net.toFixed(2)} net
+            </p>
+          </div>
+          <div>
+            <label style={S.label}>Online / BML gateway rate (%)</label>
+            <input
+              type="number"
+              min={0}
+              max={10}
+              step={0.1}
+              value={form.online_gateway_rate_percent}
+              onChange={(e) => setForm({ ...form, online_gateway_rate_percent: parseFloat(e.target.value) || 0 })}
+              style={S.input}
+            />
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Example: MVR 100 → MVR {gwExample.fee.toFixed(2)} fee → MVR {gwExample.net.toFixed(2)} net
+            </p>
+          </div>
+        </div>
+
+        {saveButton}
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -129,10 +208,7 @@ export function PaymentCommissionSettings() {
         </div>
       </Card>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        <Button onClick={() => void handleSave()} disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</Button>
-        {saved && <span style={{ fontSize: 13, color: 'var(--color-success-strong)', fontWeight: 600 }}>Saved</span>}
-      </div>
+      {saveButton}
     </div>
   );
 }

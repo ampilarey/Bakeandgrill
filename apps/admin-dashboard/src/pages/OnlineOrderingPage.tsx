@@ -31,6 +31,7 @@ import {
   DAYS,
   DEFAULT_SCHEDULE,
   GateStatusCard,
+  MasterSwitchRow,
   S,
   ScheduleEditor,
   StatusChipStrip,
@@ -717,15 +718,16 @@ export default function OnlineOrderingPage() {
             When enabled, online pickup checkout offers timed windows. Capacity limits how many
             orders can book each slot. POS dine-in is unaffected.
           </p>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
-            <input
-              type="checkbox"
-              checked={pickupEnabled}
-              onChange={(e) => setPickupEnabled(e.target.checked)}
-            />
-            Enable pickup slots
-          </label>
-          <div className="oc-form-grid">
+          <MasterSwitchRow
+            on={pickupEnabled}
+            toggling={false}
+            titleOn="Pickup slots are ON"
+            titleOff="Pickup slots are OFF"
+            helpOn="Checkout offers timed pickup windows."
+            helpOff="No timed pickup windows at checkout."
+            onToggle={() => setPickupEnabled((v) => !v)}
+          />
+          <div className="oc-form-grid" style={{ marginTop: 16 }}>
             <div>
               <label style={S.label}>Slot length (minutes)</label>
               <input
@@ -770,7 +772,16 @@ export default function OnlineOrderingPage() {
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)' }}>
             Packaging is set per menu item. This page only controls the receipt label, small-order fee, and order caps.
           </p>
-          <div className="oc-form-grid">
+          <MasterSwitchRow
+            on={feeSettings.small_order_enabled}
+            toggling={false}
+            titleOn="Small-order fee is ON"
+            titleOff="Small-order fee is OFF"
+            helpOn="Fee applies below the threshold."
+            helpOff="No small-order fee at checkout."
+            onToggle={() => setFeeSettings({ ...feeSettings, small_order_enabled: !feeSettings.small_order_enabled })}
+          />
+          <div className="oc-form-grid" style={{ marginTop: 16 }}>
             <div>
               <label style={S.label}>Packaging label</label>
               <input style={S.input} value={feeSettings.packaging_label} onChange={(e) => setFeeSettings({ ...feeSettings, packaging_label: e.target.value })} />
@@ -780,21 +791,18 @@ export default function OnlineOrderingPage() {
               <input style={S.input} type="number" min={0} max={500} value={feeSettings.ordering_max_per_15min} onChange={(e) => setFeeSettings({ ...feeSettings, ordering_max_per_15min: parseInt(e.target.value, 10) || 0 })} />
               <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>0 = unlimited</p>
             </div>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, lineHeight: 1.4 }}>
-              <input type="checkbox" checked={feeSettings.small_order_enabled} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_enabled: e.target.checked })} style={{ marginTop: 2 }} />
-              Small-order fee below threshold
-            </label>
             <div>
               <label style={S.label}>Small-order threshold (MVR)</label>
-              <input style={S.input} type="number" min={0} value={feeSettings.small_order_threshold_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_threshold_mvr: parseFloat(e.target.value) || 0 })} />
+              <input style={S.input} type="number" min={0} value={feeSettings.small_order_threshold_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_threshold_mvr: parseFloat(e.target.value) || 0 })} disabled={!feeSettings.small_order_enabled} />
             </div>
             <div>
               <label style={S.label}>Small-order fee (MVR)</label>
-              <input style={S.input} type="number" min={0} value={feeSettings.small_order_amount_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_amount_mvr: parseFloat(e.target.value) || 0 })} />
+              <input style={S.input} type="number" min={0} value={feeSettings.small_order_amount_mvr} onChange={(e) => setFeeSettings({ ...feeSettings, small_order_amount_mvr: parseFloat(e.target.value) || 0 })} disabled={!feeSettings.small_order_enabled} />
             </div>
           </div>
           <div style={{ marginTop: 16 }}>
-            <button className="oc-btn-block" style={S.btnPrimary} onClick={() => void saveFeeSettings()} disabled={feeSaving}>
+            <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void saveFeeSettings()} disabled={feeSaving}>
+              <Save size={14} />
               {feeSaving ? 'Saving…' : 'Save fees & limits'}
             </button>
           </div>
@@ -804,14 +812,14 @@ export default function OnlineOrderingPage() {
       <div className="oc-card" style={S.card}>
         <p style={S.sectionTitle}>Service charge</p>
         <div className="oc-nested-settings">
-          <ServiceChargeSettings />
+          <ServiceChargeSettings embedded />
         </div>
       </div>
 
       <div className="oc-card" style={S.card}>
         <p style={S.sectionTitle}>Payment commission</p>
         <div className="oc-nested-settings">
-          <PaymentCommissionSettings />
+          <PaymentCommissionSettings embedded />
         </div>
       </div>
 
