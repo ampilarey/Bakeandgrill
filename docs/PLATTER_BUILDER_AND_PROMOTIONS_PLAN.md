@@ -37,6 +37,7 @@ The audit found the promotions engine is far more capable than it appears.
 | Combos do not reduce child stock | **Selling a combo does not decrement the stock of the items inside it.** Verified: no combo handling in `OrderCreationService`, `StockManagementService`, or `StockReservationService`. Note the fix spans **four paths**: POS deduction (only runs when `!$isOnlineOrder`), online reservations (`StockReservationService`), and restore in three places — POS cancel/void (`OrderStatusController`), refunds (`RefundController`), online cancel (`ReleasePreparedStockOnCancelListener`). |
 | Platter contents on order lines | `order_items` has no parent/child support. Selections would land in `notes` (free text) — **and the KDS never renders `notes`**, so the kitchen would not see what is inside a platter. See Stage C for the fix. |
 | Lead time | `items.pre_order_lead_time_minutes` exists, is fillable and cast, and **nothing reads or writes it**. |
+| Promotions have no **trigger** condition | A promotion's targets say *what gets discounted*, never *what must be bought to unlock it*. Verified across every promotions migration (`2026_02_09`, `2026_04_23`, `2026_07_19`, `2026_07_23`, `2026_07_25`, `2026_08_03`) and `PromotionEvaluator::qualifyingLines`. Conditions that DO exist: min order value, date range, day/time window, `first_order_only`, `registered_only`, `restricted_customer_id`, budget and usage caps. Nothing expresses "the basket must contain item X". |
 
 ### Correction: promotion day/time windows already exist
 
@@ -86,6 +87,44 @@ Collect-tomorrow, the per-item daily make-limit, and the kitchen hold together a
 ### 2.3 Recommendation
 
 Build **fixed price + exact count + tiered sizes** first, with groups and the optional surcharge supported but not required. That covers the owner's ask, adds the upsell, and keeps the customer-facing message simple.
+
+### 2.4 Trigger-and-reward promotions
+
+Two promotions the owner asked for, neither possible today:
+
+1. *"Buy this meal during this period, get a free drink from a list."*
+2. *"Buy this item, get X% off these other items."*
+
+Both are blocked by the **same single gap**: a promotion can only name one set of
+items, and that set is what gets discounted. There is no way to say "only if the
+basket contains X".
+
+**This is not merely a missing feature — as things stand it is a money leak.**
+`free_item` (`PromotionEvaluator::freeItemDiscount`) makes the *cheapest targeted
+item already in the basket* free. Set up scenario 1 today and **every customer who
+adds a drink gets it free, whether or not they bought the meal.** The trigger is
+simply not checked, because it cannot be expressed.
+
+Likewise `buy_x_get_y` operates on a single pool from `qualifyingLines` — buy N from
+a group, get M from *that same group*. "Buy a burger, get 20% off fries" needs two
+distinct sets and cannot be expressed either.
+
+**One change unlocks both**: give `promotion_targets` rows a role — **trigger** or
+**reward**. Rows with no role keep today's meaning exactly (reward), so every
+existing promotion is unaffected.
+
+With that in place, and configurable in admin with no further code:
+
+- Buy this meal → free drink chosen from that list
+- Buy this item → X% off those items
+- Buy from this category → discount on that category
+- Combined freely with the date range, day/time window, per-customer caps and
+  budget that already exist
+
+Deliberately **out of scope for v1**: prompting the customer to pick their free
+drink. v1 rewards what is already in the basket, exactly as `free_item` does now.
+A picker is the same problem as the platter picker and should reuse it later, not
+be built twice.
 
 ---
 
@@ -146,6 +185,26 @@ Why this and not a JSON blob or `notes`:
   fields in `PromotionsPage.tsx` for **coded** promotions too, not only auto-apply.
 - Happy hour and end-of-day clearance are setup tasks in admin today, not code.
 
+### Stage F — Trigger-and-reward promotions
+
+Unlocks both promotions in §2.4. Small, self-contained, and independent of the platter work.
+
+- Add a role to `promotion_targets` rows: **trigger** or **reward**. Default/null = reward,
+  so every existing promotion behaves exactly as it does today. This must be true by
+  construction, not by a data migration — no backfill.
+- `PromotionEvaluator`: before any discount is computed, if the promotion has trigger rows,
+  the basket must satisfy them or the promotion yields zero. Then `qualifyingLines` resolves
+  against the **reward** rows only.
+- Trigger rows must support a minimum quantity (buy 2 meals, not just 1). Reuse the existing
+  metadata pattern rather than adding columns for one type.
+- A line already consumed as a trigger must not also be discounted as a reward. Decide and
+  state it plainly in code: a trigger line is never its own reward.
+- Admin: in `PromotionsPage.tsx` the target picker must let the owner say which side each
+  target is on. Plain wording — "Customer must buy" and "They get" — never "trigger"/"reward"
+  in the UI.
+- Applies on POS and online alike; both go through `OrderCreationService`, so there is one
+  enforcement point, not two.
+
 ### Stage E — Lead time: closed, do nothing
 
 - `items.pre_order_lead_time_minutes` stays untouched and unused. It is reserved for a
@@ -162,6 +221,9 @@ Why this and not a JSON blob or `notes`:
 4. **Refunds.** A refunded platter must return every child item to stock — again free with child lines, hand-rolled otherwise.
 5. **Promotions on platters.** Decide explicitly whether a percentage promotion applies to a platter price. Recommendation: allow it, but never allow buy-X-get-Y to treat platter children as qualifying lines — that would give away free items twice. Implementation: `PromotionEvaluator` skips lines with `parent_order_item_id`.
 6. **Kitchen blindness.** Any storage model where platter contents live only in `notes` means the KDS shows "Platter x1" and nothing else — the kitchen cannot make it. This is why the child-line decision is not optional.
+7. **Existing promotions must not change behaviour when roles are added** (Stage F). Every current promotion has targets with no role. If null is not treated as "reward", live promotions silently stop applying — or worse, start applying to everything. This is the single highest risk in Stage F and needs a test that predates the change.
+8. **Trigger lines double-dipping** (Stage F). Without an explicit rule, the item that unlocks the offer can also be the item discounted by it — the customer buys one burger and gets that same burger free. Decide once, enforce in code, test it.
+9. **A trigger promotion combined with platter child lines** (Stage F + Stage C). Platter children must never satisfy a trigger, or a customer assembles a platter and unlocks offers six times over. Same filter as risk 5 — skip lines with `parent_order_item_id`.
 
 ---
 
@@ -178,12 +240,23 @@ Why this and not a JSON blob or `notes`:
 - Buy-X-get-Y does not treat platter children as qualifying lines.
 - A coded promotion with a day/time window applies inside its window and not outside (existing enforcement; the new admin UI just exposes the fields).
 
+Stage F (trigger and reward):
+- **Every existing promotion, with no roles set, behaves exactly as before.** Write this test against the current code first, so it passes before the change and must keep passing after.
+- Basket without the trigger item → no discount at all.
+- Basket with the trigger item → the reward items are discounted, and only those.
+- Trigger requiring quantity 2 is not satisfied by 1.
+- A trigger line is not also discounted as its own reward.
+- Platter child lines never satisfy a trigger.
+- The free-drink scenario end to end: meal in basket → drink free; drink alone in basket → **full price** (this is the money leak the feature exists to close).
+- Works identically on a POS order and an online order.
+
 ---
 
 ## 6. Sequencing
 
 1. **Combo child-stock fix, standalone and first.** It is a live bug today regardless of platters, and fixing it first means the platter work builds on correct stock handling instead of piling onto a broken base.
 2. **Promo schedule UI tweak** (show day/time fields for coded promos) — tiny, independent, can ride along with anything.
-3. **Stages A → B → C together**, built on the child order-line model, because a platter that cannot be priced and stock-tracked is not shippable.
+3. **Stage F — trigger and reward.** Small, self-contained, and it unlocks two promotions the owner wants now. It also closes a live money leak: scenario 1 set up on today's engine gives the free drink to everyone, meal or not. Ahead of the platter work because it is smaller, faster to ship, and earns immediately.
+4. **Stages A → B → C together**, built on the child order-line model, because a platter that cannot be priced and stock-tracked is not shippable.
 
 Stage E is closed — nothing to sequence.
