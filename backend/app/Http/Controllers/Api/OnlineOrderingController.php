@@ -68,6 +68,12 @@ class OnlineOrderingController extends Controller
         $status['next_delivery_window'] = $deliveryStatus['next_delivery_window'] ?? null;
         $status['preorder'] = $this->cateringGate->status();
         $status['order_for_tomorrow'] = app(OrderFulfilDateService::class)->statusFragment();
+        $status['dine_in_preorder'] = [
+            'enabled' => filter_var(
+                SiteSetting::get('dine_in_preorder_enabled', '0'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ];
 
         // Additive services map — older clients ignore it. Same shape as
         // GET /api/service-status so a single reader can consume either.
@@ -325,6 +331,30 @@ class OnlineOrderingController extends Controller
         return response()->json([
             'override_until' => $validated['override_until'],
             'status' => $this->gate->status(),
+        ]);
+    }
+
+    /**
+     * Toggle prepaid dine-in ("Eat here" at online checkout).
+     * Body: { "enabled": true|false }  or  no body (flips current state).
+     */
+    public function toggleDineInPreorder(Request $request): JsonResponse
+    {
+        $current = filter_var(
+            SiteSetting::get('dine_in_preorder_enabled', '0'),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+
+        $next = $request->has('enabled')
+            ? (bool) $request->input('enabled')
+            : !$current;
+
+        $newValue = $next ? '1' : '0';
+        SiteSetting::set('dine_in_preorder_enabled', $newValue);
+        $this->auditGateWrite('dine_in_preorder_enabled', $current ? '1' : '0', $newValue, $request);
+
+        return response()->json([
+            'dine_in_preorder_enabled' => $next,
         ]);
     }
 

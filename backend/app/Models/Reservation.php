@@ -18,6 +18,7 @@ class Reservation extends Model
         'time_slot',
         'duration_minutes',
         'table_id',
+        'order_id',
         'status',
         'notes',
         'tracking_token',
@@ -28,6 +29,7 @@ class Reservation extends Model
         'party_size' => 'integer',
         'duration_minutes' => 'integer',
         'table_id' => 'integer',
+        'order_id' => 'integer',
     ];
 
     public function customer(): BelongsTo
@@ -38,6 +40,12 @@ class Reservation extends Model
     public function table(): BelongsTo
     {
         return $this->belongsTo(RestaurantTable::class, 'table_id');
+    }
+
+    /** Prepaid dine-in: the paid order this booking holds a table for. */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
 
     public function isPending(): bool

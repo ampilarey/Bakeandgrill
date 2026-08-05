@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  getReservations, updateReservationStatus,
+  getReservations, updateReservationStatus, seatReservation,
   getReservationSettings, updateReservationSettings,
   type AdminReservation, type ReservationSettings,
 } from '../api';
@@ -95,7 +95,12 @@ function ReservationsList() {
       return;
     }
     try {
-      const res = await updateReservationStatus(id, status);
+      // Seating goes through the seat endpoint so prepaid dine-in bookings
+      // claim their held table for the paid order (plain status PATCH would
+      // mark seated without linking the bill to the seat).
+      const res = status === 'seated'
+        ? await seatReservation(id)
+        : await updateReservationStatus(id, status);
       setReservations((prev) => prev.map((r) => r.id === id ? res.reservation : r));
     } catch (e) { setError((e as Error).message); }
   };
@@ -170,7 +175,22 @@ function ReservationsList() {
                 <tr key={r.id}>
                   <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{r.id}</td>
                   <td style={TD}>
-                    <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{r.customer_name}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {r.customer_name}
+                      {r.order_id != null && (
+                        <span
+                          title={`Prepaid dine-in — order ${r.order_number ?? `#${r.order_id}`} already paid online`}
+                          style={{
+                            fontSize: 10, fontWeight: 800, letterSpacing: 0.3,
+                            color: 'var(--color-primary)', background: 'var(--color-surface-alt)',
+                            border: '1px solid var(--color-border)', borderRadius: 999,
+                            padding: '1px 7px',
+                          }}
+                        >
+                          PREPAID{r.order_number ? ` · ${r.order_number}` : ''}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.customer_phone}</div>
                     {r.notes && (
                       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>

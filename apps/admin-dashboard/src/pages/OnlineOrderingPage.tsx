@@ -11,6 +11,7 @@ import {
   setOnlineOrderingOverride,
   updateOnlineOrderingSchedule,
   updateOrderForTomorrowCutoff,
+  toggleDineInPreorder,
   getCateringOrderingStatus,
   toggleCateringOrdering,
   setCateringOrderingOverride,
@@ -254,6 +255,8 @@ export default function OnlineOrderingPage() {
   const [cateringScheduleSaving, setCateringScheduleSaving] = useState(false);
   const [tomorrowCutoff, setTomorrowCutoff] = useState('20:00');
   const [tomorrowCutoffSaving, setTomorrowCutoffSaving] = useState(false);
+  const [dineInPreorder, setDineInPreorder] = useState(false);
+  const [dineInPreorderSaving, setDineInPreorderSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -267,6 +270,9 @@ export default function OnlineOrderingPage() {
         setStatus(s);
         if (s.order_for_tomorrow?.cutoff) {
           setTomorrowCutoff(s.order_for_tomorrow.cutoff);
+        }
+        if (s.dine_in_preorder) {
+          setDineInPreorder(s.dine_in_preorder.enabled);
         }
         if (s.override_until) {
           // Convert ISO datetime to local datetime-local input value (must use local parts, not UTC)
@@ -622,6 +628,21 @@ export default function OnlineOrderingPage() {
       showToast('Failed to update. Try again.', 'err');
     } finally {
       setToggling(false);
+    }
+  };
+
+  const handleDineInPreorderToggle = async () => {
+    setDineInPreorderSaving(true);
+    try {
+      const res = await toggleDineInPreorder(!dineInPreorder);
+      setDineInPreorder(res.dine_in_preorder_enabled);
+      showToast(res.dine_in_preorder_enabled
+        ? 'Dine-in pre-order is ON — customers can order and pay for a table.'
+        : 'Dine-in pre-order is OFF.');
+    } catch {
+      showToast('Failed to toggle dine-in pre-order.', 'err');
+    } finally {
+      setDineInPreorderSaving(false);
     }
   };
 
@@ -1110,6 +1131,32 @@ export default function OnlineOrderingPage() {
               Customers can currently choose collect on {status.order_for_tomorrow.collect_tomorrow_date}.
             </p>
           )}
+        </div>
+      </div>
+
+      {/* Dine-in pre-order (Eat here) */}
+      <div style={S.card} data-testid="dine-in-preorder-toggle-card">
+        <p style={S.sectionTitle}>Dine-in pre-order (“Eat here”)</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
+          Customers order and pay online, pick an arrival time, and get a reserved table.
+          Staff fire the kitchen before arrival and seat them from Reservations. Extras
+          ordered at the table join the same bill.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <button
+            style={S.toggleTrack(dineInPreorder)}
+            onClick={() => void handleDineInPreorderToggle()}
+            disabled={dineInPreorderSaving}
+            aria-label="Toggle dine-in pre-order"
+            role="switch"
+            aria-checked={dineInPreorder}
+            data-testid="dine-in-preorder-toggle"
+          >
+            <span style={S.toggleThumb(dineInPreorder)} />
+          </button>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
+            {dineInPreorder ? 'Dine-in pre-order is ON' : 'Dine-in pre-order is OFF'}
+          </div>
         </div>
       </div>
 

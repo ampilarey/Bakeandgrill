@@ -28,8 +28,9 @@ class DeductPreparedStockListener
 
     public function handle(OrderPaid $event): void
     {
-        if (!in_array($event->data->orderType ?? '', ['online_pickup', 'delivery'], true)) {
-            // POS orders already deducted stock at creation — nothing to do
+        $orderType = $event->data->orderType ?? '';
+        if (!in_array($orderType, ['online_pickup', 'delivery', 'dine_in'], true)) {
+            // POS takeaway already deducted stock at creation — nothing to do
             return;
         }
 
@@ -42,6 +43,20 @@ class DeductPreparedStockListener
             Log::error('DeductPreparedStockListener: order not found', ['order_id' => $event->data->orderId]);
 
             return;
+        }
+
+        if ($orderType === 'dine_in') {
+            // Staff POS dine_in deducted stock at creation.
+            if ($order->user_id !== null) {
+                return;
+            }
+            // Prepaid dine_in converts reservations on the FIRST pay (unfired).
+            // A later balance settle (after fire/seat, add-ons rung at the
+            // table) re-dispatches OrderPaid — those add-on lines were already
+            // POS-deducted at add time and must not deduct again.
+            if ($order->fired_at !== null) {
+                return;
+            }
         }
 
         if (in_array($order->status, ['cancelled', 'refunded', 'partially_refunded'], true)) {

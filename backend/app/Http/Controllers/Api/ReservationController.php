@@ -132,6 +132,61 @@ class ReservationController extends Controller
         return response()->json(['reservation' => $this->format($reservation)]);
     }
 
+    // ── Seat (staff only) ──────────────────────────────────────────────────────
+
+    /**
+     * POST /admin/reservations/{id}/seat
+     *
+     * Customer arrived: mark the booking seated and — for prepaid dine-in —
+     * claim the held table for the already-paid order so the bill and the
+     * seat travel together. Optional table_id reassigns on the spot (e.g.
+     * the held table broke a leg).
+     */
+    public function seat(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'table_id' => ['nullable', 'integer', 'exists:restaurant_tables,id'],
+        ]);
+
+        $reservation = \App\Models\Reservation::with(['table', 'order'])->findOrFail($id);
+
+        if ($reservation->status !== 'confirmed') {
+            abort(422, "Reservation is {$reservation->status} — only confirmed bookings can be seated.");
+        }
+
+        $tableId = (int) ($validated['table_id'] ?? $reservation->table_id ?? 0);
+        if ($tableId <= 0) {
+            abort(422, 'Assign a table before seating this booking.');
+        }
+
+        $order = $reservation->order;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($reservation, $order, $tableId): void {
+            if ($order !== null) {
+                if (in_array($order->status, ['cancelled', 'refunded', 'completed'], true)) {
+                    abort(422, "Linked order is {$order->status} and cannot be seated.");
+                }
+                \App\Models\RestaurantTable::claimForOrder($tableId, (int) $order->id);
+                $order->update(['restaurant_table_id' => $tableId]);
+            } else {
+                // Plain booking without a prepaid order: just occupy the seat.
+                if (\App\Models\RestaurantTable::findActiveOrder($tableId) !== null) {
+                    abort(422, 'Table already has an open order.');
+                }
+                \App\Models\RestaurantTable::markOccupied($tableId);
+            }
+
+            $reservation->update(['status' => 'seated', 'table_id' => $tableId]);
+        });
+
+        $fresh = $reservation->fresh(['table', 'order']);
+
+        return response()->json([
+            'reservation' => $this->format($fresh ?? $reservation),
+            'order_id' => $order?->id,
+        ]);
+    }
+
     // ── Cancel ────────────────────────────────────────────────────────────────
 
     public function destroy(Request $request, int $id): JsonResponse
@@ -218,6 +273,9 @@ class ReservationController extends Controller
             'status' => $r->status,
             'notes' => $r->notes,
             'table' => $r->table ? ['id' => $r->table->id, 'name' => $r->table->name] : null,
+            // Prepaid dine-in: booking is backed by a paid online order.
+            'order_id' => $r->order_id,
+            'order_number' => $r->order_id ? $r->order?->order_number : null,
             'tracking_token' => $r->tracking_token,
             'created_at' => $r->created_at,
         ];

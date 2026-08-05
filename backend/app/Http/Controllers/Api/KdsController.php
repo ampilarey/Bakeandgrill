@@ -71,6 +71,13 @@ class KdsController extends Controller
                 $q->whereNull('fulfil_date')
                     ->orWhereNotNull('fired_at');
             })
+            // Prepaid dine-in (customer-created, user_id null) stays off KDS until
+            // staff fire it ahead of the arrival time. Staff dine_in unaffected.
+            ->where(function ($q) {
+                $q->where('type', '!=', 'dine_in')
+                    ->orWhereNotNull('fired_at')
+                    ->orWhereNotNull('user_id');
+            })
             ->orderBy('created_at')
             ->get()
             ->map(fn (Order $order) => $this->formatKitchenOrder($order));

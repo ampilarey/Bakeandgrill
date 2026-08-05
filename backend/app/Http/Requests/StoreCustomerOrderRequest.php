@@ -16,7 +16,8 @@ class StoreCustomerOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => 'sometimes|string|in:online_pickup',
+            // dine_in = prepaid dine-in: customer pays now, arrives at pickup_slot_at.
+            'type' => 'sometimes|string|in:online_pickup,dine_in',
             'print' => 'sometimes|boolean',
             'notes' => 'nullable|string|max:500',
             'customer_notes' => 'nullable|string|max:500',
@@ -30,11 +31,21 @@ class StoreCustomerOrderRequest extends FormRequest
             'items.*.modifiers.*.modifier_id' => 'required|integer|exists:modifiers,id',
             'items.*.modifiers.*.quantity' => 'sometimes|integer|min:1|max:10',
             'items.*.packaging_option_id' => 'nullable|integer|exists:item_packaging_options,id',
-            'pickup_slot_at' => 'nullable|date|after:now',
+            // Doubles as the ARRIVAL time for prepaid dine-in.
+            'pickup_slot_at' => 'nullable|date|after:now|required_if:type,dine_in',
+            'party_size' => 'nullable|integer|min:1|max:20|required_if:type,dine_in',
             // Collection intent — server recomputes the allowed tomorrow date.
             // Clients may send fulfil_date (Y-m-d) and/or collect_on ("today"|"tomorrow").
             'fulfil_date' => 'nullable|date_format:Y-m-d',
             'collect_on' => 'nullable|string|in:today,tomorrow',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'pickup_slot_at.required_if' => 'Choose an arrival time for your dine-in order.',
+            'party_size.required_if' => 'Tell us how many people are coming.',
         ];
     }
 }

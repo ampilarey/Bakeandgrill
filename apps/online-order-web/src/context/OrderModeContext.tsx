@@ -15,8 +15,8 @@ import {
   type SalesChannel,
 } from '../api/menu';
 
-/** Customer-facing order mode (maps to sales channel online_pickup | delivery). */
-export type OrderMode = 'pickup' | 'delivery';
+/** Customer-facing order mode (maps to sales channel online_pickup | delivery | dine_in). */
+export type OrderMode = 'pickup' | 'delivery' | 'dine_in';
 
 export type SetModeOptions = {
   /**
@@ -38,11 +38,15 @@ type OrderModeContextValue = {
 const OrderModeContext = createContext<OrderModeContextValue | null>(null);
 
 export function channelToMode(channel: SalesChannel): OrderMode {
-  return channel === 'delivery' ? 'delivery' : 'pickup';
+  if (channel === 'delivery') return 'delivery';
+  if (channel === 'dine_in') return 'dine_in';
+  return 'pickup';
 }
 
 export function modeToChannel(mode: OrderMode): SalesChannel {
-  return mode === 'delivery' ? 'delivery' : 'online_pickup';
+  if (mode === 'delivery') return 'delivery';
+  if (mode === 'dine_in') return 'dine_in';
+  return 'online_pickup';
 }
 
 export function OrderModeProvider({ children }: { children: ReactNode }) {

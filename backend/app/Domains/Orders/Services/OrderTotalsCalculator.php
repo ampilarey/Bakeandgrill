@@ -41,6 +41,12 @@ class OrderTotalsCalculator
         private readonly GstSettingsService $gstSettings = new GstSettingsService,
     ) {}
 
+    /**
+     * Service charge stays editable through payment_pending — mirroring
+     * packagingFeesLocked below — so customer online orders (incl. prepaid
+     * dine-in) snapshot a real SC at create instead of freezing a zero from
+     * the brand-new row. Once payment_status is 'paid' the snapshot is final.
+     */
     public static function orderTotalsLocked(Order $order): bool
     {
         if ($order->payment_status === 'paid') {
@@ -53,7 +59,6 @@ class OrderTotalsCalculator
             'cancelled',
             'refunded',
             'partially_refunded',
-            'payment_pending',
         ], true);
     }
 

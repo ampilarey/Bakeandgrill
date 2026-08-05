@@ -44,6 +44,8 @@ export type TicketStageInput = {
   status?: string | null;
   fired_at?: string | null;
   fulfil_date?: string | null;
+  type?: string | null;
+  user?: { id: number; name?: string } | null;
 };
 
 export function ticketStage(
@@ -55,11 +57,15 @@ export function ticketStage(
   let status: string | null | undefined;
   let firedAt: string | null | undefined;
   let fulfilDate: string | null | undefined;
+  let type: string | null | undefined;
+  let user: { id: number } | null | undefined;
 
   if (statusOrTicket && typeof statusOrTicket === "object") {
     status = statusOrTicket.status;
     firedAt = statusOrTicket.fired_at;
     fulfilDate = statusOrTicket.fulfil_date;
+    type = statusOrTicket.type;
+    user = statusOrTicket.user;
   } else {
     status = statusOrTicket;
     firedAt = maybeFiredAt;
@@ -69,6 +75,16 @@ export function ticketStage(
   // Collect-tomorrow: own stage until the restaurant's collection day begins.
   if (fulfilDate && !firedAt) {
     if (isBusinessDateInFuture(fulfilDate, now)) return "tomorrow";
+    return "parked";
+  }
+  // Prepaid dine-in (customer paid online — user_id null): parked until staff
+  // fire it ahead of the arrival time. Same Fire button as held tickets.
+  if (
+    type === "dine_in"
+    && !firedAt
+    && !user
+    && (status === "pending" || status === "paid" || status === "partial")
+  ) {
     return "parked";
   }
   if (status === "held") return "parked";

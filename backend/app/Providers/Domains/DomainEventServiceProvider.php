@@ -81,6 +81,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             \App\Domains\Payments\Listeners\IssuePurchasedGiftCardOnOrderPaidListener::class,
             \App\Domains\Customers\Listeners\SyncVipTagOnOrderPaidListener::class,
             \App\Domains\Orders\Listeners\ReleaseTableOnOrderPaidListener::class,
+            \App\Domains\Reservations\Listeners\ConfirmReservationOnOrderPaidListener::class,
             DeductInventoryListener::class,
             DeductPreparedStockListener::class,
             DispatchReceiptPrintListener::class,
@@ -103,6 +104,7 @@ class DomainEventServiceProvider extends EventServiceProvider
             ReleasePreparedStockOnCancelListener::class,
             ReleasePromoReservationListener::class,
             ReleaseLoyaltyHoldListener::class,
+            \App\Domains\Reservations\Listeners\CancelReservationOnOrderCancelledListener::class,
             DispatchWebhookOnDomainEvent::class,
         ],
 

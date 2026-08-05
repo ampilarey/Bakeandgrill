@@ -174,6 +174,12 @@ class Order extends Model
         return $this->belongsTo(RestaurantTable::class, 'restaurant_table_id');
     }
 
+    /** Prepaid dine-in: the table booking created with this order. */
+    public function reservation(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Reservation::class, 'order_id');
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

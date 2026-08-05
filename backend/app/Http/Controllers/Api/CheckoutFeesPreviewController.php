@@ -20,7 +20,7 @@ class CheckoutFeesPreviewController extends Controller
     public function show(Request $request, PackagingFeeCalculator $calculator): JsonResponse
     {
         $validated = $request->validate([
-            'order_type' => ['required', 'string', 'in:delivery,online_pickup,takeaway'],
+            'order_type' => ['required', 'string', 'in:delivery,online_pickup,takeaway,dine_in'],
             'discounted_subtotal_laar' => ['required', 'integer', 'min:0'],
             'lines' => ['sometimes', 'nullable', 'array'],
             'lines.*.item_id' => ['required_with:lines', 'integer', 'min:1'],

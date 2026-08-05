@@ -202,6 +202,12 @@ class OrderCreationController extends Controller
                                 $w3->whereNull('payment_status')
                                     ->orWhereIn('payment_status', ['unpaid', 'partial']);
                             });
+                    })
+                    // Prepaid dine-in (customer paid online, user_id null) stays
+                    // visible even while fully paid — staff still have to fire
+                    // the kitchen, seat the guest, and possibly ring add-ons.
+                    ->orWhere(function ($w4) {
+                        $w4->where('type', 'dine_in')->whereNull('user_id');
                     });
             });
         }
@@ -298,6 +304,20 @@ class OrderCreationController extends Controller
         $payload['customer_id'] = $customer->id;
         $payload['type'] = $payload['type'] ?? 'online_pickup';
 
+        if ($payload['type'] === 'dine_in') {
+            $dineInEnabled = filter_var(
+                \App\Models\SiteSetting::get('dine_in_preorder_enabled', '0'),
+                FILTER_VALIDATE_BOOLEAN,
+            );
+            if (!$dineInEnabled) {
+                abort(422, 'Dine-in ordering is not available right now.');
+            }
+            // v1: arrival is today only — no collect-tomorrow combination.
+            if (($payload['collect_on'] ?? null) === 'tomorrow' || !empty($payload['fulfil_date'])) {
+                abort(422, 'Dine-in orders are for today only.');
+            }
+        }
+
         // Never trust a browser-supplied collection date — recompute tomorrow
         // from the owner cutoff, or leave null for same-day.
         $fulfil = app(OrderFulfilDateService::class);
@@ -327,7 +347,26 @@ class OrderCreationController extends Controller
                 ->assertSlotAvailable($payload['pickup_slot_at']);
         }
 
-        $order = app(OrderCreationService::class)->createFromPayload($payload, null);
+        if ($payload['type'] === 'dine_in') {
+            // Order + table hold succeed or fail together: a paid dine-in
+            // order without a guaranteed table must never exist.
+            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($payload, $customer) {
+                $order = app(OrderCreationService::class)->createFromPayload($payload, null);
+                app(\App\Domains\Reservations\Services\ReservationService::class)
+                    ->createForPrepaidDineIn(
+                        $order,
+                        (int) $payload['party_size'],
+                        \Carbon\Carbon::parse((string) $payload['pickup_slot_at']),
+                        $customer,
+                    );
+
+                return $order;
+            });
+            $order->load('reservation.table');
+        } else {
+            $order = app(OrderCreationService::class)->createFromPayload($payload, null);
+        }
+
         $customer->update(['last_order_at' => now()]);
 
         app(AuditLogService::class)->log('order.created', 'Order', $order->id, [], $order->toArray(), ['source' => 'customer'], $request);

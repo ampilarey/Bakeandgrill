@@ -523,6 +523,8 @@ export async function fetchReceipts(params: {
     fired_at?: string | null;
     /** Collect-tomorrow date (Y-m-d). Null = same-day / legacy. */
     fulfil_date?: string | null;
+    /** Pickup slot / prepaid dine-in arrival time (ISO). */
+    pickup_slot_at?: string | null;
     /** Set when cashier parks the ticket (status held). */
     held_at?: string | null;
     total: number;

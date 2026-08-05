@@ -5,8 +5,8 @@ import { request } from './client';
 
 export type { MenuItem };
 
-/** Sales channel for public menu API (`online_pickup` = pickup, `delivery` = delivery). */
-export type SalesChannel = 'online_pickup' | 'delivery';
+/** Sales channel for public menu API (`online_pickup` = pickup, `delivery`, `dine_in` = prepaid eat-here). */
+export type SalesChannel = 'online_pickup' | 'delivery' | 'dine_in';
 
 /** Listing-only channel for the event wizard Catering tab (not orderable immediately). */
 export type MenuListingChannel = SalesChannel | 'catering';
@@ -16,7 +16,9 @@ const SALES_CHANNEL_CONFIRMED_KEY = 'bakegrill_sales_channel_confirmed';
 
 export function getSalesChannel(): SalesChannel {
   if (typeof localStorage === 'undefined') return 'online_pickup';
-  return localStorage.getItem(SALES_CHANNEL_KEY) === 'delivery' ? 'delivery' : 'online_pickup';
+  const stored = localStorage.getItem(SALES_CHANNEL_KEY);
+  if (stored === 'delivery' || stored === 'dine_in') return stored;
+  return 'online_pickup';
 }
 
 export function setSalesChannel(channel: SalesChannel): void {
@@ -109,6 +111,10 @@ export interface OnlineOrderingStatus {
     cutoff: string;
     collect_tomorrow_date: string;
   };
+  /** Prepaid dine-in ("Eat here") availability. */
+  dine_in_preorder?: {
+    enabled: boolean;
+  };
 }
 
 export type PreorderGateStatus = {
@@ -182,7 +188,7 @@ export type CheckoutFeesPreview = {
 };
 
 export async function fetchCheckoutFeesPreview(
-  orderType: 'delivery' | 'online_pickup' | 'takeaway',
+  orderType: 'delivery' | 'online_pickup' | 'takeaway' | 'dine_in',
   discountedSubtotalLaar: number,
   lines: Array<{
     item_id: number;

@@ -92,6 +92,15 @@ class PaymentConfirmedListener
                 || $locked->paid_at !== null
                 || in_array($locked->status, ['paid', 'completed', 'cancelled'], true)
             ) {
+                // Balance settle on an already-paid-once ticket (prepaid
+                // dine-in add-ons via pay link): correct payment_status
+                // partial → paid without a second OrderPaid dispatch.
+                if ($locked && $locked->paid_at !== null
+                    && !in_array($locked->status, ['cancelled', 'refunded'], true)
+                ) {
+                    $this->paymentState->syncPaymentStatus($locked);
+                }
+
                 return;
             }
 

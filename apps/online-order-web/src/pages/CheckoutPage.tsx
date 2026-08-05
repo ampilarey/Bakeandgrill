@@ -190,6 +190,7 @@ export function CheckoutPage() {
     orderType, setOrderType, pickupSlotAt, setPickupSlotAt,
     lastChannelPrune,
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
+    partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,
@@ -223,6 +224,9 @@ export function CheckoutPage() {
   const collectTomorrowDate = onlineGate?.order_for_tomorrow?.collect_tomorrow_date ?? null;
   const canOrderTomorrowWhileClosed = shopClosed && allowsTomorrow && checkoutServiceAvailable;
   const placeBlockedByGate = orderingGateClosed && !(canOrderTomorrowWhileClosed && collectOn === 'tomorrow');
+  // Prepaid dine-in ("Eat here"): owner toggle + shop open (arrival is today).
+  const dineInAvailable = onlineGate?.dine_in_preorder?.enabled === true && !shopClosed;
+  const isDineIn = orderType === 'dine_in';
 
   // Auto-fallback when the chosen mode becomes unavailable — never counts as an explicit choice.
   const lastAutoFlipKey = useRef<string | null>(null);
@@ -245,8 +249,22 @@ export function CheckoutPage() {
       setOrderType('delivery', { explicit: false });
       return;
     }
+    // Fall back to pickup if dine-in was selected but is not available.
+    if (orderType === 'dine_in' && onlineGate != null && !dineInAvailable && !pickupBlocked) {
+      const key = 'dine_in→pickup';
+      if (lastAutoFlipKey.current !== key) {
+        lastAutoFlipKey.current = key;
+      }
+      setOrderType('pickup', { explicit: false });
+      return;
+    }
     lastAutoFlipKey.current = null;
-  }, [deliveryBlocked, pickupBlocked, orderType, setOrderType, showToast, t]);
+  }, [deliveryBlocked, pickupBlocked, orderType, setOrderType, showToast, t, onlineGate, dineInAvailable]);
+
+  // Dine-in arrival is always today.
+  useEffect(() => {
+    if (isDineIn && collectOn !== 'today') setCollectOn('today');
+  }, [isDineIn, collectOn, setCollectOn]);
 
   // Keep Order Type open while unconfirmed (also if another accordion was force-opened).
   useEffect(() => {
@@ -282,9 +300,11 @@ export function CheckoutPage() {
   }, [collectOn, allowsTomorrow, setCollectOn]);
 
   useEffect(() => {
-    if (orderType !== 'pickup' || !pickupSlotsEnabled) {
+    // Dine-in reuses the slot grid as the ARRIVAL time and always needs it.
+    const needsSlots = orderType === 'dine_in' || (orderType === 'pickup' && pickupSlotsEnabled);
+    if (!needsSlots) {
       setPickupSlots([]);
-      if (orderType !== 'pickup') setPickupSlotAt(null);
+      if (orderType === 'delivery') setPickupSlotAt(null);
       return;
     }
     setPickupSlotsLoading(true);
@@ -371,13 +391,14 @@ export function CheckoutPage() {
         </p>
       )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {(['pickup', 'delivery'] as const).map((type) => {
+        {([...(['pickup', 'delivery'] as const), ...(dineInAvailable ? (['dine_in'] as const) : [])]).map((type) => {
           const blocked = (type === 'delivery' && deliveryBlocked) || (type === 'pickup' && pickupBlocked);
           const active = !needsModeChoice && orderType === type;
           return (
             <button
               key={type}
               type="button"
+              data-testid={type === 'dine_in' ? 'order-type-dine-in' : undefined}
               onClick={() => {
                 if (blocked) return;
                 setOrderType(type);
@@ -390,7 +411,11 @@ export function CheckoutPage() {
               }}
               aria-pressed={active}
             >
-              {type === 'pickup' ? `🥡 ${t('checkout.type_pickup')}` : `🛵 ${t('checkout.type_delivery')}`}
+              {type === 'pickup'
+                ? `🥡 ${t('checkout.type_pickup')}`
+                : type === 'delivery'
+                  ? `🛵 ${t('checkout.type_delivery')}`
+                  : '🍽️ Eat here'}
             </button>
           );
         })}
@@ -404,6 +429,39 @@ export function CheckoutPage() {
         <p style={{ margin: '12px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
           Pickup orders are temporarily paused.
         </p>
+      )}
+
+      {isDineIn && (
+        <div style={{ marginTop: 16 }} data-testid="dine-in-details">
+          <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
+            How many people?
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              type="button"
+              aria-label="Fewer people"
+              onClick={() => setPartySize(Math.max(1, partySize - 1))}
+              style={{ ...S.typeBtn, padding: '8px 16px' }}
+            >
+              −
+            </button>
+            <span style={{ fontSize: '1rem', fontWeight: 800, minWidth: 24, textAlign: 'center' }} data-testid="party-size-value">
+              {partySize}
+            </span>
+            <button
+              type="button"
+              aria-label="More people"
+              onClick={() => setPartySize(Math.min(20, partySize + 1))}
+              style={{ ...S.typeBtn, padding: '8px 16px' }}
+            >
+              +
+            </button>
+          </div>
+          <p style={{ margin: '12px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            Pick your arrival time below. We reserve a table for you and have your food ready when you walk in.
+            You pay now — anything extra you order at the table joins the same bill.
+          </p>
+        </div>
       )}
     </>
   );
@@ -511,6 +569,43 @@ export function CheckoutPage() {
                     {t('checkout.slot_left').replace('{n}', String(slot.remaining))}
                   </span>
                 )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  // Dine-in arrival time: same slot grid as pickup, but REQUIRED (no ASAP) —
+  // the kitchen times the food and the table hold to this.
+  const bodyDineInArrival = (
+    <>
+      {pickupSlotsLoading ? (
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>{t('checkout.pickup_loading')}</p>
+      ) : pickupSlots.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+          No arrival times are available right now. Please try again later or choose Pickup.
+        </p>
+      ) : (
+        <>
+          <p style={{ margin: '0 0 12px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+            When will you arrive? Your table is reserved for this time.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }} data-testid="arrival-slot-grid">
+            {pickupSlots.map((slot) => (
+              <button
+                key={slot.starts_at}
+                type="button"
+                onClick={() => setPickupSlotAt(slot.starts_at)}
+                style={{
+                  ...S.typeBtn,
+                  ...(pickupSlotAt === slot.starts_at ? S.typeBtnActive : {}),
+                  padding: '8px 12px',
+                  fontSize: '0.85rem',
+                }}
+              >
+                {slot.label}
               </button>
             ))}
           </div>
@@ -967,15 +1062,21 @@ export function CheckoutPage() {
   );
 
   // Fulfillment accordion: read-only day summary + mode-specific detail
-  // (same-day pickup slots or the delivery form). Always visible.
+  // (same-day pickup slots, delivery form, or dine-in arrival). Always visible.
   const showPickupSlots = orderType === 'pickup' && pickupSlotsEnabled && collectOn === 'today';
-  const bodyFulfillment = (
+  const bodyFulfillment = orderType === 'dine_in' ? (
+    bodyDineInArrival
+  ) : (
     <>
       {bodyWhenSummary}
       {showPickupSlots ? bodyPickupSlot : orderType === 'delivery' ? bodyDelivery : null}
     </>
   );
-  const fulfillmentTitle = orderType === 'pickup' ? t('checkout.acc_when') : t('checkout.acc_delivery');
+  const fulfillmentTitle = orderType === 'pickup'
+    ? t('checkout.acc_when')
+    : orderType === 'dine_in'
+      ? 'Arrival time'
+      : t('checkout.acc_delivery');
   const collectDayLabel  = collectOn === 'tomorrow'
     ? `${t('checkout.day_tomorrow')}, ${tomorrowDateLabel}`
     : t('checkout.day_today');
@@ -984,7 +1085,9 @@ export function CheckoutPage() {
     : t('checkout.asap');
   const fulfillmentSummary = orderType === 'pickup'
     ? (showPickupSlots ? `${collectDayLabel} · ${pickupSlotLabel}` : collectDayLabel)
-    : (delivery.address_line1 ? `${collectDayLabel} · ${delivery.address_line1}` : collectDayLabel);
+    : orderType === 'dine_in'
+      ? (pickupSlotAt ? (pickupSlots.find((sl) => sl.starts_at === pickupSlotAt)?.label ?? pickupSlotAt) : 'Choose a time')
+      : (delivery.address_line1 ? `${collectDayLabel} · ${delivery.address_line1}` : collectDayLabel);
 
   // StickyCtaBar above-content: gate banner + terms + error + pending note
   const stickyAbove = (
@@ -1016,6 +1119,29 @@ export function CheckoutPage() {
               {t(orderType === 'delivery' ? 'checkout.tomorrow_banner_delivery' : 'checkout.tomorrow_banner_pickup')
                 .replace('{date}', tomorrowDateLabel)}
             </p>
+          </div>
+        </div>
+      )}
+      {isDineIn && pickupSlotAt && (
+        <div className="banner banner-info" style={{ marginBottom: 12 }} data-testid="dine-in-summary-banner">
+          <span className="banner-icon">🍽️</span>
+          <div>
+            <p className="banner-title">Eating here</p>
+            <p className="banner-sub">
+              Table for {partySize} reserved at{' '}
+              {pickupSlots.find((sl) => sl.starts_at === pickupSlotAt)?.label?.split('–')[0]?.trim()
+                ?? new Date(pickupSlotAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.
+              Your food will be ready when you arrive. You pay now — extras ordered at the table join the same bill.
+            </p>
+          </div>
+        </div>
+      )}
+      {isDineIn && !pickupSlotAt && (
+        <div className="banner banner-warning" style={{ marginBottom: 12 }} data-testid="dine-in-needs-time-banner">
+          <span className="banner-icon">⏰</span>
+          <div>
+            <p className="banner-title">Choose your arrival time</p>
+            <p className="banner-sub">Pick when you’ll arrive so we can reserve your table and time the kitchen.</p>
           </div>
         </div>
       )}
@@ -1210,6 +1336,7 @@ export function CheckoutPage() {
                   || needsModeChoice
                   || !checkoutServiceAvailable
                   || (!paymentServiceAvailable && amountDueLaar > 0)
+                  || (isDineIn && !pickupSlotAt)
                 }
                 loading={isPlacing}
               />

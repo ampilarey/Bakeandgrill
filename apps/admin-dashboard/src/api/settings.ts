@@ -40,6 +40,10 @@ export interface OnlineOrderingGateStatus {
     cutoff: string;
     collect_tomorrow_date: string;
   };
+  /** Prepaid dine-in ("Eat here") availability. */
+  dine_in_preorder?: {
+    enabled: boolean;
+  };
 }
 
 export async function getOnlineOrderingStatus(): Promise<OnlineOrderingGateStatus> {
@@ -70,6 +74,13 @@ export async function updateOrderForTomorrowCutoff(
   cutoff: string,
 ): Promise<{ order_for_tomorrow_cutoff: string; status: OnlineOrderingGateStatus }> {
   return req('/admin/ordering/tomorrow-cutoff', { method: 'PUT', body: JSON.stringify({ cutoff }) });
+}
+
+/** Prepaid dine-in ("Eat here" at checkout) master switch. */
+export async function toggleDineInPreorder(
+  enabled: boolean,
+): Promise<{ dine_in_preorder_enabled: boolean }> {
+  return req('/admin/ordering/dine-in-preorder-toggle', { method: 'POST', body: JSON.stringify({ enabled }) });
 }
 
 // ── Pre-order / catering gate ─────────────────────────────────────────────────
