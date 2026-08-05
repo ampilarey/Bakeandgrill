@@ -35,7 +35,6 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/waste-logs', permission: 'inventory.manage' },
   { to: '/reservations', permission: 'reservations.manage' },
   { to: '/online-ordering', permission: 'settings.update' },
-  { to: '/delivery-settings', permission: 'settings.update' },
   { to: '/customers', permission: 'customers.manage' },
   { to: '/customers/growth', permission: 'customers.manage' },
   { to: '/catering', permissions: ['events.manage', 'customers.manage'] },
@@ -191,16 +190,17 @@ describe('navConfig', () => {
     expect(match?.to).toBe('/delivery');
   });
 
-  it('resolveNavItemForPath does not match delivery-settings as delivery', () => {
+  it('resolveNavItemForPath maps delivery-settings to Ordering Control', () => {
     const all = getAllNavItems();
     const match = resolveNavItemForPath('/delivery-settings', all);
-    expect(match?.to).toBe('/delivery-settings');
+    expect(match?.to).toBe('/online-ordering');
   });
 
-  it('ordering control is under Manage group', () => {
+  it('ordering control is under Manage group and Delivery & Zones is not duplicated in sidebar', () => {
     const group = NAV_GROUPS.find((g) => g.id === 'manage');
     const ordering = group?.items.find((i) => i.to === '/online-ordering');
     expect(ordering?.label).toBe('Ordering Control');
+    expect(group?.items.find((i) => i.to === '/delivery-settings')).toBeUndefined();
   });
 
   it('navItemPathname strips query strings', () => {

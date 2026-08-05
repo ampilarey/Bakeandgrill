@@ -948,7 +948,7 @@ export default function OnlineOrderingPage() {
           toggling={toggling}
           titleOn="Online ordering is ON"
           titleOff="Online ordering is OFF"
-          helpOn={<>Customers can place pickup orders online. Delivery also needs Delivery to be on — manage that in <Link to="/delivery-settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Delivery &amp; Zones</Link>.</>}
+          helpOn={<>Customers can place pickup orders online. Delivery also needs Delivery to be on — open the <Link to="/delivery-settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Delivery</Link> tab above.</>}
           helpOff="All online pickup/delivery orders are blocked. POS is unaffected."
           onToggle={() => void handleToggle()}
         />

@@ -448,7 +448,7 @@ export default function DeliverySettingsPage() {
               style={S.input}
             />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-              Used at checkout for fee math. Website marketing text (“MVR 200”) is edited separately in Content Hub → delivery threshold.
+              Used at checkout for fee math. Website marketing text (“MVR 200”) is edited separately in Content Hub → delivery threshold. This page is also the Delivery tab under Ordering Control.
             </p>
           </div>
         </div>

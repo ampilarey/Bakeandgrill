@@ -6,7 +6,7 @@ import {
   Heart, MessageSquare, BarChart2, Factory, Webhook,
   Gift, Star, Target, RotateCcw, Trash2, CreditCard,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
-  Printer, Link, ShoppingBag, Zap, MapPin,
+  Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
   AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv,
 } from 'lucide-react';
@@ -83,7 +83,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'inventory.manage',    description: 'Log waste & shrinkage' },
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
       { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online, delivery, pre-order & feature gates' },
-      { to: '/delivery-settings', icon: MapPin,      label: 'Delivery & Zones', permission: 'settings.update', description: 'Fees, zones & capacity (also under Ordering Control → Delivery)' },
+      // Delivery settings: Ordering Control → Delivery tab only (/delivery-settings). Not listed again here.
     ],
   },
   {
@@ -197,9 +197,22 @@ export function getAllNavItems(_includeDevItems = true): NavItem[] {
   return [...PINNED_NAV_ITEMS, ...getNavGroups().flatMap((g) => g.items)];
 }
 
+/**
+ * Paths that belong to another nav item for highlighting.
+ * Delivery settings live under Ordering Control → Delivery tab.
+ */
+export const NAV_PATH_ALIASES: Record<string, string> = {
+  '/delivery-settings': '/online-ordering',
+};
+
+function resolveNavPath(pathname: string): string {
+  const path = pathname.replace(/\/$/, '') || '/';
+  return NAV_PATH_ALIASES[path] ?? path;
+}
+
 /** Longest-prefix match so /delivery-settings does not match /delivery */
 export function resolveNavItemForPath(pathname: string, items: NavItem[]): NavItem | undefined {
-  const path = pathname.replace(/\/$/, '') || '/';
+  const path = resolveNavPath(pathname);
   return [...items]
     .sort((a, b) => navItemPathname(b.to).length - navItemPathname(a.to).length)
     .find((item) => {
@@ -216,7 +229,7 @@ export function resolveNavItemForPath(pathname: string, items: NavItem[]): NavIt
 export function getActiveSection(pathname: string): NavGroup | undefined {
   const groups = getNavGroups();
   const allItems = groups.flatMap((g) => g.items.map((item) => ({ group: g, item })));
-  const path = pathname.replace(/\/$/, '') || '/';
+  const path = resolveNavPath(pathname);
   const match = [...allItems]
     .sort((a, b) => navItemPathname(b.item.to).length - navItemPathname(a.item.to).length)
     .find(({ item }) => {
