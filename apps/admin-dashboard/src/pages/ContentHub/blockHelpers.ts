@@ -14,7 +14,7 @@ const KEY_HELPERS: Record<string, string> = {
   business_maps_url: 'Link that opens your location in Google Maps.',
   business_whatsapp: 'WhatsApp chat link for the contact buttons.',
   business_viber: 'Viber chat link for the contact buttons.',
-  delivery_threshold: 'Order total above which delivery is free.',
+  delivery_threshold: 'Marketing copy for free-delivery promise (e.g. “MVR 200”). The real fee threshold used at checkout is Delivery & Zones → Free delivery threshold.',
   delivery_time: 'Delivery time promise shown to customers.',
   logo: 'Logo for light backgrounds (header and navigation).',
   logo_dark: 'Logo for dark backgrounds; falls back to the light logo if empty.',

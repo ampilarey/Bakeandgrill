@@ -339,30 +339,6 @@ class OnlineOrderingController extends Controller
     }
 
     /**
-     * Toggle prepaid dine-in ("Eat here" at online checkout).
-     * Body: { "enabled": true|false }  or  no body (flips current state).
-     */
-    public function toggleDineInPreorder(Request $request): JsonResponse
-    {
-        $current = filter_var(
-            SiteSetting::get('dine_in_preorder_enabled', '0'),
-            FILTER_VALIDATE_BOOLEAN,
-        );
-
-        $next = $request->has('enabled')
-            ? (bool) $request->input('enabled')
-            : !$current;
-
-        $newValue = $next ? '1' : '0';
-        SiteSetting::set('dine_in_preorder_enabled', $newValue);
-        $this->auditGateWrite('dine_in_preorder_enabled', $current ? '1' : '0', $newValue, $request);
-
-        return response()->json([
-            'dine_in_preorder_enabled' => $next,
-        ]);
-    }
-
-    /**
      * Owner sets the "order for tomorrow" cutoff time (HH:mm).
      * Body: { "cutoff": "20:00" }
      */

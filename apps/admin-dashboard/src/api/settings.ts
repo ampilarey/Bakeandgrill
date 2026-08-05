@@ -35,15 +35,23 @@ export interface OnlineOrderingGateStatus {
   schedule_active: boolean;
   current_close: string | null;
   next_open_window: string | null;
+  /** Online open AND delivery gate open. */
+  delivery_available?: boolean;
+  next_delivery_window?: string | null;
   /** Present when order-for-tomorrow is configured. */
   order_for_tomorrow?: {
     cutoff: string;
     collect_tomorrow_date: string;
+    enabled?: boolean;
+    open?: boolean;
   };
   /** Prepaid dine-in ("Eat here") availability. */
   dine_in_preorder?: {
     enabled: boolean;
+    open?: boolean;
   };
+  reservations?: { open: boolean };
+  gift_cards?: { open: boolean };
 }
 
 export async function getOnlineOrderingStatus(): Promise<OnlineOrderingGateStatus> {
@@ -76,13 +84,6 @@ export async function updateOrderForTomorrowCutoff(
   return req('/admin/ordering/tomorrow-cutoff', { method: 'PUT', body: JSON.stringify({ cutoff }) });
 }
 
-/** Prepaid dine-in ("Eat here" at checkout) master switch. */
-export async function toggleDineInPreorder(
-  enabled: boolean,
-): Promise<{ dine_in_preorder_enabled: boolean }> {
-  return req('/admin/ordering/dine-in-preorder-toggle', { method: 'POST', body: JSON.stringify({ enabled }) });
-}
-
 // ── Feature gates (kill switch + schedule + override per feature) ────────────
 
 export interface FeatureGateStatus {
@@ -104,7 +105,11 @@ export async function updateFeatureGate(
   key: string,
   patch: {
     enabled?: boolean;
-    schedule?: Record<string, { open: string; close: string; enabled: boolean }> | null;
+    schedule?: Record<
+      string,
+      | { open: string; close: string; enabled?: boolean }
+      | { enabled?: boolean; windows: { open: string; close: string }[] }
+    > | null;
     override_until?: string | null;
   },
 ): Promise<{ gate: FeatureGateStatus }> {

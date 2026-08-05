@@ -115,7 +115,7 @@ class DeliveryGateService
             return false;
         }
         try {
-            $until = Carbon::parse($raw);
+            $until = Carbon::parse($raw, config('app.timezone', 'UTC'));
 
             return ($at ?? now())->lt($until);
         } catch (\Throwable) {

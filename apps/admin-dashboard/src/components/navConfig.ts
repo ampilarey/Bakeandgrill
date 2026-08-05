@@ -82,8 +82,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/supplier-intelligence', icon: Factory,       label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
       { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'inventory.manage',    description: 'Log waste & shrinkage' },
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
-      { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online hours, fees & overrides' },
-      { to: '/delivery-settings', icon: MapPin,      label: 'Delivery & Zones', permission: 'settings.update', description: 'Delivery hours, zone fees & alerts' },
+      { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online, delivery, pre-order & feature gates' },
+      { to: '/delivery-settings', icon: MapPin,      label: 'Delivery & Zones', permission: 'settings.update', description: 'Fees, zones & capacity (also under Ordering Control → Delivery)' },
     ],
   },
   {

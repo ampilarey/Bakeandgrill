@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
+import { useState, useEffect, type CSSProperties } from 'react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { RefreshCw, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, PageShell } from '../components/SharedUI';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
@@ -12,8 +12,6 @@ import {
   updateOnlineOrderingSchedule,
   updateOrderForTomorrowCutoff,
   getFeatureGates,
-  updateFeatureGate,
-  type FeatureGateStatus,
   getCateringOrderingStatus,
   toggleCateringOrdering,
   setCateringOrderingOverride,
@@ -25,38 +23,34 @@ import {
   type OnlineOrderingGateStatus,
   type CateringOrderingGateStatus,
   type PackagingFeeSettings,
+  type FeatureGateStatus,
 } from '../api';
 import { OrderingControlTabs } from '../components/OrderingControlTabs';
+import { FeatureGateCard } from './OnlineOrderingPage/FeatureGateCard';
+import {
+  DAYS,
+  DEFAULT_SCHEDULE,
+  ForceOpenOverride,
+  MasterSwitchRow,
+  S,
+  StatusChipStrip,
+  parseSchedule,
+  safeIsoFromLocal,
+  toDatetimeLocal,
+  type DayKey,
+  type Schedule,
+} from './OnlineOrderingPage/orderingControlUi';
 
-const DAYS = [
-  { key: 'mon', label: 'Monday' },
-  { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' },
-  { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' },
-  { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' },
-] as const;
-
-type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
-type TimeWindow = { open: string; close: string };
-type DaySchedule = { enabled: boolean; windows: TimeWindow[] };
-type Schedule = Record<DayKey, DaySchedule>;
-
-const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
-  DAYS.map(({ key }) => [key, { enabled: true, windows: [{ open: '10:00', close: '22:00' }] }])
-) as Schedule;
-
-/** Online-ordering sub-tabs only — Pre-order is a top-level Ordering Control tab. */
+/** Online-ordering sub-tabs — Pre-order + Delivery stay on OrderingControlTabs. */
 const PAGE_SECTIONS = [
-  { id: 'gates', label: 'Gates & Schedule' },
-  { id: 'pickup', label: 'Pickup Slots' },
-  { id: 'fees', label: 'Fees' },
+  { id: 'channels', label: 'Online channel' },
+  { id: 'features', label: 'Features' },
+  { id: 'slots-fees', label: 'Slots & fees' },
 ] as const;
 
 type PageSection = (typeof PAGE_SECTIONS)[number]['id'] | 'events';
 
-const sectionTabStyle = (active: boolean): React.CSSProperties => ({
+const sectionTabStyle = (active: boolean): CSSProperties => ({
   padding: '7px 14px',
   borderRadius: 8,
   border: 'none',
@@ -67,114 +61,8 @@ const sectionTabStyle = (active: boolean): React.CSSProperties => ({
   background: active ? 'var(--color-surface)' : 'transparent',
   color: active ? 'var(--color-text)' : 'var(--color-text-secondary)',
   boxShadow: active ? '0 1px 3px rgba(28,20,8,0.08)' : 'none',
+  minHeight: 44,
 });
-
-function parseSchedule(raw: string): Schedule {
-  try {
-    const parsed = JSON.parse(raw);
-    const result = { ...DEFAULT_SCHEDULE };
-    for (const { key } of DAYS) {
-      const val = parsed[key];
-      if (!val) continue;
-      // Array of windows format
-      if (Array.isArray(val)) {
-        result[key] = { enabled: true, windows: val.map((w: any) => ({ open: w.open ?? '10:00', close: w.close ?? '22:00' })) };
-      } else if (typeof val === 'object') {
-        result[key] = {
-          enabled: val.enabled !== false,
-          windows: val.windows
-            ? val.windows.map((w: any) => ({ open: w.open, close: w.close }))
-            : [{ open: val.open ?? '10:00', close: val.close ?? '22:00' }],
-        };
-      }
-    }
-    return result;
-  } catch {
-    return DEFAULT_SCHEDULE;
-  }
-}
-
-const S = {
-  card: {
-    background: '#FDFAF7',
-    border: '1px solid var(--color-border)',
-    borderRadius: 16,
-    padding: '1.5rem',
-    marginBottom: '1.25rem',
-  } as React.CSSProperties,
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: 'var(--color-text-secondary)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.05em',
-    marginBottom: '1rem',
-  },
-  input: {
-    width: '100%',
-    padding: '9px 12px',
-    border: '1.5px solid var(--color-border)',
-    borderRadius: 10,
-    fontSize: 13,
-    fontFamily: 'inherit',
-    boxSizing: 'border-box' as const,
-  },
-  label: {
-    display: 'block' as const,
-    fontSize: 13,
-    fontWeight: 600 as const,
-    color: 'var(--color-text-secondary)',
-    marginBottom: 4,
-  },
-  row: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const },
-  btnPrimary: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '8px 16px', borderRadius: 10, border: 'none',
-    background: 'var(--color-primary)', color: '#fff', fontSize: 13, fontWeight: 600,
-    cursor: 'pointer',
-  } as React.CSSProperties,
-  btnSecondary: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '8px 16px', borderRadius: 10,
-    border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
-    color: '#4A3728', fontSize: 13, fontWeight: 600,
-    cursor: 'pointer',
-  } as React.CSSProperties,
-  btnDanger: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '8px 16px', borderRadius: 10, border: 'none',
-    background: 'var(--color-danger)', color: '#fff', fontSize: 13, fontWeight: 600,
-    cursor: 'pointer',
-  } as React.CSSProperties,
-  statusOpen: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: '#D1FAE5', color: '#065F46',
-    border: '1px solid #A7F3D0',
-    borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 700,
-  } as React.CSSProperties,
-  statusClosed: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)',
-    border: '1px solid #FECACA',
-    borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 700,
-  } as React.CSSProperties,
-  reasonNote: {
-    fontSize: 12, color: '#9C8575', marginTop: 6,
-  },
-  toggleTrack: (on: boolean): React.CSSProperties => ({
-    display: 'inline-block', position: 'relative',
-    width: 48, height: 26, borderRadius: 13,
-    background: on ? 'var(--color-primary)' : '#D1C9BE',
-    transition: 'background 0.2s',
-    cursor: 'pointer', flexShrink: 0,
-  }),
-  toggleThumb: (on: boolean): React.CSSProperties => ({
-    position: 'absolute', top: 3, left: on ? 26 : 3,
-    width: 20, height: 20, borderRadius: '50%',
-    background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-    transition: 'left 0.2s',
-  }),
-};
 
 const DEFAULT_RAMADAN_BUSINESS_HOURS: Record<string, string> = {
   mon: '4:00 PM – 11:00 PM',
@@ -198,211 +86,29 @@ const DEFAULT_EID_BUSINESS_HOURS: Record<string, string> = {
 
 const REASON_LABELS: Record<string, string> = {
   master_switch_off: 'Master switch is off',
-  schedule:          'Outside scheduled hours',
-  override_active:   'Force-open override is active',
+  schedule: 'Outside scheduled hours',
+  override_active: 'Force-open override is active',
 };
 
-// ── Feature gate card (kill switch + weekly schedule + force-open) ────────────
-
-type GateDayRow = { enabled: boolean; open: string; close: string };
-type GateDays = Record<DayKey, GateDayRow>;
-
-const EMPTY_GATE_DAYS: GateDays = Object.fromEntries(
-  DAYS.map(({ key }) => [key, { enabled: false, open: '10:00', close: '22:00' }]),
-) as GateDays;
-
-function gateScheduleToDays(schedule: FeatureGateStatus['schedule']): GateDays {
-  const days: GateDays = JSON.parse(JSON.stringify(EMPTY_GATE_DAYS));
-  if (!schedule) return days;
-  for (const { key } of DAYS) {
-    const raw = schedule[key];
-    if (!raw) continue;
-    const first = Array.isArray(raw)
-      ? (raw as { open?: string; close?: string }[])[0]
-      : (raw.windows?.[0] ?? raw);
-    if (!first?.open || !first?.close) continue;
-    days[key] = {
-      enabled: (raw as { enabled?: boolean }).enabled !== false,
-      open: String(first.open).slice(0, 5),
-      close: String(first.close).slice(0, 5),
-    };
+function resolveSection(sectionParam: string | null): PageSection {
+  if (sectionParam === 'events') return 'events';
+  if (sectionParam === 'features') return 'features';
+  if (sectionParam === 'pickup' || sectionParam === 'fees' || sectionParam === 'slots-fees') {
+    return 'slots-fees';
   }
-  return days;
-}
-
-function FeatureGateCard({
-  gate,
-  onChanged,
-  onToast,
-}: {
-  gate: FeatureGateStatus;
-  onChanged: (g: FeatureGateStatus) => void;
-  onToast: (msg: string, type?: 'ok' | 'err') => void;
-}) {
-  const [days, setDays] = useState<GateDays>(() => gateScheduleToDays(gate.schedule));
-  const [useSchedule, setUseSchedule] = useState<boolean>(() => gate.schedule != null);
-  const [overrideUntil, setOverrideUntil] = useState<string>(() => {
-    if (!gate.override_until) return '';
-    const d = new Date(gate.override_until);
-    if (Number.isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  });
-  const [saving, setSaving] = useState(false);
-
-  const patch = async (body: Parameters<typeof updateFeatureGate>[1], okMsg: string) => {
-    setSaving(true);
-    try {
-      const { gate: fresh } = await updateFeatureGate(gate.key, body);
-      onChanged(fresh);
-      onToast(okMsg);
-    } catch {
-      onToast(`Failed to update ${gate.label}.`, 'err');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveSchedule = () => {
-    const enabledDays = DAYS.filter(({ key }) => days[key].enabled);
-    if (useSchedule && enabledDays.length === 0) {
-      onToast('Tick at least one day, or untick “Limit to a weekly schedule”.', 'err');
-      return;
-    }
-    const schedule = useSchedule
-      ? Object.fromEntries(enabledDays.map(({ key }) => [
-          key,
-          { open: days[key].open, close: days[key].close, enabled: true },
-        ]))
-      : null;
-    void patch({ schedule }, useSchedule ? `${gate.label} schedule saved.` : `${gate.label} schedule cleared.`);
-  };
-
-  return (
-    <div style={S.card} data-testid={`feature-gate-${gate.key}`}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-        <p style={{ ...S.sectionTitle, marginBottom: 0 }}>{gate.label}</p>
-        <span style={gate.open ? S.statusOpen : S.statusClosed}>
-          {gate.open ? 'Available now' : 'Off right now'}
-        </span>
-      </div>
-      <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '10px 0 14px', lineHeight: 1.5 }}>
-        {gate.description}
-      </p>
-
-      {/* Kill switch */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-        <button
-          style={S.toggleTrack(gate.enabled)}
-          onClick={() => void patch({ enabled: !gate.enabled }, `${gate.label} turned ${gate.enabled ? 'OFF' : 'ON'}.`)}
-          disabled={saving}
-          role="switch"
-          aria-checked={gate.enabled}
-          aria-label={`Toggle ${gate.label}`}
-          data-testid={`feature-gate-toggle-${gate.key}`}
-        >
-          <span style={S.toggleThumb(gate.enabled)} />
-        </button>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-          {gate.enabled ? 'ON' : 'OFF'}
-        </div>
-      </div>
-
-      {/* Weekly schedule */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 10 }}>
-        <input
-          type="checkbox"
-          checked={useSchedule}
-          onChange={(e) => setUseSchedule(e.target.checked)}
-        />
-        Limit to a weekly schedule (unticked = available whenever it’s ON)
-      </label>
-      {useSchedule && (
-        <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
-          {DAYS.map(({ key, label }) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 110, fontSize: 13, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={days[key].enabled}
-                  onChange={(e) => setDays((d) => ({ ...d, [key]: { ...d[key], enabled: e.target.checked } }))}
-                />
-                {label}
-              </label>
-              <input
-                type="time"
-                value={days[key].open}
-                disabled={!days[key].enabled}
-                onChange={(e) => setDays((d) => ({ ...d, [key]: { ...d[key], open: e.target.value } }))}
-                style={{ ...S.input, width: 110, padding: '5px 8px', opacity: days[key].enabled ? 1 : 0.5 }}
-              />
-              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>to</span>
-              <input
-                type="time"
-                value={days[key].close}
-                disabled={!days[key].enabled}
-                onChange={(e) => setDays((d) => ({ ...d, [key]: { ...d[key], close: e.target.value } }))}
-                style={{ ...S.input, width: 110, padding: '5px 8px', opacity: days[key].enabled ? 1 : 0.5 }}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        <button type="button" style={S.btnPrimary} onClick={saveSchedule} disabled={saving}>
-          <Save size={14} />
-          {saving ? 'Saving…' : 'Save schedule'}
-        </button>
-      </div>
-
-      {/* Force-open override */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 200 }}>
-          <label style={S.label}>Force-open until (ignores switch + schedule)</label>
-          <input
-            type="datetime-local"
-            style={S.input}
-            value={overrideUntil}
-            onChange={(e) => setOverrideUntil(e.target.value)}
-          />
-        </div>
-        <button
-          type="button"
-          style={S.btnSecondary}
-          disabled={saving || !overrideUntil}
-          onClick={() => void patch(
-            { override_until: new Date(overrideUntil).toISOString() },
-            `${gate.label} forced open.`,
-          )}
-        >
-          <Unlock size={14} /> Set
-        </button>
-        {gate.override_until && (
-          <button
-            type="button"
-            style={S.btnSecondary}
-            disabled={saving}
-            onClick={() => { setOverrideUntil(''); void patch({ override_until: null }, 'Override cleared.'); }}
-          >
-            <Lock size={14} /> Clear
-          </button>
-        )}
-      </div>
-    </div>
-  );
+  // Legacy ?section=gates → channels
+  return 'channels';
 }
 
 export default function OnlineOrderingPage() {
   usePageTitle('Ordering Control');
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const sectionParam = searchParams.get('section');
-  const section: PageSection =
-    sectionParam === 'fees' || sectionParam === 'pickup' || sectionParam === 'events'
-      ? sectionParam
-      : 'gates';
+  const section = resolveSection(sectionParam);
 
   const setSection = (next: PageSection) => {
-    if (next === 'gates') {
+    if (next === 'channels') {
       setSearchParams({}, { replace: true });
     } else {
       setSearchParams({ section: next }, { replace: true });
@@ -423,6 +129,7 @@ export default function OnlineOrderingPage() {
 
   const [feeSettings, setFeeSettings] = useState<PackagingFeeSettings | null>(null);
   const [feeSaving, setFeeSaving] = useState(false);
+  const [feeError, setFeeError] = useState('');
 
   const [pickupEnabled, setPickupEnabled] = useState(true);
   const [pickupMinutes, setPickupMinutes] = useState('30');
@@ -456,19 +163,15 @@ export default function OnlineOrderingPage() {
 
   const load = () => {
     setLoading(true);
+    setError('');
     getOnlineOrderingStatus()
       .then((s) => {
         setStatus(s);
         if (s.order_for_tomorrow?.cutoff) {
           setTomorrowCutoff(s.order_for_tomorrow.cutoff);
         }
-        if (s.override_until) {
-          // Convert ISO datetime to local datetime-local input value (must use local parts, not UTC)
-          const d = new Date(s.override_until);
-          const pad = (n: number) => String(n).padStart(2, '0');
-          const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-          setOverrideUntil(local);
-        }
+        // Always sync — clear the input when the server has no override.
+        setOverrideUntil(toDatetimeLocal(s.override_until));
       })
       .catch(() => setError('Failed to load online ordering status.'))
       .finally(() => setLoading(false));
@@ -478,15 +181,7 @@ export default function OnlineOrderingPage() {
     getCateringOrderingStatus()
       .then((s) => {
         setCateringStatus(s);
-        if (s.override_until) {
-          const d = new Date(s.override_until);
-          const pad = (n: number) => String(n).padStart(2, '0');
-          setCateringOverrideUntil(
-            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
-          );
-        } else {
-          setCateringOverrideUntil('');
-        }
+        setCateringOverrideUntil(toDatetimeLocal(s.override_until));
       })
       .catch(() => { /* optional until migration runs */ });
   };
@@ -502,8 +197,7 @@ export default function OnlineOrderingPage() {
       if (raw) setSchedule(parseSchedule(raw));
       const cateringRaw = byKey('catering_ordering_schedule') ?? '';
       if (cateringRaw) setCateringSchedule(parseSchedule(cateringRaw));
-      const tomorrowCutoffRaw = byKey('order_for_tomorrow_cutoff');
-      if (tomorrowCutoffRaw) setTomorrowCutoff(tomorrowCutoffRaw);
+      // tomorrowCutoff comes only from GET /ordering/status (avoids dual-source race).
       const closedMsg = byKey('catering_ordering_closed_message');
       if (closedMsg) setCateringClosedMessage(closedMsg);
       const enabled = byKey('pickup_slots_enabled');
@@ -523,8 +217,8 @@ export default function OnlineOrderingPage() {
       }
     }).finally(() => setScheduleLoading(false));
     getPackagingFeeSettings()
-      .then(({ settings }) => setFeeSettings(settings))
-      .catch(() => { /* optional */ });
+      .then(({ settings }) => { setFeeSettings(settings); setFeeError(''); })
+      .catch(() => setFeeError('Could not load packaging fee settings.'));
   }, []);
 
   const savePickupSlots = async () => {
@@ -582,13 +276,14 @@ export default function OnlineOrderingPage() {
   };
 
   const handleCateringSetOverride = async () => {
-    if (!cateringOverrideUntil) {
-      showToast('Pick an override end time.', 'err');
+    const iso = safeIsoFromLocal(cateringOverrideUntil);
+    if (!iso) {
+      showToast('Pick a valid override end time.', 'err');
       return;
     }
     setCateringSavingOverride(true);
     try {
-      const { status: next } = await setCateringOrderingOverride(new Date(cateringOverrideUntil).toISOString());
+      const { status: next } = await setCateringOrderingOverride(iso);
       setCateringStatus(next);
       showToast('Pre-order force-open override set.');
     } catch {
@@ -684,6 +379,7 @@ export default function OnlineOrderingPage() {
       }]),
     ) as Schedule;
     setSchedule(preset);
+    setScheduleSaving(true);
 
     let businessHours = DEFAULT_RAMADAN_BUSINESS_HOURS;
     try {
@@ -696,10 +392,17 @@ export default function OnlineOrderingPage() {
     } catch { /* use default */ }
 
     try {
-      await updateSiteSettings({ business_hours: JSON.stringify(businessHours) });
-      showToast('Ramadan hours applied to business hours and online schedule — save schedule to persist ordering windows.');
+      await Promise.all([
+        updateSiteSettings({ business_hours: JSON.stringify(businessHours) }),
+        updateOnlineOrderingSchedule(preset),
+      ]);
+      const res = await getOnlineOrderingStatus();
+      setStatus(res);
+      showToast('Ramadan hours saved to business hours and online ordering schedule.');
     } catch {
-      showToast('Schedule updated locally; failed to save business hours.', 'err');
+      showToast('Failed to save Ramadan preset. Try again.', 'err');
+    } finally {
+      setScheduleSaving(false);
     }
   };
 
@@ -711,6 +414,7 @@ export default function OnlineOrderingPage() {
       }]),
     ) as Schedule;
     setSchedule(preset);
+    setScheduleSaving(true);
 
     let businessHours = DEFAULT_EID_BUSINESS_HOURS;
     try {
@@ -723,17 +427,25 @@ export default function OnlineOrderingPage() {
     } catch { /* use default */ }
 
     try {
-      await updateSiteSettings({ business_hours: JSON.stringify(businessHours) });
-      showToast('Eid hours applied — save schedule to persist ordering windows.');
+      await Promise.all([
+        updateSiteSettings({ business_hours: JSON.stringify(businessHours) }),
+        updateOnlineOrderingSchedule(preset),
+      ]);
+      const res = await getOnlineOrderingStatus();
+      setStatus(res);
+      showToast('Eid hours saved to business hours and online ordering schedule.');
     } catch {
-      showToast('Schedule updated locally; failed to save business hours.', 'err');
+      showToast('Failed to save Eid preset. Try again.', 'err');
+    } finally {
+      setScheduleSaving(false);
     }
   };
 
   const saveSchedule = async () => {
     setScheduleSaving(true);
     try {
-      await updateOnlineOrderingSchedule(schedule);
+      const res = await updateOnlineOrderingSchedule(schedule);
+      if (res.status) setStatus(res.status);
       showToast('Schedule saved.');
     } catch {
       showToast('Failed to save schedule.', 'err');
@@ -820,10 +532,12 @@ export default function OnlineOrderingPage() {
   };
 
   useEffect(() => {
+    if (section !== 'features' && section !== 'channels') return;
+    if (featureGates) return;
     getFeatureGates()
       .then(({ gates }) => setFeatureGates(gates))
       .catch(() => { /* section hidden until loaded */ });
-  }, []);
+  }, [section, featureGates]);
 
   const saveTomorrowCutoff = async () => {
     if (!/^\d{1,2}:\d{2}$/.test(tomorrowCutoff.trim())) {
@@ -844,13 +558,13 @@ export default function OnlineOrderingPage() {
   };
 
   const handleSetOverride = async () => {
-    if (!overrideUntil) {
-      showToast('Please pick a date and time first.', 'err');
+    const isoVal = safeIsoFromLocal(overrideUntil);
+    if (!isoVal) {
+      showToast('Please pick a valid date and time first.', 'err');
       return;
     }
     setSavingOverride(true);
     try {
-      const isoVal = new Date(overrideUntil).toISOString();
       await setOnlineOrderingOverride(isoVal);
       showToast('Force-open override set.');
       load();
@@ -927,72 +641,28 @@ export default function OnlineOrderingPage() {
 
         <div style={S.card}>
           <p style={S.sectionTitle}>Master Switch</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button
-              type="button"
-              style={S.toggleTrack(!!cateringStatus?.master_switch)}
-              onClick={() => void handleCateringToggle()}
-              disabled={cateringToggling || !cateringStatus}
-              aria-label="Toggle pre-order"
-              role="switch"
-              aria-checked={!!cateringStatus?.master_switch}
-            >
-              <span style={S.toggleThumb(!!cateringStatus?.master_switch)} />
-            </button>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#3D2B1F' }}>
-                {cateringStatus?.master_switch ? 'Pre-order is ON' : 'Pre-order is OFF'}
-              </div>
-              <div style={{ fontSize: 12, color: '#9C8575', marginTop: 2 }}>
-                {cateringStatus?.master_switch
-                  ? 'Customers can submit new event / pre-order requests.'
-                  : 'New customer requests are blocked. Existing quotes and admin tools stay available.'}
-              </div>
-            </div>
-          </div>
-          <div style={{ marginTop: 14 }}>
-            <button
-              type="button"
-              style={cateringStatus?.master_switch ? S.btnDanger : S.btnPrimary}
-              onClick={() => void handleCateringToggle()}
-              disabled={cateringToggling || !cateringStatus}
-            >
-              <Power size={14} />
-              {cateringToggling
-                ? 'Updating…'
-                : cateringStatus?.master_switch
-                  ? 'Turn OFF pre-order'
-                  : 'Turn ON pre-order'}
-            </button>
-          </div>
+          <MasterSwitchRow
+            on={!!cateringStatus?.master_switch}
+            toggling={cateringToggling}
+            titleOn="Pre-order is ON"
+            titleOff="Pre-order is OFF"
+            helpOn="Customers can submit new event / pre-order requests."
+            helpOff="New customer requests are blocked. Existing quotes and admin tools stay available."
+            onToggle={() => void handleCateringToggle()}
+          />
         </div>
 
         <div style={S.card}>
           <p style={S.sectionTitle}>Force-open Override</p>
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-            Force pre-order <strong>open</strong> until a specific time, ignoring the schedule.
-          </p>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <label style={S.label}>Override until</label>
-              <input
-                type="datetime-local"
-                style={S.input}
-                value={cateringOverrideUntil}
-                onChange={(e) => setCateringOverrideUntil(e.target.value)}
-              />
-            </div>
-            <button type="button" style={S.btnPrimary} onClick={() => void handleCateringSetOverride()} disabled={cateringSavingOverride}>
-              <Unlock size={14} />
-              {cateringSavingOverride ? 'Saving…' : 'Set Override'}
-            </button>
-            {cateringStatus?.override_until && (
-              <button type="button" style={S.btnSecondary} onClick={() => void handleCateringClearOverride()} disabled={cateringSavingOverride}>
-                <Lock size={14} />
-                Clear
-              </button>
-            )}
-          </div>
+          <ForceOpenOverride
+            help="Force pre-order open until a specific time, ignoring the switch and schedule."
+            value={cateringOverrideUntil}
+            onChange={setCateringOverrideUntil}
+            activeUntil={cateringStatus?.override_until}
+            saving={cateringSavingOverride}
+            onSet={() => void handleCateringSetOverride()}
+            onClear={() => void handleCateringClearOverride()}
+          />
         </div>
 
         <div style={S.card}>
@@ -1165,38 +835,61 @@ export default function OnlineOrderingPage() {
     );
   }
 
-  if (loading) {
-    return (
-      <PageShell>
-        <div style={{ padding: '2rem' }}>
-          <PageHeader section="Manage" title="Ordering Control" />
-          <OrderingControlTabs />
-          <p style={{ color: '#9C8575', fontSize: 14 }}>Loading…</p>
-        </div>
-      </PageShell>
-    );
-  }
-
-  if (error || !status) {
-    return (
-      <PageShell>
-        <div style={{ padding: '2rem' }}>
-          <PageHeader section="Manage" title="Ordering Control" />
-          <OrderingControlTabs />
-          <p style={{ color: 'var(--color-danger-strong)', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
-        </div>
-      </PageShell>
-    );
-  }
+  const statusChips = [
+    {
+      id: 'online',
+      label: 'Online',
+      open: status ? status.open : null,
+      onClick: () => setSection('channels'),
+    },
+    {
+      id: 'delivery',
+      label: 'Delivery',
+      open: status ? Boolean(status.delivery_available) : null,
+      onClick: () => { void navigate('/delivery-settings'); },
+    },
+    {
+      id: 'tomorrow',
+      label: 'Tomorrow',
+      open: status?.order_for_tomorrow ? status.order_for_tomorrow.open !== false : null,
+      onClick: () => setSection('features'),
+    },
+    {
+      id: 'dine_in',
+      label: 'Eat here',
+      open: status?.dine_in_preorder ? status.dine_in_preorder.open !== false : (featureGates?.dine_in_preorder?.open ?? null),
+      onClick: () => setSection('features'),
+    },
+    {
+      id: 'reservations',
+      label: 'Reservations',
+      open: status?.reservations ? status.reservations.open !== false : (featureGates?.reservations?.open ?? null),
+      onClick: () => setSection('features'),
+    },
+    {
+      id: 'gift_cards',
+      label: 'Gift cards',
+      open: status?.gift_cards ? status.gift_cards.open !== false : (featureGates?.gift_card_purchase?.open ?? null),
+      onClick: () => setSection('features'),
+    },
+    {
+      id: 'preorder',
+      label: 'Pre-order',
+      open: cateringStatus ? cateringStatus.open : null,
+      onClick: () => setSection('events'),
+    },
+  ];
 
   return (
     <PageShell>
-    <div style={{ padding: '1.5rem', maxWidth: 680 }}>
+    <div style={{ padding: '1.5rem', maxWidth: 720 }}>
       <PageHeader section="Manage"
         title="Ordering Control Center"
-        subtitle="Online ordering gates, schedules, fees, and limits"
+        subtitle="One place for online, delivery, pre-order, and feature gates"
       />
       <OrderingControlTabs />
+
+      <StatusChipStrip chips={statusChips} />
 
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
         {PAGE_SECTIONS.map(({ id, label }) => (
@@ -1208,32 +901,39 @@ export default function OnlineOrderingPage() {
 
       {toastBanner}
 
-      {section === 'gates' && (<>
-      {/* Status badge + quick status */}
+      {section === 'channels' && (<>
+      {loading && !status && (
+        <p style={{ color: '#9C8575', fontSize: 14, marginBottom: 16 }}>Loading online channel…</p>
+      )}
+      {error && (
+        <div style={S.card}>
+          <p style={{ color: 'var(--color-danger-strong)', fontSize: 14, margin: 0 }}>{error}</p>
+          <button type="button" style={{ ...S.btnSecondary, marginTop: 12 }} onClick={load}>
+            <RefreshCw size={13} /> Retry
+          </button>
+        </div>
+      )}
+      {status && (<>
       <div style={S.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#3D2B1F', marginBottom: 6 }}>
-              Current Status
+              Online channel status
             </div>
             <span style={status.open ? S.statusOpen : S.statusClosed}>
               {status.open ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-              {status.open ? 'Accepting orders' : 'Not accepting orders'}
+              {status.open ? 'Accepting online orders' : 'Online ordering closed'}
             </span>
             {!status.open && status.reason && (
               <p style={S.reasonNote}>
                 Reason: {REASON_LABELS[status.reason] ?? status.reason}
               </p>
             )}
-            {status.override_until && (
-              <p style={{ ...S.reasonNote, color: 'var(--color-primary)', fontWeight: 600 }}>
-                Force-open override active until {new Date(status.override_until).toLocaleString()}
-              </p>
-            )}
           </div>
           <button
             style={{ ...S.btnSecondary, fontSize: 12, padding: '6px 12px' }}
             onClick={load}
+            type="button"
           >
             <RefreshCw size={13} />
             Refresh
@@ -1241,134 +941,30 @@ export default function OnlineOrderingPage() {
         </div>
       </div>
 
-      {/* Master Switch */}
       <div style={S.card}>
         <p style={S.sectionTitle}>Master Switch</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <button
-            style={S.toggleTrack(status.master_switch)}
-            onClick={handleToggle}
-            disabled={toggling}
-            aria-label="Toggle online ordering"
-            role="switch"
-            aria-checked={status.master_switch}
-          >
-            <span style={S.toggleThumb(status.master_switch)} />
-          </button>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#3D2B1F' }}>
-              {status.master_switch ? 'Online ordering is ON' : 'Online ordering is OFF'}
-            </div>
-            <div style={{ fontSize: 12, color: '#9C8575', marginTop: 2 }}>
-              {status.master_switch
-                ? 'Customers can place pickup and delivery orders.'
-                : 'All online orders are blocked. POS is unaffected.'}
-            </div>
-          </div>
-        </div>
-        <div style={{ marginTop: 14 }}>
-          <button
-            style={status.master_switch ? S.btnDanger : S.btnPrimary}
-            onClick={handleToggle}
-            disabled={toggling}
-          >
-            <Power size={14} />
-            {toggling ? 'Updating…' : status.master_switch ? 'Turn OFF online ordering' : 'Turn ON online ordering'}
-          </button>
-        </div>
+        <MasterSwitchRow
+          on={status.master_switch}
+          toggling={toggling}
+          titleOn="Online ordering is ON"
+          titleOff="Online ordering is OFF"
+          helpOn={<>Customers can place pickup orders online. Delivery also needs Delivery to be on — manage that in <Link to="/delivery-settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Delivery &amp; Zones</Link>.</>}
+          helpOff="All online pickup/delivery orders are blocked. POS is unaffected."
+          onToggle={() => void handleToggle()}
+        />
       </div>
 
-      {/* Collect tomorrow cutoff */}
-      <div style={S.card} data-testid="order-for-tomorrow-cutoff">
-        <p style={S.sectionTitle}>Collect tomorrow — cutoff time</p>
-        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          After this time, “tomorrow” at checkout means the day after. Before it, tomorrow means the next calendar day.
-          Default is 20:00.
-        </p>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 140 }}>
-            <label style={S.label}>Cutoff (HH:mm)</label>
-            <input
-              type="time"
-              style={S.input}
-              value={tomorrowCutoff}
-              onChange={(e) => setTomorrowCutoff(e.target.value)}
-              data-testid="tomorrow-cutoff-input"
-            />
-          </div>
-          <button
-            type="button"
-            style={S.btnPrimary}
-            onClick={() => void saveTomorrowCutoff()}
-            disabled={tomorrowCutoffSaving}
-          >
-            <Save size={14} />
-            {tomorrowCutoffSaving ? 'Saving…' : 'Save cutoff'}
-          </button>
-          {status.order_for_tomorrow?.collect_tomorrow_date && (
-            <p style={{ ...S.reasonNote, margin: 0 }}>
-              Customers can currently choose collect on {status.order_for_tomorrow.collect_tomorrow_date}.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Feature switches & schedules — one uniform gate per feature */}
-      {featureGates && (
-        <>
-          <p style={{ ...S.sectionTitle, marginTop: '1.5rem' }}>Feature switches &amp; schedules</p>
-          {['order_for_tomorrow', 'dine_in_preorder', 'reservations', 'gift_card_purchase']
-            .map((key) => featureGates[key])
-            .filter((g): g is FeatureGateStatus => Boolean(g))
-            .map((gate) => (
-              <FeatureGateCard
-                key={gate.key}
-                gate={gate}
-                onChanged={(fresh) => setFeatureGates((prev) => ({ ...(prev ?? {}), [fresh.key]: fresh }))}
-                onToast={showToast}
-              />
-            ))}
-        </>
-      )}
-
-      {/* Force-open Override */}
       <div style={S.card}>
         <p style={S.sectionTitle}>Force-open Override</p>
-        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          Force online ordering <strong>open</strong> until a specific time, ignoring the schedule.
-          Useful for running promotions outside normal hours. Leave blank to deactivate.
-        </p>
-
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <label style={S.label}>Override until</label>
-            <input
-              type="datetime-local"
-              style={S.input}
-              value={overrideUntil}
-              onChange={(e) => setOverrideUntil(e.target.value)}
-              onInput={(e) => setOverrideUntil((e.target as HTMLInputElement).value)}
-            />
-          </div>
-          <button
-            style={S.btnPrimary}
-            onClick={handleSetOverride}
-            disabled={savingOverride}
-          >
-            <Unlock size={14} />
-            {savingOverride ? 'Saving…' : 'Set Override'}
-          </button>
-          {status.override_until && (
-            <button
-              style={S.btnSecondary}
-              onClick={handleClearOverride}
-              disabled={savingOverride}
-            >
-              <Lock size={14} />
-              Clear
-            </button>
-          )}
-        </div>
+        <ForceOpenOverride
+          help="Force the online channel open until a specific time, ignoring the switch and schedule. Useful for promotions outside normal hours."
+          value={overrideUntil}
+          onChange={setOverrideUntil}
+          activeUntil={status.override_until}
+          saving={savingOverride}
+          onSet={() => void handleSetOverride()}
+          onClear={() => void handleClearOverride()}
+        />
       </div>
 
       {/* Daily Schedule Editor */}
@@ -1458,10 +1054,65 @@ export default function OnlineOrderingPage() {
           </button>
         </div>
       </div>
+
+      </>)}
       </>)}
 
-      {section === 'pickup' && (
-        <div style={S.card}>
+      {section === 'features' && (<>
+      <div style={S.card} data-testid="order-for-tomorrow-cutoff">
+        <p style={S.sectionTitle}>Collect tomorrow — cutoff time</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
+          After this time, “tomorrow” at checkout means the day after. Before it, tomorrow means the next calendar day.
+          Default is 20:00. Raise to 23:59 to keep calendar tomorrow until nearly midnight.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 140 }}>
+            <label style={S.label}>Cutoff (HH:mm)</label>
+            <input
+              type="time"
+              style={S.input}
+              value={tomorrowCutoff}
+              onChange={(e) => setTomorrowCutoff(e.target.value)}
+              data-testid="tomorrow-cutoff-input"
+            />
+          </div>
+          <button
+            type="button"
+            style={S.btnPrimary}
+            onClick={() => void saveTomorrowCutoff()}
+            disabled={tomorrowCutoffSaving}
+          >
+            <Save size={14} />
+            {tomorrowCutoffSaving ? 'Saving…' : 'Save cutoff'}
+          </button>
+          {status?.order_for_tomorrow?.collect_tomorrow_date && (
+            <p style={{ ...S.reasonNote, margin: 0 }}>
+              Customers can currently choose collect on {status.order_for_tomorrow.collect_tomorrow_date}.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <p style={{ ...S.sectionTitle, marginTop: '0.5rem' }}>Feature switches &amp; schedules</p>
+      {!featureGates && (
+        <p style={{ color: '#9C8575', fontSize: 13 }}>Loading features…</p>
+      )}
+      {featureGates &&
+        ['order_for_tomorrow', 'dine_in_preorder', 'reservations', 'gift_card_purchase']
+          .map((key) => featureGates[key])
+          .filter((g): g is FeatureGateStatus => Boolean(g))
+          .map((gate) => (
+            <FeatureGateCard
+              key={gate.key}
+              gate={gate}
+              onChanged={(fresh) => setFeatureGates((prev) => ({ ...(prev ?? {}), [fresh.key]: fresh }))}
+              onToast={showToast}
+            />
+          ))}
+      </>)}
+
+      {section === 'slots-fees' && (<>
+<div style={S.card}>
           <p style={S.sectionTitle}>Pickup time slots</p>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
             When enabled, online pickup checkout offers timed windows. Capacity limits how many
@@ -1508,9 +1159,12 @@ export default function OnlineOrderingPage() {
             </button>
           </div>
         </div>
+      {feeError && (
+        <div style={S.card}>
+          <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0 }}>{feeError}</p>
+        </div>
       )}
 
-      {section === 'fees' && (<>
       {feeSettings && (
         <div style={S.card}>
           <p style={S.sectionTitle}>Order fees & limits</p>
@@ -1556,6 +1210,7 @@ export default function OnlineOrderingPage() {
         <p style={S.sectionTitle}>Payment commission (BML / card)</p>
         <PaymentCommissionSettings />
       </div>
+
       </>)}
 
     </div>

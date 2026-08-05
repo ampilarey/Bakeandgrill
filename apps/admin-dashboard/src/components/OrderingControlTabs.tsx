@@ -1,9 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const TABS = [
-  { id: 'online', to: '/online-ordering', label: 'Online Ordering' },
+  { id: 'online', to: '/online-ordering', label: 'Online' },
   { id: 'preorder', to: '/online-ordering?section=events', label: 'Pre-order' },
-  { id: 'delivery', to: '/delivery-settings', label: 'Delivery & Zones' },
+  { id: 'delivery', to: '/delivery-settings', label: 'Delivery' },
 ] as const;
 
 const tabStyle = (active: boolean): React.CSSProperties => ({
