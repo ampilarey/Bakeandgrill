@@ -643,10 +643,18 @@ class OrderCreationService
             // POS only: deduct stock immediately upon order creation (including offline sync).
             // Online orders are handled via reserveForOrder() after the full loop.
             if (!$isOnlineOrder) {
+                // Prepaid dine-in add-ons (customer order, staff rings extra lines
+                // at the table) use the SAME key format convertToDeduction writes
+                // ('online:order:{id}:item:{line}') so a later balance-settle
+                // OrderPaid can never deduct these lines a second time — the
+                // StockMovement idempotency key already exists.
+                $keyPrefix = ($order->type === 'dine_in' && $order->user_id === null)
+                    ? 'online:order:'
+                    : 'pos:order:';
                 // Prepared/variant stock columns are whole units; order qty is float for kg lines.
                 $stockQty = max(0, (int) round($quantity));
                 if ($stockQty > 0 && $variant && $variant->track_stock) {
-                    $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
+                    $key = $keyPrefix . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductVariantStock(
                         $lockedVariant ?? $variant,
                         $stockQty,
@@ -655,7 +663,7 @@ class OrderCreationService
                         $user?->id,
                     );
                 } elseif ($stockQty > 0 && $itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
-                    $key = 'pos:order:' . $order->id . ':item:' . $orderItem->id;
+                    $key = $keyPrefix . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductPreparedStock(
                         $lockedItem,
                         $stockQty,

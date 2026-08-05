@@ -202,6 +202,12 @@ class OrderCreationController extends Controller
                                 $w3->whereNull('payment_status')
                                     ->orWhereIn('payment_status', ['unpaid', 'partial']);
                             });
+                    })
+                    // Prepaid dine-in (customer paid online, user_id null) stays
+                    // visible even while fully paid — staff still have to fire
+                    // the kitchen, seat the guest, and possibly ring add-ons.
+                    ->orWhere(function ($w4) {
+                        $w4->where('type', 'dine_in')->whereNull('user_id');
                     });
             });
         }

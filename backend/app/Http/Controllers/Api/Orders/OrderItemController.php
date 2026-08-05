@@ -81,9 +81,16 @@ class OrderItemController extends Controller
             if (in_array($order->status, $blockedStatuses, true)) {
                 return ['error' => "Order is {$order->status} and cannot be edited. Refund instead."];
             }
-            if ($order->payment_status === 'paid') {
+            // Prepaid dine-in (customer paid online, then orders more at the
+            // table): the same bill grows and the balance is settled at the
+            // end. All other fully-paid tickets stay locked to refunds.
+            $isPrepaidDineIn = $order->type === 'dine_in' && $order->user_id === null;
+            if ($order->payment_status === 'paid' && !$isPrepaidDineIn) {
                 return ['error' => 'Order is fully paid — edits must go through refunds.'];
             }
+            $paidFloorLaar = ($order->payment_status === 'paid' || $order->payment_status === 'partial')
+                ? app(\App\Domains\Payments\Services\OrderPaymentStateService::class)->paidLaarForOrder($order->id)
+                : 0;
 
             $oldType = (string) $order->type;
             $oldTableId = $order->restaurant_table_id;
@@ -204,6 +211,23 @@ class OrderItemController extends Controller
                 && $prevTableId !== $newTableId
             ) {
                 RestaurantTable::claimForOrder($newTableId, (int) $updated->id);
+            }
+
+            // Prepaid dine-in same-bill rule: the ticket may grow (add-ons)
+            // but never shrink below what the customer already paid — money
+            // going back out is a refund, with its own audit trail.
+            if ($paidFloorLaar > 0) {
+                $newTotalLaar = (int) ($updated->total_laar ?? round((float) $updated->total * 100));
+                if ($newTotalLaar < $paidFloorLaar) {
+                    abort(422, sprintf(
+                        'Order total (MVR %s) cannot go below the amount already paid (MVR %s). Process a refund instead.',
+                        number_format($newTotalLaar / 100, 2),
+                        number_format($paidFloorLaar / 100, 2),
+                    ));
+                }
+                // Paid → partial when add-ons raise the total past payments.
+                app(\App\Domains\Payments\Services\OrderPaymentStateService::class)
+                    ->syncPaymentStatus($updated);
             }
 
             app(AuditLogService::class)->log(

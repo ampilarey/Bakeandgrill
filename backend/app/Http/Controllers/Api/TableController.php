@@ -216,6 +216,12 @@ class TableController extends Controller
             $validated['print'] ?? true,
         );
 
+        // Prepaid dine-in add-ons: keep payment_status honest (paid → partial)
+        // so the balance shows in POS and the customer app instead of a
+        // silently-underpaid "paid" ticket.
+        app(\App\Domains\Payments\Services\OrderPaymentStateService::class)
+            ->syncPaymentStatus($order);
+
         $table->update(['status' => 'occupied']);
 
         app(AuditLogService::class)->log(
