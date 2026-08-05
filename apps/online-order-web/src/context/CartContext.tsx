@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Item, Modifier } from '../api';
-import type { Variant } from '@shared/types';
+import type { PlatterSelection, Variant } from '@shared/types';
+import { platterSelectionsKey, surchargeTotal } from '../utils/platterRules';
 
 export type CartEntry = {
   item: Item;
@@ -18,6 +19,8 @@ export type CartEntry = {
   packagingFeeMode?: 'per_unit' | 'per_line' | null;
   /** Set when this line was added via the cart free-reward picker. */
   rewardPromotionId?: number | null;
+  /** Structured platter child picks — never stored as notes. */
+  platterSelections?: PlatterSelection[];
 };
 
 export type UpdateEntryInput = {
@@ -27,6 +30,7 @@ export type UpdateEntryInput = {
   packagingOptionId?: number | null;
   /** Defaults to the line's existing item. */
   item?: Item;
+  platterSelections?: PlatterSelection[];
 };
 
 interface CartContextValue {
@@ -38,7 +42,7 @@ interface CartContextValue {
     modifiers?: Modifier[],
     variant?: Variant | null,
     packagingOptionId?: number | null,
-    options?: { rewardPromotionId?: number | null },
+    options?: { rewardPromotionId?: number | null; platterSelections?: PlatterSelection[] },
   ) => void;
   /** Remove cart lines claimed as free rewards for the given promotion ids. */
   removeRewardClaims: (promotionIds: number[]) => void;
@@ -53,15 +57,17 @@ interface CartContextValue {
   refreshPricesFromMenu: (items: Item[]) => void;
 }
 
-/** Stable key for merge identity (item + variant + mods + packaging). */
+/** Stable key for merge identity (item + variant + mods + packaging + platter picks). */
 export function cartLineKey(
   itemId: number,
   variantId: number | null | undefined,
   modifiers: Modifier[],
   packagingOptionId?: number | null,
+  platterSelections?: PlatterSelection[] | null,
 ): string {
   const modKey = [...modifiers].sort((a, b) => a.id - b.id).map((m) => m.id).join(',');
-  return `${itemId}|${variantId ?? ''}|${modKey}|p${packagingOptionId ?? 0}`;
+  const platterKey = platterSelectionsKey(platterSelections);
+  return `${itemId}|${variantId ?? ''}|${modKey}|p${packagingOptionId ?? 0}|pl${platterKey}`;
 }
 
 function priceSnapshot(item: Item, variant?: Variant | null) {
@@ -101,7 +107,7 @@ function packagingSnapshot(item: Item, packagingOptionId?: number | null) {
   };
 }
 
-const CART_VERSION = 6;
+const CART_VERSION = 7;
 const CART_KEY = 'bakegrill_cart';
 
 type StoredCart = {
@@ -118,6 +124,8 @@ type StoredCart = {
     packagingOptionName?: string | null;
     packagingFee?: number | null;
     packagingFeeMode?: 'per_unit' | 'per_line' | null;
+    rewardPromotionId?: number | null;
+    platterSelections?: PlatterSelection[];
   }>;
 };
 
@@ -147,6 +155,8 @@ function loadCart(): CartEntry[] {
         packagingOptionName: e.packagingOptionName ?? packaging.packagingOptionName,
         packagingFee: e.packagingFee ?? packaging.packagingFee,
         packagingFeeMode: e.packagingFeeMode ?? packaging.packagingFeeMode,
+        rewardPromotionId: e.rewardPromotionId ?? null,
+        platterSelections: e.platterSelections ?? [],
       };
     });
   } catch {
@@ -169,6 +179,8 @@ function saveCart(cart: CartEntry[]): void {
       packagingOptionName: e.packagingOptionName ?? null,
       packagingFee: e.packagingFee ?? null,
       packagingFeeMode: e.packagingFeeMode ?? null,
+      rewardPromotionId: e.rewardPromotionId ?? null,
+      platterSelections: e.platterSelections ?? [],
     })),
   };
   try {
@@ -196,20 +208,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     modifiers: Modifier[] = [],
     variant?: Variant | null,
     packagingOptionId?: number | null,
-    options?: { rewardPromotionId?: number | null },
+    options?: { rewardPromotionId?: number | null; platterSelections?: PlatterSelection[] },
   ) => {
     if (quantity < 1) return;
     const rewardPromotionId = options?.rewardPromotionId ?? null;
+    const platterSelections = options?.platterSelections ?? [];
     setCart((prev) => {
       const variantId = variant?.id ?? null;
       const packaging = packagingSnapshot(item, packagingOptionId);
-      const key = cartLineKey(item.id, variantId, modifiers, packaging.packagingOptionId);
+      const key = cartLineKey(
+        item.id,
+        variantId,
+        modifiers,
+        packaging.packagingOptionId,
+        platterSelections,
+      );
       // Free-reward lines stay separate so they can be withdrawn cleanly.
       const idx = rewardPromotionId
         ? -1
         : prev.findIndex(
           (e) => !e.rewardPromotionId
-            && cartLineKey(e.item.id, e.variantId, e.modifiers, e.packagingOptionId) === key,
+            && cartLineKey(
+              e.item.id,
+              e.variantId,
+              e.modifiers,
+              e.packagingOptionId,
+              e.platterSelections,
+            ) === key,
         );
 
       if (idx >= 0) {
@@ -232,6 +257,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           originalPrice,
           ...packaging,
           rewardPromotionId,
+          platterSelections,
         },
       ];
     });
@@ -262,6 +288,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const current = prev[index];
       const item = data.item ?? current.item;
       const modifiers = data.modifiers ?? current.modifiers;
+      const platterSelections = data.platterSelections !== undefined
+        ? data.platterSelections
+        : (current.platterSelections ?? []);
       const variant =
         data.variant === undefined
           ? (current.variantId != null
@@ -283,12 +312,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
           : current.packagingOptionId,
       );
       const { unitPrice, originalPrice } = priceSnapshot(item, variant);
-      const key = cartLineKey(item.id, variantId, modifiers, packaging.packagingOptionId);
+      const key = cartLineKey(
+        item.id,
+        variantId,
+        modifiers,
+        packaging.packagingOptionId,
+        platterSelections,
+      );
 
       const mergeIdx = prev.findIndex(
         (e, i) =>
           i !== index
-          && cartLineKey(e.item.id, e.variantId, e.modifiers, e.packagingOptionId) === key,
+          && cartLineKey(
+            e.item.id,
+            e.variantId,
+            e.modifiers,
+            e.packagingOptionId,
+            e.platterSelections,
+          ) === key,
       );
 
       const updated: CartEntry = {
@@ -300,6 +341,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         variantPrice: unitPrice,
         originalPrice,
         ...packaging,
+        platterSelections,
+        rewardPromotionId: current.rewardPromotionId ?? null,
       };
 
       if (mergeIdx >= 0) {
@@ -315,6 +358,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           originalPrice,
           modifiers,
           ...packaging,
+          platterSelections,
         };
         return next;
       }
@@ -366,7 +410,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         // Use variant price snapshot when available, fall back to item base_price
         const basePrice = (e.variantPrice != null ? e.variantPrice : Number(e.item.base_price)) || 0;
         const modsTotal = e.modifiers.reduce((s, m) => s + (Number(m.price) || 0), 0);
-        return total + (basePrice + modsTotal) * e.quantity;
+        const platterExtra = surchargeTotal(e.platterSelections ?? []);
+        return total + (basePrice + modsTotal + platterExtra) * e.quantity;
       }, 0),
     [cart],
   );

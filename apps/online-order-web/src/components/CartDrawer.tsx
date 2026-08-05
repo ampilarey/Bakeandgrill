@@ -68,7 +68,11 @@ export function CartDrawer({
     });
   };
 
-  const handleUpdateEntry = (variant?: Variant | null, packagingOptionId?: number | null) => {
+  const handleUpdateEntry = (
+    variant?: Variant | null,
+    packagingOptionId?: number | null,
+    platterSelections?: import('@shared/types').PlatterSelection[],
+  ) => {
     if (!editLine) return;
     updateEntry(editLine.index, {
       quantity: editQty,
@@ -76,6 +80,7 @@ export function CartDrawer({
       variant: variant ?? null,
       packagingOptionId,
       item: editLine.entry.item,
+      platterSelections: platterSelections ?? editLine.entry.platterSelections ?? [],
     });
     setEditLine(null);
   };
@@ -244,6 +249,19 @@ export function CartDrawer({
                         + {entry.packagingOptionName}
                       </span>
                     )}
+                    {entry.platterSelections && entry.platterSelections.length > 0 && (
+                      <span
+                        data-testid="cart-platter-children"
+                        style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginTop: 2 }}
+                      >
+                        {entry.platterSelections.map((s) => (
+                          <span key={`${s.group_id}-${s.item_id}`} style={{ display: 'block' }}>
+                            {s.quantity > 1 ? `${s.quantity}× ` : ''}{s.item_name}
+                            {s.surcharge > 0 ? ` (+${Number(s.surcharge).toFixed(0)})` : ''}
+                          </span>
+                        ))}
+                      </span>
+                    )}
                     {!isOpen && !entry.item.allow_pre_order ? (
                       <span
                         data-testid="cart-line-blocks-tomorrow"
@@ -292,9 +310,13 @@ export function CartDrawer({
                 <div style={{ marginTop: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                   {(() => {
                     const modSum = entry.modifiers.reduce((s, m) => s + parseFloat(String(m.price)), 0);
-                    const unitSale = (entry.variantPrice != null ? entry.variantPrice : parseFloat(String(entry.item.base_price))) + modSum;
+                    const platterExtra = (entry.platterSelections ?? []).reduce(
+                      (s, p) => s + Math.max(0, Number(p.surcharge) || 0) * Math.max(0, p.quantity),
+                      0,
+                    );
+                    const unitSale = (entry.variantPrice != null ? entry.variantPrice : parseFloat(String(entry.item.base_price))) + modSum + platterExtra;
                     const unitWas = entry.originalPrice != null
-                      ? entry.originalPrice + modSum
+                      ? entry.originalPrice + modSum + platterExtra
                       : null;
                     const lineSale = unitSale * entry.quantity;
                     const lineWas = unitWas != null ? unitWas * entry.quantity : null;
@@ -474,6 +496,7 @@ export function CartDrawer({
           editIndex={editLine.index}
           initialVariantId={editLine.entry.variantId ?? null}
           initialPackagingOptionId={editLine.entry.packagingOptionId ?? null}
+          initialPlatterSelections={editLine.entry.platterSelections ?? []}
           onUpdateEntry={handleUpdateEntry}
         />
       )}

@@ -90,22 +90,56 @@ class FavoritesController extends Controller
 
         $order = Order::where('id', $orderId)
             ->where('customer_id', $customer->id)
-            ->with('items.item', 'items.modifiers')
+            ->with(['items.item.platterGroups', 'items.modifiers'])
             ->firstOrFail();
 
-        $cartItems = $order->items->map(function ($oi) {
-            return [
-                'item_id' => $oi->item_id,
-                'item_name' => $oi->item_name,
-                'quantity' => $oi->quantity,
-                'unit_price' => $oi->unit_price,
-                'modifiers' => $oi->modifiers->map(fn ($m) => [
-                    'id' => $m->modifier_id ?? $m->id,
-                    'name' => $m->name,
-                    'price' => $m->price ?? 0,
-                ]),
-            ];
-        });
+        // Group platter child lines (parent_order_item_id) under their parent when present.
+        // Until Stage 4c ships the column, children stay empty and is_platter forces the picker.
+        $byParent = [];
+        $hasParentColumn = \Illuminate\Support\Facades\Schema::hasColumn('order_items', 'parent_order_item_id');
+        if ($hasParentColumn) {
+            foreach ($order->items as $oi) {
+                $parentId = $oi->parent_order_item_id ?? null;
+                if ($parentId) {
+                    $byParent[$parentId][] = $oi;
+                }
+            }
+        }
+
+        $cartItems = $order->items
+            ->filter(function ($oi) use ($hasParentColumn) {
+                if (!$hasParentColumn) {
+                    return true;
+                }
+
+                return empty($oi->parent_order_item_id);
+            })
+            ->map(function ($oi) use ($byParent) {
+                $isPlatter = (bool) ($oi->item?->isPlatter());
+                $children = collect($byParent[$oi->id] ?? [])->map(fn ($child) => [
+                    'item_id' => $child->item_id,
+                    'item_name' => $child->item_name,
+                    'quantity' => $child->quantity,
+                    'unit_price' => $child->unit_price,
+                    'surcharge' => (float) $child->unit_price,
+                ])->values()->all();
+
+                return [
+                    'item_id' => $oi->item_id,
+                    'item_name' => $oi->item_name,
+                    'quantity' => $oi->quantity,
+                    'unit_price' => $oi->unit_price,
+                    'variant_id' => $oi->variant_id,
+                    'is_platter' => $isPlatter,
+                    'children' => $children,
+                    'modifiers' => $oi->modifiers->map(fn ($m) => [
+                        'id' => $m->modifier_id ?? $m->id,
+                        'name' => $m->name,
+                        'price' => $m->price ?? 0,
+                    ]),
+                ];
+            })
+            ->values();
 
         return response()->json([
             'items' => $cartItems,

@@ -53,6 +53,16 @@ export interface ReorderPayload {
     quantity: number;
     item_name: string;
     unit_price: number;
+    variant_id?: number | null;
+    is_platter?: boolean;
+    children?: Array<{
+      item_id: number;
+      item_name: string;
+      quantity: number;
+      unit_price?: number;
+      surcharge?: number;
+      group_id?: number;
+    }>;
     name?: string;
     price?: number;
     modifiers: { id: number; name: string; price: number }[];

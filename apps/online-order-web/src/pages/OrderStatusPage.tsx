@@ -10,6 +10,7 @@ import { useSiteSettings } from "../context/SiteSettingsContext";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { isGiftCardOrder } from "../utils/giftCardOrder";
+import { applyReorderPayloadToCart } from "../utils/applyReorderToCart";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
 
@@ -548,22 +549,12 @@ export function OrderStatusPage() {
     try {
       const payload = await getReorderPayload(order.id);
       clearCart();
-      for (const line of payload.items) {
-        const fakeItem = {
-          id: line.item_id,
-          name: line.item_name ?? line.name ?? 'Item',
-          base_price: line.unit_price ?? line.price ?? 0,
-          has_variants: false,
-          is_available: true,
-        } as Parameters<typeof addItem>[0];
-        const mods = (line.modifiers ?? []).map((m) => ({
-          id: m.id,
-          name: m.name,
-          price: m.price ?? 0,
-        })) as Parameters<typeof addItem>[2];
-        addItem(fakeItem, line.quantity, mods, null);
+      const { added, needsPickerCount } = applyReorderPayloadToCart(payload, addItem);
+      if (needsPickerCount > 0 && added === 0) {
+        navigate('/menu');
+        return;
       }
-      navigate('/checkout');
+      navigate(needsPickerCount > 0 ? '/menu' : '/checkout');
     } catch {
       navigate('/menu');
     } finally {

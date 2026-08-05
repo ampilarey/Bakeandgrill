@@ -114,6 +114,9 @@ export type MenuItem = {
   is_combo?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: ComboItemEntry[];
+  /** True when the item has platter choice groups (build-your-own). */
+  is_platter?: boolean;
+  platter_groups?: PlatterGroup[];
   tax_rate?: number | null;
   tax_code?: string | null;
   special?: ItemSpecialPricing;
@@ -140,6 +143,48 @@ export type ComboItemEntry = {
   is_optional: boolean;
   unit_price?: number;
   item?: { id: number; name: string; name_dv?: string | null; base_price?: number | string | null } | null;
+};
+
+export type PlatterRuleType = 'exactly' | 'min' | 'range';
+
+export type PlatterAllowedItem = {
+  item_id: number;
+  surcharge: number;
+  sort_order?: number;
+  item?: {
+    id: number;
+    name: string;
+    name_dv?: string | null;
+    base_price?: number | string | null;
+    image_url?: string | null;
+    is_available?: boolean;
+    has_variants?: boolean;
+    allow_pre_order?: boolean;
+    available_now?: boolean;
+    unavailable_reason?: string | null;
+    tomorrow_remaining?: number | null;
+  } | null;
+};
+
+export type PlatterGroup = {
+  id: number;
+  name: string;
+  rule_type: PlatterRuleType;
+  min_count: number | null;
+  max_count: number | null;
+  /** Variant id string → required pick count for tiered platters. */
+  size_counts?: Record<string, number> | null;
+  sort_order?: number;
+  items: PlatterAllowedItem[];
+};
+
+/** Structured cart / order selections for a platter line (not notes). */
+export type PlatterSelection = {
+  group_id: number;
+  item_id: number;
+  item_name: string;
+  quantity: number;
+  surcharge: number;
 };
 
 export type PackagingOption = {

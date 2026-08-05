@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { fetchCartRecommendations, getItemReviews, getItemPhotos } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
-import type { Variant } from '@shared/types';
+import type { PlatterSelection, Variant } from '@shared/types';
 import { useCart } from '../context/CartContext';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -17,7 +17,13 @@ import {
 } from '../utils/itemAvailability';
 import { buildItemSlides } from '../utils/itemMedia';
 import { formatCardPrice, formatSavingsLabel } from '../utils/money';
+import {
+  isPlatterSelectionValid,
+  platterPickHint,
+  surchargeTotal,
+} from '../utils/platterRules';
 import { MenuImageSlider } from './menu/MenuImageSlider';
+import { PlatterPicker } from './PlatterPicker';
 
 export type ItemSheetProps = {
   open: boolean;
@@ -25,13 +31,22 @@ export type ItemSheetProps = {
   qty: number;
   selectedModifiers: Modifier[];
   onToggleModifier: (modifier: Modifier) => void;
-  onAddToCart: (variant?: Variant | null, packagingOptionId?: number | null) => void;
+  onAddToCart: (
+    variant?: Variant | null,
+    packagingOptionId?: number | null,
+    platterSelections?: PlatterSelection[],
+  ) => void;
   onClose: () => void;
   /** Cart edit-in-place */
   editIndex?: number | null;
   initialVariantId?: number | null;
   initialPackagingOptionId?: number | null;
-  onUpdateEntry?: (variant?: Variant | null, packagingOptionId?: number | null) => void;
+  initialPlatterSelections?: PlatterSelection[];
+  onUpdateEntry?: (
+    variant?: Variant | null,
+    packagingOptionId?: number | null,
+    platterSelections?: PlatterSelection[],
+  ) => void;
   /** Dine-in / browse-only — hide cart actions, show variants & packaging as text. */
   viewOnly?: boolean;
   /**
@@ -52,6 +67,7 @@ export function ItemSheet({
   editIndex = null,
   initialVariantId = null,
   initialPackagingOptionId = null,
+  initialPlatterSelections = [],
   onUpdateEntry,
   viewOnly = false,
   orderDay = 'today',
@@ -78,6 +94,10 @@ export function ItemSheet({
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const showPackagingPicker = !viewOnly && packagingOptions.length > 1;
+  const platterGroups = item.is_platter && item.platter_groups?.length
+    ? item.platter_groups
+    : [];
+  const isPlatter = platterGroups.length > 0;
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(() => {
     if (!item.has_variants || activeVariants.length === 0) return null;
     if (initialVariantId != null) {
@@ -89,6 +109,9 @@ export function ItemSheet({
     if (initialPackagingOptionId != null) return initialPackagingOptionId;
     return packagingOptions.find((o) => o.is_default)?.id ?? packagingOptions[0]?.id ?? null;
   });
+  const [platterSelections, setPlatterSelections] = useState<PlatterSelection[]>(
+    () => initialPlatterSelections ?? [],
+  );
 
   const modifierTotal = selectedModifiers.reduce((s, m) => s + Number(m.price), 0);
   const catalogPrice = selectedVariant
@@ -99,16 +122,23 @@ export function ItemSheet({
       ? Number(selectedVariant.original_price)
       : null)
     : (item.special?.original_price != null ? Number(item.special.original_price) : null);
-  const totalPrice = catalogPrice + modifierTotal;
+  const platterExtra = isPlatter ? surchargeTotal(platterSelections) : 0;
+  const totalPrice = catalogPrice + modifierTotal + platterExtra;
   const unitSavingsLabel =
     originalCatalog != null && originalCatalog > catalogPrice
       ? formatSavingsLabel(originalCatalog, catalogPrice)
       : (item.special?.discount_pct
         ? `${item.special.discount_pct}% OFF`
         : null);
+  const platterValid = !isPlatter
+    || isPlatterSelectionValid(platterGroups, platterSelections, selectedVariant?.id ?? null);
+  const pickHint = isPlatter
+    ? platterPickHint(platterGroups, platterSelections, selectedVariant?.id ?? null)
+    : null;
   const canAdd = itemAvailable
     && (!item.has_variants || selectedVariant !== null)
-    && (!showPackagingPicker || selectedPackagingId != null);
+    && (!showPackagingPicker || selectedPackagingId != null)
+    && platterValid;
 
   const [reviews, setReviews] = useState<ItemReview[]>([]);
   const [avgRating, setAvgRating] = useState<number | null>(null);
@@ -165,6 +195,29 @@ export function ItemSheet({
     );
   }, [item.id, initialPackagingOptionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    setPlatterSelections(initialPlatterSelections ?? []);
+  }, [item.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const prevVariantIdRef = useRef<number | null | undefined>(undefined);
+  // Tiered platters change the required count with size — clear picks when size changes
+  // (skip the first paint so edit-mode restores keep their selections).
+  useEffect(() => {
+    const nextId = selectedVariant?.id ?? null;
+    if (prevVariantIdRef.current === undefined) {
+      prevVariantIdRef.current = nextId;
+      return;
+    }
+    if (prevVariantIdRef.current === nextId) return;
+    prevVariantIdRef.current = nextId;
+    if (!isPlatter) return;
+    const hasSizeCounts = platterGroups.some(
+      (g) => g.size_counts && Object.keys(g.size_counts).length > 0,
+    );
+    if (!hasSizeCounts) return;
+    setPlatterSelections([]);
+  }, [selectedVariant?.id, isPlatter, platterGroups]);
+
   // Auto-focus close button and trap focus within modal (BUG-09)
   useEffect(() => {
     if (!open) return;
@@ -200,8 +253,10 @@ export function ItemSheet({
 
   const isEdit = editIndex != null && editIndex >= 0;
   const handleConfirm = () => {
-    if (isEdit && onUpdateEntry) onUpdateEntry(selectedVariant, selectedPackagingId);
-    else onAddToCart(selectedVariant, selectedPackagingId);
+    if (!canAdd) return;
+    const picks = isPlatter ? platterSelections : [];
+    if (isEdit && onUpdateEntry) onUpdateEntry(selectedVariant, selectedPackagingId, picks);
+    else onAddToCart(selectedVariant, selectedPackagingId, picks);
   };
 
   const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
@@ -434,7 +489,7 @@ export function ItemSheet({
               </div>
             )}
 
-            {item.is_combo && item.combo_items && item.combo_items.length > 0 && (
+            {!isPlatter && item.is_combo && item.combo_items && item.combo_items.length > 0 && (
               <div style={{ marginBottom: '1.1rem' }}>
                 <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 0.45rem' }}>
                   Includes
@@ -454,14 +509,15 @@ export function ItemSheet({
             {(item.has_variants && activeVariants.length > 0)
               || showPackagingPicker
               || (viewOnly && packagingOptions.length > 0)
-              || (item.modifiers && item.modifiers.length > 0) ? (
+              || (item.modifiers && item.modifiers.length > 0)
+              || isPlatter ? (
               <div style={{ height: 1, background: 'var(--color-border)', margin: '0.25rem 0 1.1rem' }} />
             ) : null}
 
             {item.has_variants && activeVariants.length > 0 && (
               <div style={{ marginBottom: '1.15rem' }} data-testid="item-sheet-variants">
                 <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-dark)', marginBottom: '0.65rem' }}>
-                  {viewOnly ? 'Options' : <>Choose option <span style={{ color: '#ef4444' }}>*</span></>}
+                  {viewOnly ? 'Options' : <>Choose size <span style={{ color: '#ef4444' }}>*</span></>}
                 </p>
                 {viewOnly ? (
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
@@ -502,6 +558,18 @@ export function ItemSheet({
                     )}
                   </>
                 )}
+              </div>
+            )}
+
+            {isPlatter && !viewOnly && (
+              <div style={{ marginBottom: '1.15rem' }}>
+                <PlatterPicker
+                  groups={platterGroups}
+                  selections={platterSelections}
+                  onChange={setPlatterSelections}
+                  variantId={selectedVariant?.id ?? null}
+                  orderDay={orderDay}
+                />
               </div>
             )}
 
@@ -691,7 +759,10 @@ export function ItemSheet({
                   ? (isEdit
                     ? `Update — MVR ${(totalPrice * qty).toFixed(2)}`
                     : `Add${qty > 1 ? ` ${qty}×` : ''} to cart — MVR ${(totalPrice * qty).toFixed(2)}`)
-                  : 'Select an option first'}
+                  : (pickHint
+                    ?? (item.has_variants && !selectedVariant
+                      ? 'Select an option first'
+                      : 'Select an option first'))}
             </button>
             {item.is_catering && !isEdit && (
               <a

@@ -190,4 +190,57 @@ class PlatterCompositionTest extends TestCase
             ],
         ], $this->adminHeaders)->assertStatus(422);
     }
+
+    public function test_public_menu_exposes_platter_groups_without_capacity_secret(): void
+    {
+        $a = $this->makeItem(false, 10, [
+            'name' => 'Bajiya',
+            'allow_pre_order' => true,
+            'tomorrow_daily_capacity' => 8,
+        ]);
+        $b = $this->makeItem(false, 10, ['name' => 'Gulha', 'allow_pre_order' => true]);
+
+        $create = $this->postJson('/api/items', [
+            'name' => 'Hedhikaa Platter',
+            'base_price' => 120,
+            'is_combo' => true,
+            'platter_groups' => [
+                [
+                    'name' => 'Short eats',
+                    'rule_type' => 'exactly',
+                    'min_count' => 6,
+                    'max_count' => 6,
+                    'items' => [
+                        ['item_id' => $a->id],
+                        ['item_id' => $b->id, 'surcharge' => 5],
+                    ],
+                ],
+            ],
+        ], $this->adminHeaders)->assertCreated();
+
+        $platterId = (int) $create->json('item.id');
+
+        // Staff bearer from the create call leaves the guard authenticated — clear it
+        // so this request hits the public menu transformer.
+        $this->flushHeaders();
+        $this->app['auth']->forgetGuards();
+
+        $list = $this->getJson('/api/items?channel=online_pickup')->assertOk();
+        $row = collect($list->json('data'))->firstWhere('id', $platterId);
+        $this->assertNotNull($row, 'Platter missing from public /api/items');
+        $this->assertArrayHasKey('available_now', $row, 'Expected public availability fields; got: '.implode(',', array_keys($row)));
+        $this->assertTrue($row['is_platter']);
+        $this->assertCount(1, $row['platter_groups']);
+        $this->assertSame(6, $row['platter_groups'][0]['min_count']);
+        $this->assertCount(2, $row['platter_groups'][0]['items']);
+        $this->assertArrayNotHasKey('tomorrow_daily_capacity', $row);
+        $child = collect($row['platter_groups'][0]['items'])->firstWhere('item_id', $a->id);
+        $this->assertNotNull($child);
+        $this->assertNotNull($child['item']);
+        $this->assertArrayHasKey('tomorrow_remaining', $child['item']);
+        $this->assertArrayNotHasKey('tomorrow_daily_capacity', $child['item']);
+        $this->assertTrue($child['item']['allow_pre_order']);
+        $this->assertArrayHasKey('available_now', $child['item']);
+        $this->assertSame(8, $child['item']['tomorrow_remaining']);
+    }
 }

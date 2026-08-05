@@ -88,6 +88,8 @@ class ItemController extends Controller
             $query->where('is_active', true);
             $query->with([
                 'comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants',
+                // Full child Item models — public platter picker needs availability + tomorrow_remaining.
+                'platterGroups.allowedItems.item',
                 'photos',
             ]);
             $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
@@ -132,8 +134,18 @@ class ItemController extends Controller
         $tomorrowRemainingMap = [];
         if (!$isAdmin || $isPosView) {
             $tomorrowDate = app(OrderFulfilDateService::class)->allowedTomorrowDateString();
-            $tomorrowRemainingMap = app(TomorrowDailyCapacityService::class)
-                ->remainingMap($items->getCollection(), $tomorrowDate);
+            $capacity = app(TomorrowDailyCapacityService::class);
+            $tomorrowRemainingMap = $capacity->remainingMap($items->getCollection(), $tomorrowDate);
+
+            // Platter allowed-children may not appear as top-level menu rows — still need remaining.
+            if (!$isAdmin) {
+                $childIds = app(PlatterCompositionService::class)
+                    ->collectChildItemIds($items->getCollection());
+                if ($childIds !== []) {
+                    $childModels = Item::query()->whereIn('id', $childIds)->get();
+                    $tomorrowRemainingMap += $capacity->remainingMap($childModels, $tomorrowDate);
+                }
+            }
         }
 
         // Admin gets full data; public / POS get stripped response + availability metadata
@@ -298,6 +310,16 @@ class ItemController extends Controller
                                 'has_variants' => $row->item->has_variants,
                             ] : null,
                         ])->values();
+                    }
+                    // Choice platters — groups + allowed items for the online picker.
+                    // Fixed combo_items may also exist; platter_groups win for is_platter.
+                    if ($item->relationLoaded('platterGroups')) {
+                        $data['platter_groups'] = app(PlatterCompositionService::class)
+                            ->formatForApi($item, $tomorrowRemainingMap, $channel);
+                        $data['is_platter'] = count($data['platter_groups']) > 0;
+                    } else {
+                        $data['platter_groups'] = [];
+                        $data['is_platter'] = false;
                     }
                     $data['dietary_tags'] = $item->dietary_tags ?? [];
                     $data['allergens'] = $item->allergens ?? [];
@@ -494,7 +516,13 @@ class ItemController extends Controller
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
 
-        $item = Item::with(['category', 'variants', 'modifiers', 'packagingOptions', 'channelAvailabilities'])
+        $with = ['category', 'variants', 'modifiers', 'packagingOptions', 'channelAvailabilities'];
+        if (!$isAdmin) {
+            $with[] = 'comboItems.item';
+            $with[] = 'platterGroups.allowedItems.item';
+            $with[] = 'photos';
+        }
+        $item = Item::with($with)
             ->where('is_active', true)
             ->findOrFail($id);
 
@@ -567,9 +595,41 @@ class ItemController extends Controller
             );
             unset($payload['tomorrow_daily_capacity']);
             $tomorrowDate = app(OrderFulfilDateService::class)->allowedTomorrowDateString();
-            $remainingMap = app(TomorrowDailyCapacityService::class)
-                ->remainingMap([$item], $tomorrowDate);
+            $capacity = app(TomorrowDailyCapacityService::class);
+            $remainingMap = $capacity->remainingMap([$item], $tomorrowDate);
             $payload['tomorrow_remaining'] = $remainingMap[$item->id] ?? null;
+
+            $payload['is_combo'] = (bool) ($item->is_combo ?? false);
+            $payload['combo_discount_pct'] = $item->combo_discount_pct;
+            if ($payload['is_combo'] && $item->relationLoaded('comboItems')) {
+                $payload['combo_items'] = $item->comboItems->map(fn ($row) => [
+                    'item_id' => $row->item_id,
+                    'item_name' => $row->item?->name,
+                    'quantity' => $row->quantity,
+                    'is_optional' => $row->is_optional,
+                    'unit_price' => $row->item ? (float) $row->item->base_price : 0,
+                    'item' => $row->item ? [
+                        'id' => $row->item->id,
+                        'name' => $row->item->name,
+                        'name_dv' => $row->item->name_dv,
+                        'base_price' => $row->item->base_price,
+                        'image_url' => $row->item->display_image_url ?? $row->item->image_url,
+                        'is_available' => $row->item->is_available,
+                        'has_variants' => $row->item->has_variants,
+                    ] : null,
+                ])->values();
+            }
+
+            $platters = app(PlatterCompositionService::class);
+            $childIds = $platters->collectChildItemIds([$item]);
+            if ($childIds !== []) {
+                $childModels = Item::query()->whereIn('id', $childIds)->get();
+                $remainingMap += $capacity->remainingMap($childModels, $tomorrowDate);
+            }
+            $payload['platter_groups'] = $item->relationLoaded('platterGroups')
+                ? $platters->formatForApi($item, $remainingMap, $channel)
+                : [];
+            $payload['is_platter'] = is_array($payload['platter_groups']) && count($payload['platter_groups']) > 0;
         }
 
         return response()->json(['item' => $payload]);

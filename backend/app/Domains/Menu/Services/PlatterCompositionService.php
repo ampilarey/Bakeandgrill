@@ -7,6 +7,7 @@ namespace App\Domains\Menu\Services;
 use App\Models\Item;
 use App\Models\PlatterGroup;
 use App\Models\PlatterGroupItem;
+use App\Services\ItemAvailabilityService;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -135,17 +136,30 @@ final class PlatterCompositionService
         PlatterGroup::where('item_id', $platter->id)->delete();
     }
 
-    /** @return list<array<string, mixed>> */
-    public function formatForApi(Item $platter): array
-    {
+    /**
+     * Admin + public shape for choice groups.
+     *
+     * Public callers pass tomorrowRemainingMap + channel so allowed children
+     * include available_now / tomorrow_remaining. Never leaks tomorrow_daily_capacity.
+     *
+     * @param  array<int, int|null>  $tomorrowRemainingMap
+     * @return list<array<string, mixed>>
+     */
+    public function formatForApi(
+        Item $platter,
+        array $tomorrowRemainingMap = [],
+        ?string $channel = null,
+    ): array {
         $groups = $platter->relationLoaded('platterGroups')
             ? $platter->platterGroups
-            : $platter->platterGroups()->with(['allowedItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants'])->get();
+            : $platter->platterGroups()->with(['allowedItems.item'])->get();
 
-        return $groups->map(function (PlatterGroup $group) {
+        $availability = $channel !== null ? app(ItemAvailabilityService::class) : null;
+
+        return $groups->map(function (PlatterGroup $group) use ($tomorrowRemainingMap, $channel, $availability) {
             $items = $group->relationLoaded('allowedItems')
                 ? $group->allowedItems
-                : $group->allowedItems()->with(['item:id,name,name_dv,base_price,image_url,is_available,has_variants'])->get();
+                : $group->allowedItems()->with(['item'])->get();
 
             return [
                 'id' => $group->id,
@@ -155,22 +169,61 @@ final class PlatterCompositionService
                 'max_count' => $group->max_count,
                 'size_counts' => $this->sizeCountsForApi($group->size_counts),
                 'sort_order' => $group->sort_order,
-                'items' => $items->map(fn (PlatterGroupItem $row) => [
-                    'item_id' => $row->item_id,
-                    'surcharge' => (float) $row->surcharge,
-                    'sort_order' => $row->sort_order,
-                    'item' => $row->item ? [
-                        'id' => $row->item->id,
-                        'name' => $row->item->name,
-                        'name_dv' => $row->item->name_dv,
-                        'base_price' => $row->item->base_price,
-                        'image_url' => $row->item->display_image_url ?? $row->item->image_url,
-                        'is_available' => $row->item->is_available,
-                        'has_variants' => $row->item->has_variants,
-                    ] : null,
-                ])->values()->all(),
+                'items' => $items->map(function (PlatterGroupItem $row) use ($tomorrowRemainingMap, $channel, $availability) {
+                    $child = $row->item;
+                    $itemPayload = null;
+                    if ($child) {
+                        $itemPayload = [
+                            'id' => $child->id,
+                            'name' => $child->name,
+                            'name_dv' => $child->name_dv,
+                            'base_price' => $child->base_price,
+                            'image_url' => $child->display_image_url ?? $child->image_url,
+                            'is_available' => (bool) $child->is_available,
+                            'has_variants' => (bool) $child->has_variants,
+                            'allow_pre_order' => (bool) $child->allow_pre_order,
+                        ];
+                        if ($channel !== null && $availability !== null) {
+                            $check = $availability->check($child, $channel);
+                            $itemPayload['available_now'] = $check->allowed;
+                            $itemPayload['unavailable_reason'] = $check->reasonCode;
+                            // Public: remaining only — never the configured capacity.
+                            $itemPayload['tomorrow_remaining'] = array_key_exists($child->id, $tomorrowRemainingMap)
+                                ? $tomorrowRemainingMap[$child->id]
+                                : null;
+                        }
+                    }
+
+                    return [
+                        'item_id' => $row->item_id,
+                        'surcharge' => (float) $row->surcharge,
+                        'sort_order' => $row->sort_order,
+                        'item' => $itemPayload,
+                    ];
+                })->values()->all(),
             ];
         })->values()->all();
+    }
+
+    /** Collect allowed child item ids across loaded platter groups. */
+    public function collectChildItemIds(iterable $platters): array
+    {
+        $ids = [];
+        foreach ($platters as $platter) {
+            if (!$platter instanceof Item || !$platter->relationLoaded('platterGroups')) {
+                continue;
+            }
+            foreach ($platter->platterGroups as $group) {
+                if (!$group->relationLoaded('allowedItems')) {
+                    continue;
+                }
+                foreach ($group->allowedItems as $row) {
+                    $ids[] = (int) $row->item_id;
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($ids)));
     }
 
     /**

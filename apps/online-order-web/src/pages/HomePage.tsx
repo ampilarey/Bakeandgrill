@@ -10,7 +10,7 @@ import {
   API_ORIGIN,
   type FeaturedReview,
 } from '../api';
-import type { Item, Offer, Order } from '../api';
+import type { Offer, Order } from '../api';
 import { getLoyaltyAccount } from '../api/promotions';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
@@ -31,6 +31,7 @@ import { CategoryShortcuts } from '../components/home/CategoryShortcuts';
 import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
 import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
+import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 
 const HOME_SECTION_DEFAULT = ['specials', 'featured', 'categories', 'proof', 'cta', 'location'];
 
@@ -211,22 +212,12 @@ export function HomePage() {
     try {
       const payload = await getReorderPayload(order.id);
       clearCart();
-      for (const line of payload.items) {
-        const fakeItem = {
-          id: line.item_id,
-          name: line.item_name,
-          base_price: line.unit_price,
-          has_variants: false,
-          is_available: true,
-        } as Item;
-        const mods = (line.modifiers ?? []).map((m) => ({
-          id: m.id,
-          name: m.name,
-          price: m.price ?? 0,
-        }));
-        addItem(fakeItem, line.quantity, mods, null);
+      const { added, needsPickerCount } = applyReorderPayloadToCart(payload, addItem);
+      if (needsPickerCount > 0 && added === 0) {
+        void navigate('/menu');
+        return;
       }
-      void navigate('/checkout');
+      void navigate(needsPickerCount > 0 ? '/menu' : '/checkout');
     } catch {
       void navigate('/menu');
     } finally {

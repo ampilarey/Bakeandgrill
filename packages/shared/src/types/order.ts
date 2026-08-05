@@ -48,6 +48,8 @@ export type OrderItem = {
   quantity: number;
   unit_price: number;
   total_price: number;
+  /** Platter child lines point at the parent order_items row. */
+  parent_order_item_id?: number | null;
   /** Legacy percent snapshot — prefer tax_code for GST math. */
   tax_rate?: number | null;
   tax_code?: string | null;

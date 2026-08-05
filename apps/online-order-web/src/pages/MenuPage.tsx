@@ -46,6 +46,7 @@ import {
   mergeCateringSectionItems,
 } from '../utils/menuCatering';
 import { formatTomorrowDateLabel } from '../utils/collectOn';
+import { consumePendingPlatterReorder } from '../utils/applyReorderToCart';
 const MENU_VIEW_KEY = 'bg-menu-view';
 type MenuViewMode = 'grid' | 'list';
 
@@ -257,6 +258,18 @@ export function MenuPage() {
         setGateMessage(gate.message ?? '');
         setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
         setCollectTomorrowDate(gate.order_for_tomorrow?.collect_tomorrow_date ?? null);
+
+        // Re-order of a past platter without saved children → open picker (never empty).
+        const pending = consumePendingPlatterReorder();
+        if (pending.length > 0) {
+          const target = loadedItems.find((i) => i.id === pending[0].item_id);
+          if (target?.is_platter) {
+            setSelectedItem(target);
+            setSelectedQty(pending[0].quantity || 1);
+            setSelectedModifiers([]);
+            showToast('Choose your platter items');
+          }
+        }
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -712,9 +725,20 @@ export function MenuPage() {
       return exists ? prev.filter((m) => m.id !== mod.id) : [...prev, mod];
     });
   };
-  const handleModalAdd = (variant?: Variant | null, packagingOptionId?: number | null) => {
+  const handleModalAdd = (
+    variant?: Variant | null,
+    packagingOptionId?: number | null,
+    platterSelections?: import('@shared/types').PlatterSelection[],
+  ) => {
     if (!selectedItem) return;
-    addItem(selectedItem, selectedQty, selectedModifiers, variant ?? null, packagingOptionId);
+    addItem(
+      selectedItem,
+      selectedQty,
+      selectedModifiers,
+      variant ?? null,
+      packagingOptionId,
+      { platterSelections: platterSelections ?? [] },
+    );
     const label = variant ? `${selectedItem.name} (${variant.name})` : selectedItem.name;
     showToast(`${label} added to cart`);
     setSelectedItem(null);
