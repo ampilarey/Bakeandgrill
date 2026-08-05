@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Finance\Services\RefundDrawerCashService;
+use App\Domains\Menu\Services\ComboChildStockService;
 use App\Domains\Orders\DTOs\OrderRefundedData;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
@@ -188,6 +189,8 @@ class RefundController extends Controller
 
             if ($isFullRefund || ($amountLaar > 0 && $thisRefundRatio > 0)) {
                 $stockService = app(StockManagementService::class);
+                $comboStock = app(ComboChildStockService::class);
+                $order->loadMissing(['items.item.comboItems.item', 'items.variant']);
                 foreach ($order->items as $orderItem) {
                     $item = $orderItem->item;
                     if (!$item) {
@@ -206,37 +209,48 @@ class RefundController extends Controller
                     // its own inventory (mirrors the deduction logic in OrderCreationService).
                     $variant = $orderItem->variant;
                     if ($variant && $variant->track_stock) {
-                        if (!$stockService->wasPreparedStockDeductedForLine($order->id, $orderItem->id)) {
-                            continue;
+                        if ($stockService->wasPreparedStockDeductedForLine($order->id, $orderItem->id)) {
+                            $key = 'refund:order:' . $order->id . ':variant:' . $orderItem->id
+                                . ($isFullRefund ? '' : ':partial:' . $refund->id);
+                            $stockService->restoreVariantStock(
+                                $variant,
+                                $restoreQty,
+                                $key,
+                                $order->id,
+                                $request->user()?->id,
+                            );
                         }
-                        $key = 'refund:order:' . $order->id . ':variant:' . $orderItem->id
-                            . ($isFullRefund ? '' : ':partial:' . $refund->id);
-                        $stockService->restoreVariantStock(
-                            $variant,
-                            $restoreQty,
-                            $key,
-                            $order->id,
-                            $request->user()?->id,
-                        );
-
-                        continue;
+                    } elseif ($item->track_stock && $item->availability_type === 'stock_based') {
+                        if ($stockService->wasPreparedStockDeductedForLine($order->id, $orderItem->id)) {
+                            $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id
+                                . ($isFullRefund ? '' : ':partial:' . $refund->id);
+                            $stockService->restorePreparedStock(
+                                $item,
+                                $restoreQty,
+                                $key,
+                                $order->id,
+                                $request->user()?->id,
+                            );
+                        }
                     }
 
-                    if (!$item->track_stock || $item->availability_type !== 'stock_based') {
-                        continue;
-                    }
-
-                    if (!$stockService->wasPreparedStockDeductedForLine($order->id, $orderItem->id)) {
-                        continue;
-                    }
-                    $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id
-                        . ($isFullRefund ? '' : ':partial:' . $refund->id);
-                    $stockService->restorePreparedStock(
+                    // Combo children are ADDITIONAL — restore when those child
+                    // sale movements exist, even if the combo SKU itself does not track stock.
+                    $comboStock->restoreForOrderItem(
                         $item,
+                        $orderItem,
                         $restoreQty,
-                        $key,
-                        $order->id,
+                        $lineQty,
+                        fn ($child) => $comboStock->refundKey(
+                            (int) $order->id,
+                            (int) $orderItem->id,
+                            (int) $child->id,
+                            $isFullRefund,
+                            (int) $refund->id,
+                        ),
+                        (int) $order->id,
                         $request->user()?->id,
+                        onlyIfPreviouslyDeducted: true,
                     );
                 }
             }

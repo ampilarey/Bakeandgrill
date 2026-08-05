@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\Log;
  *
  * Idempotent: releaseForOrder() is a safe no-op when no reservation exists.
  * Handles: stale-payment cancellations, payment failure, manual cancellation.
+ *
+ * Combo child reservations (see ComboChildStockService::reserveForOrderItem) are
+ * stored under the same order_id, so releaseForOrder() already drops them —
+ * there is no separate restore path here. Paid online orders that already
+ * converted reservations to deductions restore via RefundController, same as
+ * non-combo lines.
  */
 class ReleasePreparedStockOnCancelListener
 {
@@ -23,6 +29,7 @@ class ReleasePreparedStockOnCancelListener
     public function handle(OrderCancelled $event): void
     {
         try {
+            // Releases parent-line AND combo-child reservations for this order_id.
             $this->reservationService->releaseForOrder($event->data->orderId);
         } catch (\Throwable $e) {
             Log::error('ReleasePreparedStockOnCancelListener: release failed', [

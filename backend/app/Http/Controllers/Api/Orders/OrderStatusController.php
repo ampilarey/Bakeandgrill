@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Orders;
 
+use App\Domains\Menu\Services\ComboChildStockService;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
@@ -340,7 +341,8 @@ class OrderStatusController extends Controller
             $isPosOrder = !in_array($order->type, ['online_pickup', 'delivery'], true);
             if ($isPosOrder) {
                 $stockService = app(StockManagementService::class);
-                $order->load('items');
+                $comboStock = app(ComboChildStockService::class);
+                $order->load(['items.item.comboItems.item']);
                 foreach ($order->items as $orderItem) {
                     $qty = (int) $orderItem->quantity;
                     if ($qty <= 0) {
@@ -358,23 +360,39 @@ class OrderStatusController extends Controller
                                 $request->user()->id,
                             );
                         }
-                        continue;
+                    } elseif ($orderItem->item_id) {
+                        $item = $orderItem->item ?? Item::find($orderItem->item_id);
+                        if ($item && $item->track_stock && $item->availability_type === 'stock_based') {
+                            $stockService->restorePreparedStock(
+                                $item,
+                                $qty,
+                                'pos:cancel:order:' . $order->id . ':item:' . $orderItem->id,
+                                $order->id,
+                                $request->user()->id,
+                            );
+                        }
                     }
 
-                    if (!$orderItem->item_id) {
-                        continue;
+                    // Combo children are ADDITIONAL — restore even when the combo
+                    // SKU itself does not track stock.
+                    if ($orderItem->item_id) {
+                        $sold = $orderItem->item ?? Item::with('comboItems.item')->find($orderItem->item_id);
+                        if ($sold) {
+                            $comboStock->restoreForOrderItem(
+                                $sold,
+                                $orderItem,
+                                $qty,
+                                $qty,
+                                fn (Item $child) => $comboStock->cancelKey(
+                                    (int) $order->id,
+                                    (int) $orderItem->id,
+                                    (int) $child->id,
+                                ),
+                                (int) $order->id,
+                                $request->user()->id,
+                            );
+                        }
                     }
-                    $item = Item::find($orderItem->item_id);
-                    if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
-                        continue;
-                    }
-                    $stockService->restorePreparedStock(
-                        $item,
-                        $qty,
-                        'pos:cancel:order:' . $order->id . ':item:' . $orderItem->id,
-                        $order->id,
-                        $request->user()->id,
-                    );
                 }
             }
 

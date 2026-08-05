@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Orders\Services;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
+use App\Domains\Menu\Services\ComboChildStockService;
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Promotions\Services\PromotionEvaluator;
@@ -376,7 +377,8 @@ class OrderCreationService
             $isPosOrder = !in_array($previousType, ['online_pickup', 'delivery'], true);
             if ($isPosOrder) {
                 $stockService = app(StockManagementService::class);
-                $existingItems = $order->items()->get();
+                $comboStock = app(ComboChildStockService::class);
+                $existingItems = $order->items()->with('item.comboItems.item')->get();
                 foreach ($existingItems as $existing) {
                     $qty = (int) $existing->quantity;
                     if ($qty <= 0) {
@@ -394,23 +396,38 @@ class OrderCreationService
                                 null,
                             );
                         }
-                        continue;
+                        // Combo children are still restored when the sold line has a variant.
+                    } elseif ($existing->item_id) {
+                        $item = $existing->item ?? Item::find($existing->item_id);
+                        if ($item && $item->track_stock && $item->availability_type === 'stock_based') {
+                            $stockService->restorePreparedStock(
+                                $item,
+                                $qty,
+                                'pos:edit:order:' . $order->id . ':item:' . $existing->id,
+                                $order->id,
+                                null,
+                            );
+                        }
                     }
 
-                    if (!$existing->item_id) {
-                        continue;
+                    if ($existing->item_id) {
+                        $sold = $existing->item ?? Item::with('comboItems.item')->find($existing->item_id);
+                        if ($sold) {
+                            $comboStock->restoreForOrderItem(
+                                $sold,
+                                $existing,
+                                $qty,
+                                $qty,
+                                fn (Item $child) => $comboStock->editRestoreKey(
+                                    (int) $order->id,
+                                    (int) $existing->id,
+                                    (int) $child->id,
+                                ),
+                                (int) $order->id,
+                                null,
+                            );
+                        }
                     }
-                    $item = Item::find($existing->item_id);
-                    if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
-                        continue;
-                    }
-                    $stockService->restorePreparedStock(
-                        $item,
-                        $qty,
-                        'pos:edit:order:' . $order->id . ':item:' . $existing->id,
-                        $order->id,
-                        null,
-                    );
                 }
             } else {
                 app(StockReservationService::class)->releaseForOrder((int) $order->id);
@@ -498,7 +515,7 @@ class OrderCreationService
 
         // Pre-load all referenced items in a single query to avoid N+1
         $itemIds = array_column($items, 'item_id');
-        $itemQuery = Item::with(['variants', 'modifiers', 'packagingOptions'])
+        $itemQuery = Item::with(['variants', 'modifiers', 'packagingOptions', 'comboItems.item'])
             ->where('is_active', true)
             ->whereIn('id', $itemIds);
         // Same-day still requires available-today; tomorrow may include 86'd items
@@ -614,6 +631,12 @@ class OrderCreationService
                         abort(422, "Insufficient stock for {$lockedItem->name}. Available: {$available}, requested: {$quantity}");
                     }
                 }
+
+                // Combo children are ADDITIONAL to the combo SKU's own stock check.
+                app(ComboChildStockService::class)->assertChildrenAvailable(
+                    $itemModel,
+                    max(0, (int) round($quantity)),
+                );
             }
 
             $lockedItem = $itemModel;
@@ -691,6 +714,20 @@ class OrderCreationService
                         $stockQty,
                         $key,
                         $order->id,
+                        $user?->id,
+                    );
+                }
+
+                // Combo children are ADDITIONAL — if the combo SKU itself tracks
+                // stock, that deduction above is unchanged. Optional children are
+                // intentionally skipped (see ComboChildStockService).
+                if ($stockQty > 0) {
+                    app(ComboChildStockService::class)->deductForOrderItem(
+                        $itemModel,
+                        $orderItem,
+                        $stockQty,
+                        $keyPrefix,
+                        (int) $order->id,
                         $user?->id,
                     );
                 }

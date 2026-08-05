@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Menu\Services\ComboChildStockService;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Variant;
@@ -106,7 +107,8 @@ class StockReservationService
         // Always reload lines — callers may have cleared the in-memory relation
         // (e.g. replaceOrderItems) so loadMissing would reserve nothing.
         $order->unsetRelation('items');
-        $order->load(['items.item', 'items.variant']);
+        $order->load(['items.item.comboItems.item', 'items.variant']);
+        $comboStock = app(ComboChildStockService::class);
 
         foreach ($order->items as $orderItem) {
             $item = $orderItem->item;
@@ -141,43 +143,46 @@ class StockReservationService
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+            } elseif ($item && $item->track_stock && $item->availability_type === 'stock_based') {
+                // ── Item-level reservation (unchanged behaviour) ──────────────────
+                $locked = Item::lockForUpdate()->find($item->id);
+                if (!$locked) {
+                    abort(422, "Item {$item->name} is no longer available.");
+                }
 
-                continue;
+                $this->releaseExpiredReservations($locked->id);
+                $available = $this->getAvailableStock($locked);
+
+                if ($available < $orderItem->quantity) {
+                    abort(422, "Not enough stock for {$locked->name}. Available: {$available}, requested: {$orderItem->quantity}");
+                }
+
+                // Only replace the parent-line hold — do not wipe combo-child
+                // reservations that share this item_id under the same order.
+                DB::table('stock_reservations')
+                    ->where('item_id', $locked->id)
+                    ->whereNull('variant_id')
+                    ->where('order_id', $order->id)
+                    ->where('session_id', 'order:' . $order->id)
+                    ->delete();
+
+                DB::table('stock_reservations')->insert([
+                    'item_id' => $locked->id,
+                    'variant_id' => null,
+                    'order_id' => $order->id,
+                    'session_id' => 'order:' . $order->id,
+                    'quantity' => $orderItem->quantity,
+                    'expires_at' => now()->addMinutes($ttl),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
 
-            // ── Item-level reservation (unchanged behaviour) ──────────────────
-            if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
-                continue;
+            // Combo children are ADDITIONAL reservations under the same order_id.
+            // releaseForOrder() deletes by order_id, so online cancel releases them too.
+            if ($item) {
+                $comboStock->reserveForOrderItem($orderItem, $item, $ttl);
             }
-
-            $locked = Item::lockForUpdate()->find($item->id);
-            if (!$locked) {
-                abort(422, "Item {$item->name} is no longer available.");
-            }
-
-            $this->releaseExpiredReservations($locked->id);
-            $available = $this->getAvailableStock($locked);
-
-            if ($available < $orderItem->quantity) {
-                abort(422, "Not enough stock for {$locked->name}. Available: {$available}, requested: {$orderItem->quantity}");
-            }
-
-            DB::table('stock_reservations')
-                ->where('item_id', $locked->id)
-                ->whereNull('variant_id')
-                ->where('order_id', $order->id)
-                ->delete();
-
-            DB::table('stock_reservations')->insert([
-                'item_id' => $locked->id,
-                'variant_id' => null,
-                'order_id' => $order->id,
-                'session_id' => 'order:' . $order->id,
-                'quantity' => $orderItem->quantity,
-                'expires_at' => now()->addMinutes($ttl),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
         }
     }
 
@@ -201,10 +206,11 @@ class StockReservationService
     public function convertToDeduction(Order $order, ?int $userId = null): void
     {
         $order->unsetRelation('items');
-        $order->load(['items.item', 'items.variant']);
+        $order->load(['items.item.comboItems.item', 'items.variant']);
         $stockService = app(StockManagementService::class);
+        $comboStock = app(ComboChildStockService::class);
 
-        DB::transaction(function () use ($order, $userId, $stockService): void {
+        DB::transaction(function () use ($order, $userId, $stockService, $comboStock): void {
             foreach ($order->items as $orderItem) {
                 $item = $orderItem->item;
                 $variant = $orderItem->variant;
@@ -218,41 +224,37 @@ class StockReservationService
                         \Illuminate\Support\Facades\Log::warning(
                             "StockReservationService: variant {$variant->id} not found during convertToDeduction for order {$order->id}",
                         );
+                    } else {
+                        $stockService->deductVariantStock($lockedVariant, (int) $orderItem->quantity, $key, $order->id, $userId);
 
-                        continue;
+                        DB::table('stock_reservations')
+                            ->where('variant_id', $lockedVariant->id)
+                            ->where('order_id', $order->id)
+                            ->delete();
                     }
+                } elseif ($item && $item->track_stock && $item->availability_type === 'stock_based') {
+                    // ── Item-level deduction (unchanged behaviour) ────────────────
+                    $locked = Item::lockForUpdate()->find($item->id);
+                    if (!$locked) {
+                        \Illuminate\Support\Facades\Log::warning(
+                            "StockReservationService: item {$item->id} not found during convertToDeduction for order {$order->id}",
+                        );
+                    } else {
+                        $stockService->deductPreparedStock($locked, (int) $orderItem->quantity, $key, $order->id, $userId);
 
-                    $stockService->deductVariantStock($lockedVariant, (int) $orderItem->quantity, $key, $order->id, $userId);
-
-                    DB::table('stock_reservations')
-                        ->where('variant_id', $lockedVariant->id)
-                        ->where('order_id', $order->id)
-                        ->delete();
-
-                    continue;
+                        DB::table('stock_reservations')
+                            ->where('item_id', $locked->id)
+                            ->whereNull('variant_id')
+                            ->where('order_id', $order->id)
+                            ->where('session_id', 'order:' . $order->id)
+                            ->delete();
+                    }
                 }
 
-                // ── Item-level deduction (unchanged behaviour) ────────────────
-                if (!$item || !$item->track_stock || $item->availability_type !== 'stock_based') {
-                    continue;
+                // Combo children are ADDITIONAL — same online:order key family + :child:{id}.
+                if ($item) {
+                    $comboStock->convertChildrenToDeduction($orderItem, $item, $userId);
                 }
-
-                $locked = Item::lockForUpdate()->find($item->id);
-                if (!$locked) {
-                    \Illuminate\Support\Facades\Log::warning(
-                        "StockReservationService: item {$item->id} not found during convertToDeduction for order {$order->id}",
-                    );
-
-                    continue;
-                }
-
-                $stockService->deductPreparedStock($locked, (int) $orderItem->quantity, $key, $order->id, $userId);
-
-                DB::table('stock_reservations')
-                    ->where('item_id', $locked->id)
-                    ->whereNull('variant_id')
-                    ->where('order_id', $order->id)
-                    ->delete();
             }
         });
     }
