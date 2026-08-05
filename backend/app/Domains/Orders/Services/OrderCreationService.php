@@ -505,6 +505,7 @@ class OrderCreationService
             $items,
             $order->type,
             $user !== null && $order->type === 'delivery',
+            $deferStockForTomorrow,
         );
 
         foreach ($items as $itemPayload) {

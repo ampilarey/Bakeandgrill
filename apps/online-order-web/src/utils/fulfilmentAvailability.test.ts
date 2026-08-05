@@ -58,4 +58,24 @@ describe('isDeliveryBlocked', () => {
   it('allows when all signals are clear', () => {
     expect(isDeliveryBlocked(base)).toBe(false);
   });
+
+  describe('forTomorrow orders', () => {
+    it('ignores window / eligibility / delivery_available', () => {
+      expect(
+        isDeliveryBlocked({
+          ...base,
+          forTomorrow: true,
+          eligibilityAccepting: false,
+          deliveryAvailable: false,
+          isOpen: false,
+        }),
+      ).toBe(false);
+    });
+
+    it('still blocks when the delivery service is switched off', () => {
+      expect(
+        isDeliveryBlocked({ ...base, forTomorrow: true, serviceAvailable: false }),
+      ).toBe(true);
+    });
+  });
 });

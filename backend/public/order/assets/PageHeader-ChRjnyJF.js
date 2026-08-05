@@ -1,1 +1,0 @@
-import{u as a,j as e}from"./index-HccgkzGM.js";function t({title:t,onBack:r,right:s,backAriaLabel:c}){const{t:n}=a(),i=c??n("common.back");return e.jsxs("header",{className:"page-header",children:[r&&e.jsx("button",{type:"button",className:"page-header__back",onClick:r,"aria-label":i,children:"←"}),e.jsx("h1",{className:"page-header__title",children:t}),s]})}export{t as P};

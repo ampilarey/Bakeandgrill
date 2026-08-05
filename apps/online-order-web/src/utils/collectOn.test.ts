@@ -70,6 +70,24 @@ describe('collectOn helpers', () => {
     })).toBe('tomorrow');
   });
 
+  it('honours a Tomorrow choice made on the menu while open', () => {
+    expect(defaultCollectOn({
+      shopOpen: true,
+      cartForcesTomorrow: false,
+      cartAllowsTomorrow: true,
+      preferredDay: 'tomorrow',
+    })).toBe('tomorrow');
+  });
+
+  it('ignores a preferred Tomorrow the cart cannot fulfil', () => {
+    expect(defaultCollectOn({
+      shopOpen: true,
+      cartForcesTomorrow: false,
+      cartAllowsTomorrow: false,
+      preferredDay: 'tomorrow',
+    })).toBe('today');
+  });
+
   it('states the mixed-cart rule in plain language before pay', () => {
     expect(forcedTomorrowNotice('2026-08-05')).toContain('tomorrow');
     expect(forcedTomorrowNotice('2026-08-05')).toContain('Wed 5 Aug');

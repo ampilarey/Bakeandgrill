@@ -9,6 +9,7 @@ import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { OrderModeProvider } from './context/OrderModeContext';
+import { OrderDayProvider } from './context/OrderDayContext';
 import { ServiceStatusProvider } from './context/ServiceStatusContext';
 import { AppShell } from './components/shell/AppShell';
 import { AbandonedCartTracker } from './components/AbandonedCartTracker';
@@ -82,6 +83,7 @@ ReactDOM.createRoot(rootEl).render(
             <AuthProvider>
             <AbandonedCartTracker />
             <OrderModeProvider>
+            <OrderDayProvider>
             <ServiceStatusProvider>
             <BrowserRouter basename="/order">
               <ScrollToTop />
@@ -125,6 +127,7 @@ ReactDOM.createRoot(rootEl).render(
               </Suspense>
             </BrowserRouter>
             </ServiceStatusProvider>
+            </OrderDayProvider>
             </OrderModeProvider>
             </AuthProvider>
             </ToastProvider>

@@ -14,8 +14,15 @@ export function isDeliveryBlocked(args: {
   eligibilityAccepting: boolean | null;
   /** ServiceStatusContext `online_delivery`. */
   serviceAvailable: boolean;
+  /**
+   * Order is for tomorrow — the current delivery window / accepting state
+   * doesn't apply (driver arranged in advance). Only the owner service
+   * kill-switch still blocks. Mirrors DeliveryGateService::assertDeliveryOpenForTomorrow.
+   */
+  forTomorrow?: boolean;
 }): boolean {
   if (!args.serviceAvailable) return true;
+  if (args.forTomorrow) return false;
   if (args.eligibilityAccepting === false) return true;
   if (args.isOpen === true && !args.deliveryAvailable) return true;
   return false;

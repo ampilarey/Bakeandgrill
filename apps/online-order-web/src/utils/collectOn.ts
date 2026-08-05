@@ -45,16 +45,25 @@ export function cartCheckoutCta(args: {
 
 /**
  * When the shop is closed, checkout defaults to Tomorrow (if the cart allows).
- * When open, default Today — unless the cart forces tomorrow.
+ * When open, default Today — unless the cart forces tomorrow or the customer
+ * already picked Tomorrow on the menu (preferredDay).
  */
 export function defaultCollectOn(args: {
   shopOpen: boolean | null;
   cartForcesTomorrow: boolean;
   cartAllowsTomorrow: boolean;
+  /** App-wide day choice made on the menu (getOrderDay()). */
+  preferredDay?: CollectOn;
 }): CollectOn {
   if (args.cartForcesTomorrow && args.cartAllowsTomorrow) return 'tomorrow';
   if (args.shopOpen === false && args.cartAllowsTomorrow) return 'tomorrow';
+  if (args.preferredDay === 'tomorrow' && args.cartAllowsTomorrow) return 'tomorrow';
   return 'today';
+}
+
+/** "Wed 5 Aug" — shared short label for day pickers/summaries. */
+export function formatShortDateLabel(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 }
 
 /**
@@ -65,7 +74,7 @@ export function formatTomorrowDateLabel(collectTomorrowDate: string | null | und
   const date = collectTomorrowDate && /^\d{4}-\d{2}-\d{2}/.test(collectTomorrowDate)
     ? new Date(`${collectTomorrowDate.slice(0, 10)}T00:00:00`)
     : new Date(Date.now() + 24 * 60 * 60 * 1000);
-  return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
+  return formatShortDateLabel(date);
 }
 
 /**

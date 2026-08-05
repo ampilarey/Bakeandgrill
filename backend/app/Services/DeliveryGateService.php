@@ -36,6 +36,32 @@ class DeliveryGateService
     }
 
     /**
+     * Gate for collect-tomorrow delivery orders. Today's schedule window and
+     * capacity don't apply — a driver is arranged in advance — but the owner
+     * accepting kill-switch and the zone whitelist still do.
+     */
+    public function assertDeliveryOpenForTomorrow(?string $deliveryArea = null, ?Carbon $at = null): void
+    {
+        if ($this->isOverrideActive($at)) {
+            return;
+        }
+
+        if (!$this->acceptingFlagOn()) {
+            abort(422, (string) SiteSetting::get(
+                'delivery_unavailable_message',
+                'Delivery is not available right now. Please try takeaway or check back later.',
+            ));
+        }
+
+        if ($deliveryArea !== null) {
+            $zones = $this->parseZones();
+            if ($zones !== null && !in_array(strtolower(trim($deliveryArea)), $zones, true)) {
+                abort(422, "Sorry, we don't deliver to {$deliveryArea} yet.");
+            }
+        }
+    }
+
+    /**
      * @param bool $checkCapacity When false, skips max-active check (menu visibility /
      *                            mid-create line asserts — order shell may already exist).
      */

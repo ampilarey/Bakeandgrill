@@ -37,6 +37,42 @@ export function confirmSalesChannel(): void {
   localStorage.setItem(SALES_CHANNEL_CONFIRMED_KEY, '1');
 }
 
+// ── Order day (today / tomorrow) ────────────────────────────────────────────
+export type OrderDay = 'today' | 'tomorrow';
+
+const ORDER_DAY_KEY = 'bakegrill_order_day';
+const ORDER_DAY_SAVED_ON_KEY = 'bakegrill_order_day_saved_on';
+
+function localDateString(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Persisted "order for today / tomorrow" choice shared by menu and checkout.
+ * A stored "tomorrow" is only honoured on the calendar day it was saved —
+ * after midnight it silently resets to today so stale choices never leak.
+ */
+export function getOrderDay(): OrderDay {
+  if (typeof localStorage === 'undefined') return 'today';
+  const day = localStorage.getItem(ORDER_DAY_KEY);
+  if (day !== 'tomorrow') return 'today';
+  if (localStorage.getItem(ORDER_DAY_SAVED_ON_KEY) !== localDateString()) {
+    localStorage.removeItem(ORDER_DAY_KEY);
+    localStorage.removeItem(ORDER_DAY_SAVED_ON_KEY);
+    return 'today';
+  }
+  return 'tomorrow';
+}
+
+export function setOrderDay(day: OrderDay): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(ORDER_DAY_KEY, day);
+  localStorage.setItem(ORDER_DAY_SAVED_ON_KEY, localDateString());
+  window.dispatchEvent(new Event('order_day_change'));
+}
+
 export interface OrderingEligibility {
   delivery: {
     accepting: boolean;

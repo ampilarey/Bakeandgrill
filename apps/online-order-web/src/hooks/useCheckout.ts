@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, type SalesChannel } from "../api/menu";
+import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, getOrderDay, setOrderDay, type SalesChannel } from "../api/menu";
 import { useCart } from "../context/CartContext";
 import { useOrderMode } from "../context/OrderModeContext";
 import {
@@ -297,7 +297,13 @@ export function useCheckout() {
 
   const { mode: orderType, setMode: setOrderType } = useOrderMode();
   const [pickupSlotAt, setPickupSlotAt] = useState<string | null>(null);
-  const [collectOn, setCollectOn] = useState<CollectOn>('today');
+  // Day is app-wide state (menu picks it too) — initialize from and write
+  // back to storage so menu and checkout never disagree.
+  const [collectOn, setCollectOnState] = useState<CollectOn>(() => getOrderDay());
+  const setCollectOn = useCallback((day: CollectOn) => {
+    setCollectOnState(day);
+    if (getOrderDay() !== day) setOrderDay(day);
+  }, []);
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
 

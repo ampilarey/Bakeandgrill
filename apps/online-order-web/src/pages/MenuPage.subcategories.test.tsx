@@ -115,6 +115,12 @@ vi.mock('../context/OrderModeContext', () => ({
   }),
 }));
 
+vi.mock('../context/OrderDayContext', () => ({
+  useOrderDay: () => ({ day: 'today', setDay: vi.fn() }),
+}));
+
+vi.mock('../components/OrderModeSheet', () => ({ OrderModeSheet: () => null }));
+
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 
 vi.mock('../components/menu/ProductCard', () => ({

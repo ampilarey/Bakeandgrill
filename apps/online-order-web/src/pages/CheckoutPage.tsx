@@ -6,6 +6,7 @@ import {
   getWaitTimeEstimate,
   fetchPickupSlots,
   type PickupSlot,
+  getOrderDay,
 } from "../api";
 import { useNavigate } from "react-router-dom";
 import { useCheckout } from "../hooks/useCheckout";
@@ -214,6 +215,7 @@ export function CheckoutPage() {
     deliveryAvailable: onlineGate?.delivery_available ?? true,
     eligibilityAccepting: orderElig == null ? null : orderElig.delivery.accepting,
     serviceAvailable: deliveryServiceAvailable,
+    forTomorrow: collectOn === 'tomorrow',
   });
   const pickupBlocked = isPickupBlocked({ serviceAvailable: pickupServiceAvailable });
   const shopClosed = onlineGate != null && !onlineGate.open;
@@ -260,12 +262,14 @@ export function CheckoutPage() {
     showToast(t(pruneKey).replace('{n}', String(lastChannelPrune.count)));
   }, [lastChannelPrune, showToast, t]);
 
-  // Default Today when open, Tomorrow when closed (or cart forces tomorrow).
+  // Default Today when open, Tomorrow when closed, cart forces tomorrow,
+  // or the customer already picked Tomorrow on the menu.
   useEffect(() => {
     const next = defaultCollectOn({
       shopOpen: onlineGate == null ? null : onlineGate.open,
       cartForcesTomorrow,
       cartAllowsTomorrow: allowsTomorrow,
+      preferredDay: getOrderDay(),
     });
     setCollectOn(next);
   }, [onlineGate?.open, cartForcesTomorrow, allowsTomorrow, setCollectOn]);

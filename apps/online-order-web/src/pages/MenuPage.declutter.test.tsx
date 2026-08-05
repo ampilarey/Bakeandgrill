@@ -97,6 +97,14 @@ vi.mock('../context/OrderModeContext', () => ({
   }),
 }));
 
+vi.mock('../context/OrderDayContext', () => ({
+  useOrderDay: () => ({ day: 'today', setDay: vi.fn() }),
+}));
+
+vi.mock('../components/OrderModeSheet', () => ({
+  OrderModeSheet: () => null,
+}));
+
 vi.mock('../hooks/usePageTitle', () => ({
   usePageTitle: () => {},
 }));
@@ -146,7 +154,7 @@ describe('MenuPage declutter + pickup toast', () => {
     expect(document.querySelector('.ordering-status-bar')).toBeNull();
   });
 
-  it('toasts when tapping blocked Pickup', async () => {
+  it('toasts when tapping blocked Tomorrow (no pre-orderable items)', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -155,11 +163,25 @@ describe('MenuPage declutter + pickup toast', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /pickup/i })).toBeInTheDocument();
+      expect(screen.getByTestId('order-day-tomorrow')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: /pickup/i }));
+    expect(screen.getByTestId('order-day-tomorrow')).toHaveAttribute('aria-disabled', 'true');
+    await user.click(screen.getByTestId('order-day-tomorrow'));
     expect(showToast).toHaveBeenCalled();
-    expect(String(showToast.mock.calls[0][0])).toMatch(/pickup/i);
+    expect(String(showToast.mock.calls[0][0])).toMatch(/day\.tomorrow_unavailable/);
+    // Day did not switch.
+    expect(screen.getByTestId('order-day-today')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('renders the mode chip that opens the pickup/delivery sheet', async () => {
+    render(
+      <MemoryRouter>
+        <MenuPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('mode-chip')).toBeInTheDocument();
+    });
   });
 });

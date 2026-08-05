@@ -116,11 +116,15 @@ class DeliveryOrderController extends Controller
                 $validated['fulfil_date'] ?? null,
             );
 
-            $this->deliveryGate->assertDeliveryOpen(
-                is_string($validated['delivery_island'] ?? null)
-                    ? $validated['delivery_island']
-                    : null,
-            );
+            $island = is_string($validated['delivery_island'] ?? null)
+                ? $validated['delivery_island']
+                : null;
+            if (($validated['fulfil_date'] ?? null) !== null) {
+                // Tomorrow order: schedule window / capacity don't apply.
+                $this->deliveryGate->assertDeliveryOpenForTomorrow($island);
+            } else {
+                $this->deliveryGate->assertDeliveryOpen($island);
+            }
         }
 
         $delivery = DeliveryDetails::fromArray($validated);

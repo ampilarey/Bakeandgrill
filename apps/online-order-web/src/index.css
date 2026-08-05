@@ -2628,6 +2628,212 @@ textarea.field-input {
   color: var(--color-primary);
 }
 
+/* ── Menu top row: day toggle + mode chip + search ─────────────────────── */
+.menu-top-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Mobile: day toggle owns the first row; chip + search share the second. */
+.menu-top-row__day {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.menu-top-row .mode-chip {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .menu-top-row__day {
+    flex: 1 1 auto;
+  }
+  .menu-top-row .mode-chip {
+    flex: 0 0 auto;
+  }
+}
+
+/* ── Today / Tomorrow day toggle (menu sticky bar) ─────────────────────── */
+.order-day-toggle {
+  display: flex;
+  padding: 3px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+}
+
+.order-day-toggle__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0.3rem 0.6rem;
+  border: none;
+  border-radius: calc(var(--radius-lg) - 3px);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--duration-micro) var(--ease-out), color var(--duration-micro) var(--ease-out);
+}
+
+.order-day-toggle__btn.is-active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.order-day-toggle__label {
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.order-day-toggle__date {
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+/* ── Pickup/Delivery mode chip (opens the mode sheet) ──────────────────── */
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: var(--touch-target);
+  padding: 0 0.85rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mode-chip--unset {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.mode-chip__caret {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+/* ── Mode sheet (how do you want your order?) ──────────────────────────── */
+.mode-sheet__context {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.mode-sheet__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-bottom: 0.5rem;
+}
+
+.mode-sheet__option {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 68px;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--duration-micro) var(--ease-out), background var(--duration-micro) var(--ease-out);
+}
+
+.mode-sheet__option.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.mode-sheet__option.is-blocked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mode-sheet__icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.mode-sheet__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mode-sheet__label {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.mode-sheet__sub {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.mode-sheet__check {
+  margin-left: auto;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* Desktop: side-by-side option cards inside the centered sheet panel. */
+@media (min-width: 768px) {
+  .mode-sheet__options {
+    flex-direction: row;
+  }
+  .mode-sheet__option {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-height: 116px;
+  }
+  .mode-sheet__check {
+    margin-left: 0;
+  }
+  .order-day-toggle {
+    max-width: 400px;
+  }
+  .order-day-toggle__label {
+    font-size: 0.9rem;
+  }
+  .order-day-toggle__date {
+    font-size: 0.7rem;
+  }
+}
+
 .menu-quick-filters {
   display: inline-flex;
   gap: 0.4rem;

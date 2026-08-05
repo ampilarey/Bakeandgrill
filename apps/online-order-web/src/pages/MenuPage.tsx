@@ -24,7 +24,10 @@ import { useShellNav } from '../context/ShellNavContext';
 import { useToast } from '../context/ToastContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
-import { OrderModeToggle } from '../components/OrderModeToggle';
+import { OrderDayToggle } from '../components/OrderDayToggle';
+import { OrderModeSheet } from '../components/OrderModeSheet';
+import { useOrderDay } from '../context/OrderDayContext';
+import { useOrderMode } from '../context/OrderModeContext';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { composeClosedMenuBanner } from '../utils/orderingStatusBanner';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
@@ -40,6 +43,7 @@ import {
   isMenuCateringItem,
   mergeCateringSectionItems,
 } from '../utils/menuCatering';
+import { formatTomorrowDateLabel } from '../utils/collectOn';
 const MENU_VIEW_KEY = 'bg-menu-view';
 type MenuViewMode = 'grid' | 'list';
 
@@ -159,6 +163,11 @@ export function MenuPage() {
   const [eligibilityAccepting, setEligibilityAccepting] = useState<boolean | null>(null);
   const [gateMessage, setGateMessage] = useState<string>('');
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
+  const [collectTomorrowDate, setCollectTomorrowDate] = useState<string | null>(null);
+
+  const { day, setDay } = useOrderDay();
+  const { mode, modeConfirmed } = useOrderMode();
+  const [modeSheetOpen, setModeSheetOpen] = useState(false);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -238,6 +247,7 @@ export function MenuPage() {
         setDeliveryAvailable(gate.delivery_available ?? true);
         setGateMessage(gate.message ?? '');
         setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
+        setCollectTomorrowDate(gate.order_for_tomorrow?.collect_tomorrow_date ?? null);
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -327,8 +337,38 @@ export function MenuPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, openCartSheet]);
 
+  const hasTomorrowItems = useMemo(
+    () => items.some((item) => Boolean(item.allow_pre_order)),
+    [items],
+  );
+
+  // Closed shop → Tomorrow is the only orderable day; flip automatically.
+  // Reverse guard: if Tomorrow has nothing pre-orderable, fall back to Today.
+  useEffect(() => {
+    if (loading || isOpen === null) return;
+    if (isOpen === false && day === 'today' && hasTomorrowItems) {
+      setDay('tomorrow');
+    } else if (day === 'tomorrow' && !hasTomorrowItems) {
+      setDay('today');
+    }
+  }, [loading, isOpen, day, hasTomorrowItems, setDay]);
+
+  // Tomorrow carts must be valid by construction — drop lines that can't be pre-ordered.
+  useEffect(() => {
+    if (day !== 'tomorrow' || items.length === 0) return;
+    const allowedIds = new Set(items.filter((i) => Boolean(i.allow_pre_order)).map((i) => i.id));
+    const removedCount = cartRef.current.filter((entry) => !allowedIds.has(entry.item.id)).length;
+    if (removedCount === 0) return;
+    pruneCartToAllowedItemIds(allowedIds);
+    const pruneKey = removedCount === 1 ? 'menu.pruned_tomorrow_one' : 'menu.pruned_tomorrow_many';
+    showToast(t(pruneKey).replace('{n}', String(removedCount)));
+  }, [day, items, pruneCartToAllowedItemIds, showToast, t]);
+
   const filteredItems = useMemo(() => {
     let list = items;
+    if (day === 'tomorrow') {
+      list = list.filter((i) => Boolean(i.allow_pre_order));
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
@@ -347,7 +387,7 @@ export function MenuPage() {
     }
     const effectiveSort = saleFilter === 'bestseller' ? 'bestseller' : sortBy;
     return sortMenuItems(list, effectiveSort);
-  }, [items, searchQuery, sortBy, saleFilter, dietaryFilter]);
+  }, [items, day, searchQuery, sortBy, saleFilter, dietaryFilter]);
 
   const filtersActive = Boolean(searchQuery.trim() || saleFilter !== 'all' || dietaryFilter != null);
 
@@ -721,24 +761,37 @@ export function MenuPage() {
           borderBottom: '1px solid var(--color-border)',
         }}
       >
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-            <OrderModeToggle
-              deliveryBlocked={deliveryBlocked}
-              pickupBlocked={pickupBlocked}
-              onBlockedTap={(mode) => {
-                if (mode === 'pickup') {
-                  showToast(t('menu.pickup_unavailable') || 'Pickup is currently unavailable');
-                } else {
-                  showToast(
-                    gateMessage
-                      || t('menu.delivery_unavailable')
-                      || 'Delivery is currently unavailable',
-                  );
-                }
+        <div className="menu-top-row">
+          <div className="menu-top-row__day">
+            <OrderDayToggle
+              tomorrowDate={collectTomorrowDate}
+              todayBlocked={isOpen === false}
+              tomorrowBlocked={!loading && !hasTomorrowItems}
+              onDaySelect={() => {
+                // Day picked — ask "how" right away unless already chosen.
+                if (!modeConfirmed) setModeSheetOpen(true);
+              }}
+              onBlockedTap={(blockedDay) => {
+                showToast(
+                  blockedDay === 'today'
+                    ? (gateMessage || t('day.today_closed'))
+                    : t('day.tomorrow_unavailable'),
+                );
               }}
             />
           </div>
+          <button
+            type="button"
+            data-testid="mode-chip"
+            onClick={() => setModeSheetOpen(true)}
+            aria-label={t('modeSheet.title')}
+            className={`mode-chip${modeConfirmed ? '' : ' mode-chip--unset'}`}
+          >
+            {modeConfirmed
+              ? (mode === 'pickup' ? `🥡 ${t('mode.pickup')}` : `🛵 ${t('mode.delivery')}`)
+              : t('mode.choose_short')}
+            <span aria-hidden="true" className="mode-chip__caret">▾</span>
+          </button>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -821,6 +874,25 @@ export function MenuPage() {
             </div>
           )}
         </div>
+
+        {day === 'tomorrow' && !loading && (
+          <div
+            role="status"
+            data-testid="tomorrow-menu-note"
+            style={{
+              marginTop: '0.6rem',
+              padding: '7px 12px',
+              borderRadius: 10,
+              background: 'var(--color-primary-light, #FFF7ED)',
+              border: '1px solid var(--color-border)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              color: 'var(--color-primary)',
+            }}
+          >
+            {t('menu.tomorrow_note').replace('{date}', formatTomorrowDateLabel(collectTomorrowDate))}
+          </div>
+        )}
 
         {deliveryFallback && (
           <div
@@ -1012,6 +1084,15 @@ export function MenuPage() {
           )}
         </main>
       </div>
+
+      <OrderModeSheet
+        open={modeSheetOpen}
+        onClose={() => setModeSheetOpen(false)}
+        deliveryBlockedToday={deliveryBlocked}
+        deliveryBlockedReason={gateMessage || null}
+        pickupBlocked={pickupBlocked}
+        tomorrowDate={collectTomorrowDate}
+      />
 
       <SearchOverlay
         open={searchOpen}

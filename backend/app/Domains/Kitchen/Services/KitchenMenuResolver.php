@@ -145,15 +145,21 @@ final class KitchenMenuResolver
      * @param array<int, Item> $itemMap keyed by id
      * @param list<array{item_id: int}> $lineItems
      */
+    /**
+     * @param bool $skipDeliveryWindow Tomorrow (fulfil_date) orders: the current
+     *                                 delivery window doesn't apply, but customer
+     *                                 per-item channel rules still do.
+     */
     public function assertLineItemsAllowedForOrderType(
         array $itemMap,
         array $lineItems,
         string $orderType,
         bool $ignoreDeliveryGate = false,
+        bool $skipDeliveryWindow = false,
     ): void {
         $channel = $this->channelForOrderType($orderType);
 
-        if ($channel === 'delivery' && !$ignoreDeliveryGate && !$this->isDeliveryServiceAccepting()) {
+        if ($channel === 'delivery' && !$ignoreDeliveryGate && !$skipDeliveryWindow && !$this->isDeliveryServiceAccepting()) {
             abort(422, $this->deliveryUnavailableMessage());
         }
 
@@ -183,7 +189,7 @@ final class KitchenMenuResolver
                 continue;
             }
 
-            if (!$this->isItemVisibleForChannel($item, $channel, null, $ignoreDeliveryGate)) {
+            if (!$this->isItemVisibleForChannel($item, $channel, null, $ignoreDeliveryGate || $skipDeliveryWindow)) {
                 $bad[] = $item->name;
             }
         }
