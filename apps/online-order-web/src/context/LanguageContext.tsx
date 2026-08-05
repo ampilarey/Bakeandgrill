@@ -146,6 +146,8 @@ const TRANSLATIONS: Translations = {
   "modeSheet.delivery_unavailable": "Delivery is unavailable right now.",
   "modeSheet.eat_here_sub": "Table reserved — food ready when you arrive",
   "modeSheet.eat_here_tomorrow": "Eat here is for today only",
+  "modeSheet.eat_here_unavailable": "Eat here is unavailable right now.",
+  "home.mode_unavailable": "Unavailable right now",
   "cart.blocks_tomorrow": "Not available for tomorrow",
   "cart.remove_blockers_one": "Remove 1 item to order for tomorrow.",
   "cart.remove_blockers_many": "Remove {n} items to order for tomorrow.",
@@ -370,6 +372,7 @@ const TRANSLATIONS: Translations = {
   // ── Checkout form / summary ────────────────────────────────────────
   "checkout.type_pickup": "Pickup",
   "checkout.type_delivery": "Delivery",
+  "checkout.type_eat_here": "Eat here",
   "checkout.delivery_unavailable": "Delivery is not available right now. Please choose pickup.",
   "checkout.pickup_loading": "Loading available times…",
   "checkout.pickup_full": "Pickup slots are full or unavailable right now — we'll prepare your order as soon as possible after payment.",

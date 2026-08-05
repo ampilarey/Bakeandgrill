@@ -849,11 +849,23 @@ export function MenuPage() {
             className={`mode-switch${!modeConfirmed ? ' mode-switch--unset' : ''}`}
           >
             {([
-              { id: 'pickup' as const, label: t('mode.pickup') },
-              { id: 'delivery' as const, label: t('mode.delivery') },
-              ...(dineInPreorderEnabled && isOpen === true
-                ? [{ id: 'dine_in' as const, label: t('mode.eat_here') }]
-                : []),
+              {
+                id: 'pickup' as const,
+                label: t('mode.pickup'),
+                blocked: pickupBlocked,
+              },
+              {
+                id: 'delivery' as const,
+                label: t('mode.delivery'),
+                // Tomorrow delivery can be arranged even when today's window is closed.
+                blocked: day === 'today' && deliveryBlocked,
+              },
+              {
+                id: 'dine_in' as const,
+                label: t('mode.eat_here'),
+                // Always listed; dimmed when gate/schedule/shop blocks it or for tomorrow.
+                blocked: !(dineInPreorderEnabled && isOpen === true) || day === 'tomorrow',
+              },
             ]).map((opt) => {
               const active = modeConfirmed ? mode === opt.id : opt.id === 'pickup';
               return (
@@ -863,7 +875,9 @@ export function MenuPage() {
                   data-testid={`mode-switch-${opt.id}`}
                   onClick={() => setModeSheetOpen(true)}
                   aria-pressed={active}
-                  className={`mode-switch__btn${active ? ' is-active' : ''}`}
+                  aria-disabled={opt.blocked || undefined}
+                  data-blocked={opt.blocked ? 'true' : undefined}
+                  className={`mode-switch__btn${active ? ' is-active' : ''}${opt.blocked ? ' is-blocked' : ''}`}
                 >
                   {opt.label}
                 </button>

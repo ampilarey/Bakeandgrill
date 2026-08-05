@@ -11,6 +11,7 @@ vi.mock('../context/LanguageContext', () => ({
       const map: Record<string, string> = {
         'mode.pickup': 'Pickup',
         'mode.delivery': 'Delivery',
+        'mode.eat_here': 'Eat here',
         'modeSheet.title': 'How do you want your order?',
         'modeSheet.for_today': 'For today',
         'modeSheet.for_tomorrow': 'For tomorrow, {date}',
@@ -19,6 +20,9 @@ vi.mock('../context/LanguageContext', () => ({
         'modeSheet.delivery_sub': 'Delivered to your door',
         'modeSheet.delivery_tomorrow_ok': 'Arranged in advance for tomorrow',
         'modeSheet.delivery_unavailable': 'Delivery is unavailable right now.',
+        'modeSheet.eat_here_sub': 'Table reserved — food ready when you arrive',
+        'modeSheet.eat_here_tomorrow': 'Eat here is for today only',
+        'modeSheet.eat_here_unavailable': 'Eat here is unavailable right now.',
         'sheet.close': 'Close',
         'sheet.dialog': 'Dialog',
       };
@@ -108,5 +112,25 @@ describe('OrderModeSheet', () => {
     const pickup = screen.getByTestId('mode-sheet-pickup');
     expect(pickup).toHaveAttribute('aria-disabled', 'true');
     expect(pickup).toHaveTextContent('Pickup orders are temporarily paused.');
+  });
+
+  it('always lists Eat here; dimmed when unavailable', () => {
+    renderSheet({ dineInAvailable: false });
+    const eatHere = screen.getByTestId('mode-sheet-dine_in');
+    expect(eatHere).toBeInTheDocument();
+    expect(eatHere).toHaveAttribute('aria-disabled', 'true');
+    expect(eatHere).toHaveTextContent('Eat here is unavailable right now.');
+  });
+
+  it('Eat here selectable when available today', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderSheet({ onClose, dineInAvailable: true });
+
+    const eatHere = screen.getByTestId('mode-sheet-dine_in');
+    expect(eatHere).not.toHaveAttribute('aria-disabled');
+    await user.click(eatHere);
+    expect(onClose).toHaveBeenCalled();
+    expect(localStorage.getItem('bakegrill_sales_channel')).toBe('dine_in');
   });
 });

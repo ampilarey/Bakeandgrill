@@ -393,8 +393,11 @@ export function CheckoutPage() {
         </p>
       )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {([...(['pickup', 'delivery'] as const), ...(dineInAvailable ? (['dine_in'] as const) : [])]).map((type) => {
-          const blocked = (type === 'delivery' && deliveryBlocked) || (type === 'pickup' && pickupBlocked);
+        {(['pickup', 'delivery', 'dine_in'] as const).map((type) => {
+          const blocked =
+            (type === 'delivery' && deliveryBlocked)
+            || (type === 'pickup' && pickupBlocked)
+            || (type === 'dine_in' && !dineInAvailable);
           const active = !needsModeChoice && orderType === type;
           return (
             <button
@@ -412,12 +415,13 @@ export function CheckoutPage() {
                 ...(blocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
               }}
               aria-pressed={active}
+              aria-disabled={blocked || undefined}
             >
               {type === 'pickup'
                 ? `🥡 ${t('checkout.type_pickup')}`
                 : type === 'delivery'
                   ? `🛵 ${t('checkout.type_delivery')}`
-                  : '🍽️ Eat here'}
+                  : `🍽️ ${t('checkout.type_eat_here')}`}
             </button>
           );
         })}

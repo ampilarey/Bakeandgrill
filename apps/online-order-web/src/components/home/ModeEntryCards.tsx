@@ -17,10 +17,11 @@ type CardProps = {
   kind: ModeKind;
   label: string;
   hint: string;
+  blocked?: boolean;
   onClick: () => void;
 };
 
-function ModeCard({ kind, label, hint, onClick }: CardProps) {
+function ModeCard({ kind, label, hint, blocked = false, onClick }: CardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const icon = kind === 'delivery' ? '🛵' : kind === 'dine_in' ? '🍽️' : '🏪';
   const gradient =
@@ -31,7 +32,11 @@ function ModeCard({ kind, label, hint, onClick }: CardProps) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => { if (!blocked) onClick(); }}
+      disabled={blocked}
+      aria-disabled={blocked || undefined}
+      data-testid={`mode-entry-${kind}`}
+      data-blocked={blocked ? 'true' : undefined}
       style={{
         flex: '1 1 0',
         minWidth: 0,
@@ -39,11 +44,12 @@ function ModeCard({ kind, label, hint, onClick }: CardProps) {
         borderRadius: 'var(--radius-2xl)',
         overflow: 'hidden',
         background: 'var(--color-surface)',
-        cursor: 'pointer',
+        cursor: blocked ? 'not-allowed' : 'pointer',
         padding: 0,
         textAlign: 'left',
         fontFamily: 'inherit',
         minHeight: 44,
+        opacity: blocked ? 0.48 : 1,
       }}
     >
       <div
@@ -89,16 +95,18 @@ function ModeCard({ kind, label, hint, onClick }: CardProps) {
         >
           {hint}
         </p>
-        <div
-          style={{
-            marginTop: '0.625rem',
-            fontSize: '0.8125rem',
-            fontWeight: 700,
-            color: 'var(--color-primary)',
-          }}
-        >
-          {label} →
-        </div>
+        {!blocked && (
+          <div
+            style={{
+              marginTop: '0.625rem',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              color: 'var(--color-primary)',
+            }}
+          >
+            {label} →
+          </div>
+        )}
       </div>
     </button>
   );
@@ -137,33 +145,53 @@ function buildPickupHint(
   return i18nFallback;
 }
 
+type ModeAvailability = {
+  shopOpen: boolean;
+  deliveryAvailable: boolean;
+  dineInAvailable: boolean;
+};
+
 export function ModeEntryCards() {
   const { setMode } = useOrderMode();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { settings, text } = useSiteSettingsContext();
-  const [dineInAvailable, setDineInAvailable] = useState(false);
+  const [availability, setAvailability] = useState<ModeAvailability>({
+    shopOpen: true,
+    deliveryAvailable: true,
+    dineInAvailable: false,
+  });
 
-  // "Eat here" appears only when the owner enabled prepaid dine-in and the
-  // shop is open (arrival is always today).
+  // All three modes are always listed; dim any that are off for the current window.
   useEffect(() => {
     let cancelled = false;
     fetchOnlineOrderingStatus()
       .then((gate) => {
         if (cancelled) return;
-        setDineInAvailable(
-          (gate.dine_in_preorder?.open ?? gate.dine_in_preorder?.enabled) === true
-          && gate.open === true,
-        );
+        const shopOpen = gate.open === true;
+        setAvailability({
+          shopOpen,
+          deliveryAvailable: gate.delivery_available !== false,
+          dineInAvailable:
+            (gate.dine_in_preorder?.open ?? gate.dine_in_preorder?.enabled) === true
+            && shopOpen,
+        });
       })
-      .catch(() => { /* keep hidden */ });
+      .catch(() => { /* keep optimistic defaults */ });
     return () => { cancelled = true; };
   }, []);
 
-  const deliveryHint = buildDeliveryHint(text, settings, t('home.mode_delivery_hint'));
-  const pickupHint = buildPickupHint(text, settings, t('home.mode_pickup_hint'));
-  const dineInHint = (text('order_mode_dine_in_hint', '') || '').trim()
-    || 'Order and pay now — your table is reserved and food is ready when you arrive.';
+  const unavailable = t('home.mode_unavailable');
+  const deliveryHint = availability.deliveryAvailable
+    ? buildDeliveryHint(text, settings, t('home.mode_delivery_hint'))
+    : unavailable;
+  const pickupHint = availability.shopOpen
+    ? buildPickupHint(text, settings, t('home.mode_pickup_hint'))
+    : unavailable;
+  const dineInHint = availability.dineInAvailable
+    ? ((text('order_mode_dine_in_hint', '') || '').trim()
+      || 'Order and pay now — your table is reserved and food is ready when you arrive.')
+    : unavailable;
 
   const handleMode = (mode: ModeKind) => {
     setMode(mode);
@@ -187,22 +215,23 @@ export function ModeEntryCards() {
           kind="delivery"
           label={t('mode.delivery')}
           hint={deliveryHint}
+          blocked={!availability.deliveryAvailable}
           onClick={() => handleMode('delivery')}
         />
         <ModeCard
           kind="pickup"
           label={t('mode.pickup')}
           hint={pickupHint}
+          blocked={!availability.shopOpen}
           onClick={() => handleMode('pickup')}
         />
-        {dineInAvailable && (
-          <ModeCard
-            kind="dine_in"
-            label="Eat here"
-            hint={dineInHint}
-            onClick={() => handleMode('dine_in')}
-          />
-        )}
+        <ModeCard
+          kind="dine_in"
+          label={t('mode.eat_here')}
+          hint={dineInHint}
+          blocked={!availability.dineInAvailable}
+          onClick={() => handleMode('dine_in')}
+        />
       </div>
     </section>
   );

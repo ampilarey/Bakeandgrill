@@ -2757,6 +2757,14 @@ textarea.field-input {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
+.mode-switch__btn.is-blocked {
+  opacity: 0.42;
+}
+
+.mode-switch__btn.is-active.is-blocked {
+  opacity: 0.55;
+}
+
 /* Legacy single chip (kept for any leftover markup) */
 .mode-chip {
   display: inline-flex;

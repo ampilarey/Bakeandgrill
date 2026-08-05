@@ -70,17 +70,17 @@ export function OrderModeSheet({
         ? (deliveryBlockedReason?.trim() || t('modeSheet.delivery_unavailable'))
         : null,
     },
-    // Prepaid dine-in: today only — the table hold and kitchen timing are same-day.
-    ...(dineInAvailable
-      ? [{
-          id: 'dine_in' as const,
-          icon: '🍽️',
-          label: t('mode.eat_here'),
-          sub: t('modeSheet.eat_here_sub'),
-          blocked: day === 'tomorrow',
-          blockedNote: day === 'tomorrow' ? t('modeSheet.eat_here_tomorrow') : null,
-        }]
-      : []),
+    // Always listed. Prepaid dine-in is today-only and may be off by schedule.
+    {
+      id: 'dine_in',
+      icon: '🍽️',
+      label: t('mode.eat_here'),
+      sub: t('modeSheet.eat_here_sub'),
+      blocked: !dineInAvailable || day === 'tomorrow',
+      blockedNote: day === 'tomorrow'
+        ? t('modeSheet.eat_here_tomorrow')
+        : (!dineInAvailable ? t('modeSheet.eat_here_unavailable') : null),
+    },
   ];
 
   return (

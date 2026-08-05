@@ -175,7 +175,7 @@ describe('MenuPage declutter + pickup toast', () => {
     expect(screen.getByTestId('order-day-today')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('shows pickup and delivery mode names before opening the sheet', async () => {
+  it('shows all three mode names; unavailable ones are dimmed', async () => {
     render(
       <MemoryRouter>
         <MenuPage />
@@ -186,8 +186,12 @@ describe('MenuPage declutter + pickup toast', () => {
     });
     expect(screen.getByTestId('mode-switch-pickup')).toBeInTheDocument();
     expect(screen.getByTestId('mode-switch-delivery')).toBeInTheDocument();
+    expect(screen.getByTestId('mode-switch-dine_in')).toBeInTheDocument();
     // Pickup is the default highlight before an explicit choice.
     expect(screen.getByTestId('mode-switch-pickup')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('mode-switch-delivery')).toHaveAttribute('aria-pressed', 'false');
+    // Mock marks online_pickup unavailable → pickup dimmed; eat here off until gate loads.
+    expect(screen.getByTestId('mode-switch-pickup')).toHaveAttribute('data-blocked', 'true');
+    expect(screen.getByTestId('mode-switch-dine_in')).toHaveAttribute('data-blocked', 'true');
   });
 });
