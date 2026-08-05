@@ -138,6 +138,10 @@ export function TicketRow({
   const isUnpaid = t.payment_status === "unpaid" || t.payment_status === "partial";
 
   const collectTomorrow = Boolean(t.fulfil_date && !t.fired_at);
+  const prepaidDineIn = t.type === "dine_in" && !t.user && !t.fired_at;
+  const arrivalTime = t.pickup_slot_at
+    ? new Date(t.pickup_slot_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    : null;
   const stageBadge = {
     tomorrow: {
       label: "Collect tomorrow",
@@ -147,13 +151,19 @@ export function TicketRow({
       title: `Customer collects on ${t.fulfil_date}. Nothing to fire until then.`,
     },
     parked: {
-      label: collectTomorrow ? "Collect tomorrow" : "Parked",
+      label: collectTomorrow
+        ? "Collect tomorrow"
+        : prepaidDineIn
+          ? "Prepaid dine-in"
+          : "Parked",
       color: palette.panelMuted,
       bg: palette.bgAlt,
       border: palette.borderStrong,
       title: collectTomorrow
         ? `Customer collects on ${t.fulfil_date}. Fire when ready for the kitchen.`
-        : "Kitchen has not seen this yet",
+        : prepaidDineIn
+          ? `Paid online, eating in${arrivalTime ? ` — arriving ${arrivalTime}` : ""}. Fire ~15 min before arrival, then Seat from Reservations.`
+          : "Kitchen has not seen this yet",
     },
     queued: { label: "New", color: palette.info, bg: palette.infoBg, border: "#BFDBFE", title: "Waiting for kitchen to start (KDS Pending)" },
     cooking: { label: "Cooking", color: palette.warnDark, bg: palette.warnBg, border: palette.warnBorder, title: "Kitchen is preparing this" },
@@ -328,6 +338,19 @@ export function TicketRow({
                 }}
               >
                 🍽 {t.table.name}
+              </span>
+            ) : null}
+            {prepaidDineIn && arrivalTime ? (
+              <span
+                title="Prepaid dine-in — customer arrival time"
+                style={{
+                  ...badgeBase,
+                  color: "#6D28D9",
+                  background: "#F5F3FF",
+                  borderColor: "#DDD6FE",
+                }}
+              >
+                Arrives {arrivalTime}
               </span>
             ) : null}
           </div>

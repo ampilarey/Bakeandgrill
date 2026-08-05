@@ -298,6 +298,7 @@ export function useCheckout() {
   const { mode: orderType, setMode: setOrderType } = useOrderMode();
   const [pickupSlotAt, setPickupSlotAt] = useState<string | null>(null);
   const [collectOn, setCollectOn] = useState<CollectOn>('today');
+  const [partySize, setPartySize] = useState(2);
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
 
@@ -364,7 +365,11 @@ export function useCheckout() {
   // fetchItems may emit sales_channel_change on delivery→pickup fallback; context
   // snaps mode authoritatively, then this effect re-runs with the new orderType.
   useEffect(() => {
-    const ch: SalesChannel = orderType === "delivery" ? "delivery" : "online_pickup";
+    const ch: SalesChannel = orderType === "delivery"
+      ? "delivery"
+      : orderType === "dine_in"
+        ? "dine_in"
+        : "online_pickup";
     let cancelled = false;
     fetchItems(ch)
       .then((res) => {
@@ -537,7 +542,11 @@ export function useCheckout() {
     };
   }, [orderType, delivery.island, discountedSubtotalLaar, siteSettings]);
 
-  const backendOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
+  const backendOrderType = orderType === 'delivery'
+    ? 'delivery'
+    : orderType === 'dine_in'
+      ? 'dine_in'
+      : 'online_pickup';
   const serviceChargePreview = useMemo(
     () => previewServiceCharge(serviceChargeConfig, backendOrderType, discountedSubtotalLaar),
     [serviceChargeConfig, backendOrderType, discountedSubtotalLaar],
@@ -581,7 +590,13 @@ export function useCheckout() {
   const taxLaar = itemTaxLaar + scTaxLaar + packagingTaxLaar;
 
   useEffect(() => {
-    const feeOrderType = orderType === 'delivery' ? 'delivery' : 'online_pickup';
+    // Dine-in never carries packaging/small-order fees — the server preview
+    // returns zeros for dine_in and totals math stays aligned with the engine.
+    const feeOrderType = orderType === 'delivery'
+      ? 'delivery'
+      : orderType === 'dine_in'
+        ? 'dine_in'
+        : 'online_pickup';
     const lines = cart.map((item) => ({
       item_id: item.id,
       quantity: item.quantity,
@@ -592,15 +607,18 @@ export function useCheckout() {
       packaging_fee_mode: item.packagingFeeMode ?? 'per_unit',
     }));
     // Instant local estimate from cart snapshots; server preview overwrites.
+    // Eating in never pays packaging — skip the estimate entirely.
     let localPackLaar = 0;
-    for (const item of cart) {
-      const feeMvr = Number(item.packagingFee ?? 0);
-      if (!(feeMvr > 0)) continue;
-      const qty = Math.max(0, Math.round(item.quantity));
-      if (qty <= 0) continue;
-      const feeLaar = Math.round(feeMvr * 100);
-      const units = item.packagingFeeMode === 'per_line' ? 1 : qty;
-      localPackLaar += feeLaar * units;
+    if (feeOrderType !== 'dine_in') {
+      for (const item of cart) {
+        const feeMvr = Number(item.packagingFee ?? 0);
+        if (!(feeMvr > 0)) continue;
+        const qty = Math.max(0, Math.round(item.quantity));
+        if (qty <= 0) continue;
+        const feeLaar = Math.round(feeMvr * 100);
+        const units = item.packagingFeeMode === 'per_line' ? 1 : qty;
+        localPackLaar += feeLaar * units;
+      }
     }
     setPackagingFeeLaar(localPackLaar);
 
@@ -916,6 +934,22 @@ export function useCheckout() {
           collect_on: collectOn,
         });
         orderId = res.order.id;
+      } else if (orderType === "dine_in") {
+        // Prepaid dine-in: pay now, table held, pickup_slot_at = arrival time.
+        const res = await createCustomerOrder({
+          items: cart.map((item) => ({
+            item_id: item.id,
+            quantity: item.quantity,
+            variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
+            modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+          })),
+          type: "dine_in",
+          customer_notes: notes || undefined,
+          pickup_slot_at: pickupSlotAt ?? undefined,
+          party_size: partySize,
+          collect_on: "today",
+        });
+        orderId = res.order.id;
       } else {
         const res = await createCustomerOrder({
           items: cart.map((item) => ({
@@ -1122,6 +1156,7 @@ export function useCheckout() {
     cart, isAuthenticated, customerName, loyaltyAccount, loyaltyTierProgress, loyaltyRedeemPoints, loyaltyRates, loyaltyProgramMessage, earnPreviewPoints,
     orderType, setOrderType, pickupSlotAt, setPickupSlotAt,
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
+    partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel,

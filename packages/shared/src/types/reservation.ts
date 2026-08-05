@@ -23,6 +23,9 @@ export type Reservation = {
   status: ReservationStatus;
   notes: string | null;
   table: { id: number; name: string } | null;
+  /** Prepaid dine-in: booking is backed by a paid online order. */
+  order_id?: number | null;
+  order_number?: string | null;
   tracking_token: string | null;
   created_at: string;
 };

@@ -879,6 +879,19 @@ export function OrderStatusPage() {
                   value={new Date(`${order.fulfil_date}T12:00:00`).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                 />
               )}
+              {order.reservation && (
+                <>
+                  <DetailRow
+                    label="Your table"
+                    value={
+                      order.reservation.table
+                        ? `${order.reservation.table.name} · reserved for ${order.reservation.time_slot}`
+                        : `Reserved for ${order.reservation.time_slot}`
+                    }
+                  />
+                  <DetailRow label="Party size" value={`${order.reservation.party_size} people`} />
+                </>
+              )}
               {order.paid_at && (
                 <DetailRow label={t('track.label_paid_at')} value={new Date(order.paid_at).toLocaleString()} />
               )}

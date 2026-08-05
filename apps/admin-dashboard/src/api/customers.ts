@@ -578,6 +578,14 @@ export async function updateReservationStatus(id: number, status: string): Promi
   return req(`/admin/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 }
 
+/** Seat a booking; for prepaid dine-in this claims the table for the paid order. */
+export async function seatReservation(id: number, tableId?: number): Promise<{ reservation: AdminReservation; order_id: number | null }> {
+  return req(`/admin/reservations/${id}/seat`, {
+    method: 'POST',
+    body: JSON.stringify(tableId ? { table_id: tableId } : {}),
+  });
+}
+
 export async function getReservationSettings(): Promise<{ settings: ReservationSettings }> {
   return req('/admin/reservations/settings');
 }
