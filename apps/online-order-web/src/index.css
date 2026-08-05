@@ -2354,7 +2354,8 @@ textarea.field-input {
 
 .menu-card-article--zus.unavailable {
   opacity: 0.55;
-  cursor: default;
+  /* Still clickable — details stay viewable; Add is blocked in the sheet. */
+  cursor: pointer;
 }
 
 .menu-card-article--zus.menu-card-article--list {

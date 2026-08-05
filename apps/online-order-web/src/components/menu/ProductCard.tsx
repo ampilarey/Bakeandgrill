@@ -94,7 +94,10 @@ export function ProductCard({
   }, [item.short_description, item.short_description_dv, item.description, isDv]);
 
   const isUnavailable = !isItemOrderableForDay(item, orderDay);
-  const unavailLabel = isUnavailable ? itemUnavailableLabel(item, t) : null;
+  const blockedForTomorrow = orderDay === 'tomorrow' && !item.allow_pre_order;
+  const unavailLabel = isUnavailable
+    ? (blockedForTomorrow ? t('cart.blocks_tomorrow') : itemUnavailableLabel(item, t))
+    : null;
   // Today's stock counts don't apply to tomorrow's fresh batch.
   const lowStockLabel = !isUnavailable && orderDay === 'today' ? itemLowStockLabel(item, t) : null;
   const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
@@ -127,8 +130,10 @@ export function ProductCard({
   const logoSrc = s.logo || '/logo.png';
   const fromPrefix = priceNote || (showFromPrice ? 'From' : '');
 
+  // Dimmed cards stay clickable — customers can always read the details;
+  // the item sheet blocks Add when the item isn't orderable for the day.
   const openItem = () => {
-    if (!isUnavailable) onSelectItem(item, 1);
+    onSelectItem(item, 1);
   };
 
   const badge = !isUnavailable && (isNew || (onSale && saleBadgeLabel) || spice)
@@ -150,16 +155,16 @@ export function ProductCard({
   return (
     <article
       className={`menu-card-article menu-card-article--zus${isUnavailable ? ' unavailable' : ''}${onSale ? ' menu-card-on-sale' : ''}${isList ? ' menu-card-article--list' : ''}`}
-      role={isUnavailable ? undefined : 'button'}
-      tabIndex={isUnavailable ? undefined : 0}
+      role="button"
+      tabIndex={0}
       onClick={openItem}
       onKeyDown={(e) => {
-        if (!isUnavailable && (e.key === 'Enter' || e.key === ' ')) {
+        if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           openItem();
         }
       }}
-      aria-label={isUnavailable ? undefined : t('menu.view_item').replace('{name}', displayName)}
+      aria-label={t('menu.view_item').replace('{name}', displayName)}
       data-testid="product-card"
     >
       <div className={`menu-card-media-circle${isList ? ' menu-card-media-circle--list' : ''}`}>

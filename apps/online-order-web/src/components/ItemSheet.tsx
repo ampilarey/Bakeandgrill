@@ -61,7 +61,10 @@ export function ItemSheet({
   const { t } = useLanguage();
   const { settings: siteSettings } = useSiteSettingsContext();
   const itemAvailable = isItemOrderableForDay(item, orderDay);
-  const unavailLabel = !itemAvailable ? itemUnavailableLabel(item, t) : null;
+  const blockedForTomorrow = orderDay === 'tomorrow' && !item.allow_pre_order;
+  const unavailLabel = !itemAvailable
+    ? (blockedForTomorrow ? t('cart.blocks_tomorrow') : itemUnavailableLabel(item, t))
+    : null;
   // Today's stock counts don't apply to tomorrow's fresh batch.
   const lowStockLabel = itemAvailable && orderDay === 'today' ? itemLowStockLabel(item, t) : null;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);

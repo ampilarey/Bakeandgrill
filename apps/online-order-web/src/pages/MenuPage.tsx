@@ -403,9 +403,6 @@ export function MenuPage() {
 
   const filteredItems = useMemo(() => {
     let list = items;
-    if (day === 'tomorrow') {
-      list = list.filter((i) => Boolean(i.allow_pre_order));
-    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
@@ -423,7 +420,16 @@ export function MenuPage() {
       );
     }
     const effectiveSort = saleFilter === 'bestseller' ? 'bestseller' : sortBy;
-    return sortMenuItems(list, effectiveSort);
+    const sorted = sortMenuItems(list, effectiveSort);
+    // Tomorrow mode keeps every item visible (dimmed cards stay viewable) but
+    // floats the pre-orderable ones to the top of each section.
+    if (day === 'tomorrow') {
+      return [
+        ...sorted.filter((i) => Boolean(i.allow_pre_order)),
+        ...sorted.filter((i) => !i.allow_pre_order),
+      ];
+    }
+    return sorted;
   }, [items, day, searchQuery, sortBy, saleFilter, dietaryFilter]);
 
   const filtersActive = Boolean(searchQuery.trim() || saleFilter !== 'all' || dietaryFilter != null);
@@ -1143,7 +1149,7 @@ export function MenuPage() {
         onClose={() => setSearchOpen(false)}
         query={searchQuery}
         onQueryChange={setSearchQuery}
-        items={day === 'tomorrow' ? items.filter((i) => Boolean(i.allow_pre_order)) : items}
+        items={items}
         orderDay={day}
         categories={categories}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}

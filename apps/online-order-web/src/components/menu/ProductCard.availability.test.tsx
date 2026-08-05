@@ -51,7 +51,7 @@ function item(over: Partial<Item> = {}): Item {
 }
 
 describe('ProductCard availability', () => {
-  it('falls back to is_available when available_now is absent', async () => {
+  it('falls back to is_available when available_now is absent — dimmed but still opens details', async () => {
     const user = userEvent.setup();
     const onSelectItem = vi.fn();
     render(
@@ -62,8 +62,37 @@ describe('ProductCard availability', () => {
       />,
     );
     expect(screen.getByTestId('product-card-unavail')).toHaveTextContent('Unavailable');
+    expect(screen.getByTestId('product-card')).toHaveClass('unavailable');
     await user.click(screen.getByTestId('product-card'));
-    expect(onSelectItem).not.toHaveBeenCalled();
+    expect(onSelectItem).toHaveBeenCalled();
+  });
+
+  it('tomorrow mode: pre-order gate replaces stock state, blocked items stay viewable', async () => {
+    const user = userEvent.setup();
+    const onSelectItem = vi.fn();
+    const { rerender } = render(
+      <ProductCard
+        item={item({ available_now: false, unavailable_reason: 'out_of_stock', allow_pre_order: true })}
+        orderDay="tomorrow"
+        onSelectItem={onSelectItem}
+        onAddToCart={() => {}}
+      />,
+    );
+    // Sold out today but pre-orderable — fully orderable for tomorrow.
+    expect(screen.queryByTestId('product-card-unavail')).toBeNull();
+
+    rerender(
+      <ProductCard
+        item={item({ available_now: true, allow_pre_order: false })}
+        orderDay="tomorrow"
+        onSelectItem={onSelectItem}
+        onAddToCart={() => {}}
+      />,
+    );
+    // Available today but not ticked for tomorrow — dimmed yet clickable.
+    expect(screen.getByTestId('product-card-unavail')).toHaveTextContent('cart.blocks_tomorrow');
+    await user.click(screen.getByTestId('product-card'));
+    expect(onSelectItem).toHaveBeenCalled();
   });
 
   it('uses available_now and reason-specific copy for sold out / snoozed', () => {
