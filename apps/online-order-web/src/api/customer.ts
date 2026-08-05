@@ -99,12 +99,53 @@ export interface FavouriteItem {
   is_available: boolean;
 }
 
+/** Raw item shape from GET /customer/favorites (category may be nested). */
+type ApiFavouriteItem = {
+  id: number;
+  name: string;
+  base_price: number | string;
+  image_url?: string | null;
+  category?: string | { id?: number; name?: string } | null;
+  is_available?: boolean;
+  is_active?: boolean;
+};
+
+/** Normalize API favourites envelope (`favorites` or legacy `data`) for the UI. */
+export function normalizeFavouritesResponse(res: {
+  favorites?: ApiFavouriteItem[];
+  data?: ApiFavouriteItem[];
+}): { data: FavouriteItem[] } {
+  const raw = res.favorites ?? res.data ?? [];
+  return {
+    data: raw.map((item) => {
+      const cat = item.category;
+      return {
+        id: item.id,
+        name: item.name,
+        base_price: Number(item.base_price),
+        image_url: item.image_url ?? null,
+        category: typeof cat === 'string' ? cat : (cat?.name ?? null),
+        is_available: item.is_available ?? item.is_active ?? true,
+      };
+    }),
+  };
+}
+
 export async function getMyFavourites(): Promise<{ data: FavouriteItem[] }> {
-  return request('/customer/favorites');
+  // Backend returns `{ favorites: Item[] }` (see FavoritesController + CustomerTokenScopeTest).
+  const res = await request<{ favorites?: ApiFavouriteItem[]; data?: ApiFavouriteItem[] }>(
+    '/customer/favorites',
+  );
+  return normalizeFavouritesResponse(res);
 }
 
 export async function toggleFavourite(itemId: number): Promise<{ is_favourite: boolean }> {
-  return request(`/customer/favorites/${itemId}/toggle`, { method: 'POST' });
+  // Backend returns `{ favorited: boolean, item_id }` — map to the UI name.
+  const res = await request<{ favorited?: boolean; is_favourite?: boolean }>(
+    `/customer/favorites/${itemId}/toggle`,
+    { method: 'POST' },
+  );
+  return { is_favourite: res.is_favourite ?? res.favorited ?? false };
 }
 
 // ── Pre-order History ──────────────────────────────────────────────────────────
