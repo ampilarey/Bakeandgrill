@@ -298,6 +298,20 @@ class OrderCreationController extends Controller
         $payload['customer_id'] = $customer->id;
         $payload['type'] = $payload['type'] ?? 'online_pickup';
 
+        if ($payload['type'] === 'dine_in') {
+            $dineInEnabled = filter_var(
+                \App\Models\SiteSetting::get('dine_in_preorder_enabled', '0'),
+                FILTER_VALIDATE_BOOLEAN,
+            );
+            if (!$dineInEnabled) {
+                abort(422, 'Dine-in ordering is not available right now.');
+            }
+            // v1: arrival is today only — no collect-tomorrow combination.
+            if (($payload['collect_on'] ?? null) === 'tomorrow' || !empty($payload['fulfil_date'])) {
+                abort(422, 'Dine-in orders are for today only.');
+            }
+        }
+
         // Never trust a browser-supplied collection date — recompute tomorrow
         // from the owner cutoff, or leave null for same-day.
         $fulfil = app(OrderFulfilDateService::class);

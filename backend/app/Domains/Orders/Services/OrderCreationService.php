@@ -73,12 +73,14 @@ class OrderCreationService
                 ->value('id');
         }
 
-        // Customer online orders (no staff user, type online_pickup/delivery) must start as
-        // payment_pending so the KDS never shows them before payment is confirmed.
-        // Kitchen print is also suppressed here — it fires via DispatchKitchenPrintListener
-        // on the OrderPaid event once BML/zero-balance confirms the payment.
+        // Customer online orders (no staff user; online_pickup/delivery, or prepaid
+        // dine_in placed from the order app) must start as payment_pending so the
+        // KDS never shows them before payment is confirmed. Kitchen print is also
+        // suppressed here — pickup/delivery print via DispatchKitchenPrintListener
+        // on OrderPaid; prepaid dine_in stays unfired until staff fire it before
+        // the customer's arrival time.
         $isCustomerOnlineOrder = $user === null
-            && in_array($payload['type'] ?? '', ['online_pickup', 'delivery'], true);
+            && in_array($payload['type'] ?? '', ['online_pickup', 'delivery', 'dine_in'], true);
 
         if ($isCustomerOnlineOrder) {
             $this->assertOnlineOrderThrottleNotExceeded();
@@ -484,7 +486,12 @@ class OrderCreationService
     {
         $subtotal = 0;
 
-        $isOnlineOrder = in_array($order->type, ['online_pickup', 'delivery'], true);
+        // Prepaid dine_in (customer order, still payment_pending) follows the online
+        // path: reserve stock now, convert to deduction on OrderPaid. Staff dine_in
+        // (status pending) keeps the POS immediate-deduct path — including add-ons
+        // rung at the table later.
+        $isOnlineOrder = in_array($order->type, ['online_pickup', 'delivery'], true)
+            || ($order->type === 'dine_in' && $order->status === 'payment_pending');
         // Tomorrow collection must not consume today's sellable stock (Stage D).
         $deferStockForTomorrow = $order->fulfil_date !== null;
 
