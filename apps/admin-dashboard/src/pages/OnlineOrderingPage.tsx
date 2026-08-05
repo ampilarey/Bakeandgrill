@@ -11,7 +11,9 @@ import {
   setOnlineOrderingOverride,
   updateOnlineOrderingSchedule,
   updateOrderForTomorrowCutoff,
-  toggleDineInPreorder,
+  getFeatureGates,
+  updateFeatureGate,
+  type FeatureGateStatus,
   getCateringOrderingStatus,
   toggleCateringOrdering,
   setCateringOrderingOverride,
@@ -200,6 +202,196 @@ const REASON_LABELS: Record<string, string> = {
   override_active:   'Force-open override is active',
 };
 
+// ── Feature gate card (kill switch + weekly schedule + force-open) ────────────
+
+type GateDayRow = { enabled: boolean; open: string; close: string };
+type GateDays = Record<DayKey, GateDayRow>;
+
+const EMPTY_GATE_DAYS: GateDays = Object.fromEntries(
+  DAYS.map(({ key }) => [key, { enabled: false, open: '10:00', close: '22:00' }]),
+) as GateDays;
+
+function gateScheduleToDays(schedule: FeatureGateStatus['schedule']): GateDays {
+  const days: GateDays = JSON.parse(JSON.stringify(EMPTY_GATE_DAYS));
+  if (!schedule) return days;
+  for (const { key } of DAYS) {
+    const raw = schedule[key];
+    if (!raw) continue;
+    const first = Array.isArray(raw)
+      ? (raw as { open?: string; close?: string }[])[0]
+      : (raw.windows?.[0] ?? raw);
+    if (!first?.open || !first?.close) continue;
+    days[key] = {
+      enabled: (raw as { enabled?: boolean }).enabled !== false,
+      open: String(first.open).slice(0, 5),
+      close: String(first.close).slice(0, 5),
+    };
+  }
+  return days;
+}
+
+function FeatureGateCard({
+  gate,
+  onChanged,
+  onToast,
+}: {
+  gate: FeatureGateStatus;
+  onChanged: (g: FeatureGateStatus) => void;
+  onToast: (msg: string, type?: 'ok' | 'err') => void;
+}) {
+  const [days, setDays] = useState<GateDays>(() => gateScheduleToDays(gate.schedule));
+  const [useSchedule, setUseSchedule] = useState<boolean>(() => gate.schedule != null);
+  const [overrideUntil, setOverrideUntil] = useState<string>(() => {
+    if (!gate.override_until) return '';
+    const d = new Date(gate.override_until);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
+  const [saving, setSaving] = useState(false);
+
+  const patch = async (body: Parameters<typeof updateFeatureGate>[1], okMsg: string) => {
+    setSaving(true);
+    try {
+      const { gate: fresh } = await updateFeatureGate(gate.key, body);
+      onChanged(fresh);
+      onToast(okMsg);
+    } catch {
+      onToast(`Failed to update ${gate.label}.`, 'err');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveSchedule = () => {
+    const enabledDays = DAYS.filter(({ key }) => days[key].enabled);
+    if (useSchedule && enabledDays.length === 0) {
+      onToast('Tick at least one day, or untick “Limit to a weekly schedule”.', 'err');
+      return;
+    }
+    const schedule = useSchedule
+      ? Object.fromEntries(enabledDays.map(({ key }) => [
+          key,
+          { open: days[key].open, close: days[key].close, enabled: true },
+        ]))
+      : null;
+    void patch({ schedule }, useSchedule ? `${gate.label} schedule saved.` : `${gate.label} schedule cleared.`);
+  };
+
+  return (
+    <div style={S.card} data-testid={`feature-gate-${gate.key}`}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <p style={{ ...S.sectionTitle, marginBottom: 0 }}>{gate.label}</p>
+        <span style={gate.open ? S.statusOpen : S.statusClosed}>
+          {gate.open ? 'Available now' : 'Off right now'}
+        </span>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '10px 0 14px', lineHeight: 1.5 }}>
+        {gate.description}
+      </p>
+
+      {/* Kill switch */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+        <button
+          style={S.toggleTrack(gate.enabled)}
+          onClick={() => void patch({ enabled: !gate.enabled }, `${gate.label} turned ${gate.enabled ? 'OFF' : 'ON'}.`)}
+          disabled={saving}
+          role="switch"
+          aria-checked={gate.enabled}
+          aria-label={`Toggle ${gate.label}`}
+          data-testid={`feature-gate-toggle-${gate.key}`}
+        >
+          <span style={S.toggleThumb(gate.enabled)} />
+        </button>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
+          {gate.enabled ? 'ON' : 'OFF'}
+        </div>
+      </div>
+
+      {/* Weekly schedule */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 10 }}>
+        <input
+          type="checkbox"
+          checked={useSchedule}
+          onChange={(e) => setUseSchedule(e.target.checked)}
+        />
+        Limit to a weekly schedule (unticked = available whenever it’s ON)
+      </label>
+      {useSchedule && (
+        <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
+          {DAYS.map(({ key, label }) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, width: 110, fontSize: 13, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={days[key].enabled}
+                  onChange={(e) => setDays((d) => ({ ...d, [key]: { ...d[key], enabled: e.target.checked } }))}
+                />
+                {label}
+              </label>
+              <input
+                type="time"
+                value={days[key].open}
+                disabled={!days[key].enabled}
+                onChange={(e) => setDays((d) => ({ ...d, [key]: { ...d[key], open: e.target.value } }))}
+                style={{ ...S.input, width: 110, padding: '5px 8px', opacity: days[key].enabled ? 1 : 0.5 }}
+              />
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>to</span>
+              <input
+                type="time"
+                value={days[key].close}
+                disabled={!days[key].enabled}
+                onChange={(e) => setDays((d) => ({ ...d, [key]: { ...d[key], close: e.target.value } }))}
+                style={{ ...S.input, width: 110, padding: '5px 8px', opacity: days[key].enabled ? 1 : 0.5 }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+        <button type="button" style={S.btnPrimary} onClick={saveSchedule} disabled={saving}>
+          <Save size={14} />
+          {saving ? 'Saving…' : 'Save schedule'}
+        </button>
+      </div>
+
+      {/* Force-open override */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 200 }}>
+          <label style={S.label}>Force-open until (ignores switch + schedule)</label>
+          <input
+            type="datetime-local"
+            style={S.input}
+            value={overrideUntil}
+            onChange={(e) => setOverrideUntil(e.target.value)}
+          />
+        </div>
+        <button
+          type="button"
+          style={S.btnSecondary}
+          disabled={saving || !overrideUntil}
+          onClick={() => void patch(
+            { override_until: new Date(overrideUntil).toISOString() },
+            `${gate.label} forced open.`,
+          )}
+        >
+          <Unlock size={14} /> Set
+        </button>
+        {gate.override_until && (
+          <button
+            type="button"
+            style={S.btnSecondary}
+            disabled={saving}
+            onClick={() => { setOverrideUntil(''); void patch({ override_until: null }, 'Override cleared.'); }}
+          >
+            <Lock size={14} /> Clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function OnlineOrderingPage() {
   usePageTitle('Ordering Control');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -255,8 +447,7 @@ export default function OnlineOrderingPage() {
   const [cateringScheduleSaving, setCateringScheduleSaving] = useState(false);
   const [tomorrowCutoff, setTomorrowCutoff] = useState('20:00');
   const [tomorrowCutoffSaving, setTomorrowCutoffSaving] = useState(false);
-  const [dineInPreorder, setDineInPreorder] = useState(false);
-  const [dineInPreorderSaving, setDineInPreorderSaving] = useState(false);
+  const [featureGates, setFeatureGates] = useState<Record<string, FeatureGateStatus> | null>(null);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -270,9 +461,6 @@ export default function OnlineOrderingPage() {
         setStatus(s);
         if (s.order_for_tomorrow?.cutoff) {
           setTomorrowCutoff(s.order_for_tomorrow.cutoff);
-        }
-        if (s.dine_in_preorder) {
-          setDineInPreorder(s.dine_in_preorder.enabled);
         }
         if (s.override_until) {
           // Convert ISO datetime to local datetime-local input value (must use local parts, not UTC)
@@ -631,20 +819,11 @@ export default function OnlineOrderingPage() {
     }
   };
 
-  const handleDineInPreorderToggle = async () => {
-    setDineInPreorderSaving(true);
-    try {
-      const res = await toggleDineInPreorder(!dineInPreorder);
-      setDineInPreorder(res.dine_in_preorder_enabled);
-      showToast(res.dine_in_preorder_enabled
-        ? 'Dine-in pre-order is ON — customers can order and pay for a table.'
-        : 'Dine-in pre-order is OFF.');
-    } catch {
-      showToast('Failed to toggle dine-in pre-order.', 'err');
-    } finally {
-      setDineInPreorderSaving(false);
-    }
-  };
+  useEffect(() => {
+    getFeatureGates()
+      .then(({ gates }) => setFeatureGates(gates))
+      .catch(() => { /* section hidden until loaded */ });
+  }, []);
 
   const saveTomorrowCutoff = async () => {
     if (!/^\d{1,2}:\d{2}$/.test(tomorrowCutoff.trim())) {
@@ -1134,31 +1313,23 @@ export default function OnlineOrderingPage() {
         </div>
       </div>
 
-      {/* Dine-in pre-order (Eat here) */}
-      <div style={S.card} data-testid="dine-in-preorder-toggle-card">
-        <p style={S.sectionTitle}>Dine-in pre-order (“Eat here”)</p>
-        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          Customers order and pay online, pick an arrival time, and get a reserved table.
-          Staff fire the kitchen before arrival and seat them from Reservations. Extras
-          ordered at the table join the same bill.
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <button
-            style={S.toggleTrack(dineInPreorder)}
-            onClick={() => void handleDineInPreorderToggle()}
-            disabled={dineInPreorderSaving}
-            aria-label="Toggle dine-in pre-order"
-            role="switch"
-            aria-checked={dineInPreorder}
-            data-testid="dine-in-preorder-toggle"
-          >
-            <span style={S.toggleThumb(dineInPreorder)} />
-          </button>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
-            {dineInPreorder ? 'Dine-in pre-order is ON' : 'Dine-in pre-order is OFF'}
-          </div>
-        </div>
-      </div>
+      {/* Feature switches & schedules — one uniform gate per feature */}
+      {featureGates && (
+        <>
+          <p style={{ ...S.sectionTitle, marginTop: '1.5rem' }}>Feature switches &amp; schedules</p>
+          {['order_for_tomorrow', 'dine_in_preorder', 'reservations', 'gift_card_purchase']
+            .map((key) => featureGates[key])
+            .filter((g): g is FeatureGateStatus => Boolean(g))
+            .map((gate) => (
+              <FeatureGateCard
+                key={gate.key}
+                gate={gate}
+                onChanged={(fresh) => setFeatureGates((prev) => ({ ...(prev ?? {}), [fresh.key]: fresh }))}
+                onToast={showToast}
+              />
+            ))}
+        </>
+      )}
 
       {/* Force-open Override */}
       <div style={S.card}>

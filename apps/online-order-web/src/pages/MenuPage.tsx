@@ -162,6 +162,8 @@ export function MenuPage() {
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
   const [dineInPreorderEnabled, setDineInPreorderEnabled] = useState<boolean>(false);
+  /** Owner kill switch / schedule for collect-tomorrow (older servers omit = on). */
+  const [tomorrowGateOpen, setTomorrowGateOpen] = useState<boolean>(true);
   /** null = not loaded / failed — must not block delivery. */
   const [eligibilityAccepting, setEligibilityAccepting] = useState<boolean | null>(null);
   const [gateMessage, setGateMessage] = useState<string>('');
@@ -250,7 +252,8 @@ export function MenuPage() {
         // Gate API is the single source of truth for ordering status
         setIsOpen(gate.open);
         setDeliveryAvailable(gate.delivery_available ?? true);
-        setDineInPreorderEnabled(gate.dine_in_preorder?.enabled === true);
+        setDineInPreorderEnabled((gate.dine_in_preorder?.open ?? gate.dine_in_preorder?.enabled) === true);
+        setTomorrowGateOpen(gate.order_for_tomorrow?.open !== false);
         setGateMessage(gate.message ?? '');
         setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
         setCollectTomorrowDate(gate.order_for_tomorrow?.collect_tomorrow_date ?? null);
@@ -344,12 +347,13 @@ export function MenuPage() {
   }, [searchParams, setSearchParams, openCartSheet]);
 
   const hasTomorrowItems = useMemo(
-    () => items.some((item) => Boolean(item.allow_pre_order)),
-    [items],
+    () => items.some((item) => Boolean(item.allow_pre_order)) && tomorrowGateOpen,
+    [items, tomorrowGateOpen],
   );
 
   // Closed shop → Tomorrow is the only orderable day; flip automatically.
-  // Reverse guard: if Tomorrow has nothing pre-orderable, fall back to Today.
+  // Reverse guard: if Tomorrow has nothing pre-orderable (or the owner switched
+  // tomorrow ordering off), fall back to Today.
   useEffect(() => {
     if (loading || isOpen === null) return;
     if (isOpen === false && day === 'today' && hasTomorrowItems) {

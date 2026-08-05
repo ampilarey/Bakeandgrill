@@ -8,6 +8,7 @@ import { AuthBlock } from '../components/AuthBlock';
 import { StickyCtaBar } from '../components/ui/StickyCtaBar';
 import { getCustomerMe } from '../api/auth';
 import { purchaseGiftCard } from '../api/promotions';
+import { fetchOnlineOrderingStatus } from '../api/menu';
 
 const PRESETS = [100, 200, 500] as const;
 
@@ -26,6 +27,18 @@ export function BuyGiftCardPage() {
   const [anonymous, setAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  /** Owner kill switch — older servers omit the flag (treat as open). */
+  const [purchaseClosed, setPurchaseClosed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchOnlineOrderingStatus()
+      .then((gate) => {
+        if (!cancelled) setPurchaseClosed(gate.gift_cards?.open === false);
+      })
+      .catch(() => { /* keep open */ });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!authReady || !isAuthenticated) return;
@@ -271,12 +284,25 @@ export function BuyGiftCardPage() {
       </div>
 
       <StickyCtaBar
-        label={loading ? t('gift.paying') : t('gift.pay').replace('{amount}', amountLabel)}
+        label={purchaseClosed
+          ? 'Gift cards unavailable right now'
+          : loading ? t('gift.paying') : t('gift.pay').replace('{amount}', amountLabel)}
         onClick={() => void handlePay()}
         loading={loading}
-        disabled={loading}
+        disabled={loading || purchaseClosed}
         above={(
-          <p style={footnoteStyle}>{t('gift.footnote')}</p>
+          <>
+            {purchaseClosed && (
+              <div className="banner banner-warning" style={{ marginBottom: 12 }} data-testid="gift-purchase-closed">
+                <span className="banner-icon">🔒</span>
+                <div>
+                  <p className="banner-title">Gift card purchase is paused</p>
+                  <p className="banner-sub">Please try again later or call us.</p>
+                </div>
+              </div>
+            )}
+            <p style={footnoteStyle}>{t('gift.footnote')}</p>
+          </>
         )}
       />
     </div>

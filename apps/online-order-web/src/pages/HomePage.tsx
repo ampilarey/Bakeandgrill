@@ -118,11 +118,14 @@ export function HomePage() {
   usePageTitle(null);
 
   // ── Menu scan: whether any item can be ordered for tomorrow (closed banner) ─
+  // Both conditions must hold: items are ticked AND the owner's tomorrow gate
+  // is open (kill switch / schedule).
   useEffect(() => {
     const loadTomorrowEligibility = () => {
-      fetchItems()
-        .then(({ data }) => {
-          setHasTomorrowItems((data ?? []).some((item) => Boolean(item.allow_pre_order)));
+      Promise.all([fetchItems(), fetchOnlineOrderingStatus().catch(() => null)])
+        .then(([{ data }, gate]) => {
+          const gateOpen = gate?.order_for_tomorrow?.open !== false;
+          setHasTomorrowItems(gateOpen && (data ?? []).some((item) => Boolean(item.allow_pre_order)));
         })
         .catch(() => setHasTomorrowItems(false));
     };

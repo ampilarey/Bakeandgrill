@@ -53,13 +53,15 @@ export async function createPreOrder(payload: PreOrderPayload): Promise<{ pre_or
 export async function fetchReservationSlots(
   date: string,
   partySize: number,
-): Promise<{ slots: ReservationSlot[]; max_party_size: number }> {
-  const data = await request<{ slots: ReservationSlot[]; meta?: { max_party_size?: number } }>(
+): Promise<{ slots: ReservationSlot[]; max_party_size: number; accepting: boolean }> {
+  const data = await request<{ slots: ReservationSlot[]; meta?: { max_party_size?: number; accepting?: boolean } }>(
     `${ENDPOINTS.RESERVATIONS_AVAILABILITY}?date=${date}&party_size=${partySize}`,
   );
   return {
     slots: data.slots ?? [],
     max_party_size: data.meta?.max_party_size ?? 20,
+    // Older servers omit — treat as accepting.
+    accepting: data.meta?.accepting !== false,
   };
 }
 

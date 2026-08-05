@@ -222,10 +222,12 @@ export function CheckoutPage() {
   const shopClosed = onlineGate != null && !onlineGate.open;
   const orderingGateClosed = shopClosed || !checkoutServiceAvailable;
   const collectTomorrowDate = onlineGate?.order_for_tomorrow?.collect_tomorrow_date ?? null;
-  const canOrderTomorrowWhileClosed = shopClosed && allowsTomorrow && checkoutServiceAvailable;
+  // Owner kill switch / schedule for tomorrow ordering (older servers omit = on).
+  const tomorrowGateOpen = onlineGate?.order_for_tomorrow?.open !== false;
+  const canOrderTomorrowWhileClosed = shopClosed && allowsTomorrow && checkoutServiceAvailable && tomorrowGateOpen;
   const placeBlockedByGate = orderingGateClosed && !(canOrderTomorrowWhileClosed && collectOn === 'tomorrow');
-  // Prepaid dine-in ("Eat here"): owner toggle + shop open (arrival is today).
-  const dineInAvailable = onlineGate?.dine_in_preorder?.enabled === true && !shopClosed;
+  // Prepaid dine-in ("Eat here"): owner gate (switch + schedule) + shop open (arrival is today).
+  const dineInAvailable = (onlineGate?.dine_in_preorder?.open ?? onlineGate?.dine_in_preorder?.enabled) === true && !shopClosed;
   const isDineIn = orderType === 'dine_in';
 
   // Auto-fallback when the chosen mode becomes unavailable — never counts as an explicit choice.

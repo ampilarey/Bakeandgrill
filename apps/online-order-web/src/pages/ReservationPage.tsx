@@ -52,6 +52,10 @@ export function ReservationPage() {
     setError("");
     try {
       const data = await fetchReservationSlots(date, partySize);
+      if (!data.accepting) {
+        setError("We are not taking new table bookings right now. Please call us instead.");
+        return;
+      }
       setSlots(data.slots);
       if (data.max_party_size > 0) {
         setMaxPartySize(data.max_party_size);

@@ -110,11 +110,21 @@ export interface OnlineOrderingStatus {
   order_for_tomorrow?: {
     cutoff: string;
     collect_tomorrow_date: string;
+    /** Owner kill switch (older servers omit — treat as on). */
+    enabled?: boolean;
+    /** Effective right now after schedule + override. */
+    open?: boolean;
   };
   /** Prepaid dine-in ("Eat here") availability. */
   dine_in_preorder?: {
     enabled: boolean;
+    /** Effective right now after schedule + override (older servers omit). */
+    open?: boolean;
   };
+  /** Table bookings gate (older servers omit — treat as open). */
+  reservations?: { open: boolean };
+  /** Gift card purchase gate (older servers omit — treat as open). */
+  gift_cards?: { open: boolean };
 }
 
 export type PreorderGateStatus = {

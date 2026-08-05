@@ -83,6 +83,34 @@ export async function toggleDineInPreorder(
   return req('/admin/ordering/dine-in-preorder-toggle', { method: 'POST', body: JSON.stringify({ enabled }) });
 }
 
+// ── Feature gates (kill switch + schedule + override per feature) ────────────
+
+export interface FeatureGateStatus {
+  key: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+  /** Effective right now (enabled + schedule + override). */
+  open: boolean;
+  schedule: Record<string, { open?: string; close?: string; enabled?: boolean; windows?: { open: string; close: string }[] }> | null;
+  override_until: string | null;
+}
+
+export async function getFeatureGates(): Promise<{ gates: Record<string, FeatureGateStatus> }> {
+  return req('/admin/ordering/feature-gates');
+}
+
+export async function updateFeatureGate(
+  key: string,
+  patch: {
+    enabled?: boolean;
+    schedule?: Record<string, { open: string; close: string; enabled: boolean }> | null;
+    override_until?: string | null;
+  },
+): Promise<{ gate: FeatureGateStatus }> {
+  return req(`/admin/ordering/feature-gates/${key}`, { method: 'PUT', body: JSON.stringify(patch) });
+}
+
 // ── Pre-order / catering gate ─────────────────────────────────────────────────
 
 export type CateringOrderingGateStatus = OnlineOrderingGateStatus;

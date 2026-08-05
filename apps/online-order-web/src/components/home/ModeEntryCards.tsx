@@ -151,7 +151,10 @@ export function ModeEntryCards() {
     fetchOnlineOrderingStatus()
       .then((gate) => {
         if (cancelled) return;
-        setDineInAvailable(gate.dine_in_preorder?.enabled === true && gate.open === true);
+        setDineInAvailable(
+          (gate.dine_in_preorder?.open ?? gate.dine_in_preorder?.enabled) === true
+          && gate.open === true,
+        );
       })
       .catch(() => { /* keep hidden */ });
     return () => { cancelled = true; };
