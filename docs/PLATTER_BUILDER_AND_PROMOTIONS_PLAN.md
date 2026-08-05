@@ -1,6 +1,6 @@
 # Build-Your-Own Platter + Promotions — Plan
 
-Status: proposed, not yet built.
+Status: proposed, not yet built. Revised 2026-08-05 after verifying every claim against the codebase — promotion time windows turned out to already exist, and the order-line storage model is now decided (child lines).
 
 Owner decisions already given:
 - Admin sets the platter **price**.
@@ -34,9 +34,21 @@ The audit found the promotions engine is far more capable than it appears.
 | Gap | Detail |
 |---|---|
 | Choose-your-own platter | `combo_items` is a **fixed** list (`combo_id`, `item_id`, `quantity`, `is_optional`). No "pick any 6 from these 12". Modifiers are flat name+price with no selection rules. |
-| Day / time windows on promotions | Promotions have only `starts_at` and `expires_at`. No "3–5pm daily". Happy hour is impossible without one promo per day. |
-| Combos do not reduce child stock | **Selling a combo does not decrement the stock of the items inside it.** Verified: no combo handling anywhere in `OrderCreationService` or `StockManagementService`. |
+| Combos do not reduce child stock | **Selling a combo does not decrement the stock of the items inside it.** Verified: no combo handling in `OrderCreationService`, `StockManagementService`, or `StockReservationService`. Note the fix spans **four paths**: POS deduction (only runs when `!$isOnlineOrder`), online reservations (`StockReservationService`), and restore in three places — POS cancel/void (`OrderStatusController`), refunds (`RefundController`), online cancel (`ReleasePreparedStockOnCancelListener`). |
+| Platter contents on order lines | `order_items` has no parent/child support. Selections would land in `notes` (free text) — **and the KDS never renders `notes`**, so the kitchen would not see what is inside a platter. See Stage C for the fix. |
 | Lead time | `items.pre_order_lead_time_minutes` exists, is fillable and cast, and **nothing reads or writes it**. |
+
+### Correction: promotion day/time windows already exist
+
+An earlier draft listed "no happy-hour windows" as a gap. That is out of date. Migration
+`2026_07_23_120000_add_auto_apply_to_promotions.php` added `days_of_week`, `starts_time`, `ends_time`
+to promotions; they are enforced in `Promotion::isValid()` → `matchesScheduleWindow()` (including
+overnight windows), and the admin form already has the fields. "3–5pm daily, 20% off short eats"
+works **today** as an auto-apply promotion.
+
+What remains is cosmetic: `PromotionsPage.tsx` only shows the schedule fields when auto-apply is
+ticked, so a **coded** happy-hour promo cannot set a window from the UI (the API accepts it).
+There is also no multi-window-per-day, which nobody has asked for.
 
 ---
 
@@ -79,48 +91,77 @@ Build **fixed price + exact count + tiered sizes** first, with groups and the op
 
 ## 3. The build
 
+### The load-bearing decision: platter children are child order lines
+
+How a chosen platter is stored on the order determines how hard Stage C is. Decision:
+**each chosen item becomes its own `order_items` row with a new `parent_order_item_id`
+pointing at the platter line.** Child lines carry unit price 0 (or the surcharge, so
+totals sum naturally) and the real `item_id` and `item_name`.
+
+Why this and not a JSON blob or `notes`:
+
+- **Stock** deduct/reserve/restore already iterates order lines on all four paths
+  (POS deduct, online reserve, cancel/void restore, refund restore). Child lines get
+  correct stock handling nearly free; a JSON blob means re-implementing all of it.
+- **Daily make-limit**: `TomorrowDailyCapacityService` counts committed quantity per
+  order line. Each chosen item counts against its own tomorrow limit automatically.
+- **Refunds**: refund restore is per line — a refunded platter returns every child
+  to stock without new code.
+- **Kitchen**: the KDS renders order lines and modifiers but never renders `notes`.
+  With child lines the kitchen sees real contents; the only UI work is indenting
+  children under their parent in `apps/kds-web` and admin `KDSPage.tsx`.
+- **Promotions**: "never treat platter children as qualifying lines" becomes a
+  one-line filter in `PromotionEvaluator` — skip lines with a parent.
+
 ### Stage A — Platter definition (admin)
 
 - New table for choice groups belonging to a platter item: name, rule type (`exactly` / `min` / `range`), min count, max count, sort order.
 - New table for allowed items in a group: item, optional surcharge (default 0), sort order.
 - Extend the existing combo concept rather than creating a parallel system — a platter is an item flagged as a bundle whose contents are chosen, not fixed.
 - Admin UI in the item editor: define groups, pick allowed items, set the rule. Plain wording — "Choose any 6", not "cardinality constraint".
-- Tiered sizes: allow a platter to have several sizes, each with its own count and price.
+- **Tiered sizes use the existing `variants` table**, not a new size table. A 6 / 9 / 12-piece platter is one item with three variants, each with its own price (per-variant pricing and stock machinery already exist); the choice group stores a per-size count. Do not build a parallel pricing system.
 
-### Stage B — Customer picker
+### Stage B — Customer picker (v1 is the online order app only)
 
+- Scope decision: **v1 ships in the customer order app only.** A picker on POS is a
+  second full UI; staff keep using fixed combos on POS until there is demand.
 - Opening a platter shows its groups. The customer picks until each rule is satisfied.
 - Add to cart is blocked until every rule is met, with a plain running hint — "Pick 2 more".
 - Cart and receipt list what was chosen inside the platter, not just "Platter".
-- Unavailable items are not selectable, and the picker must respect **tomorrow mode** — in tomorrow mode, items that are sold out today are still selectable if they are ticked for tomorrow.
+- Unavailable items are not selectable, and the picker must respect **tomorrow mode** — in tomorrow mode, items that are sold out today are still selectable if they are ticked for tomorrow, and an item whose `tomorrow_remaining` is 0 (the per-item daily make-limit, already live) is **not** selectable.
+- Re-ordering a past platter (order history / favourites) must replay the child selections, or fall back to opening the picker fresh — never silently produce an empty platter.
 
 ### Stage C — Money and stock (highest risk)
 
 - Price is the platter price plus any surcharges. Never the sum of the child items.
-- **Fix the existing combo stock bug as part of this**: selling a platter must decrement each chosen child item's stock, and a refund or cancellation must give it back. Today combos do not touch child stock at all, which means selling 20 platters of 6 short eats leaves stock counts meaningless.
-- GST must be applied on the platter price, consistently with how combos are taxed today. Check before changing anything.
-- Collect-tomorrow: a platter ordered for tomorrow must follow the same rules already built — every chosen item must be ticked for tomorrow, and the per-item daily make-limit must count each chosen item.
+  With child lines this is enforced by construction: children carry price 0 or the surcharge only.
+- **Fix the existing combo stock bug first, as its own shippable change** (see Sequencing): selling a combo/platter must decrement each child item's stock, and a refund or cancellation must give it back. The fix must cover all four paths — POS deduction (`OrderCreationService`, POS-only branch), online reservation (`StockReservationService`), POS cancel/void restore (`OrderStatusController`), refund restore (`RefundController`) — plus the online-cancel listener.
+- GST: item tax is snapshotted per line (`tax_rate`, `tax_code`) and inclusive/exclusive is a global setting. Tax the **platter parent line** at the platter item's own tax code; child lines at price 0 contribute nothing, surcharge lines follow their item's code. Verify against `OrderTotalsCalculator::calculatePerItemTax` before changing anything.
+- Collect-tomorrow: a platter ordered for tomorrow must follow the same rules already built — every chosen item must be ticked for tomorrow, and the per-item daily make-limit must count each chosen item. With child lines both fall out of the existing per-line checks.
 
-### Stage D — Promotion scheduling (the other real gap)
+### Stage D — Promotion scheduling (rescoped: mostly built)
 
-- Add day-of-week and time-of-day windows to promotions, so "3–5pm daily, 20% off short eats" is one promotion rather than seven.
-- Reuse `App\Support\ScheduleWindows`, already built for the feature gates. Do not write a fourth copy of schedule parsing.
-- This also enables end-of-day clearance, which for a bakery is the difference between selling stock and binning it.
+- Day/time windows already exist and are enforced (see the correction in section 1).
+- Remaining work is one small admin change: show the days-of-week and start/end time
+  fields in `PromotionsPage.tsx` for **coded** promotions too, not only auto-apply.
+- Happy hour and end-of-day clearance are setup tasks in admin today, not code.
 
-### Stage E — Lead time (optional, small)
+### Stage E — Lead time: closed, do nothing
 
-- `items.pre_order_lead_time_minutes` already exists and is unused. A platter is exactly what it was meant for — "order 3 hours ahead".
-- Either use it here or leave it alone. Do not add a second column for the same idea.
+- `items.pre_order_lead_time_minutes` stays untouched and unused. It is reserved for a
+  future "order N hours ahead" feature; platters do not need it, and adding a second
+  column for the same idea is forbidden. This stage is closed, not optional.
 
 ---
 
 ## 4. Risks
 
-1. **Combo child stock is already wrong** (Stage C). Platters make it much worse, because one platter consumes six items. Fix it with this work, not after.
-2. **Price must never be derived from child items.** A platter whose price moves when the customer picks defeats the entire point.
-3. **Tomorrow + platter interaction.** Both the allow-tomorrow rule and the daily make-limit must apply per chosen item, not per platter.
-4. **Refunds.** A refunded platter must return every child item to stock.
-5. **Promotions on platters.** Decide explicitly whether a percentage promotion applies to a platter price. Recommendation: allow it, but never allow buy-X-get-Y to treat platter children as qualifying lines — that would give away free items twice.
+1. **Combo child stock is already wrong today**, before any platter work. Platters make it much worse, because one platter consumes six items. Fix it first, as a standalone change, and remember the fix spans four deduct/restore paths, not one.
+2. **Price must never be derived from child items.** A platter whose price moves when the customer picks defeats the entire point. Child lines carry 0 or surcharge only.
+3. **Tomorrow + platter interaction.** Both the allow-tomorrow rule and the daily make-limit must apply per chosen item, not per platter. The child-line model gives this for free; a JSON-blob model would silently miss it.
+4. **Refunds.** A refunded platter must return every child item to stock — again free with child lines, hand-rolled otherwise.
+5. **Promotions on platters.** Decide explicitly whether a percentage promotion applies to a platter price. Recommendation: allow it, but never allow buy-X-get-Y to treat platter children as qualifying lines — that would give away free items twice. Implementation: `PromotionEvaluator` skips lines with `parent_order_item_id`.
+6. **Kitchen blindness.** Any storage model where platter contents live only in `notes` means the KDS shows "Platter x1" and nothing else — the kitchen cannot make it. This is why the child-line decision is not optional.
 
 ---
 
@@ -129,18 +170,20 @@ Build **fixed price + exact count + tiered sizes** first, with groups and the op
 - A group requiring exactly 6 rejects 5 and 7, accepts 6.
 - A minimum-2 group accepts 2 and 5, rejects 1.
 - Price equals the platter price plus surcharges, never the child sum.
-- Selling a platter decrements each chosen child item's stock; refunding returns it.
+- Selling a platter decrements each chosen child item's stock; refunding returns it — verified on all four paths (POS deduct, online reserve, cancel/void restore, refund restore).
 - A platter ordered for tomorrow rejects any chosen item not ticked for tomorrow.
-- Each chosen item counts against its own daily make-limit.
-- A time-windowed promotion applies inside its window and not outside, evaluated in local time.
+- Each chosen item counts against its own daily make-limit, and an item with `tomorrow_remaining` 0 is not selectable in the picker in tomorrow mode.
+- The KDS shows the platter with its chosen contents indented beneath it.
+- Re-ordering a past platter reproduces the same child selections.
 - Buy-X-get-Y does not treat platter children as qualifying lines.
+- A coded promotion with a day/time window applies inside its window and not outside (existing enforcement; the new admin UI just exposes the fields).
 
 ---
 
 ## 6. Sequencing
 
-Stage D (promotion time windows) is small, independent, and pays off daily — it can land first while the platter work is specified.
+1. **Combo child-stock fix, standalone and first.** It is a live bug today regardless of platters, and fixing it first means the platter work builds on correct stock handling instead of piling onto a broken base.
+2. **Promo schedule UI tweak** (show day/time fields for coded promos) — tiny, independent, can ride along with anything.
+3. **Stages A → B → C together**, built on the child order-line model, because a platter that cannot be priced and stock-tracked is not shippable.
 
-Then A → B → C together, because a platter that cannot be priced and stock-tracked is not shippable.
-
-Stage E last, or never.
+Stage E is closed — nothing to sequence.
