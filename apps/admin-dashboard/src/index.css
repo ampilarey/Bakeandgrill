@@ -965,7 +965,7 @@ a { text-decoration: none; color: inherit; }
   min-width: 0;
   width: 100%;
   max-width: 100%;
-  overflow: hidden; /* clip native time chrome that ignores max-width */
+  /* Do NOT use overflow:hidden here — it clips the input’s right border */
 }
 .oc-time-field > label {
   font-size: 12px;
@@ -977,7 +977,7 @@ a { text-decoration: none; color: inherit; }
   width: 100%;
   min-width: 0 !important;
   max-width: 100% !important;
-  padding: 8px 8px;
+  padding: 8px 10px;
   border: 1.5px solid var(--color-border);
   border-radius: 10px;
   font-size: 16px; /* iOS: avoid zoom-on-focus */
@@ -986,6 +986,10 @@ a { text-decoration: none; color: inherit; }
   min-height: 44px;
   background: var(--color-surface);
   color: var(--color-text);
+}
+.oc-time-field input[type="time"]::-webkit-datetime-edit {
+  min-width: 0;
+  max-width: 100%;
 }
 .oc-time-field input[type="time"]::-webkit-calendar-picker-indicator {
   margin-left: 2px;
@@ -1060,13 +1064,13 @@ a { text-decoration: none; color: inherit; }
     max-width: 100%;
   }
 
-  /* Cards: compact padding, contain overflowing children */
+  /* Cards: compact padding — keep overflow visible so right borders aren’t clipped */
   .ordering-page .oc-card {
     padding: 12px !important;
     border-radius: 12px !important;
     margin-bottom: 12px !important;
     min-width: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
   .ordering-page .oc-card p,
   .ordering-page .oc-card label,
