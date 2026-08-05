@@ -26,7 +26,12 @@ import {
 } from '../utils/loyalty';
 import { AccordionItem } from '../components/ui/Accordion';
 import { StickyCtaBar } from '../components/ui/StickyCtaBar';
-import { defaultCollectOn, forcedTomorrowNotice, formatTomorrowDateLabel } from '../utils/collectOn';
+import {
+  collectDayPrimaryLabel,
+  defaultCollectOn,
+  forcedTomorrowNotice,
+  formatTomorrowDateLabel,
+} from '../utils/collectOn';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 
 function parseFreeDeliveryThreshold(raw: string | undefined): number {
@@ -476,6 +481,7 @@ export function CheckoutPage() {
   // shows it read-only so a late flip can't invalidate the cart. Only the
   // time (pickup slot) is chosen here.
   const tomorrowDateLabel = formatTomorrowDateLabel(collectTomorrowDate);
+  const tomorrowHeading = collectDayPrimaryLabel(collectTomorrowDate, t('checkout.day_tomorrow'));
   const bodyWhenSummary = (
     <div style={{ marginBottom: 16 }} data-testid="collect-day-summary">
       <div
@@ -492,7 +498,7 @@ export function CheckoutPage() {
         <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
           <span aria-hidden="true">📅</span>{' '}
           {collectOn === 'tomorrow'
-            ? `${t('checkout.day_tomorrow')}, ${tomorrowDateLabel}`
+            ? `${tomorrowHeading}, ${tomorrowDateLabel}`
             : t('checkout.day_today')}
         </span>
         <button

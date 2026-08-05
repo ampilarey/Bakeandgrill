@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   cartAllowsTomorrow,
   cartCheckoutCta,
+  collectDayPrimaryLabel,
   defaultCollectOn,
   forcedTomorrowNotice,
   formatTomorrowDateLabel,
+  isCalendarTomorrow,
+  localTomorrowYmd,
+  parseYmdLocal,
 } from './collectOn';
 
 describe('collectOn helpers', () => {
@@ -89,9 +93,10 @@ describe('collectOn helpers', () => {
   });
 
   it('states the mixed-cart rule in plain language before pay', () => {
-    expect(forcedTomorrowNotice('2026-08-05')).toContain('tomorrow');
-    expect(forcedTomorrowNotice('2026-08-05')).toContain('Wed 5 Aug');
-    expect(forcedTomorrowNotice('2026-08-05')).toContain('pay now');
+    const ymd = localTomorrowYmd();
+    expect(forcedTomorrowNotice(ymd)).toContain('tomorrow');
+    expect(forcedTomorrowNotice(ymd)).toContain(formatTomorrowDateLabel(ymd));
+    expect(forcedTomorrowNotice(ymd)).toContain('pay now');
   });
 
   it('formats the API date as a human day label', () => {
@@ -99,11 +104,34 @@ describe('collectOn helpers', () => {
     expect(formatTomorrowDateLabel('2026-12-25')).toBe('Fri 25 Dec');
   });
 
+  it('parses Y-m-d as a local calendar date without UTC shift', () => {
+    const d = parseYmdLocal('2026-08-08');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(7);
+    expect(d.getDate()).toBe(8);
+  });
+
   it('falls back to the local tomorrow when the API date is missing', () => {
     const expected = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-      .format(new Date(Date.now() + 24 * 60 * 60 * 1000));
+      .format(parseYmdLocal(localTomorrowYmd()));
     expect(formatTomorrowDateLabel(null)).toBe(expected);
     expect(formatTomorrowDateLabel(undefined)).toBe(expected);
     expect(formatTomorrowDateLabel('not-a-date')).toBe(expected);
+  });
+
+  it('calls the collect slot Tomorrow only when it is calendar tomorrow', () => {
+    const now = new Date(2026, 7, 7, 22, 51); // local calendar 7 Aug
+    expect(isCalendarTomorrow('2026-08-08', now)).toBe(true);
+    expect(isCalendarTomorrow('2026-08-09', now)).toBe(false);
+    expect(collectDayPrimaryLabel('2026-08-08', 'Tomorrow', now)).toBe('Tomorrow');
+    // Day-after-tomorrow (post-cutoff) must not be labelled Tomorrow.
+    const dayAfter = new Intl.DateTimeFormat('en-GB', { weekday: 'long' })
+      .format(parseYmdLocal('2026-08-09'));
+    expect(collectDayPrimaryLabel('2026-08-09', 'Tomorrow', now)).toBe(dayAfter);
+  });
+
+  it('forced notice avoids saying tomorrow when the collect date is not calendar tomorrow', () => {
+    expect(forcedTomorrowNotice('2099-01-15')).toContain('15 Jan');
+    expect(forcedTomorrowNotice('2099-01-15')).not.toMatch(/for tomorrow because/);
   });
 });

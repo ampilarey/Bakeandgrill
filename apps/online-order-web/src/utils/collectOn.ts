@@ -66,20 +66,74 @@ export function formatShortDateLabel(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 }
 
-/**
- * Human date for "tomorrow" — "2026-08-06" → "Wed 6 Aug".
- * Falls back to the device's local tomorrow when the API date is missing.
- */
-export function formatTomorrowDateLabel(collectTomorrowDate: string | null | undefined): string {
-  const date = collectTomorrowDate && /^\d{4}-\d{2}-\d{2}/.test(collectTomorrowDate)
-    ? new Date(`${collectTomorrowDate.slice(0, 10)}T00:00:00`)
-    : new Date(Date.now() + 24 * 60 * 60 * 1000);
-  return formatShortDateLabel(date);
+/** Parse `YYYY-MM-DD` as a local calendar date (no UTC shift). */
+export function parseYmdLocal(ymd: string): Date {
+  const [y, m, d] = ymd.slice(0, 10).split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function ymdLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Calendar tomorrow in the device's local timezone as `YYYY-MM-DD`. */
+export function localTomorrowYmd(now: Date = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return ymdLocal(d);
 }
 
 /**
- * Plain notice shown before pay when the whole order must be collected tomorrow.
+ * Resolve the collect-tomorrow Y-m-d from the API, else local calendar tomorrow.
+ */
+export function resolveCollectTomorrowYmd(
+  collectTomorrowDate: string | null | undefined,
+  now: Date = new Date(),
+): string {
+  if (collectTomorrowDate && /^\d{4}-\d{2}-\d{2}/.test(collectTomorrowDate)) {
+    return collectTomorrowDate.slice(0, 10);
+  }
+  return localTomorrowYmd(now);
+}
+
+/** True when the API collect date is the next calendar day (not day-after from cutoff). */
+export function isCalendarTomorrow(
+  collectTomorrowDate: string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  return resolveCollectTomorrowYmd(collectTomorrowDate, now) === localTomorrowYmd(now);
+}
+
+/**
+ * Human date for collect-tomorrow — "2026-08-06" → "Thu 6 Aug".
+ * Falls back to the device's local tomorrow when the API date is missing.
+ */
+export function formatTomorrowDateLabel(collectTomorrowDate: string | null | undefined): string {
+  return formatShortDateLabel(parseYmdLocal(resolveCollectTomorrowYmd(collectTomorrowDate)));
+}
+
+/**
+ * Primary toggle/checkout heading for the collect-tomorrow slot.
+ * After the kitchen cutoff the API rolls to day-after-tomorrow — do not call that "Tomorrow".
+ */
+export function collectDayPrimaryLabel(
+  collectTomorrowDate: string | null | undefined,
+  tomorrowWord: string,
+  now: Date = new Date(),
+): string {
+  const ymd = resolveCollectTomorrowYmd(collectTomorrowDate, now);
+  if (ymd === localTomorrowYmd(now)) return tomorrowWord;
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(parseYmdLocal(ymd));
+}
+
+/**
+ * Plain notice shown before pay when the whole order must be collected on the
+ * API collect-tomorrow date (may be day-after-tomorrow after cutoff).
  */
 export function forcedTomorrowNotice(collectTomorrowDate: string | null | undefined): string {
-  return `This order will be for tomorrow because it includes items that are only available then. Collect on ${formatTomorrowDateLabel(collectTomorrowDate)}. You pay now.`;
+  const when = formatTomorrowDateLabel(collectTomorrowDate);
+  const dayWord = isCalendarTomorrow(collectTomorrowDate) ? 'tomorrow' : when;
+  return `This order will be for ${dayWord} because it includes items that are only available then. Collect on ${when}. You pay now.`;
 }

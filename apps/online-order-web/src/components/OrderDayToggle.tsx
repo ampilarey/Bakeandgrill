@@ -1,6 +1,10 @@
 import { useLanguage } from '../context/LanguageContext';
 import { useOrderDay, type OrderDay } from '../context/OrderDayContext';
-import { formatShortDateLabel, formatTomorrowDateLabel } from '../utils/collectOn';
+import {
+  collectDayPrimaryLabel,
+  formatShortDateLabel,
+  formatTomorrowDateLabel,
+} from '../utils/collectOn';
 
 type Props = {
   /** API-provided collect-tomorrow date (Y-m-d) — falls back to local tomorrow. */
@@ -56,7 +60,8 @@ export function OrderDayToggle({
     },
     {
       id: 'tomorrow',
-      label: t('day.tomorrow'),
+      // After cutoff the API collect date is day-after-tomorrow — show that weekday, not "Tomorrow".
+      label: collectDayPrimaryLabel(tomorrowDate, t('day.tomorrow')),
       date: formatTomorrowDateLabel(tomorrowDate),
       blocked: tomorrowBlocked,
     },
