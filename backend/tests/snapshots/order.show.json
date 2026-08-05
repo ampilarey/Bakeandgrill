@@ -110,6 +110,7 @@
                 "packaging_fee": "0.00",
                 "packaging_fee_mode": "per_unit",
                 "packaging_option_name": null,
+                "parent_order_item_id": null,
                 "modifiers": []
             }
         ],

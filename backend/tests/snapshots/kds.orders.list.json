@@ -19,6 +19,7 @@
                 {
                     "id": "__VOLATILE__",
                     "item_id": "__VOLATILE__",
+                    "parent_order_item_id": null,
                     "item_name": "Classic Burger",
                     "variant_name": null,
                     "quantity": 1,

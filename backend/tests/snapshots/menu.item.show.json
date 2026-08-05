@@ -40,6 +40,10 @@
         "available_from": null,
         "is_low_stock": false,
         "unavailable_reason_note": null,
-        "tomorrow_remaining": null
+        "tomorrow_remaining": null,
+        "is_combo": false,
+        "combo_discount_pct": null,
+        "platter_groups": [],
+        "is_platter": false
     }
 }

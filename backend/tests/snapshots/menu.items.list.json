@@ -47,6 +47,8 @@
             "spice_level": null,
             "is_combo": false,
             "combo_discount_pct": null,
+            "platter_groups": [],
+            "is_platter": false,
             "dietary_tags": [],
             "allergens": [],
             "calories": null,
