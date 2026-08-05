@@ -1,0 +1,1 @@
+const t=new Set(["/","/terms","/refund"]);function r(r){if(!r.startsWith("/")||r.startsWith("//"))return!1;const s=r.split(/[?#]/)[0]||"/";return t.has(s)}function s(t){return"/order"===t?"/":t.startsWith("/order/")?t.slice(6)||"/":t}function e(t){return/^(https?:|mailto:|tel:|viber:|whatsapp:)/i.test(t)}export{e as i,r as s,s as t};
