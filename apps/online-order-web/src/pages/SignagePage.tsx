@@ -339,9 +339,9 @@ export function SignagePage() {
   }, [screen]);
 
   // Re-bind poll interval when refresh_seconds (or screen) changes.
+  // Keep polling even when config is null so a boot-error board can recover.
   useEffect(() => {
-    if (!config) return;
-    const refreshSeconds = Math.max(30, config.refresh_seconds ?? 120);
+    const refreshSeconds = Math.max(30, config?.refresh_seconds ?? 120);
     const id = window.setInterval(() => {
       void loadRef.current?.(true);
     }, refreshSeconds * 1000);
