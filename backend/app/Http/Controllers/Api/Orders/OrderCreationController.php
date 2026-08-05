@@ -341,7 +341,26 @@ class OrderCreationController extends Controller
                 ->assertSlotAvailable($payload['pickup_slot_at']);
         }
 
-        $order = app(OrderCreationService::class)->createFromPayload($payload, null);
+        if ($payload['type'] === 'dine_in') {
+            // Order + table hold succeed or fail together: a paid dine-in
+            // order without a guaranteed table must never exist.
+            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($payload, $customer) {
+                $order = app(OrderCreationService::class)->createFromPayload($payload, null);
+                app(\App\Domains\Reservations\Services\ReservationService::class)
+                    ->createForPrepaidDineIn(
+                        $order,
+                        (int) $payload['party_size'],
+                        \Carbon\Carbon::parse((string) $payload['pickup_slot_at']),
+                        $customer,
+                    );
+
+                return $order;
+            });
+            $order->load('reservation.table');
+        } else {
+            $order = app(OrderCreationService::class)->createFromPayload($payload, null);
+        }
+
         $customer->update(['last_order_at' => now()]);
 
         app(AuditLogService::class)->log('order.created', 'Order', $order->id, [], $order->toArray(), ['source' => 'customer'], $request);

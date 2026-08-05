@@ -516,7 +516,7 @@ class CustomerController extends Controller
         }
 
         $order = $customer->orders()
-            ->with(['items.modifiers', 'items.item', 'payments'])
+            ->with(['items.modifiers', 'items.item', 'payments', 'reservation.table'])
             ->findOrFail($id);
 
         $loyaltyPointsEarned = (int) LoyaltyLedger::query()
@@ -572,6 +572,16 @@ class CustomerController extends Controller
                 'delivery_notes' => $order->delivery_notes,
                 'pickup_slot_at' => $order->pickup_slot_at?->toIso8601String(),
                 'fulfil_date' => $order->fulfil_date?->toDateString(),
+                // Prepaid dine-in: table hold created with the order.
+                'reservation' => $order->reservation ? [
+                    'status' => $order->reservation->status,
+                    'date' => $order->reservation->date->toDateString(),
+                    'time_slot' => substr((string) $order->reservation->time_slot, 0, 5),
+                    'party_size' => (int) $order->reservation->party_size,
+                    'table' => $order->reservation->table
+                        ? ['id' => $order->reservation->table->id, 'name' => $order->reservation->table->name]
+                        : null,
+                ] : null,
                 'estimated_wait_minutes' => $order->estimated_wait_minutes,
                 'proof_of_delivery_url' => $order->proof_of_delivery_path
                     ? \Illuminate\Support\Facades\Storage::disk('public')->url($order->proof_of_delivery_path)

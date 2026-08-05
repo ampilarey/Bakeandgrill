@@ -84,6 +84,64 @@ class ReservationService
         return $result;
     }
 
+    /**
+     * Table hold for a prepaid dine-in order (customer paid at checkout).
+     *
+     * Runs the same capacity check as create() and REQUIRES a table to be
+     * assignable — the customer is paying now, so "no table" must fail the
+     * checkout before money moves, not surprise them at the door. Created
+     * as pending; ConfirmReservationOnOrderPaidListener confirms on payment.
+     * No ReservationCreated dispatch — its "we'll confirm shortly" SMS is
+     * wrong for a booking that auto-confirms the moment payment lands.
+     */
+    public function createForPrepaidDineIn(
+        \App\Models\Order $order,
+        int $partySize,
+        Carbon $arrival,
+        ?\App\Models\Customer $customer,
+    ): Reservation {
+        return DB::transaction(function () use ($order, $partySize, $arrival, $customer): Reservation {
+            $locked = Reservation::query()
+                ->whereDate('date', $arrival->toDateString())
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->lockForUpdate()
+                ->get();
+
+            $timeSlot = $arrival->format('H:i:s');
+            $remaining = $this->remainingCapacityForSlot($timeSlot, $locked, $this->totalActiveTableCapacity());
+            if ($partySize > $remaining) {
+                throw ValidationException::withMessages([
+                    'party_size' => ['No tables are free at that time. Please pick another arrival time.'],
+                ]);
+            }
+
+            $reservation = $this->reservations->create([
+                'customer_id' => $customer?->id,
+                'customer_name' => $customer?->name ?: 'Online customer',
+                'customer_phone' => $customer?->phone ?: '',
+                'party_size' => $partySize,
+                'date' => $arrival->toDateString(),
+                'time_slot' => $timeSlot,
+                'duration_minutes' => ReservationSetting::current()->slot_duration_minutes,
+                'notes' => 'Prepaid dine-in order ' . ($order->order_number ?? ('#' . $order->id)),
+                'status' => 'pending',
+                'order_id' => $order->id,
+                'tracking_token' => Str::random(32),
+            ]);
+
+            $this->tryAssignTable($reservation, $locked->push($reservation));
+            $reservation->refresh();
+
+            if ($reservation->table_id === null) {
+                throw ValidationException::withMessages([
+                    'party_size' => ["No table for {$partySize} people is free at that time. Please pick another arrival time."],
+                ]);
+            }
+
+            return $reservation->fresh(['table', 'customer']) ?? $reservation;
+        });
+    }
+
     public function create(CreateReservationData $data): Reservation
     {
         $reservation = DB::transaction(function () use ($data): Reservation {

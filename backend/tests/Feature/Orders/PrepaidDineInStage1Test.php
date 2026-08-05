@@ -67,6 +67,14 @@ class PrepaidDineInStage1Test extends TestCase
             'is_active' => true,
         ]);
 
+        // Stage 2 holds a table per prepaid order — seed one so creates succeed.
+        \App\Models\RestaurantTable::create([
+            'name' => 'S1-T1',
+            'capacity' => 6,
+            'status' => 'available',
+            'is_active' => true,
+        ]);
+
         $staffRole = Role::firstOrCreate(
             ['slug' => 'staff'],
             ['name' => 'Staff', 'description' => '', 'is_active' => true],

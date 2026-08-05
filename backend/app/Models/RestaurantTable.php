@@ -130,6 +130,53 @@ class RestaurantTable extends Model
             abort(422, 'Table already has an open order.');
         }
 
+        $blocking = self::blockingReservation($tableId, $orderId);
+        if ($blocking) {
+            $time = substr((string) $blocking->time_slot, 0, 5);
+            abort(422, "Table is reserved for a {$time} booking ({$blocking->customer_name}). Seat the walk-in elsewhere.");
+        }
+
         self::markOccupied($tableId);
+    }
+
+    /**
+     * Table guarantee: a CONFIRMED reservation holds its table from 60 minutes
+     * before the slot until the slot end, so a walk-in cannot take the seat a
+     * prepaid (or staff-confirmed) booking is counting on. The reservation's
+     * own linked order is exempt — that is the Seat action claiming its table.
+     */
+    public static function blockingReservation(int $tableId, ?int $exceptOrderId = null): ?Reservation
+    {
+        $now = now();
+
+        $candidates = Reservation::query()
+            ->where('table_id', $tableId)
+            ->where('status', 'confirmed')
+            ->whereDate('date', $now->toDateString())
+            ->when($exceptOrderId !== null, function ($q) use ($exceptOrderId) {
+                $q->where(function ($w) use ($exceptOrderId) {
+                    $w->whereNull('order_id')->orWhere('order_id', '!=', $exceptOrderId);
+                });
+            })
+            ->get();
+
+        foreach ($candidates as $reservation) {
+            try {
+                $slotStart = \Carbon\Carbon::parse(
+                    $reservation->date->toDateString() . ' ' . $reservation->time_slot,
+                );
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $holdFrom = $slotStart->copy()->subMinutes(60);
+            $holdUntil = $slotStart->copy()->addMinutes(max(30, (int) $reservation->duration_minutes));
+
+            if ($now->between($holdFrom, $holdUntil)) {
+                return $reservation;
+            }
+        }
+
+        return null;
     }
 }
