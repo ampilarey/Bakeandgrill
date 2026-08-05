@@ -24,6 +24,7 @@ final class SignageDeviceController extends Controller
         'resume',
         'black_screen',
         'maintenance',
+        'fullscreen',
     ];
 
     public function __construct(private readonly AuditLogService $audit) {}

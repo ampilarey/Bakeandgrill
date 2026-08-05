@@ -1921,7 +1921,7 @@ export function SignagePage() {
                               </div>
                             </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                              {(['refresh', 'skip', 'pause', 'resume', 'black_screen', 'maintenance', 'restart'] as const).map((cmd) => (
+                              {(['refresh', 'skip', 'pause', 'resume', 'black_screen', 'maintenance', 'restart', 'fullscreen'] as const).map((cmd) => (
                                 <Btn
                                   key={cmd}
                                   variant="secondary"

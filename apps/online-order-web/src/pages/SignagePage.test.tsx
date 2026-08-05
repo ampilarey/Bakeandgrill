@@ -112,6 +112,7 @@ describe('SignagePage', () => {
     const root = await screen.findByTestId('signage-page');
     expect(root.className).toMatch(/\bsignage-embed\b/);
     expect(root.getAttribute('data-embed')).toBe('1');
+    expect(screen.queryByTestId('signage-fullscreen-btn')).toBeNull();
   });
 
   it('does not add signage-embed when top-level without embed query', async () => {
@@ -126,6 +127,161 @@ describe('SignagePage', () => {
     const root = await screen.findByTestId('signage-page');
     expect(root.className).not.toMatch(/\bsignage-embed\b/);
     expect(root.getAttribute('data-embed')).toBe('0');
+    expect(await screen.findByTestId('signage-fullscreen-btn')).toBeTruthy();
+  });
+
+  it('skips heartbeat when embedded', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: false, pairing_code: 'ZZZZZZ', screen_slug: null },
+            command: null,
+          }),
+        };
+      }
+      return { ok: true, json: async () => config };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/tv?embed=1']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId('signage-page');
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/signage'))).toBe(true);
+    });
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/signage/heartbeat'))).toBe(false);
+    expect(screen.queryByTestId('signage-pairing-code')).toBeNull();
+  });
+
+  it('merges mode/banner on same-version refresh without waiting for slide boundary', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let calls = 0;
+    const bannerCfg = {
+      enabled: true,
+      banners: [{
+        id: 'info',
+        label: 'Info',
+        enabled: true,
+        position: 'bottom' as const,
+        fields: ['time'],
+        speed_seconds: 40,
+        duration_seconds: 30,
+      }],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: null,
+          }),
+        };
+      }
+      calls += 1;
+      if (calls === 1) {
+        return {
+          ok: true,
+          json: async () => ({
+            ...config,
+            refresh_seconds: 30,
+            mode: 'normal',
+            banner: bannerCfg,
+            prayer_schedule: [],
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          ...config,
+          playlist_version: 'abc',
+          refresh_seconds: 30,
+          // Same version but mode flips — banner must hide immediately (live merge).
+          mode: 'prayer_break',
+          banner: bannerCfg,
+          prayer_schedule: [],
+        }),
+      };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('signage-banner')).toBeTruthy();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+    });
+
+    await waitFor(() => {
+      expect(calls).toBeGreaterThanOrEqual(2);
+      expect(screen.queryByTestId('signage-banner')).toBeNull();
+    });
+  });
+
+  it('applies data-paused and pauses banner class when pause command fires', async () => {
+    let heartbeats = 0;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/signage/heartbeat')) {
+        heartbeats += 1;
+        return {
+          ok: true,
+          json: async () => ({
+            device: { approved: true, pairing_code: null, screen_slug: 'default' },
+            command: heartbeats === 1 ? { type: 'pause' } : null,
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          ...config,
+          banner: {
+            enabled: true,
+            banners: [{
+              id: 'info',
+              label: 'Info',
+              enabled: true,
+              position: 'bottom',
+              fields: ['time'],
+              speed_seconds: 40,
+              duration_seconds: 30,
+            }],
+          },
+        }),
+      };
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/tv']}>
+        <Routes>
+          <Route path="/tv" element={<SignagePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const root = screen.getByTestId('signage-page');
+      expect(root.getAttribute('data-paused')).toBe('1');
+      expect(root.className).toMatch(/\bsignage-paused\b/);
+    });
   });
 
   it('renders element-tree slides with transition classes and no interactive chrome', async () => {

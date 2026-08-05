@@ -9,6 +9,59 @@
   z-index: 9999;
 }
 
+.signage-page.signage-chrome-visible {
+  cursor: default;
+}
+
+/* Pause banner / logo hold animations while the board is paused. */
+.signage-page.signage-paused .signage-banner-track,
+.signage-page.signage-paused .signage-banner-logo-hold {
+  animation-play-state: paused;
+}
+
+.signage-fs-btn {
+  position: absolute;
+  right: 1.6vmin;
+  bottom: 1.6vmin;
+  z-index: 60;
+  min-height: 44px;
+  padding: 0.8vmin 1.6vmin;
+  border: 1px solid rgba(255, 248, 240, 0.28);
+  border-radius: 10px;
+  background: rgba(12, 8, 4, 0.72);
+  color: #fff8f0;
+  font: inherit;
+  font-size: 1.8vmin;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.35s ease;
+  pointer-events: auto;
+}
+
+.signage-fs-btn.signage-fs-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.signage-fs-arm {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff8f0;
+  font: inherit;
+  font-size: 3.2vmin;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
 /* Admin (or any same-origin) iframe preview — fixed escapes the frame on iOS Safari. */
 .signage-page.signage-embed {
   position: absolute;

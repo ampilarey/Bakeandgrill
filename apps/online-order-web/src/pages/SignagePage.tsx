@@ -25,6 +25,7 @@ import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 const CACHE_KEY = 'bg_signage_cache_v1';
 const DEVICE_ID_KEY = 'bg_signage_device_id';
 const BUILD_VERSION = '2.1';
+const CHROME_HIDE_MS = 5000;
 
 function getOrCreateDeviceId(): string {
   try {
@@ -100,11 +101,56 @@ function detectIframeEmbedded(): boolean {
   }
 }
 
-async function fetchConfig(screen: string): Promise<SignageConfig> {
+function mergeLiveFields(prev: SignageConfig, next: SignageConfig): SignageConfig {
+  return {
+    ...prev,
+    variables: next.variables,
+    bestsellers: next.bestsellers,
+    mode: next.mode,
+    prayer_schedule: next.prayer_schedule,
+    banner: next.banner,
+    source: next.source,
+    theme: next.theme,
+    refresh_seconds: next.refresh_seconds,
+    server_time: next.server_time,
+  };
+}
+
+function offsetFromServerTime(serverTime?: string): number | null {
+  if (!serverTime) return null;
+  const serverMs = Date.parse(serverTime);
+  if (!Number.isFinite(serverMs)) return null;
+  return serverMs - Date.now();
+}
+
+async function fetchConfig(screen: string, deviceId: string): Promise<SignageConfig> {
   const path = screen && screen !== 'default' ? `/signage/${encodeURIComponent(screen)}` : '/signage';
-  const res = await fetch(`${API_ORIGIN}/api${path}`, { credentials: 'omit' });
+  const qs = new URLSearchParams({ device_id: deviceId });
+  const res = await fetch(`${API_ORIGIN}/api${path}?${qs}`, { credentials: 'omit' });
   if (!res.ok) throw new Error(`signage ${res.status}`);
   return res.json() as Promise<SignageConfig>;
+}
+
+function isFullscreenActive(): boolean {
+  return Boolean(document.fullscreenElement);
+}
+
+async function enterFullscreen(el: HTMLElement): Promise<boolean> {
+  try {
+    if (el.requestFullscreen) {
+      await el.requestFullscreen();
+      return true;
+    }
+  } catch { /* gesture required / denied */ }
+  return false;
+}
+
+async function exitFullscreen(): Promise<void> {
+  try {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      await document.exitFullscreen();
+    }
+  } catch { /* ignore */ }
 }
 
 export function SignagePage() {
@@ -127,12 +173,16 @@ export function SignagePage() {
   const [pendingConfig, setPendingConfig] = useState<SignageConfig | null>(null);
   const [burnIn, setBurnIn] = useState({ x: 0, y: 0 });
   const [tick, setTick] = useState(0);
+  const [clockOffset, setClockOffset] = useState(0);
   const [command, setCommand] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [black, setBlack] = useState(false);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [deviceApproved, setDeviceApproved] = useState(false);
   const [inIframe] = useState(detectIframeEmbedded);
+  const [chromeVisible, setChromeVisible] = useState(true);
+  const [fsArmed, setFsArmed] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   // Honour ?embed=1 via the router (and window.location as a belt-and-braces for
   // non-router entry points) so admin preview can force embed layout in tests too.
   const forceEmbed = searchParams.get('embed') === '1'
@@ -141,14 +191,21 @@ export function SignagePage() {
 
   const versionRef = useRef<string>('');
   const advanceTimer = useRef<number | null>(null);
-  const refreshTimer = useRef<number | null>(null);
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const deviceIdRef = useRef(getOrCreateDeviceId());
   const slideIdRef = useRef<string | null>(null);
   const offlineRef = useRef(false);
+  const pageRef = useRef<HTMLDivElement | null>(null);
+  const loadRef = useRef<((isRefresh: boolean) => Promise<void>) | null>(null);
+  const chromeTimer = useRef<number | null>(null);
 
-  // Shared board clock — gate + banner + live vars must use the same instant.
-  const nowMs = useMemo(() => Date.now(), [tick]);
+  // Shared board clock — gated from server_time + monotonic client elapsed.
+  const nowMs = useMemo(() => Date.now() + clockOffset, [tick, clockOffset]);
+
+  const applyServerClock = (cfg: SignageConfig) => {
+    const offset = offsetFromServerTime(cfg.server_time);
+    if (offset !== null) setClockOffset(offset);
+  };
 
   // Live clock variables
   const liveVars = useMemo(() => {
@@ -198,13 +255,32 @@ export function SignagePage() {
     ? slidesById.get(rotation[index % rotation.length]) ?? null
     : null;
 
+  const bumpChrome = () => {
+    if (embedded) return;
+    setChromeVisible(true);
+    if (chromeTimer.current) window.clearTimeout(chromeTimer.current);
+    chromeTimer.current = window.setTimeout(() => setChromeVisible(false), CHROME_HIDE_MS);
+  };
+
+  const toggleFullscreen = async () => {
+    const el = pageRef.current;
+    if (!el || embedded) return;
+    if (isFullscreenActive()) {
+      await exitFullscreen();
+      setFsArmed(false);
+      return;
+    }
+    const ok = await enterFullscreen(el);
+    setFsArmed(!ok);
+  };
+
   // Initial + refresh fetch
   useEffect(() => {
     let cancelled = false;
     const load = async (isRefresh: boolean) => {
       try {
         const [cfg, itemsRes, catsRes] = await Promise.all([
-          fetchConfig(screen),
+          fetchConfig(screen, deviceIdRef.current),
           fetchItems('online_pickup').catch(() => ({ data: [] as Item[] })),
           // Category names title the generated menu slides. A failure here
           // degrades to untitled groups rather than blanking the board.
@@ -224,6 +300,7 @@ export function SignagePage() {
         setBootError(false);
         setItems(lite);
         setCategories(cats);
+        applyServerClock(cfg);
 
         if (!isRefresh || !versionRef.current) {
           versionRef.current = cfg.playlist_version;
@@ -231,8 +308,8 @@ export function SignagePage() {
         } else if (cfg.playlist_version !== versionRef.current) {
           setPendingConfig(cfg);
         } else {
-          // same version — still refresh variables/bestsellers
-          setConfig((prev) => (prev ? { ...prev, variables: cfg.variables, bestsellers: cfg.bestsellers } : cfg));
+          // same version — refresh live fields (mode/banner/prayer/vars) without slide swap
+          setConfig((prev) => (prev ? mergeLiveFields(prev, cfg) : cfg));
         }
       } catch {
         if (cancelled) return;
@@ -245,6 +322,7 @@ export function SignagePage() {
           setItems(cached.items);
           setCategories(cached.categories ?? []);
           versionRef.current = cached.config.playlist_version;
+          applyServerClock(cached.config);
         } else {
           // First boot with no network and no cache — do not spin forever.
           setBootError(true);
@@ -252,29 +330,62 @@ export function SignagePage() {
       }
     };
 
+    loadRef.current = load;
     void load(false);
-    const refreshSeconds = Math.max(30, config?.refresh_seconds ?? 120);
-    refreshTimer.current = window.setInterval(() => void load(true), refreshSeconds * 1000);
     return () => {
       cancelled = true;
-      if (refreshTimer.current) window.clearInterval(refreshTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
-  // Wake Lock
+  // Re-bind poll interval when refresh_seconds (or screen) changes.
+  useEffect(() => {
+    if (!config) return;
+    const refreshSeconds = Math.max(30, config.refresh_seconds ?? 120);
+    const id = window.setInterval(() => {
+      void loadRef.current?.(true);
+    }, refreshSeconds * 1000);
+    return () => window.clearInterval(id);
+  }, [screen, config?.refresh_seconds]);
+
+  // Wake Lock — re-acquire on visibility + fullscreen changes.
   useEffect(() => {
     const req = async () => {
       try {
-        const anyNav = navigator as Navigator & { wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> } };
+        const anyNav = navigator as Navigator & {
+          wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> };
+        };
         if (anyNav.wakeLock) {
           wakeLockRef.current = await anyNav.wakeLock.request('screen');
         }
       } catch { /* unsupported */ }
     };
     void req();
-    return () => { void wakeLockRef.current?.release(); };
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void req();
+    };
+    const onFs = () => {
+      setIsFullscreen(isFullscreenActive());
+      void req();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    document.addEventListener('fullscreenchange', onFs);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      document.removeEventListener('fullscreenchange', onFs);
+      void wakeLockRef.current?.release();
+    };
   }, []);
+
+  // Auto-hide fullscreen chrome
+  useEffect(() => {
+    if (embedded) return;
+    bumpChrome();
+    return () => {
+      if (chromeTimer.current) window.clearTimeout(chromeTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded]);
 
   // Clock tick + burn-in drift
   useEffect(() => {
@@ -297,6 +408,7 @@ export function SignagePage() {
       // Apply pending config swap on boundary
       if (pendingConfig) {
         versionRef.current = pendingConfig.playlist_version;
+        applyServerClock(pendingConfig);
         setConfig(pendingConfig);
         setPendingConfig(null);
         setIndex(0);
@@ -307,6 +419,7 @@ export function SignagePage() {
     return () => {
       if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSlide, index, paused, black, pendingConfig]);
 
   // Keep current slide id for heartbeat payload
@@ -330,13 +443,29 @@ export function SignagePage() {
         window.location.reload();
       }
       if (cmd === 'restart') window.location.reload();
+      if (cmd === 'fullscreen') {
+        // Fullscreen API needs a gesture to enter; arm a tap prompt if denied.
+        void (async () => {
+          if (embedded) return;
+          if (isFullscreenActive()) {
+            await exitFullscreen();
+            setFsArmed(false);
+            return;
+          }
+          const ok = pageRef.current ? await enterFullscreen(pageRef.current) : false;
+          setFsArmed(!ok);
+          bumpChrome();
+        })();
+      }
     };
     window.addEventListener('signage:command', onCmd);
     return () => window.removeEventListener('signage:command', onCmd);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded]);
 
-  // Heartbeat + pairing (~60s)
+  // Heartbeat + pairing (~60s) — skip in admin preview embeds
   useEffect(() => {
+    if (embedded) return;
     let cancelled = false;
     const beat = async () => {
       try {
@@ -391,11 +520,11 @@ export function SignagePage() {
       cancelled = true;
       window.clearInterval(t);
     };
-  }, [screen, screenParam, navigate]);
+  }, [screen, screenParam, navigate, embedded]);
 
   const transition = currentSlide?.transition || 'fade';
   const orientation = config?.orientation === 'portrait' ? 'portrait' : 'landscape';
-  const showPairing = !deviceApproved && Boolean(pairingCode);
+  const showPairing = !embedded && !deviceApproved && Boolean(pairingCode);
   const showBanner = Boolean(
     config
     && !black
@@ -422,13 +551,26 @@ export function SignagePage() {
     menu_new_days: 30,
   }), [screen]);
 
+  const pageClass = [
+    'signage-page',
+    `signage-orient-${orientation}`,
+    embedded ? 'signage-embed' : '',
+    !embedded && chromeVisible ? 'signage-chrome-visible' : '',
+    paused ? 'signage-paused' : '',
+  ].filter(Boolean).join(' ');
+
   return (
     <div
-      className={`signage-page signage-orient-${orientation}${embedded ? ' signage-embed' : ''}`}
+      ref={pageRef}
+      className={pageClass}
       data-testid="signage-page"
       data-embed={embedded ? '1' : '0'}
       data-command={command ?? ''}
       data-approved={deviceApproved ? '1' : '0'}
+      data-paused={paused ? '1' : '0'}
+      data-fullscreen={isFullscreen ? '1' : '0'}
+      onPointerMove={() => bumpChrome()}
+      onDoubleClick={() => { void toggleFullscreen(); }}
     >
       {black && (
         <div className="signage-blackout" data-testid="signage-blackout">
@@ -522,6 +664,33 @@ export function SignagePage() {
       )}
       {offline && (
         <div className="signage-offline" data-testid="signage-offline">offline — showing last menu</div>
+      )}
+      {!embedded && (
+        <button
+          type="button"
+          className={`signage-fs-btn${chromeVisible ? '' : ' signage-fs-hidden'}`}
+          data-testid="signage-fullscreen-btn"
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          onClick={(e) => {
+            e.stopPropagation();
+            void toggleFullscreen();
+          }}
+        >
+          {isFullscreen ? 'Exit full screen' : 'Full screen'}
+        </button>
+      )}
+      {!embedded && fsArmed && !isFullscreen && (
+        <button
+          type="button"
+          className="signage-fs-arm"
+          data-testid="signage-fullscreen-arm"
+          onClick={(e) => {
+            e.stopPropagation();
+            void toggleFullscreen();
+          }}
+        >
+          Tap for full screen
+        </button>
       )}
     </div>
   );
