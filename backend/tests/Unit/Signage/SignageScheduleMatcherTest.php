@@ -79,4 +79,28 @@ final class SignageScheduleMatcherTest extends TestCase
         ];
         $this->assertTrue(SignageScheduleMatcher::matches($schedule, $now));
     }
+
+    public function test_overnight_window_uses_start_day_after_midnight(): void
+    {
+        // 2026-08-07 is Friday (5); 2026-08-08 is Saturday (6).
+        // Friday 22:00–02:00 must still match at Saturday 01:30 when days=[5].
+        $saturdayMorning = Carbon::parse('2026-08-08 01:30:00', 'Indian/Maldives');
+        $this->assertTrue(SignageScheduleMatcher::matches([
+            'days' => [5],
+            'windows' => [['start' => '22:00', 'end' => '02:00']],
+        ], $saturdayMorning));
+
+        // Same instant must not match when only Saturday is listed.
+        $this->assertFalse(SignageScheduleMatcher::matches([
+            'days' => [6],
+            'windows' => [['start' => '22:00', 'end' => '02:00']],
+        ], $saturdayMorning));
+
+        // Evening portion still keys off Friday.
+        $fridayNight = Carbon::parse('2026-08-07 23:15:00', 'Indian/Maldives');
+        $this->assertTrue(SignageScheduleMatcher::matches([
+            'days' => [5],
+            'windows' => [['start' => '22:00', 'end' => '02:00']],
+        ], $fridayNight));
+    }
 }

@@ -127,18 +127,18 @@ final class SignageResolver
 
     private function findScreen(?string $key): ?SignageScreen
     {
-        $q = SignageScreen::query()->with(['group.playlist', 'playlist']);
+        $base = fn () => SignageScreen::query()->with(['group.playlist', 'playlist']);
         if ($key === null || $key === '' || $key === 'default') {
-            return $q->where('is_default', true)->first()
-                ?? $q->where('slug', 'default')->first()
-                ?? $q->orderBy('id')->first();
+            return $base()->where('is_default', true)->first()
+                ?? $base()->where('slug', 'default')->first()
+                ?? $base()->orderBy('id')->first();
         }
         if (ctype_digit($key)) {
-            return $q->where('id', (int) $key)->first()
-                ?? $q->where('slug', $key)->first();
+            return $base()->where('id', (int) $key)->first()
+                ?? $base()->where('slug', $key)->first();
         }
 
-        return $q->where('slug', $key)->first();
+        return $base()->where('slug', $key)->first();
     }
 
     private function activeCampaign(Carbon $now, ?int $storeId): ?SignageCampaign
@@ -364,7 +364,9 @@ final class SignageResolver
             'today' => $now->format('l, j M Y'),
             'next_prayer' => $nextPrayer,
             'wifi_name' => (string) SiteSetting::get('signage_wifi_name', ''),
-            'wifi_password' => (string) SiteSetting::get('signage_wifi_password', ''),
+            // Public payload never includes the password — PublicSignageController
+            // injects it only for an approved device_id query param.
+            'wifi_password' => '',
             'business_phone' => (string) SiteSetting::get('business_phone', ''),
             'business_website' => (string) SiteSetting::get('business_website', ''),
             'promotion_name' => '',
@@ -380,16 +382,9 @@ final class SignageResolver
             return [];
         }
 
-        $q = Item::query()->where('is_active', true);
-        if (Schema::hasColumn('items', 'is_available')) {
-            // keep available when column exists — not required
-        }
-
         try {
             $items = Item::query()
-                ->where(function ($qq) {
-                    $qq->where('is_active', true);
-                })
+                ->where('is_active', true)
                 ->withCount(['orderItems as sales_30d' => function ($q) {
                     $q->whereHas('order', function ($order) {
                         $order->where('status', '!=', 'cancelled')

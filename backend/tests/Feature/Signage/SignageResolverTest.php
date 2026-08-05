@@ -177,15 +177,64 @@ final class SignageResolverTest extends TestCase
     {
         SiteSetting::set('site_name', 'Bake & Grill');
         SiteSetting::set('signage_wifi_name', 'BG-Guest');
+        SiteSetting::set('signage_wifi_password', 'secret-wifi');
 
         /** @var SignageResolver $resolver */
         $resolver = app(SignageResolver::class);
         $cfg = $resolver->resolveFresh('default', Carbon::now(), null, 'v6');
         $this->assertSame('Bake & Grill', $cfg['variables']['branch_name']);
         $this->assertSame('BG-Guest', $cfg['variables']['wifi_name']);
+        $this->assertSame('', $cfg['variables']['wifi_password']);
         $this->assertArrayHasKey('promotion_name', $cfg['variables']);
         $this->assertArrayHasKey('business_phone', $cfg['variables']);
         $this->assertArrayHasKey('business_website', $cfg['variables']);
+    }
+
+    public function test_find_screen_fallback_does_not_reuse_mutated_query(): void
+    {
+        SignageScreen::query()->update(['is_default' => false]);
+        $slugDefault = SignageScreen::query()->where('slug', 'default')->first();
+        if (! $slugDefault) {
+            $slugDefault = SignageScreen::create([
+                'name' => 'Slug Default',
+                'slug' => 'default',
+                'is_default' => false,
+                'is_active' => true,
+            ]);
+        } else {
+            $slugDefault->update(['is_default' => false]);
+        }
+
+        /** @var SignageResolver $resolver */
+        $resolver = app(SignageResolver::class);
+        $cfg = $resolver->resolveFresh(null, Carbon::now(), null, 'v-find');
+        $this->assertNotNull($cfg['screen']);
+        $this->assertSame('default', $cfg['screen']['slug']);
+        $this->assertSame($slugDefault->id, $cfg['screen']['id']);
+    }
+
+    public function test_public_wifi_password_only_for_approved_device(): void
+    {
+        SiteSetting::set('signage_wifi_password', 'secret-wifi');
+
+        $this->getJson('/api/signage')
+            ->assertOk()
+            ->assertJsonPath('variables.wifi_password', '');
+
+        $this->getJson('/api/signage?device_id=unapproved-tv')
+            ->assertOk()
+            ->assertJsonPath('variables.wifi_password', '');
+
+        \App\Models\SignageDevice::create([
+            'device_id' => 'approved-tv',
+            'approved' => true,
+            'screen_id' => SignageScreen::query()->value('id'),
+            'last_seen_at' => now(),
+        ]);
+
+        $this->getJson('/api/signage?device_id=approved-tv')
+            ->assertOk()
+            ->assertJsonPath('variables.wifi_password', 'secret-wifi');
     }
 
     public function test_admin_writes_are_permission_gated(): void

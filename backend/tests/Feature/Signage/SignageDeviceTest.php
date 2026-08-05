@@ -190,4 +190,27 @@ final class SignageDeviceTest extends TestCase
 
         $this->assertTrue(AuditLog::query()->where('action', 'signage.device.command')->exists());
     }
+
+    public function test_fullscreen_command_is_accepted(): void
+    {
+        $device = SignageDevice::create([
+            'device_id' => 'tv-fs',
+            'approved' => true,
+            'screen_id' => SignageScreen::query()->value('id'),
+            'last_seen_at' => now(),
+        ]);
+
+        $owner = User::create([
+            'name' => 'Owner Fs',
+            'email' => 'owner-fs@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($owner, ['staff']);
+
+        $this->postJson("/api/admin/signage/devices/{$device->id}/command", [
+            'command' => 'fullscreen',
+        ])->assertOk()->assertJsonPath('data.queued_command.type', 'fullscreen');
+    }
 }

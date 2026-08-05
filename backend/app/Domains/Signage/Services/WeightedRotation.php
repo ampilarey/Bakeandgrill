@@ -32,27 +32,6 @@ final class WeightedRotation
             return [];
         }
 
-        $max = max($weights);
-        $order = [];
-        for ($slot = 0; $slot < $max; $slot++) {
-            foreach ($weights as $id => $w) {
-                // Place slide when slot maps into its weight evenly across the cycle.
-                if ((int) floor(($slot * $w) / $max) !== (int) floor((($slot - 1) * $w) / $max) || $slot === 0) {
-                    if ($slot === 0 || ($slot % max(1, (int) floor($max / $w))) === 0) {
-                        $order[] = $id;
-                    }
-                }
-            }
-        }
-
-        // Fallback: ensure every slide appears at least once, then expand by weight.
-        if ($order === []) {
-            foreach (array_keys($weights) as $id) {
-                $order[] = $id;
-            }
-        }
-
-        // Cleaner deterministic approach: round-robin by remaining weight counters.
         return self::roundRobin($weights);
     }
 
