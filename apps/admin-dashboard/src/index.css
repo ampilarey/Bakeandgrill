@@ -934,9 +934,9 @@ a { text-decoration: none; color: inherit; }
   min-width: 0;
 }
 
-/* Schedule day card */
+/* Schedule day card — equal left/right padding, never wider than parent */
 .oc-day {
-  padding: 10px 12px;
+  padding: 10px;
   border-radius: 10px;
   background: #FDFAF7;
   border: 1px solid var(--color-border);
@@ -953,8 +953,8 @@ a { text-decoration: none; color: inherit; }
 
 /*
  * Schedule time windows (Online / Pre-order / Delivery / Features).
- * Open | Close stay side-by-side. Compact hour/minute <select>s (not
- * native type=time) so both fields fit inside a phone-width day card.
+ * Keep Open | Close side-by-side. Shorten each time box to half the row
+ * with equal gap — native type=time chrome stays inside .oc-time-box.
  */
 .oc-day-windows {
   display: flex;
@@ -987,43 +987,68 @@ a { text-decoration: none; color: inherit; }
   width: 100%;
   box-sizing: border-box;
 }
-.oc-time-field-label {
+.oc-time-field > label {
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-secondary);
 }
-.oc-time-selects {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 4px;
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
+/*
+ * Bordered shell owns the visible box. Native time widgets have a large
+ * intrinsic min-width; clip them inside this shorter equal-width container
+ * so Open/Close never overlap or spill past the day card. Border lives on
+ * the shell (not the input) so clipping never eats the outline.
+ */
+.oc-time-box {
   box-sizing: border-box;
-}
-.oc-time-selects select {
-  display: block;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  padding: 8px 4px;
+  min-height: 44px;
   border: 1.5px solid var(--color-border);
   border-radius: 10px;
+  background: var(--color-surface);
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
+.oc-time-box input[type="time"] {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin: 0;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 0;
+  outline: none;
   font-size: 16px; /* iOS: avoid zoom-on-focus */
   font-family: inherit;
   box-sizing: border-box;
   min-height: 44px;
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text);
-  appearance: auto;
 }
-.oc-time-colon {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-  line-height: 1;
-  padding-bottom: 2px;
+.oc-time-box input[type="time"]::-webkit-datetime-edit {
+  min-width: 0;
+  padding: 0;
+}
+.oc-time-box input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+.oc-time-box input[type="time"]::-webkit-datetime-edit-text,
+.oc-time-box input[type="time"]::-webkit-datetime-edit-hour-field,
+.oc-time-box input[type="time"]::-webkit-datetime-edit-minute-field,
+.oc-time-box input[type="time"]::-webkit-datetime-edit-ampm-field {
+  padding: 0 1px;
+}
+.oc-time-box input[type="time"]::-webkit-calendar-picker-indicator {
+  width: 14px;
+  height: 14px;
+  margin: 0 0 0 2px;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 .oc-window-remove {
   background: none;
@@ -1051,16 +1076,13 @@ a { text-decoration: none; color: inherit; }
 
 @media (max-width: 767px) {
   .oc-day {
-    padding: 10px !important;
+    padding: 10px !important; /* equal L/R */
   }
   .oc-window-row {
-    gap: 6px !important;
+    gap: 8px !important; /* equal space between Open and Close */
   }
-  .oc-time-selects {
-    gap: 2px;
-  }
-  .oc-time-selects select {
-    padding: 8px 2px;
+  .oc-time-box input[type="time"] {
+    padding: 8px 4px;
   }
 }
 
@@ -1156,8 +1178,9 @@ a { text-decoration: none; color: inherit; }
   }
 
   .ordering-page .oc-day-windows { padding-left: 0 !important; }
-  .ordering-page .oc-time-selects,
-  .ordering-page .oc-time-selects select {
+  .ordering-page .oc-time-field,
+  .ordering-page .oc-time-box,
+  .ordering-page .oc-time-box input[type="time"] {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
