@@ -68,12 +68,16 @@ class OnlineOrderingController extends Controller
         $status['next_delivery_window'] = $deliveryStatus['next_delivery_window'] ?? null;
         $status['preorder'] = $this->cateringGate->status();
         $status['order_for_tomorrow'] = app(OrderFulfilDateService::class)->statusFragment();
+
+        $featureGates = app(\App\Services\FeatureGateService::class);
         $status['dine_in_preorder'] = [
-            'enabled' => filter_var(
-                SiteSetting::get('dine_in_preorder_enabled', '0'),
-                FILTER_VALIDATE_BOOLEAN,
-            ),
+            // 'enabled' = master switch (legacy readers); 'open' = effective
+            // right now after schedule + override — new readers use this.
+            'enabled' => $featureGates->enabled('dine_in_preorder'),
+            'open' => $featureGates->open('dine_in_preorder'),
         ];
+        $status['reservations'] = ['open' => $featureGates->open('reservations')];
+        $status['gift_cards'] = ['open' => $featureGates->open('gift_card_purchase')];
 
         // Additive services map — older clients ignore it. Same shape as
         // GET /api/service-status so a single reader can consume either.

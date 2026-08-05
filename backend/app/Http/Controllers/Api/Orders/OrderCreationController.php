@@ -305,13 +305,11 @@ class OrderCreationController extends Controller
         $payload['type'] = $payload['type'] ?? 'online_pickup';
 
         if ($payload['type'] === 'dine_in') {
-            $dineInEnabled = filter_var(
-                \App\Models\SiteSetting::get('dine_in_preorder_enabled', '0'),
-                FILTER_VALIDATE_BOOLEAN,
+            // Kill switch + optional per-day schedule + force-open override.
+            app(\App\Services\FeatureGateService::class)->assertOpen(
+                'dine_in_preorder',
+                'Dine-in ordering is not available right now.',
             );
-            if (!$dineInEnabled) {
-                abort(422, 'Dine-in ordering is not available right now.');
-            }
             // v1: arrival is today only — no collect-tomorrow combination.
             if (($payload['collect_on'] ?? null) === 'tomorrow' || !empty($payload['fulfil_date'])) {
                 abort(422, 'Dine-in orders are for today only.');

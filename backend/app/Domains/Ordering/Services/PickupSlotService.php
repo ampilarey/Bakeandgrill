@@ -107,6 +107,16 @@ final class PickupSlotService
             return [];
         }
 
+        // Use the REAL per-day windows from the master ordering schedule when
+        // one is configured (was: hardcoded 07:00–22:00 tightened only by
+        // today's close time — wrong for any other weekday).
+        $schedule = \App\Support\ScheduleWindows::parse(
+            SiteSetting::get('online_ordering_schedule'),
+        );
+        if ($schedule !== null) {
+            return \App\Support\ScheduleWindows::windowsForDate($schedule, $day);
+        }
+
         // Default Malé café hours if schedule not exposed per-day
         $open = $day->copy()->setTime(7, 0);
         $close = $day->copy()->setTime(22, 0);

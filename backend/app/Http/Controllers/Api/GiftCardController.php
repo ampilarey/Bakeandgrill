@@ -493,6 +493,12 @@ class GiftCardController extends Controller
      */
     public function purchase(Request $request): JsonResponse
     {
+        // Owner kill switch (e.g. payment gateway problems).
+        app(\App\Services\FeatureGateService::class)->assertOpen(
+            'gift_card_purchase',
+            'Gift card purchase is temporarily unavailable. Please try again later.',
+        );
+
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:' . GiftCardPurchaseService::MIN_AMOUNT, 'max:' . GiftCardPurchaseService::MAX_AMOUNT],
             'recipient_phone' => ['nullable', 'string', 'max:20', new MaldivesPhone],

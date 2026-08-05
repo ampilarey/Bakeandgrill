@@ -31,7 +31,12 @@ class ReservationController extends Controller
             'party_size' => ['required', 'integer', 'min:1', 'max:' . $maxParty],
         ]);
 
-        $slots = $this->service->availableSlots($validated['date'], (int) $validated['party_size']);
+        // Owner kill switch: report closed with zero slots so the booking form
+        // can say so instead of showing a fully-booked calendar.
+        $accepting = app(\App\Services\FeatureGateService::class)->open('reservations');
+        $slots = $accepting
+            ? $this->service->availableSlots($validated['date'], (int) $validated['party_size'])
+            : [];
 
         return response()->json([
             'slots' => array_map(fn ($s) => [
@@ -41,6 +46,7 @@ class ReservationController extends Controller
             ], $slots),
             'meta' => [
                 'max_party_size' => $maxParty,
+                'accepting' => $accepting,
             ],
         ]);
     }
@@ -49,6 +55,11 @@ class ReservationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        app(\App\Services\FeatureGateService::class)->assertOpen(
+            'reservations',
+            'We are not taking new table bookings right now. Please call us instead.',
+        );
+
         $maxParty = $this->effectiveMaxPartySize();
 
         $validated = $request->validate([

@@ -37,6 +37,8 @@ if (routes_domain_section_is('staff', 'protected') && !routes_domain_loaded('sta
         Route::put('/schedule', [App\Http\Controllers\Api\OnlineOrderingController::class, 'updateSchedule']);
         Route::put('/tomorrow-cutoff', [App\Http\Controllers\Api\OnlineOrderingController::class, 'updateTomorrowCutoff']);
         Route::post('/dine-in-preorder-toggle', [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggleDineInPreorder']);
+        Route::get('/feature-gates', [App\Http\Controllers\Api\FeatureGateController::class, 'index']);
+        Route::put('/feature-gates/{key}', [App\Http\Controllers\Api\FeatureGateController::class, 'update']);
         Route::post('/delivery-toggle', [App\Http\Controllers\Api\OnlineOrderingController::class, 'toggleDelivery']);
         Route::put('/delivery-schedule', [App\Http\Controllers\Api\OnlineOrderingController::class, 'updateDeliverySchedule']);
         Route::post('/delivery-override', [App\Http\Controllers\Api\OnlineOrderingController::class, 'deliveryOverride']);

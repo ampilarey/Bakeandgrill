@@ -74,6 +74,15 @@ class OrderFulfilDateService
             return null;
         }
 
+        // Kill switch / schedule: single enforcement point for every create path
+        // (pickup and delivery). Example: all drivers sick — flip the gate off
+        // and no new tomorrow orders can be placed.
+        if (!app(FeatureGateService::class)->open('order_for_tomorrow', $at)) {
+            throw ValidationException::withMessages([
+                'fulfil_date' => ['Ordering for tomorrow is switched off right now. Please order for today or try again later.'],
+            ]);
+        }
+
         $allowed = $this->allowedTomorrowDateString($at);
 
         if ($requested !== null && $requested !== '' && $requested !== $allowed) {
@@ -118,9 +127,13 @@ class OrderFulfilDateService
     /** Public payload fragment for GET /ordering/status. */
     public function statusFragment(?Carbon $at = null): array
     {
+        $gate = app(FeatureGateService::class);
+
         return [
             'cutoff' => $this->cutoffTime(),
             'collect_tomorrow_date' => $this->allowedTomorrowDateString($at),
+            'enabled' => $gate->enabled('order_for_tomorrow'),
+            'open' => $gate->open('order_for_tomorrow', $at),
         ];
     }
 
